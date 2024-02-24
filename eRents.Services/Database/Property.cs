@@ -21,13 +21,13 @@ public partial class Property
 
     public int? OwnerId { get; set; }
 
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-
     public virtual City? City { get; set; }
+
+    public virtual User? Owner { get; set; }
 
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 
-    public virtual User? Owner { get; set; }
+    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<PropertyFeature> PropertyFeatures { get; set; } = new List<PropertyFeature>();
 

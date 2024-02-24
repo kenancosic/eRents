@@ -236,21 +236,26 @@ namespace eRents.Services.Migrations
                         .HasColumnType("int")
                         .HasColumnName("image_id");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(200)")
-                        .HasColumnName("image_url");
+                    b.Property<byte[]>("ImageData")
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<int?>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ReviewId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
 
                     b.HasKey("ImageId")
                         .HasName("PK__Images__DC9AC955675E0E5B");
 
                     b.HasIndex("PropertyId");
+
+                    b.HasIndex("ReviewId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Images");
                 });
@@ -742,12 +747,17 @@ namespace eRents.Services.Migrations
 
             modelBuilder.Entity("eRents.Services.Database.Image", b =>
                 {
-                    b.HasOne("eRents.Services.Database.Property", "Property")
+                    b.HasOne("eRents.Services.Database.Property", null)
                         .WithMany("Images")
-                        .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Images__property__47DBAE45");
+                        .HasForeignKey("PropertyId");
 
-                    b.Navigation("Property");
+                    b.HasOne("eRents.Services.Database.Review", null)
+                        .WithMany("Images")
+                        .HasForeignKey("ReviewId");
+
+                    b.HasOne("eRents.Services.Database.User", null)
+                        .WithMany("Images")
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("eRents.Services.Database.Message", b =>
@@ -935,6 +945,11 @@ namespace eRents.Services.Migrations
                     b.Navigation("Cantons");
                 });
 
+            modelBuilder.Entity("eRents.Services.Database.Review", b =>
+                {
+                    b.Navigation("Images");
+                });
+
             modelBuilder.Entity("eRents.Services.Database.Role", b =>
                 {
                     b.Navigation("UserRoles");
@@ -949,6 +964,8 @@ namespace eRents.Services.Migrations
                     b.Navigation("ConversationUser1s");
 
                     b.Navigation("ConversationUser2s");
+
+                    b.Navigation("Images");
 
                     b.Navigation("Messages");
 

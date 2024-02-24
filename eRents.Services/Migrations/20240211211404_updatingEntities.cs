@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace eRents.Services.Migrations
 {
     /// <inheritdoc />
-    public partial class UserRoles : Migration
+    public partial class updatingEntities : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -278,24 +278,6 @@ namespace eRents.Services.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Images",
-                columns: table => new
-                {
-                    image_id = table.Column<int>(type: "int", nullable: false),
-                    property_id = table.Column<int>(type: "int", nullable: true),
-                    image_url = table.Column<string>(type: "varchar(200)", unicode: false, maxLength: 200, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Images__DC9AC955675E0E5B", x => x.image_id);
-                    table.ForeignKey(
-                        name: "FK__Images__property__47DBAE45",
-                        column: x => x.property_id,
-                        principalTable: "Properties",
-                        principalColumn: "property_id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Property_Amenities",
                 columns: table => new
                 {
@@ -458,6 +440,36 @@ namespace eRents.Services.Migrations
                         principalColumn: "user_id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Images",
+                columns: table => new
+                {
+                    image_id = table.Column<int>(type: "int", nullable: false),
+                    ImageData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
+                    PropertyId = table.Column<int>(type: "int", nullable: true),
+                    ReviewId = table.Column<int>(type: "int", nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK__Images__DC9AC955675E0E5B", x => x.image_id);
+                    table.ForeignKey(
+                        name: "FK_Images_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Properties",
+                        principalColumn: "property_id");
+                    table.ForeignKey(
+                        name: "FK_Images_Reviews_ReviewId",
+                        column: x => x.ReviewId,
+                        principalTable: "Reviews",
+                        principalColumn: "review_id");
+                    table.ForeignKey(
+                        name: "FK_Images_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "user_id");
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_property_id",
                 table: "Bookings",
@@ -504,9 +516,19 @@ namespace eRents.Services.Migrations
                 column: "property_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Images_property_id",
+                name: "IX_Images_PropertyId",
                 table: "Images",
-                column: "property_id");
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Images_ReviewId",
+                table: "Images",
+                column: "ReviewId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Images_UserId",
+                table: "Images",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Messages_conversation_id",
@@ -623,10 +645,10 @@ namespace eRents.Services.Migrations
                 name: "Property_Views");
 
             migrationBuilder.DropTable(
-                name: "Reviews");
+                name: "UserRoles");
 
             migrationBuilder.DropTable(
-                name: "UserRoles");
+                name: "Reviews");
 
             migrationBuilder.DropTable(
                 name: "Conversations");

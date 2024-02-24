@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents", "eRents\eRents.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Services", "eRents.Services\eRents.Services.csproj", "{BB936BBA-0DAE-4E5C-B0C6-8E9346F18DD2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eRents.Model", "eRents.Model\eRents.Model.csproj", "{C1996082-75BC-4BC5-BD9C-63536AB9674A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Model", "eRents.Model\eRents.Model.csproj", "{C1996082-75BC-4BC5-BD9C-63536AB9674A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

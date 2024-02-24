@@ -8,10 +8,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Services
+namespace eRents.Services.Service.UserService
 {
-    public interface IUsersService : ICRUDService<Users, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
+    public interface IUsersService : ICRUDService<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
     {
-        Users Login(string username, string password);
+        UsersResponse Login(string username, string password);
     }
 }

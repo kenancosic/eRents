@@ -20,4 +20,6 @@ public partial class Review
     public virtual Property? Property { get; set; }
 
     public virtual User? User { get; set; }
+
+    public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 }

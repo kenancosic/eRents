@@ -1,6 +1,29 @@
-﻿namespace eRents.Controllers
+﻿using eRents.Model.Requests;
+using eRents.Model.Response;
+using eRents.Model.SearchObjects;
+using eRents.Services.Database;
+using eRents.Services.Service.PropertyService;
+using Microsoft.AspNetCore.Mvc;
+
+namespace eRents.Controllers
 {
-    public class PropertiesController
+    [ApiController]
+    [Route("[controller]")]
+    public class PropertiesController: BaseCRUDController<PropertiesResponse,PropertiesSearchObject,PropertiesInsertRequest,PropertiesUpdateRequest>
     {
+        public PropertiesController(IPropertiesService service) : base(service)
+        { }
+
+        public override PropertiesResponse Insert([FromBody] PropertiesInsertRequest insert)
+        {
+            return base.Insert(insert);
+        }
+
+        public override PropertiesResponse Update(int id, [FromBody] PropertiesUpdateRequest update)
+        {
+            return base.Update(id, update);
+        }
+
     }
+
 }

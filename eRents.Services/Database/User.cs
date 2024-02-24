@@ -39,7 +39,7 @@ public partial class User
     public virtual ICollection<PropertyView> PropertyViews { get; set; } = new List<PropertyView>();
 
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
-
+    public virtual ICollection<Image> Images { get; set; } = new List<Image>();
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
     public virtual ICollection<UserRole> UsersRoles { get; set; } = new List<UserRole>();
 }

@@ -14,15 +14,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Services
-
+namespace eRents.Services.Service.UserService
 {
-    public class UsersService : BaseCRUDService<Users, User, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>, IUsersService
+    public class UsersService : BaseCRUDService<UsersResponse, User, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>, IUsersService
     {
         public UsersService(ERentsContext context, IMapper mapper) : base(context, mapper)
         {
         }
-        public override Users Insert(UsersInsertRequest insert)
+        public override UsersResponse Insert(UsersInsertRequest insert)
         {
 
             if (insert.Password != insert.ConfirmPassword)
@@ -76,8 +75,8 @@ namespace eRents.Services
             byte[] bytes = Encoding.Unicode.GetBytes(password);
             byte[] dst = new byte[src.Length + bytes.Length];
 
-            System.Buffer.BlockCopy(src, 0, dst, 0, src.Length);
-            System.Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
+            Buffer.BlockCopy(src, 0, dst, 0, src.Length);
+            Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
 
             HashAlgorithm algorithm = HashAlgorithm.Create("SHA1");
             byte[] inArray = algorithm.ComputeHash(dst);
@@ -103,8 +102,8 @@ namespace eRents.Services
             return filteredQuery;
         }
 
- 
-        public Users Login(string username, string password)
+
+        public UsersResponse Login(string username, string password)
         {
             var entity = Context.Users.Include("KorisniciUloges.Uloga").FirstOrDefault(x => x.Username == username);
             if (entity == null)
@@ -119,7 +118,7 @@ namespace eRents.Services
                 return null;
             }
 
-            return Mapper.Map<Users>(entity);
+            return Mapper.Map<UsersResponse>(entity);
         }
     }
 }

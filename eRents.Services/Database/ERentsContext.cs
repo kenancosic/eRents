@@ -192,15 +192,6 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.ImageId)
                 .ValueGeneratedNever()
                 .HasColumnName("image_id");
-            entity.Property(e => e.ImageUrl)
-                .HasMaxLength(200)
-                .IsUnicode(false)
-                .HasColumnName("image_url");
-            entity.Property(e => e.PropertyId).HasColumnName("property_id");
-
-            entity.HasOne(d => d.Property).WithMany(p => p.Images)
-                .HasForeignKey(d => d.PropertyId)
-                .HasConstraintName("FK__Images__property__47DBAE45");
         });
 
         modelBuilder.Entity<Message>(entity =>
