@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace eRents.Model.Requests
 {
-    public class ReviewsUpdateRequests
+    public class ReviewsUpdateRequest
     {
         public int Id { get; set; }
         public string Content { get; set; }
