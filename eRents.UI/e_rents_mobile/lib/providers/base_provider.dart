@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:e_rents_mobile/services/local_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:http/io_client.dart';
-
-import '../main.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
   static String? _baseUrl;
@@ -17,7 +16,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   BaseProvider(String endpoint) {
     _baseUrl = const String.fromEnvironment("baseUrl",
-        defaultValue: "http://127.0.0.1:7100/");
+        defaultValue: "https://localhost:7193/");
     print("baseurl: $_baseUrl");
 
     if (_baseUrl!.endsWith("/") == false) {
@@ -99,7 +98,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
       var data = jsonDecode(response.body);
       return fromJson(data);
     } else {
-      print(response.body);
       return null;
     }
   }
@@ -120,20 +118,14 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<Map<String, String>> createHeaders() async {
-    String? email = localStorage.getItem('email');
-    String? password = localStorage.getItem('password');
-
-    if (email == null || password == null) {}
-
-    String basicAuth =
-        "Basic ${base64Encode(utf8.encode('$email:$password:traveler'))}";
-
-    var headers = {
-      "Content-Type": "application/json",
-      "Authorization": basicAuth
-      // "Authorization": "Bearer $jwt",
+    String? jwt = LocalStorageService.getItem('jwt_token');
+    if (jwt == null) {
+      throw Exception('JWT token not found');
+    }
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $jwt',
     };
-    return headers;
   }
 
   T fromJson(data) {

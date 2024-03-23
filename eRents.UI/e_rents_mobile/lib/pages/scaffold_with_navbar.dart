@@ -1,5 +1,5 @@
 import 'package:dart_amqp/dart_amqp.dart';
-import 'package:e_rents_mobile/widgets/CustomSnacBar.dart';
+import 'package:e_rents_mobile/widgets/custom_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -134,7 +134,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
         },
         currentIndex: widget.location == '/bookmarks'
             ? 1
-            : widget.location == '/trips'
+            : widget.location == '/search'
                 ? 2
                 : widget.location == '/profile'
                     ? 3

@@ -16,9 +16,9 @@ using System.Threading.Tasks;
 
 namespace eRents.Services.Service.UserService
 {
-    public class UsersService : BaseCRUDService<UsersResponse, User, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>, IUsersService
+    public class UserService : BaseCRUDService<UsersResponse, User, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>, IUserService
     {
-        public UsersService(ERentsContext context, IMapper mapper) : base(context, mapper)
+        public UserService(ERentsContext context, IMapper mapper) : base(context, mapper)
         {
         }
         public override UsersResponse Insert(UsersInsertRequest insert)
@@ -102,10 +102,15 @@ namespace eRents.Services.Service.UserService
             return filteredQuery;
         }
 
-
-        public UsersResponse Login(string username, string password)
+        public UsersResponse Login(string usernameOrEmail, string password)
         {
-            var entity = Context.Users.Include("KorisniciUloges.Uloga").FirstOrDefault(x => x.Username == username);
+            // Check if the input is an email or username
+            var isEmail = usernameOrEmail.Contains("@");
+
+            // Adjust the query to search by email or username
+            var entity = Context.Users.Include("UserRoles.Role")
+                .FirstOrDefault(x => (isEmail ? x.Email == usernameOrEmail : x.Username == usernameOrEmail));
+
             if (entity == null)
             {
                 return null;

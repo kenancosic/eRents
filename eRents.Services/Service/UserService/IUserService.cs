@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace eRents.Services.Service.UserService
 {
-    public interface IUsersService : ICRUDService<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
+    public interface IUserService : ICRUDService<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
     {
         UsersResponse Login(string username, string password);
     }
