@@ -62,7 +62,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.AmenityId).HasName("PK__Amenitie__E908452D40650F6A");
 
             entity.Property(e => e.AmenityId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("amenity_id");
             entity.Property(e => e.AmenityName)
                 .HasMaxLength(50)
@@ -75,7 +75,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.BookingId).HasName("PK__Bookings__5DE3A5B1F0CCDD3A");
 
             entity.Property(e => e.BookingId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("booking_id");
             entity.Property(e => e.BookingDate)
                 .HasColumnType("date")
@@ -106,7 +106,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.CantonId).HasName("PK__Cantons__7FFFB2CB9EC7B527");
 
             entity.Property(e => e.CantonId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("canton_id");
             entity.Property(e => e.CantonName)
                 .HasMaxLength(100)
@@ -124,7 +124,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.CityId).HasName("PK__Cities__031491A86FAC9818");
 
             entity.Property(e => e.CityId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("city_id");
             entity.Property(e => e.CantonId).HasColumnName("canton_id");
             entity.Property(e => e.CityName)
@@ -142,7 +142,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ContractId).HasName("PK__Contract__F8D66423F61F466F");
 
             entity.Property(e => e.ContractId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("contract_id");
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
             entity.Property(e => e.ContractText)
@@ -168,7 +168,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ConversationId).HasName("PK__Conversa__311E7E9A579CBF7C");
 
             entity.Property(e => e.ConversationId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("conversation_id");
             entity.Property(e => e.StartDate)
                 .HasColumnType("date")
@@ -190,7 +190,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ImageId).HasName("PK__Images__DC9AC955675E0E5B");
 
             entity.Property(e => e.ImageId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("image_id");
         });
 
@@ -199,7 +199,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.MessageId).HasName("PK__Messages__0BBF6EE6773BBECC");
 
             entity.Property(e => e.MessageId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("message_id");
             entity.Property(e => e.ConversationId).HasColumnName("conversation_id");
             entity.Property(e => e.MessageText)
@@ -225,7 +225,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.NotificationId).HasName("PK__Notifica__E059842F3BDE2922");
 
             entity.Property(e => e.NotificationId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("notification_id");
             entity.Property(e => e.NotificationDate)
                 .HasColumnType("datetime")
@@ -246,7 +246,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.PaymentId).HasName("PK__Payments__ED1FC9EAC730626A");
 
             entity.Property(e => e.PaymentId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("payment_id");
             entity.Property(e => e.Amount)
                 .HasColumnType("decimal(10, 2)")
@@ -271,7 +271,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.PropertyId).HasName("PK__Properti__735BA46376FC2C6A");
 
             entity.Property(e => e.PropertyId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("property_id");
             entity.Property(e => e.Address)
                 .HasMaxLength(200)
@@ -330,7 +330,7 @@ public partial class ERentsContext : DbContext
             entity.ToTable("Property_Features");
 
             entity.Property(e => e.FeatureId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("feature_id");
             entity.Property(e => e.FeatureName)
                 .HasMaxLength(100)
@@ -373,7 +373,7 @@ public partial class ERentsContext : DbContext
             entity.ToTable("Property_Views");
 
             entity.Property(e => e.ViewId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("view_id");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
@@ -395,7 +395,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.RegionId).HasName("PK__Regions__01146BAE487C7A1E");
 
             entity.Property(e => e.RegionId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("region_id");
             entity.Property(e => e.RegionName)
                 .HasMaxLength(100)
@@ -408,7 +408,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ReviewId).HasName("PK__Reviews__60883D909569A869");
 
             entity.Property(e => e.ReviewId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("review_id");
             entity.Property(e => e.Comment)
                 .HasMaxLength(500)
@@ -437,7 +437,7 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.UserId).HasName("PK__Users__B9BE370F4566DF4A");
 
             entity.Property(e => e.UserId)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("user_id");
             entity.Property(e => e.Email)
                 .HasMaxLength(100)

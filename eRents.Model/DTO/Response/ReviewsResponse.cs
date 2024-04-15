@@ -1,4 +1,4 @@
-﻿namespace eRents.Model.Response
+﻿namespace eRents.Model.DTO.Response
 {
     public class ReviewsResponse
     {

@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
-using eRents.Model.Requests;
-using eRents.Model.Response;
+using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
 using eRents.Services.Database;
 using eRents.Services.Shared;

@@ -5,10 +5,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Model.Requests
+namespace eRents.Model.DTO.Requests
 {
     public class UsersInsertRequest
     {
+        public string Name { get; set; }
+        public string Surname { get; set; }
+
         [MinLength(4)]
         [Required(AllowEmptyStrings = false)]
         public string Username { get; set; }

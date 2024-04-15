@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
-using eRents.Model.Requests;
-using eRents.Model.Response;
+using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
 using eRents.Services.Database;
 using eRents.Services.Service.PropertyService;
@@ -23,10 +23,10 @@ namespace eRents.Services.Service.ReviewService
 
         public ReviewsResponse GetReviewsByUsername(string username)
         {
-         var result = Context.Reviews.Include(x => x.User).Where(x => x.User.Username == username).ToList();
+         var result = _context.Reviews.Include(x => x.User).Where(x => x.User.Username == username).ToList();
             if (result == null)
                 return null;
-            return Mapper.Map<ReviewsResponse>(result);
+            return _mapper.Map<ReviewsResponse>(result);
         }
 
         

@@ -19,17 +19,17 @@ namespace eRents.Services.Shared
 
         public virtual T Insert(TInsert insert)
         {
-            var set = Context.Set<TDb>();
+            var set = _context.Set<TDb>();
 
-            TDb entity = Mapper.Map<TDb>(insert);
+            TDb entity = _mapper.Map<TDb>(insert);
 
             set.Add(entity);
 
             BeforeInsert(insert, entity);
 
-            Context.SaveChanges();
+            _context.SaveChanges();
 
-            return Mapper.Map<T>(entity);
+            return _mapper.Map<T>(entity);
         }
 
         public virtual void BeforeInsert(TInsert insert, TDb entity)
@@ -39,22 +39,22 @@ namespace eRents.Services.Shared
 
         public virtual T Update(int id, TUpdate update)
         {
-            var set = Context.Set<TDb>();
+            var set = _context.Set<TDb>();
 
             var entity = set.Find(id);
 
             if (entity != null)
             {
-                Mapper.Map(update, entity);
+                _mapper.Map(update, entity);
             }
             else
             {
                 return null;
             }
 
-            Context.SaveChanges();
+            _context.SaveChanges();
 
-            return Mapper.Map<T>(entity);
+            return _mapper.Map<T>(entity);
 
         }
     }

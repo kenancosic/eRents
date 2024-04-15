@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Model.Response
+namespace eRents.Model.DTO.Response
 {
     public class PropertiesResponse
     {

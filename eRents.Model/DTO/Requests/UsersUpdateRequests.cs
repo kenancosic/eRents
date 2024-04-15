@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Model.Requests
+namespace eRents.Model.DTO.Requests
 {
     public class UsersUpdateRequest
     {

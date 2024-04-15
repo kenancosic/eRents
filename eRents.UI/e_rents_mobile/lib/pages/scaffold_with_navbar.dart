@@ -26,7 +26,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   @override
   void initState() {
     super.initState();
-    checkNotifications();
+    // checkNotifications();
   }
 
   Future<void> checkNotifications() async {

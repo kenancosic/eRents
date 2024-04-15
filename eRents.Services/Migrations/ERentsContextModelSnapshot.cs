@@ -565,7 +565,7 @@ namespace eRents.Services.Migrations
 
             modelBuilder.Entity("eRents.Services.Database.User", b =>
                 {
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int")
                         .HasColumnName("user_id");
 

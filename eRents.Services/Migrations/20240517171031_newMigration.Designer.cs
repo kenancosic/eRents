@@ -12,8 +12,8 @@ using eRents.Services.Database;
 namespace eRents.Services.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    [Migration("20240211211404_updatingEntities")]
-    partial class updatingEntities
+    [Migration("20240517171031_newMigration")]
+    partial class newMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -568,7 +568,7 @@ namespace eRents.Services.Migrations
 
             modelBuilder.Entity("eRents.Services.Database.User", b =>
                 {
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int")
                         .HasColumnName("user_id");
 

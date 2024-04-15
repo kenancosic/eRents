@@ -1,5 +1,5 @@
-﻿using eRents.Model.Requests;
-using eRents.Model.Response;
+﻿using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
 using eRents.Services.Service.UserService;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace eRents.Controllers
 {
     [ApiController]
-    [Authorize]
     [Route("[controller]")]
     public class UsersController : BaseCRUDController<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
     {
@@ -28,5 +27,6 @@ namespace eRents.Controllers
         {
             return base.Update(id, update);
         }
+
     }
 }

@@ -136,7 +136,9 @@ class _LoginScreenState extends State<LoginScreen> {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Center(child: SvgPicture.asset("assets/images/logo.svg")),
+          Center(
+              child: SvgPicture.asset(
+                  height: 100, width: 100, "assets/images/logo.svg")),
         ],
       ),
       const SizedBox(height: 50),

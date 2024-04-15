@@ -1,5 +1,5 @@
-﻿using eRents.Model.Requests;
-using eRents.Model.Response;
+﻿using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
 using eRents.Services.Shared;
 using System;
@@ -13,5 +13,7 @@ namespace eRents.Services.Service.UserService
     public interface IUserService : ICRUDService<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
     {
         UsersResponse Login(string username, string password);
+        
+        UsersResponse Register(UsersInsertRequest request);
     }
 }

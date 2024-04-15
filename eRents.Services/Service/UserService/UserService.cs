@@ -1,18 +1,22 @@
 ﻿using AutoMapper;
 using eRents.Model;
-using eRents.Model.Requests;
-using eRents.Model.Response;
 using eRents.Model.SearchObjects;
 using eRents.Services.Database;
 using eRents.Services.Shared;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using EmailValidation;
+using System.Globalization;
+using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
+
 
 namespace eRents.Services.Service.UserService
 {
@@ -42,11 +46,11 @@ namespace eRents.Services.Service.UserService
                 userRole.UserId = entity.UserId;
                 userRole.UpdateTime = DateTime.Now;
 
-                Context.UserRoles.Add(userRole);
+                _context.UserRoles.Add(userRole);
             }
-            Context.Add(user);
+            _context.Add(user);
 
-            Context.SaveChanges();
+            _context.SaveChanges();
 
             return entity;
         }
@@ -108,7 +112,7 @@ namespace eRents.Services.Service.UserService
             var isEmail = usernameOrEmail.Contains("@");
 
             // Adjust the query to search by email or username
-            var entity = Context.Users.Include("UserRoles.Role")
+            var entity = _context.Users.Include("UsersRoles.Role")
                 .FirstOrDefault(x => (isEmail ? x.Email == usernameOrEmail : x.Username == usernameOrEmail));
 
             if (entity == null)
@@ -123,7 +127,85 @@ namespace eRents.Services.Service.UserService
                 return null;
             }
 
-            return Mapper.Map<UsersResponse>(entity);
+            return _mapper.Map<UsersResponse>(entity);
+        }
+
+        public UsersResponse Register(UsersInsertRequest request)
+        {
+            var entity = new User();
+            _mapper.Map<UsersInsertRequest,User>(request,entity);
+            
+
+            // Validate password
+            if (!IsPasswordValid(request.Password, request.ConfirmPassword))
+            {
+                throw new UserException("Password and confirmation must be the same");
+            }
+
+            // Validate email
+            if (!IsEmailValid(request.Email))
+            {
+                throw new UserException("Invalid email format");
+            }
+
+            // Check for existing user
+            if (IsUserAlreadyRegistered(request.Username, request.Email))
+            {
+               throw new UserException("Username or email already exists");
+            }
+
+            // Generate password salt and hash
+            var salt = GenerateSalt();
+            entity.PasswordSalt = salt;
+            entity.PasswordHash = GenerateHash(salt, request.Password);
+            entity.RegistrationDate = DateTime.Now;
+
+                    
+            using (var transaction = _context.Database.BeginTransaction())
+            {
+                try
+                {
+                    _context.Users.Add(entity);
+                    _context.SaveChanges();
+                    var userId = entity.UserId;
+
+                    if(userId == null)
+                        transaction.Rollback();
+                    else
+                    {
+                        // Assign user roles
+                    var userRoles = request.RoleIdList.Select(x => new UserRole { RoleId = x, UserId = userId.Value, UpdateTime = DateTime.Now }).ToList();
+                    _context.UserRoles.AddRange(userRoles);
+                    _context.SaveChanges();
+                    }
+
+                    transaction.Commit();
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    throw new UserException(ex.Message);
+                }
+            }
+
+            return Login(entity.Username, request.Password);
+
+            //return new UsersResponse { UserId = entity.UserId, Username = entity.Username, Email = entity.Email , RegistrationDate = entity.RegistrationDate?.ToString("dd/MM/yyyy HH:mm")) };
+        }
+
+        private bool IsPasswordValid(string password, string confirmPassword)
+        {
+            return password.Equals(confirmPassword);
+        }
+
+        private bool IsEmailValid(string email)
+        {
+            return EmailValidator.Validate(email);
+        }
+
+        private bool IsUserAlreadyRegistered(string username, string email)
+        {
+            return _context.Users.Any(x => x.Username == username || x.Email == email);
         }
     }
 }

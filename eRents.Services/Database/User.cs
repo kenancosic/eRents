@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace eRents.Services.Database;
 
 public partial class User
 {
-    public int UserId { get; set; }
-    public string Name { get; set; }
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int? UserId { get; set; }
+    public string Name { get; set ; }
     public string Surname { get; set; }
     public string Email { get; set; } = null!;
     public string? PhoneNumber { get; set; }
@@ -42,4 +44,11 @@ public partial class User
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
     public virtual ICollection<UserRole> UsersRoles { get; set; } = new List<UserRole>();
+
+    public User()
+    {
+        Name = "John";
+        Surname = "Doe";
+        Status = false;
+    }
 }

@@ -1,4 +1,5 @@
-﻿using eRents.Model.Requests;
+﻿using eRents.Model.DTO.Requests;
+using eRents.Model.DTO.Response;
 using eRents.Services.Service.UserService;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -52,6 +53,12 @@ namespace eRents.Controllers
             }
 
             return Unauthorized();
+        }
+
+        [HttpPost("Register")]
+        public UsersResponse Register([FromBody] UsersInsertRequest request)
+        {
+            return _userService.Register(request);
         }
     }
 }

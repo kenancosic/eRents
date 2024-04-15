@@ -6,7 +6,7 @@ public static class AuthenticationExtensions
 {
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var tokenKey = configuration.GetValue<string>("JwtSettings:Key");
+        var tokenKey = configuration.GetValue<string>("Jwt:Key");
         var key = Encoding.UTF8.GetBytes(tokenKey);
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

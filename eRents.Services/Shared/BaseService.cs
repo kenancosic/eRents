@@ -11,17 +11,17 @@ namespace eRents.Services.Shared
 {
     public class BaseService<T, TDb, TSearch> : IService<T, TSearch> where T : class where TDb : class where TSearch : BaseSearchObject
     {
-        public ERentsContext Context { get; set; }
-        public IMapper Mapper { get; set; }
+        public ERentsContext _context { get; set; }
+        public IMapper _mapper { get; set; }
 
         public BaseService(ERentsContext context, IMapper mapper)
         {
-            Context = context;
-            Mapper = mapper;
+            _context = context;
+            _mapper = mapper;
         }
         public virtual IEnumerable<T> Get(TSearch search = null)
         {
-            var entity = Context.Set<TDb>().AsQueryable();
+            var entity = _context.Set<TDb>().AsQueryable();
 
             entity = AddFilter(entity, search);
 
@@ -34,7 +34,7 @@ namespace eRents.Services.Shared
 
             var list = entity.ToList();
             //NOTE: elaborate IEnumerable vs IList
-            return Mapper.Map<IList<T>>(list);
+            return _mapper.Map<IList<T>>(list);
         }
 
         public virtual IQueryable<TDb> AddInclude(IQueryable<TDb> query, TSearch search = null)
@@ -49,11 +49,11 @@ namespace eRents.Services.Shared
 
         public T GetById(int id)
         {
-            var set = Context.Set<TDb>();
+            var set = _context.Set<TDb>();
 
             var entity = set.Find(id);
 
-            return Mapper.Map<T>(entity);
+            return _mapper.Map<T>(entity);
         }
     }
 }
