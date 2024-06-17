@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace eRents.Services.Service.PropertyService
 {
-    public class PropertiesService : BaseCRUDService<PropertiesResponse, User, PropertiesSearchObject, PropertiesInsertRequest, PropertiesUpdateRequest>, IPropertiesService
+    public class PropertiesService : BaseCRUDService<PropertiesResponse, Property, PropertiesSearchObject, PropertiesInsertRequest, PropertiesUpdateRequest>, IPropertiesService
     {
         public PropertiesService(ERentsContext context, IMapper mapper) : base(context, mapper) { }
         

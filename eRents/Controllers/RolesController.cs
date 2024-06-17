@@ -10,19 +10,25 @@ namespace eRents.Controllers
     [ApiController]
     public class RolesController : BaseCRUDController<Role, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
     {
-        public IRoleService _roleService;
-
-        public RolesController(IRoleService roleService) : base(roleService)
+        private readonly IRoleService _service;
+        public RolesController(IRoleService service) : base(service) 
         {
-            _roleService = roleService;
+            _service = service; 
         }
 
-        [HttpGet]
-        public async Task<List<RoleInsertUpdateRequest>> Get([FromQuery] RoleSearchObject search = null)
+        public override Role Insert([FromBody] RoleInsertUpdateRequest insert)
         {
-            return await _roleService.Get(search);
+            return base.Insert(insert);
         }
-
+        public override Role Update(int id, [FromBody] RoleInsertUpdateRequest update)
+        {
+            return base.Update(id, update);
+        }
+        [HttpGet("GetRoleList")]
+        public RoleInsertUpdateRequest GetList(RoleSearchObject search)
+        {
+            return _service.GetList(search);
+        }
 
     }
 }

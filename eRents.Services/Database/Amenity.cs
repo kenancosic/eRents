@@ -13,5 +13,5 @@ public partial class Amenity
 
     public string AmenityName { get; set; } = null!;
 
-    public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
+    public virtual ICollection<PropertyAmenities>? PropertyAmenities { get; set; }
 }

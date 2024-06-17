@@ -41,7 +41,7 @@ public partial class Property
 
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
-    public virtual ICollection<Amenity> Amenities { get; set; } = new List<Amenity>();
+    public virtual ICollection<PropertyAmenities>? PropertyAmenities { get; set; }
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -404,6 +404,7 @@ namespace eRents.Services.Migrations
                         .HasColumnType("varchar(20)")
                         .HasColumnName("zip_code");
 
+
                     b.HasKey("PropertyId")
                         .HasName("PK__Properti__735BA46376FC2C6A");
 
@@ -662,7 +663,7 @@ namespace eRents.Services.Migrations
                         .HasConstraintName("FK__Favorites__user___4AB81AF0");
                 });
 
-            modelBuilder.Entity("PropertyAmenity", b =>
+            modelBuilder.Entity("PropertyAmenities", b =>
                 {
                     b.HasOne("eRents.Services.Database.Amenity", null)
                         .WithMany()

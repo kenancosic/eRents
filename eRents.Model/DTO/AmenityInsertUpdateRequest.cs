@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eRents.Model.SearchObjects
+namespace eRents.Model.DTO
 {
-    public class RoleSearchObject : BaseSearchObject
+    public class AmenityInsertUpdateRequest
     {
-        public string? Name { get; set; }
     }
 }

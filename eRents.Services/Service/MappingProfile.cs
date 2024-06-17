@@ -18,8 +18,8 @@ namespace eRents.Services.Service
             CreateMap<UsersInsertRequest, User>();
             CreateMap<User, UsersResponse>();
 
-            CreateMap<Role, RolesResponse>();
-            CreateMap<RolesRequest, Role>();
+            CreateMap<Role, RoleInsertUpdateRequest>();
+            CreateMap<RoleInsertUpdateRequest, Role>();
         }
     }
 }
