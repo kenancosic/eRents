@@ -16,5 +16,7 @@ namespace eRents.Services.Service.AmenityService
         public AmenityService(ERentsContext context, IMapper mapper) : base(context, mapper)
         {
         }
+
+
     }
 }

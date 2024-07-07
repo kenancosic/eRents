@@ -32,7 +32,7 @@ public partial class Property
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-
+    public virtual ICollection<Favorites> Favorites { get; set; } = new List<Favorites>();
     public virtual ICollection<PropertyFeature> PropertyFeatures { get; set; } = new List<PropertyFeature>();
 
     public virtual ICollection<PropertyRating> PropertyRatings { get; set; } = new List<PropertyRating>();
@@ -41,7 +41,7 @@ public partial class Property
 
     public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 
-    public virtual ICollection<PropertyAmenities>? PropertyAmenities { get; set; }
+    public virtual ICollection<PropertyAmenities>? PropertyAmenities { get; set; } = new List<PropertyAmenities>();
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Services.Service.RoleService
 {
-    public class RoleService : BaseCRUDService<RoleInsertUpdateRequest, Role, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
+    public class RoleService : BaseCRUDService<RoleInsertUpdateRequest, Role, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>,IRoleService
     {
         public RoleService(ERentsContext context, IMapper mapper) : base(context, mapper)
         {

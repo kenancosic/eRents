@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace eRents.Model.SearchObjects
 {
-    public class AmenitySearchObject
+    public class AmenitySearchObject : BaseSearchObject
     {
         public string? Name { get; set; }
     }

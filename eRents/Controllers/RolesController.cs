@@ -8,7 +8,7 @@ namespace eRents.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class RolesController : BaseCRUDController<Role, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
+    public class RolesController : BaseCRUDController<RoleInsertUpdateRequest, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
     {
         private readonly IRoleService _service;
         public RolesController(IRoleService service) : base(service) 
@@ -16,11 +16,11 @@ namespace eRents.Controllers
             _service = service; 
         }
 
-        public override Role Insert([FromBody] RoleInsertUpdateRequest insert)
+        public override RoleInsertUpdateRequest Insert([FromBody] RoleInsertUpdateRequest insert)
         {
             return base.Insert(insert);
         }
-        public override Role Update(int id, [FromBody] RoleInsertUpdateRequest update)
+        public override RoleInsertUpdateRequest Update(int id, [FromBody] RoleInsertUpdateRequest update)
         {
             return base.Update(id, update);
         }

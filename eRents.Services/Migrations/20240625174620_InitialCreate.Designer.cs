@@ -12,8 +12,8 @@ using eRents.Services.Database;
 namespace eRents.Services.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    [Migration("20240517171031_newMigration")]
-    partial class newMigration
+    [Migration("20240625174620_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,47 +25,29 @@ namespace eRents.Services.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Favorite", b =>
+            modelBuilder.Entity("PropertyUser", b =>
                 {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
+                    b.Property<int>("PropertiesPropertyId")
+                        .HasColumnType("int");
 
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                    b.Property<int>("UsersUserId")
+                        .HasColumnType("int");
 
-                    b.HasKey("UserId", "PropertyId")
-                        .HasName("PK__Favorite__9E8B8D4998D5B8C6");
+                    b.HasKey("PropertiesPropertyId", "UsersUserId");
 
-                    b.HasIndex("PropertyId");
+                    b.HasIndex("UsersUserId");
 
-                    b.ToTable("Favorites", (string)null);
-                });
-
-            modelBuilder.Entity("PropertyAmenity", b =>
-                {
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
-
-                    b.Property<int>("AmenityId")
-                        .HasColumnType("int")
-                        .HasColumnName("amenity_id");
-
-                    b.HasKey("PropertyId", "AmenityId")
-                        .HasName("PK__Property__BDCB20311129E8E8");
-
-                    b.HasIndex("AmenityId");
-
-                    b.ToTable("Property_Amenities", (string)null);
+                    b.ToTable("PropertyUser");
                 });
 
             modelBuilder.Entity("eRents.Services.Database.Amenity", b =>
                 {
                     b.Property<int>("AmenityId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("amenity_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AmenityId"));
 
                     b.Property<string>("AmenityName")
                         .IsRequired()
@@ -83,8 +65,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Booking", b =>
                 {
                     b.Property<int>("BookingId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("booking_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingId"));
 
                     b.Property<DateTime?>("BookingDate")
                         .HasColumnType("date")
@@ -123,8 +108,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Canton", b =>
                 {
                     b.Property<int>("CantonId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("canton_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CantonId"));
 
                     b.Property<string>("CantonName")
                         .IsRequired()
@@ -148,8 +136,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.City", b =>
                 {
                     b.Property<int>("CityId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("city_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CityId"));
 
                     b.Property<int?>("CantonId")
                         .HasColumnType("int")
@@ -173,8 +164,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Contract", b =>
                 {
                     b.Property<int>("ContractId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("contract_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ContractId"));
 
                     b.Property<int?>("BookingId")
                         .HasColumnType("int")
@@ -208,8 +202,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Conversation", b =>
                 {
                     b.Property<int>("ConversationId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("conversation_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("date")
@@ -233,11 +230,32 @@ namespace eRents.Services.Migrations
                     b.ToTable("Conversations");
                 });
 
+            modelBuilder.Entity("eRents.Services.Database.Favorites", b =>
+                {
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int")
+                        .HasColumnName("property_id");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("PropertyId", "UserId")
+                        .HasName("PK_Favorites");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Favorites");
+                });
+
             modelBuilder.Entity("eRents.Services.Database.Image", b =>
                 {
                     b.Property<int>("ImageId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("image_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImageId"));
 
                     b.Property<byte[]>("ImageData")
                         .HasColumnType("varbinary(max)");
@@ -266,8 +284,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Message", b =>
                 {
                     b.Property<int>("MessageId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("message_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageId"));
 
                     b.Property<int?>("ConversationId")
                         .HasColumnType("int")
@@ -301,8 +322,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Notification", b =>
                 {
                     b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("notification_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
 
                     b.Property<DateTime?>("NotificationDate")
                         .HasColumnType("datetime")
@@ -330,8 +354,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Payment", b =>
                 {
                     b.Property<int>("PaymentId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("payment_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentId"));
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(10, 2)")
@@ -362,8 +389,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Property", b =>
                 {
                     b.Property<int>("PropertyId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("property_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PropertyId"));
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -404,7 +434,6 @@ namespace eRents.Services.Migrations
                         .HasColumnType("varchar(20)")
                         .HasColumnName("zip_code");
 
-
                     b.HasKey("PropertyId")
                         .HasName("PK__Properti__735BA46376FC2C6A");
 
@@ -415,11 +444,29 @@ namespace eRents.Services.Migrations
                     b.ToTable("Properties");
                 });
 
+            modelBuilder.Entity("eRents.Services.Database.PropertyAmenities", b =>
+                {
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AmenityId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PropertyId", "AmenityId");
+
+                    b.HasIndex("AmenityId");
+
+                    b.ToTable("PropertyAmenities");
+                });
+
             modelBuilder.Entity("eRents.Services.Database.PropertyFeature", b =>
                 {
                     b.Property<int>("FeatureId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("feature_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FeatureId"));
 
                     b.Property<string>("FeatureName")
                         .IsRequired()
@@ -465,8 +512,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.PropertyView", b =>
                 {
                     b.Property<int>("ViewId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("view_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ViewId"));
 
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int")
@@ -493,8 +543,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Region", b =>
                 {
                     b.Property<int>("RegionId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("region_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegionId"));
 
                     b.Property<string>("RegionName")
                         .IsRequired()
@@ -512,8 +565,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.Review", b =>
                 {
                     b.Property<int>("ReviewId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("review_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
 
                     b.Property<string>("Comment")
                         .HasMaxLength(500)
@@ -570,8 +626,11 @@ namespace eRents.Services.Migrations
             modelBuilder.Entity("eRents.Services.Database.User", b =>
                 {
                     b.Property<int?>("UserId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("user_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int?>("UserId"));
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -648,34 +707,19 @@ namespace eRents.Services.Migrations
                     b.ToTable("UserRoles");
                 });
 
-            modelBuilder.Entity("Favorite", b =>
+            modelBuilder.Entity("PropertyUser", b =>
                 {
                     b.HasOne("eRents.Services.Database.Property", null)
                         .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Favorites__prope__4BAC3F29");
+                        .HasForeignKey("PropertiesPropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("eRents.Services.Database.User", null)
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Favorites__user___4AB81AF0");
-                });
-
-            modelBuilder.Entity("PropertyAmenities", b =>
-                {
-                    b.HasOne("eRents.Services.Database.Amenity", null)
-                        .WithMany()
-                        .HasForeignKey("AmenityId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Property___ameni__3D5E1FD2");
-
-                    b.HasOne("eRents.Services.Database.Property", null)
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Property___prope__3C69FB99");
+                        .HasForeignKey("UsersUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("eRents.Services.Database.Booking", b =>
@@ -747,6 +791,27 @@ namespace eRents.Services.Migrations
                     b.Navigation("User1");
 
                     b.Navigation("User2");
+                });
+
+            modelBuilder.Entity("eRents.Services.Database.Favorites", b =>
+                {
+                    b.HasOne("eRents.Services.Database.Property", "Property")
+                        .WithMany("Favorites")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_Favorites_Property");
+
+                    b.HasOne("eRents.Services.Database.User", "User")
+                        .WithMany("Favorites")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK__Favorites__user_id");
+
+                    b.Navigation("Property");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("eRents.Services.Database.Image", b =>
@@ -823,6 +888,25 @@ namespace eRents.Services.Migrations
                     b.Navigation("City");
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("eRents.Services.Database.PropertyAmenities", b =>
+                {
+                    b.HasOne("eRents.Services.Database.Amenity", "Amenity")
+                        .WithMany("PropertyAmenities")
+                        .HasForeignKey("AmenityId")
+                        .IsRequired()
+                        .HasConstraintName("FK__PropertyAmenities__AmenityId");
+
+                    b.HasOne("eRents.Services.Database.Property", "Property")
+                        .WithMany("PropertyAmenities")
+                        .HasForeignKey("PropertyId")
+                        .IsRequired()
+                        .HasConstraintName("FK__PropertyAmenities__PropertyId");
+
+                    b.Navigation("Amenity");
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("eRents.Services.Database.PropertyFeature", b =>
@@ -907,6 +991,11 @@ namespace eRents.Services.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("eRents.Services.Database.Amenity", b =>
+                {
+                    b.Navigation("PropertyAmenities");
+                });
+
             modelBuilder.Entity("eRents.Services.Database.Booking", b =>
                 {
                     b.Navigation("Contracts");
@@ -933,7 +1022,11 @@ namespace eRents.Services.Migrations
                 {
                     b.Navigation("Bookings");
 
+                    b.Navigation("Favorites");
+
                     b.Navigation("Images");
+
+                    b.Navigation("PropertyAmenities");
 
                     b.Navigation("PropertyFeatures");
 
@@ -968,6 +1061,8 @@ namespace eRents.Services.Migrations
                     b.Navigation("ConversationUser1s");
 
                     b.Navigation("ConversationUser2s");
+
+                    b.Navigation("Favorites");
 
                     b.Navigation("Images");
 

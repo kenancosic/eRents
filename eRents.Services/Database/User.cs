@@ -27,6 +27,7 @@ public partial class User
     public virtual ICollection<Conversation> ConversationUser1s { get; set; } = new List<Conversation>();
 
     public virtual ICollection<Conversation> ConversationUser2s { get; set; } = new List<Conversation>();
+    public virtual ICollection<Favorites> Favorites { get; set; } = new List<Favorites>();
 
     public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
 

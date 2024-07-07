@@ -10,7 +10,7 @@ using eRents.Services.Shared;
 
 namespace eRents.Services.Service.RoleService
 {
-    public interface IRoleService: ICRUDService<Role, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
+    public interface IRoleService: ICRUDService<RoleInsertUpdateRequest, RoleSearchObject, RoleInsertUpdateRequest, RoleInsertUpdateRequest>
     {
 
         RoleInsertUpdateRequest GetList(RoleSearchObject search = null);

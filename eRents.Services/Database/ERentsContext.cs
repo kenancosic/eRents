@@ -26,7 +26,7 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<Contract> Contracts { get; set; }
 
     public virtual DbSet<Conversation> Conversations { get; set; }
-
+    public virtual DbSet<Favorites> Favorites { get; set; }
     public virtual DbSet<Image> Images { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
@@ -36,7 +36,7 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<Payment> Payments { get; set; }
 
     public virtual DbSet<Property> Properties { get; set; }
-
+    public virtual DbSet<PropertyAmenities> PropertyAmenities { get; set; }
     public virtual DbSet<PropertyFeature> PropertyFeatures { get; set; }
 
     public virtual DbSet<PropertyRating> PropertyRatings { get; set; }
@@ -68,6 +68,11 @@ public partial class ERentsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("amenity_name");
+            entity.HasMany(a => a.PropertyAmenities)
+               .WithOne(pa => pa.Amenity)
+               .HasForeignKey(pa => pa.AmenityId)
+               .OnDelete(DeleteBehavior.ClientSetNull)
+               .HasConstraintName("FK__PropertyAmenities__AmenityId");
         });
 
         modelBuilder.Entity<Booking>(entity =>
@@ -183,6 +188,24 @@ public partial class ERentsContext : DbContext
             entity.HasOne(d => d.User2).WithMany(p => p.ConversationUser2s)
                 .HasForeignKey(d => d.User2Id)
                 .HasConstraintName("FK__Conversat__user2__571DF1D5");
+        });
+
+        modelBuilder.Entity<Favorites>(entity =>
+        {
+            entity.HasKey(e => new { e.PropertyId, e.UserId }).HasName("PK_Favorites");
+
+            entity.Property(e => e.PropertyId).HasColumnName("property_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+
+            entity.HasOne(d => d.Property)
+                .WithMany(p => p.Favorites)
+                .HasForeignKey(d => d.PropertyId)
+                .HasConstraintName("FK_Favorites_Property");
+
+            entity.HasOne(d => d.User)
+                .WithMany(u => u.Favorites)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_Favorites_User");
         });
 
         modelBuilder.Entity<Image>(entity =>
@@ -303,24 +326,11 @@ public partial class ERentsContext : DbContext
                 .HasForeignKey(d => d.OwnerId)
                 .HasConstraintName("FK__Propertie__owner__36B12243");
 
-            entity.HasMany(d => d.Amenities).WithMany(p => p.Properties)
-                .UsingEntity<Dictionary<string, object>>(
-                    "PropertyAmenity",
-                    r => r.HasOne<Amenity>().WithMany()
-                        .HasForeignKey("AmenityId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Property___ameni__3D5E1FD2"),
-                    l => l.HasOne<Property>().WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Property___prope__3C69FB99"),
-                    j =>
-                    {
-                        j.HasKey("PropertyId", "AmenityId").HasName("PK__Property__BDCB20311129E8E8");
-                        j.ToTable("Property_Amenities");
-                        j.IndexerProperty<int>("PropertyId").HasColumnName("property_id");
-                        j.IndexerProperty<int>("AmenityId").HasColumnName("amenity_id");
-                    });
+            entity.HasMany(p => p.PropertyAmenities)
+               .WithOne(pa => pa.Property)
+               .HasForeignKey(pa => pa.PropertyId)
+               .OnDelete(DeleteBehavior.ClientSetNull)
+               .HasConstraintName("FK__PropertyAmenities__PropertyId");
         });
 
         modelBuilder.Entity<PropertyFeature>(entity =>
@@ -390,6 +400,19 @@ public partial class ERentsContext : DbContext
                 .HasConstraintName("FK__Property___user___72C60C4A");
         });
 
+        modelBuilder.Entity<PropertyAmenities>(entity =>
+        {
+            entity.HasKey(pa => new { pa.PropertyId, pa.AmenityId });
+
+            entity.HasOne(pa => pa.Property)
+                .WithMany(p => p.PropertyAmenities)
+                .HasForeignKey(pa => pa.PropertyId);
+
+            entity.HasOne(pa => pa.Amenity)
+                .WithMany(a => a.PropertyAmenities)
+                .HasForeignKey(pa => pa.AmenityId);
+        });
+
         modelBuilder.Entity<Region>(entity =>
         {
             entity.HasKey(e => e.RegionId).HasName("PK__Regions__01146BAE487C7A1E");
@@ -454,25 +477,10 @@ public partial class ERentsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("username");
-
-            entity.HasMany(d => d.Properties).WithMany(p => p.Users)
-                .UsingEntity<Dictionary<string, object>>(
-                    "Favorite",
-                    r => r.HasOne<Property>().WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Favorites__prope__4BAC3F29"),
-                    l => l.HasOne<User>().WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__Favorites__user___4AB81AF0"),
-                    j =>
-                    {
-                        j.HasKey("UserId", "PropertyId").HasName("PK__Favorite__9E8B8D4998D5B8C6");
-                        j.ToTable("Favorites");
-                        j.IndexerProperty<int>("UserId").HasColumnName("user_id");
-                        j.IndexerProperty<int>("PropertyId").HasColumnName("property_id");
-                    });
+            entity.HasMany(d => d.Favorites)
+                .WithOne(p => p.User)
+                .HasForeignKey(p => p.UserId)
+                .HasConstraintName("FK__Favorites__user_id");
         });
 
         OnModelCreatingPartial(modelBuilder);

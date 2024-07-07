@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace eRents.Services.Migrations
 {
     /// <inheritdoc />
-    public partial class newMigration : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,7 +15,8 @@ namespace eRents.Services.Migrations
                 name: "Amenities",
                 columns: table => new
                 {
-                    amenity_id = table.Column<int>(type: "int", nullable: false),
+                    amenity_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     amenity_name = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: false)
                 },
                 constraints: table =>
@@ -27,7 +28,8 @@ namespace eRents.Services.Migrations
                 name: "Regions",
                 columns: table => new
                 {
-                    region_id = table.Column<int>(type: "int", nullable: false),
+                    region_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     region_name = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false)
                 },
                 constraints: table =>
@@ -53,7 +55,8 @@ namespace eRents.Services.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    user_id = table.Column<int>(type: "int", nullable: false),
+                    user_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Surname = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     email = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false),
@@ -73,7 +76,8 @@ namespace eRents.Services.Migrations
                 name: "Cantons",
                 columns: table => new
                 {
-                    canton_id = table.Column<int>(type: "int", nullable: false),
+                    canton_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     canton_name = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false),
                     region_id = table.Column<int>(type: "int", nullable: true)
                 },
@@ -91,7 +95,8 @@ namespace eRents.Services.Migrations
                 name: "Conversations",
                 columns: table => new
                 {
-                    conversation_id = table.Column<int>(type: "int", nullable: false),
+                    conversation_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     user1_id = table.Column<int>(type: "int", nullable: true),
                     user2_id = table.Column<int>(type: "int", nullable: true),
                     start_date = table.Column<DateTime>(type: "date", nullable: true)
@@ -115,7 +120,8 @@ namespace eRents.Services.Migrations
                 name: "Notifications",
                 columns: table => new
                 {
-                    notification_id = table.Column<int>(type: "int", nullable: false),
+                    notification_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     notification_text = table.Column<string>(type: "varchar(500)", unicode: false, maxLength: 500, nullable: false),
                     notification_date = table.Column<DateTime>(type: "datetime", nullable: true)
@@ -161,7 +167,8 @@ namespace eRents.Services.Migrations
                 name: "Cities",
                 columns: table => new
                 {
-                    city_id = table.Column<int>(type: "int", nullable: false),
+                    city_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     city_name = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false),
                     canton_id = table.Column<int>(type: "int", nullable: true)
                 },
@@ -179,7 +186,8 @@ namespace eRents.Services.Migrations
                 name: "Messages",
                 columns: table => new
                 {
-                    message_id = table.Column<int>(type: "int", nullable: false),
+                    message_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     conversation_id = table.Column<int>(type: "int", nullable: true),
                     sender_id = table.Column<int>(type: "int", nullable: true),
                     message_text = table.Column<string>(type: "varchar(500)", unicode: false, maxLength: 500, nullable: false),
@@ -204,7 +212,8 @@ namespace eRents.Services.Migrations
                 name: "Properties",
                 columns: table => new
                 {
-                    property_id = table.Column<int>(type: "int", nullable: false),
+                    property_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     property_type = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: false),
                     address = table.Column<string>(type: "varchar(200)", unicode: false, maxLength: 200, nullable: false),
                     city_id = table.Column<int>(type: "int", nullable: true),
@@ -232,7 +241,8 @@ namespace eRents.Services.Migrations
                 name: "Bookings",
                 columns: table => new
                 {
-                    booking_id = table.Column<int>(type: "int", nullable: false),
+                    booking_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     property_id = table.Column<int>(type: "int", nullable: true),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     start_date = table.Column<DateTime>(type: "date", nullable: false),
@@ -259,51 +269,32 @@ namespace eRents.Services.Migrations
                 name: "Favorites",
                 columns: table => new
                 {
-                    user_id = table.Column<int>(type: "int", nullable: false),
-                    property_id = table.Column<int>(type: "int", nullable: false)
+                    property_id = table.Column<int>(type: "int", nullable: false),
+                    user_id = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK__Favorite__9E8B8D4998D5B8C6", x => new { x.user_id, x.property_id });
+                    table.PrimaryKey("PK_Favorites", x => new { x.property_id, x.user_id });
                     table.ForeignKey(
-                        name: "FK__Favorites__prope__4BAC3F29",
+                        name: "FK_Favorites_Property",
                         column: x => x.property_id,
                         principalTable: "Properties",
-                        principalColumn: "property_id");
+                        principalColumn: "property_id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK__Favorites__user___4AB81AF0",
+                        name: "FK__Favorites__user_id",
                         column: x => x.user_id,
                         principalTable: "Users",
-                        principalColumn: "user_id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Property_Amenities",
-                columns: table => new
-                {
-                    property_id = table.Column<int>(type: "int", nullable: false),
-                    amenity_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK__Property__BDCB20311129E8E8", x => new { x.property_id, x.amenity_id });
-                    table.ForeignKey(
-                        name: "FK__Property___ameni__3D5E1FD2",
-                        column: x => x.amenity_id,
-                        principalTable: "Amenities",
-                        principalColumn: "amenity_id");
-                    table.ForeignKey(
-                        name: "FK__Property___prope__3C69FB99",
-                        column: x => x.property_id,
-                        principalTable: "Properties",
-                        principalColumn: "property_id");
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Property_Features",
                 columns: table => new
                 {
-                    feature_id = table.Column<int>(type: "int", nullable: false),
+                    feature_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     property_id = table.Column<int>(type: "int", nullable: true),
                     feature_name = table.Column<string>(type: "varchar(100)", unicode: false, maxLength: 100, nullable: false)
                 },
@@ -344,7 +335,8 @@ namespace eRents.Services.Migrations
                 name: "Property_Views",
                 columns: table => new
                 {
-                    view_id = table.Column<int>(type: "int", nullable: false),
+                    view_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     property_id = table.Column<int>(type: "int", nullable: true),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     view_date = table.Column<DateTime>(type: "date", nullable: true)
@@ -365,10 +357,57 @@ namespace eRents.Services.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PropertyAmenities",
+                columns: table => new
+                {
+                    AmenityId = table.Column<int>(type: "int", nullable: false),
+                    PropertyId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PropertyAmenities", x => new { x.PropertyId, x.AmenityId });
+                    table.ForeignKey(
+                        name: "FK__PropertyAmenities__AmenityId",
+                        column: x => x.AmenityId,
+                        principalTable: "Amenities",
+                        principalColumn: "amenity_id");
+                    table.ForeignKey(
+                        name: "FK__PropertyAmenities__PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Properties",
+                        principalColumn: "property_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PropertyUser",
+                columns: table => new
+                {
+                    PropertiesPropertyId = table.Column<int>(type: "int", nullable: false),
+                    UsersUserId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PropertyUser", x => new { x.PropertiesPropertyId, x.UsersUserId });
+                    table.ForeignKey(
+                        name: "FK_PropertyUser_Properties_PropertiesPropertyId",
+                        column: x => x.PropertiesPropertyId,
+                        principalTable: "Properties",
+                        principalColumn: "property_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PropertyUser_Users_UsersUserId",
+                        column: x => x.UsersUserId,
+                        principalTable: "Users",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Reviews",
                 columns: table => new
                 {
-                    review_id = table.Column<int>(type: "int", nullable: false),
+                    review_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     property_id = table.Column<int>(type: "int", nullable: true),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     rating = table.Column<decimal>(type: "decimal(2,1)", nullable: false),
@@ -394,7 +433,8 @@ namespace eRents.Services.Migrations
                 name: "Contracts",
                 columns: table => new
                 {
-                    contract_id = table.Column<int>(type: "int", nullable: false),
+                    contract_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     booking_id = table.Column<int>(type: "int", nullable: true),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     contract_text = table.Column<string>(type: "varchar(1000)", unicode: false, maxLength: 1000, nullable: false),
@@ -419,7 +459,8 @@ namespace eRents.Services.Migrations
                 name: "Payments",
                 columns: table => new
                 {
-                    payment_id = table.Column<int>(type: "int", nullable: false),
+                    payment_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     booking_id = table.Column<int>(type: "int", nullable: true),
                     user_id = table.Column<int>(type: "int", nullable: true),
                     amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
@@ -444,7 +485,8 @@ namespace eRents.Services.Migrations
                 name: "Images",
                 columns: table => new
                 {
-                    image_id = table.Column<int>(type: "int", nullable: false),
+                    image_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     ImageData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
                     PropertyId = table.Column<int>(type: "int", nullable: true),
                     ReviewId = table.Column<int>(type: "int", nullable: true),
@@ -511,9 +553,9 @@ namespace eRents.Services.Migrations
                 column: "user2_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Favorites_property_id",
+                name: "IX_Favorites_user_id",
                 table: "Favorites",
-                column: "property_id");
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Images_PropertyId",
@@ -566,11 +608,6 @@ namespace eRents.Services.Migrations
                 column: "owner_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Property_Amenities_amenity_id",
-                table: "Property_Amenities",
-                column: "amenity_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Property_Features_property_id",
                 table: "Property_Features",
                 column: "property_id");
@@ -589,6 +626,16 @@ namespace eRents.Services.Migrations
                 name: "IX_Property_Views_user_id",
                 table: "Property_Views",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PropertyAmenities_AmenityId",
+                table: "PropertyAmenities",
+                column: "AmenityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PropertyUser_UsersUserId",
+                table: "PropertyUser",
+                column: "UsersUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Reviews_property_id",
@@ -633,9 +680,6 @@ namespace eRents.Services.Migrations
                 name: "Payments");
 
             migrationBuilder.DropTable(
-                name: "Property_Amenities");
-
-            migrationBuilder.DropTable(
                 name: "Property_Features");
 
             migrationBuilder.DropTable(
@@ -643,6 +687,12 @@ namespace eRents.Services.Migrations
 
             migrationBuilder.DropTable(
                 name: "Property_Views");
+
+            migrationBuilder.DropTable(
+                name: "PropertyAmenities");
+
+            migrationBuilder.DropTable(
+                name: "PropertyUser");
 
             migrationBuilder.DropTable(
                 name: "UserRoles");
