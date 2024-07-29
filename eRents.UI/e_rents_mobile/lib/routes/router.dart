@@ -1,6 +1,8 @@
 import 'package:e_rents_mobile/pages/scaffold_with_navbar.dart';
 import 'package:e_rents_mobile/routes/error_page_builder.dart';
+import 'package:e_rents_mobile/screens/home_screen.dart';
 import 'package:e_rents_mobile/screens/login_screen.dart';
+import 'package:e_rents_mobile/screens/profile_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,6 +15,10 @@ class MyRouter {
       navigatorKey: _rootNavigatiorKey,
       errorBuilder: errorPageBuilder,
       routes: [
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => const LoginScreen(),
+        ),
         ShellRoute(
             navigatorKey: _shellNavigatorKey,
             pageBuilder: (context, state, child) {
@@ -25,10 +31,12 @@ class MyRouter {
             },
             routes: [
               GoRoute(
-                path: '/login',
-                parentNavigatorKey: _shellNavigatorKey,
-                builder: (context, state) => const LoginScreen(),
+                path: '/home',
+                builder: (context, state) => const HomeScreen(),
               ),
+              GoRoute(
+                  path: '/profile',
+                  builder: (context, state) => const ProfileScreen()),
             ]),
       ]);
 }

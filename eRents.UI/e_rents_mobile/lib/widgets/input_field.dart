@@ -6,6 +6,7 @@ class InputField extends StatefulWidget {
   final bool obscure;
   final TextEditingController controller;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
 
   const InputField(
       {super.key,
@@ -13,7 +14,8 @@ class InputField extends StatefulWidget {
       this.faIcon,
       required this.controller,
       this.obscure = false,
-      this.validator});
+      this.validator,
+      this.focusNode});
 
   @override
   // ignore: no_logic_in_create_state
@@ -21,7 +23,8 @@ class InputField extends StatefulWidget {
       hintText: hintText,
       faIcon: faIcon,
       obscure: obscure,
-      controller: controller);
+      controller: controller,
+      focusNode: focusNode);
 }
 
 class _InputFieldState extends State<InputField> {
@@ -29,12 +32,14 @@ class _InputFieldState extends State<InputField> {
   IconData? faIcon;
   bool obscure;
   TextEditingController controller;
+  FocusNode? focusNode;
 
   _InputFieldState(
       {required this.hintText,
       required this.faIcon,
       this.obscure = false,
-      required this.controller});
+      required this.controller,
+      this.focusNode});
   @override
   Widget build(BuildContext context) {
     // Check if `hintText`, `controller`, and `faIcon` are not null
@@ -63,6 +68,7 @@ class _InputFieldState extends State<InputField> {
             obscureText: obscure,
             textAlignVertical: TextAlignVertical.center,
             controller: controller,
+            focusNode: focusNode,
             decoration: InputDecoration(
               filled: true,
               hintText: hintText,
