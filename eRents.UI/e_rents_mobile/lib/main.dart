@@ -1,11 +1,9 @@
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
-import 'package:localstorage/localstorage.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/providers/user_provider.dart';
 import 'package:e_rents_mobile/services/local_storage_service.dart';
 
-final LocalStorage localStorage = LocalStorage('localstorage.json');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorageService.init();
