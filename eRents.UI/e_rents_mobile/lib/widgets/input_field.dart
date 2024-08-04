@@ -43,8 +43,6 @@ class _InputFieldState extends State<InputField> {
   @override
   Widget build(BuildContext context) {
     // Check if `hintText`, `controller`, and `faIcon` are not null
-    assert(hintText != null, "hintText cannot be null");
-    assert(controller != null, "controller cannot be null");
     assert(faIcon != null, "faIcon cannot be null");
 
     return Padding(

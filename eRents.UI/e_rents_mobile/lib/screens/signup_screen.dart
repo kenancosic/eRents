@@ -1,5 +1,4 @@
 import 'package:e_rents_mobile/providers/user_provider.dart';
-import 'package:e_rents_mobile/services/local_storage_service.dart';
 import 'package:e_rents_mobile/widgets/input_field.dart';
 import 'package:e_rents_mobile/widgets/simple_button.dart';
 import 'package:flutter/material.dart';
@@ -8,60 +7,49 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController _firstnameController = TextEditingController();
+  final TextEditingController _lastnameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  late UserProvider _userProvider;
-
-  final ScrollController _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _attemptAutoLogin();
-  }
+  String? _userType;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _firstnameController.dispose();
+    _lastnameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
-    _scrollController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _attemptAutoLogin() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final email = LocalStorageService.getItem("email");
-    final password = LocalStorageService.getItem("password");
-
-    if (email != null && password != null) {
-      final loginSuccess = await userProvider.login(email, password);
-      if (loginSuccess) {
-        _navigateToHome();
-      }
-    }
-  }
-
-  Future<void> _performLogin() async {
+  Future<void> _performSignUp() async {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     if (_formKey.currentState!.validate()) {
       try {
-        final loginSuccess = await userProvider.login(
-          _usernameController.text,
+        // Sign up logic (e.g., userProvider.signUp(...))
+        // Example:
+        final signUpSuccess = await userProvider.signUp(
+          _firstnameController.text,
+          _lastnameController.text,
+          _emailController.text,
           _passwordController.text,
+          _userType,
         );
-        if (loginSuccess) {
+        if (signUpSuccess) {
           _navigateToHome();
         } else {
-          _showErrorDialog("Invalid email or password.");
+          _showErrorDialog("Failed to sign up. Please try again.");
         }
       } catch (e) {
         _showErrorDialog(e.toString());
@@ -95,8 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
-        reverse: true,
-        controller: _scrollController,
         child: Column(
           children: [
             Container(
@@ -136,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Sign in",
+                    "Sign up",
                     style: TextStyle(
                       fontSize: 24,
                       color: Color(0xff222244),
@@ -148,9 +134,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         InputField(
-                          controller: _usernameController,
-                          hintText: 'Email',
+                          controller: _firstnameController,
+                          hintText: 'Firstname',
                           faIcon: FontAwesomeIcons.user,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your firstname';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                        InputField(
+                          controller: _lastnameController,
+                          hintText: 'Lastname',
+                          faIcon: FontAwesomeIcons.user,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your lastname';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                        InputField(
+                          controller: _emailController,
+                          hintText: 'Email',
+                          faIcon: FontAwesomeIcons.envelope,
                           validator: (value) {
                             if (value!.isEmpty ||
                                 !RegExp(
@@ -176,78 +186,58 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 15),
+                        InputField(
+                          controller: _confirmPasswordController,
+                          hintText: 'Confirm Password',
+                          faIcon: FontAwesomeIcons.lock,
+                          obscure: true,
+                          validator: (value) {
+                            if (value != _passwordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                        DropdownButtonFormField<String>(
+                          value: _userType,
+                          hint: const Text("Choose your user-type"),
+                          items: <String>['User', 'Admin']
+                              .map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _userType = newValue;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Please select a user type';
+                            }
+                            return null;
+                          },
+                        ),
                         const SizedBox(height: 32),
                         SimpleButton(
-                          onTap: () async {
-                            if (_formKey.currentState!.validate()) {
-                              try {
-                                var loginFlag = await _userProvider.login(
-                                    _usernameController.text,
-                                    _passwordController.text);
-                                if (loginFlag) {
-                                  context.go("/dashboard");
-                                } else {
-                                  if (mounted) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text("Error"),
-                                          content: const Text(
-                                              "Invalid email or password."),
-                                          actions: [
-                                            TextButton(
-                                              child: const Text("Ok"),
-                                              onPressed: () {
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                }
-                                              },
-                                            )
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  }
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: const Text("Error"),
-                                        content: Text(e.toString()),
-                                        actions: [
-                                          TextButton(
-                                            child: const Text("Ok"),
-                                            onPressed: () {
-                                              if (mounted) {
-                                                Navigator.pop(context);
-                                              }
-                                            },
-                                          )
-                                        ],
-                                      );
-                                    },
-                                  );
-                                }
-                              }
-                            }
-                          },
+                          onTap: _performSignUp,
                           bgColor: const Color(0xff4285F4),
                           textColor: Colors.white,
-                          text: "Log in",
+                          text: "Sign up",
                           width: 300,
                           height: 60,
                         ),
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {
-                            context.go("/register");
+                            context.go("/login");
                           },
                           child: const Text(
-                              "Don't have an account? Create an Account"),
+                              "Already have an account? Log in"),
                         ),
                       ],
                     ),

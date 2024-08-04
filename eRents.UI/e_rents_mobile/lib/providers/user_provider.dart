@@ -16,27 +16,53 @@ class UserProvider extends BaseProvider<User> {
     try {
       var headers = {'Content-Type': 'application/json'};
       var response = await http.post(
-        Uri.parse('$baseUrl/Auth/Login'), // Endpoint for login on your API
+        Uri.parse('$baseUrl/Auth/Login'),
         headers: headers,
         body: jsonEncode({'email': email, 'password': password}),
       );
 
       if (response.statusCode == 200) {
-        // If server returns an OK response, parse the JSON
         var data = jsonDecode(response.body);
-        String token =
-            data['token']; // Assuming the token is returned with this key
-        // Save the JWT token in local storage for later use in other requests
+        String token = data['token'];
         await LocalStorageService.setItem('jwt_token', token);
         return true;
       }
       return false;
     } catch (e) {
-      // Handle exception by logging or rethrowing
+      // Handle exception
       return false;
     }
   }
 
+  Future<bool> signUp(String firstname, String lastname, String email, String password, String? userType) async {
+    try {
+      var headers = {'Content-Type': 'application/json'};
+      var response = await http.post(
+        Uri.parse('$baseUrl/Auth/Register'), // Replace with your actual signup endpoint
+        headers: headers,
+        body: jsonEncode({
+          'firstname': firstname,
+          'lastname': lastname,
+          'email': email,
+          'password': password,
+          'userType': userType
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        var data = jsonDecode(response.body);
+        String token = data['token'];
+        await LocalStorageService.setItem('jwt_token', token);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      // Handle exception
+      return false;
+    }
+  }
+
+  @override
   Future<Map<String, String>> createHeaders() async {
     String? jwt = LocalStorageService.getItem('jwt_token');
     if (jwt == null) {

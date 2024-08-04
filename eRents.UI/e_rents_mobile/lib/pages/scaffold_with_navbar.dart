@@ -165,8 +165,7 @@ class MyCustomBottomNavBarItem extends BottomNavigationBarItem {
 
   const MyCustomBottomNavBarItem(
       {required this.initialLocation,
-      required Icon icon,
-      String? label,
-      Icon? activeIcon})
-      : super(icon: icon, label: label, activeIcon: activeIcon);
+      required Icon super.icon,
+      super.label,
+      Icon? super.activeIcon});
 }

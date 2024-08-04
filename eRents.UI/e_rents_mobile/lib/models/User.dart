@@ -20,4 +20,3 @@ class User {
   // toJson
   Map<String, dynamic> toJson() => _$UserToJson(this);
 }
-

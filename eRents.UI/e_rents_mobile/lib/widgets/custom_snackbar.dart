@@ -61,7 +61,7 @@ class CustomSnackBar {
       content: Container(
         height: 70,
         decoration: BoxDecoration(
-            color: Color.fromARGB(255, 226, 136, 214),
+            color: const Color.fromARGB(255, 226, 136, 214),
             borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(10),

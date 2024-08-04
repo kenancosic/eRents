@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SimpleButton extends StatelessWidget {
-  SimpleButton(
+  const SimpleButton(
       {super.key,
       required this.bgColor,
       required this.textColor,
