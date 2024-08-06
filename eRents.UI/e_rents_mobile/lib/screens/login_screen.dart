@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/providers/user_provider.dart';
-import 'package:e_rents_mobile/services/local_storage_service.dart';
+import 'package:e_rents_mobile/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/widgets/input_field.dart';
 import 'package:e_rents_mobile/widgets/simple_button.dart';
 import 'package:flutter/material.dart';
@@ -20,12 +20,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late UserProvider _userProvider;
+  bool _isLoading = false;
 
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _userProvider = Provider.of<UserProvider>(context, listen: false);
     _attemptAutoLogin();
   }
 
@@ -38,12 +40,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _attemptAutoLogin() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final email = LocalStorageService.getItem("email");
-    final password = LocalStorageService.getItem("password");
+    final email = await SecureStorageService.getItem("email");
+    final password = await SecureStorageService.getItem("password");
 
     if (email != null && password != null) {
-      final loginSuccess = await userProvider.login(email, password);
+      final loginSuccess = await _userProvider.login(email, password);
       if (loginSuccess) {
         _navigateToHome();
       }
@@ -51,22 +52,23 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _performLogin() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    setState(() {
+      _isLoading = true;
+    });
     if (_formKey.currentState!.validate()) {
-      try {
-        final loginSuccess = await userProvider.login(
-          _usernameController.text,
-          _passwordController.text,
-        );
-        if (loginSuccess) {
-          _navigateToHome();
-        } else {
-          _showErrorDialog("Invalid email or password.");
-        }
-      } catch (e) {
-        _showErrorDialog(e.toString());
+      final loginSuccess = await _userProvider.login(
+        _usernameController.text,
+        _passwordController.text,
+      );
+      if (loginSuccess) {
+        _navigateToHome();
+      } else {
+        _showErrorDialog("Invalid email or password.");
       }
     }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _navigateToHome() {
@@ -177,70 +179,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 32),
-                        SimpleButton(
-                          onTap: () async {
-                            if (_formKey.currentState!.validate()) {
-                              try {
-                                var loginFlag = await _userProvider.login(
-                                    _usernameController.text,
-                                    _passwordController.text);
-                                if (loginFlag) {
-                                  context.go("/dashboard");
-                                } else {
-                                  if (mounted) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text("Error"),
-                                          content: const Text(
-                                              "Invalid email or password."),
-                                          actions: [
-                                            TextButton(
-                                              child: const Text("Ok"),
-                                              onPressed: () {
-                                                if (mounted) {
-                                                  Navigator.pop(context);
-                                                }
-                                              },
-                                            )
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  }
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: const Text("Error"),
-                                        content: Text(e.toString()),
-                                        actions: [
-                                          TextButton(
-                                            child: const Text("Ok"),
-                                            onPressed: () {
-                                              if (mounted) {
-                                                Navigator.pop(context);
-                                              }
-                                            },
-                                          )
-                                        ],
-                                      );
-                                    },
-                                  );
-                                }
-                              }
-                            }
-                          },
-                          bgColor: const Color(0xff4285F4),
-                          textColor: Colors.white,
-                          text: "Log in",
-                          width: 300,
-                          height: 60,
-                        ),
+                        _isLoading
+                            ? const CircularProgressIndicator()
+                            : SimpleButton(
+                                onTap: _performLogin,
+                                bgColor: const Color(0xff4285F4),
+                                textColor: Colors.white,
+                                text: "Log in",
+                                width: 300,
+                                height: 60,
+                              ),
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {

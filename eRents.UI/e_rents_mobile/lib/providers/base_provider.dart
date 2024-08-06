@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:e_rents_mobile/services/local_storage_service.dart';
+import 'package:e_rents_mobile/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:http/io_client.dart';
@@ -27,6 +27,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     client.badCertificateCallback = (cert, host, port) => true;
     http = IOClient(client);
   }
+
   Future<T> getById(int id, [dynamic additionalData]) async {
     var url = Uri.parse("$_baseUrl$_endpoint/$id");
 
@@ -35,11 +36,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var response = await http!.get(url, headers: headers);
 
     if (isValidResponseCode(response)) {
-      // var data = jsonDecode(response.body);
-      // Future<T>.from(); fromJson(data);
-
       return fromJson(jsonDecode(response.body));
-      // return data.map((x) => fromJson(x)).cast<T>().toList();
     } else {
       throw Exception("Exception... handle this gracefully");
     }
@@ -118,7 +115,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<Map<String, String>> createHeaders() async {
-    String? jwt = LocalStorageService.getItem('jwt_token');
+    String? jwt = await SecureStorageService.getItem('jwt_token');
     if (jwt == null) {
       throw Exception('JWT token not found');
     }

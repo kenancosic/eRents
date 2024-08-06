@@ -16,67 +16,102 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _firstnameController = TextEditingController();
-  final TextEditingController _lastnameController = TextEditingController();
+  final TextEditingController _surnameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  String? _userType;
+  List<Map<String, dynamic>> _userRoles = [];
+  String? _selectedRole;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserRoles();
+  }
+
+  Future<void> _fetchUserRoles() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    try {
+      List<dynamic> roles = await userProvider.fetchUserRoles();
+      if (mounted) {
+        setState(() {
+          _userRoles = roles.cast<Map<String, dynamic>>();
+          if (roles.isNotEmpty) {
+            _selectedRole = roles[0]['name'];
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Failed to load user roles.');
+      }
+    }
+  }
 
   @override
   void dispose() {
     _firstnameController.dispose();
-    _lastnameController.dispose();
+    _surnameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
+
   Future<void> _performSignUp() async {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    setState(() {
+    _isLoading = true;
+  });
     if (_formKey.currentState!.validate()) {
-      try {
-        // Sign up logic (e.g., userProvider.signUp(...))
-        // Example:
-        final signUpSuccess = await userProvider.signUp(
-          _firstnameController.text,
-          _lastnameController.text,
-          _emailController.text,
-          _passwordController.text,
-          _userType,
-        );
-        if (signUpSuccess) {
-          _navigateToHome();
-        } else {
-          _showErrorDialog("Failed to sign up. Please try again.");
-        }
-      } catch (e) {
-        _showErrorDialog(e.toString());
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    try {
+      final signUpSuccess = await userProvider.signUp(
+        _firstnameController.text,
+        _surnameController.text,
+        _usernameController.text,
+        _emailController.text,
+        _passwordController.text,
+        _selectedRole,
+      );
+      if (signUpSuccess) {
+        _navigateToHome();
+      } else {
+        _showErrorDialog("Failed to sign up. Please try again.");
       }
+    } catch (e) {
+      _showErrorDialog(e.toString());
     }
   }
-
+  setState(() {
+    _isLoading = false;
+  });
+}
   void _navigateToHome() {
-    if (context.mounted) {
+    if (mounted) {
       context.go("/dashboard");
     }
   }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text("Error"),
-        content: Text(message),
-        actions: [
-          TextButton(
-            child: const Text("Ok"),
-            onPressed: () => Navigator.pop(context),
-          )
-        ],
-      ),
-    );
+   void _showErrorDialog(String message) {
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text("Error"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text("Ok"),
+              onPressed: () => Navigator.pop(context),
+            )
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -146,12 +181,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         const SizedBox(height: 15),
                         InputField(
-                          controller: _lastnameController,
-                          hintText: 'Lastname',
+                          controller: _surnameController,
+                          hintText: 'Surname',
                           faIcon: FontAwesomeIcons.user,
                           validator: (value) {
                             if (value!.isEmpty) {
-                              return 'Please enter your lastname';
+                              return 'Please enter your Surname/Last name';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 15),
+                        InputField(
+                          controller: _usernameController,
+                          hintText: 'Username',
+                          faIcon: FontAwesomeIcons.user,
+                          validator: (value) {
+                            if (value!.isEmpty) {
+                              return 'Please enter your username';
                             }
                             return null;
                           },
@@ -201,43 +248,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                         const SizedBox(height: 15),
                         DropdownButtonFormField<String>(
-                          value: _userType,
-                          hint: const Text("Choose your user-type"),
-                          items: <String>['User', 'Admin']
-                              .map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
+                          value: _selectedRole,
+                          hint: const Text("Choose your user role"),
+                          items: _userRoles
+                              .map((role) => DropdownMenuItem<String>(
+                                    value: role['name'] as String,
+                                    child: Text(role['name']),
+                                  ))
+                              .toList(),
                           onChanged: (newValue) {
                             setState(() {
-                              _userType = newValue;
+                              _selectedRole = newValue;
                             });
                           },
                           validator: (value) {
                             if (value == null) {
-                              return 'Please select a user type';
+                              return 'Please select a user role';
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 32),
-                        SimpleButton(
-                          onTap: _performSignUp,
-                          bgColor: const Color(0xff4285F4),
-                          textColor: Colors.white,
-                          text: "Sign up",
-                          width: 300,
-                          height: 60,
-                        ),
+                        _isLoading
+                        ? CircularProgressIndicator()
+                         : SimpleButton(
+                            onTap: _performSignUp,
+                            bgColor: const Color(0xff4285F4),
+                            textColor: Colors.white,
+                            text: "Sign up",
+                            width: 300,
+                            height: 60,
+                          ),
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {
                             context.go("/login");
                           },
-                          child: const Text(
-                              "Already have an account? Log in"),
+                          child: const Text("Already have an account? Log in"),
                         ),
                       ],
                     ),
