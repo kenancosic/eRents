@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>f0438be8-99c9-418f-9ba7-7304bcc351ba</UserSecretsId>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="eRents.Application\**" />
+	  <Compile Remove="eRents.Domain\**" />
+	  <Compile Remove="eRents.Infrastructure\**" />
+	  <Content Remove="eRents.Application\**" />
+	  <Content Remove="eRents.Domain\**" />
+	  <Content Remove="eRents.Infrastructure\**" />
+	  <EmbeddedResource Remove="eRents.Application\**" />
+	  <EmbeddedResource Remove="eRents.Domain\**" />
+	  <EmbeddedResource Remove="eRents.Infrastructure\**" />
+	  <None Remove="eRents.Application\**" />
+	  <None Remove="eRents.Domain\**" />
+	  <None Remove="eRents.Infrastructure\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+		<PackageReference Include="EmailValidation" Version="1.2.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.20" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.20" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.20" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.20">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\eRents.Application\eRents.Application.csproj" />
+		<ProjectReference Include="..\eRents.Infrastructure\eRents.Infrastructure.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -1,5 +1,4 @@
-using eRents.Services.Database;
-using eRents.Services.Service.UserService;
+using eRents.Domain.Entities;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,8 +31,8 @@ builder.Services.AddSwaggerGen(c =>
 				}
 		});
 });
-builder.Services.AddAutoMapper(typeof(UserService));
-builder.Services.AddTransient<IUserService, UserService>();
+//builder.Services.AddAutoMapper(typeof(UserService));
+//builder.Services.AddTransient<IUserService, UserService>();
 
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
