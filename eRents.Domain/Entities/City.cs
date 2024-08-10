@@ -5,9 +5,9 @@ namespace eRents.Domain.Entities;
 
 public partial class City
 {
-	public int CantonId { get; set; }
+	public int CityId { get; set; }
 
-	public string CantonName { get; set; } = null!;
+	public string CityName { get; set; } = null!;
 
 	public int StateId { get; set; }
 

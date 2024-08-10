@@ -1,5 +1,4 @@
 ﻿using eRents.Domain.Entities;
-using eRents.Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,5 +16,7 @@ namespace eRents.Infrastructure.Data.Repositories
 		Task DeleteAsync(int id);
 		Task<User> GetByUsernameAsync(string username);
 		Task<User> GetByEmailAsync(string email);
+		Task<bool> UserExistsAsync(string username, string email);
+
 	}
 }

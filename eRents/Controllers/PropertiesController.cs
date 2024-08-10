@@ -1,29 +1,31 @@
-﻿using eRents.Model.DTO.Requests;
+﻿using eRents.Application.Service;
+using eRents.Model.DTO.Requests;
 using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
-using eRents.Services.Entities;
-using eRents.Services.Service.PropertyService;
+using eRents.WebAPI.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace eRents.Controllers
+namespace eRents.WebAPI.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
-	public class PropertiesController : BaseCRUDController<PropertiesResponse, PropertiesSearchObject, PropertiesInsertRequest, PropertiesUpdateRequest>
+	[Route("api/[controller]")]
+	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
-		public PropertiesController(IPropertiesService service) : base(service)
-		{ }
+		private readonly IPropertyService _propertyService;
 
-		public override PropertiesResponse Insert([FromBody] PropertiesInsertRequest insert)
+		public PropertiesController(IPropertyService service) : base(service)
 		{
-			return base.Insert(insert);
+			_propertyService = service;
 		}
 
-		public override PropertiesResponse Update(int id, [FromBody] PropertiesUpdateRequest update)
+		[HttpGet("search")]
+		public override IActionResult Get([FromQuery] PropertySearchObject search)
 		{
-			return base.Update(id, update);
+			var result = _propertyService.Get(search);
+			return Ok(result);
 		}
 
+		// Additional endpoints related to properties can be added here
 	}
-
 }

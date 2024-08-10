@@ -1,4 +1,5 @@
-﻿using eRents.Services.Entities;
+﻿using eRents.Domain.Entities;
+using eRents.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -59,6 +60,10 @@ namespace eRents.Infrastructure.Data.Repositories
 		{
 			return await _context.Users
 					.FirstOrDefaultAsync(u => u.Email == email);
+		}
+		public async Task<bool> UserExistsAsync(string username, string email)
+		{
+			return await _context.Users.AnyAsync(u => u.Username == username || u.Email == email);
 		}
 	}
 }

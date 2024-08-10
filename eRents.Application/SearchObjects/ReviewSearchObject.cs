@@ -1,9 +1,4 @@
-﻿using eRents.Shared.Abstracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using eRents.Application.Shared;
 
 namespace eRents.Application.SearchObjects
 {

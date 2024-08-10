@@ -15,11 +15,7 @@ namespace eRents.Application.Shared
 	{
 		public MappingProfile()
 		{
-			CreateMap<UsersInsertRequest, User>();
-			CreateMap<User, UsersResponse>();
 
-			//CreateMap<Role, RoleInsertUpdateRequest>();
-			//CreateMap<RoleInsertUpdateRequest, Role>();
 		}
 	}
 }

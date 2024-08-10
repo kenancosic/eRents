@@ -1,17 +1,12 @@
-﻿using eRents.Model.DTO.Requests;
+﻿using eRents.Application.Shared;
+using eRents.Model.DTO.Requests;
 using eRents.Model.DTO.Response;
 using eRents.Model.SearchObjects;
-using eRents.Services.Shared;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace eRents.Application.Service.PropertyService
+namespace eRents.Application.Service
 {
-	public interface IPropertiesService : ICRUDService<PropertiesResponse, PropertiesSearchObject, PropertiesInsertRequest, PropertiesUpdateRequest>
+	public interface IPropertyService : ICRUDService<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
-		PropertiesResponse GetByName(string name);
+		// Additional property-specific methods can be added here if necessary
 	}
 }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using eRents.Domain.Entities
+using eRents.Domain.Entities;
 
 namespace eRents.Infrastructure.Entities;
 
@@ -97,19 +97,19 @@ public partial class ERentsContext : DbContext
 
 		modelBuilder.Entity<City>(entity =>
 		{
-			entity.HasKey(e => e.CantonId).HasName("PK__Cantons__7FFFB2CBA92B9FB8");
+			entity.HasKey(e => e.City).HasName("PK__Cities__6ED9233A8D8D4BFE");  // Updated from CantonId to CityId
 
-			entity.Property(e => e.CantonId).HasColumnName("canton_id");
-			entity.Property(e => e.CantonName)
-							.HasMaxLength(100)
-							.IsUnicode(false)
-							.HasColumnName("canton_name");
+			entity.Property(e => e.CityId).HasColumnName("city_id");  // Updated from CantonId
+			entity.Property(e => e.CityName)
+					.HasMaxLength(100)
+					.IsUnicode(false)
+					.HasColumnName("city_name");
 			entity.Property(e => e.StateId).HasColumnName("state_id");
 
 			entity.HasOne(d => d.State).WithMany(p => p.Cities)
-							.HasForeignKey(d => d.StateId)
-							.OnDelete(DeleteBehavior.ClientSetNull)
-							.HasConstraintName("FK__Cantons__region___3E52440B");
+					.HasForeignKey(d => d.StateId)
+					.OnDelete(DeleteBehavior.ClientSetNull)
+					.HasConstraintName("FK__Cities__state_id__3E52440B");
 		});
 
 		modelBuilder.Entity<Country>(entity =>
@@ -214,15 +214,18 @@ public partial class ERentsContext : DbContext
 			entity.HasKey(e => e.PropertyId).HasName("PK__Properti__735BA4633A94E7C3");
 
 			entity.Property(e => e.PropertyId).HasColumnName("property_id");
+			entity.Property(e => e.Name)
+					 .HasMaxLength(100)
+					 .IsUnicode(false)
+					 .HasColumnName("name");
 			entity.Property(e => e.Address)
 							.HasMaxLength(255)
 							.IsUnicode(false)
 							.HasColumnName("address");
-			entity.Property(e => e.CantonId).HasColumnName("canton_id");
-			entity.Property(e => e.City)
+			entity.Property(e => e.CityId)
 							.HasMaxLength(100)
 							.IsUnicode(false)
-							.HasColumnName("city");
+							.HasColumnName("city_id");
 			entity.Property(e => e.DateAdded)
 							.HasDefaultValueSql("(getdate())")
 							.HasColumnType("datetime")
@@ -259,11 +262,6 @@ public partial class ERentsContext : DbContext
 							.HasMaxLength(20)
 							.IsUnicode(false)
 							.HasColumnName("zip_code");
-
-			entity.HasOne(d => d.Canton).WithMany(p => p.Properties)
-							.HasForeignKey(d => d.CantonId)
-							.OnDelete(DeleteBehavior.ClientSetNull)
-							.HasConstraintName("FK__Propertie__canto__4BAC3F29");
 
 			entity.HasOne(d => d.Owner).WithMany(p => p.Properties)
 							.HasForeignKey(d => d.OwnerId)
@@ -457,6 +455,16 @@ public partial class ERentsContext : DbContext
 							.HasMaxLength(50)
 							.IsUnicode(false)
 							.HasColumnName("username");
+			entity.Property(e => e.Name)
+					 .HasMaxLength(100)  // Specify max length if needed
+					 .IsUnicode(false)   // Specify if the property is Unicode or not
+					 .HasColumnName("name");
+
+			// Configure the LastName property
+			entity.Property(e => e.LastName)
+					.HasMaxLength(100)  // Specify max length if needed
+					.IsUnicode(false)   // Specify if the property is Unicode or not
+					.HasColumnName("last_name");
 			entity.Property(e => e.ZipCode)
 							.HasMaxLength(20)
 							.IsUnicode(false)

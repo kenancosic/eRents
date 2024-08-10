@@ -1,31 +1,25 @@
 ﻿using AutoMapper;
-using eRents.Model;
-using eRents.Model.SearchObjects;
-using eRents.Services.Entities;
-using eRents.Services.Shared;
+using EmailValidation;
+using eRents.Application.DTO.Requests;
+using eRents.Application.DTO.Response;
+using eRents.Application.SearchObjects;
+using eRents.Application.Shared;
+using eRents.Domain;
+using eRents.Domain.Entities;
+using eRents.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using EmailValidation;
-using System.Globalization;
-using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
 
 
 namespace eRents.Application.Service.UserService
 {
-	public class UserService : BaseCRUDService<UsersResponse, User, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>, IUserService
+	public class UserService : BaseCRUDService<UserResponse, User, UserSearchObject, UserInsertRequest, UserUpdateRequest>, IUserService
 	{
 		public UserService(ERentsContext context, IMapper mapper) : base(context, mapper)
 		{
 		}
-		public override UsersResponse Insert(UsersInsertRequest insert)
+		public override UserResponse Insert(UserInsertRequest insert)
 		{
 
 			if (insert.Password != insert.ConfirmPassword)
@@ -39,15 +33,6 @@ namespace eRents.Application.Service.UserService
 
 			user.UserId = entity.UserId;
 
-			//foreach (var roleId in insert.RoleIdList)
-			//{
-			//	UserRole userRole = new UserRole();
-			//	userRole.RoleId = roleId;
-			//	userRole.UserId = entity.UserId;
-			//	userRole.UpdateTime = DateTime.Now;
-
-			//	_context.UserRoles.Add(userRole);
-			//}
 			_context.Add(user);
 
 			_context.SaveChanges();
@@ -55,7 +40,7 @@ namespace eRents.Application.Service.UserService
 			return entity;
 		}
 
-		public override void BeforeInsert(UsersInsertRequest insert, User entity)
+		public override void BeforeInsert(UserInsertRequest insert, User entity)
 		{
 			var salt = GenerateSalt();
 			entity.PasswordSalt = salt;
@@ -87,7 +72,7 @@ namespace eRents.Application.Service.UserService
 			}
 		}
 
-		public override IQueryable<User> AddFilter(IQueryable<User> query, UsersSearchObject search = null)
+		public override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
 		{
 			var filteredQuery = base.AddFilter(query, search);
 
@@ -100,13 +85,13 @@ namespace eRents.Application.Service.UserService
 			{
 				filteredQuery = filteredQuery.Where(x => x.Username.Contains(search.NameFTS)
 						|| x.Name.Contains(search.NameFTS)
-						|| x.Surname.Contains(search.NameFTS));
+						|| x.LastName.Contains(search.NameFTS));
 			}
 
 			return filteredQuery;
 		}
 
-		public UsersResponse Login(string usernameOrEmail, string password)
+		public UserResponse Login(string usernameOrEmail, string password)
 		{
 			var isEmail = usernameOrEmail.Contains("@");
 
@@ -125,14 +110,14 @@ namespace eRents.Application.Service.UserService
 				return null;
 			}
 
-			return _mapper.Map<UsersResponse>(entity);
+			return _mapper.Map<UserResponse>(entity);
 		}
 
-		public UsersResponse Register(UsersInsertRequest request)
+		public UserResponse Register(UserInsertRequest request)
 		{
 			// Create a new User entity
 			var entity = new User();
-			_mapper.Map<UsersInsertRequest, User>(request, entity);
+			_mapper.Map<UserInsertRequest, User>(request, entity);
 
 			// Validate the password
 			if (!IsPasswordValid(request.Password, request.ConfirmPassword))
@@ -177,16 +162,7 @@ namespace eRents.Application.Service.UserService
 					}
 					else
 					{
-						//// Assign roles to the user
-						//var userRoles = request.RoleIdList.Select(roleId => new UserRole
-						//{
-						//	RoleId = roleId,
-						//	UserId = userId,
-						//	UpdateTime = DateTime.Now
-						//}).ToList();
 
-						//_context.UserRoles.AddRange(userRoles);
-						//_context.SaveChanges();
 					}
 
 					transaction.Commit();
@@ -216,5 +192,24 @@ namespace eRents.Application.Service.UserService
 		{
 			return _context.Users.Any(x => x.Username == username || x.Email == email);
 		}
+		public void ForgotPassword(string request)
+		{
+			var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+			if (user == null) throw new UserException("User with the provided email does not exist.");
+
+			// Send email with password reset link (implementation needed)
+		}
+
+		public void ResetPassword(ResetPasswordRequest request)
+		{
+			var user = _context.User.FirstOrDefault(u => u.ResetToken == request.Token);
+			if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
+				throw new UserException("Invalid or expired reset token.");
+
+			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+			user.ResetToken = null;  // Invalidate the reset token
+			_context.SaveChanges();
+		}
+
 	}
 }

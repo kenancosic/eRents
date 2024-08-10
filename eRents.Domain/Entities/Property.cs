@@ -9,7 +9,9 @@ public partial class Property
 
 	public int OwnerId { get; set; }
 
-	public int CantonId { get; set; }
+	public int CityId { get; set; }
+
+	public string Name { get; set; }
 
 	public string Address { get; set; } = null!;
 
@@ -37,7 +39,7 @@ public partial class Property
 
 	public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
-	public virtual City Canton { get; set; } = null!;
+	public virtual City City { get; set; } = null!;
 
 	public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 

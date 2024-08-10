@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using eRents.Infrastructure.Entities;
 
 
 namespace eRents.Application.Shared

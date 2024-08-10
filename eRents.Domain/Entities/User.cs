@@ -9,6 +9,10 @@ public partial class User
 
 	public string Username { get; set; } = null!;
 
+	public string Name { get; set; }      // New Name property
+
+	public string LastName { get; set; }  // New LastName property
+
 	public string Email { get; set; } = null!;
 
 	public byte[] PasswordHash { get; set; } = null!;

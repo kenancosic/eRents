@@ -1,32 +1,33 @@
-﻿using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
-using eRents.Model.SearchObjects;
-using eRents.Services.Service.UserService;
-using Microsoft.AspNetCore.Authorization;
+﻿using eRents.Application.DTO.Requests;
+using eRents.Application.DTO.Response;
+using eRents.Application.SearchObjects;
+using eRents.Application.Service.UserService;
+using eRents.WebAPI.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eRents.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class UsersController : BaseCRUDController<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
-    {
-        public IUserService _userService;
-        public UsersController(IUserService service): base(service) 
-        { 
-            _userService = service;
-        }
+	[ApiController]
+	[Route("[controller]")]
+	public class UsersController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
+	{
+		public IUserService _userService;
+		public UsersController(IUserService service) : base(service)
+		{
+			_userService = service;
+		}
 
-        
-        public override UsersResponse Insert([FromBody] UsersInsertRequest insert)
-        {
-            return base.Insert(insert);
-        }
 
-        public override UsersResponse Update(int id, [FromBody] UsersUpdateRequest update)
-        {
-            return base.Update(id, update);
-        }
+		public override UserResponse Insert([FromBody] UserInsertRequest insert)
+		{
+			return base.Insert(insert);
+		}
 
-    }
+		public override UserResponse Update(int id, [FromBody] UserUpdateRequest update)
+		{
+			return base.Update(id, update);
+		}
+
+
+	}
 }

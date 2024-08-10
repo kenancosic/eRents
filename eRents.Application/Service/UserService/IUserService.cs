@@ -1,19 +1,16 @@
-﻿using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
-using eRents.Model.SearchObjects;
-using eRents.Services.Shared;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using eRents.Application.DTO.Requests;
+using eRents.Application.DTO.Response;
+using eRents.Application.SearchObjects;
+using eRents.Application.Shared;
 
 namespace eRents.Application.Service.UserService
 {
-	public interface IUserService : ICRUDService<UsersResponse, UsersSearchObject, UsersInsertRequest, UsersUpdateRequest>
+	public interface IUserService : ICRUDService<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
-		UsersResponse Login(string username, string password);
-
-		UsersResponse Register(UsersInsertRequest request);
+		UserResponse Login(string username, string password);
+		UserResponse Register(UserInsertRequest request);
+		void ChangePassword(int userId, ChangePasswordRequest request);
+		void ForgotPassword(string request);
+		void ResetPassword(ResetPasswordRequest request);
 	}
 }
