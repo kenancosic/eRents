@@ -1,11 +1,5 @@
 ﻿using AutoMapper;
-using eRents.Model.SearchObjects;
-using eRents.Services.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using eRents.Infrastructure.Data.Context;
 
 namespace eRents.Application.Shared
 {

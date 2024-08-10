@@ -5,17 +5,17 @@ namespace eRents.Domain.Entities;
 
 public partial class Report
 {
-	public int ReportId { get; set; }
+    public int ReportId { get; set; }
 
-	public int? GeneratedBy { get; set; }
+    public int? GeneratedBy { get; set; }
 
-	public DateTime? DateGenerated { get; set; }
+    public DateTime? DateGenerated { get; set; }
 
-	public string? ReportType { get; set; }
+    public string? ReportType { get; set; }
 
-	public string? FilePath { get; set; }
+    public string? FilePath { get; set; }
 
-	public string? Summary { get; set; }
+    public string? Summary { get; set; }
 
-	public virtual User? GeneratedByNavigation { get; set; }
+    public virtual User? GeneratedByNavigation { get; set; }
 }

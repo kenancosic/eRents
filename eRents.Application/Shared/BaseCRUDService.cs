@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using eRents.Infrastructure.Entities;
+using eRents.Infrastructure.Data.Context;
 
 
 namespace eRents.Application.Shared
@@ -50,6 +50,10 @@ namespace eRents.Application.Shared
 
 			return _mapper.Map<T>(entity);
 
+		}
+		protected virtual void BeforeUpdate(TUpdate update, TDb entity)
+		{
+			// Default implementation (if any) or leave it empty for override in derived classes
 		}
 	}
 }

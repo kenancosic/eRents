@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using eRents.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using eRents.Domain.Entities;
 
-namespace eRents.Infrastructure.Entities;
+namespace eRents.Infrastructure.Data.Context;
 
 public partial class ERentsContext : DbContext
 {
@@ -44,7 +42,7 @@ public partial class ERentsContext : DbContext
 
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-			=> optionsBuilder.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=eRents;TrustServerCertificate=True;Trusted_Connection=True;");
+			=> optionsBuilder.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=eRents;Trusted_Connection=True; TrustServerCertificate=True;");
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -97,19 +95,19 @@ public partial class ERentsContext : DbContext
 
 		modelBuilder.Entity<City>(entity =>
 		{
-			entity.HasKey(e => e.City).HasName("PK__Cities__6ED9233A8D8D4BFE");  // Updated from CantonId to CityId
+			entity.HasKey(e => e.CityId).HasName("PK__Cantons__7FFFB2CBA92B9FB8");
 
-			entity.Property(e => e.CityId).HasColumnName("city_id");  // Updated from CantonId
+			entity.Property(e => e.CityId).HasColumnName("city_id");
 			entity.Property(e => e.CityName)
-					.HasMaxLength(100)
-					.IsUnicode(false)
-					.HasColumnName("city_name");
+							.HasMaxLength(100)
+							.IsUnicode(false)
+							.HasColumnName("city_name");
 			entity.Property(e => e.StateId).HasColumnName("state_id");
 
 			entity.HasOne(d => d.State).WithMany(p => p.Cities)
-					.HasForeignKey(d => d.StateId)
-					.OnDelete(DeleteBehavior.ClientSetNull)
-					.HasConstraintName("FK__Cities__state_id__3E52440B");
+							.HasForeignKey(d => d.StateId)
+							.OnDelete(DeleteBehavior.ClientSetNull)
+							.HasConstraintName("FK_Cities_States");
 		});
 
 		modelBuilder.Entity<Country>(entity =>
@@ -214,18 +212,15 @@ public partial class ERentsContext : DbContext
 			entity.HasKey(e => e.PropertyId).HasName("PK__Properti__735BA4633A94E7C3");
 
 			entity.Property(e => e.PropertyId).HasColumnName("property_id");
-			entity.Property(e => e.Name)
-					 .HasMaxLength(100)
-					 .IsUnicode(false)
-					 .HasColumnName("name");
 			entity.Property(e => e.Address)
 							.HasMaxLength(255)
 							.IsUnicode(false)
 							.HasColumnName("address");
-			entity.Property(e => e.CityId)
+			entity.Property(e => e.City)
 							.HasMaxLength(100)
 							.IsUnicode(false)
-							.HasColumnName("city_id");
+							.HasColumnName("city");
+			entity.Property(e => e.CityId).HasColumnName("city_id");
 			entity.Property(e => e.DateAdded)
 							.HasDefaultValueSql("(getdate())")
 							.HasColumnType("datetime")
@@ -242,6 +237,9 @@ public partial class ERentsContext : DbContext
 			entity.Property(e => e.Longitude)
 							.HasColumnType("decimal(9, 6)")
 							.HasColumnName("longitude");
+			entity.Property(e => e.Name)
+							.HasMaxLength(100)
+							.HasColumnName("name");
 			entity.Property(e => e.OwnerId).HasColumnName("owner_id");
 			entity.Property(e => e.Price)
 							.HasColumnType("decimal(10, 2)")
@@ -262,6 +260,11 @@ public partial class ERentsContext : DbContext
 							.HasMaxLength(20)
 							.IsUnicode(false)
 							.HasColumnName("zip_code");
+
+			entity.HasOne(d => d.CityNavigation).WithMany(p => p.Properties)
+							.HasForeignKey(d => d.CityId)
+							.OnDelete(DeleteBehavior.ClientSetNull)
+							.HasConstraintName("FK__Propertie__states__4BAC3F29");
 
 			entity.HasOne(d => d.Owner).WithMany(p => p.Properties)
 							.HasForeignKey(d => d.OwnerId)
@@ -350,21 +353,21 @@ public partial class ERentsContext : DbContext
 
 		modelBuilder.Entity<State>(entity =>
 		{
-			entity.HasKey(e => e.RegionId).HasName("PK__Regions__01146BAEB2759D79");
+			entity.HasKey(e => e.StateId).HasName("PK__States__01146BAEB2759D79");
 
-			entity.HasIndex(e => e.RegionName, "UQ__Regions__4BB31B0375E7C517").IsUnique();
+			entity.HasIndex(e => e.StateName, "UQ__States__4BB31B0375E7C517").IsUnique();
 
-			entity.Property(e => e.RegionId).HasColumnName("region_id");
+			entity.Property(e => e.StateId).HasColumnName("state_id");
 			entity.Property(e => e.CountryId).HasColumnName("country_id");
-			entity.Property(e => e.RegionName)
+			entity.Property(e => e.StateName)
 							.HasMaxLength(100)
 							.IsUnicode(false)
-							.HasColumnName("region_name");
+							.HasColumnName("state_name");
 
 			entity.HasOne(d => d.Country).WithMany(p => p.States)
 							.HasForeignKey(d => d.CountryId)
 							.OnDelete(DeleteBehavior.ClientSetNull)
-							.HasConstraintName("FK__Regions__country__3B75D760");
+							.HasConstraintName("FK_States_Countries");
 		});
 
 		modelBuilder.Entity<Tenant>(entity =>
@@ -425,6 +428,12 @@ public partial class ERentsContext : DbContext
 							.HasMaxLength(100)
 							.IsUnicode(false)
 							.HasColumnName("email");
+			entity.Property(e => e.LastName)
+							.HasMaxLength(100)
+							.HasColumnName("last_name");
+			entity.Property(e => e.Name)
+							.HasMaxLength(100)
+							.HasColumnName("name");
 			entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
 			entity.Property(e => e.PasswordHash1)
 							.HasMaxLength(64)
@@ -435,6 +444,12 @@ public partial class ERentsContext : DbContext
 							.IsUnicode(false)
 							.HasColumnName("phone_number");
 			entity.Property(e => e.ProfilePicture).HasColumnName("profile_picture");
+			entity.Property(e => e.ResetToken)
+							.HasMaxLength(256)
+							.HasColumnName("reset_token");
+			entity.Property(e => e.ResetTokenExpiration)
+							.HasColumnType("datetime")
+							.HasColumnName("reset_token_expiration");
 			entity.Property(e => e.StreetName)
 							.HasMaxLength(255)
 							.IsUnicode(false)
@@ -455,16 +470,6 @@ public partial class ERentsContext : DbContext
 							.HasMaxLength(50)
 							.IsUnicode(false)
 							.HasColumnName("username");
-			entity.Property(e => e.Name)
-					 .HasMaxLength(100)  // Specify max length if needed
-					 .IsUnicode(false)   // Specify if the property is Unicode or not
-					 .HasColumnName("name");
-
-			// Configure the LastName property
-			entity.Property(e => e.LastName)
-					.HasMaxLength(100)  // Specify max length if needed
-					.IsUnicode(false)   // Specify if the property is Unicode or not
-					.HasColumnName("last_name");
 			entity.Property(e => e.ZipCode)
 							.HasMaxLength(20)
 							.IsUnicode(false)

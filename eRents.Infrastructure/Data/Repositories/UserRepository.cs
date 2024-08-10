@@ -1,11 +1,6 @@
 ﻿using eRents.Domain.Entities;
-using eRents.Infrastructure.Entities;
+using eRents.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace eRents.Infrastructure.Data.Repositories
 {

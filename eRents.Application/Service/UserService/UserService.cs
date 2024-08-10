@@ -6,7 +6,7 @@ using eRents.Application.SearchObjects;
 using eRents.Application.Shared;
 using eRents.Domain;
 using eRents.Domain.Entities;
-using eRents.Infrastructure.Entities;
+using eRents.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
@@ -192,24 +192,55 @@ namespace eRents.Application.Service.UserService
 		{
 			return _context.Users.Any(x => x.Username == username || x.Email == email);
 		}
+		public void ChangePassword(int userId, ChangePasswordRequest request)
+		{
+			var user = _context.Users.Find(userId);
+			if (user == null) throw new UserException("User not found.");
+
+			var currentHash = GenerateHash(user.PasswordSalt, request.OldPassword);
+			if (!currentHash.SequenceEqual(user.PasswordHash))
+				throw new UserException("Incorrect old password.");
+
+			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+			_context.SaveChanges();
+		}
 		public void ForgotPassword(string request)
 		{
-			var user = _context.Users.FirstOrDefault(u => u.Email == request.Email);
+			var user = _context.Users.FirstOrDefault(u => u.Email == email);
 			if (user == null) throw new UserException("User with the provided email does not exist.");
 
-			// Send email with password reset link (implementation needed)
+			// Generate reset token
+			user.ResetToken = Guid.NewGuid().ToString();
+			user.ResetTokenExpiration = DateTime.UtcNow.AddHours(1);
+
+			_context.SaveChanges();
+
+			SendResetEmail(user.Email, user.ResetToken);
+		}
+		private void SendResetEmail(string email, string token)
+		{
+			// Example placeholder for sending an email
+			var resetLink = $"https://yourdomain.com/reset-password?token={token}";
+
+			// Here, you would integrate with an email service to send the reset link
+			// For example, using SendGrid, SMTP, etc.
+			Console.WriteLine($"Sending password reset email to {email} with link: {resetLink}");
 		}
 
 		public void ResetPassword(ResetPasswordRequest request)
 		{
-			var user = _context.User.FirstOrDefault(u => u.ResetToken == request.Token);
+			var user = _context.Users.FirstOrDefault(u => u.ResetToken == request.Token);
 			if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
 				throw new UserException("Invalid or expired reset token.");
 
+			// Generate a new password hash
 			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			user.ResetToken = null;  // Invalidate the reset token
+
+			// Invalidate the reset token
+			user.ResetToken = null;
+			user.ResetTokenExpiration = null;
+
 			_context.SaveChanges();
 		}
-
 	}
 }

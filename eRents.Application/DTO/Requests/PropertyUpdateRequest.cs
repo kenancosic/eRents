@@ -1,4 +1,4 @@
-﻿namespace eRents.Model.DTO.Requests
+﻿namespace eRents.Application.DTO.Requests
 {
 	public class PropertyUpdateRequest
 	{

@@ -1,4 +1,4 @@
-﻿namespace eRents.Model.DTO.Response
+﻿namespace eRents.Application.DTO.Response
 {
 	public class PropertyResponse
 	{

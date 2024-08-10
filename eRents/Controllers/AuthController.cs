@@ -1,8 +1,5 @@
 ﻿using eRents.Application.DTO.Requests;
-using eRents.Application.DTOs.Requests;
 using eRents.Application.Service.UserService;
-using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -76,17 +73,17 @@ namespace eRents.WebAPI.Controllers
 			return Ok();
 		}
 		[HttpPost("ForgotPassword")]
-		public IActionResult ForgotPassword([FromBody] string request)
+		public IActionResult ForgotPassword([FromBody] string email)
 		{
-			_userService.ForgotPassword(request);
-			return Ok();
+			_userService.ForgotPassword(email);
+			return Ok("Password reset instructions have been sent to your email.");
 		}
 
 		[HttpPost("ResetPassword")]
 		public IActionResult ResetPassword([FromBody] ResetPasswordRequest request)
 		{
 			_userService.ResetPassword(request);
-			return Ok();
+			return Ok("Your password has been successfully reset.");
 		}
 	}
 }

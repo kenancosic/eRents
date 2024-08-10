@@ -1,9 +1,9 @@
 ﻿using AutoMapper;
+using eRents.Application.DTO.Requests;
+using eRents.Application.DTO.Response;
 using eRents.Application.Shared;
 using eRents.Domain.Entities;
-using eRents.Infrastructure.Entities;
-using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
+using eRents.Infrastructure.Data.Context;
 using eRents.Model.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,9 +28,9 @@ namespace eRents.Application.Service
 			base.BeforeInsert(insert, entity);
 		}
 
-		public override void BeforeUpdate(PropertyUpdateRequest update, Property entity)
+		protected override void BeforeUpdate(PropertyUpdateRequest update, Property entity)
 		{
-			// Map amenities if provided
+			// Implement your custom logic for Property updates here
 			if (update.AmenityIds != null && update.AmenityIds.Any())
 			{
 				entity.Amenities.Clear();
@@ -39,9 +39,9 @@ namespace eRents.Application.Service
 						.ToList();
 			}
 
+			// Call base implementation if needed
 			base.BeforeUpdate(update, entity);
 		}
-
 		public override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearchObject search = null)
 		{
 			query = base.AddFilter(query, search);

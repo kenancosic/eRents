@@ -1,7 +1,7 @@
-using eRents.Domain.Entities;
+using eRents.Application.Service.UserService;
+using eRents.Infrastructure.Data.Context;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,8 +31,8 @@ builder.Services.AddSwaggerGen(c =>
 				}
 		});
 });
-//builder.Services.AddAutoMapper(typeof(UserService));
-//builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddAutoMapper(typeof(UserService));
+builder.Services.AddTransient<IUserService, UserService>();
 
 
 builder.Services.AddJwtAuthentication(builder.Configuration);

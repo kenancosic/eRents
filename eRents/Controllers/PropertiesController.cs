@@ -1,9 +1,8 @@
-﻿using eRents.Application.Service;
-using eRents.Model.DTO.Requests;
-using eRents.Model.DTO.Response;
+﻿using eRents.Application.DTO.Requests;
+using eRents.Application.DTO.Response;
+using eRents.Application.Service;
 using eRents.Model.SearchObjects;
 using eRents.WebAPI.Shared;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eRents.WebAPI.Controllers
@@ -20,10 +19,14 @@ namespace eRents.WebAPI.Controllers
 		}
 
 		[HttpGet("search")]
-		public override IActionResult Get([FromQuery] PropertySearchObject search)
+		public PropertyResponse Get([FromQuery] PropertySearchObject search)
 		{
 			var result = _propertyService.Get(search);
-			return Ok(result);
+
+			if (result.Count() > 0)
+				return result.FirstOrDefault();
+
+			return null;
 		}
 
 		// Additional endpoints related to properties can be added here

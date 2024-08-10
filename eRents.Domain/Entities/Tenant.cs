@@ -5,23 +5,23 @@ namespace eRents.Domain.Entities;
 
 public partial class Tenant
 {
-	public int TenantId { get; set; }
+    public int TenantId { get; set; }
 
-	public string Name { get; set; } = null!;
+    public string Name { get; set; } = null!;
 
-	public string? ContactInfo { get; set; }
+    public string? ContactInfo { get; set; }
 
-	public DateTime? DateOfBirth { get; set; }
+    public DateTime? DateOfBirth { get; set; }
 
-	public int? PropertyId { get; set; }
+    public int? PropertyId { get; set; }
 
-	public DateTime? LeaseStartDate { get; set; }
+    public DateTime? LeaseStartDate { get; set; }
 
-	public string? TenantStatus { get; set; }
+    public string? TenantStatus { get; set; }
 
-	public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
-	public virtual Property? Property { get; set; }
+    public virtual Property? Property { get; set; }
 
-	public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 }
