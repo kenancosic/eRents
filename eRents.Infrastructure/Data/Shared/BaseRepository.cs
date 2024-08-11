@@ -1,14 +1,8 @@
 ﻿using eRents.Infrastructure.Data.Context;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace eRents.Infrastructure.Data.Shared
 {
-	public class BaseRepository<TEntity> where TEntity : class
+	public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : class
 	{
 		protected readonly ERentsContext _context;
 
@@ -17,36 +11,33 @@ namespace eRents.Infrastructure.Data.Shared
 			_context = context;
 		}
 
-		public async Task<TEntity> GetByIdAsync(int id)
+		public virtual IQueryable<TEntity> GetQueryable()
+		{
+			return _context.Set<TEntity>().AsQueryable();
+		}
+
+		public virtual async Task<TEntity> GetByIdAsync(int id)
 		{
 			return await _context.Set<TEntity>().FindAsync(id);
 		}
 
-		public async Task<IEnumerable<TEntity>> GetAllAsync()
-		{
-			return await _context.Set<TEntity>().ToListAsync();
-		}
-
-		public async Task AddAsync(TEntity entity)
+		public virtual async Task AddAsync(TEntity entity)
 		{
 			await _context.Set<TEntity>().AddAsync(entity);
 			await _context.SaveChangesAsync();
 		}
 
-		public async Task UpdateAsync(TEntity entity)
+		public virtual async Task UpdateAsync(TEntity entity)
 		{
 			_context.Set<TEntity>().Update(entity);
 			await _context.SaveChangesAsync();
 		}
 
-		public async Task DeleteAsync(int id)
+		public virtual async Task DeleteAsync(TEntity entity)
 		{
-			var entity = await _context.Set<TEntity>().FindAsync(id);
-			if (entity != null)
-			{
-				_context.Set<TEntity>().Remove(entity);
-				await _context.SaveChangesAsync();
-			}
+			_context.Set<TEntity>().Remove(entity);
+			await _context.SaveChangesAsync();
 		}
+
 	}
 }

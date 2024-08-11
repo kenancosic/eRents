@@ -1,8 +1,10 @@
 ﻿namespace eRents.Application.Shared
 {
-	public interface IService<T, TSearch> where T : class where TSearch : class
+	public interface IService<TDto, TSearch>
+			where TDto : class
+			where TSearch : class
 	{
-		IEnumerable<T> Get(TSearch search = null);
-		T GetById(int id);
+		IEnumerable<TDto> Get(TSearch search = null);
+		TDto GetById(int id);
 	}
 }

@@ -19,9 +19,24 @@ namespace eRents.Infrastructure.Data.Repositories
 			return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 		}
 
-		public async Task<bool> UserExistsAsync(string username, string email)
+		public User GetUserByUsernameOrEmail(string usernameOrEmail)
+		{
+			return _context.Users.FirstOrDefault(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+		}
+
+		public async Task<User> GetUserByResetToken(string token)
+		{
+			return await _context.Users.FirstOrDefaultAsync(u => u.ResetToken == token);
+		}
+
+		public async Task<bool> IsUserAlreadyRegistered(string username, string email)
 		{
 			return await _context.Users.AnyAsync(u => u.Username == username || u.Email == email);
+		}
+		public Task<User> GetUserByUsernameOrEmailAsync(string usernameOrEmail)
+		{
+			return _context.Users
+					.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
 		}
 	}
 }

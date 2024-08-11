@@ -1,54 +1,56 @@
 ﻿using AutoMapper;
 using eRents.Infrastructure.Data.Context;
+using eRents.Infrastructure.Data.Shared;
 using eRents.Shared.SearchObjects;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Shared
 {
-	public class BaseService<T, TDb, TSearch> : IService<T, TSearch> where T : class where TDb : class where TSearch : BaseSearchObject
+	public abstract class BaseService<TDto, TEntity, TSearch> : IService<TDto, TSearch>
+		where TDto : class
+		where TEntity : class
+		where TSearch : BaseSearchObject
 	{
-		public ERentsContext _context { get; set; }
-		public IMapper _mapper { get; set; }
+		protected readonly IBaseRepository<TEntity> _repository;
+		protected readonly IMapper _mapper;
 
-		public BaseService(ERentsContext context, IMapper mapper)
+		protected BaseService(IBaseRepository<TEntity> repository, IMapper mapper)
 		{
-			_context = context;
+			_repository = repository;
 			_mapper = mapper;
 		}
-		public virtual IEnumerable<T> Get(TSearch search = null)
+
+		public virtual IEnumerable<TDto> Get(TSearch search = null)
 		{
-			var entity = _context.Set<TDb>().AsQueryable();
+			var query = _repository.GetQueryable();
 
-			entity = AddFilter(entity, search);
-
-			entity = AddInclude(entity, search);
+			query = AddFilter(query, search);
+			query = AddInclude(query, search);
 
 			if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
 			{
-				entity = entity.Take(search.PageSize.Value).Skip(search.Page.Value * search.PageSize.Value);
+				query = query.Skip((search.Page.Value - 1) * search.PageSize.Value)
+										 .Take(search.PageSize.Value);
 			}
 
-			var list = entity.ToList();
-			//NOTE: elaborate IEnumerable vs IList
-			return _mapper.Map<IList<T>>(list);
+			var entities = query.ToList();
+			return _mapper.Map<IEnumerable<TDto>>(entities);
 		}
 
-		public virtual IQueryable<TDb> AddInclude(IQueryable<TDb> query, TSearch search = null)
+		public virtual TDto GetById(int id)
 		{
-			return query;
+			var entity = _repository.GetByIdAsync(id).Result;
+			return entity != null ? _mapper.Map<TDto>(entity) : null;
 		}
 
-		public virtual IQueryable<TDb> AddFilter(IQueryable<TDb> query, TSearch search = null)
+		protected virtual IQueryable<TEntity> AddInclude(IQueryable<TEntity> query, TSearch search = null)
 		{
-			return query;
+			return query; // Override in derived classes for eager loading
 		}
 
-		public T GetById(int id)
+		protected virtual IQueryable<TEntity> AddFilter(IQueryable<TEntity> query, TSearch search = null)
 		{
-			var set = _context.Set<TDb>();
-
-			var entity = set.Find(id);
-
-			return _mapper.Map<T>(entity);
+			return query; // Override in derived classes for specific filtering logic
 		}
 	}
 }
