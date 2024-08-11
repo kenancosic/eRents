@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using eRents.Infrastructure.Data.Context;
+using eRents.Shared.SearchObjects;
 
 namespace eRents.Application.Shared
 {

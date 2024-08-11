@@ -1,6 +1,7 @@
-﻿using eRents.RabbitMQMicroservice.DTO;
+﻿using eRents.RabbitMQMicroservice.Services;
+using eRents.Shared.DTO;
 
-namespace eRents.RabbitMQMicroservice.Services
+namespace eRents.Shared.Services
 {
 	public class SmtpEmailService : IEmailService
 	{

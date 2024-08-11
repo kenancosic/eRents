@@ -1,11 +1,10 @@
 ﻿using AutoMapper;
-using eRents.Application.DTO.Requests;
-using eRents.Application.DTO.Response;
 using eRents.Application.Shared;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Context;
-using eRents.Model.SearchObjects;
-using Microsoft.EntityFrameworkCore;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 
 namespace eRents.Application.Service
 {

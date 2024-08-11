@@ -1,5 +1,5 @@
-﻿using eRents.Application.DTO.Requests;
-using eRents.Infrastructure.Services;
+﻿using eRents.Infrastructure.Services;
+using eRents.Shared.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 
@@ -17,7 +17,7 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("send-email")]
-		public IActionResult SendEmail([FromBody] EmailMessageRequest emailMessage)
+		public IActionResult SendEmail([FromBody] EmailMessage emailMessage)
 		{
 			var message = JsonConvert.SerializeObject(emailMessage);
 			_rabbitMqService.PublishMessage("emailQueue", message);
@@ -26,7 +26,7 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("send-message")]
-		public IActionResult SendMessage([FromBody] UserMessageRequest userMessage)
+		public IActionResult SendMessage([FromBody] UserMessage userMessage)
 		{
 			var message = JsonConvert.SerializeObject(userMessage);
 			_rabbitMqService.PublishMessage("messageQueue", message);

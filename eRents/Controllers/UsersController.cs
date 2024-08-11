@@ -1,7 +1,7 @@
-﻿using eRents.Application.DTO.Requests;
-using eRents.Application.DTO.Response;
-using eRents.Application.SearchObjects;
-using eRents.Application.Service.UserService;
+﻿using eRents.Application.Service.UserService;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 using eRents.WebAPI.Shared;
 using Microsoft.AspNetCore.Mvc;
 

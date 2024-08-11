@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Infrastructure", "eR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eRents.RabbitMQMicroservice", "eRents.EmailMicroservice\eRents.RabbitMQMicroservice.csproj", "{7997D52C-41F7-429F-B16E-FB900C0212C7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eRents.Shared", "eRents.Shared\eRents.Shared.csproj", "{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{7997D52C-41F7-429F-B16E-FB900C0212C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7997D52C-41F7-429F-B16E-FB900C0212C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7997D52C-41F7-429F-B16E-FB900C0212C7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using EmailValidation;
-using eRents.Application.DTO.Requests;
-using eRents.Application.DTO.Response;
-using eRents.Application.SearchObjects;
 using eRents.Application.Shared;
 using eRents.Domain;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Context;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using RabbitMQ.Client;

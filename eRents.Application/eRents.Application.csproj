@@ -23,6 +23,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\eRents.Domain\eRents.Domain.csproj" />
 		<ProjectReference Include="..\eRents.Infrastructure\eRents.Infrastructure.csproj" />
+		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

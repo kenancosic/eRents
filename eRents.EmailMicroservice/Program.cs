@@ -1,7 +1,6 @@
 ﻿using eRents.RabbitMQMicroservice.Processors;
 using eRents.RabbitMQMicroservice.Services;
-using RabbitMQ.Client.Events;
-using System;
+using eRents.Shared.Services;
 using System.Text;
 
 namespace eRents.RabbitMQMicroservice

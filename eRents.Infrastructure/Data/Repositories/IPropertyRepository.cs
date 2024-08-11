@@ -1,14 +1,11 @@
 ﻿using eRents.Domain.Entities;
+using eRents.Infrastructure.Data.Shared;
+using eRents.Shared.SearchObjects;
 
 namespace eRents.Infrastructure.Data.Repositories
 {
-	public interface IPropertyRepository
+	public interface IPropertyRepository : IBaseRepository<Property>
 	{
-		Task<Property> GetByIdAsync(int id);
-		Task<IEnumerable<Property>> GetAllAsync();
-		Task AddAsync(Property property);
-		Task UpdateAsync(Property property);
-		Task DeleteAsync(int id);
-		// Add any other custom methods you might need
+		Task<IEnumerable<Property>> SearchProperties(PropertySearchObject searchObject);
 	}
 }

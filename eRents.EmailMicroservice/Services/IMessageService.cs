@@ -1,4 +1,4 @@
-﻿using eRents.RabbitMQMicroservice.DTO;
+﻿using eRents.Shared.DTO;
 
 namespace eRents.RabbitMQMicroservice.Services
 {

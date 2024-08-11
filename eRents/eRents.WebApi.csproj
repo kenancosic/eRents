@@ -41,6 +41,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\eRents.Application\eRents.Application.csproj" />
 		<ProjectReference Include="..\eRents.Infrastructure\eRents.Infrastructure.csproj" />
+		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
-﻿using eRents.Application.DTO.Requests;
-using eRents.Application.DTO.Response;
-using eRents.Application.SearchObjects;
-using eRents.Application.Shared;
+﻿using eRents.Application.Shared;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 
 namespace eRents.Application.Service.UserService
 {

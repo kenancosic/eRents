@@ -1,5 +1,5 @@
-﻿using eRents.Application.DTO.Requests;
-using eRents.Application.Service.UserService;
+﻿using eRents.Application.Service.UserService;
+using eRents.Shared.DTO.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

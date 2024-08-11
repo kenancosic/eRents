@@ -1,5 +1,5 @@
-﻿using eRents.RabbitMQMicroservice.DTO;
-using eRents.RabbitMQMicroservice.Services;
+﻿using eRents.RabbitMQMicroservice.Services;
+using eRents.Shared.DTO;
 using Newtonsoft.Json;
 
 namespace eRents.RabbitMQMicroservice.Processors

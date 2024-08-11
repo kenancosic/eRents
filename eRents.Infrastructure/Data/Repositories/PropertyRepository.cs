@@ -1,50 +1,26 @@
 ﻿using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Context;
+using eRents.Infrastructure.Data.Shared;
+using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Infrastructure.Data.Repositories
 {
-	public class PropertyRepository : IPropertyRepository
+	public class PropertyRepository : BaseRepository<Property>, IPropertyRepository
 	{
-		private readonly ERentsContext _context;
+		public PropertyRepository(ERentsContext context) : base(context) { }
 
-		public PropertyRepository(ERentsContext context)
+		public async Task<IEnumerable<Property>> SearchProperties(PropertySearchObject searchObject)
 		{
-			_context = context;
-		}
+			var query = _context.Properties.AsQueryable();
 
-		public async Task<Property> GetByIdAsync(int id)
-		{
-			return await _context.Properties.FindAsync(id);
-		}
-
-		public async Task<IEnumerable<Property>> GetAllAsync()
-		{
-			return await _context.Properties.ToListAsync();
-		}
-
-		public async Task AddAsync(Property property)
-		{
-			await _context.Properties.AddAsync(property);
-			await _context.SaveChangesAsync();
-		}
-
-		public async Task UpdateAsync(Property property)
-		{
-			_context.Properties.Update(property);
-			await _context.SaveChangesAsync();
-		}
-
-		public async Task DeleteAsync(int id)
-		{
-			var property = await _context.Properties.FindAsync(id);
-			if (property != null)
+			if (!string.IsNullOrEmpty(searchObject.Name))
 			{
-				_context.Properties.Remove(property);
-				await _context.SaveChangesAsync();
+				query = query.Where(p => p.Name.Contains(searchObject.Name));
 			}
-		}
+			// Add more search criteria based on searchObject
 
-		// Implement any other custom methods needed
+			return await query.ToListAsync();
+		}
 	}
 }

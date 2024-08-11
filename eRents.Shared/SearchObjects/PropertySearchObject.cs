@@ -1,10 +1,10 @@
-﻿using eRents.Application.Shared;
+﻿using eRents.Shared.SearchObjects;
 
-namespace eRents.Model.SearchObjects
+namespace eRents.Shared.SearchObjects
 {
 	public class PropertySearchObject : BaseSearchObject
 	{
-		public string Name { get; set; }
+		public string? Name { get; set; }
 		public int? CityId { get; set; }
 		public int? OwnerId { get; set; }
 		public decimal? MinPrice { get; set; }

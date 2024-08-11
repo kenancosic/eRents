@@ -1,4 +1,4 @@
-﻿namespace eRents.Application.Shared
+﻿namespace eRents.Shared.SearchObjects
 {
 	public class BaseSearchObject
 	{
