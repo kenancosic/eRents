@@ -8,6 +8,8 @@ using eRents.Domain;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Context;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
+using RabbitMQ.Client;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -204,7 +206,7 @@ namespace eRents.Application.Service.UserService
 			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
 			_context.SaveChanges();
 		}
-		public void ForgotPassword(string request)
+		public void ForgotPassword(string email)
 		{
 			var user = _context.Users.FirstOrDefault(u => u.Email == email);
 			if (user == null) throw new UserException("User with the provided email does not exist.");
@@ -219,12 +221,26 @@ namespace eRents.Application.Service.UserService
 		}
 		private void SendResetEmail(string email, string token)
 		{
-			// Example placeholder for sending an email
 			var resetLink = $"https://yourdomain.com/reset-password?token={token}";
 
-			// Here, you would integrate with an email service to send the reset link
-			// For example, using SendGrid, SMTP, etc.
-			Console.WriteLine($"Sending password reset email to {email} with link: {resetLink}");
+			var message = new
+			{
+				Email = email,
+				Subject = "Password Reset Request",
+				Body = $"Please reset your password using the following link: {resetLink}"
+			};
+
+			var factory = new ConnectionFactory() { HostName = "localhost" };
+			using (var connection = factory.CreateConnection())
+			using (var channel = connection.CreateModel())
+			{
+				channel.QueueDeclare(queue: "emailQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
+				var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
+
+				channel.BasicPublish(exchange: "", routingKey: "emailQueue", basicProperties: null, body: body);
+			}
+
+			Console.WriteLine(" [x] Sent {0}", message);
 		}
 
 		public void ResetPassword(ResetPasswordRequest request)

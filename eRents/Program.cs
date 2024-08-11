@@ -1,5 +1,7 @@
+using eRents.Application.Service;
 using eRents.Application.Service.UserService;
 using eRents.Infrastructure.Data.Context;
+using eRents.Infrastructure.Services;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -32,7 +34,10 @@ builder.Services.AddSwaggerGen(c =>
 		});
 });
 builder.Services.AddAutoMapper(typeof(UserService));
+builder.Services.AddAutoMapper(typeof(PropertyService));
 builder.Services.AddTransient<IUserService, UserService>();
+builder.Services.AddTransient<IPropertyService, PropertyService>();
+builder.Services.AddSingleton<RabbitMQService>();
 
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
