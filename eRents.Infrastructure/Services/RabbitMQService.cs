@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client;
+﻿using Newtonsoft.Json;
+using RabbitMQ.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace eRents.Infrastructure.Services
 {
-	public class RabbitMQService : IDisposable
+	public class RabbitMQService : IRabbitMQService
 	{
 		private readonly IConnection _connection;
 		private readonly IModel _channel;
@@ -22,39 +23,25 @@ namespace eRents.Infrastructure.Services
 				Password = password
 			};
 
-			try
-			{
-				_connection = factory.CreateConnection();
-				_channel = _connection.CreateModel();
-				Console.WriteLine("Connected to RabbitMQ server successfully.");
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Failed to connect to RabbitMQ server: {ex.Message}");
-				throw;
-			}
+			_connection = factory.CreateConnection();
+			_channel = _connection.CreateModel();
 		}
 
-		public void PublishMessage(string queueName, string message)
+		public async Task PublishMessageAsync(string queueName, object message)
 		{
-			try
-			{
-				var body = Encoding.UTF8.GetBytes(message);
-				_channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: null, body: body);
-				Console.WriteLine($" [x] Sent message to {queueName}: {message}");
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Failed to publish message to queue: {queueName}. Error: {ex.Message}");
-				throw;
-			}
+			var json = JsonConvert.SerializeObject(message);
+			var body = Encoding.UTF8.GetBytes(json);
+
+			_channel.QueueDeclare(queue: queueName, durable: false, exclusive: false, autoDelete: false, arguments: null);
+			_channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: null, body: body);
+
+			Console.WriteLine($"Message published to queue {queueName}: {json}");
 		}
 
 		public void Dispose()
 		{
 			_channel?.Dispose();
 			_connection?.Dispose();
-			Console.WriteLine("RabbitMQ connection and channel disposed.");
 		}
 	}
 }

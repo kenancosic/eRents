@@ -19,4 +19,5 @@ namespace eRents.RabbitMQMicroservice.Processors
 			_emailService.SendEmail(emailMessage);
 		}
 	}
+
 }

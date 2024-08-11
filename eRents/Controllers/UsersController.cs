@@ -4,6 +4,7 @@ using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebAPI.Shared;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace eRents.Controllers
 {
@@ -11,23 +12,23 @@ namespace eRents.Controllers
 	[Route("[controller]")]
 	public class UsersController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
-		public IUserService _userService;
+		private readonly IUserService _userService;
+
 		public UsersController(IUserService service) : base(service)
 		{
 			_userService = service;
 		}
 
-
-		public override UserResponse Insert([FromBody] UserInsertRequest insert)
+		[HttpPost]
+		public override async Task<UserResponse> Insert([FromBody] UserInsertRequest insert)
 		{
-			return base.Insert(insert);
+			return await base.Insert(insert);
 		}
 
-		public override UserResponse Update(int id, [FromBody] UserUpdateRequest update)
+		[HttpPut("{id}")]
+		public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest update)
 		{
-			return base.Update(id, update);
+			return await base.Update(id, update);
 		}
-
-
 	}
 }

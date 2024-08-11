@@ -1,19 +1,49 @@
-﻿//using eRents.Model.DTO.Requests;
-//using eRents.Model.DTO.Response;
-//using eRents.Model.SearchObjects;
-//using eRents.Services.Entities;
-//using eRents.Services.Service.ReviewService;
-//using Microsoft.AspNetCore.Mvc;
+﻿using eRents.Application.Service.ReviewService;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
+using eRents.WebAPI.Shared;
+using Microsoft.AspNetCore.Mvc;
 
-//namespace eRents.Controllers
-//{
-//	[ApiController]
-//	[Route("[controller]")]
-//	public class ReviewsController : BaseCRUDController<ReviewsResponse, ReviewSearchObject, ReviewsInsertRequest, ReviewsUpdateRequest>
-//	{
-//		public ReviewsController(IReviewService service) : base(service) { }
+namespace eRents.WebAPI.Controllers
+{
+	[ApiController]
+	[Route("[controller]")]
+	public class ReviewsController : BaseCRUDController<ReviewResponse, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>
+	{
+		private readonly IReviewService _reviewService;
 
-//		public override ReviewsResponse Insert([FromBody] ReviewsInsertRequest insert) => Insert(insert);
-//		public override ReviewsResponse Update(int id, [FromBody] ReviewsUpdateRequest update) => Update(id, update);
-//	}
-//}
+		public ReviewsController(IReviewService service) : base(service)
+		{
+			_reviewService = service;
+		}
+
+		[HttpGet("property/{propertyId}")]
+		public async Task<IEnumerable<ReviewResponse>> GetReviewsForProperty(int propertyId)
+		{
+			return await _reviewService.GetReviewsForPropertyAsync(propertyId);
+		}
+
+		[HttpGet("property/{propertyId}/average-rating")]
+		public async Task<decimal> GetAverageRating(int propertyId)
+		{
+			return await _reviewService.GetAverageRatingAsync(propertyId);
+		}
+
+		[HttpPost("flag")]
+		public async Task<IActionResult> FlagReview([FromBody] ReviewFlagRequest request)
+		{
+			await _reviewService.FlagReviewAsync(request);
+			return Ok();
+		}
+
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteReview(int id)
+		{
+			var success = await _reviewService.DeleteAsync(id);
+			if (success)
+				return Ok();
+			return NotFound();
+		}
+	}
+}

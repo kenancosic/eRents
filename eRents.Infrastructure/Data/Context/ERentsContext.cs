@@ -129,9 +129,18 @@ public partial class ERentsContext : DbContext
 		{
 			entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F70C62BBC63F");
 
+			entity.Property(e => e.FileName)
+							.HasMaxLength(255)
+							.IsUnicode(false)
+							.HasColumnName("file_name");
+
 			entity.Property(e => e.DateUploaded)
 							.HasDefaultValueSql("(getdate())")
 							.HasColumnType("datetime");
+
+			entity.Property(e => e.ImageData)  // Adding ImageData field
+							.HasColumnType("varbinary(max)")
+							.HasColumnName("image_data");
 
 			entity.HasOne(d => d.Property).WithMany(p => p.Images)
 							.HasForeignKey(d => d.PropertyId)
@@ -341,6 +350,9 @@ public partial class ERentsContext : DbContext
 							.IsUnicode(false)
 							.HasColumnName("status");
 			entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+			entity.Property(e => e.IsFlagged) // New Property
+							.HasDefaultValue(false)
+							.HasColumnName("is_flagged");
 
 			entity.HasOne(d => d.Property).WithMany(p => p.Reviews)
 							.HasForeignKey(d => d.PropertyId)

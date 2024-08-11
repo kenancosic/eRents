@@ -17,19 +17,19 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("send-email")]
-		public IActionResult SendEmail([FromBody] EmailMessage emailMessage)
+		public async Task<IActionResult> SendEmail([FromBody] EmailMessage emailMessage)
 		{
 			var message = JsonConvert.SerializeObject(emailMessage);
-			_rabbitMqService.PublishMessage("emailQueue", message);
+			await _rabbitMqService.PublishMessageAsync("emailQueue", message);
 
 			return Ok("Email message sent to queue.");
 		}
 
 		[HttpPost("send-message")]
-		public IActionResult SendMessage([FromBody] UserMessage userMessage)
+		public async Task<IActionResult> SendMessage([FromBody] UserMessage userMessage)
 		{
 			var message = JsonConvert.SerializeObject(userMessage);
-			_rabbitMqService.PublishMessage("messageQueue", message);
+			await _rabbitMqService.PublishMessageAsync("messageQueue", message);
 
 			return Ok("User message sent to queue.");
 		}

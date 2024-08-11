@@ -1,34 +1,107 @@
-﻿//using AutoMapper;
-//using eRents.Model.DTO.Requests;
-//using eRents.Model.DTO.Response;
-//using eRents.Model.SearchObjects;
-//using eRents.Services.Entities;
-//using eRents.Services.Service.PropertyService;
-//using eRents.Services.Shared;
-//using Microsoft.EntityFrameworkCore;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using System.Threading.Tasks;
+﻿using AutoMapper;
+using eRents.Application.Shared;
+using eRents.Domain.Entities;
+using eRents.Infrastructure.Data.Repositories;
+using eRents.Infrastructure.Services;
+using eRents.Shared.DTO;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 
-//namespace eRents.Application.Service.ReviewService
-//{
-//	public class ReviewService : BaseCRUDService<ReviewsResponse, Review, ReviewSearchObject, ReviewsInsertRequest, ReviewsUpdateRequest>, IReviewService
-//	{
-//		public ReviewService(ERentsContext context, IMapper mapper) : base(context, mapper)
-//		{
+namespace eRents.Application.Service.ReviewService
+{
+	public class ReviewService : BaseCRUDService<ReviewResponse, Review, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>, IReviewService
+	{
+		private readonly IReviewRepository _reviewRepository;
+		private readonly IRabbitMQService _rabbitMqService;
+		public ReviewService(IReviewRepository reviewRepository, IRabbitMQService rabbitMQService, IMapper mapper)
+				: base(reviewRepository, mapper)
+		{
+			_reviewRepository = reviewRepository;
+			_rabbitMqService = rabbitMQService;
 
-//		}
+		}
+		public override async Task<ReviewResponse> InsertAsync(ReviewInsertRequest request)
+		{
+			var reviewResponse = await base.InsertAsync(request);
 
-//		public ReviewsResponse GetReviewsByUsername(string username)
-//		{
-//			var result = _context.Reviews.Include(x => x.User).Where(x => x.User.Username == username).ToList();
-//			if (result == null)
-//				return null;
-//			return _mapper.Map<ReviewsResponse>(result);
-//		}
+			// Publish the notification to RabbitMQ
+			var notificationMessage = new ReviewNotificationMessage
+			{
+				PropertyId = request.PropertyId,
+				ReviewId = reviewResponse.ReviewId,
+				Message = "A new review has been posted."
+			};
+			await _rabbitMqService.PublishMessageAsync("reviewQueue", notificationMessage);
 
+			return reviewResponse;
+		}
 
-//	}
-//}
+		public async Task<decimal> GetAverageRatingAsync(int propertyId)
+		{
+			return await _reviewRepository.GetAverageRatingAsync(propertyId);
+		}
+
+		public async Task<IEnumerable<ReviewResponse>> GetReviewsForPropertyAsync(int propertyId)
+		{
+			var reviews = await _reviewRepository.GetReviewsByPropertyAsync(propertyId);
+			return _mapper.Map<IEnumerable<ReviewResponse>>(reviews);
+		}
+		public async Task FlagReviewAsync(ReviewFlagRequest request)
+		{
+			var review = await _repository.GetByIdAsync(request.ReviewId);
+			if (review == null)
+			{
+				throw new KeyNotFoundException("Review not found.");
+			}
+
+			review.IsFlagged = request.IsFlagged;
+			await _repository.UpdateAsync(review);
+		}
+		public async Task<bool> DeleteReviewAsync(int reviewId)
+		{
+			var review = await _repository.GetByIdAsync(reviewId);
+			if (review == null)
+			{
+				return false; // Or throw an exception if that's the preferred behavior
+			}
+			await _repository.DeleteAsync(review);
+
+			return true;
+		}
+		protected override IQueryable<Review> AddFilter(IQueryable<Review> query, ReviewSearchObject search = null)
+		{
+			query = base.AddFilter(query, search);
+
+			if (search?.PropertyId.HasValue == true)
+			{
+				query = query.Where(x => x.PropertyId == search.PropertyId);
+			}
+
+			if (search?.MinRating.HasValue == true)
+			{
+				query = query.Where(x => x.StarRating >= search.MinRating);
+			}
+
+			if (search?.MaxRating.HasValue == true)
+			{
+				query = query.Where(x => x.StarRating <= search.MaxRating);
+			}
+
+			if (!string.IsNullOrEmpty(search?.SortBy))
+			{
+				if (search.SortBy == "Date")
+				{
+					query = search.SortDescending ? query.OrderByDescending(x => x.DateReported) : query.OrderBy(x => x.DateReported);
+				}
+				else if (search.SortBy == "Rating")
+				{
+					query = search.SortDescending ? query.OrderByDescending(x => x.StarRating) : query.OrderBy(x => x.StarRating);
+				}
+			}
+
+			return query;
+		}
+
+	}
+}
