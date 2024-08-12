@@ -7,8 +7,8 @@ namespace eRents.Application.Service.UserService
 {
 	public interface IUserService : ICRUDService<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
-		UserResponse Login(string username, string password);
-		UserResponse Register(UserInsertRequest request);
+		Task<UserResponse> LoginAsync(string username, string password);
+		Task<UserResponse> RegisterAsync(UserInsertRequest request);
 		void ChangePassword(int userId, ChangePasswordRequest request);
 		void ForgotPassword(string request);
 		void ResetPassword(ResetPasswordRequest request);

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using eRents.Application.Exceptions;
 using eRents.Application.Shared;
 using eRents.Domain;
 using eRents.Domain.Entities;
@@ -6,17 +7,21 @@ using eRents.Infrastructure.Data.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
+using ValidationException = eRents.Application.Exceptions.ValidationException;
+
 
 namespace eRents.Application.Service.UserService
 {
 	public class UserService : BaseCRUDService<UserResponse, User, UserSearchObject, UserInsertRequest, UserUpdateRequest>, IUserService
 	{
 		private readonly IUserRepository _userRepository;
-
 		public UserService(IUserRepository userRepository, IMapper mapper) : base(userRepository, mapper)
 		{
 			_userRepository = userRepository;
@@ -50,32 +55,47 @@ namespace eRents.Application.Service.UserService
 			return base.AddFilter(query, search);
 		}
 
-		public UserResponse Login(string usernameOrEmail, string password)
+		public async Task<UserResponse> LoginAsync(string usernameOrEmail, string password)
 		{
-			var user = _userRepository.GetUserByUsernameOrEmail(usernameOrEmail);
-			if (user == null)
-				return null;
+			try
+			{
+				var user = await _userRepository.GetUserByUsernameOrEmailAsync(usernameOrEmail);
+				if (user == null)
+					throw new UserNotFoundException("User not found.");
 
-			if (!ValidatePassword(password, user.PasswordSalt, user.PasswordHash))
-				return null;
+				if (!ValidatePassword(password, user.PasswordSalt, user.PasswordHash))
+					throw new InvalidPasswordException("Invalid password.");
 
-			return _mapper.Map<UserResponse>(user);
+				return _mapper.Map<UserResponse>(user);
+			}
+			catch (Exception ex)
+			{
+
+				throw new ServiceException("An error occurred while processing your request.");
+			}
 		}
 
-		public UserResponse Register(UserInsertRequest request)
+
+		public async Task<UserResponse> RegisterAsync(UserInsertRequest request)
 		{
-			if (_userRepository.IsUserAlreadyRegistered(request.Username, request.Email).Result)
-			{
-				throw new UserException("Username or email already exists");
-			}
+			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
+				throw new ValidationException("Invalid email address.");
+
+			if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
+				throw new ValidationException("Password must be at least 6 characters long.");
 
 			var user = _mapper.Map<User>(request);
-			user.PasswordSalt = GenerateSalt();
-			user.PasswordHash = GenerateHash(user.PasswordSalt, request.Password);
+			await _userRepository.AddAsync(user);
 
-			_userRepository.AddAsync(user).Wait();
 			return _mapper.Map<UserResponse>(user);
 		}
+
+		private bool IsValidEmail(string email)
+		{
+			// Simple email validation logic or use a library
+			return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+		}
+
 		public void ResetPassword(ResetPasswordRequest request)
 		{
 			var user = _userRepository.GetUserByResetToken(request.Token).Result;

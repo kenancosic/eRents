@@ -1,11 +1,14 @@
 ﻿using AutoMapper;
+using eRents.Application.Exceptions;
 using eRents.Application.Shared;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Repositories;
-using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace eRents.Application.Service
 {
@@ -13,10 +16,50 @@ namespace eRents.Application.Service
 	{
 		private readonly IPropertyRepository _propertyRepository;
 
-		public PropertyService(IPropertyRepository propertyRepository, IMapper mapper)
-				: base(propertyRepository, mapper)
+		public PropertyService(IPropertyRepository propertyRepository, IMapper mapper) : base(propertyRepository, mapper)
 		{
 			_propertyRepository = propertyRepository;
+		}
+
+		public async Task<decimal> GetTotalRevenueAsync(int propertyId)
+		{
+			return await _propertyRepository.GetTotalRevenueAsync(propertyId);
+		}
+
+		public async Task<int> GetNumberOfBookingsAsync(int propertyId)
+		{
+			return await _propertyRepository.GetNumberOfBookingsAsync(propertyId);
+		}
+
+		public async Task<int> GetNumberOfTenantsAsync(int propertyId)
+		{
+			return await _propertyRepository.GetNumberOfTenantsAsync(propertyId);
+		}
+
+		public async Task<decimal> GetAverageRatingAsync(int propertyId)
+		{
+			return await _propertyRepository.GetAverageRatingAsync(propertyId);
+		}
+
+		public async Task<int> GetNumberOfReviewsAsync(int propertyId)
+		{
+			return await _propertyRepository.GetNumberOfReviewsAsync(propertyId);
+		}
+
+		public async Task<IEnumerable<AmenityResponse>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds)
+		{
+			var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(amenityIds);
+			return _mapper.Map<IEnumerable<AmenityResponse>>(amenities);
+		}
+
+		protected override void BeforeInsert(PropertyInsertRequest insert, Property entity)
+		{
+			if (insert.AmenityIds != null && insert.AmenityIds.Any())
+			{
+				entity.Amenities = _propertyRepository.GetAmenitiesByIdsAsync(insert.AmenityIds).Result.ToList();
+			}
+
+			base.BeforeInsert(insert, entity);
 		}
 
 		protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearchObject search = null)
@@ -46,77 +89,7 @@ namespace eRents.Application.Service
 				query = query.Where(x => x.Price <= search.MaxPrice);
 			}
 
-			if (!string.IsNullOrWhiteSpace(search?.Status))
-			{
-				query = query.Where(x => x.Status == search.Status);
-			}
-
-			if (search?.MinNumberOfTenants.HasValue == true || search?.MaxNumberOfTenants.HasValue == true)
-			{
-				query = query.Where(x => x.Tenants.Count >= (search.MinNumberOfTenants ?? 0) &&
-																 x.Tenants.Count <= (search.MaxNumberOfTenants ?? int.MaxValue));
-			}
-
-			if (search?.MinRating.HasValue == true || search?.MaxRating.HasValue == true)
-			{
-				query = query.Where(x => x.Reviews.Average(r => r.StarRating) >= (search.MinRating ?? 0) &&
-																 x.Reviews.Average(r => r.StarRating) <= (search.MaxRating ?? 5));
-			}
-
-			if (search?.DateAddedFrom.HasValue == true)
-			{
-				query = query.Where(x => x.DateAdded >= search.DateAddedFrom.Value);
-			}
-
-			if (search?.DateAddedTo.HasValue == true)
-			{
-				query = query.Where(x => x.DateAdded <= search.DateAddedTo.Value);
-			}
-
-			return base.AddFilter(query, search);
-		}
-
-		// Handle custom logic before inserting a new property
-		protected override void BeforeInsert(PropertyInsertRequest insert, Property entity)
-		{
-			if (insert.AmenityIds != null && insert.AmenityIds.Any())
-			{
-				entity.Amenities = _propertyRepository.GetAmenitiesByIds(insert.AmenityIds).ToList();
-			}
-
-			base.BeforeInsert(insert, entity);
-		}
-
-		// Handle custom logic before updating an existing property
-		protected override void BeforeUpdate(PropertyUpdateRequest update, Property entity)
-		{
-			if (update.AmenityIds != null && update.AmenityIds.Any())
-			{
-				entity.Amenities = _propertyRepository.GetAmenitiesByIds(update.AmenityIds).ToList();
-			}
-
-			base.BeforeUpdate(update, entity);
-		}
-
-		// Additional methods specific to PropertyService can be added here
-		public async Task<PropertyStatistics> GetPropertyStatisticsAsync(int propertyId)
-		{
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
-			if (property == null) return null;
-
-			var statistics = new PropertyStatistics
-			{
-				PropertyId = propertyId,
-				PropertyName = property.Name,
-				TotalRevenue = await _propertyRepository.GetTotalRevenue(propertyId),
-				NumberOfBookings = await _propertyRepository.GetNumberOfBookings(propertyId),
-				NumberOfTenants = await _propertyRepository.GetNumberOfTenants(propertyId),
-				AverageRating = await _propertyRepository.GetAverageRating(propertyId),
-				NumberOfReviews = await _propertyRepository.GetNumberOfReviews(propertyId)
-			};
-
-			return statistics;
+			return query;
 		}
 	}
-
 }

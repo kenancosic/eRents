@@ -3,6 +3,9 @@ using eRents.Infrastructure.Data.Context;
 using eRents.Infrastructure.Data.Shared;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace eRents.Infrastructure.Data.Repositories
 {
@@ -10,14 +13,9 @@ namespace eRents.Infrastructure.Data.Repositories
 	{
 		public PropertyRepository(ERentsContext context) : base(context) { }
 
-		public IEnumerable<Amenity> GetAmenitiesByIds(IEnumerable<int> amenityIds)
-		{
-			return _context.Amenities.Where(a => amenityIds.Contains(a.AmenityId)).ToList();
-		}
-
 		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
 		{
-			var query = _context.Properties.AsQueryable();
+			var query = _context.Properties.AsNoTracking().AsQueryable();
 
 			if (!string.IsNullOrWhiteSpace(searchObject.Name))
 			{
@@ -34,37 +32,57 @@ namespace eRents.Infrastructure.Data.Repositories
 			return await query.ToListAsync();
 		}
 
-		public async Task<decimal> GetTotalRevenue(int propertyId)
+		public async Task<IEnumerable<Amenity>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds)
+		{
+			return await _context.Amenities
+					.AsNoTracking()
+					.Where(a => amenityIds.Contains(a.AmenityId))
+					.ToListAsync();
+		}
+
+		public async Task<Property> GetPropertyByIdAsync(int propertyId)
+		{
+			return await _context.Properties
+					.AsNoTracking()
+					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+		}
+
+		public async Task<decimal> GetTotalRevenueAsync(int propertyId)
 		{
 			return await _context.Bookings
+					.AsNoTracking()
 					.Where(b => b.PropertyId == propertyId)
 					.SumAsync(b => b.TotalPrice);
 		}
 
-		public async Task<int> GetNumberOfBookings(int propertyId)
+		public async Task<int> GetNumberOfBookingsAsync(int propertyId)
 		{
 			return await _context.Bookings
+					.AsNoTracking()
 					.Where(b => b.PropertyId == propertyId)
 					.CountAsync();
 		}
 
-		public async Task<int> GetNumberOfTenants(int propertyId)
+		public async Task<int> GetNumberOfTenantsAsync(int propertyId)
 		{
 			return await _context.Tenants
+					.AsNoTracking()
 					.Where(t => t.PropertyId == propertyId)
 					.CountAsync();
 		}
 
-		public async Task<decimal> GetAverageRating(int propertyId)
-		{
-			return (await _context.Reviews
-					.Where(r => r.PropertyId == propertyId)
-					.AverageAsync(r => (decimal?)r.StarRating)).GetValueOrDefault();
-		}
-
-		public async Task<int> GetNumberOfReviews(int propertyId)
+		public async Task<decimal> GetAverageRatingAsync(int propertyId)
 		{
 			return await _context.Reviews
+					.AsNoTracking()
+					.Where(r => r.PropertyId == propertyId)
+					.AverageAsync(r => r.StarRating.Value);
+		}
+
+		public async Task<int> GetNumberOfReviewsAsync(int propertyId)
+		{
+			return await _context.Reviews
+					.AsNoTracking()
 					.Where(r => r.PropertyId == propertyId)
 					.CountAsync();
 		}

@@ -24,7 +24,7 @@ namespace eRents.WebAPI.Controllers
 		[HttpPost("Login")]
 		public IActionResult Login([FromBody] LoginRequest loginRequest)
 		{
-			var userResponse = _userService.Login(loginRequest.UsernameOrEmail, loginRequest.Password);
+			var userResponse = _userService.LoginAsync(loginRequest.UsernameOrEmail, loginRequest.Password).Result;
 			if (userResponse != null)
 			{
 				// Generate JWT token

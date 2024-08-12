@@ -6,13 +6,13 @@ namespace eRents.Infrastructure.Data.Repositories
 {
 	public interface IPropertyRepository : IBaseRepository<Property>
 	{
-		IEnumerable<Amenity> GetAmenitiesByIds(IEnumerable<int> amenityIds);
 		Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject);
-
-		Task<decimal> GetTotalRevenue(int propertyId);
-		Task<int> GetNumberOfBookings(int propertyId);
-		Task<int> GetNumberOfTenants(int propertyId);
-		Task<decimal> GetAverageRating(int propertyId);
-		Task<int> GetNumberOfReviews(int propertyId);
+		Task<IEnumerable<Amenity>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds);
+		Task<Property> GetPropertyByIdAsync(int propertyId);
+		Task<decimal> GetTotalRevenueAsync(int propertyId);
+		Task<int> GetNumberOfBookingsAsync(int propertyId);
+		Task<int> GetNumberOfTenantsAsync(int propertyId);
+		Task<decimal> GetAverageRatingAsync(int propertyId);
+		Task<int> GetNumberOfReviewsAsync(int propertyId);
 	}
 }
