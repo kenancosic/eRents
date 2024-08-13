@@ -4,6 +4,6 @@ namespace eRents.RabbitMQMicroservice.Services
 {
 	public interface IEmailService
 	{
-		void SendEmail(EmailMessage message);
+		void SendEmailNotification(EmailMessage message);
 	}
 }

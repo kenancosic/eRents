@@ -336,23 +336,35 @@ public partial class ERentsContext : DbContext
 							.HasDefaultValueSql("(getdate())")
 							.HasColumnType("date")
 							.HasColumnName("date_reported");
+
 			entity.Property(e => e.Description)
 							.HasColumnType("text")
 							.HasColumnName("description");
+
 			entity.Property(e => e.PropertyId).HasColumnName("property_id");
 			entity.Property(e => e.Severity)
 							.HasMaxLength(50)
 							.IsUnicode(false)
 							.HasColumnName("severity");
-			entity.Property(e => e.StarRating).HasColumnType("decimal(2, 1)");
+
+			entity.Property(e => e.StarRating)
+							.HasColumnType("decimal(2,1)")
+							.HasColumnName("star_rating");
+
 			entity.Property(e => e.Status)
 							.HasMaxLength(50)
 							.IsUnicode(false)
 							.HasColumnName("status");
+
 			entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+
 			entity.Property(e => e.IsFlagged) // New Property
 							.HasDefaultValue(false)
 							.HasColumnName("is_flagged");
+
+			entity.Property(e => e.IsComplaint) // Renamed from Complain
+							.HasColumnName("is_complaint")
+							.HasDefaultValue(false);
 
 			entity.HasOne(d => d.Property).WithMany(p => p.Reviews)
 							.HasForeignKey(d => d.PropertyId)

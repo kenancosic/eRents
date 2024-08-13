@@ -19,7 +19,7 @@ public partial class Review
 
 	public string? Status { get; set; }
 
-	public bool Complain { get; set; }
+	public bool IsComplaint { get; set; }
 
 	public decimal? StarRating { get; set; }
 

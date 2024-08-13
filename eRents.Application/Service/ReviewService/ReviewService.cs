@@ -30,7 +30,7 @@ namespace eRents.Application.Service.ReviewService
 			// Publish the notification to RabbitMQ
 			var notificationMessage = new ReviewNotificationMessage
 			{
-				PropertyId = request.PropertyId,
+				PropertyId = reviewResponse.PropertyId,
 				ReviewId = reviewResponse.ReviewId,
 				Message = "A new review has been posted."
 			};
@@ -114,7 +114,7 @@ namespace eRents.Application.Service.ReviewService
 				Severity = request.Severity,
 				DateReported = DateTime.Now,
 				Status = "Pending",
-				Complain = true,
+				IsComplaint = true, // Changed here
 				IsFlagged = false,
 				StarRating = null,
 			};
@@ -134,6 +134,15 @@ namespace eRents.Application.Service.ReviewService
 
 			await _reviewRepository.AddAsync(review);
 			await _reviewRepository.SaveChangesAsync();
+
+			// Send a notification for the new complaint
+			var notificationMessage = new ReviewNotificationMessage
+			{
+				PropertyId = review.PropertyId.Value,
+				ReviewId = review.ReviewId,
+				Message = "A new complaint has been submitted."
+			};
+			await _rabbitMqService.PublishMessageAsync("complaintQueue", notificationMessage);
 
 			return _mapper.Map<ReviewResponse>(review);
 		}

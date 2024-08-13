@@ -46,12 +46,13 @@ namespace eRents.WebAPI.Controllers
 			return NotFound();
 		}
 
-		[HttpPost("complaints")]
-		public async Task<IActionResult> CreateComplaint([FromForm] ComplaintRequest request, [FromForm] List<IFormFile> images)
+		[HttpPost]
+		public async Task<IActionResult> CreateComplaintAsync([FromBody] ComplaintRequest request, List<IFormFile> images)
 		{
-			var complaint = await _reviewService.CreateComplaintAsync(request, images);
-			return CreatedAtAction(nameof(GetById), new { id = complaint.ReviewId }, complaint);
+			var response = await _reviewService.CreateComplaintAsync(request, images);
+			return Ok(response);
 		}
+
 
 		[HttpGet("complaints/property/{propertyId}")]
 		public async Task<IActionResult> GetComplaintsForProperty(int propertyId)

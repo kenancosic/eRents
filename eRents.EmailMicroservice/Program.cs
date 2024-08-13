@@ -1,6 +1,5 @@
 ﻿using eRents.RabbitMQMicroservice.Processors;
 using eRents.RabbitMQMicroservice.Services;
-using eRents.Shared.Services;
 using System.Text;
 
 namespace eRents.RabbitMQMicroservice
@@ -14,6 +13,8 @@ namespace eRents.RabbitMQMicroservice
 
 			var emailProcessor = new EmailProcessor(emailService);
 			var messageProcessor = new MessageProcessor(messageService);
+
+			var bookingProcessor = new BookingNotificationProcessor(emailService);
 
 			var rabbitMqService = new RabbitMQConsumerService();
 
@@ -31,6 +32,14 @@ namespace eRents.RabbitMQMicroservice
 				var body = ea.Body.ToArray();
 				var message = Encoding.UTF8.GetString(body);
 				messageProcessor.Process(message);
+			});
+
+			// Consume booking messages
+			rabbitMqService.ConsumeMessages("bookingQueue", (model, ea) =>
+			{
+				var body = ea.Body.ToArray();
+				var message = Encoding.UTF8.GetString(body);
+				bookingProcessor.Process(message, ea);
 			});
 
 			Console.WriteLine(" [*] Waiting for messages.");

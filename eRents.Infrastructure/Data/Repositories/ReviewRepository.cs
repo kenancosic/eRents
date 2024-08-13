@@ -25,7 +25,7 @@ namespace eRents.Infrastructure.Data.Repositories
 		public async Task<IEnumerable<Review>> GetComplaintsForPropertyAsync(int propertyId)
 		{
 			return await _context.Reviews
-					.Where(r => r.PropertyId == propertyId && r.Complain == true)
+					.Where(r => r.PropertyId == propertyId && r.IsComplaint == true)
 					.ToListAsync();
 		}
 	}

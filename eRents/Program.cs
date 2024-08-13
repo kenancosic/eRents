@@ -3,7 +3,7 @@ using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
 using eRents.Infrastructure.Data.Context;
-using eRents.Infrastructure.Data.Repositories;  // Add this to include your repositories
+using eRents.Infrastructure.Data.Repositories;
 using eRents.Infrastructure.Services;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -26,15 +26,15 @@ builder.Services.AddSwaggerGen(c =>
 		Scheme = "basic"
 	});
 	c.AddSecurityRequirement(new OpenApiSecurityRequirement
+	{
+		{
+			new OpenApiSecurityScheme
 				{
-								{
-												new OpenApiSecurityScheme
-												{
-																Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basicAuth"}
-												},
-												new string[]{}
-								}
-				});
+					Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basicAuth"}
+				},
+			new string[]{}
+		}
+	});
 });
 
 builder.Services.AddAutoMapper(typeof(UserService));

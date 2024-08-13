@@ -4,6 +4,7 @@ using eRents.Application.Shared;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Repositories;
 using eRents.Infrastructure.Services;
+using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
@@ -26,7 +27,7 @@ namespace eRents.Application.Service.BookingService
 
 		public override async Task<BookingResponse> InsertAsync(BookingInsertRequest request)
 		{
-			// Check availability before creating a booking
+			// Check property availability
 			var isAvailable = await _bookingRepository.IsPropertyAvailableAsync(request.PropertyId, request.StartDate, request.EndDate);
 			if (!isAvailable)
 			{
@@ -36,28 +37,39 @@ namespace eRents.Application.Service.BookingService
 			// Process payment before confirming booking
 			var paymentRequest = new PaymentRequest
 			{
-				BookingId = request.PropertyId,  // Use PropertyId just as an example, it should be booking-related
+				BookingId = request.PropertyId,  // Update to the actual BookingId if needed
 				Amount = request.TotalPrice,
-				PaymentMethod = "Credit Card"  // Example payment method
+				PaymentMethod = request.PaymentMethod ?? "Credit Card"  // Use provided or default payment method
 			};
 
 			var paymentResponse = await _paymentService.ProcessPaymentAsync(paymentRequest);
-
 			if (paymentResponse.Status != "Success")
 			{
 				throw new InvalidOperationException("Payment failed.");
 			}
 
 			// Proceed with creating the booking
-			var bookingResponse = await base.InsertAsync(request);
+			var bookingEntity = _mapper.Map<Booking>(request);
+			await _bookingRepository.AddAsync(bookingEntity);
+			await _bookingRepository.SaveChangesAsync();
+
+			var bookingResponse = _mapper.Map<BookingResponse>(bookingEntity);
+
+			// Publish booking creation notification
+			var notificationMessage = new BookingNotificationMessage
+			{
+				BookingId = bookingResponse.BookingId,
+				Message = "A new booking has been created."
+			};
+			await _rabbitMqService.PublishMessageAsync("bookingQueue", notificationMessage);
+
 			return bookingResponse;
 		}
+
 		public async Task<IEnumerable<BookingResponse>> GetBookingsForUserAsync(int userId)
 		{
 			var bookings = await _bookingRepository.GetBookingsByUserAsync(userId);
 			return _mapper.Map<IEnumerable<BookingResponse>>(bookings);
 		}
-
-
 	}
 }
