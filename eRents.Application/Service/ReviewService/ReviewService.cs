@@ -7,6 +7,7 @@ using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
+using Microsoft.AspNetCore.Http;
 
 namespace eRents.Application.Service.ReviewService
 {
@@ -14,6 +15,7 @@ namespace eRents.Application.Service.ReviewService
 	{
 		private readonly IReviewRepository _reviewRepository;
 		private readonly IRabbitMQService _rabbitMqService;
+
 		public ReviewService(IReviewRepository reviewRepository, IRabbitMQService rabbitMQService, IMapper mapper)
 				: base(reviewRepository, mapper)
 		{
@@ -101,6 +103,54 @@ namespace eRents.Application.Service.ReviewService
 			}
 
 			return query;
+		}
+		public async Task<ReviewResponse> CreateComplaintAsync(ComplaintRequest request, List<IFormFile> images)
+		{
+			var review = new Review
+			{
+				TenantId = request.TenantId,
+				PropertyId = request.PropertyId,
+				Description = request.Description,
+				Severity = request.Severity,
+				DateReported = DateTime.Now,
+				Status = "Pending",
+				Complain = true,
+				IsFlagged = false,
+				StarRating = null,
+			};
+
+			if (images != null && images.Any())
+			{
+				foreach (var imageFile in images)
+				{
+					var image = new Image
+					{
+						FileName = imageFile.FileName,
+						ImageData = ConvertToBytes(imageFile)
+					};
+					review.Images.Add(image);
+				}
+			}
+
+			await _reviewRepository.AddAsync(review);
+			await _reviewRepository.SaveChangesAsync();
+
+			return _mapper.Map<ReviewResponse>(review);
+		}
+
+		private byte[] ConvertToBytes(IFormFile imageFile)
+		{
+			using (var ms = new MemoryStream())
+			{
+				imageFile.CopyTo(ms);
+				return ms.ToArray();
+			}
+		}
+
+		public async Task<IEnumerable<ReviewResponse>> GetComplaintsForPropertyAsync(int propertyId)
+		{
+			var complaints = await _reviewRepository.GetComplaintsForPropertyAsync(propertyId);
+			return _mapper.Map<IEnumerable<ReviewResponse>>(complaints);
 		}
 
 	}

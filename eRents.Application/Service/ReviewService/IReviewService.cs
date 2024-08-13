@@ -2,8 +2,7 @@
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace eRents.Application.Service.ReviewService
 {
@@ -12,5 +11,8 @@ namespace eRents.Application.Service.ReviewService
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<IEnumerable<ReviewResponse>> GetReviewsForPropertyAsync(int propertyId);
 		Task FlagReviewAsync(ReviewFlagRequest request);
+		Task<ReviewResponse> CreateComplaintAsync(ComplaintRequest request, List<IFormFile> images);
+		Task<IEnumerable<ReviewResponse>> GetComplaintsForPropertyAsync(int propertyId);
+
 	}
 }

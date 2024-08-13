@@ -56,7 +56,7 @@ namespace eRents.WebAPI.Controllers
 		[HttpPost("Register")]
 		public IActionResult Register([FromBody] UserInsertRequest request)
 		{
-			var userResponse = _userService.Register(request);
+			var userResponse = _userService.RegisterAsync(request).Result;
 			if (userResponse != null)
 			{
 				return Ok(userResponse);
