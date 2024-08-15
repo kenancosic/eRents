@@ -1,14 +1,10 @@
 ﻿using AutoMapper;
-using eRents.Application.Exceptions;
 using eRents.Application.Shared;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace eRents.Application.Service
 {
@@ -52,14 +48,15 @@ namespace eRents.Application.Service
 			return _mapper.Map<IEnumerable<AmenityResponse>>(amenities);
 		}
 
-		protected override void BeforeInsert(PropertyInsertRequest insert, Property entity)
+		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
 			if (insert.AmenityIds != null && insert.AmenityIds.Any())
 			{
-				entity.Amenities = _propertyRepository.GetAmenitiesByIdsAsync(insert.AmenityIds).Result.ToList();
+				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(insert.AmenityIds);
+				entity.Amenities = amenities.ToList();
 			}
 
-			base.BeforeInsert(insert, entity);
+			await base.BeforeInsertAsync(insert, entity);
 		}
 
 		protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearchObject search = null)

@@ -4,7 +4,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 {
 	public interface IBookingNotificationProcessor
 	{
-		void Process(object sender, BasicDeliverEventArgs e);
+		void Process(string message);
 	}
 
 	public interface IReviewNotificationProcessor
@@ -13,6 +13,10 @@ namespace eRents.RabbitMQMicroservice.Processors
 	}
 
 	public interface IEmailNotificationProcessor
+	{
+		void Process(string message);
+	}
+	public interface IChatMessageProcessor
 	{
 		void Process(object sender, BasicDeliverEventArgs e);
 	}

@@ -4,6 +4,8 @@ using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebAPI.Shared;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace eRents.WebAPI.Controllers
 {
@@ -19,14 +21,16 @@ namespace eRents.WebAPI.Controllers
 		}
 
 		[HttpGet("search")]
-		public PropertyResponse Get([FromQuery] PropertySearchObject search)
+		public async Task<ActionResult<IEnumerable<PropertyResponse>>> Get([FromQuery] PropertySearchObject search)
 		{
-			var result = _propertyService.Get(search);
+			var result = await _propertyService.GetAsync(search);
 
-			if (result.Count() > 0)
-				return result.FirstOrDefault();
+			if (result == null || !result.Any())
+			{
+				return NotFound("No properties found matching the search criteria.");
+			}
 
-			return null;
+			return Ok(result);
 		}
 
 		// Additional endpoints related to properties can be added here

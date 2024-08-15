@@ -9,8 +9,8 @@ namespace eRents.Application.Service.UserService
 	{
 		Task<UserResponse> LoginAsync(string username, string password);
 		Task<UserResponse> RegisterAsync(UserInsertRequest request);
-		void ChangePassword(int userId, ChangePasswordRequest request);
-		void ForgotPassword(string request);
-		void ResetPassword(ResetPasswordRequest request);
+		Task ChangePasswordAsync(int userId, ChangePasswordRequest request);
+		Task ForgotPasswordAsync(string email);
+		Task ResetPasswordAsync(ResetPasswordRequest request);
 	}
 }

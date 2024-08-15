@@ -2,9 +2,9 @@
 {
 	public class UserMessage
 	{
-		public string? SenderEmail { get; set; }
-		public string? RecipientEmail { get; set; }
-		public string? Subject { get; set; }
-		public string? Body { get; set; }
+		public string SenderUsername { get; set; } = null!;
+		public string RecipientUsername { get; set; } = null!;
+		public string Subject { get; set; } = null!;
+		public string Body { get; set; } = null!;
 	}
 }

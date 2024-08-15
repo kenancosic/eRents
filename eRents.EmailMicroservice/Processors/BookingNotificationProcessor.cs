@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using RabbitMQ.Client.Events;
 using System.Text;
 
+
 namespace eRents.RabbitMQMicroservice.Processors
 {
 	public class BookingNotificationProcessor : IBookingNotificationProcessor
@@ -15,12 +16,9 @@ namespace eRents.RabbitMQMicroservice.Processors
 			_emailService = emailService;
 		}
 
-		public void Process(object sender, BasicDeliverEventArgs e)
+		public void Process(string message)
 		{
-			var body = e.Body.ToArray();
-			var message = Encoding.UTF8.GetString(body);
 			var bookingNotification = JsonConvert.DeserializeObject<BookingNotificationMessage>(message);
-
 			Console.WriteLine($"Processing booking notification for Booking ID: {bookingNotification.BookingId}");
 
 			var emailMessage = new EmailMessage

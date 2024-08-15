@@ -19,24 +19,24 @@ namespace eRents.Infrastructure.Data.Repositories
 			return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 		}
 
-		public User GetUserByUsernameOrEmail(string usernameOrEmail)
+		public async Task<User> GetUserByUsernameOrEmailAsync(string usernameOrEmail)
 		{
-			return _context.Users.FirstOrDefault(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+			return await _context.Users.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
 		}
 
-		public async Task<User> GetUserByResetToken(string token)
+		public async Task<User> GetUserByResetTokenAsync(string token)
 		{
 			return await _context.Users.FirstOrDefaultAsync(u => u.ResetToken == token);
 		}
 
-		public async Task<bool> IsUserAlreadyRegistered(string username, string email)
+		public async Task<bool> IsUserAlreadyRegisteredAsync(string username, string email)
 		{
 			return await _context.Users.AnyAsync(u => u.Username == username || u.Email == email);
 		}
-		public Task<User> GetUserByUsernameOrEmailAsync(string usernameOrEmail)
+
+		public async Task<int?> GetUserIdByUsernameAsync(string username)
 		{
-			return _context.Users
-					.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+			return (await _context.Users.FirstOrDefaultAsync(u => u.Username == username))?.UserId;
 		}
 	}
 }

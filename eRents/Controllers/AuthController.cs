@@ -69,20 +69,20 @@ namespace eRents.WebAPI.Controllers
 		public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
 		{
 			var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value); // Extract user ID from claims
-			_userService.ChangePassword(userId, request);
+			_userService.ChangePasswordAsync(userId, request);
 			return Ok();
 		}
 		[HttpPost("ForgotPassword")]
 		public IActionResult ForgotPassword([FromBody] string email)
 		{
-			_userService.ForgotPassword(email);
+			_userService.ForgotPasswordAsync(email);
 			return Ok("Password reset instructions have been sent to your email.");
 		}
 
 		[HttpPost("ResetPassword")]
 		public IActionResult ResetPassword([FromBody] ResetPasswordRequest request)
 		{
-			_userService.ResetPassword(request);
+			_userService.ResetPasswordAsync(request);
 			return Ok("Your password has been successfully reset.");
 		}
 	}

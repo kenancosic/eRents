@@ -1,33 +1,32 @@
 ﻿using AutoMapper;
 using eRents.Application.Exceptions;
 using eRents.Application.Shared;
-using eRents.Domain;
 using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Repositories;
+using eRents.Infrastructure.Services;
+using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using RabbitMQ.Client;
-using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using ValidationException = eRents.Application.Exceptions.ValidationException;
-
 
 namespace eRents.Application.Service.UserService
 {
 	public class UserService : BaseCRUDService<UserResponse, User, UserSearchObject, UserInsertRequest, UserUpdateRequest>, IUserService
 	{
 		private readonly IUserRepository _userRepository;
-		public UserService(IUserRepository userRepository, IMapper mapper) : base(userRepository, mapper)
+		private readonly IRabbitMQService _rabbitMqService;
+
+		public UserService(IUserRepository userRepository, IMapper mapper, IRabbitMQService rabbitMqService)
+				: base(userRepository, mapper)
 		{
 			_userRepository = userRepository;
+			_rabbitMqService = rabbitMqService;
 		}
 
-		protected override void BeforeInsert(UserInsertRequest insert, User entity)
+		protected override async Task BeforeInsertAsync(UserInsertRequest insert, User entity)
 		{
 			if (insert.Password != insert.ConfirmPassword)
 				throw new UserException("Password and confirmation must be the same");
@@ -35,7 +34,7 @@ namespace eRents.Application.Service.UserService
 			entity.PasswordSalt = GenerateSalt();
 			entity.PasswordHash = GenerateHash(entity.PasswordSalt, insert.Password);
 
-			base.BeforeInsert(insert, entity);
+			await base.BeforeInsertAsync(insert, entity);
 		}
 
 		protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
@@ -48,8 +47,8 @@ namespace eRents.Application.Service.UserService
 			if (!string.IsNullOrWhiteSpace(search?.NameFTS))
 			{
 				query = query.Where(x => x.Username.Contains(search.NameFTS)
-						|| x.Name.Contains(search.NameFTS)
-						|| x.LastName.Contains(search.NameFTS));
+								|| x.Name.Contains(search.NameFTS)
+								|| x.LastName.Contains(search.NameFTS));
 			}
 
 			return base.AddFilter(query, search);
@@ -70,11 +69,9 @@ namespace eRents.Application.Service.UserService
 			}
 			catch (Exception ex)
 			{
-
-				throw new ServiceException("An error occurred while processing your request.");
+				throw new ServiceException("An error occurred while processing your request.", ex);
 			}
 		}
-
 
 		public async Task<UserResponse> RegisterAsync(UserInsertRequest request)
 		{
@@ -90,15 +87,9 @@ namespace eRents.Application.Service.UserService
 			return _mapper.Map<UserResponse>(user);
 		}
 
-		private bool IsValidEmail(string email)
+		public async Task ResetPasswordAsync(ResetPasswordRequest request)
 		{
-			// Simple email validation logic or use a library
-			return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-		}
-
-		public void ResetPassword(ResetPasswordRequest request)
-		{
-			var user = _userRepository.GetUserByResetToken(request.Token).Result;
+			var user = await _userRepository.GetUserByResetTokenAsync(request.Token);
 			if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
 			{
 				throw new UserException("Invalid or expired reset token.");
@@ -108,51 +99,49 @@ namespace eRents.Application.Service.UserService
 			user.ResetToken = null;
 			user.ResetTokenExpiration = null;
 
-			_userRepository.UpdateAsync(user).Wait();
+			await _userRepository.UpdateAsync(user);
 		}
 
-		public void ChangePassword(int userId, ChangePasswordRequest request)
+		public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
 		{
-			var user = _userRepository.GetByIdAsync(userId).Result;
+			var user = await _userRepository.GetByIdAsync(userId);
 			if (user == null) throw new UserException("User not found.");
 
 			if (!ValidatePassword(request.OldPassword, user.PasswordSalt, user.PasswordHash))
 				throw new UserException("Incorrect old password.");
 
 			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			_userRepository.UpdateAsync(user);
+			await _userRepository.UpdateAsync(user);
 		}
 
-		public void ForgotPassword(string email)
+		public async Task ForgotPasswordAsync(string email)
 		{
-			var user = _userRepository.GetByEmailAsync(email).Result;
+			var user = await _userRepository.GetByEmailAsync(email);
 			if (user == null) throw new UserException("User with the provided email does not exist.");
 
 			user.ResetToken = Guid.NewGuid().ToString();
 			user.ResetTokenExpiration = DateTime.UtcNow.AddHours(1);
-			_userRepository.UpdateAsync(user);
+			await _userRepository.UpdateAsync(user);
 
-			SendResetEmail(user.Email, user.ResetToken);
+			await SendResetEmailAsync(user.Email, user.ResetToken);
 		}
 
+		private async Task SendResetEmailAsync(string email, string token)
+		{
+			var resetLink = $"https://yourdomain.com/reset-password?token={token}";
+			var message = new EmailMessage
+			{
+				Email = email,
+				Subject = "Password Reset Request",
+				Body = $"Please reset your password using the following link: {resetLink}"
+			};
+
+			await _rabbitMqService.PublishMessageAsync("emailQueue", message);
+		}
 
 		private bool ValidatePassword(string password, byte[] salt, byte[] hash)
 		{
 			return GenerateHash(salt, password).SequenceEqual(hash);
-		}
-
-		private void SendResetEmail(string email, string token)
-		{
-			var resetLink = $"https://yourdomain.com/reset-password?token={token}";
-			var message = new { Email = email, Subject = "Password Reset Request", Body = $"Please reset your password using the following link: {resetLink}" };
-
-			using (var connection = new ConnectionFactory { HostName = "localhost" }.CreateConnection())
-			using (var channel = connection.CreateModel())
-			{
-				channel.QueueDeclare(queue: "emailQueue", durable: false, exclusive: false, autoDelete: false, arguments: null);
-				var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
-				channel.BasicPublish(exchange: "", routingKey: "emailQueue", basicProperties: null, body: body);
-			}
 		}
 
 		private static byte[] GenerateSalt()
@@ -172,6 +161,11 @@ namespace eRents.Application.Service.UserService
 				var combinedBytes = salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
 				return sha256.ComputeHash(combinedBytes);
 			}
+		}
+
+		private bool IsValidEmail(string email)
+		{
+			return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
 		}
 	}
 }

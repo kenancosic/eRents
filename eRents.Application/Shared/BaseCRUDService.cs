@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using eRents.Infrastructure.Data.Context;
 using eRents.Infrastructure.Data.Shared;
+using eRents.Shared.DTO.Requests;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.Tasks;
 
 namespace eRents.Application.Shared
 {
@@ -14,18 +16,15 @@ namespace eRents.Application.Shared
 			where TInsert : class
 			where TUpdate : class
 	{
-		protected readonly IBaseRepository<TEntity> _repository;
-
 		protected BaseCRUDService(IBaseRepository<TEntity> repository, IMapper mapper)
 				: base(repository, mapper)
 		{
-			_repository = repository;
 		}
 
 		public virtual async Task<TDto> InsertAsync(TInsert insert)
 		{
 			var entity = _mapper.Map<TEntity>(insert);
-			BeforeInsert(insert, entity);
+			await BeforeInsertAsync(insert, entity);
 
 			await _repository.AddAsync(entity);
 
@@ -38,7 +37,7 @@ namespace eRents.Application.Shared
 			if (entity == null) return null;
 
 			_mapper.Map(update, entity);
-			BeforeUpdate(update, entity);
+			await BeforeUpdateAsync(update, entity);
 
 			await _repository.UpdateAsync(entity);
 
@@ -55,15 +54,14 @@ namespace eRents.Application.Shared
 			return true;
 		}
 
-		protected virtual void BeforeInsert(TInsert insert, TEntity entity)
+		protected virtual Task BeforeInsertAsync(TInsert insert, TEntity entity)
 		{
-			// Override in derived classes for custom insert logic
+			return Task.CompletedTask; // Override in derived classes for custom insert logic
 		}
 
-		protected virtual void BeforeUpdate(TUpdate update, TEntity entity)
+		protected virtual Task BeforeUpdateAsync(TUpdate update, TEntity entity)
 		{
-			// Override in derived classes for custom update logic
+			return Task.CompletedTask; // Override in derived classes for custom update logic
 		}
 	}
-
 }

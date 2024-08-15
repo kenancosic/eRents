@@ -1,4 +1,4 @@
-﻿using eRents.Domain;
+﻿using eRents.Application.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;

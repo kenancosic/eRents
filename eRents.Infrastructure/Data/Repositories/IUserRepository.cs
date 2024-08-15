@@ -7,9 +7,9 @@ namespace eRents.Infrastructure.Data.Repositories
 	{
 		Task<User> GetByUsernameAsync(string username);
 		Task<User> GetByEmailAsync(string email);
-		User GetUserByUsernameOrEmail(string usernameOrEmail);
-		Task<User> GetUserByResetToken(string token);
-		Task<bool> IsUserAlreadyRegistered(string username, string email);
 		Task<User> GetUserByUsernameOrEmailAsync(string usernameOrEmail);
+		Task<User> GetUserByResetTokenAsync(string token);
+		Task<bool> IsUserAlreadyRegisteredAsync(string username, string email);
+		Task<int?> GetUserIdByUsernameAsync(string username);
 	}
 }

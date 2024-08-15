@@ -16,7 +16,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 		public void Process(string message)
 		{
 			var emailMessage = JsonConvert.DeserializeObject<EmailMessage>(message);
-			_emailService.SendEmail(emailMessage);
+			_emailService.SendEmailNotification(emailMessage);
 		}
 	}
 
