@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace eRents.WebAPI.Shared
+namespace eRents.WebApi.Shared
 {
 	[ApiController]
 	[Route("[controller]")]

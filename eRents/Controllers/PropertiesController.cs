@@ -2,12 +2,10 @@
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using eRents.WebAPI.Shared;
+using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace eRents.WebAPI.Controllers
+namespace eRents.WebApi.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]

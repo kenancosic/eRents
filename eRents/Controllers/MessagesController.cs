@@ -2,7 +2,7 @@
 using eRents.Shared.DTO;
 using Microsoft.AspNetCore.Mvc;
 
-namespace eRents.WebAPI.Controllers
+namespace eRents.WebApi.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]

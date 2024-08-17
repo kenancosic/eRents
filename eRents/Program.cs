@@ -1,5 +1,6 @@
 using eRents.Application.Service;
 using eRents.Application.Service.BookingService;
+using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
 using eRents.Infrastructure.Data.Context;
@@ -26,15 +27,15 @@ builder.Services.AddSwaggerGen(c =>
 		Scheme = "basic"
 	});
 	c.AddSecurityRequirement(new OpenApiSecurityRequirement
-	{
 		{
-			new OpenApiSecurityScheme
 				{
-					Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basicAuth"}
-				},
-			new string[]{}
-		}
-	});
+						new OpenApiSecurityScheme
+						{
+								Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basicAuth"}
+						},
+						new string[]{}
+				}
+		});
 });
 
 builder.Services.AddAutoMapper(typeof(UserService));
@@ -53,6 +54,10 @@ builder.Services.AddTransient<IBookingService, BookingService>();
 builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
 
+// Configure and register PayPalService
+var clientId = builder.Configuration["PayPal:ClientId"];
+var clientSecret = builder.Configuration["PayPal:ClientSecret"];
+builder.Services.AddSingleton<IPaymentService>(new PayPalService(clientId, clientSecret));
 
 builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
 

@@ -2,9 +2,8 @@
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using eRents.WebAPI.Shared;
+using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
 namespace eRents.Controllers
 {

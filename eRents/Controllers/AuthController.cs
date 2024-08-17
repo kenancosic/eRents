@@ -6,7 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace eRents.WebAPI.Controllers
+namespace eRents.WebApi.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]

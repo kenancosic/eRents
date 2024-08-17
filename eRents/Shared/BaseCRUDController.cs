@@ -1,8 +1,7 @@
 ﻿using eRents.Application.Shared;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
 
-namespace eRents.WebAPI.Shared
+namespace eRents.WebApi.Shared
 {
 	public class BaseCRUDController<T, TSearch, TInsert, TUpdate> : BaseController<T, TSearch>
 			where T : class
