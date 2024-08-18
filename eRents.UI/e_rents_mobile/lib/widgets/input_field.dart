@@ -7,44 +7,28 @@ class InputField extends StatefulWidget {
   final TextEditingController controller;
   final String? Function(String?)? validator;
   final FocusNode? focusNode;
+  final TextInputType keyboardType;
+  final int maxLines;
 
-  const InputField(
-      {super.key,
-      required this.hintText,
-      this.faIcon,
-      required this.controller,
-      this.obscure = false,
-      this.validator,
-      this.focusNode});
+  const InputField({
+    super.key,
+    required this.hintText,
+    this.faIcon,
+    required this.controller,
+    this.obscure = false,
+    this.validator,
+    this.focusNode,
+    this.keyboardType = TextInputType.text,
+    this.maxLines = 1,
+  });
 
   @override
-  // ignore: no_logic_in_create_state
-  State<InputField> createState() => _InputFieldState(
-      hintText: hintText,
-      faIcon: faIcon,
-      obscure: obscure,
-      controller: controller,
-      focusNode: focusNode);
+  State<InputField> createState() => _InputFieldState();
 }
 
 class _InputFieldState extends State<InputField> {
-  String hintText;
-  IconData? faIcon;
-  bool obscure;
-  TextEditingController controller;
-  FocusNode? focusNode;
-
-  _InputFieldState(
-      {required this.hintText,
-      required this.faIcon,
-      this.obscure = false,
-      required this.controller,
-      this.focusNode});
   @override
   Widget build(BuildContext context) {
-    // Check if `hintText`, `controller`, and `faIcon` are not null
-    assert(faIcon != null, "faIcon cannot be null");
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 15),
       child: Material(
@@ -61,24 +45,25 @@ class _InputFieldState extends State<InputField> {
             ],
           ),
           child: TextFormField(
-            maxLines: 1,
+            maxLines: widget.maxLines,
             validator: widget.validator,
-            obscureText: obscure,
+            obscureText: widget.obscure,
             textAlignVertical: TextAlignVertical.center,
-            controller: controller,
-            focusNode: focusNode,
+            controller: widget.controller,
+            focusNode: widget.focusNode,
+            keyboardType: widget.keyboardType,
             decoration: InputDecoration(
               filled: true,
-              hintText: hintText,
+              hintText: widget.hintText,
               fillColor: Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              prefixIcon: faIcon != null
+              prefixIcon: widget.faIcon != null
                   ? Padding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 15, 0),
                       child: Icon(
-                        faIcon,
+                        widget.faIcon,
                         size: 20,
                       ),
                     )

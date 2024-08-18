@@ -1,5 +1,5 @@
 import 'package:dart_amqp/dart_amqp.dart';
-import 'package:e_rents_mobile/widgets/custom_snackbar.dart';
+import 'package:e_rents_mobile/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';

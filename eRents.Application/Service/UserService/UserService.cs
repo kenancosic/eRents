@@ -34,8 +34,23 @@ namespace eRents.Application.Service.UserService
 			entity.PasswordSalt = GenerateSalt();
 			entity.PasswordHash = GenerateHash(entity.PasswordSalt, insert.Password);
 
+			entity.Name = insert.Name;  // Set name
+			entity.LastName = insert.LastName;  // Set last name
+
 			await base.BeforeInsertAsync(insert, entity);
 		}
+
+		protected override async Task BeforeUpdateAsync(UserUpdateRequest update, User entity)
+		{
+			if (!string.IsNullOrWhiteSpace(update.Name))
+				entity.Name = update.Name;
+
+			if (!string.IsNullOrWhiteSpace(update.LastName))
+				entity.LastName = update.LastName;
+
+			await base.BeforeUpdateAsync(update, entity);
+		}
+
 
 		protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
 		{

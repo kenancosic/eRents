@@ -5,6 +5,7 @@
 		public int BookingId { get; set; }
 		public int PropertyId { get; set; }
 		public int UserId { get; set; }
+		public string PropertyName { get; set; }
 		public DateTime StartDate { get; set; }
 		public DateTime EndDate { get; set; }
 		public decimal TotalPrice { get; set; }

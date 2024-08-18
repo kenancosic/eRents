@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/providers/user_provider.dart';
+import 'package:e_rents_mobile/services/auth_service.dart';
 import 'package:e_rents_mobile/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/widgets/input_field.dart';
 import 'package:e_rents_mobile/widgets/simple_button.dart';
@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,26 +15,21 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  late UserProvider _userProvider;
   bool _isLoading = false;
-
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _userProvider = Provider.of<UserProvider>(context, listen: false);
     _attemptAutoLogin();
   }
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -44,10 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = await SecureStorageService.getItem("password");
 
     if (email != null && password != null) {
-      final loginSuccess = await _userProvider.login(email, password);
-      if (loginSuccess) {
-        _navigateToHome();
-      }
+      final user = await AuthService.login(email, password);
+      _navigateToHome(user);
     }
   }
 
@@ -56,14 +48,18 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
     if (_formKey.currentState!.validate()) {
-      final loginSuccess = await _userProvider.login(
-        _usernameController.text,
-        _passwordController.text,
-      );
-      if (loginSuccess) {
-        _navigateToHome();
-      } else {
-        _showErrorDialog("Invalid email or password.");
+      try {
+        final user = await AuthService.login(
+          _emailController.text,
+          _passwordController.text,
+        );
+        if (user != null) {
+          _navigateToHome(user);
+        } else {
+          _showErrorDialog("Invalid email or password.");
+        }
+      } catch (e) {
+        _showErrorDialog("An error occurred during login.");
       }
     }
     setState(() {
@@ -71,9 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _navigateToHome() {
+  void _navigateToHome(user) {
     if (context.mounted) {
-      context.go("/dashboard");
+      context.go('/home', extra: user);
     }
   }
 
@@ -98,7 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: SingleChildScrollView(
         reverse: true,
-        controller: _scrollController,
         child: Column(
           children: [
             Container(
@@ -150,9 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         InputField(
-                          controller: _usernameController,
+                          controller: _emailController,
                           hintText: 'Email',
-                          faIcon: FontAwesomeIcons.user,
+                          faIcon: FontAwesomeIcons.envelope,
                           validator: (value) {
                             if (value!.isEmpty ||
                                 !RegExp(
@@ -189,14 +184,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 300,
                                 height: 60,
                               ),
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () {
-                            context.go("/register");
-                          },
-                          child: const Text(
-                              "Don't have an account? Create an Account"),
-                        ),
+                        const SizedBox(height: 10),
+                        const Text("OR"),
+                        const SizedBox(height: 10),
+                         _isLoading
+                            ? const CircularProgressIndicator()
+                            : SimpleButton(
+                                onTap: () => context.go("/signup"),
+                                bgColor: Colors.black,
+                                textColor: Colors.white,
+                                text: "Don't have an account? Create an Account",
+                                width: 300,
+                                height: 60,
+                              ),
                       ],
                     ),
                   ),

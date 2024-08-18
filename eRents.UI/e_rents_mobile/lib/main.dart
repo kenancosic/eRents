@@ -1,3 +1,6 @@
+import 'package:e_rents_mobile/providers/auth_provider.dart';
+import 'package:e_rents_mobile/providers/booking_provider.dart';
+import 'package:e_rents_mobile/providers/property_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,11 +17,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => BookingProvider()),
+        ChangeNotifierProvider(create: (_) => PropertyProvider()),
+
         // Add more providers as needed
       ],
       child: MaterialApp.router(
-        routerConfig: MyRouter.router,
+        routerConfig: MyRouter.router(context),
+        routerDelegate: MyRouter.router(context).routerDelegate,
+        routeInformationParser: MyRouter.router(context).routeInformationParser,
         theme: ThemeData(
             primarySwatch: Colors.blue,
             pageTransitionsTheme: const PageTransitionsTheme(builders: {

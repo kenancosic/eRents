@@ -1,18 +1,25 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:e_rents_mobile/services/secure_storage_service.dart';
+import 'package:e_rents_mobile/widgets/custom_snack_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:http/io_client.dart';
+import 'package:e_rents_mobile/services/secure_storage_service.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
   static String? _baseUrl;
   get baseUrl => _baseUrl;
   String? _endpoint;
-
+  get endpoint => _endpoint;
+  
   HttpClient client = HttpClient();
   IOClient? http;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   BaseProvider(String endpoint) {
     _baseUrl = const String.fromEnvironment("baseUrl",
@@ -29,20 +36,24 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Future<T> getById(int id, [dynamic additionalData]) async {
+    setLoadingState(true);
     var url = Uri.parse("$_baseUrl$_endpoint/$id");
 
     Map<String, String> headers = await createHeaders();
 
-    var response = await http!.get(url, headers: headers);
-
-    if (isValidResponseCode(response)) {
-      return fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception("Exception... handle this gracefully");
+    try {
+      var response = await http!.get(url, headers: headers);
+      return handleResponse(response);
+    } catch (e) {
+      handleException(e, 'getById');
+      rethrow;
+    } finally {
+      setLoadingState(false);
     }
   }
 
-  Future<List<T>> get([dynamic search]) async {
+  Future<List<T>> get({dynamic search, int? page, int? pageSize}) async {
+    setLoadingState(true);
     var url = "$_baseUrl$_endpoint";
 
     if (search != null) {
@@ -50,79 +61,78 @@ abstract class BaseProvider<T> with ChangeNotifier {
       url = "$url?$queryString";
     }
 
+    if (page != null && pageSize != null) {
+      url = "$url&page=$page&pageSize=$pageSize";
+    }
+
     var uri = Uri.parse(url);
 
     Map<String, String> headers = await createHeaders();
-    print("get me");
-    var response = await http!.get(uri, headers: headers);
-    print("done $response");
-    if (isValidResponseCode(response)) {
-      print("good");
-      var data = jsonDecode(response.body);
-      return data.map((x) => fromJson(x)).cast<T>().toList();
-    } else {
-      print("not good");
-      throw Exception("Exception... handle this gracefully");
+
+    try {
+      var response = await http!.get(uri, headers: headers);
+      return (jsonDecode(response.body) as List).map((x) => fromJson(x)).cast<T>().toList();
+    } catch (e) {
+      handleException(e, 'get');
+      rethrow;
+    } finally {
+      setLoadingState(false);
     }
   }
 
   Future<T?> insert(dynamic request) async {
+    setLoadingState(true);
     var url = "$_baseUrl$_endpoint";
     var uri = Uri.parse(url);
 
     Map<String, String> headers = await createHeaders();
     var jsonRequest = jsonEncode(request);
-    var response = await http!.post(uri, headers: headers, body: jsonRequest);
 
-    if (isValidResponseCode(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      return null;
+    try {
+      var response = await http!.post(uri, headers: headers, body: jsonRequest);
+      return handleResponse(response);
+    } catch (e) {
+      handleException(e, 'insert');
+      rethrow;
+    } finally {
+      setLoadingState(false);
     }
   }
 
   Future<T?> update(int id, [dynamic request]) async {
+    setLoadingState(true);
     var url = "$_baseUrl$_endpoint/$id";
     var uri = Uri.parse(url);
 
     Map<String, String> headers = await createHeaders();
 
-    var response =
-        await http!.put(uri, headers: headers, body: jsonEncode(request));
-
-    if (isValidResponseCode(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      return null;
+    try {
+      var response = await http!.put(uri, headers: headers, body: jsonEncode(request));
+      return handleResponse(response);
+    } catch (e) {
+      handleException(e, 'update');
+      rethrow;
+    } finally {
+      setLoadingState(false);
     }
   }
 
   Future<bool> delete(int id) async {
+    setLoadingState(true);
     var url = "$_baseUrl$_endpoint/$id";
     var uri = Uri.parse(url);
 
     Map<String, String> headers = await createHeaders();
 
-    var response = await http!.delete(uri, headers: headers);
-
-    if (isValidResponseCode(response)) {
-      return true;
-    } else {
-      return false;
+    try {
+      var response = await http!.delete(uri, headers: headers);
+      return isValidResponseCode(response);
+    } catch (e) {
+      handleException(e, 'delete');
+      rethrow;
+    } finally {
+      setLoadingState(false);
     }
-  }
-
-  Future<Map<String, String>> createHeaders() async {
-    String? jwt = await SecureStorageService.getItem('jwt_token');
-    if (jwt == null) {
-      throw Exception('JWT token not found');
-    }
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $jwt',
-    };
   }
 
   T fromJson(data) {
@@ -162,26 +172,58 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   bool isValidResponseCode(Response response) {
-    if (response.statusCode == 200) {
-      if (response.body != "") {
-        return true;
-      } else {
-        return false;
-      }
-    } else if (response.statusCode == 204) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return true;
-    } else if (response.statusCode == 400) {
-      throw Exception("Bad request");
-    } else if (response.statusCode == 401) {
-      throw Exception("Unauthorized");
-    } else if (response.statusCode == 403) {
-      throw Exception("Forbidden");
-    } else if (response.statusCode == 404) {
-      throw Exception("Not found");
-    } else if (response.statusCode == 500) {
-      throw Exception("Internal server error");
+    } else {
+      handleErrorResponse(response);
+      return false;
+    }
+  }
+
+  void logError(Object e, String method) {
+    print("Error in $method: $e");
+  }
+
+  void handleErrorResponse(Response response) {
+    print("Error response: ${response.statusCode} - ${response.body}");
+    _errorMessage = "Error: ${response.statusCode}";
+    notifyListeners();
+    // You can throw specific exceptions here if needed
+  }
+
+  T handleResponse(Response response) {
+    if (isValidResponseCode(response)) {
+      var data = jsonDecode(response.body);
+      return fromJson(data);
     } else {
       throw Exception("Exception... handle this gracefully");
     }
+  }
+
+void handleException(Object e, String method) {
+  logError(e, method);
+  _errorMessage = e.toString();
+  
+  WidgetsBinding.instance?.addPostFrameCallback((_) {
+    CustomSnackBar.showErrorSnackBar(_errorMessage ?? 'An error occurred');
+  });
+
+  notifyListeners();
+}
+
+  void setLoadingState(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+
+  Future<Map<String, String>> createHeaders() async {
+    String? jwt = await SecureStorageService.getItem('jwt_token');
+    if (jwt == null) {
+      throw Exception('JWT token not found');
+    }
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $jwt',
+    };
   }
 }

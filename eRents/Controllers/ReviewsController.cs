@@ -37,16 +37,7 @@ namespace eRents.WebApi.Controllers
 			return Ok();
 		}
 
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeleteReview(int id)
-		{
-			var success = await _reviewService.DeleteAsync(id);
-			if (success)
-				return Ok();
-			return NotFound();
-		}
-
-		[HttpPost]
+		[HttpPost("complaint")]
 		public async Task<IActionResult> CreateComplaintAsync([FromBody] ComplaintRequest request, List<IFormFile> images)
 		{
 			var response = await _reviewService.CreateComplaintAsync(request, images);

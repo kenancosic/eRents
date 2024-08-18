@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 class SimpleButton extends StatelessWidget {
-  const SimpleButton(
-      {super.key,
-      required this.bgColor,
-      required this.textColor,
-      required this.text,
-      this.hasShadow = true,
-      required this.onTap,
-      this.height,
-      this.width});
+  const SimpleButton({
+    super.key,
+    required this.bgColor,
+    required this.textColor,
+    required this.text,
+    this.hasShadow = true,
+    required this.onTap,
+    this.height,
+    this.width,
+    this.borderRadius = 20.0,
+  });
 
   final Color textColor;
   final Color bgColor;
@@ -18,6 +20,7 @@ class SimpleButton extends StatelessWidget {
   final double? height;
   final VoidCallback onTap;
   final bool hasShadow;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
@@ -27,22 +30,29 @@ class SimpleButton extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 0,
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
-            ]),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+          boxShadow: hasShadow
+              ? [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    spreadRadius: 0,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
         child: Center(
-            child: Text(
-          text,
-          style: TextStyle(
-              color: textColor, fontWeight: FontWeight.w600, fontSize: 18),
-        )),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+        ),
       ),
     );
   }
