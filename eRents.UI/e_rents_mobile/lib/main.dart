@@ -6,10 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/providers/user_provider.dart';
 
-void main() async {
-  runApp(const MyApp());
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -21,19 +17,22 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => PropertyProvider()),
-
-        // Add more providers as needed
       ],
-      child: MaterialApp.router(
-        routerConfig: MyRouter.router(context),
-        routerDelegate: MyRouter.router(context).routerDelegate,
-        routeInformationParser: MyRouter.router(context).routeInformationParser,
-        theme: ThemeData(
-            primarySwatch: Colors.blue,
-            pageTransitionsTheme: const PageTransitionsTheme(builders: {
-              TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-              TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-            })),
+      child: Builder(
+        builder: (context) {
+          return MaterialApp.router(
+            routerConfig: MyRouter.router(context), // Pass the GoRouter instance
+            theme: ThemeData(
+              primarySwatch: Colors.blue,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/models/user.dart';
 import 'package:e_rents_mobile/pages/scaffold_with_navbar.dart';
 import 'package:e_rents_mobile/providers/auth_provider.dart';
 import 'package:e_rents_mobile/screens/home_screen.dart';
@@ -17,20 +18,21 @@ class MyRouter {
 
     return GoRouter(
       initialLocation: '/login',
-      navigatorKey: _rootNavigatorKey,
       redirect: (context, state) {
-        final isLoggedIn = authProvider.user != null;
-        final isLoggingIn = state.matchedLocation == '/login';
+        final isAuthenticated = authProvider.isAuthenticated;
+        final goingToLogin = state.matchedLocation == '/login';
 
-        if (!isLoggedIn && !isLoggingIn) {
+        // If the user is not authenticated, redirect them to the login page
+        if (!isAuthenticated && !goingToLogin) {
           return '/login';
         }
 
-        if (isLoggedIn && (isLoggingIn || state.matchedLocation == '/register')) {
+        // If the user is authenticated and tries to go to the login page, redirect them to home
+        if (isAuthenticated && goingToLogin) {
           return '/home';
         }
 
-        return null;
+        return null; // No redirection
       },
       errorBuilder: errorPageBuilder,
       routes: [
@@ -57,7 +59,10 @@ class MyRouter {
             GoRoute(
               path: '/home',
               builder: (context, state) {
-                final user = authProvider.user!;
+                final user = state.extra as User?;
+                if (user == null) {
+                  throw Exception('User data is missing');
+                }
                 return HomeScreen(user: user);
               },
             ),
@@ -68,79 +73,3 @@ class MyRouter {
     );
   }
 }
-
-// import 'package:e_rents_mobile/models/user.dart';
-// import 'package:e_rents_mobile/pages/scaffold_with_navbar.dart';
-// import 'package:e_rents_mobile/routes/error_page_builder.dart';
-// import 'package:e_rents_mobile/screens/forgot_password_screen.dart';
-// import 'package:e_rents_mobile/screens/home_screen.dart';
-// import 'package:e_rents_mobile/screens/property_list_screen.dart';
-// import 'package:e_rents_mobile/screens/signup_screen.dart';
-// import 'package:e_rents_mobile/screens/user_profile_screen.dart';
-// import 'package:flutter/cupertino.dart';
-// import 'package:go_router/go_router.dart';
-// import 'package:e_rents_mobile/screens/login_screen.dart';
-// import 'package:e_rents_mobile/screens/booking_list_screen.dart';
-// import 'package:e_rents_mobile/screens/notification_screen.dart'; // Import your screens
-
-// final _rootNavigatiorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-// final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
-
-// class MyRouter {
-//   static final GoRouter router = GoRouter(
-//     initialLocation: '/login',
-//     navigatorKey: _rootNavigatiorKey,
-//     errorBuilder: errorPageBuilder,
-//     routes: [
-//       GoRoute(
-//         path: '/login',
-//         builder: (context, state) => const LoginScreen(),
-//       ),
-//       GoRoute(
-//         path: '/signup',
-//         builder: (context, state) => const SignUpScreen(),
-//       ),
-//       GoRoute(
-//         path: '/forgotpassword',
-//         builder: (context, state) => const ForgotPasswordScreen(),
-//       ),
-//       ShellRoute(
-//         navigatorKey: _shellNavigatorKey,
-//         pageBuilder: (context, state, child) {
-//           return CupertinoPage(
-//             key: state.pageKey,
-//             child: ScaffoldWithNavBar(
-//               location: state.matchedLocation,
-//               child: child,
-//             ),
-//           );
-//         },
-//         routes: [
-//           GoRoute(
-//             path: '/home',
-//             builder: (context, state) {
-//               final user = state.extra as User;
-//               return HomeScreen(user: user);
-//             },
-//           ),
-//           GoRoute(
-//             path: '/profile',
-//             builder: (context, state) => const UserProfileScreen(),
-//           ),
-//           GoRoute(
-//             path: '/properties',
-//             builder: (context, state) => const PropertyListScreen(),
-//           ),
-//           GoRoute(
-//             path: '/bookings',
-//             builder: (context, state) => const BookingListScreen(),
-//           ),
-//           GoRoute(
-//             path: '/notifications',
-//             builder: (context, state) => const NotificationsScreen(),
-//           ),
-//         ],
-//       ),
-//     ],
-//   );
-// }

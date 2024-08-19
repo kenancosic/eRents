@@ -1,11 +1,15 @@
 using eRents.Application.Service;
 using eRents.Application.Service.BookingService;
+using eRents.Application.Service.ImageService;
+using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
+using eRents.Application.Shared;
 using eRents.Infrastructure.Data.Context;
 using eRents.Infrastructure.Data.Repositories;
 using eRents.Infrastructure.Services;
+using eRents.WebApi;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -38,21 +42,24 @@ builder.Services.AddSwaggerGen(c =>
 		});
 });
 
-builder.Services.AddAutoMapper(typeof(UserService));
-builder.Services.AddAutoMapper(typeof(PropertyService));
+builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // Register the repositories
 builder.Services.AddTransient<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IPropertyRepository, PropertyRepository>();
+builder.Services.AddTransient<IBookingRepository, BookingRepository>();
+builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
+builder.Services.AddTransient<IImageRepository, ImageRepository>();
+builder.Services.AddTransient<IMessageRepository, MessageRepository>();
 
 // Register the services
 builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddTransient<IPropertyService, PropertyService>();
-builder.Services.AddTransient<IBookingRepository, BookingRepository>();
 builder.Services.AddTransient<IBookingService, BookingService>();
-
-builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
+builder.Services.AddTransient<IImageService, ImageService>();
+builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
+
 
 // Configure and register PayPalService
 var clientId = builder.Configuration["PayPal:ClientId"];
@@ -69,9 +76,13 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-	var dbContext = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-	dbContext.Database.EnsureCreated();
+	var dataContext = scope.ServiceProvider.GetRequiredService<ERentsContext>();
+	dataContext.Database.EnsureCreated();
+
+	new SetupService().Init(dataContext);
+	new SetupService().InsertData(dataContext);
 }
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
