@@ -1,5 +1,5 @@
 class User {
-  final int userId;
+  final int? userId;
   final String username;
   final String email;
   final String? phoneNumber;
@@ -13,9 +13,9 @@ class User {
   final String? name;
   final String? lastName;
   final String? password;
-
+  final String? token;
   User({
-    required this.userId,
+    this.userId,
     required this.username,
     required this.email,
     this.phoneNumber,
@@ -28,7 +28,8 @@ class User {
     this.userType,
     this.name,
     this.lastName,
-    this.password
+    this.password,
+    this.token
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -46,7 +47,8 @@ class User {
       userType: json['userType'],
       name: json['name'],
       lastName: json['lastName'],
-      password: json['password']
+      password: json['password'],
+      token: json['resetToken']
     );
   }
 
@@ -65,7 +67,8 @@ class User {
       'userType': userType,
       'name': name,
       'lastName': lastName,
-      'password': password
+      'password': password,
+      'resetToken': token
     };
   }
 }

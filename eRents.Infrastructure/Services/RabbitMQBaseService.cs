@@ -1,4 +1,5 @@
 ﻿using RabbitMQ.Client;
+using System;
 
 namespace eRents.Infrastructure.Services
 {
@@ -14,7 +15,8 @@ namespace eRents.Infrastructure.Services
 				HostName = hostname,
 				Port = port,
 				UserName = username,
-				Password = password
+				Password = password,
+				DispatchConsumersAsync = true
 			};
 
 			_connection = factory.CreateConnection();
@@ -23,7 +25,9 @@ namespace eRents.Infrastructure.Services
 
 		public void Dispose()
 		{
+			_channel?.Close();
 			_channel?.Dispose();
+			_connection?.Close();
 			_connection?.Dispose();
 		}
 	}

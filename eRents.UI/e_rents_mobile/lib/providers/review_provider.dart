@@ -1,57 +1,76 @@
-import 'dart:convert';
-import 'package:e_rents_mobile/models/review.dart';
-import 'package:e_rents_mobile/providers/base_provider.dart';
+import 'package:flutter/material.dart';
+import '../models/review.dart';
+import '../services/review_service.dart';
+import 'base_provider.dart';
 
-class ReviewProvider extends BaseProvider<Review> {
-  ReviewProvider() : super("Reviews");
+class ReviewProvider extends BaseProvider {
+  final ReviewService _reviewService;
 
-  @override
-  Review fromJson(data) {
-    return Review.fromJson(data);
-  }
+  ReviewProvider({required ReviewService reviewService})
+      : _reviewService = reviewService;
 
   Future<Review?> getReviewById(int id) async {
+    setState(ViewState.Busy);
     try {
-      return await getById(id);
+      final review = await _reviewService.getReviewById(id);
+      setState(ViewState.Idle);
+      return review;
     } catch (e) {
-      logError(e, 'getReviewById');
-      rethrow;
+      setError(e.toString());
+      setState(ViewState.Idle);
+      return null;
     }
   }
 
   Future<List<Review>> getReviews({dynamic search}) async {
+    setState(ViewState.Busy);
     try {
-      return await get(search: search);
+      final reviews = await _reviewService.getReviews(search: search);
+      setState(ViewState.Idle);
+      return reviews;
     } catch (e) {
-      logError(e, 'getReviews');
-      rethrow;
+      setError(e.toString());
+      setState(ViewState.Idle);
+      return [];
     }
   }
 
   Future<Review?> createReview(Review review) async {
+    setState(ViewState.Busy);
     try {
-      return await insert(review);
+      final createdReview = await _reviewService.createReview(review);
+      setState(ViewState.Idle);
+      return createdReview;
     } catch (e) {
-      logError(e, 'createReview');
-      rethrow;
+      setError(e.toString());
+      setState(ViewState.Idle);
+      return null;
     }
   }
 
   Future<Review?> updateReview(int id, Review review) async {
+    setState(ViewState.Busy);
     try {
-      return await update(id, review);
+      final updatedReview = await _reviewService.updateReview(id, review);
+      setState(ViewState.Idle);
+      return updatedReview;
     } catch (e) {
-      logError(e, 'updateReview');
-      rethrow;
+      setError(e.toString());
+      setState(ViewState.Idle);
+      return null;
     }
   }
 
   Future<bool> deleteReview(int id) async {
+    setState(ViewState.Busy);
     try {
-      return await delete(id);
+      final success = await _reviewService.deleteReview(id);
+      setState(ViewState.Idle);
+      return success;
     } catch (e) {
-      logError(e, 'deleteReview');
-      rethrow;
+      setError(e.toString());
+      setState(ViewState.Idle);
+      return false;
     }
   }
 }

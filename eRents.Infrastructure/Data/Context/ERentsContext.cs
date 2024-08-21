@@ -458,10 +458,7 @@ public partial class ERentsContext : DbContext
 			entity.Property(e => e.Name)
 							.HasMaxLength(100)
 							.HasColumnName("name");
-			entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
-			entity.Property(e => e.PasswordHash1)
-							.HasMaxLength(64)
-							.HasColumnName("PasswordHash");
+			entity.Property(e => e.PasswordHash).HasMaxLength(64);
 			entity.Property(e => e.PasswordSalt).HasMaxLength(64);
 			entity.Property(e => e.PhoneNumber)
 							.HasMaxLength(20)

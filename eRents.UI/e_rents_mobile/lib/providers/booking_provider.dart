@@ -1,46 +1,32 @@
-import 'dart:convert';
-import 'package:e_rents_mobile/providers/base_provider.dart';
-import 'package:e_rents_mobile/models/booking.dart';
+import 'package:flutter/foundation.dart';
+import '../services/booking_service.dart';
+import '../models/booking.dart';
+import 'base_provider.dart';
 
-class BookingProvider extends BaseProvider<Booking> {
-  BookingProvider() : super("Bookings");
+class BookingProvider extends BaseProvider {
+  final BookingService _bookingService;
+  List<Booking> _bookings = [];
 
-  @override
-  Booking fromJson(data) {
-    return Booking.fromJson(data);
+  List<Booking> get bookings => _bookings;
+
+  BookingProvider({required BookingService bookingService})
+      : _bookingService = bookingService {
+    _bookingService.subscribeToBookingUpdates(_handleBookingUpdate);
   }
 
-  Future<List<Booking>> getBookingsByPropertyId(int propertyId) async {
-    var url = Uri.parse("$baseUrl$endpoint/byProperty/$propertyId");  // Use the getter
-
-    Map<String, String> headers = await createHeaders();
-
-    try {
-      var response = await http!.get(url, headers: headers);
-      return (jsonDecode(response.body) as List)
-          .map((x) => fromJson(x))
-          .cast<Booking>()
-          .toList();
-    } catch (e) {
-      logError(e, 'getBookingsByPropertyId');
-      rethrow;
-    }
+  void _handleBookingUpdate(Map<String, dynamic> bookingData) {
+    final updatedBooking = Booking.fromJson(bookingData);
+    _bookings = _bookings.map((b) => b.bookingId == updatedBooking.bookingId ? updatedBooking : b).toList();
+    notifyListeners();
   }
 
-  Future<List<Booking>> getBookingsByUserId(int userId) async {
-    var url = Uri.parse("$baseUrl$endpoint/user/$userId");  // Use the getter
-
-    Map<String, String> headers = await createHeaders();
-
+  Future<void> fetchBookings() async {
+    setState(ViewState.Busy);
     try {
-      var response = await http!.get(url, headers: headers);
-      return (jsonDecode(response.body) as List)
-          .map((x) => fromJson(x))
-          .cast<Booking>()
-          .toList();
+      _bookings = await _bookingService.getBookings();
+      setState(ViewState.Idle);
     } catch (e) {
-      logError(e, 'getBookingsByUserId');
-      rethrow;
+      setError(e.toString());
     }
   }
 }

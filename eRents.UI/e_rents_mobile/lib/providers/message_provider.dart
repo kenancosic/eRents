@@ -1,57 +1,28 @@
-import 'dart:convert';
-import 'package:e_rents_mobile/models/message.dart';
-import 'package:e_rents_mobile/providers/base_provider.dart';
+import 'package:flutter/foundation.dart';
+import '../services/message_service.dart';
+import '../models/message.dart';
+import 'base_provider.dart';
 
-class MessageProvider extends BaseProvider<Message> {
-  MessageProvider() : super("Messages");
+class MessageProvider extends BaseProvider {
+  final MessageService _messageService;
+  List<Message> _messages = [];
 
-  @override
-  Message fromJson(data) {
-    return Message.fromJson(data);
+  List<Message> get messages => _messages;
+
+  MessageProvider({required MessageService messageService})
+      : _messageService = messageService {
+    _messageService.subscribeToMessages('message_queue', _handleIncomingMessage);
   }
 
-  Future<Message?> getMessageById(int id) async {
-    try {
-      return await getById(id);
-    } catch (e) {
-      logError(e, 'getMessageById');
-      rethrow;
-    }
+  void _handleIncomingMessage(Map<String, dynamic> message) {
+    final newMessage = Message.fromJson(message);
+    _messages.add(newMessage);
+    notifyListeners();
   }
 
-  Future<List<Message>> getMessages({dynamic search}) async {
-    try {
-      return await get(search: search);
-    } catch (e) {
-      logError(e, 'getMessages');
-      rethrow;
-    }
-  }
-
-  Future<Message?> createMessage(Message message) async {
-    try {
-      return await insert(message);
-    } catch (e) {
-      logError(e, 'createMessage');
-      rethrow;
-    }
-  }
-
-  Future<Message?> updateMessage(int id, Message message) async {
-    try {
-      return await update(id, message);
-    } catch (e) {
-      logError(e, 'updateMessage');
-      rethrow;
-    }
-  }
-
-  Future<bool> deleteMessage(int id) async {
-    try {
-      return await delete(id);
-    } catch (e) {
-      logError(e, 'deleteMessage');
-      rethrow;
-    }
+  void sendMessage(Message message) {
+    _messageService.sendMessage('message_queue', message);
+    _messages.add(message);
+    notifyListeners();
   }
 }

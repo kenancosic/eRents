@@ -1,39 +1,34 @@
-import 'package:e_rents_mobile/providers/auth_provider.dart';
-import 'package:e_rents_mobile/providers/booking_provider.dart';
-import 'package:e_rents_mobile/providers/property_provider.dart';
+import 'dart:async';
+
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/providers/user_provider.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // Log errors or send to an analytics service
+  };
+  runZonedGuarded(() {
+    runApp(MyApp());
+  }, (error, stackTrace) {
+    // Log errors or send to an analytics service
+  });
+}
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  // Initialize the AppRouter
+  final AppRouter _appRouter = AppRouter();
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => BookingProvider()),
-        ChangeNotifierProvider(create: (_) => PropertyProvider()),
-      ],
-      child: Builder(
-        builder: (context) {
-          return MaterialApp.router(
-            routerConfig: MyRouter.router(context), // Pass the GoRouter instance
-            theme: ThemeData(
-              primarySwatch: Colors.blue,
-              pageTransitionsTheme: const PageTransitionsTheme(
-                builders: {
-                  TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                },
-              ),
-            ),
-          );
-        },
+    return MaterialApp.router(
+      title: 'eRents',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      routerConfig: _appRouter.router, // Use the GoRouter configuration
+      debugShowCheckedModeBanner: false,
     );
   }
 }

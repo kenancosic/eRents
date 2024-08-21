@@ -1,13 +1,16 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:e_rents_mobile/models/user.dart';
-import 'package:e_rents_mobile/services/secure_storage_service.dart';
+import 'package:http/http.dart' as http;  // Ensure http is imported
+import '../models/user.dart';
+import 'secure_storage_service.dart';
 
 class AuthService {
-  static const String _baseUrl = 'https://localhost:7193/';
+  final String _baseUrl = 'https://localhost:7193/';
 
-  /// Logs in the user and stores the JWT token securely.
-  static Future<User> login(String email, String password) async {
+  final SecureStorageService _secureStorageService;
+
+  AuthService({required SecureStorageService secureStorageService}) : _secureStorageService = secureStorageService;
+
+  Future<User> login(String email, String password) async {
     final url = Uri.parse('$_baseUrl/auth/login');
     final response = await http.post(
       url,
@@ -18,36 +21,33 @@ class AuthService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final user = User.fromJson(data['user']);
-      await SecureStorageService.storeJwtToken(data['token']);
+      await _secureStorageService.writeToken('auth_token', data['token']);
       return user;
     } else {
       throw Exception('Failed to log in');
     }
   }
 
-  /// Registers a new user and stores the JWT token securely.
-   static Future<User> register(User user) async {
+  Future<User> register(User user) async {
     final url = Uri.parse('$_baseUrl/auth/register');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        ...user.toJson()
-      }),
+      body: jsonEncode(user.toJson()),
     );
 
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body);
       final registeredUser = User.fromJson(data['user']);
-      await SecureStorageService.setItem('jwt_token', data['token']);
+      await _secureStorageService.writeToken('auth_token', data['token']);
       return registeredUser;
     } else {
       throw Exception('Failed to register');
     }
   }
 
-  static Future<User> updateUser(User user) async {
-    final token = await SecureStorageService.getItem('jwt_token');
+  Future<User> updateUser(User user) async {
+    final token = await _secureStorageService.readToken('auth_token');
     final url = Uri.parse('$_baseUrl/users/${user.userId}');
     final response = await http.put(
       url,
@@ -66,16 +66,12 @@ class AuthService {
     }
   }
 
-
-  /// Logs out the user by removing the JWT token.
-  static Future<void> logout() async {
-    await SecureStorageService.removeJwtToken();
-    // Optionally perform other cleanup actions here
+  Future<void> logout() async {
+    await _secureStorageService.deleteToken('auth_token');
   }
 
-  /// Retrieves the current user's information using the stored JWT token.
-  static Future<User?> getCurrentUser() async {
-    final token = await SecureStorageService.getJwtToken();
+  Future<User?> getCurrentUser() async {
+    final token = await _secureStorageService.readToken('auth_token');
     if (token == null) {
       return null; // No user is logged in
     }
@@ -97,7 +93,7 @@ class AuthService {
     }
   }
 
-  static Future<void> forgotPassword(String email) async {
+  Future<void> forgotPassword(String email) async {
     final url = Uri.parse('$_baseUrl/auth/forgotpassword');
     final response = await http.post(
       url,
@@ -110,4 +106,20 @@ class AuthService {
     }
   }
   
+   Future<User> getUserFromToken(String token) async {
+    final url = Uri.parse('$_baseUrl/auth/me');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return User.fromJson(data['user']);
+    } else {
+      throw Exception('Failed to retrieve user from token');
+    }
+  }
 }

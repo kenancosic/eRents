@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'profile_picture.dart'; // Import the ProfilePicture widget
 
 class UserProfile extends StatelessWidget {
   final String username;
@@ -27,10 +28,7 @@ class UserProfile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: NetworkImage(profilePictureUrl),
-            ),
+            ProfilePicture(imageUrl: profilePictureUrl),
             SizedBox(height: 20),
             Text(
               username,

@@ -1,47 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PropertyCard extends StatelessWidget {
-  final String name;
-  final String location;
-  final double price;
   final String imageUrl;
-  final Function onTap;
+  final String name;
+  final double price;
 
-  const PropertyCard({
-    Key? key,
-    required this.name,
-    required this.location,
-    required this.price,
-    required this.imageUrl,
-    required this.onTap,
-  }) : super(key: key);
+  PropertyCard({required this.imageUrl, required this.name, required this.price});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onTap(),
-      child: Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.network(imageUrl, fit: BoxFit.cover),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                name,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(location),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text('\$$price per night', style: TextStyle(color: Colors.green)),
-            ),
-          ],
-        ),
+    return Card(
+      child: Column(
+        children: <Widget>[
+          CachedNetworkImage(
+            imageUrl: imageUrl,
+            placeholder: (context, url) => CircularProgressIndicator(),
+            errorWidget: (context, url, error) => Icon(Icons.error),
+            height: 200,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+          ListTile(
+            title: Text(name),
+            subtitle: Text('\$$price per night'),
+          ),
+        ],
       ),
     );
   }

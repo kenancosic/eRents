@@ -1,57 +1,34 @@
-import 'dart:convert';
-import 'package:e_rents_mobile/models/payment.dart';
-import 'package:e_rents_mobile/providers/base_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'base_provider.dart';
+import '../services/payment_service.dart';
 
-class PaymentProvider extends BaseProvider<Payment> {
-  PaymentProvider() : super("Payments");
+class PaymentProvider extends BaseProvider {
+  final PaymentService _paymentService;
 
-  @override
-  Payment fromJson(data) {
-    return Payment.fromJson(data);
-  }
+  PaymentProvider({required PaymentService paymentService})
+      : _paymentService = paymentService;
 
-  Future<Payment?> getPaymentById(int id) async {
-    try {
-      return await getById(id);
-    } catch (e) {
-      logError(e, 'getPaymentById');
-      rethrow;
+  Future<bool> makePayment(double amount, String currency) async {
+    setState(ViewState.Busy);
+    final result = await _paymentService.processPayment(amount, currency);
+    if (result.isSuccess) {
+      setState(ViewState.Idle);
+      return true;
+    } else {
+      setError(result.message!);
+      return false;
     }
   }
 
-  Future<List<Payment>> getPayments({dynamic search}) async {
-    try {
-      return await get(search: search);
-    } catch (e) {
-      logError(e, 'getPayments');
-      rethrow;
-    }
-  }
-
-  Future<Payment?> createPayment(Payment payment) async {
-    try {
-      return await insert(payment);
-    } catch (e) {
-      logError(e, 'createPayment');
-      rethrow;
-    }
-  }
-
-  Future<Payment?> updatePayment(int id, Payment payment) async {
-    try {
-      return await update(id, payment);
-    } catch (e) {
-      logError(e, 'updatePayment');
-      rethrow;
-    }
-  }
-
-  Future<bool> deletePayment(int id) async {
-    try {
-      return await delete(id);
-    } catch (e) {
-      logError(e, 'deletePayment');
-      rethrow;
+  Future<bool> executePayment(String paymentId, String payerId) async {
+    setState(ViewState.Busy);
+    final result = await _paymentService.executePayment(paymentId, payerId);
+    if (result.isSuccess) {
+      setState(ViewState.Idle);
+      return true;
+    } else {
+      setError(result.message!);
+      return false;
     }
   }
 }

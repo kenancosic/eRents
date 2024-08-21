@@ -1,106 +1,22 @@
-import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/models/property.dart';
-import 'package:e_rents_mobile/providers/base_provider.dart';
+import 'base_provider.dart';
+import '../services/api_service.dart';
+import '../models/property.dart';
 
-class PropertyProvider extends BaseProvider<Property> {
-  PropertyProvider() : super("api/properties");
+class PropertyProvider extends BaseProvider {
+  final ApiService _apiService;
+  final List<Property> _properties = [];
 
-  // Properties for state management
-  bool _isLoading = false;
-  String? _error;
-  List<Property> _items = [];
+  List<Property> get properties => _properties;
 
-  // Getters for state
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-  List<Property> get items => _items;
+  PropertyProvider({required ApiService apiService}) : _apiService = apiService;
 
-  @override
-  Property fromJson(data) {
-    return Property.fromJson(data);
-  }
-
-  void setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
-  }
-
-  void setError(String? value) {
-    _error = value;
-    notifyListeners();
-  }
-
-  void setItems(List<Property> value) {
-    _items = value;
-    notifyListeners();
-  }
-
-  Future<void> fetchProperties({int? page, int? pageSize}) async {
-    setLoading(true);
-    setError(null);
+  Future<void> fetchProperties({int page = 1}) async {
+    setState(ViewState.Busy);
     try {
-      var properties = await get(page: page, pageSize: pageSize);
-      setItems(properties);
+      _properties.addAll(await _apiService.getProperties(page: page));
+      setState(ViewState.Idle);
     } catch (e) {
-      setError(e.toString());
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  Future<Property?> fetchPropertyById(int id) async {
-    setLoading(true);
-    setError(null);
-    try {
-      var property = await getById(id);
-      return property;
-    } catch (e) {
-      setError(e.toString());
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  Future<Property?> createProperty(Property property) async {
-    setLoading(true);
-    setError(null);
-    try {
-      var createdProperty = await insert(property);
-      return createdProperty;
-    } catch (e) {
-      setError(e.toString());
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  Future<Property?> updateProperty(int id, Property property) async {
-    setLoading(true);
-    setError(null);
-    try {
-      var updatedProperty = await update(id, property);
-      return updatedProperty;
-    } catch (e) {
-      setError(e.toString());
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  Future<bool> deleteProperty(int id) async {
-    setLoading(true);
-    setError(null);
-    try {
-      var success = await delete(id);
-      return success;
-    } catch (e) {
-      setError(e.toString());
-      return false;
-    } finally {
-      setLoading(false);
+      setError('Failed to load properties. Please try again.');
     }
   }
 }

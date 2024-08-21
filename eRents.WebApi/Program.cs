@@ -76,13 +76,23 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-	var dataContext = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-	dataContext.Database.EnsureCreated();
+	var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
+	context.Database.EnsureCreated();
 
-	new SetupService().Init(dataContext);
-	new SetupService().InsertData(dataContext);
+	// Check if the database is empty
+	bool isEmpty = !context.Countries.Any(); // Example for 'Countries', modify for other tables
+
+	if (isEmpty)
+	{
+		var setupService = new SetupService();
+		setupService.Init(context);
+		setupService.InsertData(context);
+	}
+	else
+	{
+		Console.WriteLine("Database is not empty. Seeding skipped.");
+	}
 }
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

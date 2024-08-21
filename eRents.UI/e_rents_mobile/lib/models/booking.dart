@@ -32,3 +32,4 @@ class Booking {
     );
   }
 }
+enum BookingStatus { pending, confirmed, cancelled }

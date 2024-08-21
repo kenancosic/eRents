@@ -4,7 +4,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 {
 	public interface IBookingNotificationProcessor
 	{
-		void Process(string message);
+		Task Process(string message);
 	}
 
 	public interface IReviewNotificationProcessor

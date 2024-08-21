@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-Widget errorPageBuilder(BuildContext context, GoRouterState state) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Error'),
-    ),
-    body: const Center(
-      child: Text('Error: Page not found.'),
-    ),
-  );
+class ErrorPageBuilder extends StatelessWidget {
+  final String errorMessage;
+
+  ErrorPageBuilder({required this.errorMessage});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Error'),
+      ),
+      body: Center(
+        child: Text(errorMessage, style: TextStyle(color: Colors.red, fontSize: 18)),
+      ),
+    );
+  }
 }
