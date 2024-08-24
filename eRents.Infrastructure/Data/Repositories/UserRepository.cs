@@ -1,6 +1,7 @@
 ﻿using eRents.Domain.Entities;
 using eRents.Infrastructure.Data.Context;
 using eRents.Infrastructure.Data.Shared;
+using eRents.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Infrastructure.Data.Repositories
@@ -21,7 +22,16 @@ namespace eRents.Infrastructure.Data.Repositories
 
 		public async Task<User> GetUserByUsernameOrEmailAsync(string usernameOrEmail)
 		{
-			return await _context.Users.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+			try
+			{
+				return await _context.Users.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail)
+							 ?? throw new KeyNotFoundException("User not found.");
+			}
+			catch (Exception ex)
+			{
+				// Log exception and rethrow or handle as needed
+				throw new RepositoryException("An error occurred while retrieving the user.", ex);
+			}
 		}
 
 		public async Task<User> GetUserByResetTokenAsync(string token)

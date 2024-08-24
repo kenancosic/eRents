@@ -15,7 +15,11 @@ namespace eRents.Infrastructure.Data.Repositories
 
 		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
 		{
-			var query = _context.Properties.AsNoTracking().AsQueryable();
+			var query = _context.Properties
+				.Include(p => p.Images)  // Include related images
+				.AsNoTracking()
+				.AsQueryable();
+
 
 			if (!string.IsNullOrWhiteSpace(searchObject.Name))
 			{
@@ -40,12 +44,15 @@ namespace eRents.Infrastructure.Data.Repositories
 					.ToListAsync();
 		}
 
-		public async Task<Property> GetPropertyByIdAsync(int propertyId)
+		public override async Task<Property> GetByIdAsync(int propertyId)
 		{
 			return await _context.Properties
+					.Include(p => p.Images)
+					.Include(p => p.Reviews)  // Include reviews for AverageRating calculation
 					.AsNoTracking()
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 		}
+
 
 		public async Task<decimal> GetTotalRevenueAsync(int propertyId)
 		{
@@ -75,7 +82,7 @@ namespace eRents.Infrastructure.Data.Repositories
 		{
 			return await _context.Reviews
 					.AsNoTracking()
-					.Where(r => r.PropertyId == propertyId)
+					.Where(r => r.PropertyId == propertyId && !r.IsComplaint)
 					.AverageAsync(r => r.StarRating.Value);
 		}
 

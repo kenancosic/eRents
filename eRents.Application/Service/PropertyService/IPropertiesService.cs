@@ -15,5 +15,6 @@ namespace eRents.Application.Service
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<int> GetNumberOfReviewsAsync(int propertyId);
 		Task<IEnumerable<AmenityResponse>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds);
+		Task<bool> SavePropertyAsync(int propertyId, int userId);
 	}
 }

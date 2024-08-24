@@ -31,6 +31,16 @@ namespace eRents.WebApi.Controllers
 			return Ok(result);
 		}
 
+		[HttpPost("{propertyId}/save")]
+		public async Task<IActionResult> SaveProperty(int propertyId, int userId)
+		{
+			var result = await _propertyService.SavePropertyAsync(propertyId, userId);
+			if (result)
+				return Ok();
+			else
+				return BadRequest("Could not save property.");
+		}
+
 		// Additional endpoints related to properties can be added here
 	}
 }

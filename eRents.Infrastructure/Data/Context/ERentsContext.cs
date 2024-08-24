@@ -40,6 +40,8 @@ public partial class ERentsContext : DbContext
 
 	public virtual DbSet<User> Users { get; set; }
 
+	public virtual DbSet<UserSavedProperty> UserSavedProperties { get; set; }
+
 	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
 			=> optionsBuilder.UseSqlServer("Server=localhost\\SQLEXPRESS;Database=eRents;Trusted_Connection=True; TrustServerCertificate=True;");
@@ -496,6 +498,19 @@ public partial class ERentsContext : DbContext
 							.IsUnicode(false)
 							.HasColumnName("zip_code");
 		});
+
+		modelBuilder.Entity<UserSavedProperty>()
+		.HasKey(us => new { us.UserId, us.PropertyId });
+
+		modelBuilder.Entity<UserSavedProperty>()
+				.HasOne(us => us.User)
+				.WithMany(u => u.SavedProperties)
+				.HasForeignKey(us => us.UserId);
+
+		modelBuilder.Entity<UserSavedProperty>()
+				.HasOne(us => us.Property)
+				.WithMany(p => p.SavedByUsers)
+				.HasForeignKey(us => us.PropertyId);
 
 		OnModelCreatingPartial(modelBuilder);
 	}

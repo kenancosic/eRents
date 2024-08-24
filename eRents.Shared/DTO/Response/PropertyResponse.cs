@@ -10,5 +10,12 @@
 		public string? CityName { get; set; }
 		public string? OwnerName { get; set; }
 		public List<string>? Amenities { get; set; }
+		public decimal? AverageRating { get; set; }
+		public List<ImageResponse> Images { get; set; }  // List of images related to the property
+
+		public PropertyResponse()
+		{
+			Images = new List<ImageResponse>();
+		}
 	}
 }

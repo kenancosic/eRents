@@ -1,4 +1,6 @@
 ﻿using eRents.Infrastructure.Data.Context;
+using eRents.Shared.Exceptions;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Infrastructure.Data.Shared
 {
@@ -29,8 +31,16 @@ namespace eRents.Infrastructure.Data.Shared
 
 		public virtual async Task UpdateAsync(TEntity entity)
 		{
-			_context.Set<TEntity>().Update(entity);
-			await _context.SaveChangesAsync();
+			try
+			{
+				await _context.Set<TEntity>().AddAsync(entity);
+				await _context.SaveChangesAsync();
+			}
+			catch (DbUpdateException ex)
+			{
+				// Log error and rethrow
+				throw new RepositoryException("An error occurred while adding the entity to the database.", ex);
+			}
 		}
 
 		public virtual async Task DeleteAsync(TEntity entity)

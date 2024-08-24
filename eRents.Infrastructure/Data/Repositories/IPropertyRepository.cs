@@ -8,7 +8,6 @@ namespace eRents.Infrastructure.Data.Repositories
 	{
 		Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject);
 		Task<IEnumerable<Amenity>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds);
-		Task<Property> GetPropertyByIdAsync(int propertyId);
 		Task<decimal> GetTotalRevenueAsync(int propertyId);
 		Task<int> GetNumberOfBookingsAsync(int propertyId);
 		Task<int> GetNumberOfTenantsAsync(int propertyId);

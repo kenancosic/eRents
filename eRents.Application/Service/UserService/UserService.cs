@@ -34,11 +34,13 @@ namespace eRents.Application.Service.UserService
 			entity.PasswordSalt = GenerateSalt();
 			entity.PasswordHash = GenerateHash(entity.PasswordSalt, insert.Password);
 
-			entity.Name = insert.Name;  // Set name
-			entity.LastName = insert.LastName;  // Set last name
+			// Additional validation
+			if (string.IsNullOrWhiteSpace(insert.Name) || string.IsNullOrWhiteSpace(insert.LastName))
+				throw new ValidationException("Name and Last Name are required");
 
 			await base.BeforeInsertAsync(insert, entity);
 		}
+
 
 		protected override async Task BeforeUpdateAsync(UserUpdateRequest update, User entity)
 		{
@@ -90,13 +92,28 @@ namespace eRents.Application.Service.UserService
 
 		public async Task<UserResponse> RegisterAsync(UserInsertRequest request)
 		{
-			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
-				throw new ValidationException("Invalid email address.");
+			if (string.IsNullOrWhiteSpace(request.Username))
+				throw new ValidationException("Username is required.");
 
-			if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
-				throw new ValidationException("Password must be at least 6 characters long.");
+			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
+				throw new ValidationException("A valid email address is required.");
+
+			if (string.IsNullOrWhiteSpace(request.Password))
+				throw new ValidationException("Password is required.");
+
+			if (request.Password != request.ConfirmPassword)
+				throw new ValidationException("Passwords do not match.");
+
+			if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
+				throw new ValidationException("A user with this username or email already exists.");
+
+			var salt = GenerateSalt();
+			var hash = GenerateHash(salt, request.Password);
 
 			var user = _mapper.Map<User>(request);
+			user.PasswordSalt = salt;
+			user.PasswordHash = hash;
+
 			await _userRepository.AddAsync(user);
 
 			return _mapper.Map<UserResponse>(user);
@@ -124,6 +141,12 @@ namespace eRents.Application.Service.UserService
 
 			if (!ValidatePassword(request.OldPassword, user.PasswordSalt, user.PasswordHash))
 				throw new UserException("Incorrect old password.");
+
+			if (string.IsNullOrWhiteSpace(request.OldPassword) || string.IsNullOrWhiteSpace(request.NewPassword))
+				throw new ValidationException("Both old and new passwords are required.");
+
+			if (request.NewPassword != request.ConfirmPassword)
+				throw new ValidationException("New password and confirmation must match.");
 
 			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
 			await _userRepository.UpdateAsync(user);
