@@ -13,5 +13,6 @@ namespace eRents.Infrastructure.Data.Repositories
 		Task<int> GetNumberOfTenantsAsync(int propertyId);
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<int> GetNumberOfReviewsAsync(int propertyId);
+		public Task<IEnumerable<Review>> GetAllRatings();
 	}
 }

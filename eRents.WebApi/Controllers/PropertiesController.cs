@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
@@ -39,6 +39,13 @@ namespace eRents.WebApi.Controllers
 				return Ok();
 			else
 				return BadRequest("Could not save property.");
+		}
+
+		[HttpGet("recommend/{userId}/{propertyId}")]
+		public async Task<IActionResult> GetRecommendations(int userId, int propertyId)
+		{
+			var recommendedProperties = await _propertyService.RecommendPropertiesAsync(userId);
+			return Ok(recommendedProperties);
 		}
 
 		// Additional endpoints related to properties can be added here

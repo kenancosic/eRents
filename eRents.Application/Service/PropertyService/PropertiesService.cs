@@ -6,6 +6,11 @@ using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.ML;
+using Microsoft.ML.Data;
+using Microsoft.ML.Trainers;
 
 namespace eRents.Application.Service
 {
@@ -13,6 +18,9 @@ namespace eRents.Application.Service
 	{
 		private readonly IPropertyRepository _propertyRepository;
 
+		private static MLContext _mlContext = null;
+		private static ITransformer _model = null;
+		private static object _lock = new object();
 		public PropertyService(IPropertyRepository propertyRepository, IMapper mapper) : base(propertyRepository, mapper)
 		{
 			_propertyRepository = propertyRepository;
@@ -98,34 +106,40 @@ namespace eRents.Application.Service
 
 		protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearchObject search = null)
 		{
-			if (!string.IsNullOrWhiteSpace(search?.Name))
+			query = base.AddFilter(query, search);
+
+			if (search?.Latitude.HasValue == true && search?.Longitude.HasValue == true && search?.Radius.HasValue == true)
 			{
-				query = query.Where(x => x.Name.Contains(search.Name));
+				decimal radiusInDegrees = search.Radius.HasValue ? search.Radius.Value / 111 : 10; // Convert km to degrees (approximate)
+				query = query.Where(p =>
+						(p.Latitude.HasValue && p.Longitude.HasValue) && // Ensure coordinates are available
+						(p.Latitude.Value - search.Latitude.Value) * (p.Latitude.Value - search.Latitude.Value) +
+						(p.Longitude.Value - search.Longitude.Value) * (p.Longitude.Value - search.Longitude.Value) <= radiusInDegrees * radiusInDegrees);
 			}
 
-			if (search?.CityId.HasValue == true)
+			if (!string.IsNullOrEmpty(search.SortBy))
 			{
-				query = query.Where(x => x.CityId == search.CityId);
-			}
-
-			if (search?.OwnerId.HasValue == true)
-			{
-				query = query.Where(x => x.OwnerId == search.OwnerId);
-			}
-
-			if (search?.MinPrice.HasValue == true)
-			{
-				query = query.Where(x => x.Price >= search.MinPrice);
-			}
-
-			if (search?.MaxPrice.HasValue == true)
-			{
-				query = query.Where(x => x.Price <= search.MaxPrice);
+				switch (search.SortBy.ToLower())
+				{
+					case "rating":
+						query = query.OrderByDescending(p => p.Reviews.Average(r => r.StarRating));
+						break;
+					case "distance":
+						if (search.Latitude.HasValue && search.Longitude.HasValue)
+						{
+							query = query.OrderBy(p =>
+									(p.Latitude.Value - search.Latitude.Value) * (p.Latitude.Value - search.Latitude.Value) +
+									(p.Longitude.Value - search.Longitude.Value) * (p.Longitude.Value - search.Longitude.Value));
+						}
+						break;
+					default:
+						query = query.OrderBy(p => p.Name); // Default sorting
+						break;
+				}
 			}
 
 			return query;
 		}
-
 		public async Task<bool> SavePropertyAsync(int propertyId, int userId)
 		{
 			var property = await _propertyRepository.GetByIdAsync(propertyId);
@@ -137,5 +151,90 @@ namespace eRents.Application.Service
 
 			return true;
 		}
+
+		public async Task<List<PropertyResponse>> RecommendPropertiesAsync(int userId)
+		{
+			List<PropertyEntry> data = null;
+
+			// Lock block only for initializing _mlContext and training the model
+			lock (_lock)
+			{
+				if (_mlContext == null)
+				{
+					_mlContext = new MLContext();
+				}
+			}
+
+			// Fetch the ratings data outside the lock statement
+			data = (await _propertyRepository.GetAllRatings())
+					.Select(r => new PropertyEntry
+					{
+						PropertyId = (uint)r.PropertyId,
+						UserId = (uint)r.TenantId, // Use TenantId as the user ID
+						Label = r.StarRating.HasValue ? (float)r.StarRating.Value : 0f
+					})
+					.ToList();
+
+			if (data.Count == 0)
+			{
+				return new List<PropertyResponse>(); // Return empty if no data
+			}
+
+			var trainData = _mlContext.Data.LoadFromEnumerable(data);
+
+			var options = new MatrixFactorizationTrainer.Options
+			{
+				MatrixColumnIndexColumnName = nameof(PropertyEntry.PropertyId),
+				MatrixRowIndexColumnName = nameof(PropertyEntry.UserId),
+				LabelColumnName = "Label",
+				NumberOfIterations = 20,
+				ApproximationRank = 100
+			};
+
+			var estimator = _mlContext.Recommendation().Trainers.MatrixFactorization(options);
+			_model = estimator.Fit(trainData);
+
+			var properties = await _propertyRepository.GetQueryable().ToListAsync();
+			var predictionResults = new List<Tuple<Property, float>>();
+
+			foreach (var property in properties)
+			{
+				var predictionEngine = _mlContext.Model.CreatePredictionEngine<PropertyEntry, PropertyRatingPrediction>(_model);
+				var prediction = predictionEngine.Predict(new PropertyEntry
+				{
+					UserId = (uint)userId,
+					PropertyId = (uint)property.PropertyId
+				});
+
+				predictionResults.Add(new Tuple<Property, float>(property, prediction.Score));
+			}
+
+			var recommendedProperties = predictionResults
+					.OrderByDescending(x => x.Item2)
+					.Select(x => x.Item1)
+					.Take(5)
+					.ToList();
+
+			return _mapper.Map<List<PropertyResponse>>(recommendedProperties);
+		}
+
+
 	}
+	public class PropertyRatingPrediction
+	{
+		public float Score { get; set; }
+	}
+
+	public class PropertyEntry
+	{
+		[KeyType(100)]
+		public uint UserId { get; set; }
+
+		[KeyType(100)]
+		public uint PropertyId { get; set; }
+
+		public float Label { get; set; }
+	}
+
+
 }

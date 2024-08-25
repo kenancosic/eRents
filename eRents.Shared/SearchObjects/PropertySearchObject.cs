@@ -16,7 +16,10 @@ namespace eRents.Shared.SearchObjects
 		public decimal? MaxRating { get; set; }
 		public DateTime? DateAddedFrom { get; set; }
 		public DateTime? DateAddedTo { get; set; }
-		public char SortBy { get; set; }
+		public decimal? Latitude { get; set; }
+		public decimal? Longitude { get; set; }
+		public decimal? Radius { get; set; }
+		public string? SortBy { get; set; }
 		public bool SortDescending { get; set; } = false;
 	}
 

@@ -93,5 +93,10 @@ namespace eRents.Infrastructure.Data.Repositories
 					.Where(r => r.PropertyId == propertyId)
 					.CountAsync();
 		}
+
+		public async Task<IEnumerable<Review>> GetAllRatings()
+		{
+			return await _context.Reviews.AsNoTracking().ToListAsync();
+		}
 	}
 }

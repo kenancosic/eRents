@@ -16,5 +16,6 @@ namespace eRents.Application.Service
 		Task<int> GetNumberOfReviewsAsync(int propertyId);
 		Task<IEnumerable<AmenityResponse>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds);
 		Task<bool> SavePropertyAsync(int propertyId, int userId);
+		Task<List<PropertyResponse>> RecommendPropertiesAsync(int userId);
 	}
 }
