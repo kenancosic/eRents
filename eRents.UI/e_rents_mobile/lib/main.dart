@@ -1,19 +1,16 @@
-import 'dart:async';
-
+import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
+import 'package:e_rents_mobile/core/theme/theme.dart';
+import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
+import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
+import 'package:e_rents_mobile/feature/home/data/home_service.dart';
+import 'package:e_rents_mobile/feature/home/home_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    // Log errors or send to an analytics service
-  };
-  runZonedGuarded(() {
-    runApp(MyApp());
-  }, (error, stackTrace) {
-    // Log errors or send to an analytics service
-  });
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -22,13 +19,40 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'eRents',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+    return MultiProvider(
+      providers: [
+        Provider<SecureStorageService>(create: (_) => SecureStorageService()),
+        ProxyProvider<SecureStorageService, ApiService>(
+          update: (_, secureStorageService, __) => ApiService(
+            const String.fromEnvironment('baseUrl',
+                defaultValue: 'http://10.0.2.2:4000'),
+            secureStorageService,
+          ),
+        ),
+        Provider<AuthService>(
+          create: (context) => AuthService(
+            context.read<ApiService>(),
+            context.read<SecureStorageService>(),
+          ),
+        ),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (context) => AuthProvider(
+            context.read<AuthService>(),
+          ),
+        ),
+        ProxyProvider<ApiService, HomeService>(
+          update: (_, apiService, __) => HomeService(apiService),
+        ),
+        ChangeNotifierProvider<HomeProvider>(
+          create: (context) => HomeProvider(context.read<HomeService>()),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'eRents',
+        theme: appTheme,
+        routerConfig: _appRouter.router, // Use the GoRouter configuration
+        debugShowCheckedModeBanner: false,
       ),
-      routerConfig: _appRouter.router, // Use the GoRouter configuration
-      debugShowCheckedModeBanner: false,
     );
   }
 }

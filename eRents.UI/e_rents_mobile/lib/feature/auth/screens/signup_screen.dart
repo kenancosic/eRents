@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
+import 'package:e_rents_mobile/core/base/base_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
+
   @override
-  _SignUpScreenState createState() => _SignUpScreenState();
+  SignUpScreenState createState() => SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -23,79 +26,79 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(2000),  // Default date
-      firstDate: DateTime(1900),    // Earliest selectable date
-      lastDate: DateTime.now(),     // Latest selectable date
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
     );
-    if (picked != null && picked != _selectedDateOfBirth){
+    if (picked != null && picked != _selectedDateOfBirth) {
       setState(() {
         _selectedDateOfBirth = picked;
       });
-      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),  // Added const
+    return BaseScreen(
+      title: 'Sign Up',
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),  // Added const
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             TextField(
               controller: _usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),  // Added const
+              decoration: const InputDecoration(labelText: 'Username'),
             ),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),  // Added const
+              decoration: const InputDecoration(labelText: 'Email'),
             ),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),  // Added const
+              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
             TextField(
               controller: _confirmPasswordController,
-              decoration: const InputDecoration(labelText: 'Confirm Password'),  // Added const
+              decoration: const InputDecoration(labelText: 'Confirm Password'),
               obscureText: true,
             ),
             TextField(
               controller: _addressController,
-              decoration: const InputDecoration(labelText: 'Address'),  // Added const
+              decoration: const InputDecoration(labelText: 'Address'),
             ),
             ListTile(
               title: Text(_selectedDateOfBirth == null
                   ? 'Date of Birth'
                   : 'Date of Birth: ${_selectedDateOfBirth!.toLocal()}'.split(' ')[0]),
-              trailing: const Icon(Icons.calendar_today),  // Added const
+              trailing: const Icon(Icons.calendar_today),
               onTap: () => _selectDate(context),
             ),
             TextField(
               controller: _phoneNumberController,
-              decoration: const InputDecoration(labelText: 'Phone Number'),  // Added const
+              decoration: const InputDecoration(labelText: 'Phone Number'),
             ),
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'First Name'),  // Added const
+              decoration: const InputDecoration(labelText: 'First Name'),
             ),
             TextField(
               controller: _lastNameController,
-              decoration: const InputDecoration(labelText: 'Last Name'),  // Added const
+              decoration: const InputDecoration(labelText: 'Last Name'),
             ),
-            const SizedBox(height: 20),  // Added const
+            const SizedBox(height: 20),
             Consumer<AuthProvider>(
               builder: (context, provider, child) {
                 if (provider.state == ViewState.Busy) {
-                  return const CircularProgressIndicator();  // Added const
+                  return const CircularProgressIndicator();
                 }
 
                 return ElevatedButton(
                   onPressed: () async {
                     if (_passwordController.text != _confirmPasswordController.text) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passwords do not match')),  // Added const
+                        const SnackBar(content: Text('Passwords do not match')),
                       );
                       return;
                     }
@@ -112,23 +115,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       'lastName': _lastNameController.text,
                     });
 
-                    if (success) {
-                      context.go('/home');  // Navigate to home on success
-                    } else {
+                    if (!mounted) return; // Check if the widget is still mounted
+
+                   if (success && mounted) {
+                      context.go('/'); // Use GoRouter for navigation
+                    } else if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(provider.errorMessage ?? 'Registration failed')),
+                        SnackBar(
+                          content: Text(provider.errorMessage ?? 'Registration failed'),
+                        ),
                       );
                     }
                   },
-                  child: const Text('Sign Up'),  // Added const
+                  child: const Text('Sign Up'),
                 );
               },
             ),
             TextButton(
               onPressed: () {
-                context.go('/login');  // Navigate back to login
+                context.go('/login'); // Use GoRouter for navigation
               },
-              child: const Text('Back to Login'),  // Added const
+              child: const Text('Back to Login'),
             ),
           ],
         ),
