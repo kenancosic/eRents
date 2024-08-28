@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
-using eRents.Domain;
 using eRents.Domain.Models;
+using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 

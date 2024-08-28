@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/utils/helpers.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,18 +14,29 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BaseScreen(
       title: 'Sign In',
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      showAppBar: false,
+      body:SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+             Text(
+            'eRents',
+            style: Theme.of(context).textTheme.headlineLarge,
+          ),
+          const SizedBox(height: 20),
+          Text('Enter your username or e-mail:', style: Theme.of(context).textTheme.titleMedium),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(hintText: 'example@outlook.com'),
             ),
+          const SizedBox(height: 20),
+          Text('Your Password', style: Theme.of(context).textTheme.titleMedium),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(
+                hintText: '**********',
+                suffixIcon: Icon(Icons.visibility_off)),
               obscureText: true,
             ),
             const SizedBox(height: 20),
@@ -41,20 +53,18 @@ class LoginScreen extends StatelessWidget {
                       _passwordController.text,
                     );
                     if (success) {
-                      context.go('/');  // Use GoRouter to navigate
+                      context.go('/');
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(provider.errorMessage ?? 'Login failed')),
-                      );
+                      showSnackBar(context, provider.errorMessage ?? 'Login failed');
                     }
                   },
-                  child: const Text('Login'),
+                  child: Text('Login',style: Theme.of(context).textTheme.labelSmall),
                 );
               },
             ),
             TextButton(
               onPressed: () {
-                context.go('/signup');  // Use GoRouter to navigate
+                context.go('/signup');
               },
               child: const Text('Create an Account'),
             ),
@@ -67,6 +77,6 @@ class LoginScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+      );
   }
 }

@@ -2,7 +2,6 @@
 using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
-using eRents.Domain.Shared;
 
 namespace eRents.Application.Shared
 {

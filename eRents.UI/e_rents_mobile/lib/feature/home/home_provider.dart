@@ -44,21 +44,21 @@ class HomeProvider extends BaseProvider {
     }
   }
 
-  Future<void> fetchNearbyProperties() async {
-  final userLocation = await _getUserLocation();
-  if (userLocation != null) {
-    final response = await _homeService.get('/properties/search', {
-      'latitude': userLocation.latitude,
-      'longitude': userLocation.longitude,
-      'radius': 10,  // Example radius
-      'sortBy': 'distance',
-    });
-    // Process and display the response
-  }
-}
+//   Future<void> fetchNearbyProperties() async {
+//   final userLocation = await _getUserLocation();
+//   if (userLocation != null) {
+//     final response = await _homeService.get('/properties/search', {
+//       'latitude': userLocation.latitude,
+//       'longitude': userLocation.longitude,
+//       'radius': 10,  // Example radius
+//       'sortBy': 'distance',
+//     });
+//     // Process and display the response
+//   }
+// }
 
-Future<Position?> _getUserLocation() async {
-  return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-}
+// Future<Position?> _getUserLocation() async {
+//   return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+// }
 
 }

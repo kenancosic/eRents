@@ -2,7 +2,7 @@
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
-namespace eRents.Domain
+namespace eRents.Domain.Repositories
 {
 	public class BookingRepository : BaseRepository<Booking>, IBookingRepository
 	{

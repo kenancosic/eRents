@@ -85,6 +85,8 @@ namespace eRents.Application.Shared
 					.ForMember(dest => dest.UserType, opt => opt.MapFrom(src => src.Role))
 					.ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => DateTime.Now))
 					.ForMember(dest => dest.UpdatedDate, opt => opt.MapFrom(src => DateTime.Now))
+					.ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>
+							!string.IsNullOrWhiteSpace(src.ProfilePicture) ? Convert.FromBase64String(src.ProfilePicture) : null))  // Convert from Base64 string
 					.ForMember(dest => dest.LocationId, opt => opt.Ignore()) // Set LocationId in service layer
 					.ForMember(dest => dest.Location, opt => opt.Ignore()); // Handle Location in service layer
 

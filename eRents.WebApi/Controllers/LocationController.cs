@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eRents.WebApi.Controllers
 {
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	[ApiController]
 	public class LocationController : BaseCRUDController<LocationResponse, LocationSearchObject, LocationInsertRequest, LocationUpdateRequest>
 	{

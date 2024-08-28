@@ -1,14 +1,16 @@
 using eRents.Application.Service;
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
+using eRents.Application.Service.LocationService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
 using eRents.Application.Shared;
-using eRents.Infrastructure.Data.Context;
-using eRents.Infrastructure.Data.Repositories;
-using eRents.Infrastructure.Services;
+using eRents.Domain.Models;
+using eRents.Domain.Repositories;
+using eRents.Domain.Services;
+using eRents.Domain.Shared;
 using eRents.WebApi;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +53,7 @@ builder.Services.AddTransient<IBookingRepository, BookingRepository>();
 builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IImageRepository, ImageRepository>();
 builder.Services.AddTransient<IMessageRepository, MessageRepository>();
+builder.Services.AddTransient<IBaseRepository<Location>, LocationRepository>();
 
 // Register the services
 builder.Services.AddTransient<IUserService, UserService>();
@@ -59,6 +62,7 @@ builder.Services.AddTransient<IBookingService, BookingService>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
+builder.Services.AddTransient<ILocationService, LocationService>();
 
 
 // Configure and register PayPalService
@@ -80,7 +84,7 @@ using (var scope = app.Services.CreateScope())
 	context.Database.EnsureCreated();
 
 	// Check if the database is empty
-	bool isEmpty = !context.Countries.Any(); // Example for 'Countries', modify for other tables
+	bool isEmpty = !context.Locations.Any(); // Example for 'Countries', modify for other tables
 
 	if (isEmpty)
 	{

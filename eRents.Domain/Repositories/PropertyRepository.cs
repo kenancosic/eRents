@@ -12,23 +12,31 @@ namespace eRents.Domain.Repositories
 		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
 		{
 			var query = _context.Properties
-							.Include(p => p.Images)  // Include related images
-							.Include(p => p.Location)  // Include related location
-							.AsNoTracking()
-							.AsQueryable();
+											.Include(p => p.Images)  // Include related images
+											.Include(p => p.Location)  // Include related location
+											.AsNoTracking()
+											.AsQueryable();
 
 			if (!string.IsNullOrWhiteSpace(searchObject.Name))
 			{
 				query = query.Where(p => p.Name.Contains(searchObject.Name));
 			}
 
-			// If you have any Location-related filters
 			if (!string.IsNullOrWhiteSpace(searchObject.CityName))
 			{
 				query = query.Where(p => p.Location.City.Contains(searchObject.CityName));
 			}
 
-			// If you want to include other filters, such as filtering by location
+			if (!string.IsNullOrWhiteSpace(searchObject.StateName))
+			{
+				query = query.Where(p => p.Location.State.Contains(searchObject.StateName));
+			}
+
+			if (!string.IsNullOrWhiteSpace(searchObject.CountryName))
+			{
+				query = query.Where(p => p.Location.Country.Contains(searchObject.CountryName));
+			}
+
 			if (searchObject.Latitude.HasValue && searchObject.Longitude.HasValue && searchObject.Radius.HasValue)
 			{
 				decimal radiusInDegrees = searchObject.Radius.Value / 111; // Approximate conversion from km to degrees

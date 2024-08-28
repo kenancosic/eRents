@@ -1,4 +1,4 @@
-﻿using eRents.Infrastructure.Data.Context;
+﻿using eRents.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 

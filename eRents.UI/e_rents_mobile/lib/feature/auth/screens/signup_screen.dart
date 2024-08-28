@@ -40,34 +40,50 @@ class SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Sign Up',
+      title: 'Sign up',
+      showAppBar: false,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+             Text(
+            'Congratulations',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'on choosing to sign up on eRents',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+            const SizedBox(height: 20),
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(labelText: 'Username'),
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'Email'),
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _passwordController,
               decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _confirmPasswordController,
               decoration: const InputDecoration(labelText: 'Confirm Password'),
               obscureText: true,
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _addressController,
               decoration: const InputDecoration(labelText: 'Address'),
             ),
+            const SizedBox(height: 20),
             ListTile(
               title: Text(_selectedDateOfBirth == null
                   ? 'Date of Birth'
@@ -75,14 +91,17 @@ class SignUpScreenState extends State<SignUpScreen> {
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _selectDate(context),
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _phoneNumberController,
               decoration: const InputDecoration(labelText: 'Phone Number'),
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'First Name'),
             ),
+            const SizedBox(height: 20),
             TextField(
               controller: _lastNameController,
               decoration: const InputDecoration(labelText: 'Last Name'),

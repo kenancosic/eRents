@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
-import 'package:e_rents_mobile/core/theme/theme.dart';
+import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
 import 'package:e_rents_mobile/feature/home/data/home_service.dart';

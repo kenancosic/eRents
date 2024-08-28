@@ -1,4 +1,4 @@
-﻿using eRents.Infrastructure.Services;
+﻿using eRents.Domain.Services;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 

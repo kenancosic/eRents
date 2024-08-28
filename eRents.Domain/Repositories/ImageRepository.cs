@@ -2,7 +2,7 @@
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
 
-namespace eRents.Domain
+namespace eRents.Domain.Repositories
 {
 	public class ImageRepository : BaseRepository<Image>, IImageRepository
 	{
