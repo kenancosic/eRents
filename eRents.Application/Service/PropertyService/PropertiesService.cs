@@ -1,13 +1,11 @@
 ﻿using AutoMapper;
 using eRents.Application.Shared;
-using eRents.Domain.Entities;
-using eRents.Infrastructure.Data.Repositories;
+using eRents.Domain.Models;
+using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Trainers;
@@ -111,10 +109,12 @@ namespace eRents.Application.Service
 			if (search?.Latitude.HasValue == true && search?.Longitude.HasValue == true && search?.Radius.HasValue == true)
 			{
 				decimal radiusInDegrees = search.Radius.HasValue ? search.Radius.Value / 111 : 10; // Convert km to degrees (approximate)
+
 				query = query.Where(p =>
-						(p.Latitude.HasValue && p.Longitude.HasValue) && // Ensure coordinates are available
-						(p.Latitude.Value - search.Latitude.Value) * (p.Latitude.Value - search.Latitude.Value) +
-						(p.Longitude.Value - search.Longitude.Value) * (p.Longitude.Value - search.Longitude.Value) <= radiusInDegrees * radiusInDegrees);
+						p.Location != null && // Ensure Location is not null
+						p.Location.Latitude.HasValue && p.Location.Longitude.HasValue && // Ensure coordinates are available
+						(p.Location.Latitude.Value - search.Latitude.Value) * (p.Location.Latitude.Value - search.Latitude.Value) +
+						(p.Location.Longitude.Value - search.Longitude.Value) * (p.Location.Longitude.Value - search.Longitude.Value) <= radiusInDegrees * radiusInDegrees);
 			}
 
 			if (!string.IsNullOrEmpty(search.SortBy))
@@ -128,8 +128,8 @@ namespace eRents.Application.Service
 						if (search.Latitude.HasValue && search.Longitude.HasValue)
 						{
 							query = query.OrderBy(p =>
-									(p.Latitude.Value - search.Latitude.Value) * (p.Latitude.Value - search.Latitude.Value) +
-									(p.Longitude.Value - search.Longitude.Value) * (p.Longitude.Value - search.Longitude.Value));
+									(p.Location.Latitude.Value - search.Latitude.Value) * (p.Location.Latitude.Value - search.Latitude.Value) +
+									(p.Location.Longitude.Value - search.Longitude.Value) * (p.Location.Longitude.Value - search.Longitude.Value));
 						}
 						break;
 					default:
@@ -140,6 +140,7 @@ namespace eRents.Application.Service
 
 			return query;
 		}
+
 		public async Task<bool> SavePropertyAsync(int propertyId, int userId)
 		{
 			var property = await _propertyRepository.GetByIdAsync(propertyId);

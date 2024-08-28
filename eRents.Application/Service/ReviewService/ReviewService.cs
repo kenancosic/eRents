@@ -1,7 +1,7 @@
 ﻿using AutoMapper;
 using eRents.Application.Shared;
-using eRents.Domain.Entities;
-using eRents.Infrastructure.Data.Repositories;
+using eRents.Domain.Models;
+using eRents.Domain.Repositories;
 using eRents.Infrastructure.Services;
 using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;

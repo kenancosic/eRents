@@ -6,9 +6,10 @@
 		public string? Username { get; set; }
 		public string? Email { get; set; }
 		public string FullName { get; set; }
+		public byte[]? ProfilePicture { get; set; }
 		public DateTime DateOfBirth { get; set; }
 		public string? Address { get; set; }
 		public string? PhoneNumber { get; set; }
-		// Add any other properties you need in the response
+		public string Role { get; set; }
 	}
 }

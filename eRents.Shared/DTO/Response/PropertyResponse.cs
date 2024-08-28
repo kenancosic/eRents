@@ -7,7 +7,9 @@
 		public string? Description { get; set; }
 		public decimal Price { get; set; }
 		public string? Address { get; set; }
-		public string? CityName { get; set; }
+		public string? CityName { get; set; }  // City is now retrieved from the Location entity
+		public string? StateName { get; set; } // State is now retrieved from the Location entity
+		public string? CountryName { get; set; } // Country is now retrieved from the Location entity
 		public string? OwnerName { get; set; }
 		public List<string>? Amenities { get; set; }
 		public decimal? AverageRating { get; set; }

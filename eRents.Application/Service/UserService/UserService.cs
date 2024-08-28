@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
 using eRents.Application.Exceptions;
 using eRents.Application.Shared;
-using eRents.Domain.Entities;
-using eRents.Infrastructure.Data.Repositories;
+using eRents.Domain.Models;
+using eRents.Domain.Repositories;
 using eRents.Infrastructure.Services;
 using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
@@ -107,12 +107,20 @@ namespace eRents.Application.Service.UserService
 			if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
 				throw new ValidationException("A user with this username or email already exists.");
 
+			var allowedRoles = new List<string> { "Tenant", "Landlord" };
+			if (!allowedRoles.Contains(request.Role))
+			{
+				throw new ValidationException("Invalid role selected.");
+			}
+
+
 			var salt = GenerateSalt();
 			var hash = GenerateHash(salt, request.Password);
 
 			var user = _mapper.Map<User>(request);
 			user.PasswordSalt = salt;
 			user.PasswordHash = hash;
+			user.UserType = request.Role;
 
 			await _userRepository.AddAsync(user);
 

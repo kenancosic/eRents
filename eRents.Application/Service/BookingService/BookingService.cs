@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Shared;
-using eRents.Domain.Entities;
-using eRents.Infrastructure.Data.Repositories;
+using eRents.Domain;
+using eRents.Domain.Models;
 using eRents.Infrastructure.Services;
 using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;

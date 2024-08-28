@@ -1,83 +1,43 @@
-﻿-- Seed Countries (Including the Balkan region)
-SET IDENTITY_INSERT Country ON;
+﻿-- Seed Locations
+SET IDENTITY_INSERT Location ON;
 
-INSERT INTO Country (country_id, country_name) VALUES
-(1, 'United States'),
-(2, 'Canada'),
-(3, 'Bosnia and Herzegovina'),
-(4, 'Serbia'),
-(5, 'Croatia'),
-(6, 'Montenegro'),
-(7, 'Slovenia'),
-(8, 'North Macedonia'),
-(9, 'Albania');
+INSERT INTO Location (location_id, City, State, Country, PostalCode, Latitude, Longitude) VALUES
+(1, 'Los Angeles', 'California', 'United States', '90001', 34.0522, -118.2437),
+(2, 'Toronto', 'Ontario', 'Canada', 'M5V3L9', 43.65107, -79.347015),
+(3, 'Sarajevo', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '71000', 43.8563, 18.4131),
+(4, 'Banja Luka', 'Republika Srpska', 'Bosnia and Herzegovina', '78000', 44.7722, 17.1910),
+(5, 'Belgrade', 'Central Serbia', 'Serbia', '11000', 44.7866, 20.4489),
+(6, 'Novi Sad', 'Vojvodina', 'Serbia', '21000', 45.2671, 19.8335),
+(7, 'Zagreb', 'Zagreb', 'Croatia', '10000', 45.8150, 15.9819),
+(8, 'Split', 'Dalmatia', 'Croatia', '21000', 43.5081, 16.4402),
+(9, 'Podgorica', 'Podgorica', 'Montenegro', '81000', 42.4304, 19.2594),
+(10, 'Ljubljana', 'Primorska', 'Slovenia', '1000', 46.0569, 14.5058);
 
-SET IDENTITY_INSERT Country OFF;
+SET IDENTITY_INSERT Location OFF;
 
--- Seed States (Including key regions in the Balkan region)
-SET IDENTITY_INSERT States ON;
-
-INSERT INTO States (state_id, state_name, country_id) VALUES
-(1, 'California', 1),
-(2, 'Ontario', 2),
-(3, 'Federation of Bosnia and Herzegovina', 3),
-(4, 'Republika Srpska', 3),
-(5, 'Central Serbia', 4),
-(6, 'Vojvodina', 4),
-(7, 'Zagreb', 5),
-(8, 'Dalmatia', 5),
-(9, 'Podgorica', 6),
-(10, 'Primorska', 7),
-(11, 'Skopje', 8),
-(12, 'Tirana', 9);
-
-SET IDENTITY_INSERT States OFF;
-
--- Seed Cities (Including major cities in the Balkan region)
-SET IDENTITY_INSERT Cities ON;
-
-INSERT INTO Cities (city_id, city_name, state_id) VALUES
-(1, 'Los Angeles', 1),
-(2, 'Toronto', 2),
-(3, 'Sarajevo', 3),
-(4, 'Banja Luka', 4),
-(5, 'Belgrade', 5),
-(6, 'Novi Sad', 6),
-(7, 'Zagreb', 7),
-(8, 'Split', 8),
-(9, 'Podgorica', 9),
-(10, 'Ljubljana', 10),
-(11, 'Skopje', 11),
-(12, 'Tirana', 12);
-
-SET IDENTITY_INSERT Cities OFF;
-
--- Seed Users (Including users from the Balkan region)
+-- Seed Users
 SET IDENTITY_INSERT Users ON;
 
-INSERT INTO Users (user_id, username, email, PasswordHash, PasswordSalt, phone_number, address, city, zip_code, street_name, street_number, date_of_birth, user_type, name, last_name, created_date, updated_date) VALUES
-(1, 'johndoe', 'johndoe@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '1234567890', '123 Main St', 'Los Angeles', '90001', 'Main St', '123', '1985-06-15', 'Tenant', 'John', 'Doe', GETDATE(), GETDATE()),
-(2, 'janedoe', 'janedoe@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '0987654321', '456 High St', 'Toronto', 'M5V3L9', 'High St', '456', '1990-09-25', 'Landlord', 'Jane', 'Doe', GETDATE(), GETDATE()),
-(3, 'amaric', 'amaric@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761123456', 'Kralja Tomislava 12', 'Sarajevo', '71000', 'Kralja Tomislava', '12', '1985-04-15', 'Tenant', 'Amar', 'Ić', GETDATE(), GETDATE()),
-(4, 'spavlovic', 'spavlovic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38765123456', 'Vuka Karadžića 5', 'Banja Luka', '78000', 'Vuka Karadžića', '5', '1990-09-25', 'Landlord', 'Sanja', 'Pavlović', GETDATE(), GETDATE()),
-(5, 'mpetrovic', 'mpetrovic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '381641234567', 'Knez Mihailova 22', 'Belgrade', '11000', 'Knez Mihailova', '22', '1987-03-22', 'Tenant', 'Marko', 'Petrović', GETDATE(), GETDATE()),
-(6, 'avukovic', 'avukovic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '381211234567', 'Bulevar Oslobođenja 100', 'Novi Sad', '21000', 'Bulevar Oslobođenja', '100', '1992-05-15', 'Landlord', 'Ana', 'Vuković', GETDATE(), GETDATE()),
-(7, 'tkovacevic', 'tkovacevic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '385981234567', 'Ilica 4', 'Zagreb', '10000', 'Ilica', '4', '1989-07-30', 'Tenant', 'Tomislav', 'Kovačević', GETDATE(), GETDATE()),
-(8, 'vmaric', 'vmaric@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38267123456', 'Njegoševa 8', 'Podgorica', '81000', 'Njegoševa', '8', '1995-12-10', 'Landlord', 'Vesna', 'Marić', GETDATE(), GETDATE());
+INSERT INTO Users (user_id, username, email, PasswordHash, PasswordSalt, phone_number, address, location_id, date_of_birth, user_type, name, last_name, created_date, updated_date) VALUES
+(1, 'johndoe', 'johndoe@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '1234567890', '123 Main St', 1, '1985-06-15', 'Tenant', 'John', 'Doe', GETDATE(), GETDATE()),
+(2, 'janedoe', 'janedoe@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '0987654321', '456 High St', 2, '1990-09-25', 'Landlord', 'Jane', 'Doe', GETDATE(), GETDATE()),
+(3, 'amaric', 'amaric@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761123456', 'Kralja Tomislava 12', 3, '1985-04-15', 'Tenant', 'Amar', 'Ić', GETDATE(), GETDATE()),
+(4, 'spavlovic', 'spavlovic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38765123456', 'Vuka Karadžića 5', 4, '1990-09-25', 'Landlord', 'Sanja', 'Pavlović', GETDATE(), GETDATE()),
+(5, 'mpetrovic', 'mpetrovic@example.com', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '381641234567', 'Knez Mihailova 22', 5, '1987-03-22', 'Tenant', 'Marko', 'Petrović', GETDATE(), GETDATE());
 
 SET IDENTITY_INSERT Users OFF;
 
--- Seed Properties (Including properties from the Balkan region)
+-- Seed Properties
 SET IDENTITY_INSERT Properties ON;
 
-INSERT INTO Properties (property_id, name, description, price, address, city_id, owner_id, date_added) VALUES
-(1, 'Beautiful Apartment', 'A lovely 2-bedroom apartment in downtown.', 2500.00, '789 Park Ave', 1, 2, GETDATE()), -- Owned by user with UserId 2 (Jane Doe)
-(2, 'Cozy Cottage', 'A small cottage perfect for a getaway.', 1500.00, '123 Country Rd', 2, 2, GETDATE()), -- Owned by user with UserId 2 (Jane Doe)
-(3, 'Modern Apartment in Sarajevo', 'A beautiful apartment located in the heart of Sarajevo.', 1500.00, 'Titova 10', 3, 4, GETDATE()), -- Owned by user with UserId 4 (Sanja Pavlović)
-(4, 'Cozy House in Banja Luka', 'A cozy house with a lovely garden.', 1200.00, 'Mladena Stojanovića 3', 4, 4, GETDATE()), -- Owned by user with UserId 4 (Sanja Pavlović)
-(5, 'Luxury Apartment in Belgrade', 'A luxury apartment with a stunning view of the city.', 2500.00, 'Beogradska 22', 5, 5, GETDATE()), -- Owned by user with UserId 5 (Marko Petrović)
-(6, 'Beachside Villa in Split', 'A beautiful villa near the beach.', 3500.00, 'Riva 1', 8, 2, GETDATE()), -- Owned by user with UserId 2 (Jane Doe)
-(7, 'Charming Apartment in Zagreb', 'A charming apartment in the center of Zagreb.', 1400.00, 'Trg bana Jelačića 5', 7, 6, GETDATE()); -- Owned by user with UserId 6 (Ana Vuković)
+INSERT INTO Properties (property_id, name, description, price, address, location_id, owner_id, date_added) VALUES
+(1, 'Beautiful Apartment', 'A lovely 2-bedroom apartment in downtown.', 2500.00, '789 Park Ave', 1, 2, GETDATE()), 
+(2, 'Cozy Cottage', 'A small cottage perfect for a getaway.', 1500.00, '123 Country Rd', 2, 2, GETDATE()), 
+(3, 'Modern Apartment in Sarajevo', 'A beautiful apartment located in the heart of Sarajevo.', 1500.00, 'Titova 10', 3, 4, GETDATE()), 
+(4, 'Cozy House in Banja Luka', 'A cozy house with a lovely garden.', 1200.00, 'Mladena Stojanovića 3', 4, 4, GETDATE()), 
+(5, 'Luxury Apartment in Belgrade', 'A luxury apartment with a stunning view of the city.', 2500.00, 'Beogradska 22', 5, 5, GETDATE()), 
+(6, 'Beachside Villa in Split', 'A beautiful villa near the beach.', 3500.00, 'Riva 1', 8, 2, GETDATE()), 
+(7, 'Charming Apartment in Zagreb', 'A charming apartment in the center of Zagreb.', 1400.00, 'Trg bana Jelačića 5', 7, 6, GETDATE());
 
 SET IDENTITY_INSERT Properties OFF;
 

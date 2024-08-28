@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Application", "eRent
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Domain", "eRents.Domain\eRents.Domain.csproj", "{9A054A8D-965F-4BEA-9064-F23CF399E2C3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Infrastructure", "eRents.Infrastructure\eRents.Infrastructure.csproj", "{4241076D-FE8C-4E11-A3EA-700114686784}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.Shared", "eRents.Shared\eRents.Shared.csproj", "{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.WebApi", "eRents.WebApi\eRents.WebApi.csproj", "{6200196F-AEAD-4BF7-910A-F98853A12C31}"
@@ -29,10 +27,6 @@ Global
 		{9A054A8D-965F-4BEA-9064-F23CF399E2C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9A054A8D-965F-4BEA-9064-F23CF399E2C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9A054A8D-965F-4BEA-9064-F23CF399E2C3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4241076D-FE8C-4E11-A3EA-700114686784}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4241076D-FE8C-4E11-A3EA-700114686784}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4241076D-FE8C-4E11-A3EA-700114686784}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4241076D-FE8C-4E11-A3EA-700114686784}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3E4F4443-46F7-4CA7-ADD1-976E04C033BD}.Release|Any CPU.ActiveCfg = Release|Any CPU

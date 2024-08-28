@@ -1,10 +1,6 @@
 ﻿using AutoMapper;
-using eRents.Infrastructure.Data.Context;
-using eRents.Infrastructure.Data.Shared;
-using eRents.Shared.DTO.Requests;
+using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
-using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
 
 namespace eRents.Application.Shared
 {

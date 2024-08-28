@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace eRents.Domain.Entities;
+namespace eRents.Domain.Models;
 
 public partial class Tenant
 {
