@@ -8,8 +8,8 @@ class HomeProvider extends BaseProvider {
   final HomeService _homeService;
   List<Property> _properties = [];
   String? _error;
-  FilterModel _filter = FilterModel();
-  bool _isLoading = false;
+  final FilterModel _filter = FilterModel();
+  final bool _isLoading = false;
 
   HomeProvider(this._homeService);
 

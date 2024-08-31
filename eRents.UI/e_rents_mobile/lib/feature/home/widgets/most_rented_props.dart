@@ -9,9 +9,9 @@ class MostRentedProps extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _buildSmallPropertyCard(context, 'Sarajevo, K.S.', '345 rented props',
-            'https://via.placeholder.com/100'), // Replace with your image URL
+            'assets/images/background.png'), // Replace with your image URL
         _buildSmallPropertyCard(context, 'Mostar, H.N.K.', '290 rented props',
-            'https://via.placeholder.com/100'), // Replace with your image URL
+            'assets/images/background.png'),  // Replace with your image URL
       ],
     );
   }
@@ -22,7 +22,7 @@ class MostRentedProps extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: Image.network(
+          child: Image.asset(
             imageUrl,
             width: 100,
             height: 100,

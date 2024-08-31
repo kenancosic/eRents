@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
@@ -8,6 +9,7 @@ import 'package:e_rents_mobile/feature/home/home_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 
 void main() {
   runApp(MyApp());
@@ -45,6 +47,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<HomeProvider>(
           create: (context) => HomeProvider(context.read<HomeService>()),
+        ),
+        ChangeNotifierProvider<NavigationProvider>( // Add NavigationProvider
+          create: (context) => NavigationProvider(),
         ),
       ],
       child: MaterialApp.router(

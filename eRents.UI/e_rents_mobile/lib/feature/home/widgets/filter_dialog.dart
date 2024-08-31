@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class FilterDialog extends StatefulWidget {
-  const FilterDialog({Key? key}) : super(key: key);
+  const FilterDialog({super.key});
 
   @override
-  _FilterDialogState createState() => _FilterDialogState();
+  FilterDialogState createState() => FilterDialogState();
 }
 
-class _FilterDialogState extends State<FilterDialog> {
+class FilterDialogState extends State<FilterDialog> {
   String? _selectedCity;
   double? _minPrice;
   double? _maxPrice;

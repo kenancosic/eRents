@@ -1,6 +1,9 @@
 import 'package:e_rents_mobile/feature/auth/screens/login_screen.dart';
 import 'package:e_rents_mobile/feature/auth/screens/signup_screen.dart';
+import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
+import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
+import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -45,6 +48,22 @@ class AppRouter {
         name: 'password_reset_confirmation',
         builder: (context, state) => PasswordResetConfirmationScreen(),
       ),
+      GoRoute(
+        path: '/explore',
+        name:'explore',
+        builder: (context, state) => ExploreScreen()
+      ),
+      GoRoute(
+        path:  '/chat',
+        name: 'chat',
+        builder: (context, state) => ChatScreen(),
+        ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => SearchBar_1()
+        ),
+
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(

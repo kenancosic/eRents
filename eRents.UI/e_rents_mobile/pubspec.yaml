@@ -49,6 +49,9 @@ dependencies:
   google_maps_flutter: ^2.9.0
   paypal_sdk: ^1.0.10
   flutter_paypal: ^0.2.1
+  cached_network_image: ^3.4.1
+  smooth_page_indicator: ^1.2.0+3
+  flutter_dotenv: ^5.0.2
 
 dev_dependencies:
   build_runner: ^2.4.11
@@ -68,6 +71,14 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  fonts:
+    - family: Hind
+      fonts:
+      - asset: assets/fonts/Hind-Bold.ttf
+      - asset: assets/fonts/Hind-Light.ttf
+      - asset: assets/fonts/Hind-Medium.ttf
+      - asset: assets/fonts/Hind-Regular.ttf
+      - asset: assets/fonts/Hind-SemiBold.ttf
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -77,6 +88,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
      - assets/images/
+     - assets/fonts/
+     - assets/icons/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

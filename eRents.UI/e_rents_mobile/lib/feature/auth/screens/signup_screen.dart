@@ -54,7 +54,7 @@ class SignUpScreenState extends State<SignUpScreen> {
           const SizedBox(height: 10),
           Text(
             'on choosing to sign up on eRents',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleSmall,
           ),
             const SizedBox(height: 20),
             TextField(
