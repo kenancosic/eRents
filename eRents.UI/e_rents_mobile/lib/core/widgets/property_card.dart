@@ -103,7 +103,7 @@ class PropertyCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Flexible(  // Make the title flexible to avoid overflow
+                    Container(  // Make the title flexible to avoid overflow
                       child: Text(
                         title,
                         style: const TextStyle(
@@ -116,7 +116,7 @@ class PropertyCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    // const SizedBox(height: 4),
                     Text(
                       location,
                       style: const TextStyle(
@@ -126,7 +126,7 @@ class PropertyCard extends StatelessWidget {
                         fontWeight: FontWeight.w400,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Row(
@@ -144,7 +144,7 @@ class PropertyCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         Row(
                           children: [
                             const Icon(Icons.square_foot, size: 14, color: Color(0xFF7D7F88)),
@@ -162,7 +162,7 @@ class PropertyCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 8),
                     Text.rich(
                       TextSpan(
                         children: [

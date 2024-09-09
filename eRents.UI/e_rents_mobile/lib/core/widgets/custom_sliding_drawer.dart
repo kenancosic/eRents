@@ -1,154 +1,74 @@
-import 'package:e_rents_mobile/core/utils/custom_decorator.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-class SlidingDrawerScreen extends StatefulWidget {
-  final String title;
-  final Widget body;
+class CustomSlidingDrawer extends StatelessWidget {
+  final AnimationController controller;
+  final VoidCallback onDrawerToggle;
 
-  const SlidingDrawerScreen({
+  const CustomSlidingDrawer({
     Key? key,
-    required this.title,
-    required this.body,
+    required this.controller,
+    required this.onDrawerToggle,
   }) : super(key: key);
 
   @override
-  _SlidingDrawerScreenState createState() => _SlidingDrawerScreenState();
-}
-
-class _SlidingDrawerScreenState extends State<SlidingDrawerScreen> {
-  bool _isDrawerOpen = false;
-
-  void _toggleDrawer() {
-    setState(() {
-      _isDrawerOpen = !_isDrawerOpen;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Main Content
-          AnimatedPositioned(
-            duration: Duration(milliseconds: 300),
-            left: _isDrawerOpen ? 250.0 : 0.0,  // Adjust this value for the drawer width
-            right: _isDrawerOpen ? -250.0 : 0.0, // Adjust this value for the drawer width
-            top: 0.0,
-            bottom: 0.0,
-            child: Material(
-              elevation: 8.0,
-              color: Colors.white,
-              child: Column(
-                children: [
-                  AppBar(
-                    title: Text(widget.title),
-                    leading: IconButton(
-                      icon: Icon(Icons.menu),
-                      onPressed: _toggleDrawer,
-                    ),
-                  ),
-                  Expanded(child: widget.body),
-                ],
-              ),
-            ),
-          ),
+    // Define the animation for sliding the drawer
+    final slideAnimation = Tween<Offset>(
+      begin: const Offset(-1.0, 0.0), // Start hidden to the left
+      end: const Offset(0.0, 0.0), // End at the normal position
+    ).animate(CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeInOut,
+    ));
 
-          // Sliding Drawer
-          AnimatedPositioned(
-            duration: Duration(milliseconds: 300),
-            left: _isDrawerOpen ? 0.0 : -250.0, // Adjust this value for the drawer width
-            top: 0.0,
-            bottom: 0.0,
-            child: Container(
-              width: 250.0, // Adjust the width as needed
-              child: Drawer(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildDrawerHeader(),
-                    _buildDrawerItem(
-                      icon: Icons.home,
-                      text: 'Home',
-                      onTap: () => context.go('/'),
-                    ),
-                    _buildDrawerItem(
-                      icon: Icons.person,
-                      text: 'Profile',
-                      onTap: () => context.go('/profile'),
-                    ),
-                    _buildDrawerItem(
-                      icon: Icons.settings,
-                      text: 'Settings',
-                      onTap: () => context.go('/settings'),
-                    ),
-                    const Divider(),
-                    _buildDrawerItem(
-                      icon: Icons.info,
-                      text: 'About',
-                      onTap: () {
-                        // Add About navigation or action
-                      },
-                    ),
-                    _buildDrawerItem(
-                      icon: Icons.logout,
-                      text: 'Log Out',
-                      onTap: () {
-                        // Add Log Out action
-                      },
-                    ),
-                  ],
+    final double drawerWidth = MediaQuery.of(context).size.width * 0.7;
+    
+    return SlideTransition(
+      position: slideAnimation,
+      child: SizedBox(
+        width: drawerWidth, // Set the drawer width
+        child: const Drawer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              UserAccountsDrawerHeader(
+                accountName: Text("Marco Jacobs"),
+                accountEmail: Text("Edit profile"),
+                currentAccountPicture: CircleAvatar(
+                  backgroundImage: AssetImage(
+                    'assets/images/user-image.png',
+                  ), // Replace with actual image URL
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerHeader() {
-    return UserAccountsDrawerHeader(
-      decoration: CustomDecorations.gradientBoxDecoration,
-      accountName: const Text(
-        'Marco Jacobs',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      accountEmail: const Text(
-        'marco.jacobs@example.com',
-        style: TextStyle(
-          color: Colors.white70,
-          fontSize: 14,
-        ),
-      ),
-      currentAccountPicture: CircleAvatar(
-        backgroundColor: Colors.white,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/user-image.png', // Replace with actual image asset
-            fit: BoxFit.cover,
-            width: 90,
-            height: 90,
+              ListTile(
+                leading: Icon(Icons.payment),
+                title: Text("Payment"),
+              ),
+              ListTile(
+                leading: Icon(Icons.flight),
+                title: Text("My Rents"),
+              ),
+              ListTile(
+                leading: Icon(Icons.settings),
+                title: Text("Settings"),
+              ),
+              Spacer(),
+              ListTile(
+                leading: Icon(Icons.info),
+                title: Text("Terms & Conditions"),
+              ),
+              ListTile(
+                leading: Icon(Icons.privacy_tip),
+                title: Text("Privacy Policy"),
+              ),
+              ListTile(
+                leading: Icon(Icons.logout),
+                title: Text("Log out"),
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String text,
-    required GestureTapCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(text),
-      onTap: onTap,
     );
   }
 }

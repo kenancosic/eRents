@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/feature/auth/screens/login_screen.dart';
 import 'package:e_rents_mobile/feature/auth/screens/signup_screen.dart';
+import 'package:e_rents_mobile/feature/chat/char_room_screen.dart';
 import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
@@ -54,14 +55,23 @@ class AppRouter {
         builder: (context, state) => ExploreScreen()
       ),
       GoRoute(
-        path:  '/chat',
-        name: 'chat',
-        builder: (context, state) => ChatScreen(),
-        ),
+      path: '/chatRoom',
+      builder: (context, state) => ChatRoomScreen(),
+    ),
+    GoRoute(
+      path: '/chat',
+      builder: (context, state) {
+        final chatDetails = state.extra as Map<String, dynamic>;  // Pass data to the ChatScreen
+        return ChatScreen(
+          userName: chatDetails['name'],
+          userImage: chatDetails['imageUrl'],
+        );
+      },
+    ),
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => SearchBar_1()
+        builder: (context, state) => ProfileScreen()
         ),
 
     ],
