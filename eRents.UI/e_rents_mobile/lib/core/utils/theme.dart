@@ -6,7 +6,7 @@ const Color backgroundColor = Color(0xfff4f4f4);
 
 final ThemeData appTheme = ThemeData(
   colorScheme: ColorScheme.fromSwatch(
-    primarySwatch: Colors.blue,
+    primarySwatch: Colors.purple,
   ).copyWith(
     secondary: secondaryColor,
     surface: backgroundColor,

@@ -161,7 +161,8 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
           context,
           Stack(
             children: [
-              if (widget.useSlidingDrawer) _buildSlidingDrawer(), // Only build drawer if it's being used
+              if (widget.useSlidingDrawer) 
+                _buildSlidingDrawer(), // Only build drawer if it's being used
               _buildAppBarAndBody(),
             ],
           ),
