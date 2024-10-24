@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
@@ -7,24 +8,50 @@ import 'package:go_router/go_router.dart';
 import 'navigation_provider.dart';
 
 class BaseScreen extends StatefulWidget {
-  final String title;
+  final String? title;
+  final Widget? titleWidget;
   final Widget body;
   final bool showAppBar;
   final bool useSlidingDrawer;
+  final bool showBottomNavBar;
+  final Color? backgroundColor;
+  final bool resizeToAvoidBottomInset;
+
+  // New parameters to accommodate CustomAppBar changes
+  final bool showBackButton;
+  final VoidCallback? onBackButtonPressed;
+  final bool showFilterButton;
+  final VoidCallback? onFilterButtonPressed;
+  final ValueChanged<String>? onSearchChanged;
+  final String? searchHintText;
+  final List<Widget>? appBarActions;
 
   const BaseScreen({
     Key? key,
-    required this.title,
+    this.title,
+    this.titleWidget,
     required this.body,
     this.showAppBar = true,
     this.useSlidingDrawer = true,
+    this.showBottomNavBar = true,
+    this.backgroundColor,
+    this.resizeToAvoidBottomInset = true,
+    // Initialize new parameters with default values
+    this.showBackButton = false,
+    this.onBackButtonPressed,
+    this.showFilterButton = false,
+    this.onFilterButtonPressed,
+    this.onSearchChanged,
+    this.searchHintText,
+    this.appBarActions,
   }) : super(key: key);
 
   @override
   _BaseScreenState createState() => _BaseScreenState();
 }
 
-class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateMixin {
+class _BaseScreenState extends State<BaseScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _drawerController;
 
   @override
@@ -74,21 +101,19 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
 
   // Method to handle swipe gestures for the drawer
   GestureDetector _buildGestureDetector(BuildContext context, Widget child) {
-    if (!widget.useSlidingDrawer) return GestureDetector(child: child); // If sliding drawer is not used, just return the child.
+    if (!widget.useSlidingDrawer) {
+      return GestureDetector(child: child);
+    }
 
     final drawerWidth = MediaQuery.of(context).size.width * 0.7;
     return GestureDetector(
       onHorizontalDragUpdate: (details) {
-        // Update the drawerController based on horizontal drag distance
         _drawerController.value += details.primaryDelta! / drawerWidth;
       },
       onHorizontalDragEnd: (details) {
-        // Check the position of the drawer when drag ends
         if (_drawerController.value > 0.5) {
-          // If more than 50% of the drawer is open, snap it fully open
           _drawerController.forward();
         } else {
-          // If less than 50% of the drawer is open, snap it closed
           _drawerController.reverse();
         }
       },
@@ -98,7 +123,7 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
 
   // Method to build the sliding drawer and overlay
   Widget _buildSlidingDrawer() {
-    if (!widget.useSlidingDrawer) return const SizedBox.shrink(); // If sliding drawer is not used, return an empty widget.
+    if (!widget.useSlidingDrawer) return const SizedBox.shrink();
 
     return Stack(
       children: [
@@ -106,11 +131,11 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
           controller: _drawerController,
           onDrawerToggle: _toggleDrawer,
         ),
-        if (_drawerController.value > 0) // Show overlay if the drawer is at least partially open
+        if (_drawerController.value > 0)
           GestureDetector(
-            onTap: _toggleDrawer, // Close drawer on tap outside
+            onTap: _toggleDrawer,
             child: Container(
-              color: Colors.black.withOpacity(0.5), // Semi-transparent overlay
+              color: Colors.black.withOpacity(0.5),
             ),
           ),
       ],
@@ -133,18 +158,30 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
       builder: (context, child) {
         return Transform.translate(
           offset: widget.useSlidingDrawer
-              ? Offset(slideAnimation.value.dx * MediaQuery.of(context).size.width, 0)
-              : Offset.zero, // Only apply the translation when sliding drawer is used
+              ? Offset(
+                  slideAnimation.value.dx * MediaQuery.of(context).size.width, 0)
+              : Offset.zero,
           child: Column(
             children: [
               if (widget.showAppBar)
-                CustomAppBar(
+               CustomAppBar(
                   title: widget.title,
-                  leading: IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: _toggleDrawer,
-                  ),
+                  titleWidget: widget.titleWidget,
+                  showBackButton: widget.showBackButton,
+                  onBackButtonPressed: widget.onBackButtonPressed,
+                  showFilterButton: widget.showFilterButton,
+                  onFilterButtonPressed: widget.onFilterButtonPressed,
+                  onSearchChanged: widget.onSearchChanged,
+                  searchHintText: widget.searchHintText,
+                  actions: widget.appBarActions,
+                  leading: widget.useSlidingDrawer && !widget.showBackButton
+                      ? IconButton(
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: _toggleDrawer,
+                        )
+                      : null,
                 ),
+
               Expanded(child: widget.body),
             ],
           ),
@@ -157,24 +194,28 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        backgroundColor:
+            widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
         body: _buildGestureDetector(
           context,
           Stack(
             children: [
-              if (widget.useSlidingDrawer) 
-                _buildSlidingDrawer(), // Only build drawer if it's being used
+              if (widget.useSlidingDrawer) _buildSlidingDrawer(),
               _buildAppBarAndBody(),
             ],
           ),
         ),
-        bottomNavigationBar: Consumer<NavigationProvider>(
-          builder: (context, navigationProvider, child) {
-            return CustomBottomNavigationBar(
-              currentIndex: navigationProvider.currentIndex,
-              onTap: (index) => _onItemTapped(context, index),
-            );
-          },
-        ),
+        bottomNavigationBar: widget.showBottomNavBar
+            ? Consumer<NavigationProvider>(
+                builder: (context, navigationProvider, child) {
+                  return CustomBottomNavigationBar(
+                    currentIndex: navigationProvider.currentIndex,
+                    onTap: (index) => _onItemTapped(context, index),
+                  );
+                },
+              )
+            : null,
       ),
     );
   }

@@ -8,48 +8,73 @@ import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/home/widgets/welcome_section.dart';
 import 'package:flutter/material.dart';
 
-
-  List<PropertyCard> properties = List.filled(3, const PropertyCard(
-                  title: 'Small cottage with great view of bagmati',
-                  location: 'Lukavac, TK, F.BiH',
-                  details: '2 room   673 m2',
-                  price: '\$526 / month',
-                  rating: '4.8 (73)',
-                  imageUrl: 'assets/images/house.jpg'));
-  List<PropertyCard> properties2 = List.filled(5,  const PropertyCard(
-                   title: 'Small cottage with great view of bagmati',
-                  location: 'Lukavac, TK, F.BiH',
-                  details: '2 room   673 m2',
-                  price: '\$526 / month',
-                  rating: '4.8 (73)',
-                  imageUrl: 'assets/images/house.jpg'));
-
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  HomeScreen({super.key});
+
+  final List<PropertyCard> properties = List.filled(
+    3,
+    const PropertyCard(
+      title: 'Small cottage with great view of Bagmati',
+      location: 'Lukavac, TK, F.BiH',
+      details: '2 rooms   673 m2',
+      price: '\$526 / month',
+      rating: '4.8 (73)',
+      imageUrl: 'assets/images/house.jpg',
+    ),
+  );
+
+  final List<PropertyCard> properties2 = List.filled(
+    5,
+    const PropertyCard(
+      title: 'Small cottage with great view of Bagmati',
+      location: 'Lukavac, TK, F.BiH',
+      details: '2 rooms   673 m2',
+      price: '\$526 / month',
+      rating: '4.8 (73)',
+      imageUrl: 'assets/images/house.jpg',
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Home', // Title for the app bar if shown
+      // Since we are using a custom title widget, we can set title to null
+      title: null,
+      showAppBar: true,
+      useSlidingDrawer: true,
+      showBackButton: false,
+      // Passing the LocationWidget as a custom title widget
+      titleWidget: LocationWidget(title: 'Welcome Back', location: 'Lukavac'),
+      onSearchChanged: (query) {
+        // Handle search query
+        print('Search query: $query');
+      },
+      searchHintText: 'Search properties...',
+      appBarActions: [
+        IconButton(
+          icon: const Icon(Icons.notifications, color: Colors.white),
+          onPressed: () {
+            // Handle notifications
+          },
+        ),
+      ],
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
+            // Removed the custom app bar content from the body
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAppBarContent(context),
-              const SizedBox(height: 20),
-              const SearchBar(),
               const SizedBox(height: 20),
               const WelcomeSection(),
               const SizedBox(height: 20),
               SectionHeader(title: 'Near your location', onSeeAll: () {}),
-              CustomSlider(items: properties), // Replace with actual image URL
+              CustomSlider(items: properties),
               const SizedBox(height: 20),
               SectionHeader(title: 'Top rated', onSeeAll: () {}),
-              CustomSlider(items:  properties2),
+              CustomSlider(items: properties2),
               const SizedBox(height: 20),
-              SectionHeader(title: 'Most rented props', onSeeAll: () {}),
+              SectionHeader(title: 'Most rented properties', onSeeAll: () {}),
               const MostRentedProps(),
               const SizedBox(height: 20),
               const HostSection(),
@@ -57,26 +82,6 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     // Action for floating button
-      //   },
-      //   child: const Icon(Icons.add),
-      // ),
-      showAppBar: true, // No app bar since custom one is used
-    );
-  }
-
-  Widget _buildAppBarContent(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-         Row(
-          children: [
-            LocationWidget(title: 'MyTitle',location: 'Lukavac'),
-          ],
-        ),
-      ],
     );
   }
 }
