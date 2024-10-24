@@ -22,15 +22,15 @@ class CustomSlidingDrawer extends StatelessWidget {
     ));
 
     final double drawerWidth = MediaQuery.of(context).size.width * 0.7;
-    
+
     return SlideTransition(
       position: slideAnimation,
       child: SizedBox(
         width: drawerWidth, // Set the drawer width
-        child: const Drawer(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: Drawer(
+          child: ListView( // Use ListView to make the content scrollable
+            padding: EdgeInsets.zero,
+            children: const [
               UserAccountsDrawerHeader(
                 accountName: Text("Marco Jacobs"),
                 accountEmail: Text("Edit profile"),
@@ -52,7 +52,7 @@ class CustomSlidingDrawer extends StatelessWidget {
                 leading: Icon(Icons.settings),
                 title: Text("Settings"),
               ),
-              Spacer(),
+              Divider(),
               ListTile(
                 leading: Icon(Icons.info),
                 title: Text("Terms & Conditions"),

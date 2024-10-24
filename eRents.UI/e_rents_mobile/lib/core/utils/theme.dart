@@ -6,7 +6,7 @@ const Color backgroundColor = Color(0xfff4f4f4);
 
 final ThemeData appTheme = ThemeData(
   colorScheme: ColorScheme.fromSwatch(
-    primarySwatch: Colors.purple,
+    primarySwatch: Colors.indigo,
   ).copyWith(
     secondary: secondaryColor,
     surface: backgroundColor,
@@ -44,16 +44,6 @@ final ThemeData appTheme = ThemeData(
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(Radius.circular(20.0)),
     ),
-  ),
-  inputDecorationTheme: InputDecorationTheme(
-    border:const OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(30.0)),
-      borderSide: BorderSide(style: BorderStyle.solid, color: Colors.black87),
-      
-    ),
-    filled: true,
-    fillColor: Colors.grey[600],
-    contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
   ),
    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
     selectedItemColor: primaryColor,
