@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
@@ -11,14 +12,20 @@ class BaseScreen extends StatefulWidget {
   final Widget body;
   final bool showAppBar;
   final bool useSlidingDrawer;
-
+  final bool showBottomNavBar;
+  final Color? backgroundColor;
+  final bool resizeToAvoidBottomInset; // Added this line
+  
   const BaseScreen({
-    Key? key,
+    super.key,
     required this.title,
     required this.body,
     this.showAppBar = true,
     this.useSlidingDrawer = true,
-  }) : super(key: key);
+    this.showBottomNavBar = true,
+    this.backgroundColor,
+    this.resizeToAvoidBottomInset = true, // Added this line
+  });
 
   @override
   _BaseScreenState createState() => _BaseScreenState();
@@ -157,6 +164,8 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        backgroundColor: widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
+        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset, // Added this line
         body: _buildGestureDetector(
           context,
           Stack(
@@ -167,14 +176,16 @@ class _BaseScreenState extends State<BaseScreen> with SingleTickerProviderStateM
             ],
           ),
         ),
-        bottomNavigationBar: Consumer<NavigationProvider>(
-          builder: (context, navigationProvider, child) {
-            return CustomBottomNavigationBar(
-              currentIndex: navigationProvider.currentIndex,
-              onTap: (index) => _onItemTapped(context, index),
-            );
-          },
-        ),
+        bottomNavigationBar: widget.showBottomNavBar // Conditionally show the bottom navigation bar
+            ? Consumer<NavigationProvider>(
+                builder: (context, navigationProvider, child) {
+                  return CustomBottomNavigationBar(
+                    currentIndex: navigationProvider.currentIndex,
+                    onTap: (index) => _onItemTapped(context, index),
+                  );
+                },
+              )
+            : null, // Return null if bottom navigation is not needed
       ),
     );
   }

@@ -45,16 +45,16 @@ final ThemeData appTheme = ThemeData(
       borderRadius: BorderRadius.all(Radius.circular(20.0)),
     ),
   ),
-  inputDecorationTheme: InputDecorationTheme(
-    border:const OutlineInputBorder(
-      borderRadius: BorderRadius.all(Radius.circular(30.0)),
-      borderSide: BorderSide(style: BorderStyle.solid, color: Colors.black87),
+  // inputDecorationTheme: InputDecorationTheme(
+  //   border:const OutlineInputBorder(
+  //     borderRadius: BorderRadius.all(Radius.circular(30.0)),
+  //     borderSide: BorderSide(style: BorderStyle.solid, color: Colors.black87),
       
-    ),
-    filled: true,
-    fillColor: Colors.grey[600],
-    contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
-  ),
+  //   ),
+  //   filled: true,
+  //   fillColor: Colors.grey[600],
+  //   contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 20),
+  // ),
    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
     selectedItemColor: primaryColor,
     unselectedItemColor: Colors.grey,
