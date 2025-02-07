@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AmenityChip extends StatelessWidget {
   final String amenityName;
 
-  const AmenityChip({required this.amenityName, Key? key}) : super(key: key);
+  const AmenityChip({required this.amenityName, super.key});
 
   @override
   Widget build(BuildContext context) {

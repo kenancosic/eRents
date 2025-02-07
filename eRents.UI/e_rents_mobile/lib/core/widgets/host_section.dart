@@ -17,11 +17,11 @@ class HostSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Want to host your own place?',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const Text(
+                Text(
                     'Earn passive income by renting or selling your property'),
               ],
             ),

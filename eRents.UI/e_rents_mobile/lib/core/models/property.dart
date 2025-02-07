@@ -59,7 +59,7 @@ class Property {
       longitude: json['longitude']?.toDouble(),
       dateAdded: json['dateAdded'] != null ? DateTime.parse(json['dateAdded']) : null,
       name: json['name'],
-      averageRating: json['averageRating'] != null ? json['averageRating'].toDouble() : null,
+      averageRating: json['averageRating']?.toDouble(),
       images: (json['images'] as List).map((i) => ImageResponse.fromJson(i)).toList(),
     );
   }

@@ -9,19 +9,19 @@ class UserProfile extends StatelessWidget {
   final String profilePictureUrl;
 
   const UserProfile({
-    Key? key,
+    super.key,
     required this.username,
     required this.email,
     required this.phoneNumber,
     required this.address,
     required this.profilePictureUrl,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile'),
+        title: const Text('Profile'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -29,16 +29,16 @@ class UserProfile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ProfilePicture(imageUrl: profilePictureUrl),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
               username,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(email),
-            SizedBox(height: 5),
+            const SizedBox(height: 5),
             Text(phoneNumber),
-            SizedBox(height: 5),
+            const SizedBox(height: 5),
             Text(address),
           ],
         ),

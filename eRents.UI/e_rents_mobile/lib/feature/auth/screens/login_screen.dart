@@ -62,66 +62,65 @@ class LoginScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
-                  // Blurred, semi-transparent card
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                        15.0), // Reduced the border radius
+                    borderRadius: BorderRadius.circular(15.0),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                       child: Container(
-                        width: MediaQuery.of(context).size.width *
-                            0.85, // Set fixed width
+                        width: MediaQuery.of(context).size.width * 0.85,
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(15.0),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 20.0), // Reduced padding
+                            horizontal: 16.0, vertical: 20.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisSize: MainAxisSize
-                              .min, // Set mainAxisSize to minimize height
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  "Welcome to eRents",
-                                  style: TextStyle(
-                                    fontSize: 24, // Reduced font size
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.start,
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                  maxWidth: 300),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Welcome to eRents",
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SvgPicture.asset(
+                                      'assets/images/HouseLogo.svg',
+                                      height: 28,
+                                      width: 35,
+                                      color: Colors.white,
+                                    ),
+                                  ],
                                 ),
-                                SvgPicture.asset(
-                                  'assets/images/HouseLogo.svg',
-                                  height: 28, // Reduced height
-                                  width: 35,
-                                  color: Colors.white,
-                                ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 8), // Reduced spacing
+                            const SizedBox(height: 8),
                             const Text(
                               "Please enter your login credentials.",
                               style: TextStyle(
-                                fontSize: 14, // Reduced font size
+                                fontSize: 14,
                                 color: Colors.white70,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 20), // Reduced spacing
+                            const SizedBox(height: 20),
                             const Align(
                               alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Email',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white), // Reduced font size
-                              ),
+                              child: Text('Email',
+                                  style: TextStyle(
+                                      fontSize: 14, color: Colors.white)),
                             ),
                             CustomInputField(
                               controller: _emailController,
@@ -134,8 +133,7 @@ class LoginScreen extends StatelessWidget {
                               child: Text(
                                 'Password',
                                 style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white), // Reduced font size
+                                    fontSize: 14, color: Colors.white),
                               ),
                             ),
                             CustomInputField(
@@ -145,7 +143,7 @@ class LoginScreen extends StatelessWidget {
                               hasSuffixIcon: true,
                               suffixIcon: Icons.visibility_off,
                             ),
-                            const SizedBox(height: 15), // Reduced spacing
+                            const SizedBox(height: 15),
                             Align(
                               alignment: Alignment.center,
                               child: TextButton(
@@ -156,12 +154,12 @@ class LoginScreen extends StatelessWidget {
                                   'Forgot Password?',
                                   style: TextStyle(
                                     color: Color(0xFF7065F0),
-                                    fontSize: 14, // Reduced font size
+                                    fontSize: 14,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 15), // Reduced spacing
+                            const SizedBox(height: 15),
                             Consumer<AuthProvider>(
                               builder: (context, provider, child) {
                                 if (provider.state == ViewState.Busy) {
@@ -177,8 +175,9 @@ class LoginScreen extends StatelessWidget {
                               },
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.spaceAround,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 const Text(
                                   "Don't have an account?",

@@ -5,10 +5,10 @@ class CustomSlidingDrawer extends StatelessWidget {
   final VoidCallback onDrawerToggle;
 
   const CustomSlidingDrawer({
-    Key? key,
+    super.key,
     required this.controller,
     required this.onDrawerToggle,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

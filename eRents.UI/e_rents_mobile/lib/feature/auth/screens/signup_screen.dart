@@ -1,7 +1,6 @@
 import 'dart:ui'; // For ImageFilter
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/core/widgets/next_step_button.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
@@ -11,7 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class SignUpScreen extends StatefulWidget {
-  SignUpScreen({super.key});
+  const SignUpScreen({super.key});
 
   @override
   _SignUpScreenState createState() => _SignUpScreenState();
@@ -151,25 +150,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  "Create Your Account",
-                                  style: TextStyle(
-                                    fontSize: 24, // Reduced font size
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.start,
+                            ConstrainedBox(
+                               constraints: const BoxConstraints(
+                                  maxWidth: 300),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Create Your Account ",
+                                      style: TextStyle(
+                                        fontSize: 24, // Reduced font size
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SvgPicture.asset(
+                                      'assets/images/HouseLogo.svg',
+                                      height: 28, // Reduced height
+                                      width: 35,
+                                      color: Colors.white,
+                                    ),
+                                  ],
                                 ),
-                                SvgPicture.asset(
-                                  'assets/images/HouseLogo.svg',
-                                  height: 28, // Reduced height
-                                  width: 35,
-                                  color: Colors.white,
-                                ),
-                              ],
+                              ),
                             ),
                             const SizedBox(height: 8), // Reduced spacing
                             const Text(
@@ -316,13 +322,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                           onTap: () => _selectDate(context),
                                           child: AbsorbPointer(
                                             child: CustomInputField(
-                                              controller:
-                                                  TextEditingController(
-                                                      text: _selectedDateOfBirth ==
-                                                              null
-                                                          ? ''
-                                                          : '${_selectedDateOfBirth!.toLocal()}'
-                                                              .split(' ')[0]),
+                                              controller: TextEditingController(
+                                                  text: _selectedDateOfBirth ==
+                                                          null
+                                                      ? ''
+                                                      : '${_selectedDateOfBirth!.toLocal()}'
+                                                          .split(' ')[0]),
                                               hintText: 'Select date of birth',
                                               suffixIcon: Icons.calendar_today,
                                             ),
@@ -401,8 +406,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               return;
                                             }
 
-                                            bool success = await provider
-                                                .register({
+                                            bool success =
+                                                await provider.register({
                                               'username':
                                                   _usernameController.text,
                                               'email': _emailController.text,

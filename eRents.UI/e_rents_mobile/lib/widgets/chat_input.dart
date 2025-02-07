@@ -5,10 +5,10 @@ class ChatInput extends StatelessWidget {
   final Function onSend;
 
   const ChatInput({
-    Key? key,
+    super.key,
     required this.controller,
     required this.onSend,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +28,7 @@ class ChatInput extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.send),
+            icon: const Icon(Icons.send),
             onPressed: () => onSend(),
           ),
         ],

@@ -11,6 +11,8 @@ import 'package:provider/provider.dart';
 class ForgotPasswordScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
 
+  ForgotPasswordScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
@@ -117,7 +119,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                                     bool success = await provider.forgotPassword(_emailController.text);
                                     if (success) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('Password reset email sent.')),
+                                        const SnackBar(content: Text('Password reset email sent.')),
                                       );
                                     } else {
                                       ScaffoldMessenger.of(context).showSnackBar(

@@ -9,8 +9,8 @@ class PaymentSummary extends StatelessWidget {
     required this.paymentMethod,
     required this.amount,
     required this.paymentStatus,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +20,10 @@ class PaymentSummary extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Payment Method: $paymentMethod', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            Text('Payment Method: $paymentMethod', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Text('Amount: \$${amount.toStringAsFixed(2)}'),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text('Status: $paymentStatus', style: TextStyle(color: paymentStatus == 'Success' ? Colors.green : Colors.red)),
           ],
         ),

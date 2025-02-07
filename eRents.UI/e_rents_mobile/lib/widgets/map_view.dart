@@ -5,11 +5,11 @@ class MapView extends StatelessWidget {
   final double latitude;
   final double longitude;
 
-  const MapView({required this.latitude, required this.longitude, Key? key}) : super(key: key);
+  const MapView({required this.latitude, required this.longitude, super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 200,
       child: GoogleMap(
         initialCameraPosition: CameraPosition(
@@ -18,7 +18,7 @@ class MapView extends StatelessWidget {
         ),
         markers: {
           Marker(
-            markerId: MarkerId('property_location'),
+            markerId: const MarkerId('property_location'),
             position: LatLng(latitude, longitude),
           ),
         },

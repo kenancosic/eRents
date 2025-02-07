@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'base_provider.dart';
 
 class NavigationProvider extends BaseProvider {

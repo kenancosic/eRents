@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SortDialog extends StatefulWidget {
+  const SortDialog({super.key});
+
   @override
   _SortDialogState createState() => _SortDialogState();
 }
@@ -13,37 +15,37 @@ class _SortDialogState extends State<SortDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Sort Properties'),
+      title: const Text('Sort Properties'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           RadioListTile(
-            title: Text('Price: Low to High'),
+            title: const Text('Price: Low to High'),
             value: 'price',
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),
           RadioListTile(
-            title: Text('Price: High to Low'),
+            title: const Text('Price: High to Low'),
             value: 'price_desc',
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),
           RadioListTile(
-            title: Text('Rating: High to Low'),
+            title: const Text('Rating: High to Low'),
             value: 'rating',
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),
@@ -54,7 +56,7 @@ class _SortDialogState extends State<SortDialog> {
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: Text('Cancel'),
+          child: const Text('Cancel'),
         ),
         ElevatedButton(
           onPressed: () {
@@ -65,7 +67,7 @@ class _SortDialogState extends State<SortDialog> {
             }
             Navigator.of(context).pop();
           },
-          child: Text('Apply'),
+          child: const Text('Apply'),
         ),
       ],
     );

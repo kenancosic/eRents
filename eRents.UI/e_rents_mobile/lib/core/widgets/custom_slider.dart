@@ -26,7 +26,7 @@ class _CustomSlider extends State<CustomSlider> {
           items: widget.items.map((item) {
             return Builder(
               builder: (BuildContext context) {
-                return Container(
+                return SizedBox(
                   width: MediaQuery.of(context).size.width,
                   // margin: const EdgeInsets.only(right: 5.0),
                   child: item,
@@ -38,7 +38,7 @@ class _CustomSlider extends State<CustomSlider> {
           options: CarouselOptions(
             viewportFraction: 1,
             height: 200.0,
-            autoPlay: true,
+            autoPlay: false,
             onPageChanged: (index, reason) {
               setState(() {
                 _currentIndex = index;

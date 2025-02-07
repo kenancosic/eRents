@@ -10,24 +10,24 @@ class NotificationCard extends StatelessWidget {
     required this.title,
     required this.message,
     required this.date,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     final DateFormat dateFormat = DateFormat.yMd(); // or any format you prefer
     return Card(
-      margin: EdgeInsets.all(8),
+      margin: const EdgeInsets.all(8),
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             Text(message),
-            SizedBox(height: 8),
-            Text('Received: ${dateFormat.format(date)}', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 8),
+            Text('Received: ${dateFormat.format(date)}', style: const TextStyle(color: Colors.grey)),
           ],
         ),
       ),

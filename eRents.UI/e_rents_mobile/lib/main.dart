@@ -19,6 +19,8 @@ class MyApp extends StatelessWidget {
   // Initialize the AppRouter
   final AppRouter _appRouter = AppRouter();
 
+  MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(

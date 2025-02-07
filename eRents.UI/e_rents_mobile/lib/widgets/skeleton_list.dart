@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class SkeletonList extends StatelessWidget {
   final int itemCount;
 
-  const SkeletonList({Key? key, required this.itemCount}) : super(key: key);
+  const SkeletonList({super.key, required this.itemCount});
 
   @override
   Widget build(BuildContext context) {

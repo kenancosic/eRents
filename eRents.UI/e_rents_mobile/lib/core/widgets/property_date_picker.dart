@@ -11,7 +11,7 @@ class DatePicker extends StatefulWidget {
   final double pricePerNight;
 
   const DatePicker({
-    Key? key,
+    super.key,
     required this.initialStartDate,
     required this.initialEndDate,
     required this.firstDate,
@@ -20,7 +20,7 @@ class DatePicker extends StatefulWidget {
     required this.onDateRangeSelected,
     required this.onInvalidSelection,
     required this.pricePerNight,
-  }) : super(key: key);
+  });
 
   @override
   _DatePickerState createState() => _DatePickerState();
@@ -64,7 +64,7 @@ class _DatePickerState extends State<DatePicker> {
 
       for (var day = picked.start;
           day.isBefore(picked.end) || day.isAtSameMomentAs(picked.end);
-          day = day.add(Duration(days: 1))) {
+          day = day.add(const Duration(days: 1))) {
         if (!_isDateAvailable(day)) {
           validSelection = false;
           break;
@@ -82,7 +82,7 @@ class _DatePickerState extends State<DatePicker> {
         widget.onInvalidSelection(picked.start, picked.end);
         // Show some error feedback
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Selected dates include unavailable days.')),
+          const SnackBar(content: Text('Selected dates include unavailable days.')),
         );
       }
     }
@@ -95,14 +95,14 @@ class _DatePickerState extends State<DatePicker> {
       children: [
         ElevatedButton(
           onPressed: () => _selectDateRange(context),
-          child: Text('Select Date Range'),
+          child: const Text('Select Date Range'),
         ),
         if (_startDate != null && _endDate != null) ...[
           Text('Selected Dates: ${_startDate!.toLocal()} - ${_endDate!.toLocal()}'),
-          Text('Total Price: \$_totalPrice'),
+          const Text('Total Price: \$_totalPrice'),
         ],
         if (_startDate == null || _endDate == null)
-          Text('Please select a valid date range.'),
+          const Text('Please select a valid date range.'),
       ],
     );
   }
