@@ -19,10 +19,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final LatLng _center = const LatLng(44.5328, 18.6704); // Example: Coordinates for Lukavac
 
   final Set<Marker> _markers = {
-    Marker(
-      markerId: const MarkerId('marker_1'),
-      position: const LatLng(44.5328, 18.6704),
-      infoWindow: const InfoWindow(
+    const Marker(
+      markerId: MarkerId('marker_1'),
+      position: LatLng(44.5328, 18.6704),
+      infoWindow: InfoWindow(
         title: '\$2,430',
       ),
     ),
@@ -108,7 +108,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: TextField(
                     decoration: InputDecoration(
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: const Icon(Icons.search),
                       hintText: 'Search for location...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),

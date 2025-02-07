@@ -7,17 +7,17 @@ class ReviewCard extends StatelessWidget {
   final String reviewDate;
 
   const ReviewCard({
-    Key? key,
+    super.key,
     required this.reviewerName,
     required this.starRating,
     required this.reviewText,
     required this.reviewDate,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 8.0),
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
@@ -27,24 +27,24 @@ class ReviewCard extends StatelessWidget {
               children: [
                 Text(
                   reviewerName,
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Spacer(),
+                const Spacer(),
                 Text(
                   '$starRating ★',
-                  style: TextStyle(color: Colors.orange),
+                  style: const TextStyle(color: Colors.orange),
                 ),
               ],
             ),
-            SizedBox(height: 5),
+            const SizedBox(height: 5),
             Text(
               reviewText,
-              style: TextStyle(fontSize: 16),
+              style: const TextStyle(fontSize: 16),
             ),
-            SizedBox(height: 5),
+            const SizedBox(height: 5),
             Text(
               reviewDate,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
           ],
         ),

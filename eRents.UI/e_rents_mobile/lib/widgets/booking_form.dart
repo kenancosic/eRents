@@ -7,18 +7,18 @@ class BookingForm extends StatelessWidget {
   final Function onSubmit;
 
   const BookingForm({
-    Key? key,
+    super.key,
     required this.startDateController,
     required this.endDateController,
     required this.totalPriceController,
     required this.onSubmit,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Book Property'),
+        title: const Text('Book Property'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -26,23 +26,23 @@ class BookingForm extends StatelessWidget {
           children: [
             TextField(
               controller: startDateController,
-              decoration: InputDecoration(labelText: 'Start Date'),
+              decoration: const InputDecoration(labelText: 'Start Date'),
               keyboardType: TextInputType.datetime,
             ),
             TextField(
               controller: endDateController,
-              decoration: InputDecoration(labelText: 'End Date'),
+              decoration: const InputDecoration(labelText: 'End Date'),
               keyboardType: TextInputType.datetime,
             ),
             TextField(
               controller: totalPriceController,
-              decoration: InputDecoration(labelText: 'Total Price'),
+              decoration: const InputDecoration(labelText: 'Total Price'),
               keyboardType: TextInputType.number,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => onSubmit(),
-              child: Text('Confirm Booking'),
+              child: const Text('Confirm Booking'),
             ),
           ],
         ),

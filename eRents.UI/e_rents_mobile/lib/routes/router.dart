@@ -37,7 +37,7 @@ class AppRouter {
       GoRoute(
         path: '/signup',
         name: 'signup',
-        builder: (context, state) => SignUpScreen(),
+        builder: (context, state) => const SignUpScreen(),
       ),
       GoRoute(
         path: '/forgot_password',
@@ -47,12 +47,12 @@ class AppRouter {
       GoRoute(
         path: '/password_reset_confirmation',
         name: 'password_reset_confirmation',
-        builder: (context, state) => PasswordResetConfirmationScreen(),
+        builder: (context, state) => const PasswordResetConfirmationScreen(),
       ),
       GoRoute(
         path: '/explore',
         name:'explore',
-        builder: (context, state) => ExploreScreen()
+        builder: (context, state) => const ExploreScreen()
       ),
       GoRoute(
       path: '/chatRoom',
@@ -71,7 +71,7 @@ class AppRouter {
       GoRoute(
         path: '/profile',
         name: 'profile',
-        builder: (context, state) => ProfileScreen()
+        builder: (context, state) => const ProfileScreen()
         ),
 
     ],

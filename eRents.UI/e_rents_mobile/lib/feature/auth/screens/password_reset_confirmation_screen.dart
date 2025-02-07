@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 
 
 class PasswordResetConfirmationScreen extends StatelessWidget {
+  const PasswordResetConfirmationScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
+    return const BaseScreen(
       title: 'Reset Password',
-      body: const Center(
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(16.0),
           child: Text(
             'A password reset email has been sent to your email address. Please check your inbox.',
             textAlign: TextAlign.center,

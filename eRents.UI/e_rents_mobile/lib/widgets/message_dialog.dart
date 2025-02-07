@@ -8,13 +8,13 @@ class MessageDialog extends StatelessWidget {
   final bool isError;
 
   const MessageDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.content,
     required this.onConfirm,
     this.onCancel,
     this.isError = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +28,11 @@ class MessageDialog extends StatelessWidget {
         if (onCancel != null)
           TextButton(
             onPressed: onCancel,
-            child: Text("Cancel"),
+            child: const Text("Cancel"),
           ),
         TextButton(
           onPressed: onConfirm,
-          child: Text("Confirm"),
+          child: const Text("Confirm"),
         ),
       ],
     );

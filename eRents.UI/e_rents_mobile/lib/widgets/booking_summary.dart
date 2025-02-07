@@ -13,8 +13,8 @@ class BookingSummary extends StatelessWidget {
     required this.startDate,
     required this.endDate,
     required this.totalPrice,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {

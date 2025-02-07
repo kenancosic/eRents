@@ -1,11 +1,9 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
-import 'package:e_rents_mobile/core/widgets/host_section.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/home/widgets/most_rented_props.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/feature/home/widgets/welcome_section.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -17,7 +15,7 @@ class HomeScreen extends StatelessWidget {
       title: 'Small cottage with great view of Bagmati',
       location: 'Lukavac, TK, F.BiH',
       details: '2 rooms   673 m2',
-      price: '\$526 / month',
+      price: '\$526',
       rating: '4.8 (73)',
       imageUrl: 'assets/images/house.jpg',
     ),
@@ -29,7 +27,7 @@ class HomeScreen extends StatelessWidget {
       title: 'Small cottage with great view of Bagmati',
       location: 'Lukavac, TK, F.BiH',
       details: '2 rooms   673 m2',
-      price: '\$526 / month',
+      price: '\$526',
       rating: '4.8 (73)',
       imageUrl: 'assets/images/house.jpg',
     ),
@@ -43,8 +41,10 @@ class HomeScreen extends StatelessWidget {
       showAppBar: true,
       useSlidingDrawer: true,
       showBackButton: false,
+      showFilterButton: true,
       // Passing the LocationWidget as a custom title widget
-      titleWidget: LocationWidget(title: 'Welcome Back', location: 'Lukavac'),
+      locationWidget: const LocationWidget(
+          title: 'Welcome back, User', location: 'Lukavac'),
       onSearchChanged: (query) {
         // Handle search query
         print('Search query: $query');
@@ -52,7 +52,7 @@ class HomeScreen extends StatelessWidget {
       searchHintText: 'Search properties...',
       appBarActions: [
         IconButton(
-          icon: const Icon(Icons.notifications, color: Colors.white),
+          icon: const Icon(Icons.notifications, color: Colors.grey),
           onPressed: () {
             // Handle notifications
           },
@@ -66,8 +66,6 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              const WelcomeSection(),
-              const SizedBox(height: 20),
               SectionHeader(title: 'Near your location', onSeeAll: () {}),
               CustomSlider(items: properties),
               const SizedBox(height: 20),
@@ -76,8 +74,8 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               SectionHeader(title: 'Most rented properties', onSeeAll: () {}),
               const MostRentedProps(),
-              const SizedBox(height: 20),
-              const HostSection(),
+              // const SizedBox(height: 20),
+              // const HostSection(),
             ],
           ),
         ),

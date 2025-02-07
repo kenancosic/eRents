@@ -9,14 +9,14 @@ class PropertyWidget extends StatelessWidget {
   final bool isListItem; // To switch between list and grid view
 
   const PropertyWidget({
-    Key? key,
+    super.key,
     required this.propertyName,
     required this.address,
     required this.price,
     required this.imageUrl,
     required this.onTap,
     this.isListItem = false, // Default to grid view
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +32,7 @@ class PropertyWidget extends StatelessWidget {
               ),
               title: Text(
                 propertyName,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,7 +51,7 @@ class PropertyWidget extends StatelessWidget {
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
                       propertyName,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   Padding(
@@ -60,7 +60,7 @@ class PropertyWidget extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text('\$$price per night', style: TextStyle(color: Colors.green)),
+                    child: Text('\$$price per night', style: const TextStyle(color: Colors.green)),
                   ),
                 ],
               ),

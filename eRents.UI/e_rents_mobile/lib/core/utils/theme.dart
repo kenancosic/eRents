@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 const Color primaryColor = Color(0xff31448F);
 const Color secondaryColor = Colors.orange;
-const Color backgroundColor = Color(0xfff4f4f4);
+const Color backgroundColor = Color(0xFFFCFCFC);
 
 final ThemeData appTheme = ThemeData(
   colorScheme: ColorScheme.fromSwatch(

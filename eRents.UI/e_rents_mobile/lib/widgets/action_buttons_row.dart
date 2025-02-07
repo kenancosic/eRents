@@ -4,9 +4,9 @@ class ActionButtonsRow extends StatelessWidget {
   final List<ActionButtonData> buttons;
 
   const ActionButtonsRow({
-    Key? key,
+    super.key,
     required this.buttons,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class SortDialog extends StatefulWidget {
-  const SortDialog({Key? key}) : super(key: key);
+  const SortDialog({super.key});
 
   @override
   _SortDialogState createState() => _SortDialogState();
@@ -25,7 +25,7 @@ class _SortDialogState extends State<SortDialog> {
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),
@@ -35,7 +35,7 @@ class _SortDialogState extends State<SortDialog> {
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),
@@ -45,7 +45,7 @@ class _SortDialogState extends State<SortDialog> {
             groupValue: _selectedSort,
             onChanged: (value) {
               setState(() {
-                _selectedSort = value as String?;
+                _selectedSort = value;
               });
             },
           ),

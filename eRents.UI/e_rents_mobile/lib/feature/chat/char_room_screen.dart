@@ -22,6 +22,8 @@ class ChatRoomScreen extends StatelessWidget {
     // Add more chat rooms here...
   ];
 
+  ChatRoomScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
@@ -78,7 +80,7 @@ class ChatRoomScreen extends StatelessWidget {
           if (unreadCount > 0)
             Container(
               padding: const EdgeInsets.all(6.0),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Colors.purple,
                 shape: BoxShape.circle,
               ),
