@@ -5,7 +5,8 @@ class DatePicker extends StatefulWidget {
   final DateTime initialEndDate;
   final DateTime firstDate;
   final DateTime lastDate;
-  final Map<DateTime, bool> availability; // true for available, false for unavailable dates
+  final Map<DateTime, bool>
+      availability; // true for available, false for unavailable dates
   final Function(DateTime, DateTime) onDateRangeSelected;
   final Function(DateTime, DateTime) onInvalidSelection;
   final double pricePerNight;
@@ -42,7 +43,8 @@ class _DatePickerState extends State<DatePicker> {
   void _calculateTotalPrice() {
     if (_startDate != null && _endDate != null) {
       setState(() {
-        _totalPrice = _endDate!.difference(_startDate!).inDays * widget.pricePerNight;
+        _totalPrice =
+            _endDate!.difference(_startDate!).inDays * widget.pricePerNight;
       });
     }
   }
@@ -59,7 +61,8 @@ class _DatePickerState extends State<DatePicker> {
       lastDate: widget.lastDate,
     );
 
-    if (picked != null && picked != DateTimeRange(start: _startDate!, end: _endDate!)) {
+    if (picked != null &&
+        picked != DateTimeRange(start: _startDate!, end: _endDate!)) {
       bool validSelection = true;
 
       for (var day = picked.start;
@@ -82,7 +85,8 @@ class _DatePickerState extends State<DatePicker> {
         widget.onInvalidSelection(picked.start, picked.end);
         // Show some error feedback
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selected dates include unavailable days.')),
+          const SnackBar(
+              content: Text('Selected dates include unavailable days.')),
         );
       }
     }
@@ -98,7 +102,8 @@ class _DatePickerState extends State<DatePicker> {
           child: const Text('Select Date Range'),
         ),
         if (_startDate != null && _endDate != null) ...[
-          Text('Selected Dates: ${_startDate!.toLocal()} - ${_endDate!.toLocal()}'),
+          Text(
+              'Selected Dates: ${_startDate!.toLocal()} - ${_endDate!.toLocal()}'),
           const Text('Total Price: \$_totalPrice'),
         ],
         if (_startDate == null || _endDate == null)
