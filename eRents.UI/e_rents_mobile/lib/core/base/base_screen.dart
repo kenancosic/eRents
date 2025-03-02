@@ -18,7 +18,6 @@ class BaseScreen extends StatefulWidget {
   final bool resizeToAvoidBottomInset;
 
   // New parameters to accommodate the updated app bar
-  final bool showBackButton;
   final VoidCallback? onBackButtonPressed;
   final bool showFilterButton;
   final VoidCallback? onFilterButtonPressed;
@@ -36,7 +35,6 @@ class BaseScreen extends StatefulWidget {
     this.showBottomNavBar = true,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
-    this.showBackButton = false,
     this.onBackButtonPressed,
     this.showFilterButton = false,
     this.onFilterButtonPressed,
@@ -168,7 +166,7 @@ class _BaseScreenState extends State<BaseScreen>
                     return [
                       SliverCustomAppBar(
                         // If using a sliding drawer and no back button, show the avatar which toggles the drawer.
-                        avatar: widget.useSlidingDrawer && !widget.showBackButton
+                        avatar: widget.useSlidingDrawer
                             ? CustomAvatar(
                                 imageUrl: '',
                                 borderWidth: 0.5,

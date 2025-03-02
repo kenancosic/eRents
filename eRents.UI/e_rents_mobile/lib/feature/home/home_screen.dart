@@ -4,43 +4,47 @@ import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/home/widgets/most_rented_props.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+  const HomeScreen({super.key});
 
-  final List<PropertyCard> properties = List.filled(
-    3,
-    const PropertyCard(
-      title: 'Small cottage with great view of Bagmati',
-      location: 'Lukavac, TK, F.BiH',
-      details: '2 rooms   673 m2',
-      price: '\$526',
-      rating: '4.8 (73)',
-      imageUrl: 'assets/images/house.jpg',
-    ),
-  );
-
-  final List<PropertyCard> properties2 = List.filled(
-    5,
-    const PropertyCard(
-      title: 'Small cottage with great view of Bagmati',
-      location: 'Lukavac, TK, F.BiH',
-      details: '2 rooms   673 m2',
-      price: '\$526',
-      rating: '4.8 (73)',
-      imageUrl: 'assets/images/house.jpg',
-    ),
-  );
+  List<PropertyCard> _buildPropertyCards(BuildContext context, int count) {
+    return List.filled(
+      count,
+      PropertyCard(
+        title: 'Small cottage with great view of Bagmati',
+        location: 'Lukavac, TK, F.BiH',
+        details: '2 rooms   673 m2',
+        price: '\$526',
+        rating: '4.8',
+        review: 73,
+        rooms: 2,
+        area: 673,
+        imageUrl: 'assets/images/house.jpg',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PropertyDetailScreen(propertyId: 1),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final properties = _buildPropertyCards(context, 3);
+    final properties2 = _buildPropertyCards(context, 5);
+
     return BaseScreen(
       // Since we are using a custom title widget, we can set title to null
       title: null,
       showAppBar: true,
       useSlidingDrawer: true,
-      showBackButton: false,
       showFilterButton: true,
       // Passing the LocationWidget as a custom title widget
       locationWidget: const LocationWidget(

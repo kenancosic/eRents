@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'custom_search_bar2.dart';
+import 'custom_search_bar.dart';
 
 class SliverCustomAppBar extends StatelessWidget {
   final Widget? avatar;
@@ -14,7 +14,7 @@ class SliverCustomAppBar extends StatelessWidget {
   final EdgeInsets contentPadding;
   final BorderRadius? customBorderRadius;
   final double? customToolbarHeight;
-
+  
   const SliverCustomAppBar({
     super.key,
     this.avatar,
@@ -36,7 +36,7 @@ class SliverCustomAppBar extends StatelessWidget {
   bool get _hasBottomRow => locationWidget != null || notification != null;
 
   // Default measurements
- static const double _defaultToolbarHeight = 80.0;
+  static const double _defaultToolbarHeight = 80.0;
   static const double _minimumBottomRowHeight = 50.0;
   static const BorderRadius _defaultBorderRadius = BorderRadius.only(
     bottomLeft: Radius.circular(20.0),
@@ -65,41 +65,51 @@ class SliverCustomAppBar extends StatelessWidget {
               Image.asset(
                 backgroundImagePath!,
                 fit: BoxFit.cover,
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF7065F0),
+                    Color(0xFF5D54C2),
+                  ],
+                )),
               ),
-            Container(
-              color: Colors.black.withOpacity(0.5),
-            ),
             // In SliverCustomAppBar, modify the container in _buildFlexibleSpace:
-Positioned(
-  bottom: 0,
-  left: 0,
-  right: 0,
-  child: IntrinsicHeight(
-    child: Container(
-      padding: contentPadding,
-      constraints: BoxConstraints(
-        minHeight: _minimumBottomRowHeight,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(  // Changed from SizedBox with fixed width to Expanded
-            child: locationWidget ?? const SizedBox(),
-          ),
-          if (notification != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 16.0),
-              child: notification!,
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: IntrinsicHeight(
+                child: Container(
+                  padding: contentPadding,
+                  constraints: BoxConstraints(
+                    minHeight: _minimumBottomRowHeight,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        // Changed from SizedBox with fixed width to Expanded
+                        child: locationWidget ?? const SizedBox(),
+                      ),
+                      if (notification != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16.0),
+                          child: notification!,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-        ],
-      ),
-    ),
-  ),
-),
           ],
         ),
       ),
@@ -115,18 +125,18 @@ Positioned(
             padding: const EdgeInsets.only(right: 8.0),
             child: avatar!,
           ),
-        Flexible(
-          flex: 1,
-          child: CustomSearchBar(
-            localData: const ['banana', 'mango'],
-            key: key,
-            searchHistory: const ['apple', 'mango'],
-            onSearchChanged: onSearchChanged ?? (value) {},
+         Flexible(
+                flex: 1,
+                child: CustomSearchBar(
+                  localData: const ['banana', 'mango'],
+                  key: key,
+                  searchHistory: const ['apple', 'mango'],
+                  onSearchChanged: onSearchChanged ?? (value) {},
             onFilterIconPressed: showFilterIcon ? onFilterIconPressed : null,
             hintText: searchHintText ?? 'Search',
             showFilterIcon: showFilterIcon,
-          ),
-        ),
+                ),
+              ),
       ],
     );
   }

@@ -11,6 +11,7 @@ class PropertyCard extends StatelessWidget {
   final int review;
   final int rooms;
   final int area;
+  final VoidCallback? onTap;
 
   const PropertyCard({
     Key? key,
@@ -23,54 +24,58 @@ class PropertyCard extends StatelessWidget {
     this.review = 0,
     this.rooms = 0,
     this.area = 0,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
-      child: Container(
-        height: 200,
-        decoration: ShapeDecoration(
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x26424242),
-              blurRadius: 10,
-              offset: Offset(5, 5),
-              spreadRadius: 1,
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            // Left side: the image
-            Flexible(
-              flex: 1,
-              child: PropertyImage(imageUrl: imageUrl),
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 200,
+          decoration: ShapeDecoration(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
             ),
-            // Right side: property details
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    PropertyRating(rating: rating, review: review),
-                    PropertyTitle(title: title),
-                    PropertyLocation(location: location),
-                    PropertyAmenities(rooms: rooms, area: area),
-                    PropertyPrice(price: price),
-                  ],
+            shadows: const [
+              BoxShadow(
+                color: Color(0x26424242),
+                blurRadius: 10,
+                offset: Offset(5, 5),
+                spreadRadius: 1,
+              )
+            ],
+          ),
+          child: Row(
+            children: [
+              // Left side: the image
+              Flexible(
+                flex: 1,
+                child: PropertyImage(imageUrl: imageUrl),
+              ),
+              // Right side: property details
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      PropertyRating(rating: rating, review: review),
+                      PropertyTitle(title: title),
+                      PropertyLocation(location: location),
+                      PropertyAmenities(rooms: rooms, area: area),
+                      PropertyPrice(price: price),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

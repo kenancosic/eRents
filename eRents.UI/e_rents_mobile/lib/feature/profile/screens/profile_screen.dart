@@ -8,6 +8,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BaseScreen(
       title:'Profile',
+      showAppBar: false,
       body: Column(
         children: [
           const SizedBox(height: 20),
