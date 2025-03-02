@@ -1,69 +1,122 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_svg/svg.dart';
 
 class CustomSearchBar extends StatelessWidget {
   final ValueChanged<String>? onSearchChanged;
   final VoidCallback? onFilterIconPressed;
   final String hintText;
   final bool showFilterIcon;
+  final List<String> localData;
+  final List<String> searchHistory;
 
   const CustomSearchBar({
-    super.key,
     this.onSearchChanged,
     this.onFilterIconPressed,
-    this.hintText = "Search address, city, location",
+    this.hintText = 'Search ',
     this.showFilterIcon = true,
+    required this.searchHistory,
+    required this.localData,
+    super.key,
   });
+
+  void _openFilterModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(16),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Filter Options'),
+            // Add your filter widgets (e.g., Chips, Tabs)
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical:5),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F3),
-        borderRadius: BorderRadius.circular(25.0),
-        border: Border.all(
-          color: const Color(0xFFE3E3E7),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        children: [
-          SvgPicture.asset('assets/icons/search.svg'),
-          const SizedBox(width: 8.0),
-          Expanded(
-            child: TextField(
-              onChanged: onSearchChanged,
-              cursorHeight: 20,
-              textAlignVertical: TextAlignVertical.center,     
-              decoration: InputDecoration(
-                hintText: hintText,
-                hintStyle: const TextStyle
-                  (color: Colors.grey,
-                  fontSize: 18.0,
-                  height: 1,
-                  ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8.0),
-                suffixIcon: showFilterIcon
-            ? IconButton(
-                icon: SvgPicture.asset('assets/icons/filters.svg'),
-                onPressed: onFilterIconPressed,
-                style: const ButtonStyle(
-                  alignment: Alignment.centerRight,
-                ),
-              )
-            : null,
-              ),
-              style: const TextStyle(
-                color: Colors.black, // Text color for user input
-                fontSize: 18.0, // Size of user input text
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+    return SizedBox(
+      height: 40,
+      child: SearchAnchor.bar(
+        barHintStyle: WidgetStateProperty.all(
+          const TextStyle(
+            color: Colors.grey,
+            fontWeight: FontWeight.w400,
+            // fontSize: 16,
           ),
-        ],
+        ),
+        barHintText: hintText,
+        barElevation: const WidgetStatePropertyAll(10),
+        barLeading: SvgPicture.asset(
+          'assets/icons/search.svg',
+          height: 20,
+          alignment: Alignment.center,
+        ),
+        viewHintText: hintText,
+        viewBackgroundColor: Colors.grey[100],
+        barTrailing: showFilterIcon
+            ? [
+                IconButton(
+                  icon: SvgPicture.asset(
+                    'assets/icons/filters.svg',
+                    height: 20,
+                  ),
+                  onPressed:
+                      onFilterIconPressed ?? () => _openFilterModal(context),
+                  style: const ButtonStyle(
+                    alignment: Alignment.centerRight,
+                  ),
+                )
+              ]
+            : null,
+            
+        viewTrailing: showFilterIcon
+            ? [
+                Padding(
+                  padding: EdgeInsets.only(right: 20.0),
+                  child: IconButton(
+                    icon: SvgPicture.asset(
+                      'assets/icons/filters.svg',
+                      height: 20,
+                    ),
+                    onPressed:
+                        onFilterIconPressed ?? () => _openFilterModal(context),
+                  ),
+                )
+              ]
+            : null,
+        suggestionsBuilder:
+            (BuildContext context, TextEditingController controller) {
+          if (controller.text.isEmpty) {
+            return searchHistory.map((historyItem) {
+              return ListTile(
+                leading: const Icon(Icons.history),
+                title: Text(historyItem),
+                onTap: () {
+                  controller.text = historyItem;
+                  onSearchChanged?.call(historyItem);
+                },
+              );
+            }).toList();
+          }
+          final suggestions = localData
+              .where((item) =>
+                  item.toLowerCase().contains(controller.text.toLowerCase()))
+              .toList();
+          return suggestions.map((suggestion) {
+            return ListTile(
+              title: Text(suggestion),
+              onTap: () {
+                controller.text = suggestion;
+                onSearchChanged?.call(suggestion);
+              },
+            );
+          }).toList();
+        },
+        onChanged: onSearchChanged ?? (query) {},
       ),
     );
   }

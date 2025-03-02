@@ -12,7 +12,16 @@ class PropertyDetailProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  set property(Property? value) {
+    _property = value;
+    notifyListeners();
+  }
+
   Future<void> fetchPropertyDetail(int propertyId) async {
+    if (_property != null && _property!.propertyId == propertyId) {
+      return; // Already have the correct property loaded
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();

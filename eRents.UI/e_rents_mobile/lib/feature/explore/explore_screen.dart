@@ -38,6 +38,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return BaseScreen(
       title: 'Explore',
       useSlidingDrawer: false,
+      showFilterButton: true,
       body: Stack(
         children: [
           // Google Map
@@ -103,22 +104,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                 ),
-                // Search Bar for filtering locations
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search for location...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      // Implement search functionality for filtering locations
-                    },
-                  ),
-                ),
                 const SizedBox(height: 10),
                 // "Showing results" and Sort/Filter row
                 Padding(
@@ -132,22 +117,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.sort),
-                            onPressed: () {
-                              _showSortModal(context);
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.filter_list),
-                            onPressed: () {
-                              _showFilterModal(context);
-                            },
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -200,87 +169,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  // Sorting modal
-  void _showSortModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 200,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Sort By',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              ListTile(
-                title: const Text('Price (Low to High)'),
-                onTap: () {
-                  // Implement sorting by price
-                },
-              ),
-              ListTile(
-                title: const Text('Price (High to Low)'),
-                onTap: () {
-                  // Implement sorting by price
-                },
-              ),
-              ListTile(
-                title: const Text('Rating'),
-                onTap: () {
-                  // Implement sorting by rating
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Filter modal
-  void _showFilterModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: 300,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Filter Results',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              ListTile(
-                title: const Text('Price Range'),
-                onTap: () {
-                  // Implement price range filter
-                },
-              ),
-              ListTile(
-                title: const Text('Number of Rooms'),
-                onTap: () {
-                  // Implement number of rooms filter
-                },
-              ),
-              ListTile(
-                title: const Text('Area Size'),
-                onTap: () {
-                  // Implement area size filter
-                },
-              ),
-              // Add more filter options as necessary
-            ],
-          ),
-        );
-      },
     );
   }
 }
