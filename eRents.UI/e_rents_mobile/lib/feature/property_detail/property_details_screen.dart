@@ -119,58 +119,83 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         ),
                         const SizedBox(height: 16),
                         // Rating and location
-                        Row(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 20),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${property.averageRating ?? 'N/A'}',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on, size: 20, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${property.city}, ${property.address}',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/icons/star.svg',
+                                    width: 15,
+                                    height: 15,
+                                    colorFilter: const ColorFilter.mode(Colors.amber, BlendMode.srcIn),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${property.averageRating ?? 'N/A'}',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/icons/location.svg',
+                                    width: 15,
+                                    height: 15,
+                                    // colorFilter: ColorFilter.mode(Colors.grey.shade600, BlendMode.srcIn),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${property.city ?? ''}, ${property.address ?? ''}',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         // Property features
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.bed, size: 20, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '2 room',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 24),
-                            Row(
-                              children: [
-                                const Icon(Icons.square_foot, size: 20, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '874 m²',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/icons/single-bed.svg',
+                                    width: 15,
+                                    height: 15,
+                                    // colorFilter: ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '2 room',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/icons/house-surface.svg',
+                                    width: 15,
+                                    height: 15,
+                                    colorFilter: ColorFilter.mode(Colors.grey.shade600, BlendMode.srcIn),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '874 m²',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Row(
