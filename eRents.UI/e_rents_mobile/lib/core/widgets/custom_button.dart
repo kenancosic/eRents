@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomButton extends StatelessWidget {
-  final String label;
+  final dynamic label;
   final bool isLoading;
   final VoidCallback onPressed;
   final Color backgroundColor;
@@ -32,15 +32,23 @@ class CustomButton extends StatelessWidget {
         ),
       ),
       child: isLoading
-          ? const CircularProgressIndicator(color: Colors.white) // Loading spinner
-          : Text(
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+          : label is String ? Text(
               label, // Dynamic label
               style: TextStyle(
                 color: Colors.white, // Text color
                 fontSize: fontSize, // Customizable font size
                 fontWeight: FontWeight.bold, // Bold text
               ),
-            ),
+            )
+          : label,
     );
   }
 }

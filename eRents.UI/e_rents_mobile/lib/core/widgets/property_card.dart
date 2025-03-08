@@ -14,7 +14,7 @@ class PropertyCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const PropertyCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.location,
     required this.details,
@@ -25,7 +25,7 @@ class PropertyCard extends StatelessWidget {
     this.rooms = 0,
     this.area = 0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +84,7 @@ class PropertyCard extends StatelessWidget {
 
 class PropertyImage extends StatelessWidget {
   final String imageUrl;
-  const PropertyImage({Key? key, required this.imageUrl}) : super(key: key);
+  const PropertyImage({super.key, required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +107,7 @@ class PropertyImage extends StatelessWidget {
 class PropertyRating extends StatelessWidget {
   final String rating;
   final int review;
-  const PropertyRating({Key? key, required this.rating, required this.review})
-      : super(key: key);
+  const PropertyRating({super.key, required this.rating, required this.review});
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +148,7 @@ class PropertyRating extends StatelessWidget {
 
 class PropertyTitle extends StatelessWidget {
   final String title;
-  const PropertyTitle({Key? key, required this.title}) : super(key: key);
+  const PropertyTitle({super.key, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +168,7 @@ class PropertyTitle extends StatelessWidget {
 
 class PropertyLocation extends StatelessWidget {
   final String location;
-  const PropertyLocation({Key? key, required this.location}) : super(key: key);
+  const PropertyLocation({super.key, required this.location});
 
   @override
   Widget build(BuildContext context) {
@@ -188,40 +187,56 @@ class PropertyLocation extends StatelessWidget {
 class PropertyAmenities extends StatelessWidget {
   final int rooms;
   final int area;
-  const PropertyAmenities({Key? key, required this.rooms, required this.area})
-      : super(key: key);
+  const PropertyAmenities({super.key, required this.rooms, required this.area});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      direction: Axis.horizontal,
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.start,
       children: [
-        Row(
+        Wrap(
+          direction: Axis.horizontal,
+          alignment: WrapAlignment.start,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Icon(Icons.bed, size: 14, color: Color(0xFF7D7F88)),
             const SizedBox(width: 6),
-            Text(
-              '$rooms rooms',
-              style: const TextStyle(
-                color: Color(0xFF7D7F88),
-                fontSize: 13,
-                fontFamily: 'Hind',
-                fontWeight: FontWeight.w400,
+            Baseline(
+              baseline: 13,
+              baselineType: TextBaseline.alphabetic,
+              child: Text(
+                '$rooms rooms',
+                style: const TextStyle(
+                  color: Color(0xFF7D7F88),
+                  fontSize: 13,
+                  fontFamily: 'Hind',
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(width: 8),
-        Row(
+        Wrap(
+          direction: Axis.horizontal,
+          alignment: WrapAlignment.start,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             const Icon(Icons.square_foot, size: 14, color: Color(0xFF7D7F88)),
             const SizedBox(width: 6),
-            Text(
-              '$area m2',
-              style: const TextStyle(
-                color: Color(0xFF7D7F88),
+            Baseline(
+              baseline: 14,
+              baselineType: TextBaseline.alphabetic,
+              child: Text(
+                '$area m2',
+                style: const TextStyle(
+                  color: Color(0xFF7D7F88),
                 fontSize: 13,
                 fontFamily: 'Hind',
                 fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           ],
@@ -233,7 +248,7 @@ class PropertyAmenities extends StatelessWidget {
 
 class PropertyPrice extends StatelessWidget {
   final String price;
-  const PropertyPrice({Key? key, required this.price}) : super(key: key);
+  const PropertyPrice({super.key, required this.price});
 
   @override
   Widget build(BuildContext context) {
