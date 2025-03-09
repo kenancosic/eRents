@@ -37,7 +37,7 @@ class _InputFieldState extends State<InputField> {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
+                color: Colors.grey.withValues(alpha: 0.2),
                 spreadRadius: 0,
                 blurRadius: 5,
                 offset: const Offset(0, 4),
