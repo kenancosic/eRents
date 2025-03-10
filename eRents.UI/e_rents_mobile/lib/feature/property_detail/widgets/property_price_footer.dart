@@ -5,10 +5,12 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 class PropertyPriceFooter extends StatelessWidget {
   final Property property;
+  final VoidCallback onCheckoutPressed;
 
   const PropertyPriceFooter({
     super.key,
     required this.property,
+    required this.onCheckoutPressed,
   });
 
   @override
@@ -27,7 +29,6 @@ class PropertyPriceFooter extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          
           return Row(
             children: [
               Column(
@@ -37,15 +38,15 @@ class PropertyPriceFooter extends StatelessWidget {
                   Text(
                     '\$${property.price}/month',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).primaryColor,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
                   ),
                   Text(
                     'All bills included',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
+                          color: Colors.grey,
+                        ),
                   ),
                 ],
               ),
@@ -54,8 +55,14 @@ class PropertyPriceFooter extends StatelessWidget {
                 width: 120,
                 child: CustomButton(
                   isLoading: false,
-                  onPressed: () {},
-                  label: Text('Checkout', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white),),
+                  onPressed: onCheckoutPressed,
+                  label: Text(
+                    'Checkout',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(color: Colors.white),
+                  ),
                 ),
               ),
             ],

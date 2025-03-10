@@ -14,6 +14,7 @@ import 'package:e_rents_mobile/feature/property_detail/widgets/property_price_fo
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/property_review.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -173,7 +174,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             final property = provider.property;
             if (property == null) return const SizedBox.shrink();
 
-            return PropertyPriceFooter(property: property);
+            return PropertyPriceFooter(
+              property: property,
+              onCheckoutPressed: checkoutPressed,
+            );
           },
         ),
       ),
@@ -184,5 +188,32 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     if (reviews.isEmpty) return 0.0;
     double sum = reviews.fold(0.0, (prev, review) => prev + review.rating);
     return sum / reviews.length;
+  }
+
+  void checkoutPressed() {
+    final property = MockProperties.getSingleProperty(widget.propertyId);
+    if (property == null) return;
+
+    final now = DateTime.now();
+    final startDate = DateTime(now.year, now.month, now.day + 1);
+    final endDate = DateTime(now.year, now.month, now.day + 6);
+    final isDailyRental = true;
+
+    final duration = endDate.difference(startDate).inDays;
+    final basePrice = property.price * duration;
+    final totalPrice = basePrice * 1.1; // Adding 10% service fee
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutScreen(
+          property: property,
+          startDate: startDate,
+          endDate: endDate,
+          isDailyRental: isDailyRental,
+          totalPrice: totalPrice,
+        ),
+      ),
+    );
   }
 }
