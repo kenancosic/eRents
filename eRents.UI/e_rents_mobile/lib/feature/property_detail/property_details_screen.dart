@@ -192,7 +192,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   void checkoutPressed() {
     final property = MockProperties.getSingleProperty(widget.propertyId);
-    if (property == null) return;
 
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day + 1);

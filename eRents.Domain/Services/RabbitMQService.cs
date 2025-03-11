@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace eRents.Domain.Services;
 
@@ -23,6 +25,7 @@ public class RabbitMQService : RabbitMQBaseService, IRabbitMQService
 
 		_channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: properties, body: body);
 		await Task.CompletedTask;
+
 		Console.WriteLine($"Message published to queue {queueName}: {json}");
 	}
 
@@ -38,7 +41,7 @@ public class RabbitMQService : RabbitMQBaseService, IRabbitMQService
 
 		_channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 		await Task.CompletedTask;
+
 		Console.WriteLine($"Subscribed to queue {queueName}");
 	}
 }
-

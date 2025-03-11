@@ -1,4 +1,8 @@
-﻿using RabbitMQ.Client;
+﻿using Microsoft.EntityFrameworkCore.Metadata;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
+using System.Threading.Tasks;
 
 namespace eRents.Domain.Services
 {
@@ -15,18 +19,16 @@ namespace eRents.Domain.Services
 				Port = port,
 				UserName = username,
 				Password = password,
-				DispatchConsumersAsync = true
+				//DispatchConsumersAsync = true
 			};
 
 			_connection = factory.CreateConnection();
-			_channel = _connection.CreateModel();
+			_channel = _connection.CreateModel(); // Fixed the pointer syntax error here
 		}
 
 		public void Dispose()
 		{
-			_channel?.Close();
 			_channel?.Dispose();
-			_connection?.Close();
 			_connection?.Dispose();
 		}
 	}

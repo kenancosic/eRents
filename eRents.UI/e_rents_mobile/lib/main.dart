@@ -6,10 +6,10 @@ import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
 import 'package:e_rents_mobile/feature/home/data/home_service.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 
 void main() {
   runApp(MyApp());
@@ -50,9 +50,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<HomeProvider>(
           create: (context) => HomeProvider(context.read<HomeService>()),
         ),
-        ChangeNotifierProvider<NavigationProvider>( // Add NavigationProvider
+        ChangeNotifierProvider<NavigationProvider>(
+          // Add NavigationProvider
           create: (context) => NavigationProvider(),
         ),
+        ChangeNotifierProvider(create: (_) => SavedProvider()),
       ],
       child: MaterialApp.router(
         title: 'eRents',

@@ -6,10 +6,11 @@ import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
+import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart';  // Import ForgotPasswordScreen
-import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart';  // Import PasswordResetConfirmationScreen
+import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
+import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
 
 class AppRouter {
   // Define the GoRouter instance
@@ -50,30 +51,32 @@ class AppRouter {
         builder: (context, state) => const PasswordResetConfirmationScreen(),
       ),
       GoRoute(
-        path: '/explore',
-        name:'explore',
-        builder: (context, state) => const ExploreScreen()
+          path: '/explore',
+          name: 'explore',
+          builder: (context, state) => const ExploreScreen()),
+      GoRoute(
+        path: '/chatRoom',
+        builder: (context, state) => ChatRoomScreen(),
       ),
       GoRoute(
-      path: '/chatRoom',
-      builder: (context, state) => ChatRoomScreen(),
-    ),
-    GoRoute(
-      path: '/chat',
-      builder: (context, state) {
-        final chatDetails = state.extra as Map<String, dynamic>;  // Pass data to the ChatScreen
-        return ChatScreen(
-          userName: chatDetails['name'],
-          userImage: chatDetails['imageUrl'],
-        );
-      },
-    ),
+        path: '/saved',
+        builder: (context, state) => const SavedScreen(),
+      ),
       GoRoute(
-        path: '/profile',
-        name: 'profile',
-        builder: (context, state) => const ProfileScreen()
-        ),
-
+        path: '/chat',
+        builder: (context, state) {
+          final chatDetails = state.extra
+              as Map<String, dynamic>; // Pass data to the ChatScreen
+          return ChatScreen(
+            userName: chatDetails['name'],
+            userImage: chatDetails['imageUrl'],
+          );
+        },
+      ),
+      GoRoute(
+          path: '/profile',
+          name: 'profile',
+          builder: (context, state) => const ProfileScreen()),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(
