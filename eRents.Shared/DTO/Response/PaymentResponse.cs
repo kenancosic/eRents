@@ -9,7 +9,8 @@ namespace eRents.Shared.DTO.Response
 	public class PaymentResponse
 	{
 		public int PaymentId { get; set; }
-		public string Status { get; set; }  // e.g., Success, Pending, Failed
-		public string PaymentReference { get; set; }  // Reference from payment gateway
+		public string? Status { get; set; }
+		public string? PaymentReference { get; set; }
+		public string ApprovalUrl { get; set; }
 	}
 }

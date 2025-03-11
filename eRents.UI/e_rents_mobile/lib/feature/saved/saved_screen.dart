@@ -86,7 +86,7 @@ class _SavedScreenState extends State<SavedScreen> {
       // Use the locationWidget parameter to display a subtitle if needed
       locationWidget: const Text(
         'Properties you\'ve saved',
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.grey,
           fontSize: 14,
         ),
