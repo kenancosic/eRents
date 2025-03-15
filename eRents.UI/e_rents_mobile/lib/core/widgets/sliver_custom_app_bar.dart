@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'custom_search_bar.dart';
 
@@ -17,6 +18,10 @@ class SliverCustomAppBar extends StatelessWidget {
   final bool showTitle;
   final bool showBackButton;
   final String? titleText;
+  final bool useGradientOverlay;
+  final List<Color>? gradientColors;
+  final bool useFrostedGlass;
+  final double blurAmount;
 
   const SliverCustomAppBar({
     super.key,
@@ -30,12 +35,16 @@ class SliverCustomAppBar extends StatelessWidget {
     this.backgroundImagePath,
     this.backgroundColor = Colors.transparent,
     this.contentPadding =
-        const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+        const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
     this.customBorderRadius,
     this.customToolbarHeight,
     this.showTitle = true,
     this.showBackButton = false,
     this.titleText,
+    this.useGradientOverlay = true,
+    this.gradientColors,
+    this.useFrostedGlass = true,
+    this.blurAmount = 10.0,
   });
 
   bool get _hasBottomRow => locationWidget != null || notification != null;
@@ -43,69 +52,95 @@ class SliverCustomAppBar extends StatelessWidget {
   static const double _defaultToolbarHeight = 80.0;
   static const double _minimumBottomRowHeight = 50.0;
 
-  Widget _buildFlexibleSpace(BuildContext context) {
-    if (!_hasBottomRow) {
-      return FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-          ),
-        ),
-      );
-    }
+  // Default gradient colors used throughout the app
+  List<Color> get _defaultGradientColors => const [
+        Color(0xFF7065F0),
+        Color(0xFF5D54C2),
+      ];
 
-    return FlexibleSpaceBar(
-      background: ClipRRect(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (backgroundImagePath != null)
-              Image.asset(
-                backgroundImagePath!,
-                fit: BoxFit.cover,
-              )
-            else
-              Container(
-                decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+  // Get the gradient to use based on provided colors or defaults
+  LinearGradient get _appGradient => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: gradientColors ?? _defaultGradientColors,
+      );
+
+  Widget _buildBackground() {
+    if (backgroundImagePath != null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            backgroundImagePath!,
+            fit: BoxFit.cover,
+          ),
+          // Apply a gradient overlay on top of the image for consistency
+          if (useGradientOverlay)
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFF7065F0),
-                    Color(0xFF5D54C2),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.3),
                   ],
-                )),
-              ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: IntrinsicHeight(
-                child: Container(
-                  padding: contentPadding,
-                  constraints: BoxConstraints(
-                    minHeight: _minimumBottomRowHeight,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: locationWidget ?? const SizedBox(),
-                      ),
-                      if (notification != null)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16.0),
-                          child: notification!,
-                        ),
-                    ],
-                  ),
                 ),
               ),
             ),
+        ],
+      );
+    } else {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: _appGradient,
+        ),
+      );
+    }
+  }
+
+  Widget _buildFlexibleSpace(BuildContext context) {
+    return FlexibleSpaceBar(
+      background: ClipRRect(
+        borderRadius: customBorderRadius ?? BorderRadius.zero,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background (image or gradient)
+            _buildBackground(),
+
+            // Bottom row with location and notification
+            if (_hasBottomRow)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: IntrinsicHeight(
+                  child: Container(
+                    padding: contentPadding,
+                    constraints: BoxConstraints(
+                      minHeight: _minimumBottomRowHeight,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: locationWidget ?? const SizedBox(),
+                        ),
+                        if (notification != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16.0),
+                            child: notification!,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -124,7 +159,9 @@ class SliverCustomAppBar extends StatelessWidget {
           if (showBackButton)
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: useFrostedGlass
+                    ? Colors.white.withOpacity(0.2)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -134,15 +171,41 @@ class SliverCustomAppBar extends StatelessWidget {
                   ),
                 ],
               ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back,
-                    color: Color(0xFF7065F0), size: 22),
-                onPressed: () => Navigator.of(context).pop(),
-                padding: const EdgeInsets.all(8),
-                constraints: const BoxConstraints(
-                  minWidth: 40,
-                  minHeight: 40,
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: useFrostedGlass
+                    ? BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: blurAmount / 2,
+                          sigmaY: blurAmount / 2,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(
+                            minWidth: 40,
+                            minHeight: 40,
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: gradientColors?[0] ?? const Color(0xFF7065F0),
+                          size: 22,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                      ),
               ),
             ),
           if (showBackButton && showTitle) const SizedBox(width: 16),
@@ -150,10 +213,11 @@ class SliverCustomAppBar extends StatelessWidget {
             Expanded(
               child: Text(
                 titleText ?? 'Title',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F2937),
+                  color:
+                      useFrostedGlass ? Colors.white : const Color(0xFF1F2937),
                   fontFamily: 'Hind',
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -165,7 +229,7 @@ class SliverCustomAppBar extends StatelessWidget {
   }
 
   Widget _buildTitleRow(BuildContext context) {
-    return Column(
+    Widget content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -193,6 +257,32 @@ class SliverCustomAppBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+
+    if (useFrostedGlass) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: content,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: content,
     );
   }
 
