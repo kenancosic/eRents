@@ -1,14 +1,12 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:flutter/material.dart';
 
-
 class PasswordResetConfirmationScreen extends StatelessWidget {
   const PasswordResetConfirmationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const BaseScreen(
-      title: 'Reset Password',
       body: Center(
         child: Padding(
           padding: EdgeInsets.all(16.0),

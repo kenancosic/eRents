@@ -27,7 +27,9 @@ class ChatRoomScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Chat Room',
+      showTitle: true,
+      showBackButton: false,
+      titleText: 'Chat Room',
       body: ListView.builder(
         itemCount: _chatRooms.length,
         itemBuilder: (context, index) {

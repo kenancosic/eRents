@@ -7,7 +7,6 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title:'Profile',
       showAppBar: false,
       body: Column(
         children: [
@@ -15,7 +14,8 @@ class ProfileScreen extends StatelessWidget {
           // User profile section
           const CircleAvatar(
             radius: 50,
-            backgroundImage: AssetImage('assets/images/user-image.png'), // Replace with actual image
+            backgroundImage: AssetImage(
+                'assets/images/user-image.png'), // Replace with actual image
           ),
           const SizedBox(height: 10),
           const Text(
@@ -82,7 +82,8 @@ class ProfileScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16.0),
                       ),
-                      backgroundColor: Theme.of(context).primaryColor, // Change the color based on your theme
+                      backgroundColor: Theme.of(context)
+                          .primaryColor, // Change the color based on your theme
                     ),
                     onPressed: () {
                       // Handle log out functionality
@@ -105,7 +106,10 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // Helper method to build a list tile
-  ListTile _buildListTile({required IconData icon, required String title, required VoidCallback onTap}) {
+  ListTile _buildListTile(
+      {required IconData icon,
+      required String title,
+      required VoidCallback onTap}) {
     return ListTile(
       leading: Icon(icon, color: Colors.black),
       title: Text(title),
