@@ -13,10 +13,12 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   late GoogleMapController mapController;
-  final PanelController _panelController = PanelController(); // Controller for SlidingUpPanel
+  final PanelController _panelController =
+      PanelController(); // Controller for SlidingUpPanel
   bool _isDraggable = false; // Control panel dragging
 
-  final LatLng _center = const LatLng(44.5328, 18.6704); // Example: Coordinates for Lukavac
+  final LatLng _center =
+      const LatLng(44.5328, 18.6704); // Example: Coordinates for Lukavac
 
   final Set<Marker> _markers = {
     const Marker(
@@ -36,7 +38,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Explore',
+      showTitle: true,
+      showBackButton: false,
       useSlidingDrawer: false,
       showFilterButton: true,
       body: Stack(
@@ -60,10 +63,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
           // SlidingUpPanel for Property List
           SlidingUpPanel(
             controller: _panelController,
-            minHeight: MediaQuery.of(context).size.height * 0.15, // Minimized view
-            maxHeight: MediaQuery.of(context).size.height * 0.9,  // Expanded view
-            snapPoint: 0.5,  // Snap at 50% of the screen
-            isDraggable: _isDraggable, // Make it draggable only based on handle interaction
+            minHeight:
+                MediaQuery.of(context).size.height * 0.15, // Minimized view
+            maxHeight:
+                MediaQuery.of(context).size.height * 0.9, // Expanded view
+            snapPoint: 0.5, // Snap at 50% of the screen
+            isDraggable:
+                _isDraggable, // Make it draggable only based on handle interaction
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -78,14 +84,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     });
 
                     // Clamp the panel position between 0.0 and 1.0
-                    final newPosition = (_panelController.panelPosition + details.primaryDelta! / MediaQuery.of(context).size.height)
+                    final newPosition = (_panelController.panelPosition +
+                            details.primaryDelta! /
+                                MediaQuery.of(context).size.height)
                         .clamp(0.0, 1.0);
 
                     _panelController.panelPosition = newPosition;
                   },
                   onVerticalDragEnd: (details) {
                     setState(() {
-                      _isDraggable = false; // Disable dragging after user stops dragging
+                      _isDraggable =
+                          false; // Disable dragging after user stops dragging
                     });
                     // Snap to 0.5 or 1.0 height based on user velocity and drag direction
                     if (details.velocity.pixelsPerSecond.dy > 0) {
@@ -99,7 +108,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     height: 5,
                     margin: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7), // More visible drag handle
+                      color: Colors.black
+                          .withOpacity(0.7), // More visible drag handle
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),

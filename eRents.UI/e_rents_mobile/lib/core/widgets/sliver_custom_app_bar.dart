@@ -14,7 +14,10 @@ class SliverCustomAppBar extends StatelessWidget {
   final EdgeInsets contentPadding;
   final BorderRadius? customBorderRadius;
   final double? customToolbarHeight;
-  
+  final bool showTitle;
+  final bool showBackButton;
+  final String? titleText;
+
   const SliverCustomAppBar({
     super.key,
     this.avatar,
@@ -30,18 +33,15 @@ class SliverCustomAppBar extends StatelessWidget {
         const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
     this.customBorderRadius,
     this.customToolbarHeight,
+    this.showTitle = true,
+    this.showBackButton = false,
+    this.titleText,
   });
 
-  // Determine if we need the expanded bottom row
   bool get _hasBottomRow => locationWidget != null || notification != null;
 
-  // Default measurements
   static const double _defaultToolbarHeight = 80.0;
   static const double _minimumBottomRowHeight = 50.0;
-  static const BorderRadius _defaultBorderRadius = BorderRadius.only(
-    bottomLeft: Radius.circular(20.0),
-    bottomRight: Radius.circular(20.0),
-  );
 
   Widget _buildFlexibleSpace(BuildContext context) {
     if (!_hasBottomRow) {
@@ -49,7 +49,6 @@ class SliverCustomAppBar extends StatelessWidget {
         background: Container(
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: customBorderRadius ?? _defaultBorderRadius,
           ),
         ),
       );
@@ -57,7 +56,6 @@ class SliverCustomAppBar extends StatelessWidget {
 
     return FlexibleSpaceBar(
       background: ClipRRect(
-        borderRadius: customBorderRadius ?? _defaultBorderRadius,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -78,7 +76,6 @@ class SliverCustomAppBar extends StatelessWidget {
                   ],
                 )),
               ),
-            // In SliverCustomAppBar, modify the container in _buildFlexibleSpace:
             Positioned(
               bottom: 0,
               left: 0,
@@ -97,7 +94,6 @@ class SliverCustomAppBar extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        // Changed from SizedBox with fixed width to Expanded
                         child: locationWidget ?? const SizedBox(),
                       ),
                       if (notification != null)
@@ -116,36 +112,98 @@ class SliverCustomAppBar extends StatelessWidget {
     );
   }
 
-  // Builds the title row with search bar
-  Widget _buildTitleRow(BuildContext context) {
-    return Row(
-      children: [
-        if (avatar != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: avatar!,
-          ),
-         Flexible(
-                flex: 1,
-                child: CustomSearchBar(
-                  localData: const ['banana', 'mango'],
-                  key: key,
-                  searchHistory: const ['apple', 'mango'],
-                  onSearchChanged: onSearchChanged ?? (value) {},
-            onFilterIconPressed: showFilterIcon ? onFilterIconPressed : null,
-            hintText: searchHintText ?? 'Search',
-            showFilterIcon: showFilterIcon,
+  Widget _buildTitleAndBackButtonRow(BuildContext context) {
+    if (!showTitle && !showBackButton) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        children: [
+          if (showBackButton)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back,
+                    color: Color(0xFF7065F0), size: 22),
+                onPressed: () => Navigator.of(context).pop(),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
                 ),
               ),
+            ),
+          if (showBackButton && showTitle) const SizedBox(width: 16),
+          if (showTitle)
+            Expanded(
+              child: Text(
+                titleText ?? 'Title',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                  fontFamily: 'Hind',
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTitleRow(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTitleAndBackButtonRow(context),
+        Row(
+          children: [
+            if (avatar != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: avatar!,
+              ),
+            Flexible(
+              flex: 1,
+              child: CustomSearchBar(
+                localData: const ['banana', 'mango'],
+                key: key,
+                searchHistory: const ['apple', 'mango'],
+                onSearchChanged: onSearchChanged ?? (value) {},
+                onFilterIconPressed:
+                    showFilterIcon ? onFilterIconPressed : null,
+                hintText: searchHintText ?? 'Search',
+                showFilterIcon: showFilterIcon,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final double toolbarHeight = customToolbarHeight ?? _defaultToolbarHeight;
+    final bool showTitleRow = showTitle || showBackButton;
 
-    // Calculate expanded height based on presence of bottom row
+    final double extraHeight = showTitleRow ? 48.0 : 0.0;
+    final double toolbarHeight =
+        (customToolbarHeight ?? _defaultToolbarHeight) + extraHeight;
+
     final double expandedHeight =
         _hasBottomRow ? toolbarHeight + _minimumBottomRowHeight : toolbarHeight;
 
@@ -155,9 +213,6 @@ class SliverCustomAppBar extends StatelessWidget {
       toolbarHeight: toolbarHeight,
       expandedHeight: expandedHeight,
       backgroundColor: backgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: customBorderRadius ?? _defaultBorderRadius,
-      ),
       clipBehavior: Clip.hardEdge,
       flexibleSpace: _buildFlexibleSpace(context),
       title: _buildTitleRow(context),

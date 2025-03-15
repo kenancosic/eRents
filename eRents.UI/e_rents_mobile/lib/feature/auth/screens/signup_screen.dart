@@ -90,7 +90,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Sign Up',
       showAppBar: false,
       showBottomNavBar: false,
       useSlidingDrawer: false,
@@ -126,7 +125,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               padding: EdgeInsets.only(
                 left: 16.0,
                 right: 16.0,
-                top: 80.0, // Space to avoid overlapping the logo
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
               ),
               child: Column(
@@ -151,8 +149,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             ConstrainedBox(
-                               constraints: const BoxConstraints(
-                                  maxWidth: 300),
+                              constraints: const BoxConstraints(maxWidth: 300),
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Row(

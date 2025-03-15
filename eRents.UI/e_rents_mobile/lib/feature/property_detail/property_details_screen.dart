@@ -40,7 +40,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       },
       child: Scaffold(
         body: BaseScreen(
-          title: 'Property Details',
+          showTitle: true,
+          showBackButton: false,
           showAppBar: false,
           showFilterButton: false,
           showBottomNavBar: false,

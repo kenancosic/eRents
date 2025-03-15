@@ -6,6 +6,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
@@ -16,7 +17,6 @@ class ForgotPasswordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Forgot Password',
       showAppBar: false,
       showBottomNavBar: false,
       useSlidingDrawer: false,
@@ -39,7 +39,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withOpacity(0.4),
+                    Colors.white.withValues(alpha: 0.4),
                     Colors.transparent,
                   ],
                 ),
@@ -67,7 +67,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                       filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                         padding: const EdgeInsets.all(20.0),
@@ -116,19 +116,41 @@ class ForgotPasswordScreen extends StatelessWidget {
                                   label: "Submit",
                                   isLoading: provider.state == ViewState.Busy,
                                   onPressed: () async {
-                                    bool success = await provider.forgotPassword(_emailController.text);
+                                    bool success = await provider
+                                        .forgotPassword(_emailController.text);
                                     if (success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Password reset email sent.')),
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Password reset email sent.')),
                                       );
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(provider.errorMessage ?? 'Failed to send email')),
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                provider.errorMessage ??
+                                                    'Failed to send email')),
                                       );
                                     }
                                   },
                                 );
                               },
+                            ),
+                            const SizedBox(height: 20),
+                            TextButton(
+                              onPressed: () {
+                                context.go('/login');
+                              },
+                              child: Text(
+                                'Back to login',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
                             ),
                           ],
                         ),

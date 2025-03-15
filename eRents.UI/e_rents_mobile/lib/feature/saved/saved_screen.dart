@@ -82,20 +82,11 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Saved Properties',
-      // Use the locationWidget parameter to display a subtitle if needed
-      locationWidget: const Text(
-        'Properties you\'ve saved',
-        style: TextStyle(
-          color: Colors.grey,
-          fontSize: 14,
-        ),
-      ),
-      // Use the standard app bar from BaseScreen
+      showTitle: true,
+      showBackButton: false,
+      titleText: 'Saved Properties',
       showAppBar: true,
-      // Enable bottom navigation since this is a main screen
       showBottomNavBar: true,
-      // No need for filter button on saved screen
       showFilterButton: false,
       body: _buildBody(),
     );

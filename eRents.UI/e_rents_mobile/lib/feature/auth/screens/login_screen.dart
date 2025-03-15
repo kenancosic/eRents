@@ -19,7 +19,6 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Sign In',
       showAppBar: false,
       showBottomNavBar: false,
       useSlidingDrawer: false,
@@ -49,7 +48,6 @@ class LoginScreen extends StatelessWidget {
               ),
             ),
           ),
-          // Form content with blurred, semi-transparent card
           Positioned.fill(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(
@@ -79,8 +77,7 @@ class LoginScreen extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                  maxWidth: 300),
+                              constraints: const BoxConstraints(maxWidth: 300),
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Row(
@@ -179,9 +176,16 @@ class LoginScreen extends StatelessWidget {
                               alignment: WrapAlignment.spaceAround,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
-                                const Text(
-                                  "Don't have an account?",
-                                  style: TextStyle(color: Colors.grey),
+                                Baseline(
+                                  baselineType: TextBaseline.alphabetic,
+                                  baseline: 14,
+                                  child: Text(
+                                    "Don't have an account?",
+                                    style: TextStyle(
+                                      color: Colors.grey[300],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () {

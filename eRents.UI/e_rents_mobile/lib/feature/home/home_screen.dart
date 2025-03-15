@@ -41,12 +41,9 @@ class HomeScreen extends StatelessWidget {
     final properties2 = _buildPropertyCards(context, 5);
 
     return BaseScreen(
-      // Since we are using a custom title widget, we can set title to null
-      title: null,
       showAppBar: true,
       useSlidingDrawer: true,
       showFilterButton: true,
-      // Passing the LocationWidget as a custom title widget
       locationWidget: const LocationWidget(
           title: 'Welcome back, User', location: 'Lukavac'),
       onSearchChanged: (query) {

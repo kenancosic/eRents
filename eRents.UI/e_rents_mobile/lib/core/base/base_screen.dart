@@ -1,6 +1,7 @@
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
+import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/core/widgets/sliver_custom_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import 'navigation_provider.dart';
 
 class BaseScreen extends StatefulWidget {
-  final String? title;
   final Widget? locationWidget;
   final Widget body;
   final bool showAppBar;
@@ -24,10 +24,12 @@ class BaseScreen extends StatefulWidget {
   final ValueChanged<String>? onSearchChanged;
   final String? searchHintText;
   final List<Widget>? appBarActions;
+  final bool showTitle;
+  final bool showBackButton;
+  final String? titleText;
 
   const BaseScreen({
     super.key,
-    this.title,
     this.locationWidget,
     required this.body,
     this.showAppBar = true,
@@ -41,6 +43,9 @@ class BaseScreen extends StatefulWidget {
     this.onSearchChanged,
     this.searchHintText,
     this.appBarActions,
+    this.showTitle = false,
+    this.showBackButton = false,
+    this.titleText,
   });
 
   @override
@@ -130,14 +135,13 @@ class _BaseScreenState extends State<BaseScreen>
           GestureDetector(
             onTap: _toggleDrawer,
             child: Container(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withValues(alpha: 0.5),
             ),
           ),
       ],
     );
   }
 
-  // Builds the app bar (using NestedScrollView with SliverCustomAppBar) and body.
   Widget _buildAppBarAndBody() {
     final drawerWidth = MediaQuery.of(context).size.width * 0.7;
     final slideAnimation = Tween<Offset>(
@@ -184,7 +188,24 @@ class _BaseScreenState extends State<BaseScreen>
                         onSearchChanged: widget.onSearchChanged,
                         searchHintText: widget.searchHintText,
                         showFilterIcon: widget.showFilterButton,
-                        onFilterIconPressed: widget.onFilterButtonPressed,
+                        showTitle: widget.showTitle,
+                        showBackButton: widget.showBackButton,
+                        titleText: widget.titleText,
+                        onFilterIconPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => FilterScreen(
+                                initialFilters: {
+                                  // You can pass current filter state here
+                                },
+                                onApplyFilters: (filters) {
+                                  // Handle the applied filters
+                                  // For example, update your property list based on filters
+                                },
+                              ),
+                            ),
+                          );
+                        },
                       )
                     ];
                   },

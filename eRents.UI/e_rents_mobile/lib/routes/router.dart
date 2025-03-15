@@ -4,7 +4,7 @@ import 'package:e_rents_mobile/feature/chat/char_room_screen.dart';
 import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
+import 'package:e_rents_mobile/feature/profile/profile_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +60,7 @@ class AppRouter {
       ),
       GoRoute(
         path: '/saved',
+        name: 'saved',
         builder: (context, state) => const SavedScreen(),
       ),
       GoRoute(
