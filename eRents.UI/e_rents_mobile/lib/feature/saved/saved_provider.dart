@@ -1,5 +1,3 @@
-// lib/feature/saved/saved_provider.dart
-import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 

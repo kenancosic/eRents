@@ -1,6 +1,5 @@
 import 'package:e_rents_mobile/core/widgets/distribution_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 
 class FilterScreen extends StatefulWidget {
