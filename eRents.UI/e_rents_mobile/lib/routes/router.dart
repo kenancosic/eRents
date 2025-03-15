@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/feature/auth/screens/login_screen.dart';
 import 'package:e_rents_mobile/feature/auth/screens/signup_screen.dart';
-import 'package:e_rents_mobile/feature/chat/char_room_screen.dart';
+import 'package:e_rents_mobile/feature/chat/chat_room_screen.dart';
 import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
