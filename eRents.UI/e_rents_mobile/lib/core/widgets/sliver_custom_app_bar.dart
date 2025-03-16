@@ -99,47 +99,27 @@ class SliverCustomAppBar extends StatelessWidget {
     }
   }
 
-  Widget _buildFlexibleSpace(BuildContext context) {
-    return FlexibleSpaceBar(
-      background: ClipRRect(
-        borderRadius: customBorderRadius ?? BorderRadius.zero,
-        child: Stack(
-          fit: StackFit.expand,
+  Widget _buildBottomRow() {
+    return IntrinsicHeight(
+      child: Container(
+        padding: contentPadding,
+        constraints: BoxConstraints(
+          minHeight: _minimumBottomRowHeight,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.4),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Background (image or gradient)
-            _buildBackground(),
-
-            // Bottom row with location and notification
-            if (_hasBottomRow)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: IntrinsicHeight(
-                  child: Container(
-                    padding: contentPadding,
-                    constraints: BoxConstraints(
-                      minHeight: _minimumBottomRowHeight,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: locationWidget ?? const SizedBox(),
-                        ),
-                        if (notification != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 16.0),
-                            child: notification!,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+            Expanded(
+              child: locationWidget ?? const SizedBox(),
+            ),
+            if (notification != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0),
+                child: notification!,
               ),
           ],
         ),
@@ -294,18 +274,52 @@ class SliverCustomAppBar extends StatelessWidget {
     final double toolbarHeight =
         (customToolbarHeight ?? _defaultToolbarHeight) + extraHeight;
 
+    // Always add minimum collapsible space even without bottom row
     final double expandedHeight =
-        _hasBottomRow ? toolbarHeight + _minimumBottomRowHeight : toolbarHeight;
+        toolbarHeight + (_hasBottomRow ? _minimumBottomRowHeight : 20.0);
 
     return SliverAppBar(
+      floating: true,
       pinned: true,
       automaticallyImplyLeading: false,
-      toolbarHeight: toolbarHeight,
+      toolbarHeight: toolbarHeight, // Keep original toolbar height
       expandedHeight: expandedHeight,
       backgroundColor: backgroundColor,
       clipBehavior: Clip.hardEdge,
-      flexibleSpace: _buildFlexibleSpace(context),
+
+      // Keep your title in the app bar so it doesn't collapse
       title: _buildTitleRow(context),
+
+      // Create flexible space with collapsible content
+      flexibleSpace: FlexibleSpaceBar(
+        collapseMode: CollapseMode.pin,
+        titlePadding: EdgeInsets.zero,
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildBackground(),
+
+            // Add a hidden spacer to ensure collapsible area
+            // This pushes content down to create collapsible space
+            if (!_hasBottomRow)
+              Positioned(
+                top: toolbarHeight,
+                left: 0,
+                right: 0,
+                child: SizedBox(height: 20.0),
+              ),
+
+            // Bottom row if needed
+            if (_hasBottomRow)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildBottomRow(),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
