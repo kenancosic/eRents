@@ -29,7 +29,6 @@ class ChatRoomScreen extends StatelessWidget {
     return BaseScreen(
       showTitle: true,
       showAppBar: true,
-      showBackButton: false,
       titleText: 'Chat Room',
       body: ListView.builder(
         itemCount: _chatRooms.length,
