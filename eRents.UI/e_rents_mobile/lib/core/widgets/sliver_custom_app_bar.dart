@@ -49,8 +49,8 @@ class SliverCustomAppBar extends StatelessWidget {
 
   bool get _hasBottomRow => locationWidget != null || notification != null;
 
-  static const double _defaultToolbarHeight = 80.0;
-  static const double _minimumBottomRowHeight = 50.0;
+  static const double _defaultToolbarHeight = 60.0;
+  static const double _minimumBottomRowHeight = 40.0;
 
   // Default gradient colors used throughout the app
   List<Color> get _defaultGradientColors => const [
@@ -133,7 +133,7 @@ class SliverCustomAppBar extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
           if (showBackButton)
@@ -142,7 +142,7 @@ class SliverCustomAppBar extends StatelessWidget {
                 color: useFrostedGlass
                     ? Colors.white.withOpacity(0.2)
                     : Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -152,7 +152,7 @@ class SliverCustomAppBar extends StatelessWidget {
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 child: useFrostedGlass
                     ? BackdropFilter(
                         filter: ImageFilter.blur(
@@ -160,16 +160,16 @@ class SliverCustomAppBar extends StatelessWidget {
                           sigmaY: blurAmount / 2,
                         ),
                         child: IconButton(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.arrow_back,
                             color: Colors.white,
-                            size: 22,
+                            size: 20,
                           ),
                           onPressed: () => Navigator.of(context).pop(),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(6),
                           constraints: const BoxConstraints(
-                            minWidth: 40,
-                            minHeight: 40,
+                            minWidth: 36,
+                            minHeight: 36,
                           ),
                         ),
                       )
@@ -177,24 +177,24 @@ class SliverCustomAppBar extends StatelessWidget {
                         icon: Icon(
                           Icons.arrow_back,
                           color: gradientColors?[0] ?? const Color(0xFF7065F0),
-                          size: 22,
+                          size: 20,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6),
                         constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
+                          minWidth: 36,
+                          minHeight: 36,
                         ),
                       ),
               ),
             ),
-          if (showBackButton && showTitle) const SizedBox(width: 16),
+          if (showBackButton && showTitle) const SizedBox(width: 12),
           if (showTitle)
             Expanded(
               child: Text(
                 titleText ?? 'Title',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color:
                       useFrostedGlass ? Colors.white : const Color(0xFF1F2937),
@@ -218,7 +218,7 @@ class SliverCustomAppBar extends StatelessWidget {
           children: [
             if (avatar != null)
               Padding(
-                padding: const EdgeInsets.only(right: 8.0),
+                padding: const EdgeInsets.only(right: 6.0),
                 child: avatar!,
               ),
             Flexible(
@@ -241,14 +241,14 @@ class SliverCustomAppBar extends StatelessWidget {
 
     if (useFrostedGlass) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: Colors.white.withOpacity(0.2),
                 width: 1,
@@ -261,7 +261,7 @@ class SliverCustomAppBar extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
       child: content,
     );
   }
@@ -269,57 +269,90 @@ class SliverCustomAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool showTitleRow = showTitle || showBackButton;
-
-    final double extraHeight = showTitleRow ? 48.0 : 0.0;
+    final double extraHeight = showTitleRow ? 15.0 : 0.0;
     final double toolbarHeight =
         (customToolbarHeight ?? _defaultToolbarHeight) + extraHeight;
 
-    // Always add minimum collapsible space even without bottom row
-    final double expandedHeight =
-        toolbarHeight + (_hasBottomRow ? _minimumBottomRowHeight : 20.0);
-
-    return SliverAppBar(
-      floating: true,
+    return SliverPersistentHeader(
+      floating: false,
       pinned: true,
-      automaticallyImplyLeading: false,
-      toolbarHeight: toolbarHeight, // Keep original toolbar height
-      expandedHeight: expandedHeight,
-      backgroundColor: backgroundColor,
-      clipBehavior: Clip.hardEdge,
-
-      // Keep your title in the app bar so it doesn't collapse
-      title: _buildTitleRow(context),
-
-      // Create flexible space with collapsible content
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.pin,
-        titlePadding: EdgeInsets.zero,
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            _buildBackground(),
-
-            // Add a hidden spacer to ensure collapsible area
-            // This pushes content down to create collapsible space
-            if (!_hasBottomRow)
-              Positioned(
-                top: toolbarHeight,
-                left: 0,
-                right: 0,
-                child: SizedBox(height: 20.0),
-              ),
-
-            // Bottom row if needed
-            if (_hasBottomRow)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: _buildBottomRow(),
-              ),
-          ],
-        ),
+      delegate: _CustomAppBarDelegate(
+        backgroundColor: backgroundColor,
+        toolbarHeight: toolbarHeight,
+        bottomHeight: _hasBottomRow ? _minimumBottomRowHeight : 0,
+        background: _buildBackground(),
+        titleRow: _buildTitleRow(context),
+        bottomRow: _hasBottomRow ? _buildBottomRow() : null,
       ),
     );
+  }
+}
+
+class _CustomAppBarDelegate extends SliverPersistentHeaderDelegate {
+  final Color backgroundColor;
+  final double toolbarHeight;
+  final double bottomHeight;
+  final Widget background;
+  final Widget titleRow;
+  final Widget? bottomRow;
+
+  _CustomAppBarDelegate({
+    required this.backgroundColor,
+    required this.toolbarHeight,
+    required this.bottomHeight,
+    required this.background,
+    required this.titleRow,
+    this.bottomRow,
+  });
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: backgroundColor,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          background,
+
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 5,
+            left: 5,
+            right: 5,
+            child: titleRow,
+          ),
+
+          // Bottom row if needed
+          if (bottomRow != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: bottomRow!,
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  double get maxExtent {
+    // Fixed extent with no collapsing behavior
+    const double estimatedTopPadding = 30.0;
+    return toolbarHeight + bottomHeight + estimatedTopPadding;
+  }
+
+  @override
+  double get minExtent {
+    // Same as maxExtent to prevent collapsing
+    const double estimatedTopPadding = 30.0;
+    return toolbarHeight + bottomHeight + estimatedTopPadding;
+  }
+
+  @override
+  bool shouldRebuild(covariant _CustomAppBarDelegate oldDelegate) {
+    return oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.toolbarHeight != toolbarHeight ||
+        oldDelegate.bottomHeight != bottomHeight;
   }
 }

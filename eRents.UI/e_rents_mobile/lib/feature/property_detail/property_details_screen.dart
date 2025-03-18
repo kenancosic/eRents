@@ -161,6 +161,24 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             reviews: uiReviews,
                             averageRating: calculateAverageRating(uiReviews),
                           ),
+
+                          // Add a "Leave a Review" button
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              _showAddReviewDialog(context, provider);
+                            },
+                            icon: const Icon(Icons.rate_review),
+                            label: const Text('Leave a Review'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF7065F0),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -212,6 +230,84 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           endDate: endDate,
           isDailyRental: isDailyRental,
           totalPrice: totalPrice,
+        ),
+      ),
+    );
+  }
+
+  void _showAddReviewDialog(
+      BuildContext context, PropertyDetailProvider provider) {
+    double rating = 5.0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Leave a Review'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Rating'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < rating.floor()
+                          ? Icons.star
+                          : (index < rating
+                              ? Icons.star_half
+                              : Icons.star_border),
+                      color: const Color(0xFFFFD700),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        rating = index + 1.0;
+                      });
+                    },
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              const Text('Your Comment'),
+              TextField(
+                controller: commentController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'Write your review here...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Add the new review
+                final newReview = ReviewUIModel.mock(
+                  userName: 'You', // In a real app, get from user profile
+                  rating: rating,
+                  comment: commentController.text,
+                  date: DateTime.now().toString().substring(0, 10),
+                );
+
+                // Add the review to the UI model
+                provider.addReview(newReview);
+
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7065F0),
+              ),
+              child: const Text('Submit'),
+            ),
+          ],
         ),
       ),
     );

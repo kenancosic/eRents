@@ -24,13 +24,21 @@ class _SavedScreenState extends State<SavedScreen> {
     _loadSavedProperties();
   }
 
+  @override
+  void dispose() {
+    // Clean up any resources here
+    super.dispose();
+  }
+
   Future<void> _loadSavedProperties() async {
     // In a real app, you would fetch this from a database or API
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
 
       // Simulate network delay
       await Future.delayed(const Duration(milliseconds: 800));
@@ -41,15 +49,19 @@ class _SavedScreenState extends State<SavedScreen> {
       final savedProperties =
           allProperties.where((p) => p.propertyId % 2 == 0).toList();
 
-      setState(() {
-        _savedProperties = savedProperties;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _savedProperties = savedProperties;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to load saved properties. Please try again.';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load saved properties. Please try again.';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -159,51 +171,68 @@ class _SavedScreenState extends State<SavedScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadSavedProperties,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(top: 16),
-        itemCount: _savedProperties.length,
-        itemBuilder: (context, index) {
-          final property = _savedProperties[index];
-          return Dismissible(
-            key: Key('saved_property_${property.propertyId}'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              color: Colors.red,
-              child: const Icon(
-                Icons.delete,
-                color: Colors.white,
+    // Use a simple ListView instead of more complex nesting
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6.0),
+            child: Center(
+              child: TextButton.icon(
+                onPressed: _loadSavedProperties,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Refresh', style: TextStyle(fontSize: 14)),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
               ),
             ),
-            onDismissed: (direction) {
-              _removeFromSaved(property);
-            },
-            child: PropertyCard(
-              title: property.name,
-              location: '${property.city}, ${property.address}',
-              details: property.description ?? '',
-              price: property.price.toString(),
-              rating: property.averageRating?.toString() ?? '4.8',
-              imageUrl: property.images.first.fileName,
-              review: 73, // You might want to get this from the property
-              rooms: 2, // You might want to get this from the property
-              area: 874, // You might want to get this from the property
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PropertyDetailScreen(
-                      propertyId: property.propertyId,
+          ),
+          // Convert ListView.builder to direct list of widgets
+          ..._savedProperties.map((property) => Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Dismissible(
+                  key: Key('saved_property_${property.propertyId}'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    color: Colors.red,
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
                     ),
                   ),
-                );
-              },
-            ),
-          );
-        },
+                  onDismissed: (direction) {
+                    _removeFromSaved(property);
+                  },
+                  child: PropertyCard(
+                    title: property.name,
+                    location: '${property.city}, ${property.address}',
+                    details: property.description ?? '',
+                    price: property.price.toString(),
+                    rating: property.averageRating?.toString() ?? '4.8',
+                    imageUrl: property.images.first.fileName,
+                    review: 73,
+                    rooms: 2,
+                    area: 874,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PropertyDetailScreen(
+                            propertyId: property.propertyId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              )),
+          const SizedBox(height: 12),
+        ],
       ),
     );
   }
