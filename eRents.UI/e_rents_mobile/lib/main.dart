@@ -6,6 +6,8 @@ import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
 import 'package:e_rents_mobile/feature/home/data/home_service.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'package:e_rents_mobile/feature/profile/data/user_service.dart';
+import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
@@ -50,8 +52,13 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<HomeProvider>(
           create: (context) => HomeProvider(context.read<HomeService>()),
         ),
+        ProxyProvider<ApiService, UserService>(
+          update: (_, apiService, __) => UserService(apiService),
+        ),
+        ChangeNotifierProvider<UserProvider>(
+          create: (context) => UserProvider(context.read<UserService>()),
+        ),
         ChangeNotifierProvider<NavigationProvider>(
-          // Add NavigationProvider
           create: (context) => NavigationProvider(),
         ),
         ChangeNotifierProvider(create: (_) => SavedProvider()),

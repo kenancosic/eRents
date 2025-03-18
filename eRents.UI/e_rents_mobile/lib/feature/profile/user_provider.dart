@@ -1,69 +1,110 @@
-// import 'package:flutter/material.dart';
-// import 'package:e_rents_mobile/core/models/user.dart';
-// import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
+import 'dart:io';
 
-// class UserProvider with ChangeNotifier {
-//   User? _user;
-//   String? _errorMessage;
-//   bool _isLoading = false;
+import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/models/user.dart';
+import 'package:e_rents_mobile/feature/profile/data/user_service.dart';
 
-//   User? get user => _user;
-//   String? get errorMessage => _errorMessage;
-//   bool get isLoading => _isLoading;
+class UserProvider extends BaseProvider {
+  final UserService _userService;
+  User? _user;
+  List<Map<String, dynamic>>? _paymentMethods;
 
-//   void _setLoading(bool loading) {
-//     _isLoading = loading;
-//     notifyListeners();
-//   }
+  UserProvider(this._userService);
 
-//   void _setErrorMessage(String? message) {
-//     _errorMessage = message;
-//     notifyListeners();
-//   }
+  User? get user => _user;
+  List<Map<String, dynamic>>? get paymentMethods => _paymentMethods;
 
-//   void _setUser(User? user) {
-//     _user = user;
-//     notifyListeners();
-//   }
+  // Initialize user data
+  Future<void> initUser() async {
+    setState(ViewState.Busy);
+    try {
+      _user = await _userService.getUserProfile();
+      await fetchPaymentMethods();
+      setState(ViewState.Idle);
+    } catch (e) {
+      setError('Failed to initialize user: ${e.toString()}');
+    }
+  }
 
-//   Future<void> login(String email, String password) async {
-//     _setLoading(true);
-//     try {
-//       final user = await AuthService.login(email, password);
-//       _setUser(user);
-//     } catch (e) {
-//       _setErrorMessage(e.toString());
-//     } finally {
-//       _setLoading(false);
-//     }
-//   }
+  // Update user profile
+  Future<bool> updateProfile(User updatedUser) async {
+    setState(ViewState.Busy);
+    try {
+      final result = await _userService.updateUserProfile(updatedUser);
+      if (result != null) {
+        _user = result;
+        setState(ViewState.Idle);
+        return true;
+      } else {
+        setError('Failed to update profile');
+        return false;
+      }
+    } catch (e) {
+      setError('Error updating profile: ${e.toString()}');
+      return false;
+    }
+  }
 
-//   Future<void> register(User user) async {
-//     _setLoading(true);
-//     try {
-//       final registeredUser = await AuthService.register(user);
-//       _setUser(registeredUser);
-//     } catch (e) {
-//       _setErrorMessage(e.toString());
-//     } finally {
-//       _setLoading(false);
-//     }
-//   }
+  // Upload profile image
+  Future<bool> uploadProfileImage(File imageFile) async {
+    setState(ViewState.Busy);
+    try {
+      final success = await _userService.uploadProfileImage(imageFile);
+      if (success) {
+        // Refresh user data to get updated image URL
+        _user = await _userService.getUserProfile();
+        setState(ViewState.Idle);
+        return true;
+      } else {
+        setError('Failed to upload profile image');
+        return false;
+      }
+    } catch (e) {
+      setError('Error uploading profile image: ${e.toString()}');
+      return false;
+    }
+  }
 
-//   Future<void> updateUser(User updatedUser) async {
-//     _setLoading(true);
-//     try {
-//       final user = await AuthService.updateUser(updatedUser);
-//       _setUser(user);
-//     } catch (e) {
-//       _setErrorMessage(e.toString());
-//     } finally {
-//       _setLoading(false);
-//     }
-//   }
+  // Logout user
+  Future<void> logout() async {
+    setState(ViewState.Busy);
+    try {
+      await _userService.clearUserData();
+      _user = null;
+      _paymentMethods = null;
+      setState(ViewState.Idle);
+    } catch (e) {
+      setError('Error during logout: ${e.toString()}');
+    }
+  }
 
-//   Future<void> logout() async {
-//     _setUser(null);
-//     // Clear any additional session data
-//   }
-// }
+  // Fetch payment methods
+  Future<void> fetchPaymentMethods() async {
+    setState(ViewState.Busy);
+    try {
+      _paymentMethods = await _userService.getPaymentMethods();
+      setState(ViewState.Idle);
+    } catch (e) {
+      setError('Error fetching payment methods: ${e.toString()}');
+    }
+  }
+
+  // Add payment method
+  Future<bool> addPaymentMethod(Map<String, dynamic> paymentData) async {
+    setState(ViewState.Busy);
+    try {
+      final success = await _userService.addPaymentMethod(paymentData);
+      if (success) {
+        await fetchPaymentMethods(); // Refresh payment methods
+        setState(ViewState.Idle);
+        return true;
+      } else {
+        setError('Failed to add payment method');
+        return false;
+      }
+    } catch (e) {
+      setError('Error adding payment method: ${e.toString()}');
+      return false;
+    }
+  }
+}

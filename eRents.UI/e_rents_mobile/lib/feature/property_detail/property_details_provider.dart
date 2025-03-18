@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/feature/property_detail/data/property_service.dart';
+import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
 import 'package:flutter/material.dart';
-
 
 class PropertyDetailProvider with ChangeNotifier {
   Property? _property;
@@ -40,5 +40,14 @@ class PropertyDetailProvider with ChangeNotifier {
     _property = null;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  void addReview(ReviewUIModel review) {
+    // In a real app, you would send this to the server
+    // For now, we'll just add it to the UI
+    notifyListeners();
+
+    // You would need to have a list of reviews in this provider
+    // or pass the new review back to the PropertyDetailScreen
   }
 }

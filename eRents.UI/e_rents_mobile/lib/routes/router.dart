@@ -4,6 +4,8 @@ import 'package:e_rents_mobile/feature/chat/chat_room_screen.dart';
 import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
+import 'package:e_rents_mobile/feature/profile/payment_screen.dart';
+import 'package:e_rents_mobile/feature/profile/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/profile_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
@@ -78,6 +80,26 @@ class AppRouter {
           path: '/profile',
           name: 'profile',
           builder: (context, state) => const ProfileScreen()),
+      GoRoute(
+          path: '/profile/details',
+          name: 'personal_details',
+          builder: (context, state) => const PersonalDetailsScreen()),
+      GoRoute(
+          path: '/profile/payment',
+          name: 'payment_details',
+          builder: (context, state) => const PaymentScreen()),
+      GoRoute(
+          path: '/faq',
+          name: 'faq',
+          builder: (context, state) => const Scaffold(
+                body: Center(child: Text('FAQ Screen - Coming Soon')),
+              )),
+      GoRoute(
+          path: '/profile/settings',
+          name: 'settings',
+          builder: (context, state) => const Scaffold(
+                body: Center(child: Text('Settings Screen - Coming Soon')),
+              )),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(
