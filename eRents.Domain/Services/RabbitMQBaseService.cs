@@ -22,13 +22,13 @@ namespace eRents.Domain.Services
 				//DispatchConsumersAsync = true
 			};
 
-			_connection = factory.CreateConnection();
-			_channel = _connection.CreateModel(); // Fixed the pointer syntax error here
+			//_connection = factory.CreateConnection();
+			//_channel = _connection.CreateModel(); // Fixed the pointer syntax error here
 		}
 
 		public void Dispose()
 		{
-			_channel?.Dispose();
+			//_channel?.Dispose();
 			_connection?.Dispose();
 		}
 	}

@@ -18,7 +18,7 @@ namespace eRents.RabbitMQMicroservice
 
 			var chatMessageProcessor = serviceProvider.GetRequiredService<ChatMessageProcessor>();
 
-			Consume chat messages
+			//Consume chat messages
 			rabbitMqService.ConsumeMessages("messageQueue", (model, ea) =>
 			{
 				chatMessageProcessor.Process(model, ea);
