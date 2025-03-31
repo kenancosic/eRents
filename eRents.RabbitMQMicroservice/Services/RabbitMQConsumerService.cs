@@ -13,10 +13,10 @@ namespace eRents.RabbitMQMicroservice.Services
 
 		public void ConsumeMessages(string queueName, EventHandler<BasicDeliverEventArgs> onMessageReceived, bool autoAck = true)
 		{
-			var consumer = new EventingBasicConsumer(_channel);
-			consumer.Received += onMessageReceived;
-			_channel.BasicConsume(queue: queueName, autoAck: autoAck, consumer: consumer);
-			Console.WriteLine($"Started consuming messages from {queueName}");
+			//var consumer = new EventingBasicConsumer(_channel);
+			//consumer.Received += onMessageReceived;
+			//_channel.BasicConsume(queue: queueName, autoAck: autoAck, consumer: consumer);
+			//Console.WriteLine($"Started consuming messages from {queueName}");
 		}
 	}
 }

@@ -1,3 +1,4 @@
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
 project(e_rents_desktop LANGUAGES CXX)
