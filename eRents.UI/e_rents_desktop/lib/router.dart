@@ -3,8 +3,10 @@ import 'package:e_rents_desktop/screens/auth/signup_screen.dart';
 import 'package:e_rents_desktop/screens/auth/forgot_password_screen.dart';
 import 'package:e_rents_desktop/screens/home/home_screen.dart';
 import 'package:e_rents_desktop/screens/chat/chat_screen.dart';
+import 'package:e_rents_desktop/screens/maintenance/maintenance_screen.dart';
 import 'package:e_rents_desktop/screens/properties/properties_screen.dart';
 import 'package:e_rents_desktop/screens/statistics/statistics_screen.dart';
+import 'package:e_rents_desktop/screens/reports/reports_screen.dart';
 import 'package:e_rents_desktop/screens/profile/profile_screen.dart';
 import 'package:e_rents_desktop/screens/settings/settings_screen.dart';
 import 'package:go_router/go_router.dart';
@@ -32,8 +34,16 @@ class AppRouter {
         builder: (context, state) => const PropertiesScreen(),
       ),
       GoRoute(
+        path: '/maintenance',
+        builder: (context, state) => const MaintenanceScreen(),
+      ),
+      GoRoute(
         path: '/statistics',
         builder: (context, state) => const StatisticsScreen(),
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => const ReportsScreen(),
       ),
       GoRoute(
         path: '/profile',

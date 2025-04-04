@@ -1,51 +1,59 @@
 import 'dart:convert';
-
+import 'package:http/http.dart' as http;
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
-class AuthService {
-  final ApiService apiService;
-  final SecureStorageService _storageService;
+class AuthService extends ApiService {
+  AuthService(String baseUrl, SecureStorageService storageService)
+    : super(baseUrl, storageService);
 
-  AuthService(this.apiService, this._storageService);
-
-  Future<bool> login(String usernameOrEmail, String password) async {
-    final response = await apiService.post('/Auth/Login', {
-      'usernameOrEmail': usernameOrEmail,
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final response = await post('/auth/login', {
+      'email': email,
       'password': password,
     });
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await _storageService.storeToken(data['token']);
-      return true;
-    } else {
-      return false;
+      final data = json.decode(response.body);
+      if (data['token'] != null) {
+        await secureStorageService.storeToken(data['token']);
+      }
+      return data;
     }
-  }
-
-  Future<bool> register(Map<String, dynamic> userData) async {
-    final response = await apiService.post('/Auth/Register', userData);
-    return response.statusCode == 200;
+    throw Exception('Login failed');
   }
 
   Future<void> logout() async {
-    await _storageService.clearToken();
+    await secureStorageService.clearToken();
   }
 
-  Future<String?> getToken() async {
-    return await _storageService.getToken();
+  Future<bool> isAuthenticated() async {
+    final token = await secureStorageService.getToken();
+    return token != null;
+  }
+
+  @override
+  Future<Map<String, String>> getHeaders() async {
+    final token = await secureStorageService.getToken();
+    final headers = await super.getHeaders();
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  Future<bool> register(Map<String, dynamic> userData) async {
+    final response = await post('/Auth/Register', userData);
+    return response.statusCode == 200;
   }
 
   Future<bool> forgotPassword(String email) async {
-    final response = await apiService.post('/Auth/ForgotPassword', {
-      'email': email,
-    });
+    final response = await post('/Auth/ForgotPassword', {'email': email});
     return response.statusCode == 200;
   }
 
   Future<bool> resetPassword(String token, String newPassword) async {
-    final response = await apiService.post('/Auth/ResetPassword', {
+    final response = await post('/Auth/ResetPassword', {
       'token': token,
       'newPassword': newPassword,
     });

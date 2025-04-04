@@ -14,7 +14,7 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(90);
+  Size get preferredSize => const Size.fromHeight(70);
 
   static const List<NavigationItem> navigationItems = [
     NavigationItem(label: 'Home', icon: Icons.home, path: '/'),
@@ -29,6 +29,7 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
       icon: Icons.bar_chart,
       path: '/statistics',
     ),
+    NavigationItem(label: 'Reports', icon: Icons.description, path: '/reports'),
     NavigationItem(label: 'Logout', icon: Icons.logout, path: '/login'),
   ];
 
@@ -63,7 +64,7 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
 
   Widget _buildHorizontalNav(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 50),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -105,22 +106,13 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildLogo(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.apartment,
-          color: Theme.of(context).colorScheme.primary,
-          size: 32,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'eRents',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-      ],
+    return GestureDetector(
+      onTap: () => context.go('/'),
+      child: SizedBox(
+        width: 100,
+        height: 40,
+        child: SvgPicture.asset('assets/images/Logo.svg'),
+      ),
     );
   }
 
@@ -171,34 +163,37 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildProfile(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CustomAvatar(
-          imageUrl: 'assets/images/user-image.png',
-          size: 40,
-          borderWidth: currentPath == '/profile' ? 3 : 0,
-          onTap: () => context.go('/profile'),
-        ),
-        const SizedBox(width: 7),
-        Flexible(
-          child: Text(
-            'John Doe',
-            style: TextStyle(
-              fontSize: 15,
-              color:
-                  currentPath == '/profile'
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
+    return GestureDetector(
+      onTap: () => context.go('/profile'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomAvatar(
+            imageUrl: 'assets/images/user-image.png',
+            size: 40,
+            borderWidth: currentPath == '/profile' ? 3 : 0,
+            onTap: () => context.go('/profile'),
           ),
-        ),
-      ],
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              'John Doe',
+              style: TextStyle(
+                fontSize: 15,
+                color:
+                    currentPath == '/profile'
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

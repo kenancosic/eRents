@@ -68,7 +68,7 @@ class _SignupScreenState extends State<SignupScreen> {
     return AuthBaseScreen(
       title: 'Create your account',
       formContent: _buildSignupForm(),
-      backgroundImage: 'assets/images/appartment.jpg',
+      backgroundImage: 'assets/images/apartment.jpg',
     );
   }
 

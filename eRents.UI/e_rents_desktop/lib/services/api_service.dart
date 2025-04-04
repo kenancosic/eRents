@@ -8,6 +8,10 @@ class ApiService {
 
   ApiService(this.baseUrl, this.secureStorageService);
 
+  Future<Map<String, String>> getHeaders() async {
+    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  }
+
   Future<http.Response> _request(
     String endpoint,
     String method,
@@ -58,5 +62,11 @@ class ApiService {
 
   Future<http.Response> delete(String endpoint, {bool authenticated = false}) {
     return _request(endpoint, 'DELETE', null, authenticated: authenticated);
+  }
+
+  void _handleResponse(http.Response response) {
+    if (response.statusCode >= 400) {
+      throw Exception('API Error: ${response.statusCode}');
+    }
   }
 }
