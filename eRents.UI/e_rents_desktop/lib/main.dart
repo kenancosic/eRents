@@ -3,6 +3,9 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
+import 'package:e_rents_desktop/providers/property_provider.dart';
+import 'package:e_rents_desktop/providers/auth_provider.dart';
+import 'package:e_rents_desktop/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,18 +25,32 @@ class eRentsDesktopApp extends StatelessWidget {
         Provider<SecureStorageService>(create: (_) => SecureStorageService()),
         ProxyProvider<SecureStorageService, ApiService>(
           update:
-              (_, secureStorageService, __) => ApiService(
+              (_, storage, __) => ApiService(
                 const String.fromEnvironment(
                   'baseUrl',
-                  defaultValue: 'http://10.0.2.2:4000',
+                  defaultValue: 'http://localhost:3000',
                 ),
-                secureStorageService,
+                storage,
               ),
         ),
         ProxyProvider<ApiService, AuthService>(
           update:
-              (context, apiService, authService) =>
-                  AuthService(apiService, context.read<SecureStorageService>()),
+              (_, api, __) => AuthService(
+                const String.fromEnvironment(
+                  'baseUrl',
+                  defaultValue: 'http://localhost:3000',
+                ),
+                api.secureStorageService,
+              ),
+        ),
+        ChangeNotifierProvider<PropertyProvider>(
+          create: (context) => PropertyProvider(context.read<ApiService>()),
+        ),
+        ChangeNotifierProvider<MaintenanceProvider>(
+          create: (context) => MaintenanceProvider(context.read<ApiService>()),
+        ),
+        ProxyProvider<AuthService, AuthProvider>(
+          update: (_, auth, __) => AuthProvider(auth),
         ),
       ],
       child: MaterialApp.router(

@@ -144,7 +144,7 @@ class AppBaseScreen extends StatelessWidget {
                     title,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(

@@ -10,7 +10,7 @@ class AuthProvider extends BaseProvider {
     setState(ViewState.Busy);
     try {
       final success = await _authService.login(email, password);
-      if (success) {
+      if (success == true) {
         setState(ViewState.Idle);
         return true;
       } else {
