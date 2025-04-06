@@ -9,13 +9,15 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
   late final TextEditingController _companyController;
   late final TextEditingController _addressController;
+  late final TabController _tabController;
   bool _isEditing = false;
   bool _emailNotifications = true;
   bool _smsNotifications = false;
@@ -25,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 5, vsync: this);
     _nameController = TextEditingController(text: 'John Doe');
     _emailController = TextEditingController(text: 'john.doe@example.com');
     _phoneController = TextEditingController(text: '+1 234 567 8900');
@@ -38,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _tabController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -51,22 +55,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return AppBaseScreen(
       title: 'Profile',
       currentPath: '/profile',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+      child: DefaultTabController(
+        length: 5,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 32),
-            _buildPersonalInfo(),
-            const SizedBox(height: 32),
-            _buildAccountSettings(),
-            const SizedBox(height: 32),
-            _buildSecuritySettings(),
-            const SizedBox(height: 32),
-            _buildNotificationSettings(),
-            const SizedBox(height: 32),
-            _buildActivityLog(),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabs: const [
+                  Tab(icon: Icon(Icons.person), text: 'Personal Info'),
+                  Tab(icon: Icon(Icons.settings), text: 'Account'),
+                  Tab(icon: Icon(Icons.security), text: 'Security'),
+                  Tab(icon: Icon(Icons.notifications), text: 'Notifications'),
+                  Tab(icon: Icon(Icons.history), text: 'Activity'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildHeader(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _buildPersonalInfo(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildAccountSettings(),
+                  ),
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildSecuritySettings(),
+                  ),
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildNotificationSettings(),
+                  ),
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildActivityLog(),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -74,58 +123,128 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        CustomAvatar(
-          imageUrl: 'assets/images/user-image.png',
-          size: 100,
-          borderWidth: 3,
-        ),
-        const SizedBox(width: 24),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          Stack(
             children: [
-              Text(
-                'John Doe',
-                style: Theme.of(context).textTheme.headlineMedium,
+              CustomAvatar(
+                imageUrl: 'assets/images/user-image.png',
+                size: 100,
+                borderWidth: 3,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Property Manager',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _isEditing = !_isEditing;
-                      });
-                    },
-                    icon: Icon(_isEditing ? Icons.save : Icons.edit),
-                    label: Text(_isEditing ? 'Save Changes' : 'Edit Profile'),
-                  ),
-                  const SizedBox(width: 16),
-                  if (_isEditing)
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = false;
-                        });
-                      },
-                      icon: const Icon(Icons.cancel),
-                      label: const Text('Cancel'),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.surface,
+                      width: 2,
                     ),
-                ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      // TODO: Implement image picker
+                      showDialog(
+                        context: context,
+                        builder:
+                            (context) => AlertDialog(
+                              title: const Text('Change Profile Picture'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(Icons.photo_library),
+                                    title: const Text('Choose from Gallery'),
+                                    onTap: () {
+                                      // TODO: Implement gallery picker
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.camera),
+                                    title: const Text('Take a Photo'),
+                                    onTap: () {
+                                      // TODO: Implement camera picker
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                      );
+                    },
+                    constraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 32,
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(width: 24),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'John Doe',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Property Manager',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isEditing = !_isEditing;
+                        });
+                      },
+                      icon: Icon(_isEditing ? Icons.save : Icons.edit),
+                      label: Text(_isEditing ? 'Save Changes' : 'Edit Profile'),
+                    ),
+                    const SizedBox(width: 16),
+                    if (_isEditing)
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _isEditing = false;
+                          });
+                        },
+                        icon: const Icon(Icons.cancel),
+                        label: const Text('Cancel'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

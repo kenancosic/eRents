@@ -10,38 +10,40 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(eRentsDesktopApp());
+  runApp(const MyApp());
 }
 
-class eRentsDesktopApp extends StatelessWidget {
-  final AppRouter appRouter = AppRouter();
-
-  eRentsDesktopApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<SecureStorageService>(create: (_) => SecureStorageService()),
-        ProxyProvider<SecureStorageService, ApiService>(
-          update:
-              (_, storage, __) => ApiService(
-                const String.fromEnvironment(
-                  'baseUrl',
-                  defaultValue: 'http://localhost:3000',
-                ),
-                storage,
-              ),
+        Provider<ApiService>(
+          create:
+              (_) =>
+                  ApiService('http://localhost:5000', SecureStorageService()),
         ),
         ProxyProvider<ApiService, AuthService>(
           update:
-              (_, api, __) => AuthService(
-                const String.fromEnvironment(
-                  'baseUrl',
-                  defaultValue: 'http://localhost:3000',
-                ),
-                api.secureStorageService,
+              (_, apiService, __) => AuthService(
+                apiService.baseUrl,
+                apiService.secureStorageService,
               ),
+        ),
+        ChangeNotifierProxyProvider<AuthService, AuthProvider>(
+          create:
+              (_) => AuthProvider(
+                ApiService('http://localhost:5000', SecureStorageService()),
+              ),
+          update: (_, authService, authProvider) {
+            authProvider?.authService = authService;
+            return authProvider ??
+                AuthProvider(
+                  ApiService('http://localhost:5000', SecureStorageService()),
+                );
+          },
         ),
         ChangeNotifierProvider<PropertyProvider>(
           create: (context) => PropertyProvider(context.read<ApiService>()),
@@ -49,14 +51,11 @@ class eRentsDesktopApp extends StatelessWidget {
         ChangeNotifierProvider<MaintenanceProvider>(
           create: (context) => MaintenanceProvider(context.read<ApiService>()),
         ),
-        ProxyProvider<AuthService, AuthProvider>(
-          update: (_, auth, __) => AuthProvider(auth),
-        ),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
         debugShowCheckedModeBanner: false,
-        routerConfig: appRouter.router,
+        routerConfig: AppRouter().router,
         theme: appTheme,
       ),
     );

@@ -58,6 +58,7 @@ class RecentIssuesCard extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!, width: 1),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 40,
@@ -79,6 +80,8 @@ class RecentIssuesCard extends StatelessWidget {
                 Text(
                   issue.title,
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -103,12 +106,16 @@ class RecentIssuesCard extends StatelessWidget {
                 child: Text(
                   issue.status.toString().split('.').last,
                   style: TextStyle(color: issue.statusColor, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 _formatDate(issue.createdAt),
                 style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),

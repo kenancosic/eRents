@@ -58,6 +58,7 @@ class PropertyListCard extends StatelessWidget {
         border: Border.all(color: Colors.grey[200]!, width: 1),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
@@ -76,6 +77,8 @@ class PropertyListCard extends StatelessWidget {
                 Text(
                   property.title,
                   style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -85,12 +88,12 @@ class PropertyListCard extends StatelessWidget {
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
                     _buildPropertyInfo(Icons.bed, '${property.bedrooms}'),
-                    const SizedBox(width: 16),
                     _buildPropertyInfo(Icons.bathtub, '${property.bathrooms}'),
-                    const SizedBox(width: 16),
                     _buildPropertyInfo(Icons.square_foot, '${property.area}'),
                   ],
                 ),
@@ -107,6 +110,8 @@ class PropertyListCard extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 4),
               Container(
@@ -127,6 +132,8 @@ class PropertyListCard extends StatelessWidget {
                             : Colors.red,
                     fontSize: 12,
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],

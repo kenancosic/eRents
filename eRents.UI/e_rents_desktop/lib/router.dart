@@ -9,11 +9,35 @@ import 'package:e_rents_desktop/screens/statistics/statistics_screen.dart';
 import 'package:e_rents_desktop/screens/reports/reports_screen.dart';
 import 'package:e_rents_desktop/screens/profile/profile_screen.dart';
 import 'package:e_rents_desktop/screens/settings/settings_screen.dart';
+import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 
 class AppRouter {
   final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
+    redirect: (context, state) {
+      // If we're in development mode and have a token, allow navigation
+      if (AuthService.isDevelopmentMode && AuthService.hasToken) {
+        if (state.uri.path == '/login' ||
+            state.uri.path == '/signup' ||
+            state.uri.path == '/forgot-password') {
+          return '/';
+        }
+        return null;
+      }
+
+      // If not authenticated and not on auth routes, redirect to login
+      final isAuthRoute =
+          state.uri.path == '/login' ||
+          state.uri.path == '/signup' ||
+          state.uri.path == '/forgot-password';
+
+      if (!isAuthRoute) {
+        return '/login';
+      }
+
+      return null;
+    },
     routes: [
       // Auth routes
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
@@ -25,10 +49,8 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-
-      // Main app routes
+      // Main routes
       GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
         path: '/properties',
         builder: (context, state) => const PropertiesScreen(),
@@ -37,6 +59,7 @@ class AppRouter {
         path: '/maintenance',
         builder: (context, state) => const MaintenanceScreen(),
       ),
+      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
         path: '/statistics',
         builder: (context, state) => const StatisticsScreen(),

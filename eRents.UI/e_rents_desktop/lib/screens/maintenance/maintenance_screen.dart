@@ -87,106 +87,142 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<IssueStatus?>(
-                    value: _selectedStatus,
-                    decoration: const InputDecoration(
-                      labelText: 'Status',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('All Statuses'),
-                      ),
-                      ...IssueStatus.values.map(
-                        (status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(status.toString().split('.').last),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedStatus = value;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: DropdownButtonFormField<IssuePriority?>(
-                    value: _selectedPriority,
-                    decoration: const InputDecoration(
-                      labelText: 'Priority',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('All Priorities'),
-                      ),
-                      ...IssuePriority.values.map(
-                        (priority) => DropdownMenuItem(
-                          value: priority,
-                          child: Text(priority.toString().split('.').last),
-                        ),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedPriority = value;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Consumer<PropertyProvider>(
-                    builder: (context, propertyProvider, child) {
-                      return DropdownButtonFormField<String?>(
-                        value: _selectedProperty,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // Calculate if we need to stack filters vertically
+                final isNarrow = constraints.maxWidth < 1000;
+
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: [
+                    SizedBox(
+                      width:
+                          isNarrow
+                              ? constraints.maxWidth
+                              : (constraints.maxWidth - 48) / 3,
+                      child: DropdownButtonFormField<IssueStatus?>(
+                        value: _selectedStatus,
+                        isExpanded: true,
                         decoration: const InputDecoration(
-                          labelText: 'Property',
+                          labelText: 'Status',
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: [
                           const DropdownMenuItem(
                             value: null,
-                            child: Text('All Properties'),
+                            child: Text('All Statuses'),
                           ),
-                          ...propertyProvider.properties.map(
-                            (property) => DropdownMenuItem(
-                              value: property.id,
-                              child: Text(property.title),
+                          ...IssueStatus.values.map(
+                            (status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(status.toString().split('.').last),
                             ),
                           ),
                         ],
                         onChanged: (value) {
                           setState(() {
-                            _selectedProperty = value;
+                            _selectedStatus = value;
                           });
                         },
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Container(
-                  width: 200, // Fixed width for the SwitchListTile
-                  child: SwitchListTile(
-                    title: const Text('Show Only Complaints'),
-                    value: _showOnlyComplaints,
-                    onChanged: (value) {
-                      setState(() {
-                        _showOnlyComplaints = value;
-                      });
-                    },
-                  ),
-                ),
-              ],
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          isNarrow
+                              ? constraints.maxWidth
+                              : (constraints.maxWidth - 48) / 3,
+                      child: DropdownButtonFormField<IssuePriority?>(
+                        value: _selectedPriority,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Priority',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('All Priorities'),
+                          ),
+                          ...IssuePriority.values.map(
+                            (priority) => DropdownMenuItem(
+                              value: priority,
+                              child: Text(priority.toString().split('.').last),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPriority = value;
+                          });
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          isNarrow
+                              ? constraints.maxWidth
+                              : (constraints.maxWidth - 48) / 3,
+                      child: Consumer<PropertyProvider>(
+                        builder: (context, propertyProvider, child) {
+                          return DropdownButtonFormField<String?>(
+                            value: _selectedProperty,
+                            isExpanded: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Property',
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('All Properties'),
+                              ),
+                              ...propertyProvider.properties.map(
+                                (property) => DropdownMenuItem(
+                                  value: property.id,
+                                  child: Text(property.title),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedProperty = value;
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: isNarrow ? constraints.maxWidth : 200,
+                      child: SwitchListTile(
+                        title: const Text('Show Only Complaints'),
+                        value: _showOnlyComplaints,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _showOnlyComplaints = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),
