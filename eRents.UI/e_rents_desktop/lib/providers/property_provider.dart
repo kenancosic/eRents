@@ -3,37 +3,49 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'dart:convert';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
-class PropertyProvider extends ChangeNotifier {
+class PropertyProvider extends BaseProvider<Property> {
   final ApiService _apiService;
-  List<Property> _properties = [];
   bool _isLoading = false;
   String? _error;
   bool _useMockData = true; // Flag to toggle between mock and real data
 
-  PropertyProvider(this._apiService);
+  PropertyProvider(this._apiService) : super(_apiService) {
+    // Enable mock data for development
+    enableMockData();
+  }
 
-  List<Property> get properties => _properties;
+  @override
+  String get endpoint => '/properties';
+
+  @override
+  Property fromJson(Map<String, dynamic> json) => Property.fromJson(json);
+
+  @override
+  Map<String, dynamic> toJson(Property item) => item.toJson();
+
+  @override
+  List<Property> getMockItems() => MockDataService.getMockProperties();
+
+  List<Property> get properties => items;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  // Add method to update properties list for reordering
+  void updateProperties(List<Property> newProperties) {
+    items_ = newProperties;
+    notifyListeners();
+  }
+
+  // Fetch properties using the base provider's fetch method
   Future<void> fetchProperties() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      if (_useMockData) {
-        // Simulate network delay
-        await Future.delayed(const Duration(seconds: 1));
-        _properties = MockDataService.getMockProperties();
-      } else {
-        final response = await _apiService.get('/properties');
-        _properties =
-            (json.decode(response.body) as List)
-                .map((json) => Property.fromJson(json))
-                .toList();
-      }
+      await fetchItems();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -48,17 +60,7 @@ class PropertyProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      if (_useMockData) {
-        // Simulate network delay
-        await Future.delayed(const Duration(seconds: 1));
-        _properties.add(property);
-      } else {
-        final response = await _apiService.post(
-          '/properties',
-          property.toJson(),
-        );
-        _properties.add(Property.fromJson(json.decode(response.body)));
-      }
+      await addItem(property);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -73,20 +75,7 @@ class PropertyProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      if (_useMockData) {
-        // Simulate network delay
-        await Future.delayed(const Duration(seconds: 1));
-        final index = _properties.indexWhere((p) => p.id == property.id);
-        if (index != -1) {
-          _properties[index] = property;
-        }
-      } else {
-        await _apiService.put('/properties/${property.id}', property.toJson());
-        final index = _properties.indexWhere((p) => p.id == property.id);
-        if (index != -1) {
-          _properties[index] = property;
-        }
-      }
+      await updateItem(property);
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -101,19 +90,29 @@ class PropertyProvider extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      if (_useMockData) {
-        // Simulate network delay
-        await Future.delayed(const Duration(seconds: 1));
-        _properties.removeWhere((property) => property.id == id);
-      } else {
-        await _apiService.delete('/properties/$id');
-        _properties.removeWhere((property) => property.id == id);
-      }
+      await deleteItem(id);
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Additional property-specific methods
+  List<Property> getPropertiesByStatus(String status) {
+    return items.where((property) => property.status == status).toList();
+  }
+
+  List<Property> getPropertiesByType(String type) {
+    return items.where((property) => property.type == type).toList();
+  }
+
+  List<Property> getAvailableProperties() {
+    return items.where((property) => property.status == 'Available').toList();
+  }
+
+  List<Property> getOccupiedProperties() {
+    return items.where((property) => property.status == 'Occupied').toList();
   }
 }

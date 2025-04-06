@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return AuthBaseScreen(
       title: 'Login to your account',
       formContent: _buildLoginForm(),
-      backgroundImage: 'assets/images/appartment.jpg',
+      backgroundImage: 'assets/images/apartment.jpg',
     );
   }
 

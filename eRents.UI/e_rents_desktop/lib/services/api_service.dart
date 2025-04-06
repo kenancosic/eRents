@@ -5,11 +5,21 @@ import 'package:http/http.dart' as http;
 class ApiService {
   final String baseUrl;
   final SecureStorageService secureStorageService;
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 1);
 
   ApiService(this.baseUrl, this.secureStorageService);
 
   Future<Map<String, String>> getHeaders() async {
-    return {'Content-Type': 'application/json', 'Accept': 'application/json'};
+    final token = await secureStorageService.getToken();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
   }
 
   Future<http.Response> _request(
@@ -18,26 +28,46 @@ class ApiService {
     Map<String, dynamic>? body, {
     bool authenticated = false,
   }) async {
-    final url = Uri.parse('$baseUrl$endpoint');
-    Map<String, String> headers = {'Content-Type': 'application/json'};
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        final url = Uri.parse('$baseUrl$endpoint');
+        final headers = await getHeaders();
 
-    if (authenticated) {
-      final token = await secureStorageService.getToken();
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+        http.Response response;
+        switch (method) {
+          case 'POST':
+            response = await http.post(
+              url,
+              headers: headers,
+              body: jsonEncode(body),
+            );
+            break;
+          case 'PUT':
+            response = await http.put(
+              url,
+              headers: headers,
+              body: jsonEncode(body),
+            );
+            break;
+          case 'DELETE':
+            response = await http.delete(url, headers: headers);
+            break;
+          default:
+            response = await http.get(url, headers: headers);
+        }
+
+        _handleResponse(response);
+        return response;
+      } catch (e) {
+        retryCount++;
+        if (retryCount == maxRetries) {
+          rethrow;
+        }
+        await Future.delayed(retryDelay);
       }
     }
-
-    switch (method) {
-      case 'POST':
-        return await http.post(url, headers: headers, body: jsonEncode(body));
-      case 'PUT':
-        return await http.put(url, headers: headers, body: jsonEncode(body));
-      case 'DELETE':
-        return await http.delete(url, headers: headers);
-      default:
-        return await http.get(url, headers: headers);
-    }
+    throw Exception('Failed to complete request after $maxRetries attempts');
   }
 
   Future<http.Response> post(
@@ -66,7 +96,14 @@ class ApiService {
 
   void _handleResponse(http.Response response) {
     if (response.statusCode >= 400) {
-      throw Exception('API Error: ${response.statusCode}');
+      String errorMessage;
+      try {
+        final errorJson = json.decode(response.body);
+        errorMessage = errorJson['message'] ?? 'Unknown error occurred';
+      } catch (e) {
+        errorMessage = 'Error: ${response.statusCode}';
+      }
+      throw Exception(errorMessage);
     }
   }
 }

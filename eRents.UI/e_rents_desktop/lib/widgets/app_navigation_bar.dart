@@ -17,20 +17,43 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(70);
 
   static const List<NavigationItem> navigationItems = [
-    NavigationItem(label: 'Home', icon: Icons.home, path: '/'),
-    NavigationItem(label: 'Chat', icon: Icons.chat, path: '/chat'),
+    NavigationItem(label: 'Home', icon: Icons.home_rounded, path: '/'),
+    NavigationItem(label: 'Chat', icon: Icons.chat_rounded, path: '/chat'),
     NavigationItem(
       label: 'Properties',
-      icon: Icons.apartment,
+      icon: Icons.apartment_rounded,
       path: '/properties',
+      subItems: [
+        NavigationItem(
+          label: 'Properties',
+          icon: Icons.apartment_rounded,
+          path: '/properties',
+        ),
+        NavigationItem(
+          label: 'Maintenance',
+          icon: Icons.build_rounded,
+          path: '/maintenance',
+        ),
+      ],
     ),
     NavigationItem(
       label: 'Statistics',
-      icon: Icons.bar_chart,
+      icon: Icons.bar_chart_rounded,
       path: '/statistics',
+      subItems: [
+        NavigationItem(
+          label: 'Statistics',
+          icon: Icons.bar_chart_rounded,
+          path: '/statistics',
+        ),
+        NavigationItem(
+          label: 'Reports',
+          icon: Icons.description_rounded,
+          path: '/reports',
+        ),
+      ],
     ),
-    NavigationItem(label: 'Reports', icon: Icons.description, path: '/reports'),
-    NavigationItem(label: 'Logout', icon: Icons.logout, path: '/login'),
+    NavigationItem(label: 'Logout', icon: Icons.logout_rounded, path: '/login'),
   ];
 
   @override
@@ -72,8 +95,11 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildLogo(context),
-                const SizedBox(width: 30),
+                Padding(
+                  padding: const EdgeInsets.only(right: 30),
+                  child: _buildLogo(context),
+                ),
+                const VerticalDivider(),
                 Expanded(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -92,10 +118,16 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
 
   Widget _buildVerticalNav(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(padding: const EdgeInsets.all(20), child: _buildLogo(context)),
         const Divider(),
-        Expanded(child: Column(children: _buildNavItems(context, true))),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _buildNavItems(context, true),
+          ),
+        ),
         const Divider(),
         Padding(
           padding: const EdgeInsets.all(20),
@@ -118,14 +150,162 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
 
   List<Widget> _buildNavItems(BuildContext context, bool isVertical) {
     return navigationItems.map((item) {
-      final isSelected = currentPath == item.path;
-      return Padding(
-        padding:
-            isVertical
-                ? const EdgeInsets.symmetric(vertical: 12, horizontal: 20)
-                : const EdgeInsets.symmetric(horizontal: 8),
-        child: GestureDetector(
-          onTap: () => context.go(item.path),
+      final isSelected =
+          currentPath == item.path ||
+          (item.subItems != null &&
+              item.subItems!.any((subItem) => currentPath == subItem.path));
+
+      if (item.subItems != null && item.subItems!.isNotEmpty) {
+        return _buildDropdownItem(context, item, isVertical, isSelected);
+      } else {
+        return _buildSimpleNavItem(context, item, isVertical, isSelected);
+      }
+    }).toList();
+  }
+
+  Widget _buildDropdownItem(
+    BuildContext context,
+    NavigationItem item,
+    bool isVertical,
+    bool isSelected,
+  ) {
+    final selectedSubItem = item.subItems?.firstWhere(
+      (subItem) => currentPath == subItem.path,
+      orElse: () => item,
+    );
+
+    return Padding(
+      padding:
+          isVertical
+              ? const EdgeInsets.symmetric(vertical: 12, horizontal: 20)
+              : const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          // Main navigation item (clickable)
+          GestureDetector(
+            onTap: () => context.go(item.path),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color:
+                    isSelected
+                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    selectedSubItem?.icon ?? item.icon,
+                    size: 22,
+                    color:
+                        isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    selectedSubItem?.label ?? item.label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color:
+                          isSelected
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Dropdown button for sub-items
+          if (item.subItems != null && item.subItems!.isNotEmpty)
+            PopupMenuButton<NavigationItem>(
+              offset: const Offset(0, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                child: Icon(
+                  Icons.arrow_drop_down,
+                  size: 20,
+                  color:
+                      isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+              itemBuilder:
+                  (context) =>
+                      item.subItems!.map((subItem) {
+                        return PopupMenuItem<NavigationItem>(
+                          value: subItem,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  subItem.icon,
+                                  size: 20,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  subItem.label,
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+              onSelected: (selectedItem) {
+                context.go(selectedItem.path);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSimpleNavItem(
+    BuildContext context,
+    NavigationItem item,
+    bool isVertical,
+    bool isSelected,
+  ) {
+    return Padding(
+      padding:
+          isVertical
+              ? const EdgeInsets.symmetric(vertical: 12, horizontal: 20)
+              : const EdgeInsets.symmetric(horizontal: 8),
+      child: GestureDetector(
+        onTap: () => context.go(item.path),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color:
+                isSelected
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -158,8 +338,8 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         ),
-      );
-    }).toList();
+      ),
+    );
   }
 
   Widget _buildProfile(BuildContext context) {
@@ -210,10 +390,12 @@ class NavigationItem {
   final String label;
   final IconData icon;
   final String path;
+  final List<NavigationItem>? subItems;
 
   const NavigationItem({
     required this.label,
     required this.icon,
     required this.path,
+    this.subItems,
   });
 }

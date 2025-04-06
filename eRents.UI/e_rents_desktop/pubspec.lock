@@ -101,10 +101,10 @@ packages:
     dependency: "direct main"
     description:
       name: file_picker
-      sha256: be325344c1f3070354a1d84a231a1ba75ea85d413774ec4bdf444c023342e030
+      sha256: "36a1652d99cb6bf8ccc8b9f43aded1fd60b234d23ce78af422c07f950a436ef7"
       url: "https://pub.dev"
     source: hosted
-    version: "5.5.0"
+    version: "10.0.0"
   file_selector:
     dependency: "direct main"
     description:
@@ -198,6 +198,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.27"
+  flutter_reorderable_grid_view:
+    dependency: "direct main"
+    description:
+      name: flutter_reorderable_grid_view
+      sha256: f5db90ae62f8307daef9a884e09ed2d883838592e92185017a4431fe8e78899e
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.5.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -464,14 +472,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.2"
-  reorderables:
-    dependency: "direct main"
-    description:
-      name: reorderables
-      sha256: "004a886e4878df1ee27321831c838bc1c976311f4ca6a74ce7d561e506540a77"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.0"
   sky_engine:
     dependency: transitive
     description: flutter
