@@ -26,7 +26,7 @@ class AppRouter {
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
 
-      // Main app routes with AppBaseScreen
+      // Main app routes
       GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
@@ -54,14 +54,6 @@ class AppRouter {
         builder: (context, state) => const SettingsScreen(),
       ),
     ],
-    redirect: (context, state) {
-      // Add authentication check here if needed
-      // For example:
-      // if (!isAuthenticated && !state.matchedLocation.startsWith('/login')) {
-      //   return '/login';
-      // }
-      return null;
-    },
   );
 
   // static Route<dynamic> generateRoute(RouteSettings settings) {

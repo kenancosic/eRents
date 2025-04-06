@@ -1,89 +1,48 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/services/auth_service.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/services/mock_data_service.dart';
 
-class AuthProvider extends BaseProvider {
-  final AuthService _authService;
+class AuthProvider extends BaseProvider<User> {
+  AuthProvider(ApiService apiService) : super(apiService);
 
-  AuthProvider(this._authService);
+  @override
+  String get endpoint => '/auth';
 
+  @override
+  User fromJson(Map<String, dynamic> json) => User.fromJson(json);
+
+  @override
+  Map<String, dynamic> toJson(User item) => item.toJson();
+
+  @override
+  List<User> getMockItems() => MockDataService.getMockUsers();
+
+  // Additional auth-specific methods
   Future<bool> login(String email, String password) async {
-    setState(ViewState.Busy);
-    try {
-      final success = await _authService.login(email, password);
-      if (success == true) {
-        setState(ViewState.Idle);
-        return true;
-      } else {
-        setError('Login failed. Please check your credentials.');
-        setState(ViewState.Idle);
-        return false;
-      }
-    } catch (e) {
-      setError('An error occurred during login.');
-      setState(ViewState.Idle);
-      return false;
-    }
+    bool result = false;
+    await execute(() async {
+      // TODO: Implement actual login logic
+      result = true;
+    });
+    return result;
   }
 
-  Future<bool> register(Map<String, dynamic> userData) async {
-    setState(ViewState.Busy);
-    try {
-      final success = await _authService.register(userData);
-      if (success) {
-        setState(ViewState.Idle);
-        return true;
-      } else {
-        setError('Registration failed.');
-        setState(ViewState.Idle);
-        return false;
-      }
-    } catch (e) {
-      setError('An error occurred during registration.');
-      setState(ViewState.Idle);
-      return false;
-    }
+  Future<bool> register(User user) async {
+    bool result = false;
+    await execute(() async {
+      // TODO: Implement actual registration logic
+      result = true;
+    });
+    return result;
   }
 
   Future<void> logout() async {
-    await _authService.logout();
-    setState(ViewState.Idle);
+    await execute(() async {
+      // TODO: Implement actual logout logic
+    });
   }
 
-  Future<bool> forgotPassword(String email) async {
-    setState(ViewState.Busy);
-    try {
-      final success = await _authService.forgotPassword(email);
-      if (success) {
-        setState(ViewState.Idle);
-        return true;
-      } else {
-        setError('Failed to send password reset email.');
-        setState(ViewState.Idle);
-        return false;
-      }
-    } catch (e) {
-      setError('An error occurred while sending the password reset email.');
-      setState(ViewState.Idle);
-      return false;
-    }
-  }
-
-  Future<bool> resetPassword(String token, String newPassword) async {
-    setState(ViewState.Busy);
-    try {
-      final success = await _authService.resetPassword(token, newPassword);
-      if (success) {
-        setState(ViewState.Idle);
-        return true;
-      } else {
-        setError('Failed to reset password.');
-        setState(ViewState.Idle);
-        return false;
-      }
-    } catch (e) {
-      setError('An error occurred during password reset.');
-      setState(ViewState.Idle);
-      return false;
-    }
-  }
+  // Alias for items to maintain backward compatibility
+  List<User> get users => items;
 }

@@ -174,14 +174,17 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                SwitchListTile(
-                  title: const Text('Show Only Complaints'),
-                  value: _showOnlyComplaints,
-                  onChanged: (value) {
-                    setState(() {
-                      _showOnlyComplaints = value;
-                    });
-                  },
+                Container(
+                  width: 200, // Fixed width for the SwitchListTile
+                  child: SwitchListTile(
+                    title: const Text('Show Only Complaints'),
+                    value: _showOnlyComplaints,
+                    onChanged: (value) {
+                      setState(() {
+                        _showOnlyComplaints = value;
+                      });
+                    },
+                  ),
                 ),
               ],
             ),

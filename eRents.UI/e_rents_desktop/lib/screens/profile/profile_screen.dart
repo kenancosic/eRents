@@ -325,6 +325,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Widget child,
   }) {
     return Card(
+      elevation: Theme.of(context).cardTheme.elevation,
+      shape: Theme.of(context).cardTheme.shape,
+      color: Theme.of(context).cardTheme.color,
+      clipBehavior: Clip.antiAlias,
+
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

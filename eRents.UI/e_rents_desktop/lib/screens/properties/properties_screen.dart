@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/providers/property_provider.dart';
@@ -204,110 +205,132 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   Widget _buildGridView(List<Property> properties) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.8,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: properties.length,
-      itemBuilder: (context, index) {
-        final property = properties[index];
-        return Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => _showPropertyDetails(context, property),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(property.images.first, fit: BoxFit.cover),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: _buildStatusChip(property.status),
+    final scrollController = ScrollController();
+    final gridViewKey = GlobalKey();
+
+    return ReorderableBuilder<Property>(
+      scrollController: scrollController,
+      children:
+          properties.map((property) {
+            return Card(
+              key: ValueKey(property.id),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _showPropertyDetails(context, property),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.asset(property.images.first, fit: BoxFit.cover),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: _buildStatusChip(property.status),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          property.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          property.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Spacer(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '\$${property.price.toStringAsFixed(2)}',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
+                              property.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            PopupMenuButton(
-                              itemBuilder:
-                                  (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit),
-                                          SizedBox(width: 8),
-                                          Text('Edit'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete, color: Colors.red),
-                                          SizedBox(width: 8),
-                                          Text('Delete'),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _showPropertyDialog(context, property);
-                                } else if (value == 'delete') {
-                                  _showDeleteDialog(context, property);
-                                }
-                              },
+                            const SizedBox(height: 4),
+                            Text(
+                              property.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const Spacer(),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '\$${property.price.toStringAsFixed(2)}',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                                PopupMenuButton(
+                                  itemBuilder:
+                                      (context) => [
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.edit),
+                                              SizedBox(width: 8),
+                                              Text('Edit'),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.delete,
+                                                color: Colors.red,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text('Delete'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      _showPropertyDialog(context, property);
+                                    } else if (value == 'delete') {
+                                      _showDeleteDialog(context, property);
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            );
+          }).toList(),
+      onReorder: (reorderedListFunction) {
+        setState(() {
+          final provider = context.read<PropertyProvider>();
+          final reorderedList = reorderedListFunction(provider.properties);
+          provider.updateProperties(List<Property>.from(reorderedList));
+        });
+      },
+      builder: (children) {
+        return GridView(
+          key: gridViewKey,
+          controller: scrollController,
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 0.8,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
           ),
+          children: children,
         );
       },
     );

@@ -51,7 +51,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return AuthBaseScreen(
       title: 'Reset your password',
       formContent: _buildForgotPasswordForm(),
-      backgroundImage: 'assets/images/appartment.jpg',
+      backgroundImage: 'assets/images/apartment.jpg',
     );
   }
 

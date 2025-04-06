@@ -171,9 +171,33 @@ final ThemeData appTheme = ThemeData(
   // Card theme
   cardTheme: CardTheme(
     color: Colors.white,
-    elevation: 2,
+    elevation: 4,
+    shadowColor: Colors.grey.withOpacity(0.2),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     margin: const EdgeInsets.all(8),
+    clipBehavior: Clip.antiAlias,
+  ),
+
+  // Switch theme
+  switchTheme: SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor;
+      }
+      return Colors.grey[300]!;
+    }),
+    trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor.withOpacity(0.5);
+      }
+      return Colors.grey[200]!;
+    }),
+    trackOutlineColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor.withOpacity(0.5);
+      }
+      return Colors.grey[300]!;
+    }),
   ),
 
   // Bottom navigation bar theme
