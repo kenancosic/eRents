@@ -55,69 +55,66 @@ class _ProfileScreenState extends State<ProfileScreen>
     return AppBaseScreen(
       title: 'Profile',
       currentPath: '/profile',
-      child: DefaultTabController(
-        length: 5,
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabs: const [
-                  Tab(icon: Icon(Icons.person), text: 'Personal Info'),
-                  Tab(icon: Icon(Icons.settings), text: 'Account'),
-                  Tab(icon: Icon(Icons.security), text: 'Security'),
-                  Tab(icon: Icon(Icons.notifications), text: 'Notifications'),
-                  Tab(icon: Icon(Icons.history), text: 'Activity'),
-                ],
-              ),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _buildHeader(),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: _buildPersonalInfo(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _buildAccountSettings(),
-                  ),
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _buildSecuritySettings(),
-                  ),
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _buildNotificationSettings(),
-                  ),
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _buildActivityLog(),
-                  ),
-                ],
-              ),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabs: const [
+                Tab(icon: Icon(Icons.person), text: 'Personal Info'),
+                Tab(icon: Icon(Icons.settings), text: 'Account'),
+                Tab(icon: Icon(Icons.security), text: 'Security'),
+                Tab(icon: Icon(Icons.notifications), text: 'Notifications'),
+                Tab(icon: Icon(Icons.history), text: 'Activity'),
+              ],
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _buildPersonalInfo(),
+                      ),
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildAccountSettings(),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildSecuritySettings(),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildNotificationSettings(),
+                ),
+                SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildActivityLog(),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

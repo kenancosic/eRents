@@ -33,29 +33,35 @@ class PropertyOverviewSection extends StatelessWidget {
           ],
         ),
         const Divider(),
-        _buildInfoRow('Type', property.type),
+        _buildDetailRow('Type', property.type),
         const Divider(),
-        _buildInfoRow('Description', property.description),
+        _buildDetailRow('Description', property.description),
         const Divider(),
-        _buildInfoRow('Year Built', '2015'),
+        _buildDetailRow('Year Built', '2015'),
         const Divider(),
-        _buildInfoRow('Last Renovated', '2020'),
+        _buildDetailRow('Last Renovated', '2020'),
         const Divider(),
-        _buildInfoRow('Parking', '2 Covered Spaces'),
+        _buildDetailRow('Parking', '2 Covered Spaces'),
         const Divider(),
-        _buildInfoRow('Amenities', 'Pool, Gym, Security System'),
+        _buildDetailRow('Amenities', 'Pool, Gym, Security System'),
       ],
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(value),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(child: Text(value, softWrap: true)),
         ],
       ),
     );
