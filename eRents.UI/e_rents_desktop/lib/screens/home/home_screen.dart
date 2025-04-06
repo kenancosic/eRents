@@ -35,38 +35,78 @@ class HomeScreen extends StatelessWidget {
               children: [
                 _buildWelcomeSection(context),
                 const SizedBox(height: 24),
-                // Statistics Row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: PropertyStatsCard(
-                        properties: propertyProvider.properties,
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      child: MaintenanceOverviewCard(
-                        pendingIssues: pendingIssues,
-                        highPriorityIssues: highPriorityIssues,
-                        tenantComplaints: tenantComplaints,
-                      ),
-                    ),
-                  ],
+                // Statistics Section
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 1000) {
+                      // Stack cards vertically on smaller screens
+                      return Column(
+                        children: [
+                          PropertyStatsCard(
+                            properties: propertyProvider.properties,
+                          ),
+                          const SizedBox(height: 24),
+                          MaintenanceOverviewCard(
+                            pendingIssues: pendingIssues,
+                            highPriorityIssues: highPriorityIssues,
+                            tenantComplaints: tenantComplaints,
+                          ),
+                        ],
+                      );
+                    } else {
+                      // Use row layout on larger screens
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: PropertyStatsCard(
+                              properties: propertyProvider.properties,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: MaintenanceOverviewCard(
+                              pendingIssues: pendingIssues,
+                              highPriorityIssues: highPriorityIssues,
+                              tenantComplaints: tenantComplaints,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 24),
-                // Property List and Recent Issues Row
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: PropertyListCard(
-                        properties: propertyProvider.properties,
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(child: RecentIssuesCard(issues: issues)),
-                  ],
+                // Property List and Recent Issues Section
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 1200) {
+                      // Stack cards vertically on smaller screens
+                      return Column(
+                        children: [
+                          PropertyListCard(
+                            properties: propertyProvider.properties,
+                          ),
+                          const SizedBox(height: 24),
+                          RecentIssuesCard(issues: issues),
+                        ],
+                      );
+                    } else {
+                      // Use row layout on larger screens
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: PropertyListCard(
+                              properties: propertyProvider.properties,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(child: RecentIssuesCard(issues: issues)),
+                        ],
+                      );
+                    }
+                  },
                 ),
               ],
             ),

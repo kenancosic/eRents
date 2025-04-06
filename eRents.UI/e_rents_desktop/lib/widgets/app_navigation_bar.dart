@@ -3,18 +3,17 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 
-class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
+class AppNavigationBar extends StatefulWidget {
   final String currentPath;
-  final double breakpointWidth;
 
-  const AppNavigationBar({
-    super.key,
-    required this.currentPath,
-    this.breakpointWidth = 1200,
-  });
+  const AppNavigationBar({super.key, required this.currentPath});
 
   @override
-  Size get preferredSize => const Size.fromHeight(70);
+  State<AppNavigationBar> createState() => _AppNavigationBarState();
+}
+
+class _AppNavigationBarState extends State<AppNavigationBar> {
+  bool _isExpanded = true;
 
   static const List<NavigationItem> navigationItems = [
     NavigationItem(label: 'Home', icon: Icons.home_rounded, path: '/'),
@@ -53,152 +52,144 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ],
     ),
+    NavigationItem(
+      label: 'Settings',
+      icon: Icons.settings_rounded,
+      path: '/settings',
+    ),
     NavigationItem(label: 'Logout', icon: Icons.logout_rounded, path: '/login'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWideScreen = screenWidth > breakpointWidth;
-
-    return CustomAppBar(
-      height: isWideScreen ? 90 : 0,
-      child: Container(
-        height: isWideScreen ? 90 : double.infinity,
-        width: isWideScreen ? double.infinity : 250,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.5),
-              spreadRadius: 3,
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: _isExpanded ? 250 : 70,
+      child: Drawer(
+        elevation: 2,
+        child: Column(
+          children: [
+            _buildHeader(context),
+            const Divider(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(children: _buildNavItems(context)),
+              ),
             ),
+            const Divider(),
+            _buildProfile(context),
+            const SizedBox(height: 8),
+            _buildExpandButton(),
           ],
         ),
-        child:
-            isWideScreen
-                ? _buildHorizontalNav(context)
-                : _buildVerticalNav(context),
       ),
     );
   }
 
-  Widget _buildHorizontalNav(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      height: 70,
+      padding: EdgeInsets.symmetric(
+        horizontal: _isExpanded ? 16 : 8,
+        vertical: 8,
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment:
+            _isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 30),
-                  child: _buildLogo(context),
-                ),
-                const VerticalDivider(),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: _buildNavItems(context, false),
+          Flexible(
+            child: GestureDetector(
+              onTap: () => context.go('/'),
+              child: AnimatedCrossFade(
+                duration: const Duration(milliseconds: 200),
+                firstChild: SizedBox(
+                  width: _isExpanded ? 180 : 40,
+                  height: 40,
+                  child: SvgPicture.asset(
+                    'assets/images/Logo.svg',
+                    fit: BoxFit.contain,
+                    placeholderBuilder:
+                        (BuildContext context) => Container(
+                          color: Colors.grey.withOpacity(0.3),
+                          child: const Center(child: Text('Logo')),
+                        ),
                   ),
                 ),
-              ],
+                secondChild: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: SvgPicture.asset(
+                    'assets/images/house-icon.svg',
+                    fit: BoxFit.contain,
+                    placeholderBuilder:
+                        (BuildContext context) => Container(
+                          color: Colors.grey.withOpacity(0.3),
+                          child: const Icon(Icons.home),
+                        ),
+                  ),
+                ),
+                crossFadeState:
+                    _isExpanded
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                alignment: Alignment.center,
+              ),
             ),
           ),
-          const SizedBox(width: 20),
-          _buildProfile(context),
         ],
       ),
     );
   }
 
-  Widget _buildVerticalNav(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(padding: const EdgeInsets.all(20), child: _buildLogo(context)),
-        const Divider(),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: _buildNavItems(context, true),
-          ),
-        ),
-        const Divider(),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: _buildProfile(context),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLogo(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.go('/'),
-      child: SizedBox(
-        width: 100,
-        height: 40,
-        child: SvgPicture.asset('assets/images/Logo.svg'),
-      ),
-    );
-  }
-
-  List<Widget> _buildNavItems(BuildContext context, bool isVertical) {
+  List<Widget> _buildNavItems(BuildContext context) {
     return navigationItems.map((item) {
       final isSelected =
-          currentPath == item.path ||
+          widget.currentPath == item.path ||
           (item.subItems != null &&
-              item.subItems!.any((subItem) => currentPath == subItem.path));
+              item.subItems!.any(
+                (subItem) => widget.currentPath == subItem.path,
+              ));
 
       if (item.subItems != null && item.subItems!.isNotEmpty) {
-        return _buildDropdownItem(context, item, isVertical, isSelected);
+        return _buildExpandableNavItem(context, item, isSelected);
       } else {
-        return _buildSimpleNavItem(context, item, isVertical, isSelected);
+        return _buildNavItem(context, item, isSelected);
       }
     }).toList();
   }
 
-  Widget _buildDropdownItem(
+  Widget _buildExpandableNavItem(
     BuildContext context,
     NavigationItem item,
-    bool isVertical,
     bool isSelected,
   ) {
-    final selectedSubItem = item.subItems?.firstWhere(
-      (subItem) => currentPath == subItem.path,
-      orElse: () => item,
-    );
-
-    return Padding(
-      padding:
-          isVertical
-              ? const EdgeInsets.symmetric(vertical: 12, horizontal: 20)
-              : const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          // Main navigation item (clickable)
-          GestureDetector(
-            onTap: () => context.go(item.path),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                        : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    selectedSubItem?.icon ?? item.icon,
-                    size: 22,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        dividerColor: Colors.transparent,
+        listTileTheme: ListTileTheme.of(
+          context,
+        ).copyWith(dense: true, horizontalTitleGap: 0, minLeadingWidth: 40),
+      ),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.symmetric(
+          horizontal: _isExpanded ? 16 : 8,
+          vertical: 0,
+        ),
+        leading: Icon(
+          item.icon,
+          size: 22,
+          color:
+              isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
+        title:
+            _isExpanded
+                ? Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 14,
                     color:
                         isSelected
                             ? Theme.of(context).colorScheme.primary
@@ -206,38 +197,61 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
                               context,
                             ).colorScheme.onSurface.withOpacity(0.6),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    selectedSubItem?.label ?? item.label,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color:
-                          isSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Dropdown button for sub-items
-          if (item.subItems != null && item.subItems!.isNotEmpty)
-            PopupMenuButton<NavigationItem>(
-              offset: const Offset(0, 40),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Icon(
-                  Icons.arrow_drop_down,
+                )
+                : const SizedBox.shrink(),
+        trailing:
+            _isExpanded
+                ? Icon(
+                  Icons.expand_more,
                   size: 20,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.6),
+                )
+                : null,
+        children:
+            item.subItems!.map((subItem) {
+              final isSubItemSelected = widget.currentPath == subItem.path;
+              return _buildNavItem(
+                context,
+                subItem,
+                isSubItemSelected,
+                isSubItem: true,
+              );
+            }).toList(),
+        initiallyExpanded: isSelected,
+        maintainState: true,
+      ),
+    );
+  }
+
+  Widget _buildNavItem(
+    BuildContext context,
+    NavigationItem item,
+    bool isSelected, {
+    bool isSubItem = false,
+  }) {
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      contentPadding: EdgeInsets.only(
+        left: isSubItem ? (_isExpanded ? 56 : 8) : (_isExpanded ? 16 : 8),
+        right: _isExpanded ? 16 : 8,
+      ),
+      leading: Icon(
+        item.icon,
+        size: 22,
+        color:
+            isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+      ),
+      title:
+          _isExpanded
+              ? Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 14,
                   color:
                       isSelected
                           ? Theme.of(context).colorScheme.primary
@@ -245,145 +259,75 @@ class AppNavigationBar extends StatelessWidget implements PreferredSizeWidget {
                             context,
                           ).colorScheme.onSurface.withOpacity(0.6),
                 ),
-              ),
-              itemBuilder:
-                  (context) =>
-                      item.subItems!.map((subItem) {
-                        return PopupMenuItem<NavigationItem>(
-                          value: subItem,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  subItem.icon,
-                                  size: 20,
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  subItem.label,
-                                  style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.onSurface,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-              onSelected: (selectedItem) {
-                context.go(selectedItem.path);
-              },
-            ),
-        ],
-      ),
+              )
+              : null,
+      selected: isSelected,
+      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+      onTap: () => context.go(item.path),
     );
   }
 
-  Widget _buildSimpleNavItem(
-    BuildContext context,
-    NavigationItem item,
-    bool isVertical,
-    bool isSelected,
-  ) {
-    return Padding(
-      padding:
-          isVertical
-              ? const EdgeInsets.symmetric(vertical: 12, horizontal: 20)
-              : const EdgeInsets.symmetric(horizontal: 8),
-      child: GestureDetector(
-        onTap: () => context.go(item.path),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color:
-                isSelected
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                item.icon,
-                size: 22,
-                color:
-                    isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                item.label,
+  Widget _buildProfile(BuildContext context) {
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: _isExpanded ? 16 : 0,
+        vertical: 8,
+      ),
+      leading:
+          _isExpanded
+              ? CustomAvatar(
+                imageUrl: 'assets/images/user-image.png',
+                size: 32,
+                borderWidth: widget.currentPath == '/profile' ? 2 : 0,
+              )
+              : null,
+      title:
+          _isExpanded
+              ? Text(
+                'John Doe',
                 style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
                   color:
-                      isSelected
+                      widget.currentPath == '/profile'
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(
                             context,
                           ).colorScheme.onSurface.withOpacity(0.6),
                 ),
                 overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfile(BuildContext context) {
-    return GestureDetector(
+              )
+              : null,
+      trailing:
+          !_isExpanded
+              ? Padding(
+                padding: const EdgeInsets.only(right: 19),
+                child: CustomAvatar(
+                  imageUrl: 'assets/images/user-image.png',
+                  size: 32,
+                  borderWidth: widget.currentPath == '/profile' ? 2 : 0,
+                ),
+              )
+              : null,
       onTap: () => context.go('/profile'),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CustomAvatar(
-            imageUrl: 'assets/images/user-image.png',
-            size: 40,
-            borderWidth: currentPath == '/profile' ? 3 : 0,
-            onTap: () => context.go('/profile'),
-          ),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              'John Doe',
-              style: TextStyle(
-                fontSize: 15,
-                color:
-                    currentPath == '/profile'
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.6),
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-        ],
+      selected: widget.currentPath == '/profile',
+      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+    );
+  }
+
+  Widget _buildExpandButton() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: IconButton(
+        icon: Icon(_isExpanded ? Icons.chevron_left : Icons.chevron_right),
+        onPressed: () {
+          setState(() {
+            _isExpanded = !_isExpanded;
+          });
+        },
       ),
     );
   }
-}
-
-class CustomAppBar extends PreferredSize {
-  final Widget child;
-  final double height;
-
-  CustomAppBar({super.key, required this.height, required this.child})
-    : super(child: child, preferredSize: Size.fromHeight(height));
 }
 
 class NavigationItem {

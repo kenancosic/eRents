@@ -80,6 +80,7 @@ class MaintenanceOverviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
@@ -90,11 +91,12 @@ class MaintenanceOverviewCard extends StatelessWidget {
                 child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              Flexible(
                 child: Text(
                   label,
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],
@@ -107,6 +109,8 @@ class MaintenanceOverviewCard extends StatelessWidget {
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
         ],
       ),

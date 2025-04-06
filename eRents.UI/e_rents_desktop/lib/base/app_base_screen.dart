@@ -108,11 +108,11 @@ class _StatefulBaseScreenState extends State<StatefulBaseScreen> {
   }
 }
 
+/// Main application base screen that includes the navigation bar
 class AppBaseScreen extends StatelessWidget {
   final Widget? child;
   final String title;
   final String currentPath;
-  final double breakpointWidth;
   final Widget? content;
 
   const AppBaseScreen({
@@ -120,48 +120,55 @@ class AppBaseScreen extends StatelessWidget {
     this.child,
     required this.title,
     required this.currentPath,
-    this.breakpointWidth = 1200,
     this.content,
   });
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWideScreen = screenWidth > breakpointWidth;
-
     return Scaffold(
-      appBar: isWideScreen ? AppNavigationBar(currentPath: currentPath) : null,
       body: Row(
         children: [
-          if (!isWideScreen) AppNavigationBar(currentPath: currentPath),
+          // Navigation Bar
+          AppNavigationBar(currentPath: currentPath),
+
+          // Main Content
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                      ),
-                      child: content ?? child,
+            child: Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              body: Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Page Title
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+
+                    // Main Content Area
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: content ?? child ?? const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
