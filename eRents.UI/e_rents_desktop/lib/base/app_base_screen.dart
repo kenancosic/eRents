@@ -62,52 +62,6 @@ class BaseScreen extends StatelessWidget {
   }
 }
 
-/// A stateful version of BaseScreen for screens that need to manage state
-class StatefulBaseScreen extends StatefulWidget {
-  final Widget child;
-  final String title;
-  final List<Widget>? actions;
-  final bool showBackButton;
-  final bool resizeToAvoidBottomInset;
-  final Color? backgroundColor;
-  final Widget? floatingActionButton;
-  final Widget? drawer;
-  final PreferredSizeWidget? appBar;
-
-  const StatefulBaseScreen({
-    super.key,
-    required this.child,
-    this.title = '',
-    this.actions,
-    this.showBackButton = true,
-    this.resizeToAvoidBottomInset = true,
-    this.backgroundColor,
-    this.floatingActionButton,
-    this.drawer,
-    this.appBar,
-  });
-
-  @override
-  State<StatefulBaseScreen> createState() => _StatefulBaseScreenState();
-}
-
-class _StatefulBaseScreenState extends State<StatefulBaseScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return BaseScreen(
-      title: widget.title,
-      actions: widget.actions,
-      showBackButton: widget.showBackButton,
-      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-      backgroundColor: widget.backgroundColor,
-      floatingActionButton: widget.floatingActionButton,
-      drawer: widget.drawer,
-      appBar: widget.appBar,
-      child: widget.child,
-    );
-  }
-}
-
 /// Main application base screen that includes the navigation bar
 class AppBaseScreen extends StatelessWidget {
   final Widget? child;

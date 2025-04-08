@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
-import 'package:e_rents_desktop/screens/statistics/widgets/stat_card.dart';
-import 'package:e_rents_desktop/screens/statistics/widgets/stat_chart.dart';
-import 'package:e_rents_desktop/screens/statistics/widgets/recent_activity.dart';
-import 'package:e_rents_desktop/screens/statistics/widgets/performance_metrics.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/stat_card.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/stat_chart.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/recent_activity.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/performance_metrics.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});

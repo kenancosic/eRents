@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/screens/properties/property_form_screen.dart';
-import 'package:e_rents_desktop/screens/properties/widgets/property_header.dart';
-import 'package:e_rents_desktop/screens/properties/widgets/property_images_grid.dart';
-import 'package:e_rents_desktop/screens/properties/widgets/property_overview_section.dart';
-import 'package:e_rents_desktop/screens/properties/widgets/tenant_info.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_header.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_overview_section.dart';
+import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
 import 'package:go_router/go_router.dart';
 
 class PropertyDetailsScreen extends StatelessWidget {

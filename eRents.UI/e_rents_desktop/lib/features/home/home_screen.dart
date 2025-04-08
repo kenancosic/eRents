@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/providers/maintenance_provider.dart';
-import 'package:e_rents_desktop/providers/property_provider.dart';
-import 'package:e_rents_desktop/screens/home/widgets/maintenance_overview_card.dart';
-import 'package:e_rents_desktop/screens/home/widgets/property_stats_card.dart';
-import 'package:e_rents_desktop/screens/home/widgets/property_list_card.dart';
-import 'package:e_rents_desktop/screens/home/widgets/recent_issues_card.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/home/widgets/maintenance_overview_card.dart';
+import 'package:e_rents_desktop/features/home/widgets/property_stats_card.dart';
+import 'package:e_rents_desktop/features/home/widgets/property_list_card.dart';
+import 'package:e_rents_desktop/features/home/widgets/recent_issues_card.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatelessWidget {
