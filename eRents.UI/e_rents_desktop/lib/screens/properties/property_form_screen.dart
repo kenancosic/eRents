@@ -108,7 +108,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       bedrooms: int.parse(_bedroomsController.text),
       bathrooms: int.parse(_bathroomsController.text),
       area: double.parse(_areaController.text),
-      maintenanceRequests: widget.property?.maintenanceRequests ?? [],
+      maintenanceIssues: widget.property?.maintenanceIssues ?? [],
     );
   }
 

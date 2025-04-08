@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/providers/property_provider.dart';
 import 'package:e_rents_desktop/screens/properties/property_form_screen.dart';
 import 'package:e_rents_desktop/screens/properties/property_details_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -500,11 +501,6 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   void _showPropertyDetails(BuildContext context, Property property) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PropertyDetailsScreen(property: property),
-      ),
-    );
+    context.go('/properties/${property.id}');
   }
 }

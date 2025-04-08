@@ -35,7 +35,13 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (issue.propertyId != null) {
+              context.go('/properties/${issue.propertyId}');
+            } else {
+              context.go('/maintenance');
+            }
+          },
           tooltip: 'Go back',
         ),
         const SizedBox(width: 8),
@@ -124,7 +130,7 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
+                        child: Image.asset(
                           issue.images[index],
                           width: 200,
                           fit: BoxFit.cover,

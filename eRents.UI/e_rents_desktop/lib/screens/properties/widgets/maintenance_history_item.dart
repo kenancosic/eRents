@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
 
 class MaintenanceHistoryItem extends StatelessWidget {
-  final MaintenanceRequest request;
+  final MaintenanceIssue issue;
 
-  const MaintenanceHistoryItem({super.key, required this.request});
+  const MaintenanceHistoryItem({super.key, required this.issue});
 
   @override
   Widget build(BuildContext context) {
@@ -18,29 +18,29 @@ class MaintenanceHistoryItem extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  request.title,
+                  issue.title,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                _buildStatusChip(request.status),
+                _buildStatusChip(issue.status),
               ],
             ),
             const SizedBox(height: 8),
-            Text(request.description),
+            Text(issue.description),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildInfoRow(
                   'Created',
-                  request.createdAt.toString().split(' ')[0],
+                  issue.createdAt.toString().split(' ')[0],
                 ),
-                if (request.completedAt != null)
+                if (issue.resolvedAt != null)
                   _buildInfoRow(
-                    'Completed',
-                    request.completedAt.toString().split(' ')[0],
+                    'Resolved',
+                    issue.resolvedAt.toString().split(' ')[0],
                   ),
               ],
             ),
@@ -50,21 +50,17 @@ class MaintenanceHistoryItem extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    final isCompleted = status == 'completed';
+  Widget _buildStatusChip(IssueStatus status) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color:
-            isCompleted
-                ? Colors.green.withOpacity(0.2)
-                : Colors.orange.withOpacity(0.2),
+        color: issue.statusColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        status.toUpperCase(),
+        status.toString().split('.').last.toUpperCase(),
         style: TextStyle(
-          color: isCompleted ? Colors.green : Colors.orange,
+          color: issue.statusColor,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),

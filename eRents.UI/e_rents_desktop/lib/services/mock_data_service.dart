@@ -40,49 +40,41 @@ class MockDataService {
         id: '1',
         propertyId: '1',
         title: 'Leaking Faucet',
-        description:
-            'Kitchen faucet is leaking and needs repair. Tenant reported water dripping continuously.',
-        priority: IssuePriority.medium,
+        description: 'Kitchen faucet is leaking and needs repair',
+        priority: IssuePriority.high,
         status: IssueStatus.pending,
         createdAt: DateTime.now().subtract(const Duration(days: 2)),
         reportedBy: 'John Doe',
         category: 'Plumbing',
         isTenantComplaint: true,
-        images: ['assets/images/leak1.jpg', 'assets/images/leak2.jpg'],
+        images: ['assets/images/leak1.jpg'],
       ),
       MaintenanceIssue(
         id: '2',
         propertyId: '1',
         title: 'Broken Window',
-        description:
-            'Living room window is cracked and needs replacement. Caused by recent storm.',
-        priority: IssuePriority.high,
+        description: 'Living room window is cracked and needs replacement',
+        priority: IssuePriority.medium,
         status: IssueStatus.inProgress,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        assignedTo: 'Maintenance Team',
+        createdAt: DateTime.now().subtract(const Duration(days: 5)),
         reportedBy: 'Jane Smith',
         category: 'Structural',
-        requiresInspection: true,
-        isTenantComplaint: true,
+        isTenantComplaint: false,
         images: ['assets/images/window1.jpg'],
       ),
       MaintenanceIssue(
         id: '3',
         propertyId: '2',
         title: 'Electrical Outlet Not Working',
-        description:
-            'Bedroom outlet stopped working. No power in the entire room.',
-        priority: IssuePriority.medium,
+        description: 'Bedroom outlet is not providing power',
+        priority: IssuePriority.high,
         status: IssueStatus.completed,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        resolvedAt: DateTime.now().subtract(const Duration(days: 1)),
-        cost: 150.0,
-        assignedTo: 'Electrician',
+        createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        resolvedAt: DateTime.now().subtract(const Duration(days: 8)),
         reportedBy: 'Mike Johnson',
         category: 'Electrical',
         isTenantComplaint: true,
-        resolutionNotes:
-            'Replaced faulty circuit breaker and rewired the outlet.',
+        images: ['assets/images/outlet1.jpg'],
       ),
       MaintenanceIssue(
         id: '4',
@@ -154,49 +146,41 @@ class MockDataService {
     return [
       Property(
         id: '1',
-        title: 'Luxury Apartment Downtown',
-        description:
-            'Modern apartment in the heart of the city with stunning views and premium amenities',
+        title: 'Luxury Apartment',
+        description: 'Modern apartment in downtown area',
         type: 'Apartment',
         price: 2500.0,
-        status: 'Occupied',
-        images: ['assets/images/apartment.jpg'],
-        address: '123 Main St, City Center',
+        status: 'Available',
+        images: ['assets/images/apartment1.jpg'],
+        address: '123 Main St, City',
         bedrooms: 2,
         bathrooms: 2,
-        area: 1200,
-        yearBuilt: 2018,
-        amenities: ['Swimming Pool', 'Gym', 'Parking', 'Security'],
-        maintenanceRequests:
+        area: 1200.0,
+        maintenanceIssues:
             maintenanceIssues
                 .where((issue) => issue.propertyId == '1')
-                .map((issue) => MaintenanceRequest.fromMaintenanceIssue(issue))
                 .toList(),
-        lastInspectionDate: DateTime.now().subtract(const Duration(days: 30)),
-        nextInspectionDate: DateTime.now().add(const Duration(days: 60)),
+        yearBuilt: 2015,
+        amenities: ['Pool', 'Gym', 'Parking'],
       ),
       Property(
         id: '2',
-        title: 'Suburban Family Home',
-        description:
-            'Spacious family home in quiet neighborhood with large backyard and modern kitchen',
+        title: 'Family House',
+        description: 'Spacious house in suburban area',
         type: 'House',
         price: 3500.0,
-        status: 'Available',
-        images: ['assets/images/house.jpg'],
-        address: '456 Oak Ave, Suburbia',
+        status: 'Occupied',
+        images: ['assets/images/house1.jpg'],
+        address: '456 Oak St, Suburb',
         bedrooms: 4,
         bathrooms: 3,
-        area: 2500,
-        yearBuilt: 2015,
-        amenities: ['Garage', 'Garden', 'Fireplace', 'Central AC'],
-        maintenanceRequests:
+        area: 2500.0,
+        maintenanceIssues:
             maintenanceIssues
                 .where((issue) => issue.propertyId == '2')
-                .map((issue) => MaintenanceRequest.fromMaintenanceIssue(issue))
                 .toList(),
-        lastInspectionDate: DateTime.now().subtract(const Duration(days: 45)),
-        nextInspectionDate: DateTime.now().add(const Duration(days: 45)),
+        yearBuilt: 2010,
+        amenities: ['Garden', 'Garage', 'Basement'],
       ),
       Property(
         id: '3',
@@ -213,10 +197,9 @@ class MockDataService {
         area: 800,
         yearBuilt: 2020,
         amenities: ['High-Speed Internet', 'Laundry', 'Bike Storage'],
-        maintenanceRequests:
+        maintenanceIssues:
             maintenanceIssues
                 .where((issue) => issue.propertyId == '3')
-                .map((issue) => MaintenanceRequest.fromMaintenanceIssue(issue))
                 .toList(),
         lastInspectionDate: DateTime.now().subtract(const Duration(days: 15)),
         nextInspectionDate: DateTime.now().add(const Duration(days: 75)),
@@ -241,7 +224,7 @@ class MockDataService {
           'Smart Home System',
           'Concierge',
         ],
-        maintenanceRequests: [],
+        maintenanceIssues: [],
         lastInspectionDate: DateTime.now().subtract(const Duration(days: 10)),
         nextInspectionDate: DateTime.now().add(const Duration(days: 80)),
       ),
@@ -265,7 +248,7 @@ class MockDataService {
           'Storage Shed',
           'Security System',
         ],
-        maintenanceRequests: [],
+        maintenanceIssues: [],
         lastInspectionDate: DateTime.now().subtract(const Duration(days: 20)),
         nextInspectionDate: DateTime.now().add(const Duration(days: 70)),
       ),
