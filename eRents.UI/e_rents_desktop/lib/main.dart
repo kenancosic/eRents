@@ -3,9 +3,9 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
-import 'package:e_rents_desktop/providers/property_provider.dart';
-import 'package:e_rents_desktop/providers/auth_provider.dart';
-import 'package:e_rents_desktop/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

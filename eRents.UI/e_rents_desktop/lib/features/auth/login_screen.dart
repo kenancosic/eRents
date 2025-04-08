@@ -3,7 +3,7 @@ import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:e_rents_desktop/utils/error_handler.dart';
 

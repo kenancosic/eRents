@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/providers/property_provider.dart';
-import 'package:e_rents_desktop/screens/properties/property_form_screen.dart';
-import 'package:e_rents_desktop/screens/properties/property_details_screen.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
+import 'package:e_rents_desktop/features/properties/property_details_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class PropertiesScreen extends StatefulWidget {

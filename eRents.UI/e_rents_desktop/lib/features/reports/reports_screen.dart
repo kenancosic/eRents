@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
-import 'package:e_rents_desktop/screens/reports/widgets/report_table.dart';
-import 'package:e_rents_desktop/screens/reports/widgets/report_filters.dart';
-import 'package:e_rents_desktop/screens/reports/widgets/export_options.dart';
+import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
+import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
+import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
