@@ -53,9 +53,9 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       ],
     ),
     NavigationItem(
-      label: 'Settings',
-      icon: Icons.settings_rounded,
-      path: '/settings',
+      label: 'Tenants',
+      icon: Icons.person_rounded,
+      path: '/tenants',
     ),
     NavigationItem(label: 'Logout', icon: Icons.logout_rounded, path: '/login'),
   ];
@@ -237,27 +237,35 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       contentPadding: EdgeInsets.only(
         left: isSubItem ? (_isExpanded ? 56 : 8) : (_isExpanded ? 16 : 8),
         right: _isExpanded ? 16 : 8,
+        top: 0,
+        bottom: 0,
       ),
-      leading: Icon(
-        item.icon,
-        size: 22,
-        color:
-            isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+      minLeadingWidth: 24,
+      horizontalTitleGap: 8,
+      leading: Container(
+        width: 24,
+        alignment: Alignment.center,
+        child: Icon(
+          item.icon,
+          size: 20,
+          color:
+              isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
       ),
       title:
           _isExpanded
               ? Text(
                 item.label,
                 style: TextStyle(
-                  fontSize: 14,
                   color:
                       isSelected
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(
                             context,
                           ).colorScheme.onSurface.withOpacity(0.6),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               )
               : null,

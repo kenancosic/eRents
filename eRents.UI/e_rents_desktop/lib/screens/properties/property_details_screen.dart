@@ -82,7 +82,7 @@ class PropertyDetailsScreen extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.go('/properties'),
           tooltip: 'Go back',
         ),
         const SizedBox(width: 8),
@@ -144,30 +144,6 @@ class PropertyDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildMaintenanceIssues(BuildContext context) {
-    // Mock data - replace with actual data from your property
-    final List<MaintenanceIssue> issues = [
-      MaintenanceIssue(
-        id: '1',
-        propertyId: property.id,
-        title: 'Plumbing Issue',
-        description: 'Leaking faucet in master bathroom',
-        priority: IssuePriority.high,
-        status: IssueStatus.pending,
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        reportedBy: 'John Doe',
-      ),
-      MaintenanceIssue(
-        id: '2',
-        propertyId: property.id,
-        title: 'Electrical Problem',
-        description: 'Power outlet not working in kitchen',
-        priority: IssuePriority.medium,
-        status: IssueStatus.inProgress,
-        createdAt: DateTime.now().subtract(const Duration(days: 5)),
-        reportedBy: 'Jane Smith',
-      ),
-    ];
-
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +184,7 @@ class PropertyDetailsScreen extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          if (issues.isEmpty)
+          if (property.maintenanceIssues.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: Text('No maintenance issues found')),
@@ -217,10 +193,10 @@ class PropertyDetailsScreen extends StatelessWidget {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: issues.length,
+              itemCount: property.maintenanceIssues.length,
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final issue = issues[index];
+                final issue = property.maintenanceIssues[index];
                 return ListTile(
                   leading: Container(
                     width: 8,

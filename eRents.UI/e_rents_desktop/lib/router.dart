@@ -4,13 +4,23 @@ import 'package:e_rents_desktop/screens/auth/forgot_password_screen.dart';
 import 'package:e_rents_desktop/screens/home/home_screen.dart';
 import 'package:e_rents_desktop/screens/chat/chat_screen.dart';
 import 'package:e_rents_desktop/screens/maintenance/maintenance_screen.dart';
+import 'package:e_rents_desktop/screens/maintenance/maintenance_issue_details_screen.dart';
+import 'package:e_rents_desktop/screens/maintenance/maintenance_form_screen.dart';
 import 'package:e_rents_desktop/screens/properties/properties_screen.dart';
+import 'package:e_rents_desktop/screens/properties/property_details_screen.dart';
+import 'package:e_rents_desktop/screens/properties/property_form_screen.dart';
 import 'package:e_rents_desktop/screens/statistics/statistics_screen.dart';
 import 'package:e_rents_desktop/screens/reports/reports_screen.dart';
 import 'package:e_rents_desktop/screens/profile/profile_screen.dart';
-import 'package:e_rents_desktop/screens/settings/settings_screen.dart';
+import 'package:e_rents_desktop/screens/tenants/tenants_screen.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
+import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 
 class AppRouter {
   final GoRouter router = GoRouter(
@@ -56,8 +66,126 @@ class AppRouter {
         builder: (context, state) => const PropertiesScreen(),
       ),
       GoRoute(
+        path: '/properties/:id',
+        builder: (context, state) {
+          final property = state.extra as Property?;
+          if (property == null) {
+            // If no property is passed, try to find it in the provider
+            final propertyProvider = context.read<PropertyProvider>();
+            final propertyId = state.pathParameters['id']!;
+            final foundProperty = propertyProvider.properties.firstWhere(
+              (p) => p.id == propertyId,
+              orElse: () => throw Exception('Property not found'),
+            );
+            return PropertyDetailsScreen(property: foundProperty);
+          }
+          return PropertyDetailsScreen(property: property);
+        },
+      ),
+      GoRoute(
+        path: '/properties/edit/:id',
+        builder: (context, state) {
+          final property = state.extra as Property;
+          return PropertyFormScreen(property: property);
+        },
+      ),
+      GoRoute(
         path: '/maintenance',
         builder: (context, state) => const MaintenanceScreen(),
+      ),
+      GoRoute(
+        path: '/maintenance/new',
+        builder: (context, state) {
+          final propertyId = state.uri.queryParameters['propertyId'];
+          return MaintenanceFormScreen(propertyId: propertyId);
+        },
+      ),
+      GoRoute(
+        path: '/maintenance/:id',
+        builder: (context, state) {
+          final maintenanceProvider = context.read<MaintenanceProvider>();
+          final propertyProvider = context.read<PropertyProvider>();
+          final issueId = state.pathParameters['id']!;
+
+          // If providers haven't been initialized yet, trigger data fetch
+          if (maintenanceProvider.issues.isEmpty) {
+            maintenanceProvider.fetchIssues();
+          }
+          if (propertyProvider.properties.isEmpty) {
+            propertyProvider.fetchProperties();
+          }
+
+          // Show loading while data is being fetched
+          if (maintenanceProvider.isLoading || propertyProvider.isLoading) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          // If there's an error in maintenance provider, show error message
+          if (maintenanceProvider.error != null) {
+            return Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      maintenanceProvider.error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => maintenanceProvider.fetchIssues(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // First try to find the issue in the maintenance provider
+          MaintenanceIssue? issue;
+          try {
+            issue = maintenanceProvider.issues.firstWhere(
+              (issue) => issue.id == issueId,
+            );
+          } catch (_) {
+            // If not found in maintenance provider, try to find it in properties
+            try {
+              final property = propertyProvider.properties.firstWhere(
+                (property) => property.maintenanceIssues.any(
+                  (issue) => issue.id == issueId,
+                ),
+              );
+              issue = property.maintenanceIssues.firstWhere(
+                (issue) => issue.id == issueId,
+              );
+            } catch (_) {
+              // If still not found, show error message
+              return Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Maintenance issue not found',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context.go('/maintenance'),
+                        child: const Text('Back to Maintenance'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          return MaintenanceIssueDetailsScreen(issue: issue);
+        },
       ),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       GoRoute(
@@ -73,24 +201,9 @@ class AppRouter {
         builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
-        path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        path: '/tenants',
+        builder: (context, state) => const TenantsScreen(),
       ),
     ],
   );
-
-  // static Route<dynamic> generateRoute(RouteSettings settings) {
-  //   switch (settings.name) {
-  //     case '/':
-  //       return MaterialPageRoute(builder: (_) => HomeScreen());
-  //     default:
-  //       return MaterialPageRoute(
-  //         builder: (_) => Scaffold(
-  //           body: Center(
-  //             child: Text('No route defined for ${settings.name}'),
-  //           ),
-  //         ),
-  //       );
-  //   }
-  // }
 }

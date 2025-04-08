@@ -1,16 +1,22 @@
+import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
-  MaintenanceProvider(ApiService apiService) : super(apiService) {
+  final ApiService _apiService;
+  bool _isLoading = false;
+  String? _error;
+  bool _useMockData = true; // Flag to toggle between mock and real data
+
+  MaintenanceProvider(this._apiService) : super(_apiService) {
     // Enable mock data for development
     enableMockData();
   }
 
   @override
-  String get endpoint => '/maintenance-issues';
+  String get endpoint => '/maintenance';
 
   @override
   MaintenanceIssue fromJson(Map<String, dynamic> json) =>
@@ -23,17 +29,73 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
   List<MaintenanceIssue> getMockItems() =>
       MockDataService.getMockMaintenanceIssues();
 
-  // Fetch issues using the base provider's fetch method
+  List<MaintenanceIssue> get issues => items;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+
+  // Fetch maintenance issues using the base provider's fetch method
   Future<void> fetchIssues() async {
-    await fetchItems();
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await fetchItems();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  // Getters to match the screen's expectations
-  bool get isLoading => state == ViewState.Busy;
-  String? get error => errorMessage;
+  Future<void> addIssue(MaintenanceIssue issue) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await addItem(issue);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateIssue(MaintenanceIssue issue) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await updateItem(issue);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteIssue(String id) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await deleteItem(id);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   // Additional maintenance-specific methods
-  List<MaintenanceIssue> getIssuesForProperty(String propertyId) {
+  List<MaintenanceIssue> getIssuesByProperty(String propertyId) {
     return items.where((issue) => issue.propertyId == propertyId).toList();
   }
 
@@ -49,6 +111,23 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
     return items.where((issue) => issue.isTenantComplaint).toList();
   }
 
-  // Alias for items to maintain backward compatibility
-  List<MaintenanceIssue> get issues => items;
+  Future<void> updateIssueStatus(String id, IssueStatus status) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final issue = items.firstWhere((i) => i.id == id);
+      final updatedIssue = issue.copyWith(
+        status: status,
+        resolvedAt: status == IssueStatus.completed ? DateTime.now() : null,
+      );
+      await updateItem(updatedIssue);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

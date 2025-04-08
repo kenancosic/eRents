@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/providers/property_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -13,19 +14,30 @@ class MaintenanceScreen extends StatefulWidget {
   State<MaintenanceScreen> createState() => _MaintenanceScreenState();
 }
 
-class _MaintenanceScreenState extends State<MaintenanceScreen> {
+class _MaintenanceScreenState extends State<MaintenanceScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   IssueStatus? _selectedStatus;
   IssuePriority? _selectedPriority;
   String? _selectedProperty;
   bool _showOnlyComplaints = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
     Future.microtask(() {
       context.read<MaintenanceProvider>().fetchIssues();
       context.read<PropertyProvider>().fetchProperties();
     });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -65,12 +77,55 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
           return Column(
             children: [
+              _buildHeader(context, maintenanceProvider),
+              const SizedBox(height: 16),
               _buildFilters(context),
               const SizedBox(height: 16),
-              Expanded(child: _buildIssuesList(context, filteredIssues)),
+              Expanded(
+                child: _buildMainContent(
+                  context,
+                  filteredIssues,
+                  propertyProvider,
+                ),
+              ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, MaintenanceProvider provider) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Maintenance Dashboard',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${provider.issues.length} total issues • ${provider.getIssuesByStatus(IssueStatus.pending).length} pending • ${provider.getIssuesByStatus(IssueStatus.inProgress).length} in progress',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => context.go('/maintenance/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('New Issue'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -82,147 +137,106 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Filters',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Calculate if we need to stack filters vertically
-                final isNarrow = constraints.maxWidth < 1000;
-
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    SizedBox(
-                      width:
-                          isNarrow
-                              ? constraints.maxWidth
-                              : (constraints.maxWidth - 48) / 3,
-                      child: DropdownButtonFormField<IssueStatus?>(
-                        value: _selectedStatus,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('All Statuses'),
-                          ),
-                          ...IssueStatus.values.map(
-                            (status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(status.toString().split('.').last),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedStatus = value;
-                          });
-                        },
-                      ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search issues...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: const OutlineInputBorder(),
+                      suffixIcon:
+                          _searchController.text.isNotEmpty
+                              ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {});
+                                },
+                              )
+                              : null,
                     ),
-                    SizedBox(
-                      width:
-                          isNarrow
-                              ? constraints.maxWidth
-                              : (constraints.maxWidth - 48) / 3,
-                      child: DropdownButtonFormField<IssuePriority?>(
-                        value: _selectedPriority,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Priority',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('All Priorities'),
-                          ),
-                          ...IssuePriority.values.map(
-                            (priority) => DropdownMenuItem(
-                              value: priority,
-                              child: Text(priority.toString().split('.').last),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedPriority = value;
-                          });
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width:
-                          isNarrow
-                              ? constraints.maxWidth
-                              : (constraints.maxWidth - 48) / 3,
-                      child: Consumer<PropertyProvider>(
-                        builder: (context, propertyProvider, child) {
-                          return DropdownButtonFormField<String?>(
-                            value: _selectedProperty,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Property',
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            items: [
-                              const DropdownMenuItem(
-                                value: null,
-                                child: Text('All Properties'),
-                              ),
-                              ...propertyProvider.properties.map(
-                                (property) => DropdownMenuItem(
-                                  value: property.id,
-                                  child: Text(property.title),
-                                ),
+                    onChanged: (value) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.filter_list),
+                  tooltip: 'Filter Options',
+                  itemBuilder:
+                      (context) => [
+                        PopupMenuItem(
+                          value: 'status',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.flag),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedStatus?.toString().split('.').last ??
+                                    'All Statuses',
                               ),
                             ],
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedProperty = value;
-                              });
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: isNarrow ? constraints.maxWidth : 200,
-                      child: SwitchListTile(
-                        title: const Text('Show Only Complaints'),
-                        value: _showOnlyComplaints,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
+                          ),
                         ),
-                        onChanged: (value) {
-                          setState(() {
-                            _showOnlyComplaints = value;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
+                        PopupMenuItem(
+                          value: 'priority',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.priority_high),
+                              const SizedBox(width: 8),
+                              Text(
+                                _selectedPriority?.toString().split('.').last ??
+                                    'All Priorities',
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'property',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.apartment),
+                              const SizedBox(width: 8),
+                              Text(_selectedProperty ?? 'All Properties'),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'complaints',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning),
+                              const SizedBox(width: 8),
+                              Text(
+                                _showOnlyComplaints
+                                    ? 'Show All'
+                                    : 'Show Only Complaints',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'status':
+                        _showStatusFilter(context);
+                        break;
+                      case 'priority':
+                        _showPriorityFilter(context);
+                        break;
+                      case 'property':
+                        _showPropertyFilter(context);
+                        break;
+                      case 'complaints':
+                        setState(
+                          () => _showOnlyComplaints = !_showOnlyComplaints,
+                        );
+                        break;
+                    }
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -230,213 +244,327 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     );
   }
 
-  Widget _buildIssuesList(BuildContext context, List<MaintenanceIssue> issues) {
+  Widget _buildMainContent(
+    BuildContext context,
+    List<MaintenanceIssue> issues,
+    PropertyProvider propertyProvider,
+  ) {
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'All'),
+            Tab(text: 'Pending'),
+            Tab(text: 'In Progress'),
+            Tab(text: 'Completed'),
+          ],
+          labelColor: Theme.of(context).colorScheme.primary,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Theme.of(context).colorScheme.primary,
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildIssuesList(context, issues, propertyProvider),
+              _buildIssuesList(
+                context,
+                issues.where((i) => i.status == IssueStatus.pending).toList(),
+                propertyProvider,
+              ),
+              _buildIssuesList(
+                context,
+                issues
+                    .where((i) => i.status == IssueStatus.inProgress)
+                    .toList(),
+                propertyProvider,
+              ),
+              _buildIssuesList(
+                context,
+                issues.where((i) => i.status == IssueStatus.completed).toList(),
+                propertyProvider,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIssuesList(
+    BuildContext context,
+    List<MaintenanceIssue> issues,
+    PropertyProvider propertyProvider,
+  ) {
     if (issues.isEmpty) {
-      return const Center(child: Text('No maintenance issues found'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.construction, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No maintenance issues found',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try adjusting your filters or create a new issue',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
       itemCount: issues.length,
       itemBuilder: (context, index) {
         final issue = issues[index];
+        final property = propertyProvider.properties.firstWhere(
+          (p) => p.id == issue.propertyId,
+          orElse:
+              () => Property(
+                id: 'unknown',
+                title: 'Unknown Property',
+                description: '',
+                type: 'unknown',
+                price: 0,
+                status: 'unknown',
+                images: [],
+                address: '',
+                bedrooms: 0,
+                bathrooms: 0,
+                area: 0,
+                maintenanceIssues: [],
+              ),
+        );
+
         return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ExpansionTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: issue.priorityColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(
-                _getIssueIcon(issue.category),
-                color: issue.priorityColor,
-              ),
-            ),
-            title: Text(issue.title),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(issue.description),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: issue.statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        issue.status.toString().split('.').last,
-                        style: TextStyle(
-                          color: issue.statusColor,
-                          fontSize: 12,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: InkWell(
+            onTap: () => context.go('/maintenance/${issue.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: issue.priorityColor,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (issue.isTenantComplaint)
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          issue.title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: issue.statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          'Tenant Complaint',
-                          style: TextStyle(color: Colors.blue, fontSize: 12),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-            trailing: Text(
-              _formatDate(issue.createdAt),
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailRow(
-                      'Property',
-                      context
-                          .read<PropertyProvider>()
-                          .properties
-                          .firstWhere(
-                            (p) => p.id == issue.propertyId,
-                            orElse:
-                                () => Property(
-                                  id: 'unknown',
-                                  title: 'Unknown Property',
-                                  description: '',
-                                  type: 'unknown',
-                                  price: 0,
-                                  status: 'unknown',
-                                  images: [],
-                                  address: '',
-                                  bedrooms: 0,
-                                  bathrooms: 0,
-                                  area: 0,
-                                  maintenanceRequests: [],
-                                ),
-                          )
-                          .title,
-                    ),
-                    _buildDetailRow('Reported By', issue.reportedBy),
-                    if (issue.assignedTo != null)
-                      _buildDetailRow('Assigned To', issue.assignedTo!),
-                    if (issue.category != null)
-                      _buildDetailRow('Category', issue.category!),
-                    if (issue.cost != null)
-                      _buildDetailRow(
-                        'Cost',
-                        '\$${issue.cost!.toStringAsFixed(2)}',
-                      ),
-                    if (issue.resolutionNotes != null)
-                      _buildDetailRow(
-                        'Resolution Notes',
-                        issue.resolutionNotes!,
-                      ),
-                    if (issue.images.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Images',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 100,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: issue.images.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: GestureDetector(
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder:
-                                        (context) => Dialog(
-                                          child: Image.asset(
-                                            issue.images[index],
-                                            fit: BoxFit.contain,
-                                          ),
-                                        ),
-                                  );
-                                },
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.asset(
-                                    issue.images[index],
-                                    width: 100,
-                                    height: 100,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                        child: Text(
+                          issue.status.toString().split('.').last,
+                          style: TextStyle(
+                            color: issue.statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            // TODO: Implement edit functionality
-                          },
-                          child: const Text('Edit'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    issue.description,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(Icons.apartment, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        property.title,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
                         ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () {
-                            // TODO: Implement status update functionality
-                          },
-                          child: const Text('Update Status'),
+                      ),
+                      const Spacer(),
+                      Text(
+                        _formatDate(issue.createdAt),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  if (issue.isTenantComplaint) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning,
+                            size: 14,
+                            color: Colors.blue[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Tenant Complaint',
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+  void _showStatusFilter(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Filter by Status'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<IssueStatus?>(
+                  title: const Text('All Statuses'),
+                  value: null,
+                  groupValue: _selectedStatus,
+                  onChanged: (value) {
+                    setState(() => _selectedStatus = value);
+                    Navigator.pop(context);
+                  },
+                ),
+                ...IssueStatus.values.map(
+                  (status) => RadioListTile<IssueStatus>(
+                    title: Text(status.toString().split('.').last),
+                    value: status,
+                    groupValue: _selectedStatus,
+                    onChanged: (value) {
+                      setState(() => _selectedStatus = value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(child: Text(value)),
-        ],
-      ),
+    );
+  }
+
+  void _showPriorityFilter(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Filter by Priority'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RadioListTile<IssuePriority?>(
+                  title: const Text('All Priorities'),
+                  value: null,
+                  groupValue: _selectedPriority,
+                  onChanged: (value) {
+                    setState(() => _selectedPriority = value);
+                    Navigator.pop(context);
+                  },
+                ),
+                ...IssuePriority.values.map(
+                  (priority) => RadioListTile<IssuePriority>(
+                    title: Text(priority.toString().split('.').last),
+                    value: priority,
+                    groupValue: _selectedPriority,
+                    onChanged: (value) {
+                      setState(() => _selectedPriority = value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  void _showPropertyFilter(BuildContext context) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Filter by Property'),
+            content: Consumer<PropertyProvider>(
+              builder: (context, provider, child) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioListTile<String?>(
+                      title: const Text('All Properties'),
+                      value: null,
+                      groupValue: _selectedProperty,
+                      onChanged: (value) {
+                        setState(() => _selectedProperty = value);
+                        Navigator.pop(context);
+                      },
+                    ),
+                    ...provider.properties.map(
+                      (property) => RadioListTile<String>(
+                        title: Text(property.title),
+                        value: property.id,
+                        groupValue: _selectedProperty,
+                        onChanged: (value) {
+                          setState(() => _selectedProperty = value);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
     );
   }
 
@@ -457,21 +585,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       if (_showOnlyComplaints && !issue.isTenantComplaint) {
         return false;
       }
+      if (_searchController.text.isNotEmpty) {
+        final searchTerm = _searchController.text.toLowerCase();
+        return issue.title.toLowerCase().contains(searchTerm) ||
+            issue.description.toLowerCase().contains(searchTerm);
+      }
       return true;
     }).toList();
-  }
-
-  IconData _getIssueIcon(String? category) {
-    switch (category?.toLowerCase()) {
-      case 'plumbing':
-        return Icons.plumbing;
-      case 'electrical':
-        return Icons.electric_bolt;
-      case 'structural':
-        return Icons.home_repair_service;
-      default:
-        return Icons.build;
-    }
   }
 
   String _formatDate(DateTime date) {
