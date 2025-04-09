@@ -7,24 +7,37 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/main.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/secure_storage_service.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/router.dart';
+import 'package:e_rents_desktop/theme/theme.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ApiService>(
+            create:
+                (_) =>
+                    ApiService('http://localhost:5000', SecureStorageService()),
+          ),
+          ChangeNotifierProvider(create: (_) => TenantProvider()),
+        ],
+        child: MaterialApp.router(
+          title: 'eRents Desktop',
+          debugShowCheckedModeBanner: false,
+          routerConfig: AppRouter().router,
+          theme: appTheme,
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the app renders
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }

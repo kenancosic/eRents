@@ -6,19 +6,13 @@ import 'package:e_rents_desktop/theme/theme.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
         Provider<ApiService>(
           create:
@@ -51,6 +45,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<MaintenanceProvider>(
           create: (context) => MaintenanceProvider(context.read<ApiService>()),
         ),
+        ChangeNotifierProvider(create: (_) => TenantProvider()),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
@@ -58,8 +53,8 @@ class MyApp extends StatelessWidget {
         routerConfig: AppRouter().router,
         theme: appTheme,
       ),
-    );
-  }
+    ),
+  );
 }
 
 class HomeScreen extends StatefulWidget {
