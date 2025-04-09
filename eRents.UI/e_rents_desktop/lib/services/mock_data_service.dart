@@ -1,14 +1,18 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/models/tenant_preference.dart';
+import 'package:e_rents_desktop/models/tenant_feedback.dart';
 
 class MockDataService {
   static List<User> getMockUsers() {
     return [
+      // Admin and Manager
       User(
         id: '1',
         email: 'admin@erents.com',
-        name: 'Admin User',
+        firstName: 'Admin',
+        lastName: 'User',
         role: 'admin',
         createdAt: DateTime.now().subtract(const Duration(days: 30)),
         updatedAt: DateTime.now(),
@@ -16,20 +20,152 @@ class MockDataService {
       User(
         id: '2',
         email: 'manager@erents.com',
-        name: 'Property Manager',
+        firstName: 'Property',
+        lastName: 'Manager',
         role: 'manager',
         phone: '+1234567890',
         createdAt: DateTime.now().subtract(const Duration(days: 20)),
         updatedAt: DateTime.now(),
       ),
+      // Current Tenants
       User(
         id: '3',
-        email: 'tenant@erents.com',
-        name: 'John Doe',
+        email: 'john.doe@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
         role: 'tenant',
-        phone: '+0987654321',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        phone: '+1987654321',
+        city: 'New York',
+        profileImage: 'https://i.pravatar.cc/150?img=3',
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
         updatedAt: DateTime.now(),
+      ),
+      User(
+        id: '4',
+        email: 'jane.smith@example.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: 'tenant',
+        phone: '+1234567890',
+        city: 'Los Angeles',
+        profileImage: 'https://i.pravatar.cc/150?img=4',
+        createdAt: DateTime.now().subtract(const Duration(days: 180)),
+        updatedAt: DateTime.now(),
+      ),
+      User(
+        id: '5',
+        email: 'mike.wilson@example.com',
+        firstName: 'Mike',
+        lastName: 'Wilson',
+        role: 'tenant',
+        phone: '+1122334455',
+        city: 'Chicago',
+        profileImage: 'https://i.pravatar.cc/150?img=5',
+        createdAt: DateTime.now().subtract(const Duration(days: 90)),
+        updatedAt: DateTime.now(),
+      ),
+      // Searching Tenants
+      User(
+        id: '6',
+        email: 'sarah.johnson@example.com',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        role: 'tenant',
+        phone: '+1555666777',
+        city: 'Boston',
+        profileImage: 'https://i.pravatar.cc/150?img=6',
+        createdAt: DateTime.now().subtract(const Duration(days: 30)),
+        updatedAt: DateTime.now(),
+      ),
+      User(
+        id: '7',
+        email: 'david.brown@example.com',
+        firstName: 'David',
+        lastName: 'Brown',
+        role: 'tenant',
+        phone: '+1888999000',
+        city: 'Seattle',
+        profileImage: 'https://i.pravatar.cc/150?img=7',
+        createdAt: DateTime.now().subtract(const Duration(days: 15)),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  static List<TenantPreference> getMockTenantPreferences() {
+    return [
+      TenantPreference(
+        id: '1',
+        userId: '6',
+        searchStartDate: DateTime.now(),
+        searchEndDate: DateTime.now().add(const Duration(days: 30)),
+        minPrice: 1500,
+        maxPrice: 2500,
+        city: 'Boston',
+        amenities: ['Parking', 'Gym', 'Laundry', 'AC'],
+        description: 'Looking for a modern 2-bedroom apartment near downtown',
+      ),
+      TenantPreference(
+        id: '2',
+        userId: '7',
+        searchStartDate: DateTime.now(),
+        minPrice: 2000,
+        maxPrice: 3000,
+        city: 'Seattle',
+        amenities: ['Parking', 'Balcony', 'AC', 'Washer/Dryer'],
+        description: 'Seeking a pet-friendly apartment with good natural light',
+      ),
+      TenantPreference(
+        id: '3',
+        userId: '8',
+        searchStartDate: DateTime.now(),
+        minPrice: 1200,
+        maxPrice: 1800,
+        city: 'Portland',
+        amenities: ['Bike Storage', 'Garden', 'High-Speed Internet'],
+        description:
+            'Interested in eco-friendly living spaces with community areas',
+      ),
+    ];
+  }
+
+  static List<TenantFeedback> getMockTenantFeedbacks() {
+    return [
+      TenantFeedback(
+        id: '1',
+        tenantId: '3',
+        landlordId: '2',
+        propertyId: '1',
+        rating: 5,
+        comment:
+            'Excellent tenant, always pays on time and maintains the property well. Very communicative and responsible.',
+        feedbackDate: DateTime.now().subtract(const Duration(days: 30)),
+        stayStartDate: DateTime.now().subtract(const Duration(days: 365)),
+        stayEndDate: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      TenantFeedback(
+        id: '2',
+        tenantId: '4',
+        landlordId: '2',
+        propertyId: '2',
+        rating: 4,
+        comment:
+            'Good tenant, maintains the property well. Occasionally late with rent but always communicates in advance.',
+        feedbackDate: DateTime.now().subtract(const Duration(days: 15)),
+        stayStartDate: DateTime.now().subtract(const Duration(days: 180)),
+        stayEndDate: DateTime.now().subtract(const Duration(days: 15)),
+      ),
+      TenantFeedback(
+        id: '3',
+        tenantId: '5',
+        landlordId: '2',
+        propertyId: '3',
+        rating: 5,
+        comment:
+            'Outstanding tenant. Takes great care of the property and has even made some improvements. Highly recommended.',
+        feedbackDate: DateTime.now().subtract(const Duration(days: 7)),
+        stayStartDate: DateTime.now().subtract(const Duration(days: 90)),
+        stayEndDate: DateTime.now(),
       ),
     ];
   }

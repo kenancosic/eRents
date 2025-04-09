@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/screens/properties/property_details_screen.dart';
 import 'package:go_router/go_router.dart';
 
 class MaintenanceIssueDetailsScreen extends StatelessWidget {
