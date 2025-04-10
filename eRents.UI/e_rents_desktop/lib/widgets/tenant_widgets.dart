@@ -105,10 +105,10 @@ class TenantPreferenceCard extends StatelessWidget {
   final VoidCallback? onSendOffer;
 
   const TenantPreferenceCard({
-    Key? key,
+    super.key,
     required this.preference,
     this.onSendOffer,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
