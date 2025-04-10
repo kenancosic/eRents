@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/tenant_feedback.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/widgets/tenant_widgets.dart';
+import 'package:e_rents_desktop/widgets/table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -17,20 +17,7 @@ class TenantsScreen extends StatefulWidget {
 
 class _TenantsScreenState extends State<TenantsScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String? _selectedCity;
-  int _currentPage = 1;
-  final int _itemsPerPage = 10;
   late TabController _tabController;
-
-  final List<String> _availableCities = const [
-    'New York',
-    'Los Angeles',
-    'Chicago',
-    'Boston',
-    'Seattle',
-  ];
 
   @override
   void initState() {
@@ -54,7 +41,6 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   @override
   void dispose() {
-    _searchController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -89,20 +75,12 @@ class _TenantsScreenState extends State<TenantsScreen>
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: Theme.of(context).colorScheme.primary,
               ),
-              TenantSearchBar(
-                searchController: _searchController,
-                selectedCity: _selectedCity,
-                cities: _availableCities,
-                onCityChanged: (city) => setState(() => _selectedCity = city),
-                onSearch:
-                    () => setState(() => _searchQuery = _searchController.text),
-              ),
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildCurrentTenantsTab(provider),
-                    _buildSearchingTenantsTab(provider),
+                    _buildCurrentTenantsTable(provider),
+                    _buildSearchingTenantsTable(provider),
                   ],
                 ),
               ),
@@ -113,79 +91,237 @@ class _TenantsScreenState extends State<TenantsScreen>
     );
   }
 
-  Widget _buildCurrentTenantsTab(TenantProvider provider) {
+  Widget _buildCurrentTenantsTable(TenantProvider provider) {
     final tenants = provider.currentTenants;
 
-    // Apply filters and pagination
-    final filteredTenants =
-        tenants.where((tenant) {
-          final matchesSearch = tenant.fullName.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
-          final matchesCity =
-              _selectedCity == null || tenant.city == _selectedCity;
-          return matchesSearch && matchesCity;
-        }).toList();
+    if (tenants.isEmpty) {
+      return const Center(
+        child: Text('No current tenants found', style: TextStyle(fontSize: 18)),
+      );
+    }
 
-    final totalPages = (filteredTenants.length / _itemsPerPage).ceil();
-    final startIndex = (_currentPage - 1) * _itemsPerPage;
-    final endIndex = startIndex + _itemsPerPage;
-    final paginatedTenants = filteredTenants.sublist(
-      startIndex,
-      endIndex > filteredTenants.length ? filteredTenants.length : endIndex,
-    );
+    // Define flex-based column widths for proportional distribution
+    final columnWidths = <int, TableColumnWidth>{
+      0: const FlexColumnWidth(0.8), // Profile - smaller
+      1: const FlexColumnWidth(1.2), // Full Name
+      2: const FlexColumnWidth(2.0), // Email - wider for email addresses
+      3: const FlexColumnWidth(1.2), // Phone
+      4: const FlexColumnWidth(1.0), // City
+      5: const FlexColumnWidth(0.8), // Actions - smaller
+    };
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            itemCount: paginatedTenants.length,
-            itemBuilder:
-                (context, index) => TenantCard(
-                  tenant: paginatedTenants[index],
-                  isCurrentTenant: true,
-                  onMessage: () => _sendMessage(paginatedTenants[index]),
-                  onViewProfile:
-                      () => _showTenantProfile(paginatedTenants[index], null),
-                ),
-          ),
-        ),
-        PaginationControls(
-          currentPage: _currentPage,
-          totalPages: totalPages,
-          onPrevious:
-              _currentPage > 1 ? () => setState(() => _currentPage--) : null,
-          onNext:
-              _currentPage < totalPages
-                  ? () => setState(() => _currentPage++)
-                  : null,
-        ),
+    return TableWidget<User>(
+      title: 'Current Tenants',
+      data: tenants,
+      dataRowHeight: 70, // Increased row height
+      columnWidths: columnWidths,
+      columns: [
+        const DataColumn(label: Text('Profile', softWrap: true, maxLines: 2)),
+        const DataColumn(label: Text('Full Name', softWrap: true, maxLines: 2)),
+        const DataColumn(label: Text('Email', softWrap: true, maxLines: 2)),
+        const DataColumn(label: Text('Phone', softWrap: true, maxLines: 2)),
+        const DataColumn(label: Text('City', softWrap: true, maxLines: 2)),
+        const DataColumn(label: Text('Actions', softWrap: true, maxLines: 2)),
       ],
+      cellsBuilder:
+          (tenant) => [
+            // Profile column
+            DataCell(
+              CircleAvatar(
+                radius: 20,
+                backgroundImage:
+                    tenant.profileImage != null
+                        ? NetworkImage(tenant.profileImage!)
+                        : null,
+                child:
+                    tenant.profileImage == null
+                        ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
+                        : null,
+              ),
+            ),
+            // Full Name column
+            DataCell(Text(tenant.fullName, overflow: TextOverflow.ellipsis)),
+            // Email column
+            DataCell(Text(tenant.email, overflow: TextOverflow.ellipsis)),
+            // Phone column
+            DataCell(
+              Text(tenant.phone ?? 'N/A', overflow: TextOverflow.ellipsis),
+            ),
+            // City column
+            DataCell(
+              Text(tenant.city ?? 'N/A', overflow: TextOverflow.ellipsis),
+            ),
+            // Actions column
+            DataCell(
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.message,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    onPressed: () => _sendMessage(tenant),
+                    tooltip: 'Send Message',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.person,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    onPressed: () => _showTenantProfile(tenant, null),
+                    tooltip: 'View Profile',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+      searchStringBuilder:
+          (tenant) =>
+              '${tenant.fullName} ${tenant.email} ${tenant.phone ?? ''} ${tenant.city ?? ''}',
+      filterOptions: {
+        'City':
+            provider.currentTenants
+                .map((t) => t.city)
+                .where((city) => city != null)
+                .toSet()
+                .map((city) => Filter(label: city!, value: city))
+                .toList(),
+      },
     );
   }
 
-  Widget _buildSearchingTenantsTab(TenantProvider provider) {
+  Widget _buildSearchingTenantsTable(TenantProvider provider) {
     final searchingTenants = provider.searchingTenants;
 
-    // Apply filters
-    final filteredTenants =
-        searchingTenants.where((preference) {
-          final matchesSearch = preference.city.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
-          final matchesCity =
-              _selectedCity == null || preference.city == _selectedCity;
-          return matchesSearch && matchesCity;
-        }).toList();
+    if (searchingTenants.isEmpty) {
+      return const Center(
+        child: Text(
+          'No searching tenants found',
+          style: TextStyle(fontSize: 18),
+        ),
+      );
+    }
 
-    return ListView.builder(
-      itemCount: filteredTenants.length,
-      itemBuilder:
-          (context, index) => TenantPreferenceCard(
-            preference: filteredTenants[index],
-            onSendOffer:
-                () => _sendMessageToSearchingTenant(filteredTenants[index]),
-          ),
+    // Define column width ratios for better distribution across full width
+    final columnWidths = <int, TableColumnWidth>{
+      0: const FlexColumnWidth(0.8), // City
+      1: const FlexColumnWidth(1.0), // Price Range
+      2: const FlexColumnWidth(1.5), // Amenities
+      3: const FlexColumnWidth(2.5), // Description - wider for more text
+      4: const FlexColumnWidth(1.2), // Search Period
+      5: const FlexColumnWidth(0.5), // Actions - smallest
+    };
+
+    return TableWidget<TenantPreference>(
+      title: 'Searching Tenants',
+      data: searchingTenants,
+      dataRowHeight: 80, // Increased height for amenities
+      columnWidths: columnWidths,
+      columns: [
+        const DataColumn(label: Text('City', softWrap: true, maxLines: 2)),
+        const DataColumn(
+          label: Text('Price Range', softWrap: true, maxLines: 2),
+        ),
+        const DataColumn(label: Text('Amenities', softWrap: true, maxLines: 2)),
+        const DataColumn(
+          label: Text('Description', softWrap: true, maxLines: 2),
+        ),
+        const DataColumn(
+          label: Text('Search Period', softWrap: true, maxLines: 2),
+        ),
+        const DataColumn(label: Text('Actions', softWrap: true, maxLines: 2)),
+      ],
+      cellsBuilder:
+          (preference) => [
+            // City Column
+            DataCell(Text(preference.city, overflow: TextOverflow.ellipsis)),
+            // Price Range Column
+            DataCell(
+              Text(
+                '${preference.minPrice != null ? '\$${preference.minPrice}' : 'Any'} - '
+                '${preference.maxPrice != null ? '\$${preference.maxPrice}' : 'Any'}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Amenities Column
+            DataCell(
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  ...preference.amenities
+                      .take(3)
+                      .map(
+                        (a) => Chip(
+                          label: Text(a, style: const TextStyle(fontSize: 10)),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                  if (preference.amenities.length > 3)
+                    Chip(
+                      label: Text(
+                        '+${preference.amenities.length - 3}',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: EdgeInsets.zero,
+                    ),
+                ],
+              ),
+              placeholder: false,
+            ),
+            // Description Column
+            DataCell(
+              Text(
+                preference.description.length > 50
+                    ? '${preference.description.substring(0, 50)}...'
+                    : preference.description,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Search Period Column
+            DataCell(
+              Text(
+                '${preference.searchStartDate.year}-${preference.searchStartDate.month} to '
+                '${preference.searchEndDate?.year ?? 'Open'}-${preference.searchEndDate?.month ?? ''}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Actions Column
+            DataCell(
+              IconButton(
+                icon: const Icon(Icons.send, color: Colors.blue, size: 20),
+                onPressed: () => _sendMessageToSearchingTenant(preference),
+                tooltip: 'Send Property Offer',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ),
+          ],
+      searchStringBuilder:
+          (preference) => '${preference.city} ${preference.description}',
+      filterOptions: {
+        'City':
+            provider.searchingTenants
+                .map((p) => p.city)
+                .toSet()
+                .map((city) => Filter(label: city, value: city))
+                .toList(),
+      },
     );
   }
 
@@ -294,7 +430,26 @@ class _TenantsScreenState extends State<TenantsScreen>
             ),
             const SizedBox(height: 8),
             ...feedbacks.map(
-              (feedback) => TenantFeedbackCard(feedback: feedback),
+              (feedback) => ListTile(
+                title: Row(
+                  children: List.generate(
+                    5,
+                    (index) => Icon(
+                      Icons.star,
+                      size: 18,
+                      color:
+                          index < feedback.rating
+                              ? Colors.amber
+                              : Colors.grey[300],
+                    ),
+                  ),
+                ),
+                subtitle: Text(feedback.comment),
+                trailing: Text(
+                  '${feedback.stayStartDate.year}-${feedback.stayEndDate.year}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+              ),
             ),
           ],
         );
