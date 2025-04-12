@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/models/tenant_feedback.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/widgets/table_widget.dart';
+import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
+import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});
@@ -18,29 +21,64 @@ class TenantsScreen extends StatefulWidget {
 class _TenantsScreenState extends State<TenantsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  String _searchTerm = '';
+  String _currentFilterField = 'Full Name';
+  final List<String> _searchHistory = [];
+  String _searchLabelText = 'Search current tenants: ';
+
+  // Search field options for tenants
+  final List<String> _currentTenantsFilterFields = [
+    'Full Name',
+    'Email',
+    'Phone',
+    'City',
+  ];
+
+  // Search field options for searching tenants
+  final List<String> _searchingTenantsFilterFields = [
+    'City',
+    'Price Range',
+    'Amenities',
+    'Description',
+  ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<TenantProvider>(context, listen: false);
       provider
           .loadAllData()
           .then((_) {
-            print('Data loaded successfully');
             if (mounted) {
               setState(() {});
             }
           })
-          .catchError((error) {
-            print('Error loading data: $error');
-          });
+          .catchError((error) {});
     });
+  }
+
+  void _handleTabChange() {
+    if (_tabController.index == 0) {
+      setState(() {
+        _currentFilterField = 'Full Name';
+        _searchTerm = ''; // Clear search when changing tabs
+        _searchLabelText = 'Search current tenants: ';
+      });
+    } else {
+      setState(() {
+        _currentFilterField = 'City';
+        _searchTerm = ''; // Clear search when changing tabs
+        _searchLabelText = 'Search tenants advertisements: ';
+      });
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -65,22 +103,55 @@ class _TenantsScreenState extends State<TenantsScreen>
 
           return Column(
             children: [
+              // Tab bar
               TabBar(
                 controller: _tabController,
                 tabs: const [
                   Tab(text: 'Current Tenants'),
-                  Tab(text: 'Searching Tenants'),
+                  Tab(text: 'Tenants Advertisements'),
                 ],
                 labelColor: Theme.of(context).colorScheme.primary,
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: Theme.of(context).colorScheme.primary,
               ),
+              // Custom search bar with filter options
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _searchLabelText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildSearchBar(provider)),
+                  ],
+                ),
+              ),
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildCurrentTenantsTable(provider),
-                    _buildSearchingTenantsTable(provider),
+                    CurrentTenantsTableWidget(
+                      tenants: provider.currentTenants,
+                      searchTerm: _searchTerm,
+                      currentFilterField: _currentFilterField,
+                      onSendMessage: _sendMessage,
+                      onShowProfile: _showTenantProfile,
+                      onNavigateToProperty: _navigateToPropertyDetails,
+                    ),
+                    TenantsAdvertisementTableWidget(
+                      preferences: provider.searchingTenants,
+                      tenants: provider.currentTenants,
+                      searchTerm: _searchTerm,
+                      currentFilterField: _currentFilterField,
+                      onSendMessage: _sendMessageToSearchingTenant,
+                      onShowDetails: _showTenantPreferenceDetails,
+                    ),
                   ],
                 ),
               ),
@@ -91,369 +162,263 @@ class _TenantsScreenState extends State<TenantsScreen>
     );
   }
 
-  Widget _buildCurrentTenantsTable(TenantProvider provider) {
-    final tenants = provider.currentTenants;
+  Widget _buildSearchBar(TenantProvider provider) {
+    final List<String> filterFields =
+        _tabController.index == 0
+            ? _currentTenantsFilterFields
+            : _searchingTenantsFilterFields;
 
-    if (tenants.isEmpty) {
-      return const Center(
-        child: Text('No current tenants found', style: TextStyle(fontSize: 18)),
-      );
+    // Create a list of search strings based on the current tab and filter field
+    List<String> searchStrings = [];
+
+    // Get mock properties for mapping tenant to properties
+    final properties = MockDataService.getMockProperties();
+
+    // For demonstration, assign properties to tenants based on index
+    final Map<String, Property> tenantProperties = {};
+    for (int i = 0; i < provider.currentTenants.length; i++) {
+      // Assign property in a round-robin fashion
+      tenantProperties[provider.currentTenants[i].id] =
+          properties[i % properties.length];
     }
 
-    // Define flex-based column widths for proportional distribution
-    final columnWidths = <int, TableColumnWidth>{
-      0: const FlexColumnWidth(0.8), // Profile - smaller
-      1: const FlexColumnWidth(1.2), // Full Name
-      2: const FlexColumnWidth(2.0), // Email - wider for email addresses
-      3: const FlexColumnWidth(1.2), // Phone
-      4: const FlexColumnWidth(1.0), // City
-      5: const FlexColumnWidth(0.8), // Actions - smaller
-    };
+    if (_tabController.index == 0) {
+      searchStrings =
+          provider.currentTenants.map((tenant) {
+            switch (_currentFilterField) {
+              case 'Full Name':
+                return tenant.fullName;
+              case 'Email':
+                return tenant.email;
+              case 'Phone':
+                return tenant.phone ?? '';
+              case 'City':
+                return tenant.city ?? '';
+              default:
+                return tenant.fullName;
+            }
+          }).toList();
+    } else {
+      searchStrings =
+          provider.searchingTenants.map((preference) {
+            switch (_currentFilterField) {
+              case 'City':
+                return preference.city;
+              case 'Price Range':
+                return '${preference.minPrice ?? "Any"} - ${preference.maxPrice ?? "Any"}';
+              case 'Amenities':
+                return preference.amenities.join(', ');
+              case 'Description':
+                return preference.description;
+              default:
+                return preference.city;
+            }
+          }).toList();
+    }
 
-    return TableWidget<User>(
-      title: 'Current Tenants',
-      data: tenants,
-      dataRowHeight: 70, // Increased row height
-      columnWidths: columnWidths,
-      columns: [
-        const DataColumn(label: Text('Profile', softWrap: true, maxLines: 2)),
-        const DataColumn(label: Text('Full Name', softWrap: true, maxLines: 2)),
-        const DataColumn(label: Text('Email', softWrap: true, maxLines: 2)),
-        const DataColumn(label: Text('Phone', softWrap: true, maxLines: 2)),
-        const DataColumn(label: Text('City', softWrap: true, maxLines: 2)),
-        const DataColumn(label: Text('Actions', softWrap: true, maxLines: 2)),
-      ],
-      cellsBuilder:
-          (tenant) => [
-            // Profile column
-            DataCell(
-              CircleAvatar(
-                radius: 20,
-                backgroundImage:
-                    tenant.profileImage != null
-                        ? NetworkImage(tenant.profileImage!)
-                        : null,
-                child:
-                    tenant.profileImage == null
-                        ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
-                        : null,
-              ),
+    return CustomSearchBar<String>(
+      hintText: 'Enter $_currentFilterField...',
+      searchHistory: _searchHistory,
+      localData: searchStrings,
+      showFilterIcon: true,
+      onSearchChanged: (value) {
+        setState(() {
+          _searchTerm = value;
+          if (value.isNotEmpty && !_searchHistory.contains(value)) {
+            _searchHistory.add(value);
+            if (_searchHistory.length > 5) {
+              _searchHistory.removeAt(0); // Keep history size manageable
+            }
+          }
+        });
+      },
+      onFilterIconPressed: () {
+        _showFilterOptionsDialog(context, filterFields);
+      },
+      customSuggestionBuilder: (suggestion, controller, onSelected) {
+        // For current tenants tab
+        if (_tabController.index == 0) {
+          // Find the tenant that matches this suggestion
+          final tenant = provider.currentTenants.firstWhere((t) {
+            switch (_currentFilterField) {
+              case 'Full Name':
+                return t.fullName == suggestion;
+              case 'Email':
+                return t.email == suggestion;
+              case 'Phone':
+                return t.phone == suggestion;
+              case 'City':
+                return t.city == suggestion;
+              default:
+                return t.fullName == suggestion;
+            }
+          }, orElse: () => provider.currentTenants.first);
+
+          // Get property for this tenant
+          final property = tenantProperties[tenant.id];
+
+          return ListTile(
+            leading: CircleAvatar(
+              radius: 20,
+              backgroundImage:
+                  tenant.profileImage != null
+                      ? NetworkImage(tenant.profileImage!)
+                      : null,
+              child:
+                  tenant.profileImage == null
+                      ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
+                      : null,
             ),
-            // Full Name column
-            DataCell(Text(tenant.fullName, overflow: TextOverflow.ellipsis)),
-            // Email column
-            DataCell(Text(tenant.email, overflow: TextOverflow.ellipsis)),
-            // Phone column
-            DataCell(
-              Text(tenant.phone ?? 'N/A', overflow: TextOverflow.ellipsis),
+            title: Row(
+              children: [
+                Text(
+                  tenant.fullName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '(${property?.title ?? 'No property'})',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+              ],
             ),
-            // City column
-            DataCell(
-              Text(tenant.city ?? 'N/A', overflow: TextOverflow.ellipsis),
+            onTap: () {
+              controller.text = suggestion;
+              onSelected(suggestion);
+            },
+          );
+        }
+        // For searching tenants tab
+        else {
+          // Find the tenant preference that matches this suggestion
+          final preference = provider.searchingTenants.firstWhere((p) {
+            switch (_currentFilterField) {
+              case 'City':
+                return p.city == suggestion;
+              case 'Price Range':
+                final priceRange =
+                    '${p.minPrice ?? "Any"} - ${p.maxPrice ?? "Any"}';
+                return priceRange == suggestion;
+              case 'Amenities':
+                return p.amenities.join(', ') == suggestion;
+              case 'Description':
+                return p.description == suggestion;
+              default:
+                return p.city == suggestion;
+            }
+          }, orElse: () => provider.searchingTenants.first);
+
+          // Find the user associated with this preference
+          final user = provider.currentTenants.firstWhere(
+            (u) => u.id == preference.userId,
+            orElse:
+                () => User(
+                  id: 'unknown',
+                  email: 'unknown@example.com',
+                  firstName: 'Unknown',
+                  lastName: 'User',
+                  role: 'tenant',
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+          );
+
+          return ListTile(
+            leading: CircleAvatar(
+              radius: 20,
+              backgroundImage:
+                  user.profileImage != null
+                      ? NetworkImage(user.profileImage!)
+                      : null,
+              child:
+                  user.profileImage == null
+                      ? Text('${user.firstName[0]}${user.lastName[0]}')
+                      : null,
             ),
-            // Actions column
-            DataCell(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.message,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    onPressed: () => _sendMessage(tenant),
-                    tooltip: 'Send Message',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.person,
-                      color: Colors.green,
-                      size: 20,
-                    ),
-                    onPressed: () => _showTenantProfile(tenant, null),
-                    tooltip: 'View Profile',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
+            title: Row(
+              children: [
+                Text(
+                  user.fullName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '(${_currentFilterField}: $suggestion)',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+              ],
             ),
-          ],
-      searchStringBuilder:
-          (tenant) =>
-              '${tenant.fullName} ${tenant.email} ${tenant.phone ?? ''} ${tenant.city ?? ''}',
-      filterOptions: {
-        'City':
-            provider.currentTenants
-                .map((t) => t.city)
-                .where((city) => city != null)
-                .toSet()
-                .map((city) => Filter(label: city!, value: city))
-                .toList(),
+            onTap: () {
+              controller.text = suggestion;
+              onSelected(suggestion);
+            },
+          );
+        }
       },
     );
   }
 
-  Widget _buildSearchingTenantsTable(TenantProvider provider) {
-    final searchingTenants = provider.searchingTenants;
-
-    if (searchingTenants.isEmpty) {
-      return const Center(
-        child: Text(
-          'No searching tenants found',
-          style: TextStyle(fontSize: 18),
-        ),
-      );
-    }
-
-    // Define column width ratios for better distribution across full width
-    final columnWidths = <int, TableColumnWidth>{
-      0: const FlexColumnWidth(0.8), // City
-      1: const FlexColumnWidth(1.0), // Price Range
-      2: const FlexColumnWidth(1.5), // Amenities
-      3: const FlexColumnWidth(2.5), // Description - wider for more text
-      4: const FlexColumnWidth(1.2), // Search Period
-      5: const FlexColumnWidth(0.5), // Actions - smallest
-    };
-
-    return TableWidget<TenantPreference>(
-      title: 'Searching Tenants',
-      data: searchingTenants,
-      dataRowHeight: 80, // Increased height for amenities
-      columnWidths: columnWidths,
-      columns: [
-        const DataColumn(label: Text('City', softWrap: true, maxLines: 2)),
-        const DataColumn(
-          label: Text('Price Range', softWrap: true, maxLines: 2),
-        ),
-        const DataColumn(label: Text('Amenities', softWrap: true, maxLines: 2)),
-        const DataColumn(
-          label: Text('Description', softWrap: true, maxLines: 2),
-        ),
-        const DataColumn(
-          label: Text('Search Period', softWrap: true, maxLines: 2),
-        ),
-        const DataColumn(label: Text('Actions', softWrap: true, maxLines: 2)),
-      ],
-      cellsBuilder:
-          (preference) => [
-            // City Column
-            DataCell(Text(preference.city, overflow: TextOverflow.ellipsis)),
-            // Price Range Column
-            DataCell(
-              Text(
-                '${preference.minPrice != null ? '\$${preference.minPrice}' : 'Any'} - '
-                '${preference.maxPrice != null ? '\$${preference.maxPrice}' : 'Any'}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Amenities Column
-            DataCell(
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  ...preference.amenities
-                      .take(3)
-                      .map(
-                        (a) => Chip(
-                          label: Text(a, style: const TextStyle(fontSize: 10)),
-                          visualDensity: VisualDensity.compact,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ),
-                  if (preference.amenities.length > 3)
-                    Chip(
-                      label: Text(
-                        '+${preference.amenities.length - 3}',
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: EdgeInsets.zero,
-                    ),
-                ],
-              ),
-              placeholder: false,
-            ),
-            // Description Column
-            DataCell(
-              Text(
-                preference.description.length > 50
-                    ? '${preference.description.substring(0, 50)}...'
-                    : preference.description,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Search Period Column
-            DataCell(
-              Text(
-                '${preference.searchStartDate.year}-${preference.searchStartDate.month} to '
-                '${preference.searchEndDate?.year ?? 'Open'}-${preference.searchEndDate?.month ?? ''}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Actions Column
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.send, color: Colors.blue, size: 20),
-                onPressed: () => _sendMessageToSearchingTenant(preference),
-                tooltip: 'Send Property Offer',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ),
-          ],
-      searchStringBuilder:
-          (preference) => '${preference.city} ${preference.description}',
-      filterOptions: {
-        'City':
-            provider.searchingTenants
-                .map((p) => p.city)
-                .toSet()
-                .map((city) => Filter(label: city, value: city))
-                .toList(),
-      },
-    );
-  }
-
-  void _showTenantProfile(User tenant, List<Property>? properties) {
-    final provider = Provider.of<TenantProvider>(context, listen: false);
-    provider.loadTenantFeedbacks(tenant.id);
-
+  void _showFilterOptionsDialog(
+    BuildContext context,
+    List<String> filterFields,
+  ) {
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
-            title: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundImage:
-                      tenant.profileImage != null
-                          ? NetworkImage(tenant.profileImage!)
-                          : null,
-                  child:
-                      tenant.profileImage == null
-                          ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
-                          : null,
-                ),
-                const SizedBox(width: 12),
-                Text(tenant.fullName),
-              ],
-            ),
+            title: const Text('Search by Field'),
             content: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildProfileSection(tenant),
-                  if (properties != null && properties.isNotEmpty)
-                    _buildPropertiesSection(properties),
-                  _buildFeedbackSection(tenant),
-                ],
+                children:
+                    filterFields.map((field) {
+                      return RadioListTile<String>(
+                        title: Text(field),
+                        value: field,
+                        groupValue: _currentFilterField,
+                        onChanged: (value) {
+                          setState(() {
+                            _currentFilterField = value!;
+                            _searchTerm =
+                                ''; // Reset search when changing filter field
+                          });
+                          Navigator.of(context).pop();
+                        },
+                      );
+                    }).toList(),
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-              TextButton(
-                onPressed: () => _sendMessage(tenant),
-                child: const Text('Send Message'),
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
               ),
             ],
           ),
     );
   }
 
-  Widget _buildProfileSection(User tenant) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Profile Information',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text('Email: ${tenant.email}'),
-        if (tenant.phone != null) Text('Phone: ${tenant.phone}'),
-        if (tenant.city != null) Text('City: ${tenant.city}'),
-        const Divider(),
-      ],
-    );
-  }
-
-  Widget _buildPropertiesSection(List<Property> properties) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Current Properties',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ...properties.map(
-          (property) => ListTile(
-            title: Text(property.title),
-            subtitle: Text(property.address),
-            trailing: Text('\$${property.price}/month'),
+  void _showTenantPreferenceDetails(TenantPreference preference, User tenant) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => TenantPreferenceDetailsWidget(
+            preference: preference,
+            tenant: tenant,
+            onSendOffer: () => _sendMessageToSearchingTenant(preference),
           ),
-        ),
-        const Divider(),
-      ],
     );
   }
 
-  Widget _buildFeedbackSection(User tenant) {
-    return Consumer<TenantProvider>(
-      builder: (context, provider, child) {
-        final feedbacks = provider.getTenantFeedbacks(tenant.id);
-        if (feedbacks.isEmpty) {
-          return const Text('No feedback available');
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Previous Landlord Feedback',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ...feedbacks.map(
-              (feedback) => ListTile(
-                title: Row(
-                  children: List.generate(
-                    5,
-                    (index) => Icon(
-                      Icons.star,
-                      size: 18,
-                      color:
-                          index < feedback.rating
-                              ? Colors.amber
-                              : Colors.grey[300],
-                    ),
-                  ),
-                ),
-                subtitle: Text(feedback.comment),
-                trailing: Text(
-                  '${feedback.stayStartDate.year}-${feedback.stayEndDate.year}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+  void _showTenantProfile(User tenant, List<Property>? properties) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => TenantProfileWidget(
+            tenant: tenant,
+            properties: properties,
+            onSendMessage: () => _sendMessage(tenant),
+          ),
     );
   }
 
@@ -469,5 +434,10 @@ class _TenantsScreenState extends State<TenantsScreen>
       preference.userId,
       'Hello, I have a property that might interest you!',
     );
+  }
+
+  void _navigateToPropertyDetails(Property property) {
+    // Navigate to property details using GoRouter
+    context.go('/properties/${property.id}', extra: property);
   }
 }
