@@ -373,7 +373,7 @@ class MockDataService {
         description:
             'Charming villa with private garden and modern interior design',
         type: 'Villa',
-        price: 4000.0,
+        price: 4200.0,
         status: 'Occupied',
         images: ['assets/images/villa.jpg'],
         address: '234 Garden Lane, Green Valley',
