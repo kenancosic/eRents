@@ -1,42 +1,101 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/reports/reports.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 
+/// Report type enum used for switching between report screens
 enum ReportType { financial, occupancy, maintenance, tenant }
 
+/// Main provider class that coordinates all individual report providers
 class ReportsProvider extends ChangeNotifier {
-  // Report type
+  // Individual report providers - not final to support updates
+  FinancialReportProvider financialReportProvider;
+  OccupancyReportProvider occupancyReportProvider;
+  MaintenanceReportProvider maintenanceReportProvider;
+  TenantReportProvider tenantReportProvider;
+
+  // Current active report type
   ReportType _currentReportType = ReportType.financial;
   ReportType get currentReportType => _currentReportType;
 
-  // Date range
-  DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _endDate = DateTime.now();
+  // Constructor - initialize all providers
+  ReportsProvider({
+    FinancialReportProvider? financialProvider,
+    OccupancyReportProvider? occupancyProvider,
+    MaintenanceReportProvider? maintenanceProvider,
+    TenantReportProvider? tenantProvider,
+  }) : financialReportProvider = financialProvider ?? FinancialReportProvider(),
+       occupancyReportProvider = occupancyProvider ?? OccupancyReportProvider(),
+       maintenanceReportProvider =
+           maintenanceProvider ?? MaintenanceReportProvider(),
+       tenantReportProvider = tenantProvider ?? TenantReportProvider();
 
-  DateTime get startDate => _startDate;
-  DateTime get endDate => _endDate;
+  // Update providers reference without creating new instances
+  void updateProviders(
+    FinancialReportProvider financialProvider,
+    OccupancyReportProvider occupancyProvider,
+    MaintenanceReportProvider maintenanceProvider,
+    TenantReportProvider tenantProvider,
+  ) {
+    // Only replace references if they're different to avoid unnecessary rebuilds
+    if (financialReportProvider != financialProvider ||
+        occupancyReportProvider != occupancyProvider ||
+        maintenanceReportProvider != maintenanceProvider ||
+        tenantReportProvider != tenantProvider) {
+      // Store the current report type to restore it
+      final currentType = _currentReportType;
 
-  // Loading state
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+      // Update provider references
+      financialReportProvider = financialProvider;
+      occupancyReportProvider = occupancyProvider;
+      maintenanceReportProvider = maintenanceProvider;
+      tenantReportProvider = tenantProvider;
 
-  // Reports data
-  List<FinancialReportItem> _financialReportData = [];
-  List<OccupancyReportItem> _occupancyReportData = [];
-  List<MaintenanceReportItem> _maintenanceReportData = [];
-  List<TenantReportItem> _tenantReportData = [];
+      // Set the report type back to what it was to maintain state
+      _currentReportType = currentType;
 
-  // Getters for the reports
-  List<FinancialReportItem> get financialReportData => _financialReportData;
-  List<OccupancyReportItem> get occupancyReportData => _occupancyReportData;
-  List<MaintenanceReportItem> get maintenanceReportData =>
-      _maintenanceReportData;
-  List<TenantReportItem> get tenantReportData => _tenantReportData;
-
-  // Initialize the provider
-  ReportsProvider() {
-    loadReportData();
+      // Notify listeners only if something changed
+      notifyListeners();
+    }
   }
+
+  // Get current report provider
+  BaseReportProvider get currentProvider {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return financialReportProvider;
+      case ReportType.occupancy:
+        return occupancyReportProvider;
+      case ReportType.maintenance:
+        return maintenanceReportProvider;
+      case ReportType.tenant:
+        return tenantReportProvider;
+    }
+  }
+
+  // Getter for current provider's loading state
+  bool get isLoading => currentProvider.state == ViewState.Busy;
+
+  // Access to report data based on current type
+  List<FinancialReportItem> get financialReportData =>
+      financialReportProvider.items;
+  List<OccupancyReportItem> get occupancyReportData =>
+      occupancyReportProvider.items;
+  List<MaintenanceReportItem> get maintenanceReportData =>
+      maintenanceReportProvider.items;
+  List<TenantReportItem> get tenantReportData => tenantReportProvider.items;
+
+  // Date getters based on current report type
+  DateTime get startDate => currentProvider.startDate;
+  DateTime get endDate => currentProvider.endDate;
+
+  // Formatted date strings
+  String get formattedStartDate => currentProvider.formattedStartDate;
+  String get formattedEndDate => currentProvider.formattedEndDate;
 
   // Set the current report type
   void setReportType(ReportType reportType) {
@@ -63,77 +122,45 @@ class ReportsProvider extends ChangeNotifier {
   }
 
   // Get report type string
-  String getReportTypeString() {
-    switch (_currentReportType) {
-      case ReportType.financial:
-        return 'Financial Report';
-      case ReportType.occupancy:
-        return 'Occupancy Report';
-      case ReportType.maintenance:
-        return 'Maintenance Report';
-      case ReportType.tenant:
-        return 'Tenant Report';
-    }
-  }
+  String getReportTypeString() => currentProvider.getReportName();
 
-  // Set date range
+  // Set date range and update all providers
   void setDateRange(DateTime startDate, DateTime endDate) {
-    _startDate = startDate;
-    _endDate = endDate;
-    loadReportData();
+    financialReportProvider.setDateRange(startDate, endDate);
+    occupancyReportProvider.setDateRange(startDate, endDate);
+    maintenanceReportProvider.setDateRange(startDate, endDate);
+    tenantReportProvider.setDateRange(startDate, endDate);
+
+    notifyListeners();
   }
 
-  // Load report data based on current settings
-  Future<void> loadReportData() async {
-    _isLoading = true;
-    notifyListeners();
+  // Get title with date range based on current report type
+  String getReportTitleWithDateRange() =>
+      currentProvider.getReportTitleWithDateRange();
 
-    try {
-      // In a real app, these would be async calls to an API
-      // Here we're using the MockDataService
+  // Load all report data
+  void loadReportData() {
+    financialReportProvider.fetchItems();
+    occupancyReportProvider.fetchItems();
+    maintenanceReportProvider.fetchItems();
+    tenantReportProvider.fetchItems();
+  }
 
-      // Load all report types to ensure data is available
-      _financialReportData = MockDataService.getMockFinancialReportData(
-        _startDate,
-        _endDate,
-      );
-      _occupancyReportData = MockDataService.getMockOccupancyReportData();
-      _maintenanceReportData = MockDataService.getMockMaintenanceReportData(
-        _startDate,
-        _endDate,
-      );
-      _tenantReportData = MockDataService.getMockTenantReportData();
-    } catch (e) {
-      // Handle any errors
-      debugPrint('Error loading report data: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  // Generic export method
+  Future<void> _exportReport(String fileExtension, String description) async {
+    await Future.delayed(
+      const Duration(seconds: 1),
+    ); // Simulate processing time
+
+    final fileName =
+        '${getReportTypeString().replaceAll(' ', '_')}_$formattedStartDate-$formattedEndDate.$fileExtension';
+    debugPrint('Exporting to $description: $fileName');
   }
 
   // Export methods
-  Future<void> exportToPDF() async {
-    // TODO: Implement PDF export logic
-    await Future.delayed(
-      const Duration(seconds: 1),
-    ); // Simulate processing time
-    debugPrint('Exporting ${getReportTypeString()} to PDF');
-  }
+  Future<void> exportToPDF() async => _exportReport('pdf', 'PDF');
 
-  Future<void> exportToExcel() async {
-    // TODO: Implement Excel export logic
-    await Future.delayed(
-      const Duration(seconds: 1),
-    ); // Simulate processing time
-    debugPrint('Exporting ${getReportTypeString()} to Excel');
-  }
+  Future<void> exportToExcel() async => _exportReport('xlsx', 'Excel');
 
-  Future<void> exportToCSV() async {
-    // TODO: Implement CSV export logic
-    await Future.delayed(
-      const Duration(seconds: 1),
-    ); // Simulate processing time
-    debugPrint('Exporting ${getReportTypeString()} to CSV');
-  }
+  Future<void> exportToCSV() async => _exportReport('csv', 'CSV');
 }

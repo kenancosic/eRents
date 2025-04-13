@@ -5,14 +5,64 @@ import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ReportsProvider(),
+    return MultiProvider(
+      providers: [
+        // Create providers with lazy: false to ensure they're initialized immediately
+        ChangeNotifierProvider(
+          create: (_) => FinancialReportProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => OccupancyReportProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MaintenanceReportProvider(),
+          lazy: false,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TenantReportProvider(),
+          lazy: false,
+        ),
+        // Use ProxyProvider to create the combined provider
+        ChangeNotifierProxyProvider4<
+          FinancialReportProvider,
+          OccupancyReportProvider,
+          MaintenanceReportProvider,
+          TenantReportProvider,
+          ReportsProvider
+        >(
+          create: (_) => ReportsProvider(),
+          update: (_, financial, occupancy, maintenance, tenant, previous) {
+            // Update the existing provider if possible to maintain state
+            if (previous != null) {
+              previous.updateProviders(
+                financial,
+                occupancy,
+                maintenance,
+                tenant,
+              );
+              return previous;
+            }
+            return ReportsProvider(
+              financialProvider: financial,
+              occupancyProvider: occupancy,
+              maintenanceProvider: maintenance,
+              tenantProvider: tenant,
+            );
+          },
+        ),
+      ],
       child: const _ReportsScreenContent(),
     );
   }

@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/widgets/generic_report_table.dart';
 import 'package:e_rents_desktop/models/reports/reports.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
 class ReportTable extends StatelessWidget {
   const ReportTable({super.key});
+
+  // Store a map to track refresh attempts by provider type
+  static final Map<String, bool> _refreshAttempted = {};
 
   @override
   Widget build(BuildContext context) {
     final reportsProvider = Provider.of<ReportsProvider>(context);
     final reportType = reportsProvider.currentReportType;
-
-    // Show loading indicator if data is loading
-    if (reportsProvider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
 
     // Get the appropriate report data and columns based on type
     final columns = _getColumns(reportType);
@@ -24,34 +27,184 @@ class ReportTable extends StatelessWidget {
     // Return the appropriate table based on report type
     switch (reportType) {
       case ReportType.financial:
-        return _buildFinancialTable(
-          context,
-          reportsProvider,
-          columns,
-          columnWidths,
+        final provider = Provider.of<FinancialReportProvider>(context);
+        return _buildTableWithErrorHandling(
+          context: context,
+          provider: provider,
+          reportType: reportType,
+          child:
+              GenericReportTable<FinancialReportItem, FinancialReportProvider>(
+                provider: provider,
+                columns: columns,
+                columnWidths: columnWidths,
+                cellsBuilder: _buildFinancialCells,
+                searchStringBuilder: _buildFinancialSearchString,
+                emptyStateWidget: const Center(
+                  child: Text(
+                    'No financial data available for the selected period',
+                  ),
+                ),
+              ),
         );
       case ReportType.occupancy:
-        return _buildOccupancyTable(
-          context,
-          reportsProvider,
-          columns,
-          columnWidths,
+        final provider = Provider.of<OccupancyReportProvider>(context);
+        return _buildTableWithErrorHandling(
+          context: context,
+          provider: provider,
+          reportType: reportType,
+          child:
+              GenericReportTable<OccupancyReportItem, OccupancyReportProvider>(
+                provider: provider,
+                columns: columns,
+                columnWidths: columnWidths,
+                cellsBuilder: _buildOccupancyCells,
+                searchStringBuilder: _buildOccupancySearchString,
+                emptyStateWidget: const Center(
+                  child: Text('No occupancy data available'),
+                ),
+              ),
         );
       case ReportType.maintenance:
-        return _buildMaintenanceTable(
-          context,
-          reportsProvider,
-          columns,
-          columnWidths,
+        final provider = Provider.of<MaintenanceReportProvider>(context);
+        return _buildTableWithErrorHandling(
+          context: context,
+          provider: provider,
+          reportType: reportType,
+          child: GenericReportTable<
+            MaintenanceReportItem,
+            MaintenanceReportProvider
+          >(
+            provider: provider,
+            columns: columns,
+            columnWidths: columnWidths,
+            cellsBuilder: _buildMaintenanceCells,
+            searchStringBuilder: _buildMaintenanceSearchString,
+            emptyStateWidget: const Center(
+              child: Text(
+                'No maintenance data available for the selected period',
+              ),
+            ),
+          ),
         );
       case ReportType.tenant:
-        return _buildTenantTable(
-          context,
-          reportsProvider,
-          columns,
-          columnWidths,
+        final provider = Provider.of<TenantReportProvider>(context);
+        return _buildTableWithErrorHandling(
+          context: context,
+          provider: provider,
+          reportType: reportType,
+          child: GenericReportTable<TenantReportItem, TenantReportProvider>(
+            provider: provider,
+            columns: columns,
+            columnWidths: columnWidths,
+            cellsBuilder: _buildTenantCells,
+            searchStringBuilder: _buildTenantSearchString,
+            emptyStateWidget: const Center(
+              child: Text('No tenant data available'),
+            ),
+          ),
         );
     }
+  }
+
+  // Helper method to add error handling and retry functionality
+  Widget _buildTableWithErrorHandling({
+    required BuildContext context,
+    required BaseProvider provider,
+    required ReportType reportType,
+    required Widget child,
+  }) {
+    debugPrint(
+      'ReportTable._buildTableWithErrorHandling: provider state=${provider.state}, itemCount=${provider.items.length}',
+    );
+
+    final String providerKey = reportType.toString();
+
+    // Check if provider is in error state
+    if (provider.state == ViewState.Error) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading data: ${provider.errorMessage ?? "Unknown error"}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              onPressed: () {
+                debugPrint('Retry button pressed for $reportType');
+                _refreshAttempted[providerKey] = false; // Reset the flag
+                provider.fetchItems();
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Check if provider is in loading state
+    if (provider.state == ViewState.Busy) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading data...'),
+          ],
+        ),
+      );
+    }
+
+    // If items are empty but not in loading state, force a refresh ONCE
+    if (provider.items.isEmpty &&
+        provider.state != ViewState.Busy &&
+        !(_refreshAttempted[providerKey] ?? false)) {
+      debugPrint(
+        'ReportTable: No data but not in loading state for $reportType. Forcing refresh.',
+      );
+      _refreshAttempted[providerKey] =
+          true; // Mark that we've attempted a refresh
+      Future.microtask(() => provider.fetchItems());
+
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading initial data...'),
+          ],
+        ),
+      );
+    }
+
+    // If we've refreshed and still have no data, show empty state
+    if (provider.items.isEmpty) {
+      switch (reportType) {
+        case ReportType.financial:
+          return const Center(
+            child: Text('No financial data available for the selected period'),
+          );
+        case ReportType.occupancy:
+          return const Center(child: Text('No occupancy data available'));
+        case ReportType.maintenance:
+          return const Center(
+            child: Text(
+              'No maintenance data available for the selected period',
+            ),
+          );
+        case ReportType.tenant:
+          return const Center(child: Text('No tenant data available'));
+      }
+    }
+
+    return child;
   }
 
   // Generate columns based on report type
@@ -94,6 +247,7 @@ class ReportTable extends StatelessWidget {
           const DataColumn(label: Text('Lease End')),
           const DataColumn(label: Text('Rent')),
           const DataColumn(label: Text('Status')),
+          const DataColumn(label: Text('Days Left')),
         ];
     }
   }
@@ -138,162 +292,104 @@ class ReportTable extends StatelessWidget {
           4: const FlexColumnWidth(1.0), // Lease End
           5: const FlexColumnWidth(0.8), // Rent
           6: const FlexColumnWidth(1.0), // Status
+          7: const FlexColumnWidth(0.8), // Days Left
         };
     }
   }
 
-  // Build Financial Report Table
-  Widget _buildFinancialTable(
-    BuildContext context,
-    ReportsProvider provider,
-    List<DataColumn> columns,
-    Map<int, TableColumnWidth> columnWidths,
-  ) {
-    final data = provider.financialReportData;
+  // Cell builders for each report type
+  List<DataCell> _buildFinancialCells(FinancialReportItem item) => [
+    DataCell(Text(item.date)),
+    DataCell(Text(item.property)),
+    DataCell(Text(item.unit)),
+    DataCell(Text(item.transactionType)),
+    DataCell(Text(item.formattedAmount)),
+    DataCell(Text(item.formattedBalance)),
+  ];
 
-    return CustomTableWidget<FinancialReportItem>(
-      title: provider.getReportTypeString(),
-      data: data,
-      columns: columns,
-      columnWidths: columnWidths,
-      cellsBuilder:
-          (item) => [
-            DataCell(Text(item.date)),
-            DataCell(Text(item.property)),
-            DataCell(Text(item.unit)),
-            DataCell(Text(item.transactionType)),
-            DataCell(Text(item.formattedAmount)),
-            DataCell(Text(item.formattedBalance)),
-          ],
-      searchStringBuilder:
-          (item) =>
-              '${item.date} ${item.property} ${item.unit} ${item.transactionType}'
-                  .toLowerCase(),
-      emptyStateWidget: const Center(
-        child: Text('No financial data available for the selected period'),
+  List<DataCell> _buildOccupancyCells(OccupancyReportItem item) => [
+    DataCell(Text(item.property)),
+    DataCell(Text(item.totalUnits.toString())),
+    DataCell(Text(item.occupied.toString())),
+    DataCell(Text(item.vacant.toString())),
+    DataCell(Text(item.formattedOccupancyRate)),
+    DataCell(Text(item.formattedAvgRent)),
+  ];
+
+  List<DataCell> _buildMaintenanceCells(MaintenanceReportItem item) => [
+    DataCell(Text(item.date)),
+    DataCell(Text(item.property)),
+    DataCell(Text(item.unit)),
+    DataCell(Text(item.issueType)),
+    DataCell(Text(item.status)),
+    DataCell(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _getPriorityColor(item.priority),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          item.priorityLabel,
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
-    );
-  }
+    ),
+    DataCell(Text(item.formattedCost)),
+  ];
 
-  // Build Occupancy Report Table
-  Widget _buildOccupancyTable(
-    BuildContext context,
-    ReportsProvider provider,
-    List<DataColumn> columns,
-    Map<int, TableColumnWidth> columnWidths,
-  ) {
-    final data = provider.occupancyReportData;
-
-    return CustomTableWidget<OccupancyReportItem>(
-      title: provider.getReportTypeString(),
-      data: data,
-      columns: columns,
-      columnWidths: columnWidths,
-      cellsBuilder:
-          (item) => [
-            DataCell(Text(item.property)),
-            DataCell(Text(item.totalUnits.toString())),
-            DataCell(Text(item.occupied.toString())),
-            DataCell(Text(item.vacant.toString())),
-            DataCell(Text(item.formattedOccupancyRate)),
-            DataCell(Text(item.formattedAvgRent)),
-          ],
-      searchStringBuilder: (item) => item.property.toLowerCase(),
-      emptyStateWidget: const Center(
-        child: Text('No occupancy data available'),
+  List<DataCell> _buildTenantCells(TenantReportItem item) => [
+    DataCell(Text(item.tenant)),
+    DataCell(Text(item.property)),
+    DataCell(Text(item.unit)),
+    DataCell(Text(item.leaseStart)),
+    DataCell(Text(item.leaseEnd)),
+    DataCell(Text(item.formattedRent)),
+    DataCell(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _getStatusColor(item.status),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          item.statusLabel,
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
-    );
-  }
-
-  // Build Maintenance Report Table
-  Widget _buildMaintenanceTable(
-    BuildContext context,
-    ReportsProvider provider,
-    List<DataColumn> columns,
-    Map<int, TableColumnWidth> columnWidths,
-  ) {
-    final data = provider.maintenanceReportData;
-
-    return CustomTableWidget<MaintenanceReportItem>(
-      title: provider.getReportTypeString(),
-      data: data,
-      columns: columns,
-      columnWidths: columnWidths,
-      cellsBuilder:
-          (item) => [
-            DataCell(Text(item.date)),
-            DataCell(Text(item.property)),
-            DataCell(Text(item.unit)),
-            DataCell(Text(item.issueType)),
-            DataCell(Text(item.status)),
-            DataCell(
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getPriorityColor(item.priority),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  item.priorityLabel,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            DataCell(Text(item.formattedCost)),
-          ],
-      searchStringBuilder:
-          (item) =>
-              '${item.date} ${item.property} ${item.unit} ${item.issueType} ${item.status} ${item.priorityLabel}'
-                  .toLowerCase(),
-      emptyStateWidget: const Center(
-        child: Text('No maintenance data available for the selected period'),
+    ),
+    DataCell(
+      Text(
+        item.daysRemaining > 0 ? item.daysRemaining.toString() : 'Expired',
+        style: TextStyle(
+          color:
+              item.daysRemaining <= 30
+                  ? Colors.red
+                  : item.daysRemaining <= 60
+                  ? Colors.orange
+                  : Colors.black,
+          fontWeight:
+              item.daysRemaining <= 30 ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    );
-  }
+    ),
+  ];
 
-  // Build Tenant Report Table
-  Widget _buildTenantTable(
-    BuildContext context,
-    ReportsProvider provider,
-    List<DataColumn> columns,
-    Map<int, TableColumnWidth> columnWidths,
-  ) {
-    final data = provider.tenantReportData;
+  // Search string builders for each report type
+  String _buildFinancialSearchString(FinancialReportItem item) =>
+      '${item.date} ${item.property} ${item.unit} ${item.transactionType}'
+          .toLowerCase();
 
-    return CustomTableWidget<TenantReportItem>(
-      title: provider.getReportTypeString(),
-      data: data,
-      columns: columns,
-      columnWidths: columnWidths,
-      cellsBuilder:
-          (item) => [
-            DataCell(Text(item.tenant)),
-            DataCell(Text(item.property)),
-            DataCell(Text(item.unit)),
-            DataCell(Text(item.leaseStart)),
-            DataCell(Text(item.leaseEnd)),
-            DataCell(Text(item.formattedRent)),
-            DataCell(
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(item.status),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  item.statusLabel,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-      searchStringBuilder:
-          (item) =>
-              '${item.tenant} ${item.property} ${item.unit} ${item.leaseStart} ${item.leaseEnd}'
-                  .toLowerCase(),
-      emptyStateWidget: const Center(child: Text('No tenant data available')),
-    );
-  }
+  String _buildOccupancySearchString(OccupancyReportItem item) =>
+      '${item.property}'.toLowerCase();
+
+  String _buildMaintenanceSearchString(MaintenanceReportItem item) =>
+      '${item.date} ${item.property} ${item.unit} ${item.issueType} ${item.status} ${item.priorityLabel}'
+          .toLowerCase();
+
+  String _buildTenantSearchString(TenantReportItem item) =>
+      '${item.tenant} ${item.property} ${item.unit} ${item.leaseStart} ${item.leaseEnd}'
+          .toLowerCase();
 
   // Helper functions for cell styling
   Color _getPriorityColor(MaintenancePriority priority) {

@@ -1,35 +1,107 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class MaintenanceIssueDetailsScreen extends StatelessWidget {
-  final MaintenanceIssue issue;
+  final MaintenanceIssue? issue;
+  final String issueId;
 
-  const MaintenanceIssueDetailsScreen({super.key, required this.issue});
+  const MaintenanceIssueDetailsScreen({
+    super.key,
+    this.issue,
+    required this.issueId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AppBaseScreen(
       title: 'Maintenance Issue',
       currentPath: '/maintenance',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 24),
-            _buildIssueDetails(),
-            const SizedBox(height: 24),
-            _buildActions(context),
-          ],
-        ),
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    // If issue was passed directly, show it
+    if (issue != null) {
+      return _buildIssueContent(context, issue!);
+    }
+
+    // Otherwise, use Consumer to listen for changes in the provider
+    return Consumer<MaintenanceProvider>(
+      builder: (context, provider, child) {
+        // Show loading state if provider is loading
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        // Show error state if there's an error
+        if (provider.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  provider.error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => provider.fetchIssues(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Try to find issue in provider
+        try {
+          final foundIssue = provider.issues.firstWhere((i) => i.id == issueId);
+          return _buildIssueContent(context, foundIssue);
+        } catch (_) {
+          // If issue not found and provider is not loading, show not found error
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Maintenance issue not found',
+                  style: TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => context.go('/maintenance'),
+                  child: const Text('Back to Maintenance'),
+                ),
+              ],
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildIssueContent(BuildContext context, MaintenanceIssue issue) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(context, issue),
+          const SizedBox(height: 24),
+          _buildIssueDetails(issue),
+          const SizedBox(height: 24),
+          _buildActions(context, issue),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, MaintenanceIssue issue) {
     return Row(
       children: [
         IconButton(
@@ -45,12 +117,12 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const Spacer(),
-        _buildStatusChip(),
+        _buildStatusChip(issue),
       ],
     );
   }
 
-  Widget _buildStatusChip() {
+  Widget _buildStatusChip(MaintenanceIssue issue) {
     return Chip(
       label: Text(
         issue.status.toString().split('.').last,
@@ -61,7 +133,7 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIssueDetails() {
+  Widget _buildIssueDetails(MaintenanceIssue issue) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -157,7 +229,7 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildActions(BuildContext context, MaintenanceIssue issue) {
     return Row(
       children: [
         if (issue.status == IssueStatus.pending) ...[

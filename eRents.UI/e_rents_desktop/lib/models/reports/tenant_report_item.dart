@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 enum TenantStatus { active, latePayment, endingSoon, ended }
 
 class TenantReportItem {
@@ -33,6 +35,17 @@ class TenantReportItem {
         return 'Ended';
     }
   }
+
+  // Get DateTime objects from date strings
+  DateTime get leaseStartDate => DateFormat('dd/MM/yyyy').parse(leaseStart);
+  DateTime get leaseEndDate => DateFormat('dd/MM/yyyy').parse(leaseEnd);
+
+  // Calculate lease duration in days
+  int get leaseDurationDays => leaseEndDate.difference(leaseStartDate).inDays;
+
+  // Calculate days remaining in lease
+  int get daysRemaining => leaseEndDate.difference(DateTime.now()).inDays;
+  bool get isLeaseActive => daysRemaining > 0;
 
   // For converting to/from JSON
   Map<String, dynamic> toJson() {

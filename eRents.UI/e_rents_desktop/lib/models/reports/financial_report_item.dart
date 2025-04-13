@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class FinancialReportItem {
   final String date;
   final String property;
@@ -18,6 +20,9 @@ class FinancialReportItem {
   // For formatting in the UI
   String get formattedAmount => '\$${amount.toStringAsFixed(2)}';
   String get formattedBalance => '\$${balance.toStringAsFixed(2)}';
+
+  // Get DateTime object from date string
+  DateTime get dateObj => DateFormat('dd/MM/yyyy').parse(date);
 
   // For converting to/from JSON
   Map<String, dynamic> toJson() {

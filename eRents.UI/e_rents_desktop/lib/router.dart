@@ -107,84 +107,29 @@ class AppRouter {
           final propertyProvider = context.read<PropertyProvider>();
           final issueId = state.pathParameters['id']!;
 
-          // If providers haven't been initialized yet, trigger data fetch
-          if (maintenanceProvider.issues.isEmpty) {
-            maintenanceProvider.fetchIssues();
-          }
-          if (propertyProvider.properties.isEmpty) {
-            propertyProvider.fetchProperties();
-          }
+          // Instead of fetching immediately, schedule it for after the build
+          Future.microtask(() {
+            if (maintenanceProvider.issues.isEmpty) {
+              maintenanceProvider.fetchIssues();
+            }
+            if (propertyProvider.properties.isEmpty) {
+              propertyProvider.fetchProperties();
+            }
+          });
 
-          // Show loading while data is being fetched
-          if (maintenanceProvider.isLoading || propertyProvider.isLoading) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          // If there's an error in maintenance provider, show error message
-          if (maintenanceProvider.error != null) {
-            return Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      maintenanceProvider.error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => maintenanceProvider.fetchIssues(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          // First try to find the issue in the maintenance provider
+          // Try to find the issue if it already exists
           MaintenanceIssue? issue;
           try {
             issue = maintenanceProvider.issues.firstWhere(
-              (issue) => issue.id == issueId,
+              (i) => i.id == issueId,
             );
           } catch (_) {
-            // If not found in maintenance provider, try to find it in properties
-            try {
-              final property = propertyProvider.properties.firstWhere(
-                (property) => property.maintenanceIssues.any(
-                  (issue) => issue.id == issueId,
-                ),
-              );
-              issue = property.maintenanceIssues.firstWhere(
-                (issue) => issue.id == issueId,
-              );
-            } catch (_) {
-              // If still not found, show error message
-              return Scaffold(
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Maintenance issue not found',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => context.go('/maintenance'),
-                        child: const Text('Back to Maintenance'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
+            // Issue will be loaded after fetchIssues completes
           }
 
-          return MaintenanceIssueDetailsScreen(issue: issue);
+          // Return the screen even if the issue isn't loaded yet
+          // The screen should handle the loading state
+          return MaintenanceIssueDetailsScreen(issueId: issueId, issue: issue);
         },
       ),
       GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),

@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/tenant_feedback.dart';
 import 'package:e_rents_desktop/models/reports/reports.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
 
 class MockDataService {
   static List<User> getMockUsers() {
@@ -398,9 +399,14 @@ class MockDataService {
     DateTime startDate,
     DateTime endDate,
   ) {
+    debugPrint(
+      'MockDataService.getMockFinancialReportData: startDate=$startDate, endDate=$endDate',
+    );
+
     final List<FinancialReportItem> allData = [
+      // 2023 data
       FinancialReportItem(
-        date: '2023-06-01',
+        date: '01/06/2023',
         property: 'Greenview Apartments',
         unit: 'A101',
         transactionType: 'Rent Payment',
@@ -408,7 +414,7 @@ class MockDataService {
         balance: 0.00,
       ),
       FinancialReportItem(
-        date: '2023-06-02',
+        date: '02/06/2023',
         property: 'Sunnydale Complex',
         unit: 'B205',
         transactionType: 'Rent Payment',
@@ -416,7 +422,7 @@ class MockDataService {
         balance: 0.00,
       ),
       FinancialReportItem(
-        date: '2023-06-03',
+        date: '03/06/2023',
         property: 'Riverfront Towers',
         unit: 'C310',
         transactionType: 'Late Fee',
@@ -424,7 +430,7 @@ class MockDataService {
         balance: 50.00,
       ),
       FinancialReportItem(
-        date: '2023-06-05',
+        date: '05/06/2023',
         property: 'Greenview Apartments',
         unit: 'A102',
         transactionType: 'Maintenance Fee',
@@ -432,7 +438,7 @@ class MockDataService {
         balance: 75.00,
       ),
       FinancialReportItem(
-        date: '2023-06-07',
+        date: '07/06/2023',
         property: 'Sunnydale Complex',
         unit: 'B208',
         transactionType: 'Rent Payment',
@@ -440,7 +446,7 @@ class MockDataService {
         balance: 0.00,
       ),
       FinancialReportItem(
-        date: '2023-07-01',
+        date: '01/07/2023',
         property: 'Greenview Apartments',
         unit: 'A101',
         transactionType: 'Rent Payment',
@@ -448,22 +454,99 @@ class MockDataService {
         balance: 0.00,
       ),
       FinancialReportItem(
-        date: '2023-07-02',
+        date: '02/07/2023',
         property: 'Riverfront Towers',
         unit: 'C310',
         transactionType: 'Utilities',
         amount: 120.00,
         balance: 120.00,
       ),
+
+      // 2024-2025 data for the current date range in the logs
+      FinancialReportItem(
+        date: '15/04/2024',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        transactionType: 'Rent Payment',
+        amount: 1250.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '20/04/2024',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        transactionType: 'Rent Payment',
+        amount: 980.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '01/05/2024',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        transactionType: 'Rent Payment',
+        amount: 1400.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '15/05/2024',
+        property: 'Mountain View Residences',
+        unit: 'D204',
+        transactionType: 'Maintenance Fee',
+        amount: 150.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '01/06/2024',
+        property: 'Greenview Apartments',
+        unit: 'A102',
+        transactionType: 'Rent Payment',
+        amount: 1300.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '10/01/2025',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        transactionType: 'Rent Payment',
+        amount: 1450.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '01/02/2025',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        transactionType: 'Utilities',
+        amount: 180.00,
+        balance: 0.00,
+      ),
     ];
 
-    // Filter by date range
-    return allData.where((item) {
-      final itemDate = DateFormat('yyyy-MM-dd').parse(item.date);
-      return (itemDate.isAfter(startDate) ||
-              itemDate.isAtSameMomentAs(startDate)) &&
-          (itemDate.isBefore(endDate) || itemDate.isAtSameMomentAs(endDate));
-    }).toList();
+    // Try to filter by date range
+    try {
+      final filteredData =
+          allData.where((item) {
+            final DateFormat formatter = DateFormat('dd/MM/yyyy');
+            final itemDate = formatter.parse(item.date);
+
+            // Check if the item date is within range
+            final inRange =
+                (itemDate.isAfter(startDate) ||
+                    itemDate.isAtSameMomentAs(startDate)) &&
+                (itemDate.isBefore(endDate) ||
+                    itemDate.isAtSameMomentAs(endDate));
+
+            return inRange;
+          }).toList();
+
+      debugPrint('Filtered financial data: ${filteredData.length} items');
+
+      // Return filtered data even if empty - don't return all data as fallback
+      return filteredData;
+    } catch (e) {
+      debugPrint('Error filtering financial data: $e');
+      // In case of any error, return all data
+      return allData;
+    }
   }
 
   static List<OccupancyReportItem> getMockOccupancyReportData() {
@@ -507,9 +590,14 @@ class MockDataService {
     DateTime startDate,
     DateTime endDate,
   ) {
+    debugPrint(
+      'MockDataService.getMockMaintenanceReportData: startDate=$startDate, endDate=$endDate',
+    );
+
     final List<MaintenanceReportItem> allData = [
+      // 2023 data
       MaintenanceReportItem(
-        date: '2023-06-01',
+        date: '01/06/2023',
         property: 'Greenview Apartments',
         unit: 'A101',
         issueType: 'Plumbing',
@@ -518,7 +606,7 @@ class MockDataService {
         cost: 150.00,
       ),
       MaintenanceReportItem(
-        date: '2023-06-02',
+        date: '02/06/2023',
         property: 'Sunnydale Complex',
         unit: 'B205',
         issueType: 'Electrical',
@@ -527,7 +615,7 @@ class MockDataService {
         cost: 200.00,
       ),
       MaintenanceReportItem(
-        date: '2023-06-03',
+        date: '03/06/2023',
         property: 'Riverfront Towers',
         unit: 'C310',
         issueType: 'HVAC',
@@ -536,7 +624,7 @@ class MockDataService {
         cost: 350.00,
       ),
       MaintenanceReportItem(
-        date: '2023-06-05',
+        date: '05/06/2023',
         property: 'Greenview Apartments',
         unit: 'A102',
         issueType: 'Appliance',
@@ -545,7 +633,7 @@ class MockDataService {
         cost: 125.00,
       ),
       MaintenanceReportItem(
-        date: '2023-07-12',
+        date: '12/07/2023',
         property: 'Mountain View Residences',
         unit: 'D204',
         issueType: 'Structural',
@@ -553,15 +641,81 @@ class MockDataService {
         priority: MaintenancePriority.high,
         cost: 500.00,
       ),
+
+      // 2024-2025 data for the current date range in the logs
+      MaintenanceReportItem(
+        date: '20/04/2024',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        issueType: 'Plumbing',
+        status: 'Completed',
+        priority: MaintenancePriority.medium,
+        cost: 180.00,
+      ),
+      MaintenanceReportItem(
+        date: '05/05/2024',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        issueType: 'Electrical',
+        status: 'Completed',
+        priority: MaintenancePriority.low,
+        cost: 120.00,
+      ),
+      MaintenanceReportItem(
+        date: '10/06/2024',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        issueType: 'HVAC',
+        status: 'In Progress',
+        priority: MaintenancePriority.high,
+        cost: 450.00,
+      ),
+      MaintenanceReportItem(
+        date: '01/12/2024',
+        property: 'Mountain View Residences',
+        unit: 'D204',
+        issueType: 'Appliance',
+        status: 'Completed',
+        priority: MaintenancePriority.medium,
+        cost: 210.00,
+      ),
+      MaintenanceReportItem(
+        date: '15/01/2025',
+        property: 'Greenview Apartments',
+        unit: 'A102',
+        issueType: 'Structural',
+        status: 'Pending',
+        priority: MaintenancePriority.high,
+        cost: 600.00,
+      ),
     ];
 
-    // Filter by date range
-    return allData.where((item) {
-      final itemDate = DateFormat('yyyy-MM-dd').parse(item.date);
-      return (itemDate.isAfter(startDate) ||
-              itemDate.isAtSameMomentAs(startDate)) &&
-          (itemDate.isBefore(endDate) || itemDate.isAtSameMomentAs(endDate));
-    }).toList();
+    // Try to filter by date range
+    try {
+      final filteredData =
+          allData.where((item) {
+            final DateFormat formatter = DateFormat('dd/MM/yyyy');
+            final itemDate = formatter.parse(item.date);
+
+            // Check if the item date is within range
+            final inRange =
+                (itemDate.isAfter(startDate) ||
+                    itemDate.isAtSameMomentAs(startDate)) &&
+                (itemDate.isBefore(endDate) ||
+                    itemDate.isAtSameMomentAs(endDate));
+
+            return inRange;
+          }).toList();
+
+      debugPrint('Filtered maintenance data: ${filteredData.length} items');
+
+      // Return filtered data even if empty - don't return all data as fallback
+      return filteredData;
+    } catch (e) {
+      debugPrint('Error filtering maintenance data: $e');
+      // In case of any error, return all data
+      return allData;
+    }
   }
 
   static List<TenantReportItem> getMockTenantReportData() {
@@ -570,8 +724,8 @@ class MockDataService {
         tenant: 'John Smith',
         property: 'Greenview Apartments',
         unit: 'A101',
-        leaseStart: '2023-01-01',
-        leaseEnd: '2023-12-31',
+        leaseStart: '01/01/2023',
+        leaseEnd: '31/12/2023',
         rent: 1200.00,
         status: TenantStatus.active,
       ),
@@ -579,8 +733,8 @@ class MockDataService {
         tenant: 'Jane Doe',
         property: 'Sunnydale Complex',
         unit: 'B205',
-        leaseStart: '2023-03-15',
-        leaseEnd: '2024-03-14',
+        leaseStart: '15/03/2023',
+        leaseEnd: '14/03/2024',
         rent: 950.00,
         status: TenantStatus.active,
       ),
@@ -588,8 +742,8 @@ class MockDataService {
         tenant: 'Robert Johnson',
         property: 'Riverfront Towers',
         unit: 'C310',
-        leaseStart: '2022-11-01',
-        leaseEnd: '2023-10-31',
+        leaseStart: '01/11/2022',
+        leaseEnd: '31/10/2023',
         rent: 1350.00,
         status: TenantStatus.latePayment,
       ),
@@ -597,8 +751,8 @@ class MockDataService {
         tenant: 'Mary Williams',
         property: 'Greenview Apartments',
         unit: 'A102',
-        leaseStart: '2023-02-01',
-        leaseEnd: '2024-01-31',
+        leaseStart: '01/02/2023',
+        leaseEnd: '31/01/2024',
         rent: 1100.00,
         status: TenantStatus.active,
       ),
@@ -606,8 +760,8 @@ class MockDataService {
         tenant: 'David Brown',
         property: 'Sunnydale Complex',
         unit: 'B208',
-        leaseStart: '2023-05-01',
-        leaseEnd: '2023-07-31',
+        leaseStart: '01/05/2023',
+        leaseEnd: '31/07/2023',
         rent: 1050.00,
         status: TenantStatus.endingSoon,
       ),

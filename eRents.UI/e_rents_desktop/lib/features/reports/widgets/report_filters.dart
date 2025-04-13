@@ -20,7 +20,7 @@ class ReportFilters extends StatefulWidget {
 class _ReportFiltersState extends State<ReportFilters> {
   late DateTime _startDate;
   late DateTime _endDate;
-  final DateFormat _dateFormat = DateFormat('dd-MM-yyyy');
+  final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
   final List<String> _quickDateRanges = [
     'Today',
     'Yesterday',
@@ -41,6 +41,18 @@ class _ReportFiltersState extends State<ReportFilters> {
     super.initState();
     _startDate = widget.startDate;
     _endDate = widget.endDate;
+  }
+
+  @override
+  void didUpdateWidget(ReportFilters oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.startDate != widget.startDate ||
+        oldWidget.endDate != widget.endDate) {
+      setState(() {
+        _startDate = widget.startDate;
+        _endDate = widget.endDate;
+      });
+    }
   }
 
   Future<void> _selectStartDate(BuildContext context) async {
@@ -83,8 +95,9 @@ class _ReportFiltersState extends State<ReportFilters> {
     DateTime end;
 
     // Set the time to end of day for end date
-    endOfDay(DateTime date) =>
-        DateTime(date.year, date.month, date.day, 23, 59, 59);
+    final endOfDay =
+        (DateTime date) =>
+            DateTime(date.year, date.month, date.day, 23, 59, 59);
 
     switch (range) {
       case 'Today':

@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 enum MaintenancePriority { low, medium, high }
 
 class MaintenanceReportItem {
@@ -31,6 +33,9 @@ class MaintenanceReportItem {
         return 'High';
     }
   }
+
+  // Get DateTime object from date string
+  DateTime get dateObj => DateFormat('dd/MM/yyyy').parse(date);
 
   // For converting to/from JSON
   Map<String, dynamic> toJson() {

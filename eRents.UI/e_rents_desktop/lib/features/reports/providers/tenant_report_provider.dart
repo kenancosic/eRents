@@ -1,0 +1,55 @@
+import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
+import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
+import 'package:e_rents_desktop/services/mock_data_service.dart';
+
+class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
+  @override
+  String get endpoint => 'api/reports/tenants';
+
+  @override
+  TenantReportItem fromJson(Map<String, dynamic> json) {
+    return TenantReportItem.fromJson(json);
+  }
+
+  @override
+  Map<String, dynamic> toJson(TenantReportItem item) {
+    return item.toJson();
+  }
+
+  @override
+  List<TenantReportItem> getMockItems() {
+    return MockDataService.getMockTenantReportData();
+  }
+
+  @override
+  void onDateRangeChanged() {
+    // For tenant reports, we don't need to refresh data on date changes
+    // since we show all tenants regardless of dates
+    notifyListeners();
+  }
+
+  @override
+  String getReportName() {
+    return 'Tenant Report';
+  }
+
+  // Get counts by status
+  int getCountByStatus(TenantStatus status) {
+    return items.where((item) => item.status == status).length;
+  }
+
+  // Count of active tenants
+  int get activeTenantsCount => getCountByStatus(TenantStatus.active);
+
+  // Count of leases ending soon (within 30 days)
+  int get leasesEndingSoonCount =>
+      items
+          .where((item) => item.daysRemaining > 0 && item.daysRemaining <= 30)
+          .length;
+
+  // Calculate average rent
+  double get averageRent {
+    if (items.isEmpty) return 0;
+    return items.fold(0.0, (sum, item) => sum + item.rent) / items.length;
+  }
+}
