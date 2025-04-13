@@ -343,7 +343,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '(${_currentFilterField}: $suggestion)',
+                  '($_currentFilterField: $suggestion)',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],

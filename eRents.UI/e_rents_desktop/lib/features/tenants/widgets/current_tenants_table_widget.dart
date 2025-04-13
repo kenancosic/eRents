@@ -29,7 +29,7 @@ class CurrentTenantsTableWidget extends StatefulWidget {
 
 class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
   // Columns visibility state
-  Map<String, bool> _columnVisibility = {
+  final Map<String, bool> _columnVisibility = {
     'Profile': true,
     'Full Name': true,
     'Property': true,

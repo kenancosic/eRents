@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class ReportFilters extends StatelessWidget {
+class ReportFilters extends StatefulWidget {
   final DateTime startDate;
   final DateTime endDate;
   final Function(DateTime, DateTime) onDateRangeChanged;
@@ -13,128 +14,232 @@ class ReportFilters extends StatelessWidget {
   });
 
   @override
+  State<ReportFilters> createState() => _ReportFiltersState();
+}
+
+class _ReportFiltersState extends State<ReportFilters> {
+  late DateTime _startDate;
+  late DateTime _endDate;
+  final DateFormat _dateFormat = DateFormat('dd-MM-yyyy');
+  final List<String> _quickDateRanges = [
+    'Today',
+    'Yesterday',
+    'This Week',
+    'Last Week',
+    'This Month',
+    'Last Month',
+    'This Quarter',
+    'Last Quarter',
+    'This Year',
+    'Last Year',
+    'Custom',
+  ];
+  String _selectedRange = 'This Month';
+
+  @override
+  void initState() {
+    super.initState();
+    _startDate = widget.startDate;
+    _endDate = widget.endDate;
+  }
+
+  Future<void> _selectStartDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _startDate) {
+      setState(() {
+        _startDate = picked;
+        _selectedRange = 'Custom';
+      });
+      widget.onDateRangeChanged(_startDate, _endDate);
+    }
+  }
+
+  Future<void> _selectEndDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(
+        const Duration(days: 1),
+      ), // Allow selecting today
+    );
+    if (picked != null && picked != _endDate) {
+      setState(() {
+        _endDate = picked;
+        _selectedRange = 'Custom';
+      });
+      widget.onDateRangeChanged(_startDate, _endDate);
+    }
+  }
+
+  void _applyQuickDateRange(String range) {
+    DateTime now = DateTime.now();
+    DateTime start;
+    DateTime end;
+
+    // Set the time to end of day for end date
+    endOfDay(DateTime date) =>
+        DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+    switch (range) {
+      case 'Today':
+        start = DateTime(now.year, now.month, now.day);
+        end = endOfDay(now);
+        break;
+      case 'Yesterday':
+        final yesterday = now.subtract(const Duration(days: 1));
+        start = DateTime(yesterday.year, yesterday.month, yesterday.day);
+        end = endOfDay(yesterday);
+        break;
+      case 'This Week':
+        // Start of the week (Monday)
+        start = now.subtract(Duration(days: now.weekday - 1));
+        start = DateTime(start.year, start.month, start.day);
+        end = endOfDay(now);
+        break;
+      case 'Last Week':
+        // Last week's Monday
+        start = now.subtract(Duration(days: now.weekday - 1 + 7));
+        start = DateTime(start.year, start.month, start.day);
+        // Last week's Sunday
+        end = now.subtract(Duration(days: now.weekday));
+        end = endOfDay(end);
+        break;
+      case 'This Month':
+        start = DateTime(now.year, now.month, 1);
+        end = endOfDay(now);
+        break;
+      case 'Last Month':
+        // First day of last month
+        start = DateTime(now.year, now.month - 1, 1);
+        // Last day of last month
+        end = DateTime(now.year, now.month, 0);
+        end = endOfDay(end);
+        break;
+      case 'This Quarter':
+        final quarter = (now.month - 1) ~/ 3;
+        start = DateTime(now.year, quarter * 3 + 1, 1);
+        end = endOfDay(now);
+        break;
+      case 'Last Quarter':
+        final quarter = (now.month - 1) ~/ 3;
+        if (quarter == 0) {
+          // Last quarter of previous year
+          start = DateTime(now.year - 1, 10, 1);
+          end = DateTime(now.year, 1, 0);
+        } else {
+          // Previous quarter of current year
+          start = DateTime(now.year, (quarter - 1) * 3 + 1, 1);
+          end = DateTime(now.year, quarter * 3 + 1, 0);
+        }
+        end = endOfDay(end);
+        break;
+      case 'This Year':
+        start = DateTime(now.year, 1, 1);
+        end = endOfDay(now);
+        break;
+      case 'Last Year':
+        start = DateTime(now.year - 1, 1, 1);
+        end = DateTime(now.year, 1, 0);
+        end = endOfDay(end);
+        break;
+      default:
+        return; // Keep the existing dates for 'Custom'
+    }
+
+    setState(() {
+      _startDate = start;
+      _endDate = end;
+      _selectedRange = range;
+    });
+
+    widget.onDateRangeChanged(_startDate, _endDate);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 2),
+            blurRadius: 5,
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Date Range:',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          const Text(
+            'Filter Reports',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(width: 16),
-          _buildDatePicker(
-            context,
-            'Start Date',
-            startDate,
-            (date) => onDateRangeChanged(date, endDate),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Date Range',
+                    border: OutlineInputBorder(),
+                  ),
+                  value: _selectedRange,
+                  items:
+                      _quickDateRanges
+                          .map(
+                            (range) => DropdownMenuItem(
+                              value: range,
+                              child: Text(range),
+                            ),
+                          )
+                          .toList(),
+                  onChanged: (value) {
+                    if (value != null && value != 'Custom') {
+                      _applyQuickDateRange(value);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectStartDate(context),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Start Date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(_dateFormat.format(_startDate)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectEndDate(context),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'End Date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today),
+                    ),
+                    child: Text(_dateFormat.format(_endDate)),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          _buildDatePicker(
-            context,
-            'End Date',
-            endDate,
-            (date) => onDateRangeChanged(startDate, date),
-          ),
-          const Spacer(),
-          _buildQuickSelectButtons(context),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDatePicker(
-    BuildContext context,
-    String label,
-    DateTime date,
-    Function(DateTime) onDateSelected,
-  ) {
-    return InkWell(
-      onTap: () async {
-        final selected = await showDatePicker(
-          context: context,
-          initialDate: date,
-          firstDate: DateTime(2020),
-          lastDate: DateTime.now(),
-        );
-        if (selected != null) {
-          onDateSelected(selected);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${date.day}/${date.month}/${date.year}',
-              style: const TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickSelectButtons(BuildContext context) {
-    return Row(
-      children: [
-        _buildQuickSelectButton(context, 'Last 7 Days', () {
-          final end = DateTime.now();
-          final start = end.subtract(const Duration(days: 7));
-          onDateRangeChanged(start, end);
-        }),
-        const SizedBox(width: 8),
-        _buildQuickSelectButton(context, 'Last 30 Days', () {
-          final end = DateTime.now();
-          final start = end.subtract(const Duration(days: 30));
-          onDateRangeChanged(start, end);
-        }),
-        const SizedBox(width: 8),
-        _buildQuickSelectButton(context, 'Last 90 Days', () {
-          final end = DateTime.now();
-          final start = end.subtract(const Duration(days: 90));
-          onDateRangeChanged(start, end);
-        }),
-      ],
-    );
-  }
-
-  Widget _buildQuickSelectButton(
-    BuildContext context,
-    String label,
-    VoidCallback onPressed,
-  ) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        backgroundColor: Colors.grey[100],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
       ),
     );
   }

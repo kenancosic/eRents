@@ -8,7 +8,7 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
   final ApiService _apiService;
   bool _isLoading = false;
   String? _error;
-  bool _useMockData = true; // Flag to toggle between mock and real data
+  final bool _useMockData = true; // Flag to toggle between mock and real data
 
   MaintenanceProvider(this._apiService) : super(_apiService) {
     // Enable mock data for development

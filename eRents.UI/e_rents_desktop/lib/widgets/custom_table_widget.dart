@@ -13,7 +13,7 @@ class CustomTableWidget<T> extends StatefulWidget {
   final double? dataRowHeight;
 
   const CustomTableWidget({
-    Key? key,
+    super.key,
     this.title = '',
     required this.data,
     required this.columns,
@@ -23,7 +23,7 @@ class CustomTableWidget<T> extends StatefulWidget {
     this.emptyStateWidget,
     this.columnWidths,
     this.dataRowHeight,
-  }) : super(key: key);
+  });
 
   @override
   _CustomTableWidgetState<T> createState() => _CustomTableWidgetState<T>();
@@ -247,7 +247,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
     return Expanded(
       child: SingleChildScrollView(
         scrollDirection: Axis.vertical,
-        child: Container(
+        child: SizedBox(
           width: constraints.maxWidth,
           child: Column(
             children:
@@ -368,11 +368,11 @@ class PaginationControls extends StatelessWidget {
   final Function(int) onPageChanged;
 
   const PaginationControls({
-    Key? key,
+    super.key,
     required this.currentPage,
     required this.totalPages,
     required this.onPageChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

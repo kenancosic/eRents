@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/tenant_feedback.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:provider/provider.dart';
 

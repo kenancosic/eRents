@@ -25,8 +25,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage() {
-    if (_messageController.text.trim().isEmpty || _selectedContact == null)
+    if (_messageController.text.trim().isEmpty || _selectedContact == null) {
       return;
+    }
 
     final newMessage = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),

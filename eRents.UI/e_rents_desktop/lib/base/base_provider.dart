@@ -71,7 +71,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
         await Future.delayed(const Duration(seconds: 1));
         items_ = getMockItems();
       } else {
-        final response = await _apiService!.get(endpoint);
+        final response = await _apiService.get(endpoint);
         items_ =
             (json.decode(response.body) as List)
                 .map((json) => fromJson(json))
@@ -88,7 +88,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
         await Future.delayed(const Duration(seconds: 1));
         items_.add(item);
       } else {
-        final response = await _apiService!.post(endpoint, toJson(item));
+        final response = await _apiService.post(endpoint, toJson(item));
         items_.add(fromJson(json.decode(response.body)));
       }
     });
@@ -107,7 +107,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
           items_[index] = item;
         }
       } else {
-        await _apiService!.put('$endpoint/${_getItemId(item)}', toJson(item));
+        await _apiService.put('$endpoint/${_getItemId(item)}', toJson(item));
         final index = items_.indexWhere(
           (i) => _getItemId(i) == _getItemId(item),
         );
@@ -126,7 +126,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
         await Future.delayed(const Duration(seconds: 1));
         items_.removeWhere((item) => _getItemId(item) == id);
       } else {
-        await _apiService!.delete('$endpoint/$id');
+        await _apiService.delete('$endpoint/$id');
         items_.removeWhere((item) => _getItemId(item) == id);
       }
     });
@@ -134,8 +134,9 @@ abstract class BaseProvider<T> extends ChangeNotifier {
 
   // Helper method to get item ID
   String _getItemId(T item) {
-    if (item is dynamic && item.id != null) {
-      return item.id.toString();
+    final dynamic dynamicItem = item;
+    if (dynamicItem.id != null) {
+      return dynamicItem.id.toString();
     }
     throw Exception('Item must have an id property');
   }

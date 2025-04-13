@@ -84,7 +84,7 @@ class AuthBaseScreen extends StatelessWidget {
         // Side content column - takes 60% of screen width
         Expanded(
           flex: 6,
-          child: Container(
+          child: SizedBox(
             height: double.infinity,
             child:
                 customSideContent ??

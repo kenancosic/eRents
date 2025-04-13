@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
 
 /// A base screen that provides common functionality for all screens in the application.

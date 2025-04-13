@@ -14,8 +14,7 @@ class AuthService extends ApiService {
   // Add getter to check token existence
   static bool get hasToken => isDevelopmentMode ? _devToken != null : false;
 
-  AuthService(String baseUrl, SecureStorageService storageService)
-    : super(baseUrl, storageService);
+  AuthService(super.baseUrl, super.storageService);
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     // Simulate network delay

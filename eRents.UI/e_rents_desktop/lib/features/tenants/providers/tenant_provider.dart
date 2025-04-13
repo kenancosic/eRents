@@ -8,7 +8,7 @@ import 'package:e_rents_desktop/services/mock_data_service.dart';
 class TenantProvider extends BaseProvider<User> {
   List<User> _currentTenants = [];
   List<TenantPreference> _searchingTenants = [];
-  Map<String, List<TenantFeedback>> _tenantFeedbacks = {};
+  final Map<String, List<TenantFeedback>> _tenantFeedbacks = {};
   bool _isLoading = false;
 
   List<User> get currentTenants => _currentTenants;

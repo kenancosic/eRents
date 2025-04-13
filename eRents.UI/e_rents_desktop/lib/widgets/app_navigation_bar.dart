@@ -209,6 +209,8 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
                   ).colorScheme.onSurface.withOpacity(0.6),
                 )
                 : null,
+        initiallyExpanded: isSelected,
+        maintainState: true,
         children:
             item.subItems!.map((subItem) {
               final isSubItemSelected = widget.currentPath == subItem.path;
@@ -219,8 +221,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
                 isSubItem: true,
               );
             }).toList(),
-        initiallyExpanded: isSelected,
-        maintainState: true,
       ),
     );
   }

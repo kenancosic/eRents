@@ -35,11 +35,7 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (issue.propertyId != null) {
-              context.go('/properties/${issue.propertyId}');
-            } else {
-              context.go('/maintenance');
-            }
+            context.go('/properties/${issue.propertyId}');
           },
           tooltip: 'Go back',
         ),
@@ -195,14 +191,13 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
           ),
         ],
         const Spacer(),
-        if (issue.propertyId != null)
-          TextButton.icon(
-            onPressed: () {
-              context.go('/properties/${issue.propertyId}');
-            },
-            icon: const Icon(Icons.home),
-            label: const Text('View Property'),
-          ),
+        TextButton.icon(
+          onPressed: () {
+            context.go('/properties/${issue.propertyId}');
+          },
+          icon: const Icon(Icons.home),
+          label: const Text('View Property'),
+        ),
       ],
     );
   }

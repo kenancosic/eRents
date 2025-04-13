@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class TenantFeedback {
   final String id;
   final String tenantId;

@@ -10,12 +10,11 @@ class AuthProvider extends BaseProvider<User> {
   static User? _devCurrentUser; // Static user for development
   String? _error;
 
-  AuthProvider(ApiService apiService)
+  AuthProvider(ApiService super.apiService)
     : _authService = AuthService(
         apiService.baseUrl,
         apiService.secureStorageService,
-      ),
-      super(apiService) {
+      ) {
     // Initialize authentication state
     _initializeAuth();
   }

@@ -9,14 +9,14 @@ class StatusDialog extends StatelessWidget {
   final String? actionLabel;
 
   const StatusDialog({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     this.icon = Icons.check_circle_outline,
     this.iconColor = Colors.green,
     this.onActionPressed,
     this.actionLabel,
-  }) : super(key: key);
+  });
 
   static Future<void> show({
     required BuildContext context,

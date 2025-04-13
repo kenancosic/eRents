@@ -3,6 +3,8 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/tenant_feedback.dart';
+import 'package:e_rents_desktop/models/reports/reports.dart';
+import 'package:intl/intl.dart';
 
 class MockDataService {
   static List<User> getMockUsers() {
@@ -387,6 +389,227 @@ class MockDataService {
         maintenanceIssues: [],
         lastInspectionDate: DateTime.now().subtract(const Duration(days: 20)),
         nextInspectionDate: DateTime.now().add(const Duration(days: 70)),
+      ),
+    ];
+  }
+
+  // Reports data
+  static List<FinancialReportItem> getMockFinancialReportData(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final List<FinancialReportItem> allData = [
+      FinancialReportItem(
+        date: '2023-06-01',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        transactionType: 'Rent Payment',
+        amount: 1200.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '2023-06-02',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        transactionType: 'Rent Payment',
+        amount: 950.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '2023-06-03',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        transactionType: 'Late Fee',
+        amount: 50.00,
+        balance: 50.00,
+      ),
+      FinancialReportItem(
+        date: '2023-06-05',
+        property: 'Greenview Apartments',
+        unit: 'A102',
+        transactionType: 'Maintenance Fee',
+        amount: 75.00,
+        balance: 75.00,
+      ),
+      FinancialReportItem(
+        date: '2023-06-07',
+        property: 'Sunnydale Complex',
+        unit: 'B208',
+        transactionType: 'Rent Payment',
+        amount: 1050.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '2023-07-01',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        transactionType: 'Rent Payment',
+        amount: 1200.00,
+        balance: 0.00,
+      ),
+      FinancialReportItem(
+        date: '2023-07-02',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        transactionType: 'Utilities',
+        amount: 120.00,
+        balance: 120.00,
+      ),
+    ];
+
+    // Filter by date range
+    return allData.where((item) {
+      final itemDate = DateFormat('yyyy-MM-dd').parse(item.date);
+      return (itemDate.isAfter(startDate) ||
+              itemDate.isAtSameMomentAs(startDate)) &&
+          (itemDate.isBefore(endDate) || itemDate.isAtSameMomentAs(endDate));
+    }).toList();
+  }
+
+  static List<OccupancyReportItem> getMockOccupancyReportData() {
+    return [
+      OccupancyReportItem(
+        property: 'Greenview Apartments',
+        totalUnits: 24,
+        occupied: 22,
+        vacant: 2,
+        occupancyRate: 0.917,
+        avgRent: 1150.00,
+      ),
+      OccupancyReportItem(
+        property: 'Sunnydale Complex',
+        totalUnits: 36,
+        occupied: 30,
+        vacant: 6,
+        occupancyRate: 0.833,
+        avgRent: 950.00,
+      ),
+      OccupancyReportItem(
+        property: 'Riverfront Towers',
+        totalUnits: 48,
+        occupied: 45,
+        vacant: 3,
+        occupancyRate: 0.938,
+        avgRent: 1350.00,
+      ),
+      OccupancyReportItem(
+        property: 'Mountain View Residences',
+        totalUnits: 20,
+        occupied: 18,
+        vacant: 2,
+        occupancyRate: 0.900,
+        avgRent: 1200.00,
+      ),
+    ];
+  }
+
+  static List<MaintenanceReportItem> getMockMaintenanceReportData(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    final List<MaintenanceReportItem> allData = [
+      MaintenanceReportItem(
+        date: '2023-06-01',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        issueType: 'Plumbing',
+        status: 'Completed',
+        priority: MaintenancePriority.high,
+        cost: 150.00,
+      ),
+      MaintenanceReportItem(
+        date: '2023-06-02',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        issueType: 'Electrical',
+        status: 'In Progress',
+        priority: MaintenancePriority.medium,
+        cost: 200.00,
+      ),
+      MaintenanceReportItem(
+        date: '2023-06-03',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        issueType: 'HVAC',
+        status: 'Pending',
+        priority: MaintenancePriority.low,
+        cost: 350.00,
+      ),
+      MaintenanceReportItem(
+        date: '2023-06-05',
+        property: 'Greenview Apartments',
+        unit: 'A102',
+        issueType: 'Appliance',
+        status: 'Completed',
+        priority: MaintenancePriority.medium,
+        cost: 125.00,
+      ),
+      MaintenanceReportItem(
+        date: '2023-07-12',
+        property: 'Mountain View Residences',
+        unit: 'D204',
+        issueType: 'Structural',
+        status: 'In Progress',
+        priority: MaintenancePriority.high,
+        cost: 500.00,
+      ),
+    ];
+
+    // Filter by date range
+    return allData.where((item) {
+      final itemDate = DateFormat('yyyy-MM-dd').parse(item.date);
+      return (itemDate.isAfter(startDate) ||
+              itemDate.isAtSameMomentAs(startDate)) &&
+          (itemDate.isBefore(endDate) || itemDate.isAtSameMomentAs(endDate));
+    }).toList();
+  }
+
+  static List<TenantReportItem> getMockTenantReportData() {
+    return [
+      TenantReportItem(
+        tenant: 'John Smith',
+        property: 'Greenview Apartments',
+        unit: 'A101',
+        leaseStart: '2023-01-01',
+        leaseEnd: '2023-12-31',
+        rent: 1200.00,
+        status: TenantStatus.active,
+      ),
+      TenantReportItem(
+        tenant: 'Jane Doe',
+        property: 'Sunnydale Complex',
+        unit: 'B205',
+        leaseStart: '2023-03-15',
+        leaseEnd: '2024-03-14',
+        rent: 950.00,
+        status: TenantStatus.active,
+      ),
+      TenantReportItem(
+        tenant: 'Robert Johnson',
+        property: 'Riverfront Towers',
+        unit: 'C310',
+        leaseStart: '2022-11-01',
+        leaseEnd: '2023-10-31',
+        rent: 1350.00,
+        status: TenantStatus.latePayment,
+      ),
+      TenantReportItem(
+        tenant: 'Mary Williams',
+        property: 'Greenview Apartments',
+        unit: 'A102',
+        leaseStart: '2023-02-01',
+        leaseEnd: '2024-01-31',
+        rent: 1100.00,
+        status: TenantStatus.active,
+      ),
+      TenantReportItem(
+        tenant: 'David Brown',
+        property: 'Sunnydale Complex',
+        unit: 'B208',
+        leaseStart: '2023-05-01',
+        leaseEnd: '2023-07-31',
+        rent: 1050.00,
+        status: TenantStatus.endingSoon,
       ),
     ];
   }

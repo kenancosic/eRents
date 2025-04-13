@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class TenantPreference {
   final String id;
   final String userId;

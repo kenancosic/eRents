@@ -14,55 +14,52 @@ class ExportOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.download),
-      tooltip: 'Export Report',
-      itemBuilder:
-          (context) => [
-            const PopupMenuItem(
-              value: 'pdf',
-              child: Row(
-                children: [
-                  Icon(Icons.picture_as_pdf, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Export as PDF'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'excel',
-              child: Row(
-                children: [
-                  Icon(Icons.table_chart, color: Colors.green),
-                  SizedBox(width: 8),
-                  Text('Export as Excel'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'csv',
-              child: Row(
-                children: [
-                  Icon(Icons.description, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text('Export as CSV'),
-                ],
-              ),
-            ),
-          ],
-      onSelected: (value) {
-        switch (value) {
-          case 'pdf':
-            onExportPDF();
-            break;
-          case 'excel':
-            onExportExcel();
-            break;
-          case 'csv':
-            onExportCSV();
-            break;
-        }
-      },
+    return Row(
+      children: [
+        _buildExportButton(
+          context,
+          'PDF',
+          Icons.picture_as_pdf_outlined,
+          Colors.red.shade700,
+          onExportPDF,
+        ),
+        const SizedBox(width: 8),
+        _buildExportButton(
+          context,
+          'Excel',
+          Icons.table_chart_outlined,
+          Colors.green.shade700,
+          onExportExcel,
+        ),
+        const SizedBox(width: 8),
+        _buildExportButton(
+          context,
+          'CSV',
+          Icons.description_outlined,
+          Colors.blue.shade700,
+          onExportCSV,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExportButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18, color: Colors.white),
+      label: Text(label, style: const TextStyle(color: Colors.white)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        textStyle: const TextStyle(fontWeight: FontWeight.bold),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
     );
   }
 }

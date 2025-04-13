@@ -30,7 +30,7 @@ class TenantsAdvertisementTableWidget extends StatefulWidget {
 class _TenantsAdvertisementTableWidgetState
     extends State<TenantsAdvertisementTableWidget> {
   // Columns visibility state with smart defaults - Description hidden by default
-  Map<String, bool> _columnVisibility = {
+  final Map<String, bool> _columnVisibility = {
     'Tenant': true,
     'Location': true,
     'Budget': true,
