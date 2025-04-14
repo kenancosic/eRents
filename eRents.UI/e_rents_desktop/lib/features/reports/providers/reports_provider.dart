@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/reports/providers/occupancy_report_prov
 import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/foundation.dart';
+import 'package:e_rents_desktop/services/export_service.dart';
 
 /// Report type enum used for switching between report screens
 enum ReportType { financial, occupancy, maintenance, tenant }
@@ -153,23 +154,148 @@ class ReportsProvider extends ChangeNotifier {
   String getReportTitleWithDateRange() =>
       currentProvider.getReportTitleWithDateRange();
 
-  // Generic export method
-  Future<void> _exportReport(String fileExtension, String description) async {
-    await Future.delayed(
-      const Duration(seconds: 1),
-    ); // Simulate processing time
+  // Helper method to get current report data as rows
+  List<List<String>> _getCurrentReportRows() {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return financialReportData
+            .map(
+              (item) => [
+                item.date,
+                item.property,
+                item.unit,
+                item.transactionType,
+                item.formattedAmount,
+                item.formattedBalance,
+              ],
+            )
+            .toList();
+      case ReportType.occupancy:
+        return occupancyReportData
+            .map(
+              (item) => [
+                item.property,
+                item.totalUnits.toString(),
+                item.occupied.toString(),
+                item.vacant.toString(),
+                item.formattedOccupancyRate,
+                item.formattedAvgRent,
+              ],
+            )
+            .toList();
+      case ReportType.maintenance:
+        return maintenanceReportData
+            .map(
+              (item) => [
+                item.date,
+                item.property,
+                item.unit,
+                item.issueType,
+                item.status,
+                item.priorityLabel,
+                item.formattedCost,
+              ],
+            )
+            .toList();
+      case ReportType.tenant:
+        return tenantReportData
+            .map(
+              (item) => [
+                item.tenant,
+                item.property,
+                item.unit,
+                item.leaseStart,
+                item.leaseEnd,
+                item.formattedRent,
+                item.statusLabel,
+                item.daysRemaining.toString(),
+              ],
+            )
+            .toList();
+    }
+  }
 
-    final fileName =
-        '${getReportTypeString().replaceAll(' ', '_')}_$formattedStartDate-$formattedEndDate.$fileExtension';
-    debugPrint('Exporting to $description: $fileName');
+  // Helper method to get current report headers
+  List<String> _getCurrentReportHeaders() {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return [
+          'Date',
+          'Property',
+          'Unit',
+          'Transaction Type',
+          'Amount',
+          'Balance',
+        ];
+      case ReportType.occupancy:
+        return [
+          'Property',
+          'Total Units',
+          'Occupied',
+          'Vacant',
+          'Occupancy Rate',
+          'Avg. Rent',
+        ];
+      case ReportType.maintenance:
+        return [
+          'Date',
+          'Property',
+          'Unit',
+          'Issue Type',
+          'Status',
+          'Priority',
+          'Cost',
+        ];
+      case ReportType.tenant:
+        return [
+          'Tenant',
+          'Property',
+          'Unit',
+          'Lease Start',
+          'Lease End',
+          'Rent',
+          'Status',
+          'Days Left',
+        ];
+    }
   }
 
   // Export methods
-  Future<void> exportToPDF() async => _exportReport('pdf', 'PDF');
+  Future<String> exportToPDF() async {
+    final title = getReportTitleWithDateRange();
+    final headers = _getCurrentReportHeaders();
+    final rows = _getCurrentReportRows();
 
-  Future<void> exportToExcel() async => _exportReport('xlsx', 'Excel');
+    return ExportService.exportToPDF(
+      title: title,
+      headers: headers,
+      rows: rows,
+    );
+  }
 
-  Future<void> exportToCSV() async => _exportReport('csv', 'CSV');
+  Future<String> exportToExcel() async {
+    final title = getReportTitleWithDateRange();
+    final headers = _getCurrentReportHeaders();
+    final rows = _getCurrentReportRows();
+
+    return ExportService.exportToExcel(
+      title: title,
+      headers: headers,
+      rows: rows,
+    );
+  }
+
+  Future<String> exportToCSV() async {
+    final title = getReportTitleWithDateRange();
+    final headers = _getCurrentReportHeaders();
+    final rows = _getCurrentReportRows();
+
+    return ExportService.exportToCSV(
+      title: title,
+      headers: headers,
+      rows: rows,
+    );
+  }
 
   // Update date range for current provider
   void setDateRange(DateTime startDate, DateTime endDate) {

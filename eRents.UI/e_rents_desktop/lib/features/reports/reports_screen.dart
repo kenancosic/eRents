@@ -9,6 +9,7 @@ import 'package:e_rents_desktop/features/reports/providers/financial_report_prov
 import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
+import 'package:flutter/services.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -69,7 +70,119 @@ class ReportsScreen extends StatelessWidget {
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  const _ReportsScreenContent();
+  const _ReportsScreenContent({Key? key}) : super(key: key);
+
+  void _showExportResult(
+    BuildContext context,
+    String filePath,
+    String message,
+  ) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(message),
+                  Text(
+                    'Saved to: $filePath',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: filePath));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Path copied to clipboard'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+              child: const Text('Copy Path'),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showError(BuildContext context, String error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Export failed: $error')),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _handleExportPDF(BuildContext context) async {
+    try {
+      final provider = Provider.of<ReportsProvider>(context, listen: false);
+      final filePath = await provider.exportToPDF();
+      if (!context.mounted) return;
+
+      _showExportResult(
+        context,
+        filePath,
+        'PDF file exported and opened with system viewer',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showError(context, e.toString());
+    }
+  }
+
+  Future<void> _handleExportExcel(BuildContext context) async {
+    try {
+      final provider = Provider.of<ReportsProvider>(context, listen: false);
+      final filePath = await provider.exportToExcel();
+      if (!context.mounted) return;
+
+      _showExportResult(
+        context,
+        filePath,
+        'Excel file exported and opened with system viewer',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showError(context, e.toString());
+    }
+  }
+
+  Future<void> _handleExportCSV(BuildContext context) async {
+    try {
+      final provider = Provider.of<ReportsProvider>(context, listen: false);
+      final filePath = await provider.exportToCSV();
+      if (!context.mounted) return;
+
+      _showExportResult(
+        context,
+        filePath,
+        'CSV file exported and opened with system viewer',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      _showError(context, e.toString());
+    }
+  }
 
   void _handleDateRangeChanged(
     BuildContext context,
@@ -78,42 +191,6 @@ class _ReportsScreenContent extends StatelessWidget {
   ) {
     final provider = Provider.of<ReportsProvider>(context, listen: false);
     provider.setDateRange(start, end);
-  }
-
-  void _handleExportPDF(BuildContext context) {
-    final provider = Provider.of<ReportsProvider>(context, listen: false);
-    provider.exportToPDF();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exporting as PDF...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _handleExportExcel(BuildContext context) {
-    final provider = Provider.of<ReportsProvider>(context, listen: false);
-    provider.exportToExcel();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exporting as Excel...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void _handleExportCSV(BuildContext context) {
-    final provider = Provider.of<ReportsProvider>(context, listen: false);
-    provider.exportToCSV();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exporting as CSV...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   @override
