@@ -1,84 +1,133 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/reports/reports.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
+import 'package:flutter/foundation.dart';
 
 /// Report type enum used for switching between report screens
 enum ReportType { financial, occupancy, maintenance, tenant }
 
 /// Main provider class that coordinates all individual report providers
 class ReportsProvider extends ChangeNotifier {
-  // Individual report providers - not final to support updates
-  FinancialReportProvider financialReportProvider;
-  OccupancyReportProvider occupancyReportProvider;
-  MaintenanceReportProvider maintenanceReportProvider;
-  TenantReportProvider tenantReportProvider;
+  // Map to store all report providers
+  final Map<ReportType, BaseReportProvider> _providers = {};
 
   // Current active report type
   ReportType _currentReportType = ReportType.financial;
-  ReportType get currentReportType => _currentReportType;
+  bool _isLoading = false;
 
-  // Constructor - initialize all providers
+  // Getters for specific providers
+  FinancialReportProvider get financialReportProvider =>
+      getProvider<FinancialReportProvider>(ReportType.financial);
+  OccupancyReportProvider get occupancyReportProvider =>
+      getProvider<OccupancyReportProvider>(ReportType.occupancy);
+  MaintenanceReportProvider get maintenanceReportProvider =>
+      getProvider<MaintenanceReportProvider>(ReportType.maintenance);
+  TenantReportProvider get tenantReportProvider =>
+      getProvider<TenantReportProvider>(ReportType.tenant);
+
+  // Getter for current report type
+  ReportType get currentReportType => _currentReportType;
+  bool get isLoading => _isLoading;
+
+  // Getter for current provider
+  BaseReportProvider get currentProvider => _providers[_currentReportType]!;
+
+  // Constructor with optional providers for dependency injection
   ReportsProvider({
     FinancialReportProvider? financialProvider,
     OccupancyReportProvider? occupancyProvider,
     MaintenanceReportProvider? maintenanceProvider,
     TenantReportProvider? tenantProvider,
-  }) : financialReportProvider = financialProvider ?? FinancialReportProvider(),
-       occupancyReportProvider = occupancyProvider ?? OccupancyReportProvider(),
-       maintenanceReportProvider =
-           maintenanceProvider ?? MaintenanceReportProvider(),
-       tenantReportProvider = tenantProvider ?? TenantReportProvider();
+  }) {
+    debugPrint("ReportsProvider: Initializing with providers");
+    _providers[ReportType.financial] =
+        financialProvider ?? FinancialReportProvider();
+    _providers[ReportType.occupancy] =
+        occupancyProvider ?? OccupancyReportProvider();
+    _providers[ReportType.maintenance] =
+        maintenanceProvider ?? MaintenanceReportProvider();
+    _providers[ReportType.tenant] = tenantProvider ?? TenantReportProvider();
+  }
 
-  // Update providers reference without creating new instances
+  // Method to update providers after initialization
   void updateProviders(
-    FinancialReportProvider financialProvider,
-    OccupancyReportProvider occupancyProvider,
-    MaintenanceReportProvider maintenanceProvider,
-    TenantReportProvider tenantProvider,
+    FinancialReportProvider financial,
+    OccupancyReportProvider occupancy,
+    MaintenanceReportProvider maintenance,
+    TenantReportProvider tenant,
   ) {
-    // Only replace references if they're different to avoid unnecessary rebuilds
-    if (financialReportProvider != financialProvider ||
-        occupancyReportProvider != occupancyProvider ||
-        maintenanceReportProvider != maintenanceProvider ||
-        tenantReportProvider != tenantProvider) {
-      // Store the current report type to restore it
-      final currentType = _currentReportType;
+    _providers[ReportType.financial] = financial;
+    _providers[ReportType.occupancy] = occupancy;
+    _providers[ReportType.maintenance] = maintenance;
+    _providers[ReportType.tenant] = tenant;
+    notifyListeners();
+  }
 
-      // Update provider references
-      financialReportProvider = financialProvider;
-      occupancyReportProvider = occupancyProvider;
-      maintenanceReportProvider = maintenanceProvider;
-      tenantReportProvider = tenantProvider;
+  // Set report type from string
+  void setReportTypeFromString(String reportName) {
+    final reportType = _getReportTypeFromString(reportName);
+    if (reportType != null) {
+      setReportType(reportType);
+    }
+  }
 
-      // Set the report type back to what it was to maintain state
-      _currentReportType = currentType;
+  // Helper method to convert string to ReportType
+  ReportType? _getReportTypeFromString(String reportName) {
+    switch (reportName) {
+      case 'Financial Report':
+        return ReportType.financial;
+      case 'Occupancy Report':
+        return ReportType.occupancy;
+      case 'Maintenance Report':
+        return ReportType.maintenance;
+      case 'Tenant Report':
+        return ReportType.tenant;
+      default:
+        return null;
+    }
+  }
 
-      // Notify listeners only if something changed
+  // Set current report type and load data if needed
+  void setReportType(ReportType type) {
+    if (_currentReportType != type) {
+      debugPrint("ReportsProvider: Switching to report type $type");
+      _currentReportType = type;
       notifyListeners();
     }
   }
 
-  // Get current report provider
-  BaseReportProvider get currentProvider {
-    switch (_currentReportType) {
-      case ReportType.financial:
-        return financialReportProvider;
-      case ReportType.occupancy:
-        return occupancyReportProvider;
-      case ReportType.maintenance:
-        return maintenanceReportProvider;
-      case ReportType.tenant:
-        return tenantReportProvider;
+  // Load data for current report type
+  Future<void> loadCurrentReportData() async {
+    debugPrint("ReportsProvider: Loading data for $_currentReportType");
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await currentProvider.execute(() async {
+        await currentProvider.fetchItems();
+      });
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Getter for current provider's loading state
-  bool get isLoading => currentProvider.state == ViewState.Busy;
+  // Update all providers with new date range
+  void updateDateRangeForAll(DateTime startDate, DateTime endDate) {
+    debugPrint("ReportsProvider: Updating date range for all providers");
+    for (final provider in _providers.values) {
+      provider.setDateRange(startDate, endDate);
+    }
+  }
+
+  // Get provider for a specific report type
+  T getProvider<T extends BaseReportProvider>(ReportType type) {
+    return _providers[type] as T;
+  }
 
   // Access to report data based on current type
   List<FinancialReportItem> get financialReportData =>
@@ -97,54 +146,12 @@ class ReportsProvider extends ChangeNotifier {
   String get formattedStartDate => currentProvider.formattedStartDate;
   String get formattedEndDate => currentProvider.formattedEndDate;
 
-  // Set the current report type
-  void setReportType(ReportType reportType) {
-    _currentReportType = reportType;
-    notifyListeners();
-  }
-
-  // Set the report type from string
-  void setReportTypeFromString(String reportTypeString) {
-    switch (reportTypeString) {
-      case 'Financial Report':
-        setReportType(ReportType.financial);
-        break;
-      case 'Occupancy Report':
-        setReportType(ReportType.occupancy);
-        break;
-      case 'Maintenance Report':
-        setReportType(ReportType.maintenance);
-        break;
-      case 'Tenant Report':
-        setReportType(ReportType.tenant);
-        break;
-    }
-  }
-
   // Get report type string
   String getReportTypeString() => currentProvider.getReportName();
-
-  // Set date range and update all providers
-  void setDateRange(DateTime startDate, DateTime endDate) {
-    financialReportProvider.setDateRange(startDate, endDate);
-    occupancyReportProvider.setDateRange(startDate, endDate);
-    maintenanceReportProvider.setDateRange(startDate, endDate);
-    tenantReportProvider.setDateRange(startDate, endDate);
-
-    notifyListeners();
-  }
 
   // Get title with date range based on current report type
   String getReportTitleWithDateRange() =>
       currentProvider.getReportTitleWithDateRange();
-
-  // Load all report data
-  void loadReportData() {
-    financialReportProvider.fetchItems();
-    occupancyReportProvider.fetchItems();
-    maintenanceReportProvider.fetchItems();
-    tenantReportProvider.fetchItems();
-  }
 
   // Generic export method
   Future<void> _exportReport(String fileExtension, String description) async {
@@ -163,4 +170,10 @@ class ReportsProvider extends ChangeNotifier {
   Future<void> exportToExcel() async => _exportReport('xlsx', 'Excel');
 
   Future<void> exportToCSV() async => _exportReport('csv', 'CSV');
+
+  // Update date range for current provider
+  void setDateRange(DateTime startDate, DateTime endDate) {
+    currentProvider.setDateRange(startDate, endDate);
+    notifyListeners();
+  }
 }

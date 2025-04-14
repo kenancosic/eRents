@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:flutter/foundation.dart';
 
 class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
   @override
@@ -17,6 +18,17 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
   }
 
   @override
+  String getReportName() => 'Tenant Report';
+
+  @override
+  Future<List<TenantReportItem>> fetchReportData() async {
+    debugPrint(
+      'TenantReportProvider: Fetching data for date range ${formattedStartDate} - ${formattedEndDate}',
+    );
+    return MockDataService.getMockTenantReportData();
+  }
+
+  @override
   List<TenantReportItem> getMockItems() {
     return MockDataService.getMockTenantReportData();
   }
@@ -26,11 +38,6 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
     // For tenant reports, we don't need to refresh data on date changes
     // since we show all tenants regardless of dates
     notifyListeners();
-  }
-
-  @override
-  String getReportName() {
-    return 'Tenant Report';
   }
 
   // Get counts by status

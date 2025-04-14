@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/occupancy_report_item.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:flutter/foundation.dart';
 
 class OccupancyReportProvider extends BaseReportProvider<OccupancyReportItem> {
   @override
@@ -29,7 +30,13 @@ class OccupancyReportProvider extends BaseReportProvider<OccupancyReportItem> {
   }
 
   @override
-  String getReportName() {
-    return 'Occupancy Report';
+  String getReportName() => 'Occupancy Report';
+
+  @override
+  Future<List<OccupancyReportItem>> fetchReportData() async {
+    debugPrint(
+      'OccupancyReportProvider: Fetching data for date range ${formattedStartDate} - ${formattedEndDate}',
+    );
+    return MockDataService.getMockOccupancyReportData();
   }
 }

@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 class ReportFilters extends StatefulWidget {
   final DateTime startDate;
   final DateTime endDate;
-  final Function(DateTime, DateTime) onDateRangeChanged;
+  final void Function(DateTime, DateTime) onDateRangeChanged;
 
   const ReportFilters({
     super.key,
@@ -20,6 +20,8 @@ class ReportFilters extends StatefulWidget {
 class _ReportFiltersState extends State<ReportFilters> {
   late DateTime _startDate;
   late DateTime _endDate;
+  late TextEditingController _startDateController;
+  late TextEditingController _endDateController;
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
   final List<String> _quickDateRanges = [
     'Today',
@@ -34,141 +36,95 @@ class _ReportFiltersState extends State<ReportFilters> {
     'Last Year',
     'Custom',
   ];
-  String _selectedRange = 'This Month';
+  final String _selectedRange = 'This Month';
 
   @override
   void initState() {
     super.initState();
     _startDate = widget.startDate;
     _endDate = widget.endDate;
+    _startDateController = TextEditingController(
+      text: _dateFormat.format(_startDate),
+    );
+    _endDateController = TextEditingController(
+      text: _dateFormat.format(_endDate),
+    );
+  }
+
+  @override
+  void dispose() {
+    _startDateController.dispose();
+    _endDateController.dispose();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(ReportFilters oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.startDate != widget.startDate ||
-        oldWidget.endDate != widget.endDate) {
-      setState(() {
-        _startDate = widget.startDate;
-        _endDate = widget.endDate;
-      });
+    if (widget.startDate != oldWidget.startDate) {
+      _startDate = widget.startDate;
+      _startDateController.text = _dateFormat.format(_startDate);
+    }
+    if (widget.endDate != oldWidget.endDate) {
+      _endDate = widget.endDate;
+      _endDateController.text = _dateFormat.format(_endDate);
     }
   }
 
-  Future<void> _selectStartDate(BuildContext context) async {
+  void _showDatePicker(bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _startDate,
+      initialDate: isStartDate ? _startDate : _endDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime(2025),
     );
-    if (picked != null && picked != _startDate) {
+
+    if (picked != null) {
       setState(() {
-        _startDate = picked;
-        _selectedRange = 'Custom';
-      });
-      widget.onDateRangeChanged(_startDate, _endDate);
-    }
-  }
-
-  Future<void> _selectEndDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(
-        const Duration(days: 1),
-      ), // Allow selecting today
-    );
-    if (picked != null && picked != _endDate) {
-      setState(() {
-        _endDate = picked;
-        _selectedRange = 'Custom';
-      });
-      widget.onDateRangeChanged(_startDate, _endDate);
-    }
-  }
-
-  void _applyQuickDateRange(String range) {
-    DateTime now = DateTime.now();
-    DateTime start;
-    DateTime end;
-
-    // Set the time to end of day for end date
-    final endOfDay =
-        (DateTime date) =>
-            DateTime(date.year, date.month, date.day, 23, 59, 59);
-
-    switch (range) {
-      case 'Today':
-        start = DateTime(now.year, now.month, now.day);
-        end = endOfDay(now);
-        break;
-      case 'Yesterday':
-        final yesterday = now.subtract(const Duration(days: 1));
-        start = DateTime(yesterday.year, yesterday.month, yesterday.day);
-        end = endOfDay(yesterday);
-        break;
-      case 'This Week':
-        // Start of the week (Monday)
-        start = now.subtract(Duration(days: now.weekday - 1));
-        start = DateTime(start.year, start.month, start.day);
-        end = endOfDay(now);
-        break;
-      case 'Last Week':
-        // Last week's Monday
-        start = now.subtract(Duration(days: now.weekday - 1 + 7));
-        start = DateTime(start.year, start.month, start.day);
-        // Last week's Sunday
-        end = now.subtract(Duration(days: now.weekday));
-        end = endOfDay(end);
-        break;
-      case 'This Month':
-        start = DateTime(now.year, now.month, 1);
-        end = endOfDay(now);
-        break;
-      case 'Last Month':
-        // First day of last month
-        start = DateTime(now.year, now.month - 1, 1);
-        // Last day of last month
-        end = DateTime(now.year, now.month, 0);
-        end = endOfDay(end);
-        break;
-      case 'This Quarter':
-        final quarter = (now.month - 1) ~/ 3;
-        start = DateTime(now.year, quarter * 3 + 1, 1);
-        end = endOfDay(now);
-        break;
-      case 'Last Quarter':
-        final quarter = (now.month - 1) ~/ 3;
-        if (quarter == 0) {
-          // Last quarter of previous year
-          start = DateTime(now.year - 1, 10, 1);
-          end = DateTime(now.year, 1, 0);
+        if (isStartDate) {
+          _startDate = picked;
+          _startDateController.text = _dateFormat.format(_startDate);
         } else {
-          // Previous quarter of current year
-          start = DateTime(now.year, (quarter - 1) * 3 + 1, 1);
-          end = DateTime(now.year, quarter * 3 + 1, 0);
+          _endDate = picked;
+          _endDateController.text = _dateFormat.format(_endDate);
         }
-        end = endOfDay(end);
+      });
+
+      widget.onDateRangeChanged(_startDate, _endDate);
+    }
+  }
+
+  void _applyPresetRange(String preset) {
+    final now = DateTime.now();
+    DateTime newStartDate;
+    DateTime newEndDate = DateTime(now.year, now.month, now.day);
+
+    switch (preset) {
+      case 'Last 7 Days':
+        newStartDate = newEndDate.subtract(const Duration(days: 7));
+        break;
+      case 'Last 30 Days':
+        newStartDate = newEndDate.subtract(const Duration(days: 30));
+        break;
+      case 'Last 90 Days':
+        newStartDate = newEndDate.subtract(const Duration(days: 90));
         break;
       case 'This Year':
-        start = DateTime(now.year, 1, 1);
-        end = endOfDay(now);
+        newStartDate = DateTime(now.year, 1, 1);
         break;
       case 'Last Year':
-        start = DateTime(now.year - 1, 1, 1);
-        end = DateTime(now.year, 1, 0);
-        end = endOfDay(end);
+        newStartDate = DateTime(now.year - 1, 1, 1);
+        newEndDate = DateTime(now.year - 1, 12, 31);
         break;
       default:
-        return; // Keep the existing dates for 'Custom'
+        return;
     }
 
     setState(() {
-      _startDate = start;
-      _endDate = end;
-      _selectedRange = range;
+      _startDate = newStartDate;
+      _endDate = newEndDate;
+      _startDateController.text = _dateFormat.format(_startDate);
+      _endDateController.text = _dateFormat.format(_endDate);
     });
 
     widget.onDateRangeChanged(_startDate, _endDate);
@@ -183,7 +139,7 @@ class _ReportFiltersState extends State<ReportFilters> {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13), // 0.05 opacity
             offset: const Offset(0, 2),
             blurRadius: 5,
           ),
@@ -217,40 +173,60 @@ class _ReportFiltersState extends State<ReportFilters> {
                           .toList(),
                   onChanged: (value) {
                     if (value != null && value != 'Custom') {
-                      _applyQuickDateRange(value);
+                      _applyPresetRange(value);
                     }
                   },
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InkWell(
-                  onTap: () => _selectStartDate(context),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Start Date',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                    child: Text(_dateFormat.format(_startDate)),
+                child: TextField(
+                  controller: _startDateController,
+                  readOnly: true,
+                  onTap: () => _showDatePicker(true),
+                  decoration: const InputDecoration(
+                    labelText: 'Start Date',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InkWell(
-                  onTap: () => _selectEndDate(context),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'End Date',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                    child: Text(_dateFormat.format(_endDate)),
+                child: TextField(
+                  controller: _endDateController,
+                  readOnly: true,
+                  onTap: () => _showDatePicker(false),
+                  decoration: const InputDecoration(
+                    labelText: 'End Date',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children:
+                  [
+                    'Last 7 Days',
+                    'Last 30 Days',
+                    'Last 90 Days',
+                    'This Year',
+                    'Last Year',
+                  ].map((preset) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: OutlinedButton(
+                        onPressed: () => _applyPresetRange(preset),
+                        child: Text(preset),
+                      ),
+                    );
+                  }).toList(),
+            ),
           ),
         ],
       ),

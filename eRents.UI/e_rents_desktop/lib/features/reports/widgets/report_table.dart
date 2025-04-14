@@ -212,42 +212,42 @@ class ReportTable extends StatelessWidget {
     switch (reportType) {
       case ReportType.financial:
         return [
-          const DataColumn(label: Text('Date')),
-          const DataColumn(label: Text('Property')),
-          const DataColumn(label: Text('Unit')),
-          const DataColumn(label: Text('Transaction Type')),
-          const DataColumn(label: Text('Amount')),
-          const DataColumn(label: Text('Balance')),
+          const DataColumn(label: Text('Date', softWrap: true)),
+          const DataColumn(label: Text('Property', softWrap: true)),
+          const DataColumn(label: Text('Unit', softWrap: true)),
+          const DataColumn(label: Text('Transaction Type', softWrap: true)),
+          const DataColumn(label: Text('Amount', softWrap: true)),
+          const DataColumn(label: Text('Balance', softWrap: true)),
         ];
       case ReportType.occupancy:
         return [
-          const DataColumn(label: Text('Property')),
-          const DataColumn(label: Text('Total Units')),
-          const DataColumn(label: Text('Occupied')),
-          const DataColumn(label: Text('Vacant')),
-          const DataColumn(label: Text('Occupancy Rate')),
-          const DataColumn(label: Text('Avg. Rent')),
+          const DataColumn(label: Text('Property', softWrap: true)),
+          const DataColumn(label: Text('Total Units', softWrap: true)),
+          const DataColumn(label: Text('Occupied', softWrap: true)),
+          const DataColumn(label: Text('Vacant', softWrap: true)),
+          const DataColumn(label: Text('Occupancy Rate', softWrap: true)),
+          const DataColumn(label: Text('Avg. Rent', softWrap: true)),
         ];
       case ReportType.maintenance:
         return [
-          const DataColumn(label: Text('Date')),
-          const DataColumn(label: Text('Property')),
-          const DataColumn(label: Text('Unit')),
-          const DataColumn(label: Text('Issue Type')),
-          const DataColumn(label: Text('Status')),
-          const DataColumn(label: Text('Priority')),
-          const DataColumn(label: Text('Cost')),
+          const DataColumn(label: Text('Date', softWrap: true)),
+          const DataColumn(label: Text('Property', softWrap: true)),
+          const DataColumn(label: Text('Unit', softWrap: true)),
+          const DataColumn(label: Text('Issue Type', softWrap: true)),
+          const DataColumn(label: Text('Status', softWrap: true)),
+          const DataColumn(label: Text('Priority', softWrap: true)),
+          const DataColumn(label: Text('Cost', softWrap: true)),
         ];
       case ReportType.tenant:
         return [
-          const DataColumn(label: Text('Tenant')),
-          const DataColumn(label: Text('Property')),
-          const DataColumn(label: Text('Unit')),
-          const DataColumn(label: Text('Lease Start')),
-          const DataColumn(label: Text('Lease End')),
-          const DataColumn(label: Text('Rent')),
-          const DataColumn(label: Text('Status')),
-          const DataColumn(label: Text('Days Left')),
+          const DataColumn(label: Text('Tenant', softWrap: true)),
+          const DataColumn(label: Text('Property', softWrap: true)),
+          const DataColumn(label: Text('Unit', softWrap: true)),
+          const DataColumn(label: Text('Lease Start', softWrap: true)),
+          const DataColumn(label: Text('Lease End', softWrap: true)),
+          const DataColumn(label: Text('Rent', softWrap: true)),
+          const DataColumn(label: Text('Status', softWrap: true)),
+          const DataColumn(label: Text('Days Left', softWrap: true)),
         ];
     }
   }
@@ -257,42 +257,42 @@ class ReportTable extends StatelessWidget {
     switch (reportType) {
       case ReportType.financial:
         return {
-          0: const FlexColumnWidth(1.0), // Date
-          1: const FlexColumnWidth(1.2), // Property
-          2: const FlexColumnWidth(0.8), // Unit
-          3: const FlexColumnWidth(1.2), // Transaction Type
-          4: const FlexColumnWidth(0.8), // Amount
-          5: const FlexColumnWidth(0.8), // Balance
+          0: const FlexColumnWidth(1.2), // Date
+          1: const FlexColumnWidth(2.0), // Property
+          2: const FlexColumnWidth(1.0), // Unit
+          3: const FlexColumnWidth(1.5), // Transaction Type
+          4: const FlexColumnWidth(1.2), // Amount
+          5: const FlexColumnWidth(1.2), // Balance
         };
       case ReportType.occupancy:
         return {
-          0: const FlexColumnWidth(1.5), // Property
-          1: const FlexColumnWidth(1.0), // Total Units
-          2: const FlexColumnWidth(1.0), // Occupied
-          3: const FlexColumnWidth(1.0), // Vacant
-          4: const FlexColumnWidth(1.2), // Occupancy Rate
-          5: const FlexColumnWidth(1.0), // Avg. Rent
+          0: const FlexColumnWidth(2.5), // Property
+          1: const FlexColumnWidth(1.2), // Total Units
+          2: const FlexColumnWidth(1.2), // Occupied
+          3: const FlexColumnWidth(1.2), // Vacant
+          4: const FlexColumnWidth(1.5), // Occupancy Rate
+          5: const FlexColumnWidth(1.5), // Avg. Rent
         };
       case ReportType.maintenance:
         return {
-          0: const FlexColumnWidth(1.0), // Date
-          1: const FlexColumnWidth(1.2), // Property
-          2: const FlexColumnWidth(0.8), // Unit
-          3: const FlexColumnWidth(1.2), // Issue Type
-          4: const FlexColumnWidth(1.0), // Status
-          5: const FlexColumnWidth(0.8), // Priority
-          6: const FlexColumnWidth(0.8), // Cost
+          0: const FlexColumnWidth(1.2), // Date
+          1: const FlexColumnWidth(2.0), // Property
+          2: const FlexColumnWidth(1.0), // Unit
+          3: const FlexColumnWidth(1.8), // Issue Type
+          4: const FlexColumnWidth(1.2), // Status
+          5: const FlexColumnWidth(1.0), // Priority
+          6: const FlexColumnWidth(1.2), // Cost
         };
       case ReportType.tenant:
         return {
-          0: const FlexColumnWidth(1.2), // Tenant
-          1: const FlexColumnWidth(1.2), // Property
-          2: const FlexColumnWidth(0.8), // Unit
-          3: const FlexColumnWidth(1.0), // Lease Start
-          4: const FlexColumnWidth(1.0), // Lease End
-          5: const FlexColumnWidth(0.8), // Rent
-          6: const FlexColumnWidth(1.0), // Status
-          7: const FlexColumnWidth(0.8), // Days Left
+          0: const FlexColumnWidth(2.0), // Tenant
+          1: const FlexColumnWidth(2.0), // Property
+          2: const FlexColumnWidth(1.0), // Unit
+          3: const FlexColumnWidth(1.2), // Lease Start
+          4: const FlexColumnWidth(1.2), // Lease End
+          5: const FlexColumnWidth(1.2), // Rent
+          6: const FlexColumnWidth(1.2), // Status
+          7: const FlexColumnWidth(1.0), // Days Left
         };
     }
   }
