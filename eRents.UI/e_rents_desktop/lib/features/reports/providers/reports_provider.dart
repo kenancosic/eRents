@@ -11,47 +11,23 @@ import 'package:e_rents_desktop/services/export_service.dart';
 /// Report type enum used for switching between report screens
 enum ReportType { financial, occupancy, maintenance, tenant }
 
+/// Export format enum for different file types
+enum ExportFormat { pdf, excel, csv }
+
 /// Main provider class that coordinates all individual report providers
-class ReportsProvider extends ChangeNotifier {
-  // Map to store all report providers
-  final Map<ReportType, BaseReportProvider> _providers = {};
-
-  // Current active report type
+class ReportsProvider extends BaseReportProvider<dynamic> {
+  final Map<ReportType, BaseReportProvider?> _providers = {};
   ReportType _currentReportType = ReportType.financial;
-  bool _isLoading = false;
 
-  // Getters for specific providers
-  FinancialReportProvider get financialReportProvider =>
-      getProvider<FinancialReportProvider>(ReportType.financial);
-  OccupancyReportProvider get occupancyReportProvider =>
-      getProvider<OccupancyReportProvider>(ReportType.occupancy);
-  MaintenanceReportProvider get maintenanceReportProvider =>
-      getProvider<MaintenanceReportProvider>(ReportType.maintenance);
-  TenantReportProvider get tenantReportProvider =>
-      getProvider<TenantReportProvider>(ReportType.tenant);
-
-  // Getter for current report type
-  ReportType get currentReportType => _currentReportType;
-  bool get isLoading => _isLoading;
-
-  // Getter for current provider
-  BaseReportProvider get currentProvider => _providers[_currentReportType]!;
-
-  // Constructor with optional providers for dependency injection
   ReportsProvider({
     FinancialReportProvider? financialProvider,
     OccupancyReportProvider? occupancyProvider,
     MaintenanceReportProvider? maintenanceProvider,
     TenantReportProvider? tenantProvider,
   }) {
-    debugPrint("ReportsProvider: Initializing with providers");
-    _providers[ReportType.financial] =
-        financialProvider ?? FinancialReportProvider();
-    _providers[ReportType.occupancy] =
-        occupancyProvider ?? OccupancyReportProvider();
-    _providers[ReportType.maintenance] =
-        maintenanceProvider ?? MaintenanceReportProvider();
-    _providers[ReportType.tenant] = tenantProvider ?? TenantReportProvider();
+    debugPrint("ReportsProvider: Initializing with lazy loading");
+    // Initialize only the current provider
+    _providers[_currentReportType] = _createProvider(_currentReportType);
   }
 
   // Method to update providers after initialization
@@ -68,7 +44,92 @@ class ReportsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Set report type from string
+  // Lazy provider creation
+  BaseReportProvider _createProvider(ReportType type) {
+    switch (type) {
+      case ReportType.financial:
+        return FinancialReportProvider();
+      case ReportType.occupancy:
+        return OccupancyReportProvider();
+      case ReportType.maintenance:
+        return MaintenanceReportProvider();
+      case ReportType.tenant:
+        return TenantReportProvider();
+    }
+  }
+
+  // Getters for individual providers with lazy initialization
+  FinancialReportProvider get financialProvider {
+    if (_providers[ReportType.financial] == null) {
+      _providers[ReportType.financial] = _createProvider(ReportType.financial);
+    }
+    return _providers[ReportType.financial] as FinancialReportProvider;
+  }
+
+  OccupancyReportProvider get occupancyProvider {
+    if (_providers[ReportType.occupancy] == null) {
+      _providers[ReportType.occupancy] = _createProvider(ReportType.occupancy);
+    }
+    return _providers[ReportType.occupancy] as OccupancyReportProvider;
+  }
+
+  MaintenanceReportProvider get maintenanceProvider {
+    if (_providers[ReportType.maintenance] == null) {
+      _providers[ReportType.maintenance] = _createProvider(
+        ReportType.maintenance,
+      );
+    }
+    return _providers[ReportType.maintenance] as MaintenanceReportProvider;
+  }
+
+  TenantReportProvider get tenantProvider {
+    if (_providers[ReportType.tenant] == null) {
+      _providers[ReportType.tenant] = _createProvider(ReportType.tenant);
+    }
+    return _providers[ReportType.tenant] as TenantReportProvider;
+  }
+
+  // Current provider getters with lazy initialization
+  ReportType get currentReportType => _currentReportType;
+  BaseReportProvider get currentProvider {
+    if (_providers[_currentReportType] == null) {
+      _providers[_currentReportType] = _createProvider(_currentReportType);
+    }
+    return _providers[_currentReportType]!;
+  }
+
+  // Report data getters
+  List<FinancialReportItem> get financialReportData => financialProvider.items;
+  List<OccupancyReportItem> get occupancyReportData => occupancyProvider.items;
+  List<MaintenanceReportItem> get maintenanceReportData =>
+      maintenanceProvider.items;
+  List<TenantReportItem> get tenantReportData => tenantProvider.items;
+
+  // Date range management
+  @override
+  void setDateRange(DateTime startDate, DateTime endDate) {
+    super.setDateRange(startDate, endDate);
+    // Only update initialized providers
+    for (final provider in _providers.values) {
+      if (provider != null) {
+        provider.setDateRange(startDate, endDate);
+      }
+    }
+  }
+
+  // Report type management
+  void setReportType(ReportType type) {
+    if (_currentReportType != type) {
+      debugPrint("ReportsProvider: Switching to report type $type");
+      _currentReportType = type;
+      // Initialize the new provider if needed
+      if (_providers[type] == null) {
+        _providers[type] = _createProvider(type);
+      }
+      notifyListeners();
+    }
+  }
+
   void setReportTypeFromString(String reportName) {
     final reportType = _getReportTypeFromString(reportName);
     if (reportType != null) {
@@ -76,7 +137,6 @@ class ReportsProvider extends ChangeNotifier {
     }
   }
 
-  // Helper method to convert string to ReportType
   ReportType? _getReportTypeFromString(String reportName) {
     switch (reportName) {
       case 'Financial Report':
@@ -92,69 +152,112 @@ class ReportsProvider extends ChangeNotifier {
     }
   }
 
-  // Set current report type and load data if needed
-  void setReportType(ReportType type) {
-    if (_currentReportType != type) {
-      debugPrint("ReportsProvider: Switching to report type $type");
-      _currentReportType = type;
-      notifyListeners();
+  // Get report type string for UI
+  String getReportTypeString() {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return 'Financial Report';
+      case ReportType.occupancy:
+        return 'Occupancy Report';
+      case ReportType.maintenance:
+        return 'Maintenance Report';
+      case ReportType.tenant:
+        return 'Tenant Report';
     }
   }
 
-  // Load data for current report type
+  // Data loading
   Future<void> loadCurrentReportData() async {
     debugPrint("ReportsProvider: Loading data for $_currentReportType");
-    _isLoading = true;
-    notifyListeners();
+    await currentProvider.execute(() async {
+      await currentProvider.fetchItems();
+    });
+  }
 
-    try {
-      await currentProvider.execute(() async {
-        await currentProvider.fetchItems();
-      });
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+  // Export functionality
+  Future<String> exportToPDF() async {
+    return exportReport(ExportFormat.pdf);
+  }
+
+  Future<String> exportToExcel() async {
+    return exportReport(ExportFormat.excel);
+  }
+
+  Future<String> exportToCSV() async {
+    return exportReport(ExportFormat.csv);
+  }
+
+  Future<String> exportReport(ExportFormat format) async {
+    final headers = _getCurrentReportHeaders();
+    final rows = _getCurrentReportRows();
+    final title = getReportTitleWithDateRange();
+
+    switch (format) {
+      case ExportFormat.pdf:
+        return ExportService.exportToPDF(
+          title: title,
+          headers: headers,
+          rows: rows,
+        );
+      case ExportFormat.excel:
+        return ExportService.exportToExcel(
+          title: title,
+          headers: headers,
+          rows: rows,
+        );
+      case ExportFormat.csv:
+        return ExportService.exportToCSV(
+          title: title,
+          headers: headers,
+          rows: rows,
+        );
     }
   }
 
-  // Update all providers with new date range
-  void updateDateRangeForAll(DateTime startDate, DateTime endDate) {
-    debugPrint("ReportsProvider: Updating date range for all providers");
-    for (final provider in _providers.values) {
-      provider.setDateRange(startDate, endDate);
+  List<String> _getCurrentReportHeaders() {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return [
+          'Date',
+          'Property',
+          'Unit',
+          'Transaction Type',
+          'Amount',
+          'Balance',
+        ];
+      case ReportType.occupancy:
+        return [
+          'Property',
+          'Total Units',
+          'Occupied',
+          'Vacant',
+          'Occupancy Rate',
+          'Avg. Rent',
+        ];
+      case ReportType.maintenance:
+        return [
+          'Date',
+          'Property',
+          'Unit',
+          'Issue Type',
+          'Status',
+          'Priority',
+          'Cost',
+        ];
+      case ReportType.tenant:
+        return [
+          'Tenant',
+          'Property',
+          'Unit',
+          'Lease Start',
+          'Lease End',
+          'Rent',
+          'Status',
+          'Days Left',
+        ];
     }
   }
 
-  // Get provider for a specific report type
-  T getProvider<T extends BaseReportProvider>(ReportType type) {
-    return _providers[type] as T;
-  }
-
-  // Access to report data based on current type
-  List<FinancialReportItem> get financialReportData =>
-      financialReportProvider.items;
-  List<OccupancyReportItem> get occupancyReportData =>
-      occupancyReportProvider.items;
-  List<MaintenanceReportItem> get maintenanceReportData =>
-      maintenanceReportProvider.items;
-  List<TenantReportItem> get tenantReportData => tenantReportProvider.items;
-
-  // Date getters based on current report type
-  DateTime get startDate => currentProvider.startDate;
-  DateTime get endDate => currentProvider.endDate;
-
-  // Formatted date strings
-  String get formattedStartDate => currentProvider.formattedStartDate;
-  String get formattedEndDate => currentProvider.formattedEndDate;
-
-  // Get report type string
-  String getReportTypeString() => currentProvider.getReportName();
-
-  // Get title with date range based on current report type
-  String getReportTitleWithDateRange() =>
-      currentProvider.getReportTitleWithDateRange();
-
-  // Helper method to get current report data as rows
   List<List<String>> _getCurrentReportRows() {
     switch (_currentReportType) {
       case ReportType.financial:
@@ -215,91 +318,35 @@ class ReportsProvider extends ChangeNotifier {
     }
   }
 
-  // Helper method to get current report headers
-  List<String> _getCurrentReportHeaders() {
-    switch (_currentReportType) {
-      case ReportType.financial:
-        return [
-          'Date',
-          'Property',
-          'Unit',
-          'Transaction Type',
-          'Amount',
-          'Balance',
-        ];
-      case ReportType.occupancy:
-        return [
-          'Property',
-          'Total Units',
-          'Occupied',
-          'Vacant',
-          'Occupancy Rate',
-          'Avg. Rent',
-        ];
-      case ReportType.maintenance:
-        return [
-          'Date',
-          'Property',
-          'Unit',
-          'Issue Type',
-          'Status',
-          'Priority',
-          'Cost',
-        ];
-      case ReportType.tenant:
-        return [
-          'Tenant',
-          'Property',
-          'Unit',
-          'Lease Start',
-          'Lease End',
-          'Rent',
-          'Status',
-          'Days Left',
-        ];
-    }
+  // BaseReportProvider implementation
+  @override
+  Future<List<dynamic>> fetchReportData() async {
+    await loadCurrentReportData();
+    return currentProvider.items;
   }
 
-  // Export methods
-  Future<String> exportToPDF() async {
-    final title = getReportTitleWithDateRange();
-    final headers = _getCurrentReportHeaders();
-    final rows = _getCurrentReportRows();
+  @override
+  String getReportName() => currentProvider.getReportName();
 
-    return ExportService.exportToPDF(
-      title: title,
-      headers: headers,
-      rows: rows,
-    );
+  // BaseProvider implementation
+  @override
+  dynamic fromJson(Map<String, dynamic> json) {
+    // This is a no-op since we delegate to individual providers
+    return null;
   }
 
-  Future<String> exportToExcel() async {
-    final title = getReportTitleWithDateRange();
-    final headers = _getCurrentReportHeaders();
-    final rows = _getCurrentReportRows();
-
-    return ExportService.exportToExcel(
-      title: title,
-      headers: headers,
-      rows: rows,
-    );
+  @override
+  Map<String, dynamic> toJson(dynamic item) {
+    // This is a no-op since we delegate to individual providers
+    return {};
   }
 
-  Future<String> exportToCSV() async {
-    final title = getReportTitleWithDateRange();
-    final headers = _getCurrentReportHeaders();
-    final rows = _getCurrentReportRows();
+  @override
+  String get endpoint => 'reports';
 
-    return ExportService.exportToCSV(
-      title: title,
-      headers: headers,
-      rows: rows,
-    );
-  }
-
-  // Update date range for current provider
-  void setDateRange(DateTime startDate, DateTime endDate) {
-    currentProvider.setDateRange(startDate, endDate);
-    notifyListeners();
+  @override
+  List<dynamic> getMockItems() {
+    // This is a no-op since we delegate to individual providers
+    return [];
   }
 }

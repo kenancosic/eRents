@@ -20,7 +20,6 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provi
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/material.dart';
 
 class AppRouter {
   final GoRouter router = GoRouter(

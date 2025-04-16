@@ -85,7 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return AppBaseScreen(
       title: 'Chat',
       currentPath: '/chat',
-      content: Row(
+      child: Row(
         children: [
           // Contacts list
           Container(

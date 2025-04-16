@@ -7,6 +7,8 @@ import 'package:e_rents_desktop/models/reports/reports.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/statistics/statistics.dart';
+
 class MockDataService {
   static List<User> getMockUsers() {
     return [
@@ -764,6 +766,106 @@ class MockDataService {
         leaseEnd: '31/07/2023',
         rent: 1050.00,
         status: TenantStatus.endingSoon,
+      ),
+    ];
+  }
+
+  // Statistics data
+  static List<OccupancyStatistics> getMockOccupancyStatistics() {
+    return [
+      OccupancyStatistics(
+        occupancyRate: 0.85,
+        totalUnits: 100,
+        occupiedUnits: 80,
+        unitsByType: {'Studio': 5, '1 Bedroom': 3, '2 Bedroom': 2},
+      ),
+      OccupancyStatistics(
+        occupancyRate: 0.75,
+        totalUnits: 100,
+        occupiedUnits: 75,
+        unitsByType: {'Studio': 5, '1 Bedroom': 3, '2 Bedroom': 2},
+      ),
+    ];
+  }
+
+  static List<FinancialStatistics> getMockFinancialStatistics() {
+    return [
+      FinancialStatistics(
+        totalRevenue: 150000.00,
+        totalExpenses: 80000.00,
+        netIncome: 70000.00,
+        monthlyRevenue: {
+          'Greenview Apartments': 50000.00,
+          'Sunnydale Complex': 40000.00,
+          'Riverfront Towers': 60000.00,
+        },
+      ),
+      FinancialStatistics(
+        totalRevenue: 120000.00,
+        totalExpenses: 60000.00,
+        netIncome: 60000.00,
+        monthlyRevenue: {
+          'Greenview Apartments': 40000.00,
+          'Sunnydale Complex': 30000.00,
+          'Riverfront Towers': 50000.00,
+        },
+      ),
+    ];
+  }
+
+  static List<MaintenanceStatistics> getMockMaintenanceStatistics() {
+    return [
+      MaintenanceStatistics(
+        totalIssues: 50,
+        openIssues: 10,
+        issuesByCategory: {
+          'Plumbing': 20,
+          'Electrical': 15,
+          'HVAC': 10,
+          'Structural': 5,
+        },
+        monthlyIssues: {
+          'January': 10,
+          'February': 15,
+          'March': 20,
+          'April': 25,
+          'May': 30,
+        },
+      ),
+      MaintenanceStatistics(
+        totalIssues: 30,
+        openIssues: 5,
+        issuesByCategory: {
+          'Plumbing': 10,
+          'Electrical': 8,
+          'HVAC': 5,
+          'Structural': 2,
+        },
+        monthlyIssues: {
+          'January': 10,
+          'February': 15,
+          'March': 20,
+          'April': 25,
+          'May': 30,
+        },
+      ),
+    ];
+  }
+
+  static List<TenantStatistics> getMockTenantStatistics() {
+    return [
+      TenantStatistics(
+        totalTenants: 100,
+        activeTenants: 80,
+        pendingTenants: 10,
+        averageTenancyDuration: 12.5,
+        tenantsByStatus: {'Active': 80, 'Pending': 10, 'Ending Soon': 10},
+        tenantsByProperty: {
+          'Greenview Apartments': 50,
+          'Sunnydale Complex': 30,
+          'Riverfront Towers': 20,
+        },
+        averageSatisfactionScore: 4.5,
       ),
     ];
   }

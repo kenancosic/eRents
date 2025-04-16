@@ -7,6 +7,7 @@ import 'package:e_rents_desktop/features/properties/providers/property_provider.
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -46,6 +47,9 @@ void main() {
           create: (context) => MaintenanceProvider(context.read<ApiService>()),
         ),
         ChangeNotifierProvider(create: (_) => TenantProvider()),
+        ChangeNotifierProvider<StatisticsProvider>(
+          create: (context) => StatisticsProvider(context.read<ApiService>()),
+        ),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',

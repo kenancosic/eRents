@@ -19,22 +19,10 @@ class ReportsScreen extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Create providers with lazy: false to ensure they're initialized immediately
-        ChangeNotifierProvider(
-          create: (_) => FinancialReportProvider(),
-          lazy: false,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => OccupancyReportProvider(),
-          lazy: false,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => MaintenanceReportProvider(),
-          lazy: false,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => TenantReportProvider(),
-          lazy: false,
-        ),
+        ChangeNotifierProvider(create: (_) => FinancialReportProvider()),
+        ChangeNotifierProvider(create: (_) => OccupancyReportProvider()),
+        ChangeNotifierProvider(create: (_) => MaintenanceReportProvider()),
+        ChangeNotifierProvider(create: (_) => TenantReportProvider()),
         // Use ProxyProvider to create the combined provider
         ChangeNotifierProxyProvider4<
           FinancialReportProvider,

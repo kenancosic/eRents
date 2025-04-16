@@ -66,14 +66,12 @@ class AppBaseScreen extends StatelessWidget {
   final Widget? child;
   final String title;
   final String currentPath;
-  final Widget? content;
 
   const AppBaseScreen({
     super.key,
     this.child,
     required this.title,
     required this.currentPath,
-    this.content,
   });
 
   @override
@@ -116,7 +114,7 @@ class AppBaseScreen extends StatelessWidget {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: content ?? child ?? const SizedBox.shrink(),
+                          child: child ?? const SizedBox.shrink(),
                         ),
                       ),
                     ),
