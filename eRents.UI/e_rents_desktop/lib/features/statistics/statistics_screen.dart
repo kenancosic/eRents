@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
-import 'package:e_rents_desktop/features/statistics/widgets/occupancy_pie_chart.dart';
-import 'package:e_rents_desktop/features/statistics/widgets/revenue_line_chart.dart';
-import 'package:e_rents_desktop/features/statistics/widgets/maintenance_bar_chart.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/rental_allocation_pie_chart.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/property_income_bar_chart.dart';
+import 'package:e_rents_desktop/features/statistics/widgets/property_bills_line_chart.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -27,10 +27,7 @@ class StatisticsScreen extends StatelessWidget {
             );
           }
 
-          final occupancyStats = provider.getMockOccupancyStatistics().first;
           final financialStats = provider.getMockFinancialStatistics().first;
-          final maintenanceStats =
-              provider.getMockMaintenanceStatistics().first;
 
           return Column(
             children: [
@@ -38,17 +35,19 @@ class StatisticsScreen extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    // Pie chart for occupancy
+                    // Pie chart for rental income allocation
                     Expanded(
-                      child: OccupancyPieChart(
-                        unitsByType: occupancyStats.unitsByType,
+                      child: RentalAllocationPieChart(
+                        rentalIncomeAllocation:
+                            financialStats.rentalIncomeAllocation,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Line chart for revenue
+                    // Line chart for property bills
                     Expanded(
-                      child: RevenueLineChart(
-                        monthlyRevenue: financialStats.monthlyRevenue,
+                      child: PropertyBillsLineChart(
+                        propertyBillsOverTime:
+                            financialStats.propertyBillsOverTime,
                       ),
                     ),
                   ],
@@ -57,8 +56,8 @@ class StatisticsScreen extends StatelessWidget {
               const SizedBox(height: 16),
               // Second row with bar chart
               Expanded(
-                child: MaintenanceBarChart(
-                  issuesByCategory: maintenanceStats.issuesByCategory,
+                child: PropertyIncomeBarChart(
+                  propertyIncomes: financialStats.propertyIncomes,
                 ),
               ),
             ],
