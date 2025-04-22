@@ -13,7 +13,8 @@ class AppNavigationBar extends StatefulWidget {
 }
 
 class _AppNavigationBarState extends State<AppNavigationBar> {
-  bool _isExpanded = true;
+  bool _isExtended = true;
+  int _selectedIndex = 0;
 
   static const List<NavigationItem> navigationItems = [
     NavigationItem(label: 'Home', icon: Icons.home_rounded, path: '/'),
@@ -57,83 +58,141 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       icon: Icons.person_rounded,
       path: '/tenants',
     ),
-    NavigationItem(label: 'Logout', icon: Icons.logout_rounded, path: '/login'),
   ];
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: _isExpanded ? 250 : 70,
-      child: Drawer(
-        elevation: 2,
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const Divider(),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(children: _buildNavItems(context)),
-              ),
-            ),
-            const Divider(),
-            _buildProfile(context),
-            const SizedBox(height: 8),
-            _buildExpandButton(),
-          ],
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    // Find the selected index based on the current path
+    _updateSelectedIndex();
   }
 
-  Widget _buildHeader(BuildContext context) {
+  @override
+  void didUpdateWidget(AppNavigationBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentPath != widget.currentPath) {
+      _updateSelectedIndex();
+    }
+  }
+
+  void _updateSelectedIndex() {
+    // Find main navigation item index
+    for (int i = 0; i < navigationItems.length; i++) {
+      final item = navigationItems[i];
+      if (widget.currentPath == item.path) {
+        setState(() {
+          _selectedIndex = i;
+        });
+        return;
+      }
+
+      // Check sub-items
+      if (item.subItems != null) {
+        for (final subItem in item.subItems!) {
+          if (widget.currentPath == subItem.path) {
+            setState(() {
+              _selectedIndex = i;
+            });
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Slightly reduce widths to prevent overflow
+    final double railWidth = _isExtended ? 242 : 62;
+
     return Container(
-      height: 70,
-      padding: EdgeInsets.symmetric(
-        horizontal: _isExpanded ? 16 : 8,
-        vertical: 8,
+      width: railWidth,
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/polygon.jpg'),
+          fit: BoxFit.cover,
+        ),
       ),
-      child: Row(
-        mainAxisAlignment:
-            _isExpanded ? MainAxisAlignment.start : MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          Flexible(
-            child: GestureDetector(
-              onTap: () => context.go('/'),
-              child: AnimatedCrossFade(
-                duration: const Duration(milliseconds: 200),
-                firstChild: SizedBox(
-                  width: _isExpanded ? 180 : 40,
-                  height: 40,
-                  child: SvgPicture.asset(
-                    'assets/images/Logo.svg',
-                    fit: BoxFit.contain,
-                    placeholderBuilder:
-                        (BuildContext context) => Container(
-                          color: Colors.grey.withOpacity(0.3),
-                          child: const Center(child: Text('Logo')),
-                        ),
+          // Dark overlay for better readability
+          Positioned.fill(
+            child: Container(color: Colors.black.withOpacity(0.4)),
+          ),
+
+          // Main Navigation Rail with scroll capability
+          ClipRect(
+            child: SizedBox(
+              width: railWidth,
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height,
+                  ),
+                  child: IntrinsicHeight(
+                    child: NavigationRail(
+                      labelType:
+                          _isExtended
+                              ? NavigationRailLabelType.none
+                              : NavigationRailLabelType.all,
+                      selectedIndex: _selectedIndex,
+                      extended: _isExtended,
+                      minWidth: 62,
+                      minExtendedWidth: 242,
+                      useIndicator: true,
+                      indicatorColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.7),
+                      backgroundColor: Colors.transparent,
+                      unselectedIconTheme: IconThemeData(
+                        color: Colors.white.withOpacity(0.7),
+                        size: 20,
+                      ),
+                      unselectedLabelTextStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 13,
+                      ),
+                      selectedIconTheme: const IconThemeData(
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      selectedLabelTextStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      groupAlignment: -0.85,
+                      leading: _buildHeader(context),
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 12),
+                          Divider(
+                            color: Colors.white.withOpacity(0.2),
+                            thickness: 1,
+                          ),
+                          _buildProfile(context),
+                          const SizedBox(height: 8),
+                          _buildToggleButton(),
+                        ],
+                      ),
+                      destinations: _buildDestinations(),
+                      onDestinationSelected: (int index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+
+                        if (index < navigationItems.length) {
+                          final item = navigationItems[index];
+                          context.go(item.path);
+                        } else {
+                          // This is the logout button
+                          context.go('/login');
+                        }
+                      },
+                    ),
                   ),
                 ),
-                secondChild: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: SvgPicture.asset(
-                    'assets/images/house-icon.svg',
-                    fit: BoxFit.contain,
-                    placeholderBuilder:
-                        (BuildContext context) => Container(
-                          color: Colors.grey.withOpacity(0.3),
-                          child: const Icon(Icons.home),
-                        ),
-                  ),
-                ),
-                crossFadeState:
-                    _isExpanded
-                        ? CrossFadeState.showFirst
-                        : CrossFadeState.showSecond,
-                alignment: Alignment.center,
               ),
             ),
           ),
@@ -142,195 +201,141 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
     );
   }
 
-  List<Widget> _buildNavItems(BuildContext context) {
-    return navigationItems.map((item) {
-      final isSelected =
-          widget.currentPath == item.path ||
-          (item.subItems != null &&
-              item.subItems!.any(
-                (subItem) => widget.currentPath == subItem.path,
-              ));
+  List<NavigationRailDestination> _buildDestinations() {
+    List<NavigationRailDestination> destinations = [];
 
-      if (item.subItems != null && item.subItems!.isNotEmpty) {
-        return _buildExpandableNavItem(context, item, isSelected);
-      } else {
-        return _buildNavItem(context, item, isSelected);
-      }
-    }).toList();
-  }
+    for (final item in navigationItems) {
+      destinations.add(
+        NavigationRailDestination(
+          icon: Badge(
+            isLabelVisible: item.subItems != null && item.subItems!.isNotEmpty,
+            child: Icon(item.icon),
+          ),
+          selectedIcon: Badge(
+            isLabelVisible: item.subItems != null && item.subItems!.isNotEmpty,
+            backgroundColor: Colors.white,
+            child: Icon(item.icon),
+          ),
+          label: Text(item.label),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+        ),
+      );
+    }
 
-  Widget _buildExpandableNavItem(
-    BuildContext context,
-    NavigationItem item,
-    bool isSelected,
-  ) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        dividerColor: Colors.transparent,
-        listTileTheme: ListTileTheme.of(
-          context,
-        ).copyWith(dense: true, horizontalTitleGap: 0, minLeadingWidth: 40),
-      ),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.symmetric(
-          horizontal: _isExpanded ? 16 : 8,
-          vertical: 0,
-        ),
-        leading: Icon(
-          item.icon,
-          size: 22,
-          color:
-              isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        ),
-        title:
-            _isExpanded
-                ? Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color:
-                        isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                )
-                : const SizedBox.shrink(),
-        trailing:
-            _isExpanded
-                ? Icon(
-                  Icons.expand_more,
-                  size: 20,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.6),
-                )
-                : null,
-        initiallyExpanded: isSelected,
-        maintainState: true,
-        children:
-            item.subItems!.map((subItem) {
-              final isSubItemSelected = widget.currentPath == subItem.path;
-              return _buildNavItem(
-                context,
-                subItem,
-                isSubItemSelected,
-                isSubItem: true,
-              );
-            }).toList(),
+    // Add logout as the last item
+    destinations.add(
+      const NavigationRailDestination(
+        icon: Icon(Icons.logout_rounded),
+        selectedIcon: Icon(Icons.logout_rounded),
+        label: Text('Logout'),
+        padding: EdgeInsets.symmetric(vertical: 4),
       ),
     );
+
+    return destinations;
   }
 
-  Widget _buildNavItem(
-    BuildContext context,
-    NavigationItem item,
-    bool isSelected, {
-    bool isSubItem = false,
-  }) {
-    return ListTile(
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      contentPadding: EdgeInsets.only(
-        left: isSubItem ? (_isExpanded ? 56 : 8) : (_isExpanded ? 16 : 8),
-        right: _isExpanded ? 16 : 8,
-        top: 0,
-        bottom: 0,
-      ),
-      minLeadingWidth: 24,
-      horizontalTitleGap: 8,
-      leading: Container(
-        width: 24,
-        alignment: Alignment.center,
-        child: Icon(
-          item.icon,
-          size: 20,
-          color:
-              isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GestureDetector(
+        onTap: () => context.go('/'),
+        child: SizedBox(
+          width: _isExtended ? 222 : 46,
+          height: 56,
+          child:
+              _isExtended
+                  ? SvgPicture.asset(
+                    'assets/images/Logo.svg',
+                    fit: BoxFit.contain,
+                    placeholderBuilder:
+                        (BuildContext context) => const Center(
+                          child: Text(
+                            'Logo',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                  )
+                  : SvgPicture.asset(
+                    'assets/images/house-icon.svg',
+                    fit: BoxFit.contain,
+                    placeholderBuilder:
+                        (BuildContext context) => const Center(
+                          child: Icon(Icons.home, color: Colors.white),
+                        ),
+                  ),
         ),
       ),
-      title:
-          _isExpanded
-              ? Text(
-                item.label,
-                style: TextStyle(
-                  color:
-                      isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.6),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              )
-              : null,
-      selected: isSelected,
-      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-      onTap: () => context.go(item.path),
     );
   }
 
   Widget _buildProfile(BuildContext context) {
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: _isExpanded ? 16 : 0,
-        vertical: 8,
-      ),
-      leading:
-          _isExpanded
-              ? CustomAvatar(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      child: InkWell(
+        onTap: () => context.go('/profile'),
+        child: Container(
+          decoration: BoxDecoration(
+            color:
+                widget.currentPath == '/profile'
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
+                    : Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          width: _isExtended ? 220 : 40, // Reduced to prevent overflow
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomAvatar(
                 imageUrl: 'assets/images/user-image.png',
-                size: 32,
+                size: 28, // Reduced size
                 borderWidth: widget.currentPath == '/profile' ? 2 : 0,
-              )
-              : null,
-      title:
-          _isExpanded
-              ? Text(
-                'John Doe',
-                style: TextStyle(
-                  fontSize: 14,
-                  color:
-                      widget.currentPath == '/profile'
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.6),
+              ),
+              if (_isExtended) ...[
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'John Doe',
+                    style: TextStyle(
+                      fontSize: 12, // Reduced font size
+                      color: Colors.white,
+                      fontWeight:
+                          widget.currentPath == '/profile'
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    maxLines: 1,
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-              )
-              : null,
-      trailing:
-          !_isExpanded
-              ? Padding(
-                padding: const EdgeInsets.only(right: 19),
-                child: CustomAvatar(
-                  imageUrl: 'assets/images/user-image.png',
-                  size: 32,
-                  borderWidth: widget.currentPath == '/profile' ? 2 : 0,
-                ),
-              )
-              : null,
-      onTap: () => context.go('/profile'),
-      selected: widget.currentPath == '/profile',
-      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildExpandButton() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+  Widget _buildToggleButton() {
+    return Container(
+      width: 40,
+      height: 40,
+      margin: const EdgeInsets.only(bottom: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.4),
+        shape: BoxShape.circle,
+      ),
       child: IconButton(
-        icon: Icon(_isExpanded ? Icons.chevron_left : Icons.chevron_right),
+        padding: EdgeInsets.zero,
+        icon: Icon(
+          _isExtended ? Icons.chevron_left : Icons.chevron_right,
+          color: Colors.white,
+        ),
         onPressed: () {
           setState(() {
-            _isExpanded = !_isExpanded;
+            _isExtended = !_isExtended;
           });
         },
       ),
