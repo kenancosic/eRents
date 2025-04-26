@@ -13,7 +13,6 @@ class AppNavigationBar extends StatefulWidget {
 }
 
 class _AppNavigationBarState extends State<AppNavigationBar> {
-  bool _isExtended = true;
   int _selectedIndex = 0;
 
   static const List<NavigationItem> navigationItems = [
@@ -23,35 +22,21 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       label: 'Properties',
       icon: Icons.apartment_rounded,
       path: '/properties',
-      subItems: [
-        NavigationItem(
-          label: 'Properties',
-          icon: Icons.apartment_rounded,
-          path: '/properties',
-        ),
-        NavigationItem(
-          label: 'Maintenance',
-          icon: Icons.build_rounded,
-          path: '/maintenance',
-        ),
-      ],
+    ),
+    NavigationItem(
+      label: 'Maintenance',
+      icon: Icons.build_rounded,
+      path: '/maintenance',
     ),
     NavigationItem(
       label: 'Statistics',
       icon: Icons.bar_chart_rounded,
       path: '/statistics',
-      subItems: [
-        NavigationItem(
-          label: 'Statistics',
-          icon: Icons.bar_chart_rounded,
-          path: '/statistics',
-        ),
-        NavigationItem(
-          label: 'Reports',
-          icon: Icons.description_rounded,
-          path: '/reports',
-        ),
-      ],
+    ),
+    NavigationItem(
+      label: 'Reports',
+      icon: Icons.summarize_rounded,
+      path: '/reports',
     ),
     NavigationItem(
       label: 'Tenants',
@@ -63,7 +48,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
   @override
   void initState() {
     super.initState();
-    // Find the selected index based on the current path
     _updateSelectedIndex();
   }
 
@@ -76,34 +60,39 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
   }
 
   void _updateSelectedIndex() {
-    // Find main navigation item index
     for (int i = 0; i < navigationItems.length; i++) {
       final item = navigationItems[i];
-      if (widget.currentPath == item.path) {
+      if (widget.currentPath == item.path ||
+          (item.path != '/' &&
+              widget.currentPath.startsWith(item.path + '/'))) {
         setState(() {
           _selectedIndex = i;
         });
         return;
       }
-
-      // Check sub-items
-      if (item.subItems != null) {
-        for (final subItem in item.subItems!) {
-          if (widget.currentPath == subItem.path) {
-            setState(() {
-              _selectedIndex = i;
-            });
-            return;
-          }
-        }
-      }
     }
+  }
+
+  // Check if the current path is this item or a child path
+  bool _isItemSelected(NavigationItem item) {
+    if (widget.currentPath == item.path) {
+      return true;
+    }
+
+    if (item.path != '/' && widget.currentPath.startsWith(item.path + '/')) {
+      return true;
+    }
+
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Slightly reduce widths to prevent overflow
-    final double railWidth = _isExtended ? 242 : 62;
+    return _buildNavigationRail(context);
+  }
+
+  Widget _buildNavigationRail(BuildContext context) {
+    final railWidth = 80.0;
 
     return Container(
       width: railWidth,
@@ -120,80 +109,32 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
             child: Container(color: Colors.black.withOpacity(0.4)),
           ),
 
-          // Main Navigation Rail with scroll capability
-          ClipRect(
-            child: SizedBox(
-              width: railWidth,
-              child: SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: MediaQuery.of(context).size.height,
-                  ),
-                  child: IntrinsicHeight(
-                    child: NavigationRail(
-                      labelType:
-                          _isExtended
-                              ? NavigationRailLabelType.none
-                              : NavigationRailLabelType.all,
-                      selectedIndex: _selectedIndex,
-                      extended: _isExtended,
-                      minWidth: 62,
-                      minExtendedWidth: 242,
-                      useIndicator: true,
-                      indicatorColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.7),
-                      backgroundColor: Colors.transparent,
-                      unselectedIconTheme: IconThemeData(
-                        color: Colors.white.withOpacity(0.7),
-                        size: 20,
-                      ),
-                      unselectedLabelTextStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
-                        fontSize: 13,
-                      ),
-                      selectedIconTheme: const IconThemeData(
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      selectedLabelTextStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                      groupAlignment: -0.85,
-                      leading: _buildHeader(context),
-                      trailing: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(height: 12),
-                          Divider(
-                            color: Colors.white.withOpacity(0.2),
-                            thickness: 1,
-                          ),
-                          _buildProfile(context),
-                          const SizedBox(height: 8),
-                          _buildToggleButton(),
-                        ],
-                      ),
-                      destinations: _buildDestinations(),
-                      onDestinationSelected: (int index) {
-                        setState(() {
-                          _selectedIndex = index;
-                        });
+          // Navigation Rail
+          SizedBox(
+            width: railWidth,
+            height: double.infinity,
+            child: Column(
+              children: [
+                // Header with logo
+                _buildHeader(context),
 
-                        if (index < navigationItems.length) {
-                          final item = navigationItems[index];
-                          context.go(item.path);
-                        } else {
-                          // This is the logout button
-                          context.go('/login');
-                        }
-                      },
-                    ),
+                // Navigation items
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: _buildNavigationItems(context),
                   ),
                 ),
-              ),
+
+                // Profile and logout
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Divider(color: Colors.white.withOpacity(0.2), thickness: 1),
+                    _buildProfile(context),
+                    _buildLogoutButton(context),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -201,38 +142,88 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
     );
   }
 
-  List<NavigationRailDestination> _buildDestinations() {
-    List<NavigationRailDestination> destinations = [];
+  Widget _buildNavigationItems(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < navigationItems.length; i++)
+          _buildNavigationItem(context, navigationItems[i], i),
+      ],
+    );
+  }
 
-    for (final item in navigationItems) {
-      destinations.add(
-        NavigationRailDestination(
-          icon: Badge(
-            isLabelVisible: item.subItems != null && item.subItems!.isNotEmpty,
-            child: Icon(item.icon),
-          ),
-          selectedIcon: Badge(
-            isLabelVisible: item.subItems != null && item.subItems!.isNotEmpty,
-            backgroundColor: Colors.white,
-            child: Icon(item.icon),
-          ),
-          label: Text(item.label),
-          padding: const EdgeInsets.symmetric(vertical: 4),
+  Widget _buildNavigationItem(
+    BuildContext context,
+    NavigationItem item,
+    int index,
+  ) {
+    final bool isSelected = _isItemSelected(item);
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+        context.go(item.path);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
+                  : Colors.transparent,
         ),
-      );
-    }
-
-    // Add logout as the last item
-    destinations.add(
-      const NavigationRailDestination(
-        icon: Icon(Icons.logout_rounded),
-        selectedIcon: Icon(Icons.logout_rounded),
-        label: Text('Logout'),
-        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              item.icon,
+              color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+              size: 20,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.label,
+              style: TextStyle(
+                color:
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
+  }
 
-    return destinations;
+  Widget _buildLogoutButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: () => context.go('/login'),
+        child: Column(
+          children: [
+            Icon(
+              Icons.logout_rounded,
+              color: Colors.white.withOpacity(0.7),
+              size: 20,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Logout',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -241,29 +232,15 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       child: GestureDetector(
         onTap: () => context.go('/'),
         child: SizedBox(
-          width: _isExtended ? 222 : 46,
-          height: 56,
-          child:
-              _isExtended
-                  ? SvgPicture.asset(
-                    'assets/images/Logo.svg',
-                    fit: BoxFit.contain,
-                    placeholderBuilder:
-                        (BuildContext context) => const Center(
-                          child: Text(
-                            'Logo',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                  )
-                  : SvgPicture.asset(
-                    'assets/images/house-icon.svg',
-                    fit: BoxFit.contain,
-                    placeholderBuilder:
-                        (BuildContext context) => const Center(
-                          child: Icon(Icons.home, color: Colors.white),
-                        ),
-                  ),
+          width: double.infinity,
+          height: 30,
+          child: SvgPicture.asset(
+            'assets/images/logo.svg',
+            fit: BoxFit.scaleDown,
+            placeholderBuilder:
+                (BuildContext context) =>
+                    const Center(child: Icon(Icons.home, color: Colors.white)),
+          ),
         ),
       ),
     );
@@ -283,61 +260,15 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-          width: _isExtended ? 220 : 40, // Reduced to prevent overflow
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomAvatar(
-                imageUrl: 'assets/images/user-image.png',
-                size: 28, // Reduced size
-                borderWidth: widget.currentPath == '/profile' ? 2 : 0,
-              ),
-              if (_isExtended) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'John Doe',
-                    style: TextStyle(
-                      fontSize: 12, // Reduced font size
-                      color: Colors.white,
-                      fontWeight:
-                          widget.currentPath == '/profile'
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ],
+          width: 40,
+          child: Center(
+            child: CustomAvatar(
+              imageUrl: 'assets/images/user-image.png',
+              size: 28,
+              borderWidth: widget.currentPath == '/profile' ? 2 : 0,
+            ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildToggleButton() {
-    return Container(
-      width: 40,
-      height: 40,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        shape: BoxShape.circle,
-      ),
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        icon: Icon(
-          _isExtended ? Icons.chevron_left : Icons.chevron_right,
-          color: Colors.white,
-        ),
-        onPressed: () {
-          setState(() {
-            _isExtended = !_isExtended;
-          });
-        },
       ),
     );
   }
@@ -347,12 +278,10 @@ class NavigationItem {
   final String label;
   final IconData icon;
   final String path;
-  final List<NavigationItem>? subItems;
 
   const NavigationItem({
     required this.label,
     required this.icon,
     required this.path,
-    this.subItems,
   });
 }

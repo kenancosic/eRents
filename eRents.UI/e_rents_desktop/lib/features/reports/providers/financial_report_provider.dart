@@ -1,7 +1,6 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
-import 'package:e_rents_desktop/models/reports/reports.dart';
 import 'package:flutter/foundation.dart';
 
 class FinancialReportProvider extends BaseReportProvider<FinancialReportItem> {

@@ -1,49 +1,52 @@
 import 'package:intl/intl.dart';
 
 class FinancialReportItem {
-  final String date;
+  final String dateFrom;
+  final String dateTo;
   final String property;
-  final String unit;
-  final String transactionType;
-  final double amount;
-  final double balance;
+  final double totalRent;
+  final double maintenanceCosts;
+  final double total;
 
   FinancialReportItem({
-    required this.date,
+    required this.dateFrom,
+    required this.dateTo,
     required this.property,
-    required this.unit,
-    required this.transactionType,
-    required this.amount,
-    required this.balance,
+    required this.totalRent,
+    required this.maintenanceCosts,
+    required this.total,
   });
 
-  // For formatting in the UI
-  String get formattedAmount => '\$${amount.toStringAsFixed(2)}';
-  String get formattedBalance => '\$${balance.toStringAsFixed(2)}';
+  // Formatting helpers
+  String get formattedTotalRent => '\$${totalRent.toStringAsFixed(2)}';
+  String get formattedMaintenanceCosts =>
+      '\$${maintenanceCosts.toStringAsFixed(2)}';
+  String get formattedTotal => '\$${total.toStringAsFixed(2)}';
 
-  // Get DateTime object from date string
-  DateTime get dateObj => DateFormat('dd/MM/yyyy').parse(date);
+  // Date helpers
+  DateTime get dateFromObj => DateFormat('dd/MM/yyyy').parse(dateFrom);
+  DateTime get dateToObj => DateFormat('dd/MM/yyyy').parse(dateTo);
 
-  // For converting to/from JSON
+  // JSON conversion
   Map<String, dynamic> toJson() {
     return {
-      'date': date,
+      'dateFrom': dateFrom,
+      'dateTo': dateTo,
       'property': property,
-      'unit': unit,
-      'transactionType': transactionType,
-      'amount': amount,
-      'balance': balance,
+      'totalRent': totalRent,
+      'maintenanceCosts': maintenanceCosts,
+      'total': total,
     };
   }
 
   factory FinancialReportItem.fromJson(Map<String, dynamic> json) {
     return FinancialReportItem(
-      date: json['date'],
+      dateFrom: json['dateFrom'],
+      dateTo: json['dateTo'],
       property: json['property'],
-      unit: json['unit'],
-      transactionType: json['transactionType'],
-      amount: json['amount'],
-      balance: json['balance'],
+      totalRent: json['totalRent'],
+      maintenanceCosts: json['maintenanceCosts'],
+      total: json['total'],
     );
   }
 }

@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/reports/reports.dart';
+import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
+import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/export_service.dart';
 
 /// Report type enum used for switching between report screens
-enum ReportType { financial, occupancy, maintenance, tenant }
+enum ReportType { financial, tenant }
 
 /// Export format enum for different file types
 enum ExportFormat { pdf, excel, csv }
@@ -21,25 +20,18 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
 
   ReportsProvider({
     FinancialReportProvider? financialProvider,
-    OccupancyReportProvider? occupancyProvider,
-    MaintenanceReportProvider? maintenanceProvider,
     TenantReportProvider? tenantProvider,
   }) {
     debugPrint("ReportsProvider: Initializing with lazy loading");
-    // Initialize only the current provider
     _providers[_currentReportType] = _createProvider(_currentReportType);
   }
 
   // Method to update providers after initialization
   void updateProviders(
     FinancialReportProvider financial,
-    OccupancyReportProvider occupancy,
-    MaintenanceReportProvider maintenance,
     TenantReportProvider tenant,
   ) {
     _providers[ReportType.financial] = financial;
-    _providers[ReportType.occupancy] = occupancy;
-    _providers[ReportType.maintenance] = maintenance;
     _providers[ReportType.tenant] = tenant;
     notifyListeners();
   }
@@ -49,10 +41,6 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     switch (type) {
       case ReportType.financial:
         return FinancialReportProvider();
-      case ReportType.occupancy:
-        return OccupancyReportProvider();
-      case ReportType.maintenance:
-        return MaintenanceReportProvider();
       case ReportType.tenant:
         return TenantReportProvider();
     }
@@ -64,22 +52,6 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
       _providers[ReportType.financial] = _createProvider(ReportType.financial);
     }
     return _providers[ReportType.financial] as FinancialReportProvider;
-  }
-
-  OccupancyReportProvider get occupancyProvider {
-    if (_providers[ReportType.occupancy] == null) {
-      _providers[ReportType.occupancy] = _createProvider(ReportType.occupancy);
-    }
-    return _providers[ReportType.occupancy] as OccupancyReportProvider;
-  }
-
-  MaintenanceReportProvider get maintenanceProvider {
-    if (_providers[ReportType.maintenance] == null) {
-      _providers[ReportType.maintenance] = _createProvider(
-        ReportType.maintenance,
-      );
-    }
-    return _providers[ReportType.maintenance] as MaintenanceReportProvider;
   }
 
   TenantReportProvider get tenantProvider {
@@ -100,9 +72,6 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
 
   // Report data getters
   List<FinancialReportItem> get financialReportData => financialProvider.items;
-  List<OccupancyReportItem> get occupancyReportData => occupancyProvider.items;
-  List<MaintenanceReportItem> get maintenanceReportData =>
-      maintenanceProvider.items;
   List<TenantReportItem> get tenantReportData => tenantProvider.items;
 
   // Date range management
@@ -141,10 +110,6 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     switch (reportName) {
       case 'Financial Report':
         return ReportType.financial;
-      case 'Occupancy Report':
-        return ReportType.occupancy;
-      case 'Maintenance Report':
-        return ReportType.maintenance;
       case 'Tenant Report':
         return ReportType.tenant;
       default:
@@ -157,10 +122,6 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     switch (_currentReportType) {
       case ReportType.financial:
         return 'Financial Report';
-      case ReportType.occupancy:
-        return 'Occupancy Report';
-      case ReportType.maintenance:
-        return 'Maintenance Report';
       case ReportType.tenant:
         return 'Tenant Report';
     }
@@ -218,42 +179,21 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     switch (_currentReportType) {
       case ReportType.financial:
         return [
-          'Date',
+          'Date From',
+          'Date To',
           'Property',
-          'Unit',
-          'Transaction Type',
-          'Amount',
-          'Balance',
-        ];
-      case ReportType.occupancy:
-        return [
-          'Property',
-          'Total Units',
-          'Occupied',
-          'Vacant',
-          'Occupancy Rate',
-          'Avg. Rent',
-        ];
-      case ReportType.maintenance:
-        return [
-          'Date',
-          'Property',
-          'Unit',
-          'Issue Type',
-          'Status',
-          'Priority',
-          'Cost',
+          'Total Rent',
+          'Maintenance Costs',
+          'Total',
         ];
       case ReportType.tenant:
         return [
           'Tenant',
           'Property',
-          'Unit',
           'Lease Start',
           'Lease End',
-          'Rent',
-          'Status',
-          'Days Left',
+          'Cost of Rent',
+          'Total Paid Rent',
         ];
     }
   }
@@ -264,39 +204,12 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
         return financialReportData
             .map(
               (item) => [
-                item.date,
+                item.dateFrom,
+                item.dateTo,
                 item.property,
-                item.unit,
-                item.transactionType,
-                item.formattedAmount,
-                item.formattedBalance,
-              ],
-            )
-            .toList();
-      case ReportType.occupancy:
-        return occupancyReportData
-            .map(
-              (item) => [
-                item.property,
-                item.totalUnits.toString(),
-                item.occupied.toString(),
-                item.vacant.toString(),
-                item.formattedOccupancyRate,
-                item.formattedAvgRent,
-              ],
-            )
-            .toList();
-      case ReportType.maintenance:
-        return maintenanceReportData
-            .map(
-              (item) => [
-                item.date,
-                item.property,
-                item.unit,
-                item.issueType,
-                item.status,
-                item.priorityLabel,
-                item.formattedCost,
+                item.formattedTotalRent,
+                item.formattedMaintenanceCosts,
+                item.formattedTotal,
               ],
             )
             .toList();
@@ -306,12 +219,10 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
               (item) => [
                 item.tenant,
                 item.property,
-                item.unit,
                 item.leaseStart,
                 item.leaseEnd,
-                item.formattedRent,
-                item.statusLabel,
-                item.daysRemaining.toString(),
+                item.formattedCostOfRent,
+                item.formattedTotalPaidRent,
               ],
             )
             .toList();

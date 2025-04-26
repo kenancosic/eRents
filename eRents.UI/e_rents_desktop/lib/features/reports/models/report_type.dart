@@ -1,1 +1,1 @@
-enum ReportType { financial, occupancy, maintenance, tenant }
+enum ReportType { financial, tenant }

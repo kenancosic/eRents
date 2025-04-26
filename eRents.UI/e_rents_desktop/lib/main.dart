@@ -48,7 +48,7 @@ void main() {
         ),
         ChangeNotifierProvider(create: (_) => TenantProvider()),
         ChangeNotifierProvider<StatisticsProvider>(
-          create: (context) => StatisticsProvider(context.read<ApiService>()),
+          create: (context) => StatisticsProvider(),
         ),
       ],
       child: MaterialApp.router(

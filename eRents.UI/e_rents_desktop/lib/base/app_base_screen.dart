@@ -76,67 +76,49 @@ class AppBaseScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          // Navigation Bar
-          AppNavigationBar(currentPath: currentPath),
+    Widget content = Expanded(
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Page Title
+              Text(title, style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: 12),
 
-          // Main Content
-          Expanded(
-            child: Scaffold(
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              body: Container(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Page Title
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Main Content Area
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: child ?? const SizedBox.shrink(),
-                        ),
+              // Main Content Area
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 5,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+
+    // Always use side navigation rail layout
+    return Scaffold(
+      body: Row(
+        children: [AppNavigationBar(currentPath: currentPath), content],
       ),
     );
   }
-}
-
-class NavigationItem {
-  final String label;
-  final IconData icon;
-  final String path;
-
-  const NavigationItem({
-    required this.label,
-    required this.icon,
-    required this.path,
-  });
 }

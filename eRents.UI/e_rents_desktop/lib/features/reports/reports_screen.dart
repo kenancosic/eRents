@@ -6,8 +6,6 @@ import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/occupancy_report_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/maintenance_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/services.dart';
 
@@ -18,35 +16,21 @@ class ReportsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Create providers with lazy: false to ensure they're initialized immediately
         ChangeNotifierProvider(create: (_) => FinancialReportProvider()),
-        ChangeNotifierProvider(create: (_) => OccupancyReportProvider()),
-        ChangeNotifierProvider(create: (_) => MaintenanceReportProvider()),
         ChangeNotifierProvider(create: (_) => TenantReportProvider()),
-        // Use ProxyProvider to create the combined provider
-        ChangeNotifierProxyProvider4<
+        ChangeNotifierProxyProvider2<
           FinancialReportProvider,
-          OccupancyReportProvider,
-          MaintenanceReportProvider,
           TenantReportProvider,
           ReportsProvider
         >(
           create: (_) => ReportsProvider(),
-          update: (_, financial, occupancy, maintenance, tenant, previous) {
-            // Update the existing provider if possible to maintain state
+          update: (_, financial, tenant, previous) {
             if (previous != null) {
-              previous.updateProviders(
-                financial,
-                occupancy,
-                maintenance,
-                tenant,
-              );
+              previous.updateProviders(financial, tenant);
               return previous;
             }
             return ReportsProvider(
               financialProvider: financial,
-              occupancyProvider: occupancy,
-              maintenanceProvider: maintenance,
               tenantProvider: tenant,
             );
           },
@@ -184,12 +168,7 @@ class _ReportsScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ReportsProvider>(context);
-    final List<String> reportTypes = [
-      'Financial Report',
-      'Occupancy Report',
-      'Maintenance Report',
-      'Tenant Report',
-    ];
+    final List<String> reportTypes = ['Financial Report', 'Tenant Report'];
 
     return AppBaseScreen(
       title: 'Reports',

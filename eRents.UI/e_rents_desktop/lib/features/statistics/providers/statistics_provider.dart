@@ -1,46 +1,63 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
-import 'package:e_rents_desktop/models/statistics/maintenance_statistics.dart';
-import 'package:e_rents_desktop/models/statistics/occupancy_statistics.dart';
-import 'package:e_rents_desktop/models/statistics/tenant_statistics.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
-class StatisticsProvider extends BaseProvider<Map<String, dynamic>> {
-  final ApiService _apiService;
-  List<Map<String, dynamic>> _statistics = [];
-  bool _isLoading = false;
-  String _errorMessage = '';
+class StatisticsProvider extends BaseProvider<FinancialStatistics> {
+  FinancialStatistics? _statistics;
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
+  DateTime _endDate = DateTime.now();
 
-  List<Map<String, dynamic>> get statistics => _statistics;
-  bool get isLoading => _isLoading;
-  String get errorMessage => _errorMessage;
+  FinancialStatistics? get statistics => _statistics;
+  DateTime get startDate => _startDate;
+  DateTime get endDate => _endDate;
 
-  StatisticsProvider(this._apiService) : super(_apiService) {
+  // Common date format
+  static final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
+  String get formattedStartDate => dateFormat.format(_startDate);
+  String get formattedEndDate => dateFormat.format(_endDate);
+
+  StatisticsProvider() {
     enableMockData();
+    fetchItems();
   }
 
   @override
-  String get endpoint => '';
+  String get endpoint => 'api/statistics/financial';
 
   @override
-  Map<String, dynamic> fromJson(Map<String, dynamic> json) => json;
+  FinancialStatistics fromJson(Map<String, dynamic> json) {
+    return FinancialStatistics.fromJson(json);
+  }
 
   @override
-  Map<String, dynamic> toJson(Map<String, dynamic> item) => item;
+  Map<String, dynamic> toJson(FinancialStatistics item) {
+    return item.toJson();
+  }
 
   @override
-  List<Map<String, dynamic>> getMockItems() => [];
+  List<FinancialStatistics> getMockItems() {
+    return [MockDataService.getMockFinancialStatistics(_startDate, _endDate)];
+  }
 
-  List<FinancialStatistics> getMockFinancialStatistics() =>
-      MockDataService.getMockFinancialStatistics();
+  @override
+  Future<void> fetchItems() async {
+    await execute(() async {
+      _statistics = MockDataService.getMockFinancialStatistics(
+        _startDate,
+        _endDate,
+      );
+      items_ = _statistics != null ? [_statistics!] : [];
+    });
+  }
 
-  List<OccupancyStatistics> getMockOccupancyStatistics() =>
-      MockDataService.getMockOccupancyStatistics();
-
-  List<MaintenanceStatistics> getMockMaintenanceStatistics() =>
-      MockDataService.getMockMaintenanceStatistics();
-
-  List<TenantStatistics> getMockTenantStatistics() =>
-      MockDataService.getMockTenantStatistics();
+  void setDateRange(DateTime start, DateTime end) {
+    debugPrint(
+      "StatisticsProvider.setDateRange: from ${dateFormat.format(start)} to ${dateFormat.format(end)}",
+    );
+    _startDate = start;
+    _endDate = end;
+    fetchItems();
+  }
 }
