@@ -15,105 +15,88 @@ class MaintenanceOverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
+      elevation: 2,
+      // Use less vertical padding than FinancialSummaryCard to make it less tall
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          // No need for internal Column if using ListTiles directly
           children: [
-            const Text(
-              'Maintenance Overview',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Removed internal header, handled by _buildSectionHeader in home_screen
+            _buildOverviewTile(
+              context: context,
+              icon: Icons.pending_actions_outlined,
+              iconColor: Colors.orange.shade700,
+              title: 'Pending Issues',
+              value: pendingIssues.length.toString(),
+              valueColor:
+                  pendingIssues.isNotEmpty ? Colors.orange.shade800 : null,
+              // Optional: Add onTap to navigate
+              // onTap: () => print('Navigate to Pending Issues'),
             ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'Pending Issues',
-                    pendingIssues.length.toString(),
-                    Colors.orange,
-                    Icons.pending_actions,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildStatItem(
-                    context,
-                    'High Priority',
-                    highPriorityIssues.length.toString(),
-                    Colors.red,
-                    Icons.warning,
-                  ),
-                ),
-              ],
+            const Divider(height: 1), // Use thin dividers
+            _buildOverviewTile(
+              context: context,
+              icon: Icons.warning_amber_rounded,
+              iconColor: Colors.red.shade700,
+              title: 'High Priority Issues',
+              value: highPriorityIssues.length.toString(),
+              valueColor:
+                  highPriorityIssues.isNotEmpty ? Colors.red.shade800 : null,
+              // onTap: () => print('Navigate to High Priority Issues'),
             ),
-            const SizedBox(height: 16),
-            _buildStatItem(
-              context,
-              'Tenant Complaints',
-              tenantComplaints.length.toString(),
-              Colors.blue,
-              Icons.message,
+            const Divider(height: 1),
+            _buildOverviewTile(
+              context: context,
+              icon: Icons.chat_bubble_outline_rounded,
+              iconColor: Colors.blue.shade700,
+              title: 'Tenant Complaints/Feedback',
+              value: tenantComplaints.length.toString(),
+              valueColor:
+                  tenantComplaints.isNotEmpty ? Colors.blue.shade800 : null,
+              // onTap: () => print('Navigate to Tenant Complaints'),
             ),
+            // Can add more tiles here if needed (e.g., Overdue Issues)
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatItem(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
+  // Helper to build consistent ListTile style rows
+  Widget _buildOverviewTile({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    Color? valueColor,
+    VoidCallback? onTap,
+  }) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
+    return ListTile(
+      leading: Icon(icon, color: iconColor),
+      title: Text(title, style: textTheme.bodyLarge),
+      trailing: Text(
+        value,
+        style: textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: valueColor ?? textTheme.bodyMedium?.color?.withOpacity(0.8),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  label,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ],
-      ),
+      onTap: onTap, // Add tap functionality
+      dense: true, // Make tiles slightly more compact
+      contentPadding: const EdgeInsets.symmetric(
+        vertical: 4.0,
+        horizontal: 8.0,
+      ), // Adjust padding
     );
   }
+
+  // Removed the old _buildStatItem method
 }
