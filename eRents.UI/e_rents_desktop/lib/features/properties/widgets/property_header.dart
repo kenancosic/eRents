@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/features/properties/widgets/status_chip.dart';
 
 class PropertyHeader extends StatelessWidget {
   final Property property;
@@ -56,7 +57,7 @@ class PropertyHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _buildStatusChip(property.status),
+                  StatusChip(status: property.status),
                   const SizedBox(height: 16),
                   Text(
                     '\$${property.price.toStringAsFixed(2)}/month',
@@ -77,27 +78,6 @@ class PropertyHeader extends StatelessWidget {
 
   Widget _buildInfoChip({required IconData icon, required String text}) {
     return Chip(avatar: Icon(icon, size: 16), label: Text(text));
-  }
-
-  Widget _buildStatusChip(String status) {
-    final isAvailable = status == 'Available';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color:
-            isAvailable
-                ? Colors.green.withOpacity(0.2)
-                : Colors.red.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: isAvailable ? Colors.green : Colors.red,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
   }
 
   Widget _buildInfoRow(String label, String value) {

@@ -115,4 +115,14 @@ class PropertyProvider extends BaseProvider<Property> {
   List<Property> getOccupiedProperties() {
     return items.where((property) => property.status == 'Occupied').toList();
   }
+
+  // Method to get a single property by ID from the current list
+  Property? getPropertyById(String id) {
+    try {
+      return items.firstWhere((property) => property.id == id);
+    } catch (e) {
+      // If not found, return null
+      return null;
+    }
+  }
 }

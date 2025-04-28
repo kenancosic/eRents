@@ -1,14 +1,17 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
+import 'package:e_rents_desktop/features/properties/widgets/status_chip.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_info_row.dart';
+import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
+import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -19,11 +22,45 @@ class PropertiesScreen extends StatefulWidget {
 
 class _PropertiesScreenState extends State<PropertiesScreen> {
   bool _isListView = true;
+  String _searchQuery = '';
+  List<String> _searchHistory = [];
+  List<Property> _filteredProperties = [];
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<PropertyProvider>().fetchProperties());
+    // Initial fetch and filter setup
+    Future.microtask(() async {
+      final provider = context.read<PropertyProvider>();
+      await provider.fetchProperties();
+      // Initially, show all properties
+      if (mounted) {
+        setState(() {
+          _filteredProperties = provider.properties;
+        });
+      }
+    });
+  }
+
+  void _filterProperties(String query) {
+    final provider = context.read<PropertyProvider>();
+    final lowerCaseQuery = query.toLowerCase();
+
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredProperties = provider.properties;
+      } else {
+        _filteredProperties =
+            provider.properties.where((property) {
+              // Search by title (name)
+              return property.title.toLowerCase().contains(lowerCaseQuery);
+              // Add more fields to search if needed (e.g., description, address)
+              // || property.description.toLowerCase().contains(lowerCaseQuery)
+              // || property.address.toLowerCase().contains(lowerCaseQuery);
+            }).toList();
+      }
+    });
   }
 
   @override
@@ -33,111 +70,186 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       currentPath: '/properties',
       child: Consumer<PropertyProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    provider.error!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchProperties(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth < 600) {
-                      // Stack vertically on small screens
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Total Properties: ${provider.properties.length}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  _isListView ? Icons.grid_view : Icons.list,
-                                  color: Theme.of(context).colorScheme.primary,
+          // Use the LoadingOrErrorWidget to handle loading/error states
+          return LoadingOrErrorWidget(
+            isLoading: provider.isLoading,
+            error: provider.error,
+            onRetry: () => provider.fetchProperties(), // Provide retry callback
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomSearchBar<Property>(
+                        hintText: 'Search Properties by Name...',
+                        showFilterIcon: false, // Hiding filter icon for now
+                        searchHistory: _searchHistory,
+                        localData:
+                            provider
+                                .properties, // Use all properties for suggestions
+                        showSuggestions: true,
+                        itemToString:
+                            (Property item) =>
+                                item.title, // For basic filtering
+                        onSearchChanged:
+                            _filterProperties, // Filter the main list
+                        customSuggestionBuilder: (
+                          Property item,
+                          TextEditingController controller,
+                          Function(String) onSelected,
+                        ) {
+                          return ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.asset(
+                                item
+                                    .images
+                                    .first, // Assuming at least one image
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            title: Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.description,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isListView = !_isListView;
-                                  });
-                                },
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () => _showPropertyDialog(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add Property'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    } else {
-                      // Use row layout on larger screens
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Total Properties: ${provider.properties.length}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  _isListView ? Icons.grid_view : Icons.list,
-                                  color: Theme.of(context).colorScheme.primary,
+                                Text(
+                                  kCurrencyFormat.format(item.price),
+                                  style: TextStyle(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    _isListView = !_isListView;
-                                  });
-                                },
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: () => _showPropertyDialog(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Add Property'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      );
-                    }
-                  },
+                              ],
+                            ),
+                            onTap: () {
+                              controller.text = item.title; // Set text field
+                              _filterProperties(item.title); // Filter list
+                              // Add to history (optional)
+                              if (!_searchHistory.contains(item.title)) {
+                                setState(
+                                  () => _searchHistory.insert(0, item.title),
+                                );
+                                // Limit history size if needed
+                              }
+                              // Navigate to details
+                              _navigateToPropertyDetails(context, item);
+                              // Close suggestions view implicitly by navigation
+                              // If not navigating, you might need `controller.closeView(item.title)`
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16), // Spacing after search bar
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          if (constraints.maxWidth < 600) {
+                            // Stack vertically on small screens
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Properties: ${_filteredProperties.length}',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        _isListView
+                                            ? Icons.grid_view
+                                            : Icons.list,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _isListView = !_isListView;
+                                        });
+                                      },
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed:
+                                          () => _navigateToAddProperty(context),
+                                      icon: const Icon(Icons.add),
+                                      label: const Text('Add Property'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          } else {
+                            // Use row layout on larger screens
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Total Properties: ${_filteredProperties.length}',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        _isListView
+                                            ? Icons.grid_view
+                                            : Icons.list,
+                                        color:
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _isListView = !_isListView;
+                                        });
+                                      },
+                                    ),
+                                    ElevatedButton.icon(
+                                      onPressed:
+                                          () => _navigateToAddProperty(context),
+                                      icon: const Icon(Icons.add),
+                                      label: const Text('Add Property'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child:
-                    _isListView
-                        ? _buildListView(provider.properties)
-                        : _buildGridView(provider.properties),
-              ),
-            ],
+                Expanded(
+                  child:
+                      _isListView
+                          ? _buildListView(_filteredProperties)
+                          : _buildGridView(_filteredProperties),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -145,6 +257,10 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   Widget _buildListView(List<Property> properties) {
+    // Check if properties list is empty after filtering
+    if (properties.isEmpty) {
+      return _buildEmptyListMessage(); // Use helper
+    }
     return ListView.builder(
       itemCount: properties.length,
       itemBuilder: (context, index) {
@@ -152,7 +268,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: InkWell(
-            onTap: () => _showPropertyDetails(context, property),
+            onTap: () => _navigateToPropertyDetails(context, property),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
               leading: ClipRRect(
@@ -182,18 +298,19 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 16,
+                    runSpacing: 4, // Add run spacing for smaller screens
                     children: [
-                      _buildPropertyInfo(
-                        Icons.bed,
-                        '${property.bedrooms} beds',
+                      PropertyInfoRow(
+                        icon: Icons.bed,
+                        text: '${property.bedrooms} beds',
                       ),
-                      _buildPropertyInfo(
-                        Icons.bathtub,
-                        '${property.bathrooms} baths',
+                      PropertyInfoRow(
+                        icon: Icons.bathtub,
+                        text: '${property.bathrooms} baths',
                       ),
-                      _buildPropertyInfo(
-                        Icons.square_foot,
-                        '${property.area} sqft',
+                      PropertyInfoRow(
+                        icon: Icons.square_foot,
+                        text: '${property.area} sqft',
                       ),
                     ],
                   ),
@@ -208,7 +325,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  _buildStatusChip(property.status),
+                  StatusChip(status: property.status),
                   PopupMenuButton(
                     itemBuilder:
                         (context) => [
@@ -237,7 +354,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                         ],
                     onSelected: (value) {
                       if (value == 'edit') {
-                        _showPropertyDialog(context, property);
+                        context.push('/properties/${property.id}/edit');
                       } else if (value == 'delete') {
                         _showDeleteDialog(context, property);
                       }
@@ -253,6 +370,10 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   Widget _buildGridView(List<Property> properties) {
+    // Check if properties list is empty after filtering
+    if (properties.isEmpty) {
+      return _buildEmptyListMessage(); // Use helper
+    }
     final scrollController = ScrollController();
     final gridViewKey = GlobalKey();
 
@@ -267,7 +388,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
               child: Card(
                 clipBehavior: Clip.hardEdge,
                 child: InkWell(
-                  onTap: () => _showPropertyDetails(context, property),
+                  onTap: () => _navigateToPropertyDetails(context, property),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -285,7 +406,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                             Positioned(
                               top: 8,
                               right: 8,
-                              child: _buildStatusChip(property.status),
+                              child: StatusChip(status: property.status),
                             ),
                           ],
                         ),
@@ -360,7 +481,9 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                                         ],
                                     onSelected: (value) {
                                       if (value == 'edit') {
-                                        _showPropertyDialog(context, property);
+                                        context.push(
+                                          '/properties/${property.id}/edit',
+                                        );
                                       } else if (value == 'delete') {
                                         _showDeleteDialog(context, property);
                                       }
@@ -419,90 +542,57 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     );
   }
 
-  Widget _buildPropertyInfo(IconData icon, String text) {
-    return Row(
-      children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(text)],
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    final isAvailable = status == 'Available';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color:
-            isAvailable
-                ? Colors.green.withOpacity(0.2)
-                : Colors.red.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
+  // Helper widget for displaying the empty list message
+  Widget _buildEmptyListMessage() {
+    return Center(
       child: Text(
-        status,
-        style: TextStyle(
-          color: isAvailable ? Colors.green : Colors.red,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
+        _searchQuery.isEmpty
+            ? 'No properties found.' // Message when no properties exist at all
+            : 'No properties match "$_searchQuery".', // Message when filter yields no results
+        style: Theme.of(context).textTheme.titleMedium,
       ),
     );
-  }
-
-  Future<void> _showPropertyDialog(
-    BuildContext context, [
-    Property? property,
-  ]) async {
-    final result = await Navigator.push<Property>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PropertyFormScreen(property: property),
-      ),
-    );
-
-    if (result != null) {
-      final provider = context.read<PropertyProvider>();
-      if (property == null) {
-        await provider.addProperty(result);
-      } else {
-        await provider.updateProperty(result);
-      }
-    }
   }
 
   Future<void> _showDeleteDialog(
     BuildContext context,
     Property property,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showConfirmationDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete Property'),
-            content: Text(
-              'Are you sure you want to delete "${property.title}"? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+      title: 'Delete Property',
+      content: Text(
+        'Are you sure you want to delete "${property.title}"? This action cannot be undone.',
+      ),
+      confirmActionText: 'Delete',
+      isDestructiveAction: true,
     );
 
+    // Check explicitly for true, as dialog could return null if dismissed
     if (confirmed == true) {
-      await context.read<PropertyProvider>().deleteProperty(property.id);
+      // Add loading indicator/disable UI while deleting if needed
+      try {
+        await context.read<PropertyProvider>().deleteProperty(property.id);
+        // Optional: Show success message (e.g., SnackBar)
+        // ScaffoldMessenger.of(context).showSnackBar(
+        //   SnackBar(content: Text('"${property.title}" deleted.')),
+        // );
+      } catch (e) {
+        // Optional: Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete property: $e')),
+          );
+        }
+      }
     }
   }
 
-  void _showPropertyDetails(BuildContext context, Property property) {
-    context.go('/properties/${property.id}');
+  void _navigateToAddProperty(BuildContext context) {
+    context.push('/properties/add');
+  }
+
+  void _navigateToPropertyDetails(BuildContext context, Property property) {
+    context.push('/properties/${property.id}');
   }
 }

@@ -20,6 +20,7 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provi
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 
 class AppRouter {
   final GoRouter router = GoRouter(
@@ -63,30 +64,41 @@ class AppRouter {
       GoRoute(
         path: '/properties',
         builder: (context, state) => const PropertiesScreen(),
-      ),
-      GoRoute(
-        path: '/properties/:id',
-        builder: (context, state) {
-          final property = state.extra as Property?;
-          if (property == null) {
-            // If no property is passed, try to find it in the provider
-            final propertyProvider = context.read<PropertyProvider>();
-            final propertyId = state.pathParameters['id']!;
-            final foundProperty = propertyProvider.properties.firstWhere(
-              (p) => p.id == propertyId,
-              orElse: () => throw Exception('Property not found'),
-            );
-            return PropertyDetailsScreen(property: foundProperty);
-          }
-          return PropertyDetailsScreen(property: property);
-        },
-      ),
-      GoRoute(
-        path: '/properties/edit/:id',
-        builder: (context, state) {
-          final property = state.extra as Property;
-          return PropertyFormScreen(property: property);
-        },
+        routes: [
+          GoRoute(
+            path: 'add',
+            builder:
+                (context, state) => const PropertyFormScreen(propertyId: null),
+          ),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) {
+              final propertyId = state.pathParameters['id'];
+              if (propertyId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('Error: Missing Property ID')),
+                );
+              }
+              return PropertyDetailsScreen(propertyId: propertyId);
+            },
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) {
+                  final propertyId = state.pathParameters['id'];
+                  if (propertyId == null) {
+                    return const Scaffold(
+                      body: Center(
+                        child: Text('Error: Missing Property ID for Edit'),
+                      ),
+                    );
+                  }
+                  return PropertyFormScreen(propertyId: propertyId);
+                },
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/maintenance',

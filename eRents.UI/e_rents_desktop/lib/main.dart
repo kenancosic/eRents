@@ -10,39 +10,41 @@ import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart'
 import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/services/user_preferences_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/amenity_service.dart';
+import 'base/navigation_provider.dart';
+import 'base/preference_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+
+  // Get base URL from environment
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
+
+  // Initialize services
+  final prefsService = UserPreferencesService();
+  final secureStorageService = SecureStorageService();
+  final authService = AuthService(baseUrl, secureStorageService);
+  final apiService = ApiService(baseUrl, secureStorageService);
+  final amenityService = AmenityService.create();
+
   runApp(
     MultiProvider(
       providers: [
-        Provider<ApiService>(
-          create:
-              (_) =>
-                  ApiService('http://localhost:5000', SecureStorageService()),
+        // Authentication related providers
+        ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
+        Provider.value(value: authService),
+
+        // App State/Navigation providers
+        ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        ChangeNotifierProvider(
+          create: (_) => PreferencesProvider(preferencesService: prefsService),
         ),
-        ProxyProvider<ApiService, AuthService>(
-          update:
-              (_, apiService, __) => AuthService(
-                apiService.baseUrl,
-                apiService.secureStorageService,
-              ),
-        ),
-        ChangeNotifierProxyProvider<AuthService, AuthProvider>(
-          create:
-              (_) => AuthProvider(
-                ApiService('http://localhost:5000', SecureStorageService()),
-              ),
-          update: (_, authService, authProvider) {
-            authProvider?.authService = authService;
-            return authProvider ??
-                AuthProvider(
-                  ApiService('http://localhost:5000', SecureStorageService()),
-                );
-          },
-        ),
-        ChangeNotifierProvider<PropertyProvider>(
-          create: (context) => PropertyProvider(context.read<ApiService>()),
-        ),
+
+        // Feature specific providers (can also be provided closer to features)
+        ChangeNotifierProvider(create: (_) => PropertyProvider(apiService)),
         ChangeNotifierProvider<MaintenanceProvider>(
           create: (context) => MaintenanceProvider(context.read<ApiService>()),
         ),
@@ -50,6 +52,12 @@ void main() {
         ChangeNotifierProvider<StatisticsProvider>(
           create: (context) => StatisticsProvider(),
         ),
+
+        // Core Services (can be accessed anywhere)
+        Provider.value(value: apiService),
+        Provider.value(value: secureStorageService),
+        Provider.value(value: prefsService),
+        Provider.value(value: amenityService),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
@@ -59,21 +67,4 @@ void main() {
       ),
     ),
   );
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Row(children: [
-
-        ],
-      ));
-  }
 }

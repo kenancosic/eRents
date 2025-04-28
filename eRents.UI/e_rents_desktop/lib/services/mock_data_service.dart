@@ -7,9 +7,39 @@ import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 
 class MockDataService {
+  static final Map<String, IconData> _amenityIcons = {
+    'Pool': Icons.pool,
+    'Gym': Icons.fitness_center,
+    'Parking': Icons.local_parking,
+    'Garage': Icons.garage,
+    'Balcony': Icons.balcony,
+    'Patio': Icons.deck,
+    'Garden': Icons.yard,
+    'In-Unit Laundry': Icons.local_laundry_service,
+    'Air Conditioning': Icons.ac_unit,
+    'Heating': Icons.thermostat,
+    'Dishwasher': Icons.kitchen,
+    'Furnished': Icons.chair,
+    'Pet Friendly': Icons.pets,
+    'Elevator': Icons.elevator,
+    'Security System': Icons.security,
+    'High-Speed Internet': Icons.wifi,
+    'Wheelchair Accessible': Icons.accessible,
+    'Storage': Icons.inventory_2_outlined,
+    'Concierge': Icons.room_service,
+    'City View': Icons.location_city,
+    'Water View': Icons.water,
+    'Fireplace': Icons.fireplace,
+  };
+
+  static Map<String, IconData> getMockAmenitiesWithIcons() {
+    return Map.unmodifiable(_amenityIcons);
+  }
+
   static List<User> getMockUsers() {
     return [
       // Admin and Manager

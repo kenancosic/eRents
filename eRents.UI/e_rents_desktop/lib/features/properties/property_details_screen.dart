@@ -6,71 +6,133 @@ import 'package:e_rents_desktop/features/properties/widgets/property_images_grid
 import 'package:e_rents_desktop/features/properties/widgets/property_overview_section.dart';
 import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 
-class PropertyDetailsScreen extends StatelessWidget {
-  final Property property;
+class PropertyDetailsScreen extends StatefulWidget {
+  final String propertyId;
 
-  const PropertyDetailsScreen({super.key, required this.property});
+  const PropertyDetailsScreen({super.key, required this.propertyId});
+
+  @override
+  State<PropertyDetailsScreen> createState() => _PropertyDetailsScreenState();
+}
+
+class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
+  Property? _property;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPropertyDetails();
+  }
+
+  Future<void> _fetchPropertyDetails() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final provider = context.read<PropertyProvider>();
+      if (provider.properties.isEmpty) {
+        await provider.fetchProperties();
+      }
+      _property = provider.getPropertyById(widget.propertyId);
+
+      if (_property == null) {
+        _error = 'Property with ID ${widget.propertyId} not found.';
+      }
+    } catch (e) {
+      _error = "Failed to fetch property details: ${e.toString()}";
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return AppBaseScreen(
-      title: property.title,
+      title:
+          _isLoading
+              ? 'Loading Property...'
+              : (_error != null
+                  ? 'Error'
+                  : (_property?.title ?? 'Property Details')),
       currentPath: '/properties',
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildBackButton(context),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left column - Main property info
-                Expanded(
-                  flex: 2,
+      child: LoadingOrErrorWidget(
+        isLoading: _isLoading,
+        error: _error,
+        onRetry: _fetchPropertyDetails,
+        errorTitle: 'Failed to Load Property',
+        child:
+            _property == null
+                ? const Center(child: Text('Property data is not available.'))
+                : SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      PropertyHeader(property: property),
+                      _buildBackButton(context),
                       const SizedBox(height: 16),
-                      PropertyImagesGrid(images: property.images),
-                      const SizedBox(height: 16),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: PropertyOverviewSection(
-                            property: property,
-                            onEdit: () => _navigateToEditScreen(context),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                PropertyHeader(property: _property!),
+                                const SizedBox(height: 16),
+                                PropertyImagesGrid(images: _property!.images),
+                                const SizedBox(height: 16),
+                                Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: PropertyOverviewSection(
+                                      property: _property!,
+                                      onEdit:
+                                          () => _navigateToEditScreen(
+                                            context,
+                                            _property!.id,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              children: [
+                                Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: TenantInfo(property: _property!),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildCompactStatistics(),
+                                const SizedBox(height: 16),
+                                _buildMaintenanceIssues(context, _property!),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                // Right column - Stats and maintenance
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: TenantInfo(property: property),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildCompactStatistics(),
-                      const SizedBox(height: 16),
-                      _buildMaintenanceIssues(context),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -141,7 +203,7 @@ class PropertyDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMaintenanceIssues(BuildContext context) {
+  Widget _buildMaintenanceIssues(BuildContext context, Property property) {
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +327,7 @@ class PropertyDetailsScreen extends StatelessWidget {
     }
   }
 
-  void _navigateToEditScreen(BuildContext context) {
-    context.go('/properties/edit/${property.id}');
+  void _navigateToEditScreen(BuildContext context, String propertyId) {
+    context.push('/properties/${propertyId}/edit');
   }
 }

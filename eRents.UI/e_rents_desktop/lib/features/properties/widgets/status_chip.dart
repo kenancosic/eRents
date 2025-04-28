@@ -2,49 +2,62 @@ import 'package:flutter/material.dart';
 
 class StatusChip extends StatelessWidget {
   final String status;
-  final bool isSmall;
 
-  const StatusChip({super.key, required this.status, this.isSmall = false});
+  const StatusChip({super.key, required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final isAvailable = status == 'Available';
-    final isCompleted = status == 'Completed';
-    final isOccupied = status == 'Occupied';
-
-    Color backgroundColor;
-    Color textColor;
+    // Determine color and icon based on status
+    // TODO: Add more status types and corresponding colors/icons as needed
+    final bool isAvailable = status.toLowerCase() == 'available';
+    final bool isOccupied =
+        status.toLowerCase() == 'occupied'; // Example other status
+    final Color color;
+    final IconData iconData;
 
     if (isAvailable) {
-      backgroundColor = Colors.green.withOpacity(0.2);
-      textColor = Colors.green;
-    } else if (isCompleted) {
-      backgroundColor = Colors.green.withOpacity(0.2);
-      textColor = Colors.green;
+      color = Colors.green;
+      iconData = Icons.check_circle_outline;
     } else if (isOccupied) {
-      backgroundColor = Colors.blue.withOpacity(0.2);
-      textColor = Colors.blue;
+      color = Colors.blue; // Example color for occupied
+      iconData = Icons.person_outline; // Example icon for occupied
     } else {
-      backgroundColor = Colors.orange.withOpacity(0.2);
-      textColor = Colors.orange;
+      // Default/Other statuses like 'Rented', 'Maintenance'
+      color = Colors.orange;
+      iconData = Icons.lock_outline; // Default icon
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isSmall ? 6 : 8,
-        vertical: isSmall ? 2 : 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(
+          0.85,
+        ), // Match the opacity from _buildStatusChip
+        borderRadius: BorderRadius.circular(16), // Match the border radius
+        boxShadow: [
+          // Match the shadow
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          color: textColor,
-          fontSize: isSmall ? 10 : 12,
-          fontWeight: FontWeight.w500,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(iconData, color: Colors.white, size: 14), // Match icon style
+          const SizedBox(width: 4),
+          Text(
+            status, // Display the original status string
+            style: const TextStyle(
+              // Match text style
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
