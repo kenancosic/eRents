@@ -8,6 +8,7 @@ import 'package:e_rents_desktop/features/statistics/providers/statistics_provide
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/utils/formatters.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -98,19 +99,21 @@ class StatisticsScreen extends StatelessWidget {
                             const SizedBox(height: 24),
                             _buildStatRow(
                               'Total Rental Income:',
-                              stats.formattedTotalRent,
+                              kCurrencyFormat.format(stats.totalRent),
                               Colors.green,
                             ),
                             const SizedBox(height: 12),
                             _buildStatRow(
                               'Total Maintenance Costs:',
-                              stats.formattedTotalMaintenanceCosts,
+                              kCurrencyFormat.format(
+                                stats.totalMaintenanceCosts,
+                              ),
                               Colors.orange,
                             ),
                             const Divider(height: 24, thickness: 1),
                             _buildStatRow(
                               'Net Total:',
-                              stats.formattedNetTotal,
+                              kCurrencyFormat.format(stats.netTotal),
                               stats.netTotal >= 0 ? Colors.blue : Colors.red,
                               isBold: true,
                             ),
@@ -247,6 +250,7 @@ class StatisticsScreen extends StatelessWidget {
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         final item = monthlyData[group.x];
                         String label = rodIndex == 0 ? 'Rent:' : 'Costs:';
+                        String value = kCurrencyFormat.format(rod.toY);
                         return BarTooltipItem(
                           '${monthFormatter.format(inputFormatter.parse(item.dateFrom))}\n',
                           const TextStyle(
@@ -255,7 +259,7 @@ class StatisticsScreen extends StatelessWidget {
                           ),
                           children: <TextSpan>[
                             TextSpan(
-                              text: '$label \$${rod.toY.toStringAsFixed(2)}',
+                              text: '$label $value',
                               style: TextStyle(
                                 color: rod.color,
                                 fontWeight: FontWeight.w500,
@@ -306,13 +310,13 @@ class StatisticsScreen extends StatelessWidget {
                           // Show labels only at reasonable intervals
                           if (value == 0 || value == meta.max) {
                             return Text(
-                              '\$${value.toInt()}',
+                              kCurrencyFormat.format(value),
                               style: const TextStyle(fontSize: 10),
                             );
                           } else if (value % (meta.max / 5).ceil() == 0) {
                             // Adjust interval if needed
                             return Text(
-                              '\$${value.toInt()}',
+                              kCurrencyFormat.format(value),
                               style: const TextStyle(fontSize: 10),
                             );
                           }
@@ -450,12 +454,12 @@ class StatisticsScreen extends StatelessWidget {
               children: [
                 _buildLegendItem(
                   Colors.green,
-                  'Income (${stats.formattedTotalRent})',
+                  'Income (${kCurrencyFormat.format(stats.totalRent)})',
                 ),
                 const SizedBox(width: 16),
                 _buildLegendItem(
                   Colors.orange,
-                  'Costs (${stats.formattedTotalMaintenanceCosts})',
+                  'Costs (${kCurrencyFormat.format(stats.totalMaintenanceCosts)})',
                 ),
               ],
             ),

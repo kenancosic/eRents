@@ -51,7 +51,11 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
         _confirmPasswordController.clear();
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password updated successfully')),
+          const SnackBar(
+            content: Text('Password updated successfully'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -60,6 +64,7 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
               profileProvider.errorMessage ?? 'Failed to update password',
             ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

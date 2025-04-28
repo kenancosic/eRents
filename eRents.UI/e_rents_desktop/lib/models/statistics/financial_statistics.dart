@@ -18,11 +18,14 @@ class FinancialStatistics {
     this.monthlyBreakdown = const [],
   });
 
-  // Formatting helpers
+  // Ensure formatting helpers are removed
+  /*
   String get formattedTotalRent => '\$${totalRent.toStringAsFixed(2)}';
   String get formattedTotalMaintenanceCosts =>
       '\$${totalMaintenanceCosts.toStringAsFixed(2)}';
   String get formattedNetTotal => '\$${netTotal.toStringAsFixed(2)}';
+  */
+
   String get formattedDateRange {
     final DateFormat formatter = DateFormat('dd/MM/yyyy');
     return '${formatter.format(startDate)} - ${formatter.format(endDate)}';

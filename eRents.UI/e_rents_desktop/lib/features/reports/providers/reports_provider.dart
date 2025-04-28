@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/reports/providers/financial_report_prov
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/export_service.dart';
+import 'package:e_rents_desktop/utils/formatters.dart';
 
 /// Report type enum used for switching between report screens
 enum ReportType { financial, tenant }
@@ -151,7 +152,7 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   Future<String> exportReport(ExportFormat format) async {
     final headers = _getCurrentReportHeaders();
     final rows = _getCurrentReportRows();
-    final title = getReportTitleWithDateRange();
+    final title = getReportTitle();
 
     switch (format) {
       case ExportFormat.pdf:
@@ -207,9 +208,9 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
                 item.dateFrom,
                 item.dateTo,
                 item.property,
-                item.formattedTotalRent,
-                item.formattedMaintenanceCosts,
-                item.formattedTotal,
+                kCurrencyFormat.format(item.totalRent),
+                kCurrencyFormat.format(item.maintenanceCosts),
+                kCurrencyFormat.format(item.total),
               ],
             )
             .toList();
@@ -217,12 +218,12 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
         return tenantReportData
             .map(
               (item) => [
-                item.tenant,
-                item.property,
-                item.leaseStart,
-                item.leaseEnd,
-                item.formattedCostOfRent,
-                item.formattedTotalPaidRent,
+                item.dateFrom,
+                item.dateTo,
+                item.tenantName,
+                item.propertyName,
+                kCurrencyFormat.format(item.costOfRent),
+                kCurrencyFormat.format(item.totalPaidRent),
               ],
             )
             .toList();
@@ -259,5 +260,14 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   List<dynamic> getMockItems() {
     // This is a no-op since we delegate to individual providers
     return [];
+  }
+
+  String getReportTitle() {
+    switch (_currentReportType) {
+      case ReportType.financial:
+        return financialProvider.getReportTitle();
+      case ReportType.tenant:
+        return tenantProvider.getReportTitle();
+    }
   }
 }

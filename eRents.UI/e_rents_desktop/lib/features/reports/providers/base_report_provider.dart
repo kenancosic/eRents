@@ -1,4 +1,7 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/export_service.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,7 +18,7 @@ abstract class BaseReportProvider<T> extends BaseProvider<T> {
   DateTime get endDate => _endDate;
 
   // Common date format
-  static final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
+  final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
 
   // Constructor
   BaseReportProvider() {
@@ -84,13 +87,13 @@ abstract class BaseReportProvider<T> extends BaseProvider<T> {
   // Abstract method to fetch report data - to be implemented by subclasses
   Future<List<T>> fetchReportData();
 
-  // Get formatted dates
-  String get formattedStartDate => dateFormat.format(_startDate);
-  String get formattedEndDate => dateFormat.format(_endDate);
+  // Rename getters
+  String get startDateFormatted => dateFormat.format(_startDate);
+  String get endDateFormatted => dateFormat.format(_endDate);
 
   // Get title with date range
-  String getReportTitleWithDateRange() {
-    return '${getReportName()} ($formattedStartDate - $formattedEndDate)';
+  String getReportTitle() {
+    return '${getReportName()} ($startDateFormatted - $endDateFormatted)';
   }
 
   // Abstract method to get report name - to be implemented by subclasses

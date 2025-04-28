@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -23,19 +24,7 @@ class _ReportFiltersState extends State<ReportFilters> {
   late TextEditingController _startDateController;
   late TextEditingController _endDateController;
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
-  final List<String> _quickDateRanges = [
-    'Today',
-    'Yesterday',
-    'This Week',
-    'Last Week',
-    'This Month',
-    'Last Month',
-    'This Quarter',
-    'Last Quarter',
-    'This Year',
-    'Last Year',
-    'Custom',
-  ];
+  final List<String> _quickDateRanges = MockDataService.getQuickDateRanges();
   final String _selectedRange = 'This Month';
 
   @override
@@ -211,18 +200,12 @@ class _ReportFiltersState extends State<ReportFilters> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children:
-                  [
-                    'Last 7 Days',
-                    'Last 30 Days',
-                    'Last 90 Days',
-                    'This Year',
-                    'Last Year',
-                  ].map((preset) {
+                  MockDataService.getQuickDateRangePresets().map((preset) {
                     return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: OutlinedButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: ActionChip(
+                        label: Text(preset),
                         onPressed: () => _applyPresetRange(preset),
-                        child: Text(preset),
                       ),
                     );
                   }).toList(),

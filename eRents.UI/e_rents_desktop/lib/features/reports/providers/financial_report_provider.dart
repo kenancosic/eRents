@@ -27,9 +27,11 @@ class FinancialReportProvider extends BaseReportProvider<FinancialReportItem> {
 
   @override
   Future<List<FinancialReportItem>> fetchReportData() async {
-    debugPrint(
-      'FinancialReportProvider: Fetching data for date range ${formattedStartDate} - ${formattedEndDate}',
-    );
+    if (kDebugMode) {
+      print(
+        'FinancialReportProvider: Fetching data for date range $startDateFormatted - $endDateFormatted',
+      );
+    }
     return MockDataService.getMockFinancialReportData(startDate, endDate);
   }
 }

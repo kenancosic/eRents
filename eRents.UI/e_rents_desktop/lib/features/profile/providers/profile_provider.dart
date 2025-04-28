@@ -37,16 +37,10 @@ class ProfileProvider extends BaseProvider<User> {
     return state == ViewState.Idle && items.isEmpty;
   }
 
-  /// Helper method to handle mock delay
-  Future<void> _simulateMockDelay() async {
-    await Future.delayed(const Duration(milliseconds: 10));
-  }
-
   Future<void> fetchUserProfile() async {
     await execute(() async {
       try {
         if (_shouldUseMockData()) {
-          await _simulateMockDelay();
           _currentUser = getMockItems().first;
         } else {
           final response = await _apiService.get('$endpoint/me');
@@ -65,7 +59,6 @@ class ProfileProvider extends BaseProvider<User> {
     await execute(() async {
       try {
         if (_shouldUseMockData()) {
-          await _simulateMockDelay();
           _currentUser = user;
           success = true;
         } else {
@@ -90,7 +83,6 @@ class ProfileProvider extends BaseProvider<User> {
     await execute(() async {
       try {
         if (_shouldUseMockData()) {
-          await _simulateMockDelay();
           success = true;
         } else {
           await _apiService.post('$endpoint/change-password', {

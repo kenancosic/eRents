@@ -17,12 +17,6 @@ class FinancialReportItem {
     required this.total,
   });
 
-  // Formatting helpers
-  String get formattedTotalRent => '\$${totalRent.toStringAsFixed(2)}';
-  String get formattedMaintenanceCosts =>
-      '\$${maintenanceCosts.toStringAsFixed(2)}';
-  String get formattedTotal => '\$${total.toStringAsFixed(2)}';
-
   // Date helpers
   DateTime get dateFromObj => DateFormat('dd/MM/yyyy').parse(dateFrom);
   DateTime get dateToObj => DateFormat('dd/MM/yyyy').parse(dateTo);

@@ -8,6 +8,7 @@ import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart
 import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -42,7 +43,7 @@ class ReportsScreen extends StatelessWidget {
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  const _ReportsScreenContent({Key? key}) : super(key: key);
+  const _ReportsScreenContent({super.key});
 
   void _showExportResult(
     BuildContext context,
@@ -168,7 +169,7 @@ class _ReportsScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ReportsProvider>(context);
-    final List<String> reportTypes = ['Financial Report', 'Tenant Report'];
+    final List<String> reportTypes = MockDataService.getReportTypes();
 
     return AppBaseScreen(
       title: 'Reports',

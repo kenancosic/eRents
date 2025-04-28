@@ -3,6 +3,8 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
+import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/utils/formatters.dart';
 
 class TenantsAdvertisementTableWidget extends StatefulWidget {
   final List<TenantPreference> preferences;
@@ -200,8 +202,8 @@ class _TenantsAdvertisementTableWidgetState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${preference.minPrice != null ? '\$${preference.minPrice}' : 'Any'} - '
-                    '${preference.maxPrice != null ? '\$${preference.maxPrice}' : 'Any'}',
+                    '${preference.minPrice != null ? kCurrencyFormat.format(preference.minPrice) : 'Any'} - '
+                    '${preference.maxPrice != null ? kCurrencyFormat.format(preference.maxPrice) : 'Any'}',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 13),
                   ),

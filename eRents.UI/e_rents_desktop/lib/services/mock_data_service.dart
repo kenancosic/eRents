@@ -488,42 +488,42 @@ class MockDataService {
   static List<TenantReportItem> getMockTenantReportData() {
     return [
       TenantReportItem(
-        tenant: 'John Smith',
-        property: 'Greenview Apartments A101',
-        leaseStart: '01/01/2023',
-        leaseEnd: '31/12/2023',
+        tenantName: 'John Smith',
+        propertyName: 'Greenview Apartments A101',
+        dateFrom: '01/01/2023',
+        dateTo: '31/12/2023',
         costOfRent: 1200.00,
         totalPaidRent: 14400.00,
       ),
       TenantReportItem(
-        tenant: 'Jane Doe',
-        property: 'Sunnydale Complex B205',
-        leaseStart: '15/03/2023',
-        leaseEnd: '14/03/2024',
+        tenantName: 'Jane Doe',
+        propertyName: 'Sunnydale Complex B205',
+        dateFrom: '15/03/2023',
+        dateTo: '14/03/2024',
         costOfRent: 950.00,
         totalPaidRent: 11400.00,
       ),
       TenantReportItem(
-        tenant: 'Robert Johnson',
-        property: 'Riverfront Towers C310',
-        leaseStart: '01/11/2022',
-        leaseEnd: '31/10/2023',
+        tenantName: 'Robert Johnson',
+        propertyName: 'Riverfront Towers C310',
+        dateFrom: '01/11/2022',
+        dateTo: '31/10/2023',
         costOfRent: 1350.00,
         totalPaidRent: 16200.00,
       ),
       TenantReportItem(
-        tenant: 'Mary Williams',
-        property: 'Greenview Apartments A102',
-        leaseStart: '01/02/2023',
-        leaseEnd: '31/01/2024',
+        tenantName: 'Mary Williams',
+        propertyName: 'Greenview Apartments A102',
+        dateFrom: '01/02/2023',
+        dateTo: '31/01/2024',
         costOfRent: 1100.00,
         totalPaidRent: 13200.00,
       ),
       TenantReportItem(
-        tenant: 'David Brown',
-        property: 'Sunnydale Complex B208',
-        leaseStart: '01/05/2023',
-        leaseEnd: '31/07/2023',
+        tenantName: 'David Brown',
+        propertyName: 'Sunnydale Complex B208',
+        dateFrom: '01/05/2023',
+        dateTo: '31/07/2023',
         costOfRent: 1050.00,
         totalPaidRent: 3150.00,
       ),
@@ -565,5 +565,44 @@ class MockDataService {
       endDate: endDate,
       monthlyBreakdown: reportItems,
     );
+  }
+
+  static List<String> getReportTypes() {
+    return ['Financial Report', 'Tenant Report'];
+  }
+
+  static List<String> getQuickDateRanges() {
+    return [
+      'Today',
+      'Yesterday',
+      'This Week',
+      'Last Week',
+      'This Month',
+      'Last Month',
+      'This Quarter',
+      'Last Quarter',
+      'This Year',
+      'Last Year',
+      'Custom', // Keep Custom as it indicates manual selection
+    ];
+  }
+
+  static List<String> getQuickDateRangePresets() {
+    // These are the ranges that trigger a calculation, excluding 'Custom'
+    return [
+      'Last 7 Days',
+      'Last 30 Days',
+      'Last 90 Days',
+      'This Year',
+      'Last Year',
+    ];
+  }
+
+  static List<String> getCurrentTenantFilterFields() {
+    return ['Full Name', 'Email', 'Phone', 'City'];
+  }
+
+  static List<String> getSearchingTenantFilterFields() {
+    return ['City', 'Price Range', 'Amenities', 'Description'];
   }
 }

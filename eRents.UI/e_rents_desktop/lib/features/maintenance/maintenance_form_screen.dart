@@ -328,6 +328,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                               SnackBar(
                                 content: Text('Error: ${e.toString()}'),
                                 backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           }

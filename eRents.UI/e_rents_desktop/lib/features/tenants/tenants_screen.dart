@@ -22,25 +22,10 @@ class _TenantsScreenState extends State<TenantsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _searchTerm = '';
-  String _currentFilterField = 'Full Name';
+  String _currentFilterField =
+      MockDataService.getCurrentTenantFilterFields().first;
   final List<String> _searchHistory = [];
   String _searchLabelText = 'Search current tenants: ';
-
-  // Search field options for tenants
-  final List<String> _currentTenantsFilterFields = [
-    'Full Name',
-    'Email',
-    'Phone',
-    'City',
-  ];
-
-  // Search field options for searching tenants
-  final List<String> _searchingTenantsFilterFields = [
-    'City',
-    'Price Range',
-    'Amenities',
-    'Description',
-  ];
 
   @override
   void initState() {
@@ -63,13 +48,15 @@ class _TenantsScreenState extends State<TenantsScreen>
   void _handleTabChange() {
     if (_tabController.index == 0) {
       setState(() {
-        _currentFilterField = 'Full Name';
+        _currentFilterField =
+            MockDataService.getCurrentTenantFilterFields().first;
         _searchTerm = ''; // Clear search when changing tabs
         _searchLabelText = 'Search current tenants: ';
       });
     } else {
       setState(() {
-        _currentFilterField = 'City';
+        _currentFilterField =
+            MockDataService.getSearchingTenantFilterFields().first;
         _searchTerm = ''; // Clear search when changing tabs
         _searchLabelText = 'Search tenants advertisements: ';
       });
@@ -165,8 +152,8 @@ class _TenantsScreenState extends State<TenantsScreen>
   Widget _buildSearchBar(TenantProvider provider) {
     final List<String> filterFields =
         _tabController.index == 0
-            ? _currentTenantsFilterFields
-            : _searchingTenantsFilterFields;
+            ? MockDataService.getCurrentTenantFilterFields()
+            : MockDataService.getSearchingTenantFilterFields();
 
     // Create a list of search strings based on the current tab and filter field
     List<String> searchStrings = [];

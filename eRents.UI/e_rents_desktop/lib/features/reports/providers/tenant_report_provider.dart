@@ -27,9 +27,11 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
 
   @override
   Future<List<TenantReportItem>> fetchReportData() async {
-    debugPrint(
-      'TenantReportProvider: Fetching data for date range ${formattedStartDate} - ${formattedEndDate}',
-    );
+    if (kDebugMode) {
+      print(
+        'TenantReportProvider: Fetching data for date range $startDateFormatted - $endDateFormatted',
+      );
+    }
     return MockDataService.getMockTenantReportData();
   }
 

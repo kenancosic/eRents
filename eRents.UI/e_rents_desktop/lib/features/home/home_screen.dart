@@ -12,17 +12,13 @@ import 'package:e_rents_desktop/features/home/widgets/property_insights_card.dar
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
+import 'package:e_rents_desktop/utils/formatters.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   static const double _padding = 16.0;
   static const double _cardSpacing = 16.0;
-
-  static final _currencyFormat = NumberFormat.currency(
-    locale: 'ba_BA',
-    symbol: 'KM',
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +103,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: _cardSpacing / 2),
                     PropertyInsightsCard(
                       properties: properties,
-                      currencyFormat: _currencyFormat,
+                      currencyFormat: kCurrencyFormat,
                     ),
                   ],
                 ),
@@ -156,7 +152,7 @@ class HomeScreen extends StatelessWidget {
         ),
         KpiCard(
           title: 'Occupancy Rate',
-          value: '${(occupancyRate * 100).toStringAsFixed(0)}%',
+          value: '${kCurrencyFormat.format(occupancyRate * 100)}%',
           icon: Icons.people_alt_rounded,
         ),
         KpiCard(
@@ -166,8 +162,8 @@ class HomeScreen extends StatelessWidget {
         ),
         KpiCard(
           title: 'Net Income (Period)',
-          value: _currencyFormat.format(netIncome),
-          icon: Icons.attach_money_rounded,
+          value: kCurrencyFormat.format(netIncome),
+          icon: Icons.money_rounded,
           color: netIncome >= 0 ? Colors.green.shade700 : Colors.red.shade700,
         ),
       ],
@@ -219,7 +215,7 @@ class HomeScreen extends StatelessWidget {
           income: stats?.totalRent ?? 0.0,
           expenses: stats?.totalMaintenanceCosts ?? 0.0,
           netProfit: stats?.netTotal ?? 0.0,
-          currencyFormat: _currencyFormat,
+          currencyFormat: kCurrencyFormat,
         ),
       ],
     );

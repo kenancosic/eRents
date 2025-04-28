@@ -5,7 +5,6 @@ import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
-import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 
@@ -71,7 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       // This would need to extract data from the form controllers
       // For now, we're just showing a success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -82,7 +84,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       // but we need to trigger it from here
       // For now, we're showing a simulated success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password updated successfully')),
+        const SnackBar(
+          content: Text('Password updated successfully'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
