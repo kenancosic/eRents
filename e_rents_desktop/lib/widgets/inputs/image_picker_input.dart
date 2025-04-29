@@ -256,7 +256,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
                           'Cover',

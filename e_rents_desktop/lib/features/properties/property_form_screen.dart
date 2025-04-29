@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
@@ -7,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import './widgets/amenity_input.dart';
-import './widgets/image_picker_input.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   final String? propertyId;
@@ -162,7 +161,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         onRetry: _isEditMode ? _fetchPropertyData : null,
         errorTitle: 'Failed to Load Property Data',
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -172,7 +171,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                   'Property Details',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
@@ -181,6 +180,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Title',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -190,7 +190,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _priceController,
@@ -198,6 +198,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                           labelText: 'Price',
                           border: OutlineInputBorder(),
                           suffixText: 'KM',
+                          isDense: true,
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -213,12 +214,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(
                     labelText: 'Description',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                   maxLines: 3,
                   validator: (value) {
@@ -228,7 +230,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -237,6 +239,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Type',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         items:
                             ['Apartment', 'House', 'Villa']
@@ -254,13 +257,14 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _status,
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         items:
                             ['Available', 'Occupied']
@@ -280,12 +284,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _addressController,
                   decoration: const InputDecoration(
                     labelText: 'Address',
                     border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -294,7 +299,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -303,6 +308,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Bedrooms',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -316,13 +322,14 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _bathroomsController,
                         decoration: const InputDecoration(
                           labelText: 'Bathrooms',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -336,13 +343,14 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _areaController,
                         decoration: const InputDecoration(
                           labelText: 'Area (sqft)',
                           border: OutlineInputBorder(),
+                          isDense: true,
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -358,7 +366,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 Text(
                   'Amenities',
                   style: Theme.of(context).textTheme.titleMedium,
@@ -369,17 +377,17 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                   availableAmenitiesWithIcons: _allAmenitiesWithIcons,
                   onChanged: _updateSelectedAmenities,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 Text(
                   'Property Images',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 ImagePickerInput(
                   initialImages: _images,
                   onChanged: _updateSelectedImages,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -387,7 +395,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                       onPressed: () => context.pop(),
                       child: const Text('Cancel'),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: () async {
                         if (_formKey.currentState!.validate()) {

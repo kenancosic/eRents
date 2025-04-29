@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 
 class MaintenanceFormScreen extends StatefulWidget {
   final String? propertyId;
@@ -46,21 +47,6 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     _descriptionController.dispose();
     _categoryController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickImages() async {
-    try {
-      setState(() => _isLoading = true);
-      // TODO: Implement image picking functionality
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _removeImage(int index) {
-    setState(() {
-      _images.removeAt(index);
-    });
   }
 
   MaintenanceIssue _createIssue() {
@@ -190,104 +176,14 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_images.length} Images',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _pickImages,
-                    icon:
-                        _isLoading
-                            ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                            : const Icon(Icons.add_photo_alternate),
-                    label: const Text('Add Images'),
-                  ),
-                ],
+              ImagePickerInput(
+                initialImages: _images,
+                onChanged: (updatedImages) {
+                  setState(() {
+                    _images = updatedImages;
+                  });
+                },
               ),
-              const SizedBox(height: 16),
-              if (_images.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.image_not_supported,
-                        size: 48,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No images added yet',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Click the button above to add images',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 1,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: _images.length,
-                  itemBuilder: (context, index) {
-                    final image = _images[index];
-                    return Card(
-                      key: ValueKey(image),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.asset(image, fit: BoxFit.cover),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                onPressed: () => _removeImage(index),
-                                padding: const EdgeInsets.all(4),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
