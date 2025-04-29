@@ -1,7 +1,9 @@
 import 'package:e_rents_desktop/base/auth_base.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:e_rents_desktop/widgets/status_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -143,7 +145,7 @@ class _SignupScreenState extends State<SignupScreen> {
           const SizedBox(height: 16),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.go('/login');
             },
             child: const Text('Already have an account? Login'),
           ),
