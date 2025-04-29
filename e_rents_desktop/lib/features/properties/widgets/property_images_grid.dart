@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<String> images;
@@ -80,7 +81,7 @@ class PropertyImagesGrid extends StatelessWidget {
                   right: 8,
                   child: IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.pop(),
                   ),
                 ),
               ],

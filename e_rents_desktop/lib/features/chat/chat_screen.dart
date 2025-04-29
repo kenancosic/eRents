@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_message.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
@@ -58,7 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.pop(),
                 child: const Text('Cancel'),
               ),
               TextButton(
@@ -71,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       _messages[index] = message.copyWith(isDeleted: true);
                     }
                   });
-                  Navigator.pop(context);
+                  context.pop();
                 },
                 child: const Text('Delete'),
               ),

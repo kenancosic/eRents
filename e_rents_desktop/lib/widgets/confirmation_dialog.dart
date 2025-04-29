@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// Shows a generic confirmation dialog.
 ///
@@ -21,7 +22,7 @@ Future<bool?> showConfirmationDialog({
           TextButton(
             child: Text(cancelActionText),
             onPressed: () {
-              Navigator.of(context).pop(false); // Return false on cancel
+              context.pop(false); // Return false on cancel
             },
           ),
           ElevatedButton(
@@ -34,7 +35,7 @@ Future<bool?> showConfirmationDialog({
                     : null,
             child: Text(confirmActionText),
             onPressed: () {
-              Navigator.of(context).pop(true); // Return true on confirm
+              context.pop(true); // Return true on confirm
             },
           ),
         ],

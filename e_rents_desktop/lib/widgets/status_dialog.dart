@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class StatusDialog extends StatelessWidget {
   final String title;
@@ -68,9 +69,12 @@ class StatusDialog extends StatelessWidget {
             if (actionLabel != null)
               ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  context.pop();
                   onActionPressed?.call();
                 },
+                style: ElevatedButton.styleFrom(
+                  // ... existing code ...
+                ),
                 child: Text(actionLabel!),
               ),
           ],

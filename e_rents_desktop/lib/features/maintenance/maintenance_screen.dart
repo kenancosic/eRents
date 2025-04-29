@@ -474,7 +474,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   groupValue: _selectedStatus,
                   onChanged: (value) {
                     setState(() => _selectedStatus = value);
-                    Navigator.pop(context);
+                    context.pop();
                   },
                 ),
                 ...IssueStatus.values.map(
@@ -484,7 +484,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                     groupValue: _selectedStatus,
                     onChanged: (value) {
                       setState(() => _selectedStatus = value);
-                      Navigator.pop(context);
+                      context.pop();
                     },
                   ),
                 ),
@@ -509,7 +509,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                   groupValue: _selectedPriority,
                   onChanged: (value) {
                     setState(() => _selectedPriority = value);
-                    Navigator.pop(context);
+                    context.pop();
                   },
                 ),
                 ...IssuePriority.values.map(
@@ -519,7 +519,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                     groupValue: _selectedPriority,
                     onChanged: (value) {
                       setState(() => _selectedPriority = value);
-                      Navigator.pop(context);
+                      context.pop();
                     },
                   ),
                 ),
@@ -546,7 +546,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                       groupValue: _selectedProperty,
                       onChanged: (value) {
                         setState(() => _selectedProperty = value);
-                        Navigator.pop(context);
+                        context.pop();
                       },
                     ),
                     ...provider.properties.map(
@@ -556,7 +556,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen>
                         groupValue: _selectedProperty,
                         onChanged: (value) {
                           setState(() => _selectedProperty = value);
-                          Navigator.pop(context);
+                          context.pop();
                         },
                       ),
                     ),

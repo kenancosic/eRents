@@ -5,6 +5,8 @@ import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 
 class TenantsAdvertisementTableWidget extends StatefulWidget {
   final List<TenantPreference> preferences;
@@ -512,7 +514,7 @@ class _TenantsAdvertisementTableWidgetState
                             return;
                           }
                           _columnVisibility[column] = value!;
-                          Navigator.pop(context);
+                          context.pop();
                         });
                       },
                     ),

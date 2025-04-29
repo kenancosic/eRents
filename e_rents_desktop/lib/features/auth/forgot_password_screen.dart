@@ -2,6 +2,7 @@ import 'package:e_rents_desktop/base/auth_base.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/status_dialog.dart';
+import 'package:go_router/go_router.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -41,7 +42,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           'We\'ve sent password reset instructions to your email address. Please check your inbox.',
       actionLabel: 'Back to Login',
       onActionPressed: () {
-        Navigator.pop(context); // Return to login screen
+        context.pop(); // Go back after dialog action
       },
     );
   }
@@ -119,7 +120,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           const SizedBox(height: 16),
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              context.pop(); // Return to login screen
             },
             child: const Text('Back to Login'),
           ),

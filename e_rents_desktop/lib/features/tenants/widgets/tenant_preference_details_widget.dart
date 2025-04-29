@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
+import 'package:go_router/go_router.dart';
 
 class TenantPreferenceDetailsWidget extends StatelessWidget {
   final TenantPreference preference;
@@ -84,10 +85,7 @@ class TenantPreferenceDetailsWidget extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
+        TextButton(onPressed: () => context.pop(), child: const Text('Close')),
         TextButton(
           onPressed: onSendOffer,
           child: const Text('Send Property Offer'),

@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class TenantProfileWidget extends StatelessWidget {
   final User tenant;
@@ -52,10 +53,7 @@ class TenantProfileWidget extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
+        TextButton(onPressed: () => context.pop(), child: const Text('Close')),
         TextButton(onPressed: onSendMessage, child: const Text('Send Message')),
       ],
     );

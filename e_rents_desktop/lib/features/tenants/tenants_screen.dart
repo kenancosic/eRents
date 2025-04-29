@@ -369,7 +369,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                             _searchTerm =
                                 ''; // Reset search when changing filter field
                           });
-                          Navigator.of(context).pop();
+                          context.pop();
                         },
                       );
                     }).toList(),
@@ -377,8 +377,8 @@ class _TenantsScreenState extends State<TenantsScreen>
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
+                onPressed: () => context.pop(),
               ),
             ],
           ),

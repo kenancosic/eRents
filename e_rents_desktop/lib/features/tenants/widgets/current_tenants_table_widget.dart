@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:go_router/go_router.dart';
 
 class CurrentTenantsTableWidget extends StatefulWidget {
   final List<User> tenants;
@@ -335,14 +336,13 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                       value: _columnVisibility[column],
                       onChanged: (bool? value) {
                         setState(() {
-                          // Only allow unchecking if there would still be at least 2 visible columns
                           if (value == false &&
                               _columnVisibility.values.where((v) => v).length <=
                                   2) {
-                            return;
+                            return; // Keep at least 2 columns visible
                           }
                           _columnVisibility[column] = value!;
-                          Navigator.pop(context);
+                          context.pop(); // Close the menu after selection
                         });
                       },
                     ),

@@ -60,7 +60,7 @@ class _SignupScreenState extends State<SignupScreen> {
           'Your account has been created successfully. You can now login with your credentials.',
       actionLabel: 'Go to Login',
       onActionPressed: () {
-        Navigator.pop(context); // Return to login screen
+        context.pop(); // Return to login screen
       },
     );
   }
@@ -145,9 +145,9 @@ class _SignupScreenState extends State<SignupScreen> {
           const SizedBox(height: 16),
           TextButton(
             onPressed: () {
-              context.go('/login');
+              context.pop(); // Return to login screen
             },
-            child: const Text('Already have an account? Login'),
+            child: const Text('Already have an account? Log in'),
           ),
         ],
       ),

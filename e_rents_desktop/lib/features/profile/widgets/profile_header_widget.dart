@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileHeaderWidget extends StatefulWidget {
   final bool isEditing;
@@ -69,7 +70,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                                     title: const Text('Choose from Gallery'),
                                     onTap: () {
                                       // TODO: Implement gallery picker
-                                      Navigator.pop(context);
+                                      context.pop();
                                     },
                                   ),
                                   ListTile(
@@ -77,14 +78,14 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                                     title: const Text('Take a Photo'),
                                     onTap: () {
                                       // TODO: Implement camera picker
-                                      Navigator.pop(context);
+                                      context.pop();
                                     },
                                   ),
                                 ],
                               ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: () => context.pop(),
                                   child: const Text('Cancel'),
                                 ),
                               ],
