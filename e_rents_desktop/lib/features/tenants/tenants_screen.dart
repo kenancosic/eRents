@@ -24,7 +24,7 @@ class _TenantsScreenState extends State<TenantsScreen>
   String _searchTerm = '';
   String _currentFilterField =
       MockDataService.getCurrentTenantFilterFields().first;
-  final List<String> _searchHistory = [];
+  final TextEditingController _searchController = TextEditingController();
   String _searchLabelText = 'Search current tenants: ';
 
   @override
@@ -32,6 +32,13 @@ class _TenantsScreenState extends State<TenantsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChange);
+    _searchController.addListener(() {
+      if (_searchTerm != _searchController.text) {
+        setState(() {
+          _searchTerm = _searchController.text;
+        });
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<TenantProvider>(context, listen: false);
       provider
@@ -50,14 +57,16 @@ class _TenantsScreenState extends State<TenantsScreen>
       setState(() {
         _currentFilterField =
             MockDataService.getCurrentTenantFilterFields().first;
-        _searchTerm = ''; // Clear search when changing tabs
+        _searchController.clear();
+        _searchTerm = '';
         _searchLabelText = 'Search current tenants: ';
       });
     } else {
       setState(() {
         _currentFilterField =
             MockDataService.getSearchingTenantFilterFields().first;
-        _searchTerm = ''; // Clear search when changing tabs
+        _searchController.clear();
+        _searchTerm = '';
         _searchLabelText = 'Search tenants advertisements: ';
       });
     }
@@ -67,6 +76,7 @@ class _TenantsScreenState extends State<TenantsScreen>
   void dispose() {
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -155,192 +165,11 @@ class _TenantsScreenState extends State<TenantsScreen>
             ? MockDataService.getCurrentTenantFilterFields()
             : MockDataService.getSearchingTenantFilterFields();
 
-    // Create a list of search strings based on the current tab and filter field
-    List<String> searchStrings = [];
-
-    // Get mock properties for mapping tenant to properties
-    final properties = MockDataService.getMockProperties();
-
-    // For demonstration, assign properties to tenants based on index
-    final Map<String, Property> tenantProperties = {};
-    for (int i = 0; i < provider.currentTenants.length; i++) {
-      // Assign property in a round-robin fashion
-      tenantProperties[provider.currentTenants[i].id] =
-          properties[i % properties.length];
-    }
-
-    if (_tabController.index == 0) {
-      searchStrings =
-          provider.currentTenants.map((tenant) {
-            switch (_currentFilterField) {
-              case 'Full Name':
-                return tenant.fullName;
-              case 'Email':
-                return tenant.email;
-              case 'Phone':
-                return tenant.phone ?? '';
-              case 'City':
-                return tenant.city ?? '';
-              default:
-                return tenant.fullName;
-            }
-          }).toList();
-    } else {
-      searchStrings =
-          provider.searchingTenants.map((preference) {
-            switch (_currentFilterField) {
-              case 'City':
-                return preference.city;
-              case 'Price Range':
-                return '${preference.minPrice ?? "Any"} - ${preference.maxPrice ?? "Any"}';
-              case 'Amenities':
-                return preference.amenities.join(', ');
-              case 'Description':
-                return preference.description;
-              default:
-                return preference.city;
-            }
-          }).toList();
-    }
-
-    return CustomSearchBar<String>(
+    return CustomSearchBar(
+      controller: _searchController,
       hintText: 'Enter $_currentFilterField...',
-      searchHistory: _searchHistory,
-      localData: searchStrings,
-      showFilterIcon: true,
-      onSearchChanged: (value) {
-        setState(() {
-          _searchTerm = value;
-          if (value.isNotEmpty && !_searchHistory.contains(value)) {
-            _searchHistory.add(value);
-            if (_searchHistory.length > 5) {
-              _searchHistory.removeAt(0); // Keep history size manageable
-            }
-          }
-        });
-      },
-      onFilterIconPressed: () {
+      onFilterPressed: () {
         _showFilterOptionsDialog(context, filterFields);
-      },
-      customSuggestionBuilder: (suggestion, controller, onSelected) {
-        // For current tenants tab
-        if (_tabController.index == 0) {
-          // Find the tenant that matches this suggestion
-          final tenant = provider.currentTenants.firstWhere((t) {
-            switch (_currentFilterField) {
-              case 'Full Name':
-                return t.fullName == suggestion;
-              case 'Email':
-                return t.email == suggestion;
-              case 'Phone':
-                return t.phone == suggestion;
-              case 'City':
-                return t.city == suggestion;
-              default:
-                return t.fullName == suggestion;
-            }
-          }, orElse: () => provider.currentTenants.first);
-
-          // Get property for this tenant
-          final property = tenantProperties[tenant.id];
-
-          return ListTile(
-            leading: CircleAvatar(
-              radius: 20,
-              backgroundImage:
-                  tenant.profileImage != null
-                      ? NetworkImage(tenant.profileImage!)
-                      : null,
-              child:
-                  tenant.profileImage == null
-                      ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
-                      : null,
-            ),
-            title: Row(
-              children: [
-                Text(
-                  tenant.fullName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '(${property?.title ?? 'No property'})',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-              ],
-            ),
-            onTap: () {
-              controller.text = suggestion;
-              onSelected(suggestion);
-            },
-          );
-        }
-        // For searching tenants tab
-        else {
-          // Find the tenant preference that matches this suggestion
-          final preference = provider.searchingTenants.firstWhere((p) {
-            switch (_currentFilterField) {
-              case 'City':
-                return p.city == suggestion;
-              case 'Price Range':
-                final priceRange =
-                    '${p.minPrice ?? "Any"} - ${p.maxPrice ?? "Any"}';
-                return priceRange == suggestion;
-              case 'Amenities':
-                return p.amenities.join(', ') == suggestion;
-              case 'Description':
-                return p.description == suggestion;
-              default:
-                return p.city == suggestion;
-            }
-          }, orElse: () => provider.searchingTenants.first);
-
-          // Find the user associated with this preference
-          final user = provider.currentTenants.firstWhere(
-            (u) => u.id == preference.userId,
-            orElse:
-                () => User(
-                  id: 'unknown',
-                  email: 'unknown@example.com',
-                  firstName: 'Unknown',
-                  lastName: 'User',
-                  role: 'tenant',
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                ),
-          );
-
-          return ListTile(
-            leading: CircleAvatar(
-              radius: 20,
-              backgroundImage:
-                  user.profileImage != null
-                      ? NetworkImage(user.profileImage!)
-                      : null,
-              child:
-                  user.profileImage == null
-                      ? Text('${user.firstName[0]}${user.lastName[0]}')
-                      : null,
-            ),
-            title: Row(
-              children: [
-                Text(
-                  user.fullName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '($_currentFilterField: $suggestion)',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-              ],
-            ),
-            onTap: () {
-              controller.text = suggestion;
-              onSelected(suggestion);
-            },
-          );
-        }
       },
     );
   }
@@ -366,8 +195,6 @@ class _TenantsScreenState extends State<TenantsScreen>
                         onChanged: (value) {
                           setState(() {
                             _currentFilterField = value!;
-                            _searchTerm =
-                                ''; // Reset search when changing filter field
                           });
                           context.pop();
                         },
@@ -425,6 +252,6 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   void _navigateToPropertyDetails(Property property) {
     // Navigate to property details using GoRouter
-    context.go('/properties/${property.id}', extra: property);
+    context.push('/properties/${property.id}', extra: property);
   }
 }

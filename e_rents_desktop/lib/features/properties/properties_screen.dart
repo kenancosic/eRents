@@ -8,10 +8,11 @@ import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
-import 'package:e_rents_desktop/features/properties/widgets/status_chip.dart';
+import 'package:e_rents_desktop/widgets/status_chip.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_info_row.dart';
 import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
+import 'package:flutter/foundation.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -22,18 +23,18 @@ class PropertiesScreen extends StatefulWidget {
 
 class _PropertiesScreenState extends State<PropertiesScreen> {
   bool _isListView = true;
-  String _searchQuery = '';
-  List<String> _searchHistory = [];
+  final TextEditingController _searchController = TextEditingController();
   List<Property> _filteredProperties = [];
 
   @override
   void initState() {
     super.initState();
-    // Initial fetch and filter setup
+    _searchController.addListener(() {
+      _filterProperties(_searchController.text);
+    });
     Future.microtask(() async {
       final provider = context.read<PropertyProvider>();
       await provider.fetchProperties();
-      // Initially, show all properties
       if (mounted) {
         setState(() {
           _filteredProperties = provider.properties;
@@ -42,25 +43,48 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _filterProperties(String query) {
     final provider = context.read<PropertyProvider>();
     final lowerCaseQuery = query.toLowerCase();
 
-    setState(() {
-      _searchQuery = query;
-      if (query.isEmpty) {
-        _filteredProperties = provider.properties;
-      } else {
-        _filteredProperties =
-            provider.properties.where((property) {
-              // Search by title (name)
-              return property.title.toLowerCase().contains(lowerCaseQuery);
-              // Add more fields to search if needed (e.g., description, address)
-              // || property.description.toLowerCase().contains(lowerCaseQuery)
-              // || property.address.toLowerCase().contains(lowerCaseQuery);
-            }).toList();
-      }
-    });
+    List<Property> newlyFiltered;
+    if (query.isEmpty) {
+      newlyFiltered = provider.properties;
+    } else {
+      newlyFiltered =
+          provider.properties.where((property) {
+            return property.title.toLowerCase().contains(lowerCaseQuery);
+          }).toList();
+    }
+
+    if (!listEquals(_filteredProperties, newlyFiltered)) {
+      setState(() {
+        _filteredProperties = newlyFiltered;
+      });
+    }
+  }
+
+  // --- Helper for Status Chip ---
+  // Added helper to get status display properties
+  ({Color color, IconData icon}) _getStatusDisplayProperties(String status) {
+    final lowerStatus = status.toLowerCase();
+    if (lowerStatus == 'available') {
+      return (color: Colors.green, icon: Icons.check_circle_outline);
+    } else if (lowerStatus == 'occupied' || lowerStatus == 'rented') {
+      // Group similar statuses
+      return (color: Colors.blue, icon: Icons.person_outline);
+    } else if (lowerStatus == 'maintenance') {
+      return (color: Colors.orange, icon: Icons.build_circle_outlined);
+    } else {
+      // Default for unknown/other statuses
+      return (color: Colors.grey, icon: Icons.help_outline);
+    }
   }
 
   @override
@@ -70,11 +94,10 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       currentPath: '/properties',
       child: Consumer<PropertyProvider>(
         builder: (context, provider, child) {
-          // Use the LoadingOrErrorWidget to handle loading/error states
           return LoadingOrErrorWidget(
             isLoading: provider.isLoading,
             error: provider.error,
-            onRetry: () => provider.fetchProperties(), // Provide retry callback
+            onRetry: () => provider.fetchProperties(),
             child: Column(
               children: [
                 Padding(
@@ -82,83 +105,15 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CustomSearchBar<Property>(
+                      CustomSearchBar(
+                        controller: _searchController,
                         hintText: 'Search Properties by Name...',
-                        showFilterIcon: false, // Hiding filter icon for now
-                        searchHistory: _searchHistory,
-                        localData:
-                            provider
-                                .properties, // Use all properties for suggestions
-                        showSuggestions: true,
-                        itemToString:
-                            (Property item) =>
-                                item.title, // For basic filtering
-                        onSearchChanged:
-                            _filterProperties, // Filter the main list
-                        customSuggestionBuilder: (
-                          Property item,
-                          TextEditingController controller,
-                          Function(String) onSelected,
-                        ) {
-                          return ListTile(
-                            leading: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.asset(
-                                item
-                                    .images
-                                    .first, // Assuming at least one image
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            title: Text(
-                              item.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  item.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  kCurrencyFormat.format(item.price),
-                                  style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              controller.text = item.title; // Set text field
-                              _filterProperties(item.title); // Filter list
-                              // Add to history (optional)
-                              if (!_searchHistory.contains(item.title)) {
-                                setState(
-                                  () => _searchHistory.insert(0, item.title),
-                                );
-                                // Limit history size if needed
-                              }
-                              // Navigate to details
-                              _navigateToPropertyDetails(context, item);
-                              // Close suggestions view implicitly by navigation
-                              // If not navigating, you might need `controller.closeView(item.title)`
-                            },
-                          );
-                        },
+                        onChanged: _filterProperties,
                       ),
-                      const SizedBox(height: 16), // Spacing after search bar
+                      const SizedBox(height: 16),
                       LayoutBuilder(
                         builder: (context, constraints) {
                           if (constraints.maxWidth < 600) {
-                            // Stack vertically on small screens
                             return Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -198,7 +153,6 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                               ],
                             );
                           } else {
-                            // Use row layout on larger screens
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -257,14 +211,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   Widget _buildListView(List<Property> properties) {
-    // Check if properties list is empty after filtering
     if (properties.isEmpty) {
-      return _buildEmptyListMessage(); // Use helper
+      return _buildEmptyListMessage();
     }
     return ListView.builder(
       itemCount: properties.length,
       itemBuilder: (context, index) {
         final property = properties[index];
+        final statusProps = _getStatusDisplayProperties(property.status);
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: InkWell(
@@ -298,7 +252,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 16,
-                    runSpacing: 4, // Add run spacing for smaller screens
+                    runSpacing: 4,
                     children: [
                       PropertyInfoRow(
                         icon: Icons.bed,
@@ -318,6 +272,8 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
               ),
               trailing: Wrap(
                 spacing: 8,
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
                     kCurrencyFormat.format(property.price),
@@ -325,7 +281,12 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                  StatusChip(status: property.status),
+                  // Use refactored StatusChip with parameters
+                  StatusChip(
+                    label: property.status,
+                    backgroundColor: statusProps.color,
+                    iconData: statusProps.icon,
+                  ),
                   PopupMenuButton(
                     itemBuilder:
                         (context) => [
@@ -370,9 +331,8 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   Widget _buildGridView(List<Property> properties) {
-    // Check if properties list is empty after filtering
     if (properties.isEmpty) {
-      return _buildEmptyListMessage(); // Use helper
+      return _buildEmptyListMessage();
     }
     final scrollController = ScrollController();
     final gridViewKey = GlobalKey();
@@ -381,6 +341,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       scrollController: scrollController,
       children:
           properties.map((property) {
+            final statusProps = _getStatusDisplayProperties(property.status);
             return SizedBox(
               key: ValueKey(property.id),
               width: 300,
@@ -392,7 +353,6 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Image section with fixed height
                       SizedBox(
                         height: 160,
                         width: double.infinity,
@@ -406,19 +366,22 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                             Positioned(
                               top: 8,
                               right: 8,
-                              child: StatusChip(status: property.status),
+                              // Use refactored StatusChip with parameters
+                              child: StatusChip(
+                                label: property.status,
+                                backgroundColor: statusProps.color,
+                                iconData: statusProps.icon,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      // Content section
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Title
                               Text(
                                 property.title,
                                 style: Theme.of(context).textTheme.titleMedium,
@@ -426,7 +389,6 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
-                              // Description
                               Expanded(
                                 child: Text(
                                   property.description,
@@ -435,7 +397,6 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // Bottom row
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -532,7 +493,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                 crossAxisCount: crossAxisCount,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                mainAxisExtent: 320, // Match the SizedBox height
+                mainAxisExtent: 320,
               ),
               children: children,
             );
@@ -542,13 +503,12 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     );
   }
 
-  // Helper widget for displaying the empty list message
   Widget _buildEmptyListMessage() {
     return Center(
       child: Text(
-        _searchQuery.isEmpty
-            ? 'No properties found.' // Message when no properties exist at all
-            : 'No properties match "$_searchQuery".', // Message when filter yields no results
+        _searchController.text.isEmpty
+            ? 'No properties found.'
+            : 'No properties match "${_searchController.text}".',
         style: Theme.of(context).textTheme.titleMedium,
       ),
     );
@@ -568,17 +528,10 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       isDestructiveAction: true,
     );
 
-    // Check explicitly for true, as dialog could return null if dismissed
     if (confirmed == true) {
-      // Add loading indicator/disable UI while deleting if needed
       try {
         await context.read<PropertyProvider>().deleteProperty(property.id);
-        // Optional: Show success message (e.g., SnackBar)
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(content: Text('"${property.title}" deleted.')),
-        // );
       } catch (e) {
-        // Optional: Show error message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to delete property: $e')),

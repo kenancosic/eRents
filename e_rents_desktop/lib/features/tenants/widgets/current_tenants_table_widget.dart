@@ -82,18 +82,14 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
       );
     }
 
-    // Get mock properties for demonstration
+    // TODO: Replace this mock property assignment with real data
     final properties = MockDataService.getMockProperties();
-
-    // For demonstration, assign properties to tenants based on index
     final Map<String, Property> tenantProperties = {};
     for (int i = 0; i < filteredTenants.length; i++) {
-      // Assign property in a round-robin fashion
       tenantProperties[filteredTenants[i].id] =
           properties[i % properties.length];
     }
 
-    // Define column definitions with their builders
     _columnDefs = [
       {
         'name': 'Profile',
@@ -133,51 +129,68 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
         'width': const FlexColumnWidth(1.5),
         'isEssential': true,
         'column': const DataColumn(label: Text('Property')),
-        'cell':
-            (User tenant) => DataCell(
-              MouseRegion(
+        'cell': (User tenant) {
+          // Get the property, handle null case if assignment fails
+          final property = tenantProperties[tenant.id];
+          if (property == null) {
+            return const DataCell(Text('N/A')); // Or other placeholder
+          }
+
+          return DataCell(
+            InkWell(
+              // Changed from GestureDetector
+              onTap:
+                  () => widget.onNavigateToProperty(
+                    property,
+                  ), // Use push if the callback allows or modify callback
+              child: MouseRegion(
                 cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap:
-                      () => widget.onNavigateToProperty(
-                        tenantProperties[tenant.id]!,
-                      ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Property image
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          image: DecorationImage(
-                            image: AssetImage(
-                              tenantProperties[tenant.id]?.images.first ??
-                                  'assets/images/placeholder.jpg',
-                            ),
-                            fit: BoxFit.cover,
-                          ),
+                child: Row(
+                  children: [
+                    // Property image placeholder/actual image
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.asset(
+                          property.images.isNotEmpty
+                              ? property.images.first
+                              : 'assets/images/placeholder.jpg', // Ensure placeholder exists
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                width: 32,
+                                height: 32,
+                                color: Colors.grey[200],
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  size: 18,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Property name - constrain width to prevent overflow
-                      Flexible(
-                        child: Text(
-                          tenantProperties[tenant.id]?.title ??
-                              'No property assigned',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
-                          ),
+                    ),
+                    // Property name
+                    Expanded(
+                      // Use Expanded instead of Flexible for simpler layout
+                      child: Text(
+                        property.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
+          );
+        },
       },
       {
         'name': 'Phone',

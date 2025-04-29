@@ -102,19 +102,20 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, MaintenanceIssue issue) {
+    final router = GoRouter.of(context);
     return Row(
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            context.go('/properties/${issue.propertyId}');
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              // Fallback navigation if cannot pop
+              router.go('/maintenance');
+            }
           },
           tooltip: 'Go back',
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Back to ${issue.propertyId == null ? 'Maintenance' : 'Property'}',
-          style: Theme.of(context).textTheme.titleMedium,
         ),
         const Spacer(),
         _buildStatusChip(issue),

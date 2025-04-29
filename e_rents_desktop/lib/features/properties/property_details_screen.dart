@@ -138,17 +138,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildBackButton(BuildContext context) {
+    final router = GoRouter.of(context);
     return Row(
       children: [
         IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/properties'),
+          onPressed: () {
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              // Fallback navigation if cannot pop
+              router.go('/properties');
+            }
+          },
           tooltip: 'Go back',
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Back to Properties',
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ],
     );
@@ -224,7 +227,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   children: [
                     TextButton.icon(
                       onPressed: () {
-                        context.go(
+                        context.push(
                           '/maintenance/new?propertyId=${property.id}',
                         );
                       },

@@ -128,4 +128,20 @@ class Property {
       nextInspectionDate: nextInspectionDate ?? this.nextInspectionDate,
     );
   }
+
+  factory Property.empty() => Property(
+    id: '',
+    title: 'N/A', // Or 'Unknown Property'
+    description: '',
+    type: '',
+    price: 0.0,
+    status: '',
+    images: [],
+    address: '',
+    bedrooms: 0,
+    bathrooms: 0,
+    area: 0.0,
+    maintenanceIssues: [],
+    // Add any other required fields with default values
+  );
 }
