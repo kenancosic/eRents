@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // For date formatting
 import 'package:e_rents_desktop/models/chat_message.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
-  final VoidCallback? onDelete;
+  final VoidCallback? onDelete; // Optional delete callback for 'my' messages
 
   const ChatMessageBubble({
     super.key,
@@ -15,96 +16,80 @@ class ChatMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPress: onDelete,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment:
-              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isMe) ...[
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(
-                  'https://i.pravatar.cc/150?img=${message.senderId.hashCode}',
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isMe ? Colors.blue : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (message.isDeleted)
-                      Text(
-                        'Message deleted',
-                        style: TextStyle(
-                          color: isMe ? Colors.white70 : Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      )
-                    else
-                      Text(
-                        message.content,
-                        style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatTime(message.timestamp),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isMe ? Colors.white70 : Colors.grey[600],
-                          ),
-                        ),
-                        if (isMe) ...[
-                          const SizedBox(width: 4),
-                          Icon(
-                            message.isRead ? Icons.done_all : Icons.done,
-                            size: 16,
-                            color:
-                                message.isRead
-                                    ? Colors.blue[100]
-                                    : Colors.white70,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+    final theme = Theme.of(context);
+    final alignment = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final color = isMe ? theme.colorScheme.primary : Colors.grey[200];
+    final textColor = isMe ? Colors.white : Colors.black87;
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(16),
+      topRight: const Radius.circular(16),
+      bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(0),
+      bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
+    );
+
+    Widget messageContent = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.65,
+      ),
+      decoration: BoxDecoration(color: color, borderRadius: borderRadius),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message.content,
+            style: TextStyle(color: textColor, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            DateFormat('HH:mm').format(message.timestamp), // Simple time format
+            style: TextStyle(
+              color: isMe ? Colors.white70 : Colors.black54,
+              fontSize: 11,
             ),
-            if (isMe) ...[
-              const SizedBox(width: 8),
-              CircleAvatar(
-                radius: 16,
-                backgroundImage: NetworkImage(
-                  'https://i.pravatar.cc/150?img=${message.senderId.hashCode}',
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
-  }
 
-  String _formatTime(DateTime time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    // Add delete button conditionally
+    if (isMe && onDelete != null) {
+      messageContent = Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Delete button appears before the bubble for 'my' messages
+          IconButton(
+            icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey[600]),
+            onPressed: onDelete,
+            tooltip: 'Delete message',
+            padding: const EdgeInsets.only(right: 4),
+            constraints: const BoxConstraints(),
+          ),
+          messageContent,
+        ],
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: alignment,
+        children: [
+          if (message.isDeleted)
+            Text(
+              'Message deleted',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey[500],
+                fontSize: 13,
+              ),
+            )
+          else
+            messageContent,
+        ],
+      ),
+    );
   }
 }

@@ -208,7 +208,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                 message: message,
                                 isMe: isMe,
                                 onDelete:
-                                    isMe && !message.isRead
+                                    isMe &&
+                                            !message
+                                                .isDeleted // Allow deleting own non-deleted messages
                                         ? () => _deleteMessage(message)
                                         : null,
                               );
