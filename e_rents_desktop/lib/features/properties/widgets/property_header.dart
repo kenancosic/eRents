@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/features/properties/widgets/status_chip.dart';
+import 'package:e_rents_desktop/widgets/status_chip.dart';
 
 class PropertyHeader extends StatelessWidget {
   final Property property;
@@ -57,7 +57,7 @@ class PropertyHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  StatusChip(status: property.status),
+                  _buildStatusChip(property.status),
                   const SizedBox(height: 16),
                   Text(
                     '\$${property.price.toStringAsFixed(2)}/month',
@@ -73,6 +73,40 @@ class PropertyHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStatusChip(String status) {
+    String label;
+    Color backgroundColor;
+    IconData iconData;
+
+    switch (status.toLowerCase()) {
+      case 'available':
+        label = 'Available';
+        backgroundColor = Colors.green.shade600;
+        iconData = Icons.check_circle_outline;
+        break;
+      case 'rented':
+        label = 'Rented';
+        backgroundColor = Colors.orange.shade700;
+        iconData = Icons.house_outlined;
+        break;
+      case 'maintenance':
+        label = 'Maintenance';
+        backgroundColor = Colors.blueGrey.shade500;
+        iconData = Icons.build_outlined;
+        break;
+      default: // Handle unexpected status string gracefully
+        label = status; // Show the actual status string if unknown
+        backgroundColor = Colors.grey.shade500;
+        iconData = Icons.help_outline;
+    }
+
+    return StatusChip(
+      label: label,
+      backgroundColor: backgroundColor,
+      iconData: iconData,
     );
   }
 

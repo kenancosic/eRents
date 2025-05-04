@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/tenant_feedback.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
+import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -321,6 +322,7 @@ class MockDataService {
         description: 'Modern apartment in downtown area',
         type: 'Apartment',
         price: 2500.0,
+        rentingType: RentingType.monthly,
         status: 'Available',
         images: ['assets/images/apartment1.jpg'],
         address: '123 Main St, City',
@@ -340,6 +342,7 @@ class MockDataService {
         description: 'Spacious house in suburban area',
         type: 'House',
         price: 3500.0,
+        rentingType: RentingType.monthly,
         status: 'Occupied',
         images: ['assets/images/house1.jpg'],
         address: '456 Oak St, Suburb',
@@ -360,6 +363,7 @@ class MockDataService {
             'Cozy studio with modern amenities, perfect for young professionals',
         type: 'Studio',
         price: 1800.0,
+        rentingType: RentingType.monthly,
         status: 'Occupied',
         images: ['assets/images/lukavac_villa.jpg'],
         address: '789 Pine St, Arts District',
@@ -382,6 +386,7 @@ class MockDataService {
             'Exclusive penthouse with panoramic city views and premium finishes',
         type: 'Penthouse',
         price: 5000.0,
+        rentingType: RentingType.monthly,
         status: 'Available',
         images: ['assets/images/penthouse.jpg'],
         address: '101 Sky Tower, Downtown',
@@ -406,6 +411,7 @@ class MockDataService {
             'Charming villa with private garden and modern interior design',
         type: 'Villa',
         price: 4300.0,
+        rentingType: RentingType.monthly,
         status: 'Occupied',
         images: ['assets/images/villa.jpg'],
         address: '234 Garden Lane, Green Valley',
