@@ -1,14 +1,19 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 
+enum PropertyStatus { available, rented, maintenance, unavailable }
+
+enum PropertyType { apartment, house, condo, townhouse, studio }
+
 class Property {
   final String id;
+  final String ownerId;
   final String title;
   final String description;
-  final String type;
+  final PropertyType type;
   final double price;
   final RentingType rentingType;
-  final String status;
+  final PropertyStatus status;
   final List<String> images;
   final String address;
   final int bedrooms;
@@ -26,9 +31,11 @@ class Property {
   final String? city;
   final String? postalCode;
   final String? country;
+  final DateTime dateAdded;
 
   Property({
     required this.id,
+    required this.ownerId,
     required this.title,
     required this.description,
     required this.type,
@@ -52,20 +59,28 @@ class Property {
     this.city,
     this.postalCode,
     this.country,
+    required this.dateAdded,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
       id: json['id'] as String? ?? '',
+      ownerId: json['ownerId'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      type: json['type'] as String? ?? '',
+      type: PropertyType.values.firstWhere(
+        (e) => e.toString() == 'PropertyType.${json['type']}',
+        orElse: () => PropertyType.apartment,
+      ),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rentingType: RentingType.values.firstWhere(
         (e) => e.name == json['rentingType'],
         orElse: () => RentingType.monthly,
       ),
-      status: json['status'] as String? ?? '',
+      status: PropertyStatus.values.firstWhere(
+        (e) => e.toString() == 'PropertyStatus.${json['status']}',
+        orElse: () => PropertyStatus.available,
+      ),
       images: List<String>.from(json['images'] as List? ?? []),
       address: json['address'] as String? ?? '',
       bedrooms: json['bedrooms'] as int? ?? 0,
@@ -95,18 +110,22 @@ class Property {
       city: json['city'] as String?,
       postalCode: json['postalCode'] as String?,
       country: json['country'] as String?,
+      dateAdded: DateTime.parse(
+        json['dateAdded'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'ownerId': ownerId,
       'title': title,
       'description': description,
-      'type': type,
+      'type': type.toString().split('.').last,
       'price': price,
       'rentingType': rentingType.name,
-      'status': status,
+      'status': status.toString().split('.').last,
       'images': images,
       'address': address,
       'bedrooms': bedrooms,
@@ -124,17 +143,19 @@ class Property {
       'city': city,
       'postalCode': postalCode,
       'country': country,
+      'dateAdded': dateAdded.toIso8601String(),
     };
   }
 
   Property copyWith({
     String? id,
+    String? ownerId,
     String? title,
     String? description,
-    String? type,
+    PropertyType? type,
     double? price,
     RentingType? rentingType,
-    String? status,
+    PropertyStatus? status,
     List<String>? images,
     String? address,
     int? bedrooms,
@@ -152,9 +173,11 @@ class Property {
     String? city,
     String? postalCode,
     String? country,
+    DateTime? dateAdded,
   }) {
     return Property(
       id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
       title: title ?? this.title,
       description: description ?? this.description,
       type: type ?? this.type,
@@ -178,29 +201,25 @@ class Property {
       city: city ?? this.city,
       postalCode: postalCode ?? this.postalCode,
       country: country ?? this.country,
+      dateAdded: dateAdded ?? this.dateAdded,
     );
   }
 
   factory Property.empty() => Property(
     id: '',
+    ownerId: '',
     title: 'N/A',
     description: '',
-    type: '',
+    type: PropertyType.apartment,
     price: 0.0,
     rentingType: RentingType.monthly,
-    status: '',
+    status: PropertyStatus.available,
     images: [],
     address: '',
     bedrooms: 0,
     bathrooms: 0,
     area: 0.0,
     maintenanceIssues: [],
-    latitude: null,
-    longitude: null,
-    streetNumber: null,
-    streetName: null,
-    city: null,
-    postalCode: null,
-    country: null,
+    dateAdded: DateTime.now(),
   );
 }

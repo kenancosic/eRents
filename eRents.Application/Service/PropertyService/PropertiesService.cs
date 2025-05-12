@@ -171,7 +171,7 @@ namespace eRents.Application.Service
 					.Select(r => new PropertyEntry
 					{
 						PropertyId = (uint)r.PropertyId,
-						UserId = (uint)r.TenantId, // Use TenantId as the user ID
+						//UserId = (uint)r.TenantId, // Use TenantId as the user ID
 						Label = r.StarRating.HasValue ? (float)r.StarRating.Value : 0f
 					})
 					.ToList();

@@ -57,7 +57,6 @@ namespace eRents.Application.Service.ReviewService
 				throw new KeyNotFoundException("Review not found.");
 			}
 
-			review.IsFlagged = request.IsFlagged;
 			await _repository.UpdateAsync(review);
 		}
 		public async Task<bool> DeleteReviewAsync(int reviewId)
@@ -108,14 +107,14 @@ namespace eRents.Application.Service.ReviewService
 		{
 			var review = new Review
 			{
-				TenantId = request.TenantId,
+				//= request.TenantId,
 				PropertyId = request.PropertyId,
 				Description = request.Description,
 				Severity = request.Severity,
-				DateReported = DateTime.Now,
+				//DateReported = DateTime.Now,
 				Status = "Pending",
 				IsComplaint = true, // Changed here
-				IsFlagged = false,
+														//IsFlagged = false,
 				StarRating = null,
 			};
 

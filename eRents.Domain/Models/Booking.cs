@@ -11,13 +11,13 @@ public partial class Booking
 
     public int? UserId { get; set; }
 
-    public DateTime StartDate { get; set; }
+    public DateOnly StartDate { get; set; }
 
-    public DateTime EndDate { get; set; }
+    public DateOnly EndDate { get; set; }
 
     public decimal TotalPrice { get; set; }
 
-    public DateTime? BookingDate { get; set; }
+    public DateOnly? BookingDate { get; set; }
 
     public string? Status { get; set; }
 

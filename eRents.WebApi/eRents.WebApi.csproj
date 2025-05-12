@@ -9,29 +9,25 @@
 	<ItemGroup>
 		<Compile Remove="eRents.Application\**" />
 		<Compile Remove="eRents.Domain\**" />
-		<Compile Remove="eRents.Infrastructure\**" />
 		<Content Remove="eRents.Application\**" />
 		<Content Remove="eRents.Domain\**" />
-		<Content Remove="eRents.Infrastructure\**" />
 		<EmbeddedResource Remove="eRents.Application\**" />
 		<EmbeddedResource Remove="eRents.Domain\**" />
-		<EmbeddedResource Remove="eRents.Infrastructure\**" />
 		<None Remove="eRents.Application\**" />
 		<None Remove="eRents.Domain\**" />
-		<None Remove="eRents.Infrastructure\**" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="AutoMapper" Version="14.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.14" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.3">
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.4" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.4">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.0" />
-		<PackageReference Include="RabbitMQ.Client" Version="7.1.1" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+		<PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\eRents.Application\eRents.Application.csproj" />

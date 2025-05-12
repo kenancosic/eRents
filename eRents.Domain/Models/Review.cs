@@ -7,8 +7,6 @@ public partial class Review
 {
     public int ReviewId { get; set; }
 
-    public int? TenantId { get; set; }
-
     public int? PropertyId { get; set; }
 
     public string? Description { get; set; }
@@ -23,11 +21,19 @@ public partial class Review
 
     public decimal? StarRating { get; set; }
 
-    public bool IsFlagged { get; set; }
+    public int? BookingId { get; set; }
+
+    public int? StatusId { get; set; }
+
+    public int? SeverityId { get; set; }
 
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 
     public virtual Property? Property { get; set; }
 
-    public virtual Tenant? Tenant { get; set; }
+    public virtual Booking? Booking { get; set; }
+
+    public virtual ReviewStatus? ReviewStatus { get; set; }
+
+    public virtual ReviewSeverity? ReviewSeverity { get; set; }
 }

@@ -113,7 +113,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  user?.role ?? 'Property Manager',
+                  user?.role.toString() ?? 'Property Manager',
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),

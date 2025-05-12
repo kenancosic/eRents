@@ -11,11 +11,11 @@ public partial class Tenant
 
     public string? ContactInfo { get; set; }
 
-    public DateTime? DateOfBirth { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
 
     public int? PropertyId { get; set; }
 
-    public DateTime? LeaseStartDate { get; set; }
+    public DateOnly? LeaseStartDate { get; set; }
 
     public string? TenantStatus { get; set; }
 

@@ -17,6 +17,8 @@ public partial class Message
 
     public bool? IsRead { get; set; }
 
+    public bool IsDeleted { get; set; }
+
     public virtual User Receiver { get; set; } = null!;
 
     public virtual User Sender { get; set; } = null!;

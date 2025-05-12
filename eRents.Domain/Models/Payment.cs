@@ -13,7 +13,7 @@ public partial class Payment
 
     public decimal Amount { get; set; }
 
-    public DateTime? DatePaid { get; set; }
+    public DateOnly? DatePaid { get; set; }
 
     public string? PaymentMethod { get; set; }
 

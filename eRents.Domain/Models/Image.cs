@@ -11,6 +11,8 @@ public partial class Image
 
     public int? PropertyId { get; set; }
 
+    public int? MaintenanceIssueId { get; set; }
+
     public byte[] ImageData { get; set; } = null!;
 
     public DateTime? DateUploaded { get; set; }
@@ -20,4 +22,6 @@ public partial class Image
     public virtual Property? Property { get; set; }
 
     public virtual Review? Review { get; set; }
+
+    public virtual MaintenanceIssue? MaintenanceIssue { get; set; }
 }

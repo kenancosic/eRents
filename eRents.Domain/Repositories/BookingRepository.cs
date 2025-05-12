@@ -8,10 +8,12 @@ namespace eRents.Domain.Repositories
 	{
 		public BookingRepository(ERentsContext context) : base(context) { }
 
-		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateTime startDate, DateTime endDate)
+		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
 		{
 			return !await _context.Bookings
-							.AnyAsync(b => b.PropertyId == propertyId && b.StartDate < endDate && b.EndDate > startDate);
+							.AnyAsync(b => b.PropertyId == propertyId &&
+																		b.StartDate <= endDate &&
+																		b.EndDate >= startDate);
 		}
 
 		public async Task<IEnumerable<Booking>> GetBookingsByUserAsync(int userId)

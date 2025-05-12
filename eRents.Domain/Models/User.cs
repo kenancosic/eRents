@@ -13,7 +13,7 @@ public partial class User
 
     public string? PhoneNumber { get; set; }
 
-    public DateTime? DateOfBirth { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
 
     public string? UserType { get; set; }
 
@@ -37,9 +37,13 @@ public partial class User
 
     public int? LocationId { get; set; }
 
+    public int? UserTypeId { get; set; }
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual Location? Location { get; set; }
+
+    public virtual UserType? UserTypeNavigation { get; set; }
 
     public virtual ICollection<Message> MessageReceivers { get; set; } = new List<Message>();
 
@@ -47,7 +51,12 @@ public partial class User
 
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
 
-    public virtual ICollection<Report> Reports { get; set; } = new List<Report>();
+
+    public virtual ICollection<MaintenanceIssue> AssignedMaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
+
+    public virtual ICollection<MaintenanceIssue> ReportedMaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
+
+    public virtual ICollection<TenantPreference> TenantPreferences { get; set; } = new List<TenantPreference>();
 
     public virtual ICollection<UserSavedProperty> UserSavedProperties { get; set; } = new List<UserSavedProperty>();
 }
