@@ -102,9 +102,10 @@ class _TenantsAdvertisementTableWidgetState
             () => User(
               id: 'unknown',
               email: 'unknown@example.com',
+              username: 'unknown',
               firstName: 'Unknown',
               lastName: 'User',
-              role: 'tenant',
+              role: UserType.landlord,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             ),

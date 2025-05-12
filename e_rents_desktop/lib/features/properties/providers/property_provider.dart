@@ -100,20 +100,24 @@ class PropertyProvider extends BaseProvider<Property> {
   }
 
   // Additional property-specific methods
-  List<Property> getPropertiesByStatus(String status) {
+  List<Property> getPropertiesByStatus(PropertyStatus status) {
     return items.where((property) => property.status == status).toList();
   }
 
-  List<Property> getPropertiesByType(String type) {
+  List<Property> getPropertiesByType(PropertyType type) {
     return items.where((property) => property.type == type).toList();
   }
 
   List<Property> getAvailableProperties() {
-    return items.where((property) => property.status == 'Available').toList();
+    return items
+        .where((property) => property.status == PropertyStatus.available)
+        .toList();
   }
 
   List<Property> getOccupiedProperties() {
-    return items.where((property) => property.status == 'Occupied').toList();
+    return items
+        .where((property) => property.status == PropertyStatus.rented)
+        .toList();
   }
 
   // Method to get a single property by ID from the current list

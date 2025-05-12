@@ -39,7 +39,9 @@ class TenantProvider extends BaseProvider<User> {
   @override
   List<User> getMockItems() {
     return MockDataService.getMockUsers()
-        .where((user) => user.role == 'tenant')
+        .where(
+          (user) => user.role == UserType.landlord,
+        ) // For now treat all as landlord
         .toList();
   }
 
@@ -50,7 +52,9 @@ class TenantProvider extends BaseProvider<User> {
     try {
       final allUsers = MockDataService.getMockUsers();
       _currentTenants =
-          allUsers.where((user) => user.role == 'tenant').toList();
+          allUsers
+              .where((user) => user.role == UserType.landlord)
+              .toList(); // For now treat all as landlord
 
       print('Loaded ${_currentTenants.length} current tenants');
       for (var tenant in _currentTenants) {

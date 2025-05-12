@@ -71,19 +71,20 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   // --- Helper for Status Chip ---
-  // Added helper to get status display properties
-  ({Color color, IconData icon}) _getStatusDisplayProperties(String status) {
-    final lowerStatus = status.toLowerCase();
-    if (lowerStatus == 'available') {
-      return (color: Colors.green, icon: Icons.check_circle_outline);
-    } else if (lowerStatus == 'occupied' || lowerStatus == 'rented') {
-      // Group similar statuses
-      return (color: Colors.blue, icon: Icons.person_outline);
-    } else if (lowerStatus == 'maintenance') {
-      return (color: Colors.orange, icon: Icons.build_circle_outlined);
-    } else {
-      // Default for unknown/other statuses
-      return (color: Colors.grey, icon: Icons.help_outline);
+  // Updated to work with PropertyStatus enum
+  ({Color color, IconData icon}) _getStatusDisplayProperties(
+    PropertyStatus status,
+  ) {
+    switch (status) {
+      case PropertyStatus.available:
+        return (color: Colors.green, icon: Icons.check_circle_outline);
+      case PropertyStatus.rented:
+        return (color: Colors.blue, icon: Icons.person_outline);
+      case PropertyStatus.maintenance:
+        return (color: Colors.orange, icon: Icons.build_circle_outlined);
+      case PropertyStatus.unavailable:
+      default:
+        return (color: Colors.grey, icon: Icons.help_outline);
     }
   }
 

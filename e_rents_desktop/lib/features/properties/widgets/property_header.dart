@@ -76,29 +76,30 @@ class PropertyHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusChip(String status) {
+  Widget _buildStatusChip(PropertyStatus status) {
     String label;
     Color backgroundColor;
     IconData iconData;
 
-    switch (status.toLowerCase()) {
-      case 'available':
+    switch (status) {
+      case PropertyStatus.available:
         label = 'Available';
         backgroundColor = Colors.green.shade600;
         iconData = Icons.check_circle_outline;
         break;
-      case 'rented':
+      case PropertyStatus.rented:
         label = 'Rented';
         backgroundColor = Colors.orange.shade700;
         iconData = Icons.house_outlined;
         break;
-      case 'maintenance':
+      case PropertyStatus.maintenance:
         label = 'Maintenance';
         backgroundColor = Colors.blueGrey.shade500;
         iconData = Icons.build_outlined;
         break;
-      default: // Handle unexpected status string gracefully
-        label = status; // Show the actual status string if unknown
+      case PropertyStatus.unavailable:
+      default:
+        label = status.toString().split('.').last;
         backgroundColor = Colors.grey.shade500;
         iconData = Icons.help_outline;
     }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
-import 'package:e_rents_desktop/models/chat_message.dart';
+import 'package:e_rents_desktop/models/message.dart';
 
 class ChatMessageBubble extends StatelessWidget {
-  final ChatMessage message;
+  final Message message;
   final bool isMe;
   final VoidCallback? onDelete; // Optional delete callback for 'my' messages
 
@@ -38,12 +38,12 @@ class ChatMessageBubble extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            message.content,
+            message.messageText,
             style: TextStyle(color: textColor, fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
-            DateFormat('HH:mm').format(message.timestamp), // Simple time format
+            DateFormat('HH:mm').format(message.dateSent), // Simple time format
             style: TextStyle(
               color: isMe ? Colors.white70 : Colors.black54,
               fontSize: 11,

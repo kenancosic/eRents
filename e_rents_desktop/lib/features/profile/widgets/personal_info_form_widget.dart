@@ -54,7 +54,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       _lastNameController.text = user.lastName;
       _emailController.text = user.email;
       _phoneController.text = user.phone ?? '';
-      _roleController.text = user.role ?? '';
+      _roleController.text = user.role.toString();
       _cityController.text = user.city ?? '';
     }
   }

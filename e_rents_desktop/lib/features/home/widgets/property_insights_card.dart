@@ -20,7 +20,7 @@ class PropertyInsightsCard extends StatelessWidget {
     // Calculate stats
     final totalProperties = properties.length;
     final availableProperties =
-        properties.where((p) => p.status.toLowerCase() == 'available').toList();
+        properties.where((p) => p.status == PropertyStatus.available).toList();
     final rentedProperties = totalProperties - availableProperties.length;
     final occupancyRate =
         totalProperties > 0 ? (rentedProperties / totalProperties) : 0.0;

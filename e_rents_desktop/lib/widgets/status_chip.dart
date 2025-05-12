@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/models/property.dart';
 
 // Refactored reusable StatusChip
 class StatusChip extends StatelessWidget {
-  final String label;
+  final dynamic label; // Can be PropertyStatus enum or String
   final Color backgroundColor;
   final IconData iconData;
   final Color foregroundColor; // Color for text and icon
@@ -17,6 +18,12 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Convert enum to string if needed
+    final String displayLabel =
+        label is PropertyStatus
+            ? label.toString().split('.').last
+            : label.toString();
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 8,
@@ -39,7 +46,7 @@ class StatusChip extends StatelessWidget {
           Icon(iconData, color: foregroundColor, size: 14),
           const SizedBox(width: 5), // Adjusted spacing
           Text(
-            label,
+            displayLabel,
             style: TextStyle(
               color: foregroundColor,
               fontSize: 12,

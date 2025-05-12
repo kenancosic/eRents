@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_message.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_contact.dart';
-import 'package:e_rents_desktop/models/chat_message.dart';
+import 'package:e_rents_desktop/models/message.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -16,7 +16,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   String? _selectedContact;
-  final List<ChatMessage> _messages = [];
+  final List<Message> _messages = [];
   final String _currentUserId = 'user1'; // Replace with actual user ID
 
   @override
@@ -30,12 +30,12 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    final newMessage = ChatMessage(
+    final newMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       senderId: _currentUserId,
       receiverId: _selectedContact!,
-      content: _messageController.text.trim(),
-      timestamp: DateTime.now(),
+      messageText: _messageController.text.trim(),
+      dateSent: DateTime.now(),
     );
 
     setState(() {
@@ -48,7 +48,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // await _chatService.sendMessage(newMessage);
   }
 
-  void _deleteMessage(ChatMessage message) {
+  void _deleteMessage(Message message) {
     showDialog(
       context: context,
       builder:

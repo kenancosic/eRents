@@ -6,6 +6,9 @@ class TenantInfo extends StatelessWidget {
 
   const TenantInfo({super.key, required this.property});
 
+  // Helper method to check if property is occupied
+  bool get _isOccupied => property.status == PropertyStatus.rented;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -28,7 +31,7 @@ class TenantInfo extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    property.status == 'Occupied' ? 'John Doe' : 'No Tenant',
+                    _isOccupied ? 'John Doe' : 'No Tenant',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -36,13 +39,11 @@ class TenantInfo extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    property.status == 'Occupied'
-                        ? 'john.doe@example.com'
-                        : 'N/A',
+                    _isOccupied ? 'john.doe@example.com' : 'N/A',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                   Text(
-                    property.status == 'Occupied' ? '+1 (555) 123-4567' : 'N/A',
+                    _isOccupied ? '+1 (555) 123-4567' : 'N/A',
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
@@ -52,25 +53,16 @@ class TenantInfo extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         const Divider(),
-        _buildLeaseInfo(
-          'Lease Start',
-          property.status == 'Occupied' ? '2023-01-01' : 'N/A',
-        ),
+        _buildLeaseInfo('Lease Start', _isOccupied ? '2023-01-01' : 'N/A'),
         const Divider(),
-        _buildLeaseInfo(
-          'Lease End',
-          property.status == 'Occupied' ? '2023-12-31' : 'N/A',
-        ),
+        _buildLeaseInfo('Lease End', _isOccupied ? '2023-12-31' : 'N/A'),
         const Divider(),
         _buildLeaseInfo(
           'Monthly Rent',
           '\$${property.price.toStringAsFixed(2)}',
         ),
         const Divider(),
-        _buildLeaseInfo(
-          'Payment Status',
-          property.status == 'Occupied' ? 'Paid' : 'N/A',
-        ),
+        _buildLeaseInfo('Payment Status', _isOccupied ? 'Paid' : 'N/A'),
       ],
     );
   }

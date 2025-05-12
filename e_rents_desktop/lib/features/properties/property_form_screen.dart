@@ -29,8 +29,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   late final TextEditingController _bedroomsController;
   late final TextEditingController _bathroomsController;
   late final TextEditingController _areaController;
-  late String _type;
-  late String _status;
+  late PropertyType _type;
+  late PropertyStatus _status;
   List<String> _images = [];
   bool _isLoading = false;
   List<String> _selectedAmenities = [];
@@ -79,8 +79,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _countryController = TextEditingController();
 
     // Set initial default values
-    _type = 'Apartment';
-    _status = 'Available';
+    _type = PropertyType.apartment;
+    _status = PropertyStatus.available;
     _rentingType = RentingType.monthly;
     _images = [];
     _selectedAmenities = [];
@@ -187,6 +187,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       id:
           _initialProperty?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
+      ownerId: _initialProperty?.ownerId ?? 'owner_placeholder',
       title: _titleController.text,
       description: _descriptionController.text,
       type: _type,
@@ -210,6 +211,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       city: _cityController.text,
       postalCode: _postalCodeController.text,
       country: _countryController.text,
+      dateAdded: _initialProperty?.dateAdded ?? DateTime.now(),
     );
   }
 
@@ -332,7 +334,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<PropertyType>(
                         value: _type,
                         decoration: const InputDecoration(
                           labelText: 'Type',
@@ -340,11 +342,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                           isDense: true,
                         ),
                         items:
-                            ['Apartment', 'House', 'Villa']
+                            PropertyType.values
                                 .map(
                                   (type) => DropdownMenuItem(
                                     value: type,
-                                    child: Text(type),
+                                    child: Text(
+                                      type.toString().split('.').last,
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -357,7 +361,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
+                      child: DropdownButtonFormField<PropertyStatus>(
                         value: _status,
                         decoration: const InputDecoration(
                           labelText: 'Status',
@@ -365,11 +369,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                           isDense: true,
                         ),
                         items:
-                            ['Available', 'Occupied']
+                            PropertyStatus.values
                                 .map(
                                   (status) => DropdownMenuItem(
                                     value: status,
-                                    child: Text(status),
+                                    child: Text(
+                                      status.toString().split('.').last,
+                                    ),
                                   ),
                                 )
                                 .toList(),

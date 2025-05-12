@@ -224,7 +224,7 @@ class HomeScreen extends StatelessWidget {
   double _calculateOccupancy(List<Property> properties) {
     if (properties.isEmpty) return 0.0;
     final rentedCount =
-        properties.where((p) => p.status.toLowerCase() != 'available').length;
+        properties.where((p) => p.status != PropertyStatus.available).length;
     return rentedCount / properties.length;
   }
 }
