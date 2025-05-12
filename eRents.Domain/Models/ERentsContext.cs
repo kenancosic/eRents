@@ -41,12 +41,7 @@ public partial class ERentsContext : DbContext
 
     public virtual DbSet<RentingType> RentingTypes { get; set; }
 
-
     public virtual DbSet<Review> Reviews { get; set; }
-
-    public virtual DbSet<ReviewSeverity> ReviewSeverities { get; set; }
-
-    public virtual DbSet<ReviewStatus> ReviewStatuses { get; set; }
 
     public virtual DbSet<Tenant> Tenants { get; set; }
 
@@ -295,7 +290,6 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("description");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.StarRating).HasColumnType("decimal(2, 1)");
-            entity.Property(e => e.StatusId).HasColumnName("status_id");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Reviews)
                 .HasForeignKey(d => d.PropertyId)
@@ -304,14 +298,6 @@ public partial class ERentsContext : DbContext
             entity.HasOne(d => d.Booking)
                 .WithMany()
                 .HasForeignKey(d => d.BookingId);
-
-            entity.HasOne(d => d.ReviewStatus)
-                .WithMany(p => p.Reviews)
-                .HasForeignKey(d => d.StatusId);
-
-            entity.HasOne(d => d.ReviewSeverity)
-                .WithMany(p => p.Reviews)
-                .HasForeignKey(d => d.SeverityId);
         });
 
         modelBuilder.Entity<Tenant>(entity =>
@@ -481,18 +467,6 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.UserTypeId);
             entity.Property(e => e.TypeName).HasMaxLength(50).IsRequired();
-        });
-
-        modelBuilder.Entity<ReviewStatus>(entity =>
-        {
-            entity.HasKey(e => e.StatusId);
-            entity.Property(e => e.StatusName).HasMaxLength(50).IsRequired();
-        });
-
-        modelBuilder.Entity<ReviewSeverity>(entity =>
-        {
-            entity.HasKey(e => e.SeverityId);
-            entity.Property(e => e.SeverityName).HasMaxLength(50).IsRequired();
         });
 
         modelBuilder.Entity<TenantPreference>(entity =>

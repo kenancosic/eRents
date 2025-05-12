@@ -30,27 +30,5 @@ namespace eRents.WebApi.Controllers
 			return await _reviewService.GetAverageRatingAsync(propertyId);
 		}
 
-		[HttpPost("flag")]
-		public async Task<IActionResult> FlagReview([FromBody] ReviewFlagRequest request)
-		{
-			await _reviewService.FlagReviewAsync(request);
-			return Ok();
-		}
-
-		[HttpPost("complaint")]
-		public async Task<IActionResult> CreateComplaintAsync([FromBody] ComplaintRequest request, List<IFormFile> images)
-		{
-			var response = await _reviewService.CreateComplaintAsync(request, images);
-			return Ok(response);
-		}
-
-
-		[HttpGet("complaints/property/{propertyId}")]
-		public async Task<IActionResult> GetComplaintsForProperty(int propertyId)
-		{
-			var complaints = await _reviewService.GetComplaintsForPropertyAsync(propertyId);
-			return Ok(complaints);
-		}
-
 	}
 }

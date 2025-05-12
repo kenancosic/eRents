@@ -98,7 +98,7 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Reviews
 							.AsNoTracking()
-							.Where(r => r.PropertyId == propertyId && !r.IsComplaint)
+							.Where(r => r.PropertyId == propertyId)
 							.AverageAsync(r => r.StarRating.Value);
 		}
 

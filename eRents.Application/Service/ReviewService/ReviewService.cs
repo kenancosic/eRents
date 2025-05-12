@@ -103,48 +103,6 @@ namespace eRents.Application.Service.ReviewService
 
 			return query;
 		}
-		public async Task<ReviewResponse> CreateComplaintAsync(ComplaintRequest request, List<IFormFile> images)
-		{
-			var review = new Review
-			{
-				//= request.TenantId,
-				PropertyId = request.PropertyId,
-				Description = request.Description,
-				Severity = request.Severity,
-				//DateReported = DateTime.Now,
-				Status = "Pending",
-				IsComplaint = true, // Changed here
-														//IsFlagged = false,
-				StarRating = null,
-			};
-
-			if (images != null && images.Any())
-			{
-				foreach (var imageFile in images)
-				{
-					var image = new Image
-					{
-						FileName = imageFile.FileName,
-						ImageData = ConvertToBytes(imageFile)
-					};
-					review.Images.Add(image);
-				}
-			}
-
-			await _reviewRepository.AddAsync(review);
-			await _reviewRepository.SaveChangesAsync();
-
-			// Send a notification for the new complaint
-			var notificationMessage = new ReviewNotificationMessage
-			{
-				PropertyId = review.PropertyId.Value,
-				ReviewId = review.ReviewId,
-				Message = "A new complaint has been submitted."
-			};
-			await _rabbitMqService.PublishMessageAsync("complaintQueue", notificationMessage);
-
-			return _mapper.Map<ReviewResponse>(review);
-		}
 
 		private byte[] ConvertToBytes(IFormFile imageFile)
 		{
@@ -153,12 +111,6 @@ namespace eRents.Application.Service.ReviewService
 				imageFile.CopyTo(ms);
 				return ms.ToArray();
 			}
-		}
-
-		public async Task<IEnumerable<ReviewResponse>> GetComplaintsForPropertyAsync(int propertyId)
-		{
-			var complaints = await _reviewRepository.GetComplaintsForPropertyAsync(propertyId);
-			return _mapper.Map<IEnumerable<ReviewResponse>>(complaints);
 		}
 
 	}
