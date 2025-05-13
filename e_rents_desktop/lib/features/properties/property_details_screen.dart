@@ -236,7 +236,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                     TextButton.icon(
                       onPressed: () {
-                        context.go('/maintenance?propertyId=${property.id}');
+                        context.push('/maintenance?propertyId=${property.id}');
                       },
                       icon: const Icon(Icons.list, size: 18),
                       label: const Text('View All'),
@@ -303,13 +303,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   trailing: IconButton(
                     icon: const Icon(Icons.arrow_forward_ios, size: 16),
                     onPressed: () {
-                      context.go('/maintenance/${issue.id}');
+                      context.push('/maintenance/${issue.id}');
                     },
                   ),
                   isThreeLine: true,
                   dense: true,
                   onTap: () {
-                    context.go('/maintenance/${issue.id}');
+                    context.push('/maintenance/${issue.id}');
                   },
                 );
               },

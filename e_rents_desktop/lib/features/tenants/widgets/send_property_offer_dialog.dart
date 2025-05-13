@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class SendPropertyOfferDialog extends StatefulWidget {
   final TenantPreference tenantPreference;
@@ -69,7 +70,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                               : const Icon(Icons.house, size: 40),
                       title: Text(property.title),
                       subtitle: Text(
-                        '\₹${property.price.toStringAsFixed(0)}/month - ${property.type.name}',
+                        '${property.price.toStringAsFixed(0)} KM/month - ${property.type.name}',
                       ),
                       trailing: ElevatedButton(
                         child: const Text('Send Offer'),
@@ -88,7 +89,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                           );
 
                           if (!mounted) return;
-                          Navigator.of(context).pop();
+                          context.pop();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
@@ -103,10 +104,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                 ),
       ),
       actions: [
-        TextButton(
-          child: const Text('Cancel'),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        TextButton(child: const Text('Cancel'), onPressed: () => context.pop()),
       ],
     );
   }

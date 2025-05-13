@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'dart:convert';
+import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 
 class ProfileProvider extends BaseProvider<User> {
   final ApiService _apiService;
@@ -29,7 +30,9 @@ class ProfileProvider extends BaseProvider<User> {
   @override
   List<User> getMockItems() {
     // Use the existing mock data service
-    return [MockDataService.getMockUsers().first];
+    // Ensure mock user has some address data if needed for testing
+    final mockUser = MockDataService.getMockUsers().first;
+    return [mockUser.copyWith(formattedAddress: '123 Mock Street, Mockville')];
   }
 
   /// Helper method to determine if we should use mock data
@@ -47,9 +50,10 @@ class ProfileProvider extends BaseProvider<User> {
           final responseData = json.decode(response.body);
           _currentUser = User.fromJson(responseData);
         }
-        notifyListeners();
+        notifyListeners(); // Ensure listeners are notified after fetching
       } catch (e) {
         _errorMessage = e.toString();
+        // Consider setting state to Error here if not already handled by execute
       }
     });
   }
@@ -131,5 +135,65 @@ class ProfileProvider extends BaseProvider<User> {
       }
     });
     return success;
+  }
+
+  /// Updates the current user's address details in the provider state.
+  void updateUserAddressDetails(AddressDetails? details) {
+    if (_currentUser != null && details != null) {
+      _currentUser = _currentUser!.copyWith(
+        formattedAddress: details.formattedAddress,
+        streetNumber: details.streetNumber,
+        streetName: details.streetName,
+        city: details.city,
+        postalCode: details.postalCode,
+        country: details.country,
+        latitude: details.latitude,
+        longitude: details.longitude,
+      );
+      notifyListeners();
+    } else if (_currentUser != null && details == null) {
+      // Clear address fields if details are null (e.g., address cleared by user)
+      _currentUser = _currentUser!.copyWith(
+        formattedAddress: null,
+        streetNumber: null,
+        streetName: null,
+        city: null,
+        postalCode: null,
+        country: null,
+        latitude: null,
+        longitude: null,
+      );
+      notifyListeners();
+    }
+  }
+
+  // Mock PayPal linking methods
+  Future<void> linkPaypalAccount(String paypalEmail) async {
+    // Simulate API call and SDK interaction
+    if (_currentUser == null) return;
+    setState(ViewState.Busy); // Set loading state
+    await Future.delayed(const Duration(seconds: 1)); // Simulate network delay
+
+    // In a real scenario, you would get the PayPal identifier from the SDK callback
+    // and validate the provided paypalEmail through the SDK/API.
+    _currentUser = _currentUser!.copyWith(
+      isPaypalLinked: true,
+      paypalUserIdentifier: paypalEmail, // Use provided email
+    );
+    setState(ViewState.Idle); // Set back to idle
+    notifyListeners();
+  }
+
+  Future<void> unlinkPaypalAccount() async {
+    if (_currentUser == null) return;
+    setState(ViewState.Busy);
+    await Future.delayed(const Duration(seconds: 1));
+
+    _currentUser = _currentUser!.copyWith(
+      isPaypalLinked: false,
+      paypalUserIdentifier: null,
+    );
+    setState(ViewState.Idle);
+    notifyListeners();
   }
 }

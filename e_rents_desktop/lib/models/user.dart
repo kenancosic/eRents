@@ -10,11 +10,23 @@ class User {
   final UserType role;
   final String? profileImage;
   final DateTime? dateOfBirth;
-  final String? city;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? resetToken;
   final DateTime? resetTokenExpiration;
+
+  final String? formattedAddress;
+  final String? streetNumber;
+  final String? streetName;
+  final String? city;
+  final String? postalCode;
+  final String? country;
+  final double? latitude;
+  final double? longitude;
+
+  // PayPal linking fields
+  final bool isPaypalLinked;
+  final String? paypalUserIdentifier; // e.g., email or an opaque ID from PayPal
 
   User({
     required this.id,
@@ -31,6 +43,15 @@ class User {
     required this.updatedAt,
     this.resetToken,
     this.resetTokenExpiration,
+    this.formattedAddress,
+    this.streetNumber,
+    this.streetName,
+    this.postalCode,
+    this.country,
+    this.latitude,
+    this.longitude,
+    this.isPaypalLinked = false, // Default to false
+    this.paypalUserIdentifier,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -58,6 +79,17 @@ class User {
           json['resetTokenExpiration'] != null
               ? DateTime.parse(json['resetTokenExpiration'] as String)
               : null,
+      formattedAddress: json['formattedAddress'] as String?,
+      streetNumber: json['streetNumber'] as String?,
+      streetName: json['streetName'] as String?,
+      postalCode: json['postalCode'] as String?,
+      country: json['country'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      isPaypalLinked:
+          json['isPaypalLinked'] as bool? ??
+          false, // Handle null from older data
+      paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
     );
   }
 
@@ -77,6 +109,15 @@ class User {
       'updatedAt': updatedAt.toIso8601String(),
       'resetToken': resetToken,
       'resetTokenExpiration': resetTokenExpiration?.toIso8601String(),
+      'formattedAddress': formattedAddress,
+      'streetNumber': streetNumber,
+      'streetName': streetName,
+      'postalCode': postalCode,
+      'country': country,
+      'latitude': latitude,
+      'longitude': longitude,
+      'isPaypalLinked': isPaypalLinked,
+      'paypalUserIdentifier': paypalUserIdentifier,
     };
   }
 
@@ -98,6 +139,15 @@ class User {
     DateTime? updatedAt,
     String? resetToken,
     DateTime? resetTokenExpiration,
+    String? formattedAddress,
+    String? streetNumber,
+    String? streetName,
+    String? postalCode,
+    String? country,
+    double? latitude,
+    double? longitude,
+    bool? isPaypalLinked,
+    String? paypalUserIdentifier,
   }) {
     return User(
       id: id ?? this.id,
@@ -114,6 +164,15 @@ class User {
       updatedAt: updatedAt ?? this.updatedAt,
       resetToken: resetToken ?? this.resetToken,
       resetTokenExpiration: resetTokenExpiration ?? this.resetTokenExpiration,
+      formattedAddress: formattedAddress ?? this.formattedAddress,
+      streetNumber: streetNumber ?? this.streetNumber,
+      streetName: streetName ?? this.streetName,
+      postalCode: postalCode ?? this.postalCode,
+      country: country ?? this.country,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
+      paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
+import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 
@@ -27,7 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     // Initialize the tab controller
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
 
     // Initialize the provider
     _profileProvider = ProfileProvider(
@@ -66,26 +67,62 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _saveProfile() async {
     if (_personalInfoFormKey.currentState?.validate() == true) {
-      // Get form data and update user
-      // This would need to extract data from the form controllers
-      // For now, we're just showing a success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile updated successfully'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      // Updated _saveProfile logic
+      if (_profileProvider.currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: User data is not available.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final success = await _profileProvider.updateProfile(
+        _profileProvider.currentUser!,
       );
+
+      if (mounted) {
+        // Check if widget is still in the tree
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully!'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green,
+            ),
+          );
+          setState(() {
+            _isEditing = false; // Exit editing mode
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to update profile: ${_profileProvider.errorMessage ?? 'Unknown error'}',
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
   Future<void> _updatePassword() async {
     if (_passwordFormKey.currentState?.validate() == true) {
       // The actual password update logic is in the ChangePasswordWidget,
-      // but we need to trigger it from here
+      // This part might need to call a method in ChangePasswordWidget state
+      // or the ChangePasswordWidget handles its own save.
+      // For now, if ChangePasswordWidget calls provider directly, this is mostly a trigger.
+      // Assuming ChangePasswordWidget handles its own API call via provider:
+      // final success = await _profileProvider.changePassword(currentPassword, newPassword);
       // For now, we're showing a simulated success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Password updated successfully'),
+          content: Text('Password update initiated (simulated)'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -117,7 +154,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Error loading profile: ${provider.errorMessage}',
+                      'Error loading profile: ${provider.errorMessage ?? 'Unknown error'}',
+                      textAlign:
+                          TextAlign.center, // Added for better text display
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 16),
@@ -146,9 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
+                      boxShadow: const [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: const Color.fromRGBO(0, 0, 0, 0.1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -164,6 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       tabs: const [
                         Tab(icon: Icon(Icons.person), text: 'Personal Info'),
                         Tab(icon: Icon(Icons.lock), text: 'Change Password'),
+                        Tab(icon: Icon(Icons.payment), text: 'Payments'),
                       ],
                     ),
                   ),
@@ -174,7 +214,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        // Personal Info Tab
                         Column(
                           children: [
                             Expanded(
@@ -199,7 +238,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                           ],
                         ),
 
-                        // Change Password Tab
                         Column(
                           children: [
                             Expanded(
@@ -223,6 +261,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                               ),
                           ],
                         ),
+
+                        PaypalSettingsWidget(isEditing: _isEditing),
                       ],
                     ),
                   ),

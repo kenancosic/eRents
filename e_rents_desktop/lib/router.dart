@@ -14,7 +14,6 @@ import 'package:e_rents_desktop/features/reports/reports_screen.dart';
 import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
-import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
