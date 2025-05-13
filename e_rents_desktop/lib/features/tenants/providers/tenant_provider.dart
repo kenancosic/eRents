@@ -1,14 +1,16 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/tenant_feedback.dart';
+import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class TenantProvider extends BaseProvider<User> {
   List<User> _currentTenants = [];
   List<TenantPreference> _searchingTenants = [];
   final Map<String, List<TenantFeedback>> _tenantFeedbacks = {};
+  final Map<String, List<Message>> _tenantMessages = {};
+  final Map<String, List<String>> _tenantPropertyOffers = {};
   bool _isLoading = false;
 
   List<User> get currentTenants => _currentTenants;
@@ -17,6 +19,14 @@ class TenantProvider extends BaseProvider<User> {
 
   List<TenantFeedback> getTenantFeedbacks(String tenantId) {
     return _tenantFeedbacks[tenantId] ?? [];
+  }
+
+  List<Message> getTenantMessages(String tenantId) {
+    return _tenantMessages[tenantId] ?? [];
+  }
+
+  List<String> getTenantPropertyOffers(String tenantId) {
+    return _tenantPropertyOffers[tenantId] ?? [];
   }
 
   TenantProvider() {
@@ -118,15 +128,60 @@ class TenantProvider extends BaseProvider<User> {
     }
   }
 
-  Future<void> sendMessageToTenant(String tenantId, String message) async {
-    // TODO: Implement sending message to tenant
-    print('Sending message to tenant $tenantId: $message');
+  Future<void> sendMessageToTenant(String tenantId, String content) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Create a new message
+      final message = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        senderId:
+            'current_user_id', // Would be replaced with actual current user ID
+        receiverId: tenantId,
+        messageText: content,
+        dateSent: DateTime.now(),
+        isRead: false,
+      );
+
+      // Add message to tenant's messages
+      if (!_tenantMessages.containsKey(tenantId)) {
+        _tenantMessages[tenantId] = [];
+      }
+      _tenantMessages[tenantId]!.add(message);
+
+      print('Message sent to tenant $tenantId: $content');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> sendPropertyOffer(String tenantId, String propertyId) async {
-    // TODO: Implement sending property offer to tenant
-    print(
-      'Sending property offer to tenant $tenantId for property $propertyId',
-    );
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Add property offer to tenant's offers
+      if (!_tenantPropertyOffers.containsKey(tenantId)) {
+        _tenantPropertyOffers[tenantId] = [];
+      }
+
+      // Check if offer already exists
+      if (!_tenantPropertyOffers[tenantId]!.contains(propertyId)) {
+        _tenantPropertyOffers[tenantId]!.add(propertyId);
+      }
+
+      // Also send a message about the property offer
+      await sendMessageToTenant(
+        tenantId,
+        'You have a new property offer! Please check property ID: $propertyId.',
+      );
+
+      print('Property offer sent to tenant $tenantId for property $propertyId');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

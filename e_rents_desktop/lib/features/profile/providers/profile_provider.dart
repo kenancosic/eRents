@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
@@ -15,6 +14,7 @@ class ProfileProvider extends BaseProvider<User> {
   }
 
   User? get currentUser => _currentUser;
+  @override
   String? get errorMessage => _errorMessage;
 
   @override
@@ -91,6 +91,40 @@ class ProfileProvider extends BaseProvider<User> {
           });
           success = true;
         }
+      } catch (e) {
+        _errorMessage = e.toString();
+        success = false;
+      }
+    });
+    return success;
+  }
+
+  /// Updates the user's profile image
+  Future<bool> updateProfileImage(String imagePath) async {
+    bool success = false;
+    await execute(() async {
+      try {
+        if (_shouldUseMockData()) {
+          // In mock mode, just update the current user's image
+          if (_currentUser != null) {
+            _currentUser = _currentUser!.copyWith(profileImage: imagePath);
+          }
+          success = true;
+        } else {
+          // In real API mode, this would upload the image to a server
+          // and get back the image URL
+          // For now, simulate a successful upload
+          await _apiService.post('$endpoint/upload-profile-image', {
+            'imagePath': imagePath,
+          });
+
+          if (_currentUser != null) {
+            // In a real scenario, we'd get the URL back from the server
+            _currentUser = _currentUser!.copyWith(profileImage: imagePath);
+          }
+          success = true;
+        }
+        notifyListeners();
       } catch (e) {
         _errorMessage = e.toString();
         success = false;

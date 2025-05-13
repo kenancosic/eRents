@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileHeaderWidget extends StatefulWidget {
   final bool isEditing;
@@ -10,21 +11,62 @@ class ProfileHeaderWidget extends StatefulWidget {
   final VoidCallback? onCancelPressed;
 
   const ProfileHeaderWidget({
-    Key? key,
+    super.key,
     required this.isEditing,
     required this.onEditPressed,
     this.onCancelPressed,
-  }) : super(key: key);
+  });
 
   @override
   State<ProfileHeaderWidget> createState() => _ProfileHeaderWidgetState();
 }
 
 class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
+  final ImagePicker _picker = ImagePicker();
+  String? _tempProfileImagePath;
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _tempProfileImagePath = pickedFile.path;
+        });
+
+        if (!mounted) return;
+
+        // Update profile image in provider
+        final profileProvider = Provider.of<ProfileProvider>(
+          context,
+          listen: false,
+        );
+        await profileProvider.updateProfileImage(_tempProfileImagePath!);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileProvider = Provider.of<ProfileProvider>(context);
     final user = profileProvider.currentUser;
+
+    // Determine which image to show
+    if (_tempProfileImagePath == null) {
+      _tempProfileImagePath =
+          user?.profileImage ?? 'assets/images/user-image.png';
+    }
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -33,7 +75,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           Stack(
             children: [
               CustomAvatar(
-                imageUrl: user?.profileImage ?? 'assets/images/user-image.png',
+                imageUrl: _tempProfileImagePath!,
                 size: 100,
                 borderWidth: 3,
               ),
@@ -56,7 +98,6 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                       size: 20,
                     ),
                     onPressed: () {
-                      // TODO: Implement image picker
                       showDialog(
                         context: context,
                         builder:
@@ -69,7 +110,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                                     leading: const Icon(Icons.photo_library),
                                     title: const Text('Choose from Gallery'),
                                     onTap: () {
-                                      // TODO: Implement gallery picker
+                                      _pickImage(ImageSource.gallery);
                                       context.pop();
                                     },
                                   ),
@@ -77,7 +118,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                                     leading: const Icon(Icons.camera),
                                     title: const Text('Take a Photo'),
                                     onTap: () {
-                                      // TODO: Implement camera picker
+                                      _pickImage(ImageSource.camera);
                                       context.pop();
                                     },
                                   ),

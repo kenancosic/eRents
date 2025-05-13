@@ -81,4 +81,39 @@ class User {
   }
 
   String get fullName => '$firstName $lastName';
+
+  /// Creates a copy of this User with the given fields replaced with the new values.
+  User copyWith({
+    String? id,
+    String? email,
+    String? username,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    UserType? role,
+    String? profileImage,
+    DateTime? dateOfBirth,
+    String? city,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? resetToken,
+    DateTime? resetTokenExpiration,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phone: phone ?? this.phone,
+      role: role ?? this.role,
+      profileImage: profileImage ?? this.profileImage,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      city: city ?? this.city,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      resetToken: resetToken ?? this.resetToken,
+      resetTokenExpiration: resetTokenExpiration ?? this.resetTokenExpiration,
+    );
+  }
 }
