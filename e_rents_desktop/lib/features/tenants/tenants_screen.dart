@@ -10,6 +10,7 @@ import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/send_property_offer_dialog.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});
@@ -244,9 +245,11 @@ class _TenantsScreenState extends State<TenantsScreen>
   }
 
   void _sendMessageToSearchingTenant(TenantPreference preference) {
-    context.read<TenantProvider>().sendMessageToTenant(
-      preference.userId,
-      'Hello, I have a property that might interest you!',
+    showDialog(
+      context: context,
+      builder:
+          (BuildContext dialogContext) =>
+              SendPropertyOfferDialog(tenantPreference: preference),
     );
   }
 

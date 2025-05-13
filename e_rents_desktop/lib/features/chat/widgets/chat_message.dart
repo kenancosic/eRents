@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:e_rents_desktop/models/message.dart';
+import 'package:e_rents_desktop/features/chat/widgets/property_offer_card_widget.dart';
 
 class ChatMessageBubble extends StatelessWidget {
   final Message message;
@@ -27,31 +28,41 @@ class ChatMessageBubble extends StatelessWidget {
       bottomRight: isMe ? const Radius.circular(0) : const Radius.circular(16),
     );
 
-    Widget messageContent = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.65,
-      ),
-      decoration: BoxDecoration(color: color, borderRadius: borderRadius),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            message.messageText,
-            style: TextStyle(color: textColor, fontSize: 15),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            DateFormat('HH:mm').format(message.dateSent), // Simple time format
-            style: TextStyle(
-              color: isMe ? Colors.white70 : Colors.black54,
-              fontSize: 11,
+    Widget messageContent;
+
+    // Check if the message is a property offer
+    if (message.messageText.startsWith("PROPERTY_OFFER::")) {
+      final propertyId = message.messageText.split("::").last;
+      messageContent = PropertyOfferCardWidget(propertyId: propertyId);
+    } else {
+      messageContent = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.65,
+        ),
+        decoration: BoxDecoration(color: color, borderRadius: borderRadius),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message.messageText,
+              style: TextStyle(color: textColor, fontSize: 15),
             ),
-          ),
-        ],
-      ),
-    );
+            const SizedBox(height: 4),
+            Text(
+              DateFormat(
+                'HH:mm',
+              ).format(message.dateSent), // Simple time format
+              style: TextStyle(
+                color: isMe ? Colors.white70 : Colors.black54,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     // Add delete button conditionally
     if (isMe && onDelete != null) {

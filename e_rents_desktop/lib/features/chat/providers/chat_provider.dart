@@ -175,6 +175,23 @@ class ChatProvider extends BaseProvider<Message> {
     }
   }
 
+  // Send a property offer message
+  Future<void> sendPropertyOfferMessage(
+    String receiverId,
+    String propertyId,
+    String senderId,
+  ) async {
+    final String offerMessageContent = "PROPERTY_OFFER::$propertyId";
+    final newMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      senderId: senderId,
+      receiverId: receiverId,
+      messageText: offerMessageContent,
+      dateSent: DateTime.now(),
+    );
+    await sendMessage(newMessage); // Use the existing sendMessage logic
+  }
+
   // Delete a message
   Future<void> deleteMessage(String messageId) async {
     if (_selectedContactId == null) return;

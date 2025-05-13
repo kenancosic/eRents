@@ -128,57 +128,54 @@ class TenantProvider extends BaseProvider<User> {
     }
   }
 
-  Future<void> sendMessageToTenant(String tenantId, String content) async {
+  Future<void> recordPropertyOffer(String tenantId, String propertyId) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Create a new message
-      final message = Message(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        senderId:
-            'current_user_id', // Would be replaced with actual current user ID
-        receiverId: tenantId,
-        messageText: content,
-        dateSent: DateTime.now(),
-        isRead: false,
-      );
-
-      // Add message to tenant's messages
-      if (!_tenantMessages.containsKey(tenantId)) {
-        _tenantMessages[tenantId] = [];
+      // Add property offer to tenant's offers (local mock implementation)
+      if (!_tenantPropertyOffers.containsKey(tenantId)) {
+        _tenantPropertyOffers[tenantId] = [];
       }
-      _tenantMessages[tenantId]!.add(message);
 
-      print('Message sent to tenant $tenantId: $content');
+      if (!_tenantPropertyOffers[tenantId]!.contains(propertyId)) {
+        _tenantPropertyOffers[tenantId]!.add(propertyId);
+      }
+
+      print(
+        'Property offer recorded for tenant $tenantId for property $propertyId',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> sendPropertyOffer(String tenantId, String propertyId) async {
+  // This method is problematic as TenantProvider shouldn't manage chat messages directly.
+  // It's kept for now to avoid breaking existing calls but should be deprecated/removed
+  // in favor of using ChatProvider for all chat message sending.
+  Future<void> sendMessageToTenant(String tenantId, String content) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Add property offer to tenant's offers
-      if (!_tenantPropertyOffers.containsKey(tenantId)) {
-        _tenantPropertyOffers[tenantId] = [];
-      }
-
-      // Check if offer already exists
-      if (!_tenantPropertyOffers[tenantId]!.contains(propertyId)) {
-        _tenantPropertyOffers[tenantId]!.add(propertyId);
-      }
-
-      // Also send a message about the property offer
-      await sendMessageToTenant(
-        tenantId,
-        'You have a new property offer! Please check property ID: $propertyId.',
+      final message = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        senderId:
+            'landlord_currentUser_id', // FIXME: This should be actual landlord ID from AuthProvider
+        receiverId: tenantId,
+        messageText: content,
+        dateSent: DateTime.now(),
       );
 
-      print('Property offer sent to tenant $tenantId for property $propertyId');
+      if (!_tenantMessages.containsKey(tenantId)) {
+        _tenantMessages[tenantId] = [];
+      }
+      _tenantMessages[tenantId]!.add(message);
+
+      print(
+        'DEBUG TenantProvider: Message supposedly sent to $tenantId: $content',
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
