@@ -16,19 +16,23 @@ class MockProperties {
           'featuring floor-to-ceiling windows and a spacious balcony. '
           'Perfect for those who love ocean views and beach lifestyle.',
       averageRating: 4.8,
-      images: List.generate(15, (index) => ImageResponse(
-        imageId: index + 1,
-        fileName: index.isEven ? 'assets/images/house.jpg' : 'assets/images/appartment.jpg',
-        imageData: ByteData(0),
-        dateUploaded: DateTime.now(),
-      )),
+      images: List.generate(
+          15,
+          (index) => ImageResponse(
+                imageId: index + 1,
+                fileName: index.isEven
+                    ? 'assets/images/house.jpg'
+                    : 'assets/images/appartment.jpg',
+                imageData: ByteData(0),
+                dateUploaded: DateTime.now(),
+              )),
     );
   }
 
   static List<Property> getAllProperties() {
     return List.generate(
-      5,
+      10,
       (index) => getSingleProperty(index + 1),
     );
   }
-} 
+}

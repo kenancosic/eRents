@@ -34,7 +34,7 @@ class PropertyCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: 200,
+          height: 160,
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
@@ -60,7 +60,7 @@ class PropertyCard extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -114,20 +114,20 @@ class PropertyRating extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 12,
-          height: 12,
+          width: 10,
+          height: 10,
           child: SvgPicture.asset(
             'assets/icons/star.svg',
-            width: 12,
-            height: 12,
+            width: 10,
+            height: 10,
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 4),
         Text(
           rating,
           style: const TextStyle(
             color: Color(0xFF1A1E25),
-            fontSize: 12,
+            fontSize: 11,
             fontFamily: 'Hind',
             fontWeight: FontWeight.w400,
           ),
@@ -136,7 +136,7 @@ class PropertyRating extends StatelessWidget {
           ' ($review)',
           style: const TextStyle(
             color: Color(0xFF7D7F88),
-            fontSize: 12,
+            fontSize: 11,
             fontFamily: 'Hind',
             fontWeight: FontWeight.w400,
           ),
@@ -156,7 +156,7 @@ class PropertyTitle extends StatelessWidget {
       title,
       style: const TextStyle(
         color: Color(0xFF1A1E25),
-        fontSize: 16,
+        fontSize: 14,
         fontFamily: 'Hind',
         fontWeight: FontWeight.w400,
       ),
@@ -176,7 +176,7 @@ class PropertyLocation extends StatelessWidget {
       location,
       style: const TextStyle(
         color: Color(0xFF7D7F88),
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 'Hind',
         fontWeight: FontWeight.w400,
       ),
@@ -194,23 +194,23 @@ class PropertyAmenities extends StatelessWidget {
     return Wrap(
       direction: Axis.horizontal,
       alignment: WrapAlignment.start,
-      crossAxisAlignment: WrapCrossAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Wrap(
           direction: Axis.horizontal,
           alignment: WrapAlignment.start,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Icon(Icons.bed, size: 14, color: Color(0xFF7D7F88)),
-            const SizedBox(width: 6),
+            const Icon(Icons.bed, size: 12, color: Color(0xFF7D7F88)),
+            const SizedBox(width: 4),
             Baseline(
-              baseline: 13,
+              baseline: 12,
               baselineType: TextBaseline.alphabetic,
               child: Text(
                 '$rooms rooms',
                 style: const TextStyle(
                   color: Color(0xFF7D7F88),
-                  fontSize: 13,
+                  fontSize: 12,
                   fontFamily: 'Hind',
                   fontWeight: FontWeight.w400,
                 ),
@@ -224,18 +224,18 @@ class PropertyAmenities extends StatelessWidget {
           alignment: WrapAlignment.start,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Icon(Icons.square_foot, size: 14, color: Color(0xFF7D7F88)),
-            const SizedBox(width: 6),
+            const Icon(Icons.square_foot, size: 12, color: Color(0xFF7D7F88)),
+            const SizedBox(width: 4),
             Baseline(
-              baseline: 14,
+              baseline: 12,
               baselineType: TextBaseline.alphabetic,
               child: Text(
                 '$area m2',
                 style: const TextStyle(
                   color: Color(0xFF7D7F88),
-                fontSize: 13,
-                fontFamily: 'Hind',
-                fontWeight: FontWeight.w400,
+                  fontSize: 12,
+                  fontFamily: 'Hind',
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
@@ -259,7 +259,7 @@ class PropertyPrice extends StatelessWidget {
             text: price,
             style: const TextStyle(
               color: Color(0xFF1A1E25),
-              fontSize: 18,
+              fontSize: 16,
               fontFamily: 'Hind',
               fontWeight: FontWeight.w700,
             ),
@@ -268,7 +268,7 @@ class PropertyPrice extends StatelessWidget {
             text: ' / month',
             style: TextStyle(
               color: Color(0xFF7D7F88),
-              fontSize: 12,
+              fontSize: 11,
               fontFamily: 'Hind',
               fontWeight: FontWeight.w400,
             ),

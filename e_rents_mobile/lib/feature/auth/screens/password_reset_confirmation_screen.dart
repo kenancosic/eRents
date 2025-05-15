@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:flutter/material.dart';
 
 class PasswordResetConfirmationScreen extends StatelessWidget {

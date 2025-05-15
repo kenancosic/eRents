@@ -1,15 +1,11 @@
-import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
-import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
-import 'package:e_rents_mobile/core/widgets/sliver_custom_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'navigation_provider.dart';
 
 class BaseScreen extends StatefulWidget {
-  final Widget? locationWidget;
   final Widget body;
   final bool showAppBar;
   final bool useSlidingDrawer;
@@ -17,44 +13,33 @@ class BaseScreen extends StatefulWidget {
   final Color? backgroundColor;
   final bool resizeToAvoidBottomInset;
 
-  // New parameters to accommodate the updated app bar
-  final VoidCallback? onBackButtonPressed;
-  final bool showFilterButton;
-  final VoidCallback? onFilterButtonPressed;
-  final ValueChanged<String>? onSearchChanged;
-  final String? searchHintText;
-  final List<Widget>? appBarActions;
-  final bool showTitle;
-  final bool showBackButton;
-  final String? titleText;
+  final PreferredSizeWidget? appBar;
+  final Widget? bottomNavigationBarWidget;
 
   const BaseScreen({
     super.key,
-    this.locationWidget,
     required this.body,
     this.showAppBar = true,
     this.useSlidingDrawer = false,
     this.showBottomNavBar = true,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
-    this.onBackButtonPressed,
-    this.showFilterButton = false,
-    this.onFilterButtonPressed,
-    this.onSearchChanged,
-    this.searchHintText,
-    this.appBarActions,
-    this.showTitle = false,
-    this.showBackButton = false,
-    this.titleText,
+    this.appBar,
+    this.bottomNavigationBarWidget,
   });
 
   @override
-  _BaseScreenState createState() => _BaseScreenState();
+  BaseScreenState createState() => BaseScreenState();
 }
 
-class _BaseScreenState extends State<BaseScreen>
+class BaseScreenState extends State<BaseScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _drawerController;
+
+  // Add a static 'of' method
+  static BaseScreenState? of(BuildContext context) {
+    return context.findAncestorStateOfType<BaseScreenState>();
+  }
 
   @override
   void initState() {
@@ -71,7 +56,8 @@ class _BaseScreenState extends State<BaseScreen>
     super.dispose();
   }
 
-  void _toggleDrawer() {
+  // Make this method public
+  void toggleDrawer() {
     if (_drawerController.isDismissed) {
       _drawerController.forward();
     } else {
@@ -122,128 +108,81 @@ class _BaseScreenState extends State<BaseScreen>
   }
 
   // Builds the sliding drawer and overlay.
-  Widget _buildSlidingDrawer() {
-    if (!widget.useSlidingDrawer) return const SizedBox.shrink();
-
-    return Stack(
-      children: [
-        CustomSlidingDrawer(
-          controller: _drawerController,
-          onDrawerToggle: _toggleDrawer,
-        ),
-        if (_drawerController.value > 0)
-          GestureDetector(
-            onTap: _toggleDrawer,
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.5),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildAppBarAndBody() {
-    final drawerWidth = MediaQuery.of(context).size.width * 0.7;
-    final slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: Offset(drawerWidth / MediaQuery.of(context).size.width, 0.0),
-    ).animate(
-      CurvedAnimation(
-        parent: _drawerController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    return AnimatedBuilder(
-      animation: _drawerController,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: widget.useSlidingDrawer
-              ? Offset(
-                  slideAnimation.value.dx * MediaQuery.of(context).size.width,
-                  0,
-                )
-              : Offset.zero,
-          child: widget.showAppBar
-              ? NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      SliverCustomAppBar(
-                        // If using a sliding drawer and no back button, show the avatar which toggles the drawer.
-                        avatar: widget.useSlidingDrawer
-                            ? CustomAvatar(
-                                imageUrl: '',
-                                borderWidth: 0.5,
-                                onTap: _toggleDrawer,
-                              )
-                            : null,
-                        // Location widget (bottom row in the flexible area).
-                        locationWidget: widget.locationWidget,
-                        // Use the first action as the notification icon if available.
-                        notification: widget.appBarActions != null &&
-                                widget.appBarActions!.isNotEmpty
-                            ? widget.appBarActions!.first
-                            : null,
-                        // Pass search bar parameters.
-                        onSearchChanged: widget.onSearchChanged,
-                        searchHintText: widget.searchHintText,
-                        showFilterIcon: widget.showFilterButton,
-                        showTitle: widget.showTitle,
-                        showBackButton: widget.showBackButton,
-                        titleText: widget.titleText,
-                        onFilterIconPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => FilterScreen(
-                                initialFilters: {
-                                  // You can pass current filter state here
-                                },
-                                onApplyFilters: (filters) {
-                                  // Handle the applied filters
-                                  // For example, update your property list based on filters
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    ];
-                  },
-                  body: widget.body,
-                )
-              : widget.body,
-        );
-      },
+  Widget _buildSlidingDrawerContent() {
+    return CustomSlidingDrawer(
+      controller: _drawerController,
+      onDrawerToggle: toggleDrawer, // Use the public method
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor:
-            widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
-        resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
-        body: _buildGestureDetector(
-          context,
-          Stack(
-            children: [
-              if (widget.useSlidingDrawer) _buildSlidingDrawer(),
-              _buildAppBarAndBody(),
-            ],
-          ),
-        ),
-        bottomNavigationBar: widget.showBottomNavBar
-            ? Consumer<NavigationProvider>(
-                builder: (context, navigationProvider, child) {
-                  return CustomBottomNavigationBar(
-                    currentIndex: navigationProvider.currentIndex,
-                    onTap: (index) => _onItemTapped(context, index),
-                  );
-                },
-              )
-            : null,
-      ),
+    final PreferredSizeWidget? effectiveAppBar =
+        widget.showAppBar ? widget.appBar : null;
+
+    Widget scaffoldContent = Scaffold(
+      backgroundColor:
+          widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
+      resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
+      appBar: effectiveAppBar,
+      body: widget.body,
+      bottomNavigationBar: widget.bottomNavigationBarWidget ??
+          (widget.showBottomNavBar
+              ? Consumer<NavigationProvider>(
+                  builder: (context, navigationProvider, child) {
+                    return CustomBottomNavigationBar(
+                      currentIndex: navigationProvider.currentIndex,
+                      onTap: (index) => _onItemTapped(context, index),
+                    );
+                  },
+                )
+              : null),
     );
+
+    if (widget.useSlidingDrawer) {
+      final drawerWidth = MediaQuery.of(context).size.width * 0.7;
+      final slideAnimation = Tween<Offset>(
+        begin: Offset.zero,
+        end: Offset(drawerWidth / MediaQuery.of(context).size.width, 0.0),
+      ).animate(
+        CurvedAnimation(
+          parent: _drawerController,
+          curve: Curves.easeInOut,
+        ),
+      );
+
+      return SafeArea(
+        child: Stack(
+          children: [
+            _buildSlidingDrawerContent(),
+            AnimatedBuilder(
+              animation: _drawerController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(
+                    slideAnimation.value.dx * MediaQuery.of(context).size.width,
+                    0,
+                  ),
+                  child: child,
+                );
+              },
+              child: _buildGestureDetector(context, scaffoldContent),
+            ),
+            if (_drawerController.value > 0)
+              GestureDetector(
+                onTap: toggleDrawer, // Use the public method
+                child: Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: double.infinity,
+                  color: Colors.black
+                      .withAlpha((255 * 0.5 * _drawerController.value).round()),
+                ),
+              ),
+          ],
+        ),
+      );
+    } else {
+      return SafeArea(child: scaffoldContent);
+    }
   }
 }

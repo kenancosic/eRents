@@ -4,6 +4,9 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Property property;
@@ -312,7 +315,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  void _processPayment() {
+  Future<void> _processPayment() async {
     // Show loading dialog
     showDialog(
       context: context,
@@ -334,7 +337,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     // Simulate payment processing
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Close loading dialog
+      if (mounted) {
+        context.pop(); // Close loading dialog
+      }
 
       // Show success dialog
       showDialog(
@@ -346,9 +351,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Go back to property details
-                // You might want to navigate to a booking confirmation screen instead
+                context.pop(); // Close dialog
+                context
+                    .pop(); // Go back to property details (assuming it's the previous route)
               },
               child: const Text('OK',
                   style: TextStyle(

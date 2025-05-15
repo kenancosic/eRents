@@ -2,6 +2,7 @@ import 'dart:ui'; // Import this for ImageFilter
 
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';

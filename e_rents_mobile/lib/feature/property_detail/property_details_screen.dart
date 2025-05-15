@@ -1,5 +1,6 @@
 // lib/feature/property_detail/screens/property_detail_screen.dart
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+// import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
@@ -15,6 +16,8 @@ import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:go_router/go_router.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -40,10 +43,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       },
       child: Scaffold(
         body: BaseScreen(
-          showTitle: true,
-          showBackButton: false,
           showAppBar: false,
-          showFilterButton: false,
           showBottomNavBar: false,
           body: Consumer<PropertyDetailProvider>(
             builder: (context, provider, child) {
@@ -210,7 +210,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   void checkoutPressed() {
-    final property = MockProperties.getSingleProperty(widget.propertyId);
+    final property = context.read<PropertyDetailProvider>().property;
+    if (property == null) return;
 
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day + 1);
@@ -219,20 +220,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
     final duration = endDate.difference(startDate).inDays;
     final basePrice = property.price * duration;
-    final totalPrice = basePrice * 1.1; // Adding 10% service fee
+    final totalPrice = basePrice * 1.1;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CheckoutScreen(
-          property: property,
-          startDate: startDate,
-          endDate: endDate,
-          isDailyRental: isDailyRental,
-          totalPrice: totalPrice,
-        ),
-      ),
-    );
+    context.push('/checkout', extra: {
+      'property': property,
+      'startDate': startDate,
+      'endDate': endDate,
+      'isDailyRental': isDailyRental,
+      'totalPrice': totalPrice,
+    });
   }
 
   void _showAddReviewDialog(
@@ -284,27 +280,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => context.pop(),
               child: const Text('Cancel'),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () {
-                // Add the new review
-                final newReview = ReviewUIModel.mock(
-                  userName: 'You', // In a real app, get from user profile
-                  rating: rating,
-                  comment: commentController.text,
-                  date: DateTime.now().toString().substring(0, 10),
-                );
-
-                // Add the review to the UI model
-                provider.addReview(newReview);
-
-                Navigator.pop(context);
+                if (commentController.text.isNotEmpty) {
+                  provider.addReview(ReviewUIModel(
+                    userName: 'Current User',
+                    userImage: 'assets/images/user-image.png',
+                    rating: rating,
+                    comment: commentController.text,
+                    date: DateTime.now().toIso8601String(),
+                  ));
+                  context.pop();
+                }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7065F0),
-              ),
               child: const Text('Submit'),
             ),
           ],

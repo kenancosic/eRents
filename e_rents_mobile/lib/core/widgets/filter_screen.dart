@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/core/widgets/distribution_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 
 class FilterScreen extends StatefulWidget {
@@ -115,7 +116,7 @@ class _FilterScreenState extends State<FilterScreen> {
       'useEndDate': _useEndDate,
     };
     widget.onApplyFilters(filters);
-    Navigator.pop(context);
+    context.pop();
   }
 
   void _toggleFacility(String facility) {
@@ -172,7 +173,7 @@ class _FilterScreenState extends State<FilterScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
         title: Text(
           'Filters',
@@ -684,7 +685,7 @@ class _FilterScreenState extends State<FilterScreen> {
       // Show month picker instead of date picker
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           return AlertDialog(
             title:
                 Text(isStartDate ? 'Select Start Month' : 'Select End Month'),
@@ -743,7 +744,7 @@ class _FilterScreenState extends State<FilterScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => dialogContext.pop(),
                 child: const Text('Cancel'),
               ),
             ],
@@ -758,7 +759,6 @@ class _FilterScreenState extends State<FilterScreen> {
     }
   }
 
-  // Add this new method to handle year selection after month is selected
   Future<void> _selectYearForMonth(
       BuildContext context, int month, bool isStartDate) async {
     final int currentYear = DateTime.now().year;
@@ -766,7 +766,7 @@ class _FilterScreenState extends State<FilterScreen> {
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext yearDialogContext) {
         return AlertDialog(
           title: Text('Select Year for ${[
             'January',
@@ -794,8 +794,8 @@ class _FilterScreenState extends State<FilterScreen> {
                       ? Colors.grey[200]
                       : null,
                   onTap: () {
-                    Navigator.pop(context); // Close year dialog
-                    Navigator.pop(context); // Close month dialog
+                    yearDialogContext.pop();
+                    Navigator.of(context).pop();
 
                     setState(() {
                       if (isStartDate) {
@@ -832,7 +832,7 @@ class _FilterScreenState extends State<FilterScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => yearDialogContext.pop(),
               child: const Text('Cancel'),
             ),
           ],

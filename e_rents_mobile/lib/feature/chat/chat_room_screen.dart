@@ -1,4 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+// import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,11 +28,26 @@ class ChatRoomScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      showTitle: true,
+    // Construct the CustomAppBar directly
+    final appBar = CustomAppBar(
+      title: 'Chat Room',
       showBackButton: false,
+      // userLocation: ' ', // Provide a default or fetch dynamically if needed -- Removed as it's now userLocationWidget
+      // No specific avatar or search for this screen's app bar
+      // No actions by default, but could add e.g. a search icon here if desired
+      // actions: [
+      //   IconButton(icon: Icon(Icons.search), onPressed: () {}),
+      // ],
+    );
+
+    return BaseScreen(
       showAppBar: true,
-      titleText: 'Chat Room',
+      appBar: appBar, // Pass the constructed AppBar
+      // appBarConfig: const BaseScreenAppBarConfig( // Removed
+      //   mainContentType: AppBarMainContentType.title,
+      //   showBackButton: false,
+      //   titleText: 'Chat Room',
+      // ),
       body: ListView.builder(
         itemCount: _chatRooms.length,
         itemBuilder: (context, index) {
@@ -99,7 +116,7 @@ class ChatRoomScreen extends StatelessWidget {
       ),
       onTap: () {
         context.push(
-          '/chat', // push the route to add it to the stack
+          '/chat',
           extra: {
             'name': name,
             'imageUrl': imageUrl,

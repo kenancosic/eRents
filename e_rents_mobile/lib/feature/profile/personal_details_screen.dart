@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
@@ -90,14 +91,17 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appBar = CustomAppBar(
+      title: 'Personal Details',
+      showBackButton: true,
+    );
+
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
         final isLoading = userProvider.state == ViewState.Busy;
 
         return BaseScreen(
-          titleText: 'Personal Details',
-          showTitle: true,
-          showBackButton: true,
+          appBar: appBar,
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(

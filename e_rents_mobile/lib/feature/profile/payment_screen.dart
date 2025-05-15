@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -54,15 +55,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appBar = CustomAppBar(
+      title: 'Payment Details',
+      showBackButton: true,
+      // No actions, avatar, or search for this screen
+    );
+
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
         final isLoading = userProvider.state == ViewState.Busy;
         final paymentMethods = userProvider.paymentMethods ?? [];
 
         return BaseScreen(
-          titleText: 'Payment Details',
-          showTitle: true,
-          showBackButton: true,
+          // appBarConfig: const BaseScreenAppBarConfig( // Removed
+          //   titleText: 'Payment Details',
+          //   mainContentType: AppBarMainContentType.title,
+          //   showBackButton: true,
+          // ),
+          appBar: appBar, // Pass the constructed app bar
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(

@@ -1,11 +1,16 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
+import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/home/widgets/most_rented_props.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -24,14 +29,18 @@ class HomeScreen extends StatelessWidget {
         area: 673,
         imageUrl: 'assets/images/house.jpg',
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const PropertyDetailScreen(propertyId: 1),
-            ),
-          );
+          context.push('/property/1');
         },
       ),
+    );
+  }
+
+  void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
+    // TODO: Implement actual filter logic (e.g., update provider, refetch data)
+    print('HomeScreen: Filters applied: $filters');
+    // You might want to show a snackbar or some feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Filters applied!')),
     );
   }
 
@@ -40,33 +49,57 @@ class HomeScreen extends StatelessWidget {
     final properties = _buildPropertyCards(context, 3);
     final properties2 = _buildPropertyCards(context, 5);
 
+    final searchBar = CustomSearchBar(
+      hintText: 'Search properties...',
+      onSearchChanged: (query) {
+        print('Search query: $query');
+      },
+      showFilterIcon: true,
+      onFilterIconPressed: () {
+        context.push('/filter', extra: {
+          'onApplyFilters': (Map<String, dynamic> filters) =>
+              _handleApplyFilters(context, filters),
+          // 'initialFilters': {}, // Store and pass current filters if needed
+        });
+      },
+    );
+
+    final locationWidgetForAppBar = const LocationWidget(
+        title: 'Welcome back, User',
+        location: 'Lukavac'); // This is your custom LocationWidget
+
+    final appBar = CustomAppBar(
+      showSearch: true,
+      searchWidget: searchBar,
+      showAvatar: true,
+      avatarWidget: Builder(builder: (BuildContext avatarContext) {
+        return CustomAvatar(
+          imageUrl: 'assets/images/user-image.png',
+          onTap: () {
+            BaseScreenState.of(avatarContext)?.toggleDrawer();
+          },
+        );
+      }),
+      showBackButton:
+          false, // Explicitly false so avatar is the leading element
+      userLocationWidget:
+          locationWidgetForAppBar, // Pass the LocationWidget for the second row
+      actions: [],
+    );
+
     return BaseScreen(
       showAppBar: true,
       useSlidingDrawer: true,
-      showFilterButton: true,
-      locationWidget: const LocationWidget(
-          title: 'Welcome back, User', location: 'Lukavac'),
-      onSearchChanged: (query) {
-        // Handle search query
-        print('Search query: $query');
-      },
-      searchHintText: 'Search properties...',
-      appBarActions: [
-        IconButton(
-          icon: const Icon(Icons.notifications, color: Colors.grey),
-          onPressed: () {
-            // Handle notifications
-          },
-        ),
-      ],
+      appBar: appBar,
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            // Removed the custom app bar content from the body
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              // LocationWidget is now part of the AppBar, so remove from body if not needed here too.
+              // const LocationWidget(title: 'Welcome back, User', location: 'Lukavac'),
+              const SizedBox(height: 20), // Adjust spacing as needed
               SectionHeader(title: 'Near your location', onSeeAll: () {}),
               CustomSlider(items: properties),
               const SizedBox(height: 20),
@@ -75,8 +108,6 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               SectionHeader(title: 'Most rented properties', onSeeAll: () {}),
               const MostRentedProps(),
-              // const SizedBox(height: 20),
-              // const HostSection(),
             ],
           ),
         ),

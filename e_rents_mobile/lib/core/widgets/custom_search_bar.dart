@@ -14,8 +14,8 @@ class CustomSearchBar extends StatelessWidget {
     this.onFilterIconPressed,
     this.hintText = 'Search ',
     this.showFilterIcon = true,
-    required this.searchHistory,
-    required this.localData,
+    this.searchHistory = const [],
+    this.localData = const [],
     super.key,
   });
 
@@ -65,17 +65,18 @@ class CustomSearchBar extends StatelessWidget {
                   ),
                   onPressed:
                       onFilterIconPressed ?? () => _openFilterModal(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                   style: const ButtonStyle(
                     alignment: Alignment.centerRight,
                   ),
                 )
               ]
             : null,
-            
         viewTrailing: showFilterIcon
             ? [
                 Padding(
-                  padding: EdgeInsets.only(right: 20.0),
+                  padding: EdgeInsets.only(right: 8.0),
                   child: IconButton(
                     icon: SvgPicture.asset(
                       'assets/icons/filters.svg',
@@ -83,6 +84,8 @@ class CustomSearchBar extends StatelessWidget {
                     ),
                     onPressed:
                         onFilterIconPressed ?? () => _openFilterModal(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
                 )
               ]

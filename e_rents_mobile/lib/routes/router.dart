@@ -9,6 +9,9 @@ import 'package:e_rents_mobile/feature/profile/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/profile_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
+import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
+import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
+import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
@@ -88,6 +91,59 @@ class AppRouter {
           path: '/profile/payment',
           name: 'payment_details',
           builder: (context, state) => const PaymentScreen()),
+      GoRoute(
+        path: '/filter',
+        name: 'filter',
+        builder: (BuildContext context, GoRouterState state) {
+          final arguments = state.extra as Map<String, dynamic>?;
+          final onApplyFiltersCallback =
+              arguments?['onApplyFilters'] as Function(Map<String, dynamic>)? ??
+                  (filters) {
+                    print(
+                        "Error: onApplyFilters not provided to /filter route. Filters: $filters");
+                  };
+          final initialFiltersData =
+              arguments?['initialFilters'] as Map<String, dynamic>?;
+
+          return FilterScreen(
+            onApplyFilters: onApplyFiltersCallback,
+            initialFilters: initialFiltersData,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/checkout',
+        name: 'checkout',
+        builder: (BuildContext context, GoRouterState state) {
+          final arguments = state.extra as Map<String, dynamic>?;
+          if (arguments == null) {
+            return const Text(
+                'Error: Checkout arguments missing'); // Or an error screen
+          }
+          final property = arguments['property'] as Property?;
+          final startDate = arguments['startDate'] as DateTime?;
+          final endDate = arguments['endDate'] as DateTime?;
+          final isDailyRental = arguments['isDailyRental'] as bool?;
+          final totalPrice = arguments['totalPrice'] as double?;
+
+          if (property == null ||
+              startDate == null ||
+              endDate == null ||
+              isDailyRental == null ||
+              totalPrice == null) {
+            return const Text(
+                'Error: Incomplete checkout arguments'); // Or an error screen
+          }
+
+          return CheckoutScreen(
+            property: property,
+            startDate: startDate,
+            endDate: endDate,
+            isDailyRental: isDailyRental,
+            totalPrice: totalPrice,
+          );
+        },
+      ),
       GoRoute(
           path: '/faq',
           name: 'faq',

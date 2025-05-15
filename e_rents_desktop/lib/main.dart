@@ -19,7 +19,7 @@ import 'base/preference_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "lib/.env");
 
   // Get base URL from environment
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';

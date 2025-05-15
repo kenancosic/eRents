@@ -1,6 +1,8 @@
 // lib/feature/saved/saved_screen.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
@@ -93,13 +95,17 @@ class _SavedScreenState extends State<SavedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      showTitle: true,
+    final appBar = CustomAppBar(
+      title: 'Saved Properties',
       showBackButton: false,
-      titleText: 'Saved Properties',
+      // userLocation: ' ', // Or actual location if available -- Removed
+      // actions: [], // No filter button was shown before, so keeping actions empty
+    );
+
+    return BaseScreen(
       showAppBar: true,
       showBottomNavBar: true,
-      showFilterButton: false,
+      appBar: appBar,
       body: _buildBody(),
     );
   }
@@ -219,14 +225,7 @@ class _SavedScreenState extends State<SavedScreen> {
                     rooms: 2,
                     area: 874,
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PropertyDetailScreen(
-                            propertyId: property.propertyId,
-                          ),
-                        ),
-                      );
+                      context.push('/property/\${property.propertyId}');
                     },
                   ),
                 ),

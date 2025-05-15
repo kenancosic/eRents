@@ -1,8 +1,13 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+// import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
+import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
+import 'package:e_rents_mobile/core/widgets/filter_screen.dart'; // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
+import 'package:go_router/go_router.dart'; // Add GoRouter import
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -35,13 +40,52 @@ class _ExploreScreenState extends State<ExploreScreen> {
     mapController = controller;
   }
 
+  void _handleSearchChanged(String query) {
+    // TODO: Implement search logic
+    print('Search query: $query');
+  }
+
+  void _handleFilterButtonPressed() {
+    context.push('/filter', extra: {
+      'onApplyFilters': (Map<String, dynamic> filters) =>
+          _handleApplyFilters(context, filters),
+      // 'initialFilters': _currentFilters, // Pass current filters if you have them stored
+    });
+  }
+
+  void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
+    // TODO: Implement actual filter logic for ExploreScreen
+    print('ExploreScreen: Filters applied: $filters');
+    // Example: update markers on the map, refresh list in panel
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Filters applied to map/list!')),
+    );
+    // Potentially store these filters in the state if needed for re-passing
+    // setState(() {
+    //   _currentFilters = filters;
+    // });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      showTitle: true,
+    final searchBar = CustomSearchBar(
+      onSearchChanged: _handleSearchChanged,
+      hintText: 'Search places...',
+      showFilterIcon: true, // Keep filter icon inside search bar
+      onFilterIconPressed: _handleFilterButtonPressed,
+      // searchHistory: [], // Optional: Provide search history
+      // localData: [], // Optional: Provide local data for suggestions
+    );
+
+    final appBar = CustomAppBar(
+      showSearch: true,
+      searchWidget: searchBar,
       showBackButton: false,
+    );
+
+    return BaseScreen(
       useSlidingDrawer: false,
-      showFilterButton: true,
+      appBar: appBar,
       body: Stack(
         children: [
           // Google Map
@@ -109,7 +153,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     margin: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.black
-                          .withOpacity(0.7), // More visible drag handle
+                          .withAlpha((255 * 0.7).round()), // Fixed withOpacity
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -134,43 +178,54 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(height: 10),
                 // Property List - Only Scrollable content
                 Expanded(
-                  child: ListView(
-                    controller: sc,
-                    children: const [
-                      PropertyCard(
-                        title: 'Small cottage in the center of town',
-                        location: 'Lukavac, T.K., F.BiH',
-                        details: '',
-                        price: '\$526',
-                        rating: '4.8',
-                        imageUrl: 'assets/images/house.jpg',
-                        review: 73,
-                        rooms: 2,
-                        area: 673,
-                      ),
-                      PropertyCard(
-                        title: 'Entire private villa in Tuzla City',
-                        location: 'Tuzla, T.K., F.BiH',
-                        details: '',
-                        price: '\$400',
-                        rating: '4.9',
-                        imageUrl: 'assets/images/house.jpg',
-                        review: 104,
-                        rooms: 2,
-                        area: 488,
-                      ),
-                      PropertyCard(
-                        title: 'Entire rental unit, close to main square',
-                        location: 'Tuzla, T.K., F.BiH',
-                        details: '',
-                        price: '\$1,290',
-                        rating: '4.8',
-                        imageUrl: 'assets/images/house.jpg',
-                        review: 73,
-                        rooms: 2,
-                        area: 874,
-                      ),
-                    ],
+                  child: SafeArea(
+                    child: ListView(
+                      controller: sc,
+                      children: [
+                        PropertyCard(
+                          title: 'Small cottage in the center of town',
+                          location: 'Lukavac, T.K., F.BiH',
+                          details: '',
+                          price: '\$526',
+                          rating: '4.8',
+                          imageUrl: 'assets/images/house.jpg',
+                          review: 73,
+                          rooms: 2,
+                          area: 673,
+                          onTap: () {
+                            context.push('/property/1');
+                          },
+                        ),
+                        PropertyCard(
+                          title: 'Entire private villa in Tuzla City',
+                          location: 'Tuzla, T.K., F.BiH',
+                          details: '',
+                          price: '\$400',
+                          rating: '4.9',
+                          imageUrl: 'assets/images/house.jpg',
+                          review: 104,
+                          rooms: 2,
+                          area: 488,
+                          onTap: () {
+                            context.push('/property/2');
+                          },
+                        ),
+                        PropertyCard(
+                          title: 'Entire rental unit, close to main square',
+                          location: 'Tuzla, T.K., F.BiH',
+                          details: '',
+                          price: '\$1,290',
+                          rating: '4.8',
+                          imageUrl: 'assets/images/house.jpg',
+                          review: 73,
+                          rooms: 2,
+                          area: 874,
+                          onTap: () {
+                            context.push('/property/3');
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

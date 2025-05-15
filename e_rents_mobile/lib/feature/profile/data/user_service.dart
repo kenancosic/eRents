@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:e_rents_mobile/config.dart';
+// import 'package:e_rents_mobile/config.dart'; // Unused
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
-import 'package:http/http.dart' as http;
+// import 'package:e_rents_mobile/core/services/secure_storage_service.dart'; // Unused
+// import 'package:http/http.dart' as http; // Unused
 import 'package:shared_preferences/shared_preferences.dart';
 
 class UserService {
