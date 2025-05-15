@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 // Primary color palette
 const Color primaryColor = Color(
-    0xFF7265F0); // Purple accent used in CustomButton and throughout the app
+  0xFF7265F0,
+); // Purple accent used in CustomButton and throughout the app
 const Color secondaryColor = Color(0xFF1F2937); // Dark gray used for buttons
 const Color backgroundColor = Color(0xFFFCFCFC); // Light background
 
@@ -22,11 +23,9 @@ final ThemeData appTheme = ThemeData(
     primary: primaryColor,
     secondary: secondaryColor,
     surface: backgroundColor,
-    background: backgroundColor,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
     onSurface: textPrimaryColor,
-    onBackground: textPrimaryColor,
   ),
 
   // App bar theme
@@ -45,45 +44,53 @@ final ThemeData appTheme = ThemeData(
   // Text theme
   textTheme: const TextTheme(
     displayLarge: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 32,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 32,
+      color: textPrimaryColor,
+    ),
     displayMedium: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 28,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 28,
+      color: textPrimaryColor,
+    ),
     displaySmall: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 24,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 24,
+      color: textPrimaryColor,
+    ),
     headlineMedium: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 20,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 20,
+      color: textPrimaryColor,
+    ),
     headlineSmall: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 18,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 18,
+      color: textPrimaryColor,
+    ),
     titleLarge: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.bold,
+      fontSize: 16,
+      color: textPrimaryColor,
+    ),
     bodyLarge: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.normal,
-        fontSize: 14,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.normal,
+      fontSize: 14,
+      color: textPrimaryColor,
+    ),
     bodyMedium: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.normal,
-        fontSize: 12,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.normal,
+      fontSize: 12,
+      color: textPrimaryColor,
+    ),
     bodySmall: TextStyle(
       fontSize: 12.0,
       fontWeight: FontWeight.w400,
@@ -91,10 +98,11 @@ final ThemeData appTheme = ThemeData(
       fontFamily: 'Hind',
     ),
     labelLarge: TextStyle(
-        fontFamily: 'Hind',
-        fontWeight: FontWeight.normal,
-        fontSize: 10,
-        color: textPrimaryColor),
+      fontFamily: 'Hind',
+      fontWeight: FontWeight.normal,
+      fontSize: 10,
+      color: textPrimaryColor,
+    ),
   ),
 
   // Button themes
@@ -102,14 +110,9 @@ final ThemeData appTheme = ThemeData(
     style: ElevatedButton.styleFrom(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(25),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      textStyle: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-      ),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
     ),
   ),
 
@@ -117,24 +120,16 @@ final ThemeData appTheme = ThemeData(
     style: OutlinedButton.styleFrom(
       foregroundColor: primaryColor,
       side: const BorderSide(color: primaryColor),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(25),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      textStyle: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-      ),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
     ),
   ),
 
   textButtonTheme: TextButtonThemeData(
     style: TextButton.styleFrom(
       foregroundColor: primaryColor,
-      textStyle: const TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 14,
-      ),
+      textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
     ),
   ),
 
@@ -146,9 +141,7 @@ final ThemeData appTheme = ThemeData(
     labelStyle: const TextStyle(color: textPrimaryColor),
     secondaryLabelStyle: const TextStyle(color: Colors.white),
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
   ),
 
   // Input decoration
@@ -178,11 +171,33 @@ final ThemeData appTheme = ThemeData(
   // Card theme
   cardTheme: CardTheme(
     color: Colors.white,
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
+    elevation: 4,
+    shadowColor: Colors.grey.withOpacity(0.2),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     margin: const EdgeInsets.all(8),
+    clipBehavior: Clip.antiAlias,
+  ),
+
+  // Switch theme
+  switchTheme: SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor;
+      }
+      return Colors.grey[300]!;
+    }),
+    trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor.withOpacity(0.5);
+      }
+      return Colors.grey[200]!;
+    }),
+    trackOutlineColor: WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) {
+        return primaryColor.withOpacity(0.5);
+      }
+      return Colors.grey[300]!;
+    }),
   ),
 
   // Bottom navigation bar theme
@@ -201,18 +216,14 @@ final ThemeData appTheme = ThemeData(
     activeTrackColor: primaryColor,
     inactiveTrackColor: Colors.grey[300],
     thumbColor: primaryColor,
-    overlayColor: primaryColor.withOpacity(0.2),
+    overlayColor: primaryColor.withValues(alpha: 0.2),
     trackHeight: 4,
     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
     overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
   ),
 
   // Divider theme
-  dividerTheme: DividerThemeData(
-    color: dividerColor,
-    thickness: 1,
-    space: 24,
-  ),
+  dividerTheme: DividerThemeData(color: dividerColor, thickness: 1, space: 24),
 );
 
 // Custom gradient decorations
@@ -245,7 +256,7 @@ class AppDecorations {
       borderRadius: BorderRadius.circular(radius),
       boxShadow: [
         BoxShadow(
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha: 0.1),
           spreadRadius: 1,
           blurRadius: 5,
           offset: const Offset(0, 2),
@@ -254,8 +265,10 @@ class AppDecorations {
     );
   }
 
-  static BoxDecoration gradientBox(
-      {LinearGradient? gradient, double radius = 16}) {
+  static BoxDecoration gradientBox({
+    LinearGradient? gradient,
+    double radius = 16,
+  }) {
     return BoxDecoration(
       gradient: gradient ?? AppGradients.primaryGradient,
       borderRadius: BorderRadius.circular(radius),

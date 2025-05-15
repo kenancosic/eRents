@@ -47,8 +47,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       row1Content = avatarWidget;
     } else if (showSearch && searchWidget != null) {
       row1Content = searchWidget;
-    } else if (this.title != null) {
-      row1Content = Text(this.title!,
+    } else if (title != null) {
+      row1Content = Text(title!,
           style: Theme.of(context).appBarTheme.titleTextStyle ??
               const TextStyle(fontSize: 20, color: Colors.white));
     }

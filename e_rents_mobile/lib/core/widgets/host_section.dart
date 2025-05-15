@@ -8,7 +8,7 @@ class HostSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.purple.withOpacity(0.1),
+        color: Colors.purple.withAlpha((255 * 0.1).round()),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -21,8 +21,7 @@ class HostSection extends StatelessWidget {
                   'Want to host your own place?',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                Text(
-                    'Earn passive income by renting or selling your property'),
+                Text('Earn passive income by renting or selling your property'),
               ],
             ),
           ),

@@ -16,11 +16,11 @@ class UserProvider extends BaseProvider {
 
   // Initialize user data
   Future<void> initUser() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       _user = await _userService.getUserProfile();
       await fetchPaymentMethods();
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError('Failed to initialize user: ${e.toString()}');
     }
@@ -28,12 +28,12 @@ class UserProvider extends BaseProvider {
 
   // Update user profile
   Future<bool> updateProfile(User updatedUser) async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       final result = await _userService.updateUserProfile(updatedUser);
       if (result != null) {
         _user = result;
-        setState(ViewState.Idle);
+        setState(ViewState.idle);
         return true;
       } else {
         setError('Failed to update profile');
@@ -47,13 +47,13 @@ class UserProvider extends BaseProvider {
 
   // Upload profile image
   Future<bool> uploadProfileImage(File imageFile) async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       final success = await _userService.uploadProfileImage(imageFile);
       if (success) {
         // Refresh user data to get updated image URL
         _user = await _userService.getUserProfile();
-        setState(ViewState.Idle);
+        setState(ViewState.idle);
         return true;
       } else {
         setError('Failed to upload profile image');
@@ -67,12 +67,12 @@ class UserProvider extends BaseProvider {
 
   // Logout user
   Future<void> logout() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       await _userService.clearUserData();
       _user = null;
       _paymentMethods = null;
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError('Error during logout: ${e.toString()}');
     }
@@ -80,10 +80,10 @@ class UserProvider extends BaseProvider {
 
   // Fetch payment methods
   Future<void> fetchPaymentMethods() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       _paymentMethods = await _userService.getPaymentMethods();
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError('Error fetching payment methods: ${e.toString()}');
     }
@@ -91,12 +91,12 @@ class UserProvider extends BaseProvider {
 
   // Add payment method
   Future<bool> addPaymentMethod(Map<String, dynamic> paymentData) async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       final success = await _userService.addPaymentMethod(paymentData);
       if (success) {
         await fetchPaymentMethods(); // Refresh payment methods
-        setState(ViewState.Idle);
+        setState(ViewState.idle);
         return true;
       } else {
         setError('Failed to add payment method');

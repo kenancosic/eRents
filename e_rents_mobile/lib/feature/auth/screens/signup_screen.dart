@@ -1,7 +1,6 @@
 import 'dart:ui'; // For ImageFilter
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/core/widgets/next_step_button.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
@@ -113,7 +112,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withOpacity(0.4),
+                    Colors.white.withAlpha((255 * 0.4).round()),
                     Colors.transparent,
                   ],
                 ),
@@ -140,7 +139,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: Container(
                         width: MediaQuery.of(context).size.width * 0.85,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withAlpha((255 * 0.3).round()),
                           borderRadius: BorderRadius.circular(15.0),
                         ),
                         padding: const EdgeInsets.symmetric(
@@ -169,7 +168,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       'assets/images/HouseLogo.svg',
                                       height: 28, // Reduced height
                                       width: 35,
-                                      color: Colors.white,
+                                      colorFilter: const ColorFilter.mode(
+                                          Colors.white, BlendMode.srcIn),
                                     ),
                                   ],
                                 ),
@@ -379,7 +379,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Expanded(
                                   child: Consumer<AuthProvider>(
                                     builder: (context, provider, child) {
-                                      if (provider.state == ViewState.Busy) {
+                                      if (provider.state == ViewState.busy) {
                                         return const CircularProgressIndicator();
                                       }
                                       return NextStepButton(

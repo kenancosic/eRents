@@ -1,4 +1,7 @@
+import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class CustomSlidingDrawer extends StatelessWidget {
   final AnimationController controller;
@@ -33,36 +36,28 @@ class CustomSlidingDrawer extends StatelessWidget {
               bottomRight: Radius.circular(16),
             ),
           ),
-          child: Container(
-            // Background image for the entire drawer
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/city.jpg'),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.black54, // Darken the image for better text visibility
-                  BlendMode.darken,
+          child: Column(
+            children: [
+              _buildCustomDrawerHeader(context),
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          left: 16.0, bottom: 30.0, right: 16.0),
+                      child: _buildMenuItem(
+                        context,
+                        Icons.logout,
+                        "Log out",
+                        isLogout: true,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // Custom drawer header
-                _buildCustomDrawerHeader(context),
-
-                // Menu items with transparent background to show the image
-                _buildMenuItem(Icons.payment, "Payment"),
-                _buildMenuItem(Icons.flight, "My Rents"),
-                _buildMenuItem(Icons.settings, "Settings"),
-
-                const Divider(color: Colors.white30),
-
-                _buildMenuItem(Icons.info, "Terms & Conditions"),
-                _buildMenuItem(Icons.privacy_tip, "Privacy Policy"),
-                _buildMenuItem(Icons.logout, "Log out", isLogout: true),
-              ],
-            ),
+            ],
           ),
         ),
       ),
@@ -70,83 +65,79 @@ class CustomSlidingDrawer extends StatelessWidget {
   }
 
   Widget _buildCustomDrawerHeader(BuildContext context) {
-    return Container(
-      height: 200,
-      child: Stack(
-        children: [
-          // Soft wavy background with 4 points
-          ClipPath(
-            clipper: SoftWaveClipper(),
-            child: Container(
-              height: 180,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF7265F0),
-                    Color(0xFF9C8FFF),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.user;
 
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Profile picture
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Colors.white,
-                  child: CircleAvatar(
-                    radius: 23,
-                    backgroundImage: AssetImage('assets/images/user-image.png'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Marco Jacobs",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      maxLines: 2,
-                    ),
-
-                    // Edit profile button
-                    TextButton.icon(
-                      onPressed: () {},
-                      icon:
-                          const Icon(Icons.edit, color: Colors.white, size: 16),
-                      label: const Text(
-                        "Edit profile",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                      ),
-                    ),
-                  ],
-                ),
+    return Stack(
+      children: [
+        Container(
+          height: 230,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF7265F0),
+                Color(0xFF9C8FFF),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 50.0, left: 16.0, right: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.white.withOpacity(0.8),
+                child: CircleAvatar(
+                  radius: 38,
+                  backgroundImage:
+                      const AssetImage('assets/images/user-image.png'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                user?.name != null && user?.lastName != null
+                    ? "${user!.name} ${user.lastName}"
+                    : "User Name",
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () {
+                  if (context.mounted) {
+                    context.go('/profile');
+                  }
+                },
+                icon: const Icon(Icons.edit, color: Colors.white, size: 16),
+                label: const Text(
+                  "Edit profile",
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String title, {bool isLogout = false}) {
+  Widget _buildMenuItem(BuildContext context, IconData icon, String title,
+      {bool isLogout = false}) {
     return ListTile(
       leading: Icon(
         icon,
@@ -159,54 +150,47 @@ class CustomSlidingDrawer extends StatelessWidget {
           fontWeight: isLogout ? FontWeight.bold : null,
         ),
       ),
-      onTap: () {
-        // Handle menu item tap
+      onTap: () async {
+        if (isLogout) {
+          if (!context.mounted) return;
+          final bool? confirmLogout = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext dialogContext) {
+              return AlertDialog(
+                title: const Text('Confirm Logout'),
+                content: const Text('Are you sure you want to log out?'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(false);
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Logout'),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop(true);
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+
+          if (confirmLogout == true) {
+            if (!context.mounted) return;
+            await context.read<UserProvider>().logout();
+            if (!context.mounted) return;
+            context.go('/login');
+          }
+        } else if (title == "Payment") {
+          if (!context.mounted) return;
+          context.go('/profile/payment');
+        } else if (title == "Settings") {
+          if (!context.mounted) return;
+          context.go('/profile/settings');
+        }
       },
     );
   }
-}
-
-// Custom clipper for soft wavy header using 4 points
-class SoftWaveClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-
-    // Start at top-left
-    path.moveTo(0, 0);
-
-    // Draw line to bottom-left
-    path.lineTo(0, size.height * 0.8);
-
-    // First curve point (25% across)
-    path.cubicTo(
-        size.width * 0.25,
-        size.height * 0.85, // First control point
-        size.width * 0.25,
-        size.height * 0.95, // Second control point
-        size.width * 0.5,
-        size.height * 0.9 // End point (50% across)
-        );
-
-    // Second curve point (to 100% across)
-    path.cubicTo(
-        size.width * 0.75,
-        size.height * 0.85, // First control point
-        size.width * 0.75,
-        size.height * 0.75, // Second control point
-        size.width,
-        size.height * 0.8 // End point (right edge)
-        );
-
-    // Line to top-right
-    path.lineTo(size.width, 0);
-
-    // Close the path
-    path.close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

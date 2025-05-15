@@ -8,13 +8,13 @@ class PriceDistributionSlider extends StatefulWidget {
   final ValueChanged<RangeValues> onChanged;
 
   const PriceDistributionSlider({
-    Key? key,
+    super.key,
     required this.priceDistribution,
     required this.initialRange,
     required this.min,
     required this.max,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<PriceDistributionSlider> createState() =>
@@ -61,7 +61,8 @@ class _PriceDistributionSliderState extends State<PriceDistributionSlider> {
                   max: widget.max,
                   divisions: 50,
                   activeColor: Colors.purple[400],
-                  inactiveColor: Colors.grey[300]?.withOpacity(0.5),
+                  inactiveColor:
+                      Colors.grey[300]?.withAlpha((255 * 0.5).round()),
                   labels: RangeLabels(
                     '\$${_currentRange.start.toInt()}',
                     '\$${_currentRange.end.toInt()}+',
@@ -177,10 +178,10 @@ class DistributionPainter extends CustomPainter {
     // Improved gradient with more precise stops
     final gradient = LinearGradient(
       colors: [
-        secondaryColor.withOpacity(0.5),
-        primaryColor.withOpacity(0.7),
-        primaryColor.withOpacity(0.7),
-        secondaryColor.withOpacity(0.5),
+        secondaryColor.withAlpha((255 * 0.5).round()),
+        primaryColor.withAlpha((255 * 0.7).round()),
+        primaryColor.withAlpha((255 * 0.7).round()),
+        secondaryColor.withAlpha((255 * 0.5).round()),
       ],
       stops: [0.0, startPct, endPct, 1.0],
       begin: Alignment.centerLeft,

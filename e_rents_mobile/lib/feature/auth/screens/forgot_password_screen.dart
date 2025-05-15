@@ -2,7 +2,6 @@ import 'dart:ui'; // Import this for ImageFilter
 
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
@@ -110,12 +109,12 @@ class ForgotPasswordScreen extends StatelessWidget {
                             const SizedBox(height: 20),
                             Consumer<AuthProvider>(
                               builder: (context, provider, child) {
-                                if (provider.state == ViewState.Busy) {
+                                if (provider.state == ViewState.busy) {
                                   return const CircularProgressIndicator();
                                 }
                                 return CustomButton(
                                   label: "Submit",
-                                  isLoading: provider.state == ViewState.Busy,
+                                  isLoading: provider.state == ViewState.busy,
                                   onPressed: () async {
                                     bool success = await provider
                                         .forgotPassword(_emailController.text);

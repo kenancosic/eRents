@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-enum ViewState { Idle, Busy, Error }
+enum ViewState { idle, busy, error }
 
 abstract class BaseProvider with ChangeNotifier {
-  ViewState _state = ViewState.Idle;
+  ViewState _state = ViewState.idle;
   String? _errorMessage;
 
   ViewState get state => _state;
@@ -16,7 +16,7 @@ abstract class BaseProvider with ChangeNotifier {
 
   void setError(String? message) {
     _errorMessage = message;
-    setState(ViewState.Error);
+    setState(ViewState.error);
   }
 
   void clearError() {
@@ -26,10 +26,10 @@ abstract class BaseProvider with ChangeNotifier {
 
   Future<void> execute(Function action) async {
     try {
-      setState(ViewState.Busy);
+      setState(ViewState.busy);
       clearError();
       await action();
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError(e.toString());
     }

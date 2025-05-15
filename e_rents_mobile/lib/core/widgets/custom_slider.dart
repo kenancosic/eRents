@@ -15,10 +15,10 @@ class CustomSlider extends StatefulWidget {
   });
 
   @override
-  _CustomSlider createState() => _CustomSlider();
+  CustomSliderState createState() => CustomSliderState();
 }
 
-class _CustomSlider extends State<CustomSlider> {
+class CustomSliderState extends State<CustomSlider> {
   int _currentIndex = 0;
   final CarouselSliderController _controller = CarouselSliderController();
 
@@ -57,7 +57,8 @@ class _CustomSlider extends State<CustomSlider> {
                 bottom: 16,
                 right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(20),

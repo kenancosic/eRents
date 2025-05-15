@@ -98,7 +98,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
 
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
-        final isLoading = userProvider.state == ViewState.Busy;
+        final isLoading = userProvider.state == ViewState.busy;
 
         return BaseScreen(
           appBar: appBar,

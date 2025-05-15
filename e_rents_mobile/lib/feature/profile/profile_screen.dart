@@ -91,13 +91,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
         final user = userProvider.user;
-        final isLoading = userProvider.state == ViewState.Busy;
+        final isLoading = userProvider.state == ViewState.busy;
 
         return BaseScreen(
           showAppBar: false,
-          body: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/polygon.jpg',
+                  fit: BoxFit.cover,
+                ),
+              ),
+              if (isLoading)
+                const Center(child: CircularProgressIndicator())
+              else
+                Column(
                   children: [
                     const SizedBox(height: 20),
                     // User profile section
@@ -208,6 +217,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
+            ],
+          ),
         );
       },
     );

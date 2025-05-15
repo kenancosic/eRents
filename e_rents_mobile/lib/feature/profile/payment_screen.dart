@@ -63,7 +63,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     return Consumer<UserProvider>(
       builder: (context, userProvider, _) {
-        final isLoading = userProvider.state == ViewState.Busy;
+        final isLoading = userProvider.state == ViewState.busy;
         final paymentMethods = userProvider.paymentMethods ?? [];
 
         return BaseScreen(
@@ -219,7 +219,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blueAccent.withValues(alpha: 0.1),
+            color: Colors.blueAccent.withAlpha((255 * 0.1).round()),
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(
@@ -236,7 +236,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withAlpha((255 * 0.1).round()),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(

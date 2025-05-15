@@ -37,7 +37,7 @@ class HomeScreen extends StatelessWidget {
 
   void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
     // TODO: Implement actual filter logic (e.g., update provider, refetch data)
-    print('HomeScreen: Filters applied: $filters');
+    // print('HomeScreen: Filters applied: $filters'); // Removed print
     // You might want to show a snackbar or some feedback
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied!')),
@@ -52,7 +52,7 @@ class HomeScreen extends StatelessWidget {
     final searchBar = CustomSearchBar(
       hintText: 'Search properties...',
       onSearchChanged: (query) {
-        print('Search query: $query');
+        // print('Search query: $query'); // Removed print
       },
       showFilterIcon: true,
       onFilterIconPressed: () {

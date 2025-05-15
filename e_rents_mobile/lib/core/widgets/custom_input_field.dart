@@ -1,4 +1,4 @@
-import 'dart:ui';
+// import 'dart:ui'; // Import this for ImageFilter
 
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
@@ -49,22 +49,27 @@ class _CustomInputFieldState extends State<CustomInputField> {
   @override
   Widget build(BuildContext context) {
     // Colors
-    final Color backgroundColor =
-        widget.isDark ? Colors.white.withOpacity(0.2) : Colors.white;
+    final Color backgroundColor = widget.isDark
+        ? Colors.white.withAlpha((255 * 0.2).round())
+        : Colors.white;
 
     final Color textColor = widget.isDark ? Colors.white : textPrimaryColor;
 
-    final Color hintColor =
-        widget.isDark ? Colors.white.withOpacity(0.7) : textSecondaryColor;
+    final Color hintColor = widget.isDark
+        ? Colors.white.withAlpha((255 * 0.7).round())
+        : textSecondaryColor;
 
-    final Color borderColor =
-        widget.isDark ? Colors.white.withOpacity(0.5) : Colors.grey[300]!;
+    final Color borderColor = widget.isDark
+        ? Colors.white.withAlpha((255 * 0.5).round())
+        : Colors.grey[300]!;
 
-    final Color focusedBorderColor =
-        widget.isDark ? Colors.white.withOpacity(0.8) : primaryColor;
+    final Color focusedBorderColor = widget.isDark
+        ? Colors.white.withAlpha((255 * 0.8).round())
+        : primaryColor;
 
-    final Color iconColor =
-        widget.isDark ? Colors.white.withOpacity(0.7) : Colors.grey[500]!;
+    final Color iconColor = widget.isDark
+        ? Colors.white.withAlpha((255 * 0.7).round())
+        : Colors.grey[500]!;
 
     // Dimensions
     final double fontSize = widget.height * 0.35;
@@ -109,11 +114,25 @@ class _CustomInputFieldState extends State<CustomInputField> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+              borderSide: BorderSide(
+                width: 1,
+                color: Colors.red.withAlpha((255 * 0.7).round()),
+              ),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+              borderSide: BorderSide(
+                width: 1.5,
+                color: Colors.red.withAlpha((255 * 0.7).round()),
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(borderRadius),
+              borderSide: BorderSide(
+                width: 1,
+                color: Colors.red.withAlpha((255 * 0.7)
+                    .round()), // Assuming disabled looks like error, or use grey
+              ),
             ),
             errorStyle: TextStyle(
               color: Colors.redAccent,

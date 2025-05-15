@@ -42,7 +42,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _handleSearchChanged(String query) {
     // TODO: Implement search logic
-    print('Search query: $query');
+    // print('Search query: $query'); // Removed print
   }
 
   void _handleFilterButtonPressed() {
@@ -55,7 +55,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
     // TODO: Implement actual filter logic for ExploreScreen
-    print('ExploreScreen: Filters applied: $filters');
+    // print('ExploreScreen: Filters applied: $filters'); // Removed print
     // Example: update markers on the map, refresh list in panel
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied to map/list!')),

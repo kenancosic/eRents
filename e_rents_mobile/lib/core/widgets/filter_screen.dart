@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/core/widgets/distribution_slider.dart';
+// import 'package:e_rents_mobile/core/widgets/distribution_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
@@ -8,10 +8,10 @@ class FilterScreen extends StatefulWidget {
   final Function(Map<String, dynamic>) onApplyFilters;
 
   const FilterScreen({
-    Key? key,
+    super.key,
     this.initialFilters,
     required this.onApplyFilters,
-  }) : super(key: key);
+  });
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();
@@ -42,31 +42,6 @@ class _FilterScreenState extends State<FilterScreen> {
     'Air conditioner',
     'Security'
   ];
-
-  // In your FilterScreen class, add this sample price distribution data
-  // This would ideally come from your backend in a real application
-  final List<int> _priceDistributionData = [
-    10,
-    15,
-    25,
-    40,
-    60,
-    80,
-    95,
-    75,
-    50,
-    35,
-    25,
-    20,
-    15,
-    10,
-    8,
-    5,
-    3,
-    2,
-    1,
-    1
-  ]; // Number of properties at each price point
 
   // New state variables
   DateTime _startDate = DateTime.now();
@@ -140,21 +115,6 @@ class _FilterScreenState extends State<FilterScreen> {
         }
       }
     });
-  }
-
-  // New methods
-  void _handleDateRangeSelected(DateTime start, DateTime end) {
-    setState(() {
-      _startDate = start;
-      _endDate = end;
-      _isDateFilterEnabled = true;
-    });
-  }
-
-  void _handleInvalidDateSelection(DateTime start, DateTime end) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Selected dates include unavailable days.')),
-    );
   }
 
   void _toggleDateFilter(bool value) {
@@ -246,7 +206,8 @@ class _FilterScreenState extends State<FilterScreen> {
                       max: 5000,
                       divisions: 50,
                       activeColor: Colors.white,
-                      inactiveColor: Colors.white.withOpacity(0.3),
+                      inactiveColor:
+                          Colors.white.withAlpha((255 * 0.3).round()),
                       labels: RangeLabels(
                         '\$${_priceRange.start.toInt()}',
                         '\$${_priceRange.end.toInt()}+',
@@ -645,7 +606,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 surface: Colors.white,
                 onSurface: Colors.black,
               ),
-              dialogBackgroundColor: Colors.white,
+              dialogTheme: const DialogTheme(backgroundColor: Colors.white),
             ),
             child: child!,
           );
@@ -660,7 +621,7 @@ class _FilterScreenState extends State<FilterScreen> {
         });
       }
     } catch (e) {
-      print('Error showing date picker: $e');
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open date picker: $e')),
       );
@@ -752,7 +713,7 @@ class _FilterScreenState extends State<FilterScreen> {
         },
       );
     } catch (e) {
-      print('Error showing month picker: $e');
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open month picker: $e')),
       );
@@ -795,6 +756,7 @@ class _FilterScreenState extends State<FilterScreen> {
                       : null,
                   onTap: () {
                     yearDialogContext.pop();
+                    if (!context.mounted) return;
                     Navigator.of(context).pop();
 
                     setState(() {
@@ -862,7 +824,7 @@ class _FilterScreenState extends State<FilterScreen> {
                 surface: Colors.white,
                 onSurface: Colors.black,
               ),
-              dialogBackgroundColor: Colors.white,
+              dialogTheme: const DialogTheme(backgroundColor: Colors.white),
             ),
             child: child!,
           );
@@ -885,7 +847,7 @@ class _FilterScreenState extends State<FilterScreen> {
         });
       }
     } catch (e) {
-      print('Error showing date picker: $e');
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open date picker: $e')),
       );

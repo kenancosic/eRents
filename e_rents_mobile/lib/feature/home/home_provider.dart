@@ -3,7 +3,6 @@ import 'package:e_rents_mobile/core/models/filter_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/feature/home/data/home_service.dart';
 
-
 class HomeProvider extends BaseProvider {
   final HomeService _homeService;
   List<Property> _properties = [];
@@ -31,7 +30,7 @@ class HomeProvider extends BaseProvider {
   }
 
   Future<void> fetchProperties() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
     try {
       final properties = await _homeService.getProperties(_filter);
       _properties = properties;
@@ -40,7 +39,7 @@ class HomeProvider extends BaseProvider {
       _error = e.toString();
       _properties = [];
     } finally {
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     }
   }
 
@@ -60,5 +59,4 @@ class HomeProvider extends BaseProvider {
 // Future<Position?> _getUserLocation() async {
 //   return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 // }
-
 }

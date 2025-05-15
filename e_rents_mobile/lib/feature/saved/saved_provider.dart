@@ -14,7 +14,7 @@ class SavedProvider extends BaseProvider {
 
   // Toggle saved status
   Future<void> toggleSavedStatus(Property property) async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
 
     try {
       if (isPropertySaved(property.propertyId)) {
@@ -27,7 +27,7 @@ class SavedProvider extends BaseProvider {
       // In a real app, you would save this to persistent storage or API
       // await _savedService.updateSavedProperties(_savedProperties);
 
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError(e.toString());
     }
@@ -35,14 +35,14 @@ class SavedProvider extends BaseProvider {
 
   // Load saved properties
   Future<void> loadSavedProperties() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
 
     try {
       // In a real app, you would fetch this from storage or API
       // _savedProperties = await _savedService.getSavedProperties();
 
       // For now, we'll keep the current list
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError(e.toString());
     }
@@ -50,7 +50,7 @@ class SavedProvider extends BaseProvider {
 
   // Clear all saved properties
   Future<void> clearSavedProperties() async {
-    setState(ViewState.Busy);
+    setState(ViewState.busy);
 
     try {
       _savedProperties.clear();
@@ -58,7 +58,7 @@ class SavedProvider extends BaseProvider {
       // In a real app, you would update this in storage or API
       // await _savedService.clearSavedProperties();
 
-      setState(ViewState.Idle);
+      setState(ViewState.idle);
     } catch (e) {
       setError(e.toString());
     }
