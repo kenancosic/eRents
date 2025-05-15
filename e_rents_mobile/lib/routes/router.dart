@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/feature/home/home_screen.dart';
 import 'package:e_rents_mobile/feature/profile/payment_screen.dart';
 import 'package:e_rents_mobile/feature/profile/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/profile_screen.dart';
+import 'package:e_rents_mobile/feature/profile/booking_history_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
@@ -16,25 +17,142 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
 import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
+import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
+import 'package:e_rents_mobile/core/widgets/scaffold_with_nested_navigation.dart';
+
+// Navigator keys
+final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final _shellNavigatorAKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellA'); // Home
+final _shellNavigatorBKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellB'); // Explore
+final _shellNavigatorCKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellC'); // Chat
+final _shellNavigatorDKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellD'); // Saved
+final _shellNavigatorEKey =
+    GlobalKey<NavigatorState>(debugLabel: 'shellE'); // Profile
 
 class AppRouter {
-  // Define the GoRouter instance
   final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/login', // Remains /login
+    navigatorKey: _rootNavigatorKey,
     routes: [
-      GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => HomeScreen(),
-      ),
-      GoRoute(
-        path: '/property/:id',
-        name: 'property_detail',
-        builder: (context, state) {
-          final id = int.parse(state.pathParameters['id']!);
-          return PropertyDetailScreen(propertyId: id);
+      // StatefulShellRoute for tabbed navigation
+      StatefulShellRoute.indexedStack(
+        builder: (BuildContext context, GoRouterState state,
+            StatefulNavigationShell navigationShell) {
+          // This is where you'd build your main scaffold with the CustomBottomNavigationBar
+          // The navigationShell is used to display the correct page for the current tab
+          // and to handle tab changes via the CustomBottomNavigationBar's onTap
+          return ScaffoldWithNestedNavigation(navigationShell: navigationShell);
         },
+        branches: <StatefulShellBranch>[
+          // Branch A: Home
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorAKey,
+            routes: <RouteBase>[
+              GoRoute(
+                path: '/',
+                name: 'home',
+                builder: (context, state) => HomeScreen(),
+                routes: [
+                  // Property details can be accessed from Home or other tabs
+                  // To keep it outside the shell but accessible, it's better as a top-level route
+                  // If it should be *within* the home tab's stack, it stays here.
+                  // For now, assuming it can be pushed over anything, let's move it top-level.
+                ],
+              ),
+            ],
+          ),
+          // Branch B: Explore
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorBKey,
+            routes: <RouteBase>[
+              GoRoute(
+                  path: '/explore',
+                  name: 'explore',
+                  builder: (context, state) => const ExploreScreen()),
+            ],
+          ),
+          // Branch C: Chat
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorCKey,
+            routes: <RouteBase>[
+              GoRoute(
+                  path:
+                      '/chatRoom', // Changed to be the primary for this tab for simplicity
+                  name: 'chatRoom', // Added name for consistency
+                  builder: (context, state) => ChatRoomScreen(),
+                  routes: [
+                    GoRoute(
+                      path:
+                          'messages', // e.g. /chatRoom/messages - this makes chat a sub-route
+                      name: 'chatMessages', // Added name
+                      builder: (context, state) {
+                        final chatDetails = state.extra as Map<String, dynamic>;
+                        return ChatScreen(
+                          userName: chatDetails['name'],
+                          userImage: chatDetails['imageUrl'],
+                        );
+                      },
+                    ),
+                  ]),
+            ],
+          ),
+          // Branch D: Saved
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorDKey,
+            routes: <RouteBase>[
+              GoRoute(
+                  path: '/saved',
+                  name: 'saved',
+                  builder: (context, state) => const SavedScreen()),
+            ],
+          ),
+          // Branch E: Profile
+          StatefulShellBranch(
+            navigatorKey: _shellNavigatorEKey,
+            routes: <RouteBase>[
+              GoRoute(
+                  path: '/profile',
+                  name: 'profile',
+                  builder: (context, state) => const ProfileScreen(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                        path: 'details',
+                        name: 'personal_details', // name was personal_details
+                        builder: (context, state) =>
+                            const PersonalDetailsScreen()),
+                    GoRoute(
+                        path: 'payment',
+                        name: 'payment_details', // name was payment_details
+                        builder: (context, state) => const PaymentScreen()),
+                    GoRoute(
+                        path: 'settings',
+                        name: 'settings',
+                        builder: (context, state) => const Scaffold(
+                              body: Center(
+                                  child: Text('Settings Screen - Coming Soon')),
+                            )),
+                    GoRoute(
+                        path: 'booking-history',
+                        name: 'booking_history',
+                        builder: (context, state) =>
+                            const BookingHistoryScreen()),
+                  ]),
+              GoRoute(
+                  path: '/faq', // FAQ as part of the profile shell
+                  name: 'faq',
+                  builder: (context, state) => const Scaffold(
+                        body: Center(child: Text('FAQ Screen - Coming Soon')),
+                      )),
+            ],
+          ),
+        ],
       ),
+
+      // Top-level routes (not part of the bottom navigation bar)
       GoRoute(
         path: '/login',
         name: 'login',
@@ -56,41 +174,13 @@ class AppRouter {
         builder: (context, state) => const PasswordResetConfirmationScreen(),
       ),
       GoRoute(
-          path: '/explore',
-          name: 'explore',
-          builder: (context, state) => const ExploreScreen()),
-      GoRoute(
-        path: '/chatRoom',
-        builder: (context, state) => ChatRoomScreen(),
-      ),
-      GoRoute(
-        path: '/saved',
-        name: 'saved',
-        builder: (context, state) => const SavedScreen(),
-      ),
-      GoRoute(
-        path: '/chat',
+        path: '/property/:id', // Moved to be a top-level route
+        name: 'property_detail',
         builder: (context, state) {
-          final chatDetails = state.extra
-              as Map<String, dynamic>; // Pass data to the ChatScreen
-          return ChatScreen(
-            userName: chatDetails['name'],
-            userImage: chatDetails['imageUrl'],
-          );
+          final id = int.parse(state.pathParameters['id']!);
+          return PropertyDetailScreen(propertyId: id);
         },
       ),
-      GoRoute(
-          path: '/profile',
-          name: 'profile',
-          builder: (context, state) => const ProfileScreen()),
-      GoRoute(
-          path: '/profile/details',
-          name: 'personal_details',
-          builder: (context, state) => const PersonalDetailsScreen()),
-      GoRoute(
-          path: '/profile/payment',
-          name: 'payment_details',
-          builder: (context, state) => const PaymentScreen()),
       GoRoute(
         path: '/filter',
         name: 'filter',
@@ -144,18 +234,6 @@ class AppRouter {
           );
         },
       ),
-      GoRoute(
-          path: '/faq',
-          name: 'faq',
-          builder: (context, state) => const Scaffold(
-                body: Center(child: Text('FAQ Screen - Coming Soon')),
-              )),
-      GoRoute(
-          path: '/profile/settings',
-          name: 'settings',
-          builder: (context, state) => const Scaffold(
-                body: Center(child: Text('Settings Screen - Coming Soon')),
-              )),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(

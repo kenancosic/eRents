@@ -20,7 +20,6 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BaseScreen(
       showAppBar: false,
-      showBottomNavBar: false,
       useSlidingDrawer: false,
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: false, // Prevents background resizing

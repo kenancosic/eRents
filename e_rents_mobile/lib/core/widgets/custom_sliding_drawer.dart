@@ -36,28 +36,33 @@ class CustomSlidingDrawer extends StatelessWidget {
               bottomRight: Radius.circular(16),
             ),
           ),
-          child: Column(
-            children: [
-              _buildCustomDrawerHeader(context),
-              Expanded(
-                child: Container(
-                  color: Colors.white,
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(
-                          left: 16.0, bottom: 30.0, right: 16.0),
-                      child: _buildMenuItem(
-                        context,
-                        Icons.logout,
-                        "Log out",
-                        isLogout: true,
-                      ),
-                    ),
-                  ),
+          child: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/polygon.jpg'),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black54,
+                  BlendMode.darken,
                 ),
               ),
-            ],
+            ),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                _buildCustomDrawerHeader(context),
+                _buildMenuItem(context, Icons.history, "My Bookings"),
+                _buildMenuItem(
+                    context, Icons.person_outline, "Personal details"),
+                _buildMenuItem(context, Icons.settings_outlined, "Settings"),
+                _buildMenuItem(
+                    context, Icons.payment_outlined, "Payment details"),
+                _buildMenuItem(context, Icons.help_outline, "FAQ"),
+                const Divider(color: Colors.white30),
+                _buildMenuItem(context, Icons.logout, "Log out",
+                    isLogout: true),
+              ],
+            ),
           ),
         ),
       ),
@@ -68,71 +73,55 @@ class CustomSlidingDrawer extends StatelessWidget {
     final userProvider = Provider.of<UserProvider>(context);
     final user = userProvider.user;
 
-    return Stack(
-      children: [
-        Container(
-          height: 230,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF7265F0),
-                Color(0xFF9C8FFF),
-              ],
+    return Container(
+      padding: const EdgeInsets.only(
+          top: 50.0, bottom: 20.0, left: 16.0, right: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          CircleAvatar(
+            radius: 40,
+            backgroundColor: Colors.white.withOpacity(0.3),
+            child: CircleAvatar(
+              radius: 38,
+              backgroundImage: const AssetImage('assets/images/user-image.png'),
             ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 50.0, left: 16.0, right: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.white.withOpacity(0.8),
-                child: CircleAvatar(
-                  radius: 38,
-                  backgroundImage:
-                      const AssetImage('assets/images/user-image.png'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                user?.name != null && user?.lastName != null
-                    ? "${user!.name} ${user.lastName}"
-                    : "User Name",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () {
-                  if (context.mounted) {
-                    context.go('/profile');
-                  }
-                },
-                icon: const Icon(Icons.edit, color: Colors.white, size: 16),
-                label: const Text(
-                  "Edit profile",
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          Text(
+            user?.name != null && user?.lastName != null
+                ? "${user!.name} ${user.lastName}"
+                : "User Name",
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              overflow: TextOverflow.ellipsis,
+            ),
+            maxLines: 2,
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              if (context.mounted) {
+                context.go('/profile');
+                onDrawerToggle();
+              }
+            },
+            icon: const Icon(Icons.edit, color: Colors.white, size: 16),
+            label: const Text(
+              "Edit profile",
+              style: TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -189,6 +178,22 @@ class CustomSlidingDrawer extends StatelessWidget {
         } else if (title == "Settings") {
           if (!context.mounted) return;
           context.go('/profile/settings');
+        } else if (title == "Personal details") {
+          if (!context.mounted) return;
+          context.go('/profile/details');
+        } else if (title == "Payment details") {
+          if (!context.mounted) return;
+          context.go('/profile/payment');
+        } else if (title == "FAQ") {
+          if (!context.mounted) return;
+          context.go('/faq');
+        } else if (title == "My Bookings") {
+          if (!context.mounted) return;
+          context.go('/profile/booking-history');
+        }
+
+        if (context.mounted) {
+          onDrawerToggle();
         }
       },
     );

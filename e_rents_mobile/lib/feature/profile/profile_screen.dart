@@ -182,6 +182,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                           _buildListTile(
+                            icon: Icons.history,
+                            title: 'Booking History',
+                            onTap: () {
+                              context.push('/profile/booking-history');
+                            },
+                          ),
+                          _buildListTile(
                             icon: Icons.help_outline,
                             title: 'FAQ',
                             onTap: () {

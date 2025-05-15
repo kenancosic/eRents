@@ -104,7 +104,6 @@ class _SavedScreenState extends State<SavedScreen> {
 
     return BaseScreen(
       showAppBar: true,
-      showBottomNavBar: true,
       appBar: appBar,
       body: _buildBody(),
     );
@@ -225,7 +224,7 @@ class _SavedScreenState extends State<SavedScreen> {
                     rooms: 2,
                     area: 874,
                     onTap: () {
-                      context.push('/property/\${property.propertyId}');
+                      context.push('/property/${property.propertyId}');
                     },
                   ),
                 ),

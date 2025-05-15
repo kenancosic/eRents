@@ -1,6 +1,4 @@
-// lib/feature/property_detail/screens/property_detail_screen.dart
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-// import 'package:e_rents_mobile/core/base/app_bar_config.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
@@ -15,8 +13,6 @@ import 'package:e_rents_mobile/feature/property_detail/widgets/property_price_fo
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/property_review.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
-import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:go_router/go_router.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -44,7 +40,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       child: Scaffold(
         body: BaseScreen(
           showAppBar: false,
-          showBottomNavBar: false,
           body: Consumer<PropertyDetailProvider>(
             builder: (context, provider, child) {
               if (provider.isLoading) {
