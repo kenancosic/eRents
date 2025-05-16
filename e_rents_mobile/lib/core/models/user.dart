@@ -14,6 +14,7 @@ class User {
   final String? lastName;
   final String? password;
   final String? token;
+  final bool? isPublic;
   User({
     this.userId,
     required this.username,
@@ -29,7 +30,8 @@ class User {
     this.name,
     this.lastName,
     this.password,
-    this.token
+    this.token,
+    this.isPublic,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -43,12 +45,15 @@ class User {
       zipCode: json['zipCode'],
       streetName: json['streetName'],
       streetNumber: json['streetNumber'],
-      dateOfBirth: json['dateOfBirth'] != null ? DateTime.parse(json['dateOfBirth']) : null,
+      dateOfBirth: json['dateOfBirth'] != null
+          ? DateTime.parse(json['dateOfBirth'])
+          : null,
       userType: json['userType'],
       name: json['name'],
       lastName: json['lastName'],
       password: json['password'],
-      token: json['resetToken']
+      token: json['resetToken'],
+      isPublic: json['isPublic'],
     );
   }
 
@@ -68,7 +73,46 @@ class User {
       'name': name,
       'lastName': lastName,
       'password': password,
-      'resetToken': token
+      'resetToken': token,
+      'isPublic': isPublic,
     };
+  }
+
+  User copyWith({
+    int? userId,
+    String? username,
+    String? email,
+    String? phoneNumber,
+    String? address,
+    String? city,
+    String? zipCode,
+    String? streetName,
+    String? streetNumber,
+    DateTime? dateOfBirth,
+    String? userType,
+    String? name,
+    String? lastName,
+    String? password,
+    String? token,
+    bool? isPublic,
+  }) {
+    return User(
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      zipCode: zipCode ?? this.zipCode,
+      streetName: streetName ?? this.streetName,
+      streetNumber: streetNumber ?? this.streetNumber,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      userType: userType ?? this.userType,
+      name: name ?? this.name,
+      lastName: lastName ?? this.lastName,
+      password: password ?? this.password,
+      token: token ?? this.token,
+      isPublic: isPublic ?? this.isPublic,
+    );
   }
 }

@@ -190,7 +190,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
             return PropertyPriceFooter(
               property: property,
-              onCheckoutPressed: checkoutPressed,
+              onCheckoutPressed: () => checkoutPressed(provider),
             );
           },
         ),
@@ -204,8 +204,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return sum / reviews.length;
   }
 
-  void checkoutPressed() {
-    final property = context.read<PropertyDetailProvider>().property;
+  void checkoutPressed(PropertyDetailProvider provider) {
+    final property = provider.property;
     if (property == null) return;
 
     final now = DateTime.now();

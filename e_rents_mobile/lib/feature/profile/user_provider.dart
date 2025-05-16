@@ -1,28 +1,36 @@
 import 'dart:io';
 
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/feature/profile/data/user_service.dart';
 
 class UserProvider extends BaseProvider {
   final UserService _userService;
   User? _user;
+  TenantPreferenceModel? _tenantPreference;
   List<Map<String, dynamic>>? _paymentMethods;
 
   UserProvider(this._userService);
 
   User? get user => _user;
+  TenantPreferenceModel? get tenantPreference => _tenantPreference;
   List<Map<String, dynamic>>? get paymentMethods => _paymentMethods;
 
-  // Initialize user data
+  // Initialize user data and preferences
   Future<void> initUser() async {
     setState(ViewState.busy);
     try {
       _user = await _userService.getUserProfile();
+      if (_user != null) {
+        // Assuming userId is String, adjust if it's int
+        _tenantPreference =
+            await _userService.getTenantPreferences(_user!.userId!.toString());
+      }
       await fetchPaymentMethods();
       setState(ViewState.idle);
     } catch (e) {
-      setError('Failed to initialize user: ${e.toString()}');
+      setError('Failed to initialize user or preferences: ${e.toString()}');
     }
   }
 
@@ -104,6 +112,69 @@ class UserProvider extends BaseProvider {
       }
     } catch (e) {
       setError('Error adding payment method: ${e.toString()}');
+      return false;
+    }
+  }
+
+  // Update Tenant Preferences
+  Future<bool> updateTenantPreferences(
+      TenantPreferenceModel preferences) async {
+    if (_user == null) {
+      setError('User not loaded. Cannot update preferences.');
+      return false;
+    }
+    setState(ViewState.busy);
+    try {
+      final success = await _userService.updateTenantPreferences(preferences);
+      if (success) {
+        _tenantPreference = preferences; // Update local state
+        setState(ViewState.idle);
+        return true;
+      } else {
+        setError('Failed to update tenant preferences.');
+        return false;
+      }
+    } catch (e) {
+      setError('Error updating tenant preferences: ${e.toString()}');
+      return false;
+    }
+  }
+
+  // Update user public status
+  Future<bool> updateUserPublicStatus(bool isPublic) async {
+    if (_user == null) {
+      setError('User not loaded.');
+      return false;
+    }
+    setState(ViewState.busy);
+    try {
+      // Assuming _userService has a method to update this specific field
+      // or that updateUserProfile can handle the update appropriately.
+      // For now, let's assume a specific method or a map update.
+      final success = await _userService.updateUserProfile(
+        _user!.copyWith(isPublic: isPublic), // Assumes User model has copyWith
+      );
+      // If updateUserProfile returns the updated User object:
+      if (success != null) {
+        // Assuming success means the updated user is returned
+        _user = success; // Update local user
+        setState(ViewState.idle);
+        return true;
+      } else {
+        // If updateUserProfile returns a boolean:
+        // final bool updateSuccess = await _userService.updateUserProfile(
+        //   _user!.copyWith(isPublic: isPublic)
+        // );
+        // if (updateSuccess) {
+        //    _user = _user!.copyWith(isPublic: isPublic);
+        //    setState(ViewState.idle);
+        //    return true;
+        // }
+        setError('Failed to update public status');
+        return false;
+      }
+    } catch (e) {
+      setError('Error updating public status: ${e.toString()}');
       return false;
     }
   }

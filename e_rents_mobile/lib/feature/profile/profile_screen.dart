@@ -168,17 +168,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                           _buildListTile(
-                            icon: Icons.settings_outlined,
-                            title: 'Settings',
-                            onTap: () {
-                              context.push('/profile/settings');
-                            },
-                          ),
-                          _buildListTile(
                             icon: Icons.payment_outlined,
                             title: 'Payment details',
                             onTap: () {
                               context.push('/profile/payment');
+                            },
+                          ),
+                          _buildListTile(
+                            icon: Icons.home_work_outlined,
+                            title: 'Accommodation Preferences',
+                            onTap: () {
+                              context
+                                  .push('/profile/accommodation-preferences');
                             },
                           ),
                           _buildListTile(
@@ -187,6 +188,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onTap: () {
                               context.push('/profile/booking-history');
                             },
+                          ),
+                          _buildSwitchListTile(
+                            context: context,
+                            userProvider: userProvider,
                           ),
                           _buildListTile(
                             icon: Icons.help_outline,
@@ -241,6 +246,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: Text(title),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
+    );
+  }
+
+  // Helper method to build a switch list tile for public profile
+  Widget _buildSwitchListTile({
+    required BuildContext context,
+    required UserProvider userProvider,
+  }) {
+    final user = userProvider.user;
+    final bool isPublic = user?.isPublic ?? false;
+
+    return SwitchListTile(
+      title: const Text('Make Profile Public'),
+      value: isPublic,
+      onChanged: (bool value) async {
+        // Show a confirmation dialog before changing the status
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: Text(
+                  value ? 'Make Profile Public?' : 'Make Profile Private?'),
+              content: Text(
+                  'Are you sure you want to ${value ? 'make your profile public' : 'make your profile private'}?'),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(false); // User cancelled
+                  },
+                ),
+                TextButton(
+                  child: const Text('Confirm'),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(true); // User confirmed
+                  },
+                ),
+              ],
+            );
+          },
+        );
+
+        if (confirm == true) {
+          final success = await userProvider.updateUserPublicStatus(value);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(success
+                    ? 'Profile status updated successfully!'
+                    : 'Failed to update profile status.'),
+              ),
+            );
+          }
+        }
+      },
+      secondary: Icon(isPublic ? Icons.visibility : Icons.visibility_off,
+          color: Colors.black),
+      activeColor: Theme.of(context).primaryColor,
     );
   }
 }

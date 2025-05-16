@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 // import 'package:e_rents_mobile/config.dart'; // Unused
+import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 // import 'package:e_rents_mobile/core/services/secure_storage_service.dart'; // Unused
@@ -11,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class UserService {
   final ApiService _apiService;
   final String _userKey = 'user_data';
+  final String _tenantPreferencesKey = 'tenant_preferences_data';
 
   UserService(this._apiService);
 
@@ -156,6 +158,57 @@ class UserService {
       return true;
     } catch (e) {
       print('Error adding payment method: $e');
+      return false;
+    }
+  }
+
+  // Get tenant preferences from local storage or API (mocked)
+  Future<TenantPreferenceModel?> getTenantPreferences(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final preferencesData =
+          prefs.getString(_tenantPreferencesKey + '_' + userId);
+
+      if (preferencesData != null) {
+        return TenantPreferenceModel.fromJson(json.decode(preferencesData));
+      }
+
+      // If not in local storage, return null (or mock default if desired)
+      // For a true new user, there would be no preferences.
+      print(
+          'No local tenant preferences found for userId: $userId. Returning null.');
+      return null;
+
+      // Mock default if you want to always return something:
+      // return TenantPreferenceModel(
+      //   userId: userId,
+      //   city: 'Anytown',
+      //   minPrice: 500,
+      //   maxPrice: 1500,
+      //   isPublic: false,
+      //   amenities: ['Parking'],
+      //   description: 'Looking for a quiet place.',
+      //   moveInStartDate: DateTime.now().add(Duration(days: 30))
+      // );
+    } catch (e) {
+      print('Error getting tenant preferences: $e');
+      return null;
+    }
+  }
+
+  // Update/Create tenant preferences (mocked - saves to local storage)
+  Future<bool> updateTenantPreferences(
+      TenantPreferenceModel preferences) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Save to local storage, using userId in the key for user-specific prefs
+      await prefs.setString(_tenantPreferencesKey + '_' + preferences.userId,
+          json.encode(preferences.toJson()));
+      print(
+          'Tenant preferences saved locally for userId: ${preferences.userId}');
+      return true; // Simulate successful save
+    } catch (e) {
+      print('Error updating tenant preferences: $e');
       return false;
     }
   }
