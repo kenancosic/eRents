@@ -35,6 +35,8 @@ public partial class User
 
     public DateTime? ResetTokenExpiration { get; set; }
 
+    public bool? IsPublic { get; set; }
+
     public int? LocationId { get; set; }
 
     public int? UserTypeId { get; set; }

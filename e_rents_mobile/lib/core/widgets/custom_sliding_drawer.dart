@@ -54,7 +54,6 @@ class CustomSlidingDrawer extends StatelessWidget {
                 _buildMenuItem(context, Icons.history, "My Bookings"),
                 _buildMenuItem(
                     context, Icons.person_outline, "Personal details"),
-                _buildMenuItem(context, Icons.settings_outlined, "Settings"),
                 _buildMenuItem(
                     context, Icons.payment_outlined, "Payment details"),
                 _buildMenuItem(context, Icons.help_outline, "FAQ"),
@@ -152,13 +151,13 @@ class CustomSlidingDrawer extends StatelessWidget {
                   TextButton(
                     child: const Text('Cancel'),
                     onPressed: () {
-                      Navigator.of(dialogContext).pop(false);
+                      dialogContext.canPop() ? dialogContext.pop(false) : null;
                     },
                   ),
                   TextButton(
                     child: const Text('Logout'),
                     onPressed: () {
-                      Navigator.of(dialogContext).pop(true);
+                      dialogContext.canPop() ? dialogContext.pop(true) : null;
                     },
                   ),
                 ],
@@ -175,9 +174,6 @@ class CustomSlidingDrawer extends StatelessWidget {
         } else if (title == "Payment") {
           if (!context.mounted) return;
           context.go('/profile/payment');
-        } else if (title == "Settings") {
-          if (!context.mounted) return;
-          context.go('/profile/settings');
         } else if (title == "Personal details") {
           if (!context.mounted) return;
           context.go('/profile/details');

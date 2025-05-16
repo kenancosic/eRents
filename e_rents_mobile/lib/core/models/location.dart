@@ -1,9 +1,47 @@
 class Location {
-  final double latitude;
-  final double longitude;
+  final int? locationId;
+  final String? city;
+  final String? state;
+  final String? country;
+  final String? postalCode;
+  final double? latitude;
+  final double? longitude;
   final String? address; // Optional detailed address
 
-  Location({required this.latitude, required this.longitude, this.address});
+  Location({
+    this.locationId,
+    this.city,
+    this.state,
+    this.country,
+    this.postalCode,
+    this.latitude,
+    this.longitude,
+    this.address,
+  });
 
-  // Add methods for serialization/deserialization if necessary
+  factory Location.fromJson(Map<String, dynamic> json) {
+    return Location(
+      locationId: json['locationId'],
+      city: json['city'],
+      state: json['state'],
+      country: json['country'],
+      postalCode: json['postalCode'],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      address: json['address'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'locationId': locationId,
+      'city': city,
+      'state': state,
+      'country': country,
+      'postalCode': postalCode,
+      'latitude': latitude,
+      'longitude': longitude,
+      'address': address,
+    };
+  }
 }

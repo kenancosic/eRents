@@ -18,7 +18,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
 import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
-import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/scaffold_with_nested_navigation.dart';
 
 // Navigator keys
@@ -129,13 +128,6 @@ class AppRouter {
                         path: 'payment',
                         name: 'payment_details', // name was payment_details
                         builder: (context, state) => const PaymentScreen()),
-                    GoRoute(
-                        path: 'settings',
-                        name: 'settings',
-                        builder: (context, state) => const Scaffold(
-                              body: Center(
-                                  child: Text('Settings Screen - Coming Soon')),
-                            )),
                     GoRoute(
                         path: 'booking-history',
                         name: 'booking_history',
