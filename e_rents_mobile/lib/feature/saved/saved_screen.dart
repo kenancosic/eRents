@@ -215,7 +215,8 @@ class _SavedScreenState extends State<SavedScreen> {
                   },
                   child: PropertyCard(
                     title: property.name,
-                    location: '${property.city}, ${property.address}',
+                    location:
+                        '${property.addressDetail?.geoRegion?.city}, ${property.addressDetail?.streetLine1}',
                     details: property.description ?? '',
                     price: property.price.toString(),
                     rating: property.averageRating?.toString() ?? '4.8',

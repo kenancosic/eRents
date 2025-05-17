@@ -1,8 +1,10 @@
 import 'dart:ui'; // For ImageFilter
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/services/google_places_service.dart'; // Added for PlaceDetails
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/core/widgets/next_step_button.dart';
+import 'package:e_rents_mobile/core/widgets/places_autocomplete_field.dart'; // Added
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -23,11 +25,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   DateTime? _selectedDateOfBirth;
+
+  // Controllers for manual address parts (Zip, State, Country)
+  final TextEditingController _manualZipCodeController =
+      TextEditingController();
+  final TextEditingController _manualStateController = TextEditingController();
+  final TextEditingController _manualCountryController =
+      TextEditingController();
+
+  // State variables to store parsed address components from Google Places
+  String? _fetchedStreetName;
+  String? _fetchedStreetNumber;
+  String? _fetchedZipCode;
+  String? _fetchedCountry;
+  String? _fetchedState;
+  String? _selectedCityName;
+
+  // Flag to control visibility of additional address fields
+  bool _cityHasBeenSelected = false;
 
   // For PageView
   final PageController _pageController = PageController();
@@ -80,10 +100,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _addressController.dispose();
+    _cityController.dispose();
     _phoneNumberController.dispose();
     _nameController.dispose();
     _lastNameController.dispose();
+    // Dispose new controllers
+    _manualZipCodeController.dispose();
+    _manualStateController.dispose();
+    _manualCountryController.dispose();
     super.dispose();
   }
 
@@ -346,16 +370,179 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               color: Colors.white70),
                                         ),
                                         const SizedBox(height: 10),
+                                        // "Where are you currently residing ?" Label MOVED HERE
+                                        const Padding(
+                                          padding: EdgeInsets.only(bottom: 8.0),
+                                          child: Text(
+                                            'Where are you currently residing ?',
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
                                         const Text(
-                                          'Address',
+                                          'City',
                                           style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.white),
                                         ),
-                                        CustomInputField(
-                                          controller: _addressController,
-                                          hintText: 'Enter address',
+                                        PlacesAutocompleteField(
+                                          controller: _cityController,
+                                          hintText: 'Search and select city',
+                                          searchType:
+                                              '(cities)', // Restrict to cities
+                                          onPlaceSelected:
+                                              (PlaceDetails? placeDetails) {
+                                            if (placeDetails != null) {
+                                              setState(() {
+                                                _cityHasBeenSelected =
+                                                    true; // Show additional fields
+
+                                                _selectedCityName = placeDetails
+                                                        .getAddressComponent(
+                                                            'locality') ??
+                                                    placeDetails
+                                                        .getAddressComponent(
+                                                            'administrative_area_level_3') ??
+                                                    placeDetails
+                                                        .getAddressComponent(
+                                                            'postal_town');
+
+                                                _fetchedStreetName =
+                                                    placeDetails
+                                                        .getAddressComponent(
+                                                            'route');
+                                                _fetchedStreetNumber =
+                                                    placeDetails
+                                                        .getAddressComponent(
+                                                            'street_number');
+                                                _fetchedZipCode = placeDetails
+                                                    .getAddressComponent(
+                                                        'postal_code');
+                                                _fetchedCountry = placeDetails
+                                                    .getAddressComponent(
+                                                        'country');
+                                                _fetchedState = placeDetails
+                                                    .getAddressComponent(
+                                                        'administrative_area_level_1');
+
+                                                // Pre-fill manual fields
+                                                _manualZipCodeController.text =
+                                                    _fetchedZipCode ?? '';
+                                                _manualStateController.text =
+                                                    _fetchedState ?? '';
+                                                _manualCountryController.text =
+                                                    _fetchedCountry ?? '';
+
+                                                print(
+                                                    'Selected City (from controller): ${_cityController.text}');
+                                                print(
+                                                    'Selected City Name (parsed): $_selectedCityName');
+                                                print(
+                                                    'Fetched Zip Code: $_fetchedZipCode');
+                                                print(
+                                                    'Fetched Country: $_fetchedCountry');
+                                                print(
+                                                    'Fetched State: $_fetchedState');
+                                              });
+                                            } else {
+                                              // Handle case where no details are found or user clears selection
+                                              setState(() {
+                                                _cityHasBeenSelected =
+                                                    false; // Hide additional fields
+                                                _selectedCityName = null;
+                                                _fetchedStreetName = null;
+                                                _fetchedStreetNumber = null;
+                                                _fetchedZipCode = null;
+                                                _fetchedCountry = null;
+                                                _fetchedState = null;
+                                                // Clear manual fields
+                                                _manualZipCodeController
+                                                    .clear();
+                                                _manualStateController.clear();
+                                                _manualCountryController
+                                                    .clear();
+                                              });
+                                            }
+                                          },
                                         ),
+                                        const SizedBox(height: 15), // Spacing
+
+                                        // Zip Code Field
+                                        if (_cityHasBeenSelected)
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Zip Code',
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white),
+                                              ),
+                                              CustomInputField(
+                                                controller:
+                                                    _manualZipCodeController,
+                                                hintText: 'Enter zip code',
+                                                keyboardType:
+                                                    TextInputType.number,
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                          ),
+
+                                        // State Field
+                                        if (_cityHasBeenSelected)
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'State/Region',
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white),
+                                              ),
+                                              AbsorbPointer(
+                                                absorbing:
+                                                    _manualStateController
+                                                        .text.isNotEmpty,
+                                                child: CustomInputField(
+                                                  controller:
+                                                      _manualStateController,
+                                                  hintText:
+                                                      'Enter state or region',
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                          ),
+
+                                        // Country Field
+                                        if (_cityHasBeenSelected)
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Country',
+                                                style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.white),
+                                              ),
+                                              AbsorbPointer(
+                                                absorbing:
+                                                    _manualCountryController
+                                                        .text.isNotEmpty,
+                                                child: CustomInputField(
+                                                  controller:
+                                                      _manualCountryController,
+                                                  hintText: 'Enter country',
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -403,6 +590,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               return;
                                             }
 
+                                            // Validate Required Zip Code if city is selected
+                                            if (_cityHasBeenSelected &&
+                                                _manualZipCodeController
+                                                    .text.isEmpty) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                    content: Text(
+                                                        'Zip code is required when a city is selected')),
+                                              );
+                                              return;
+                                            }
+
                                             bool success =
                                                 await provider.register({
                                               'username':
@@ -413,8 +613,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               'confirmPassword':
                                                   _confirmPasswordController
                                                       .text,
-                                              'address':
-                                                  _addressController.text,
+                                              'city': _selectedCityName ??
+                                                  _cityController.text,
+                                              'streetName': null,
+                                              'streetNumber': null,
+                                              'zipCode':
+                                                  _manualZipCodeController
+                                                          .text.isNotEmpty
+                                                      ? _manualZipCodeController
+                                                          .text
+                                                      : null,
+                                              'country':
+                                                  _manualCountryController
+                                                          .text.isNotEmpty
+                                                      ? _manualCountryController
+                                                          .text
+                                                      : null,
+                                              'state': _manualStateController
+                                                      .text.isNotEmpty
+                                                  ? _manualStateController.text
+                                                  : null,
                                               'dateOfBirth':
                                                   _selectedDateOfBirth
                                                       ?.toIso8601String(),

@@ -33,10 +33,12 @@ namespace eRents.Application.Shared
 			CreateMap<Payment, PaymentResponse>().ReverseMap();
 			CreateMap<PaymentRequest, Payment>();
 
-			// Location mappings
+			// Location mappings (Commented out, to be replaced with GeoRegion/AddressDetail)
+			/*
 			CreateMap<Location, LocationResponse>().ReverseMap();
 			CreateMap<LocationInsertRequest, Location>().ReverseMap();
 			CreateMap<LocationUpdateRequest, Location>().ReverseMap();
+			*/
 
 			// Property mappings
 			CreateMap<Property, PropertyResponse>()
@@ -51,9 +53,10 @@ namespace eRents.Application.Shared
 												 ImageData = i.ImageData,
 												 DateUploaded = i.DateUploaded ?? DateTime.Now
 											 }).ToList()))
-							 .ForMember(dest => dest.CityName, opt => opt.MapFrom(src => src.Location.City))
-							 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.Location.State))
-							 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.Location.Country))
+							 // Updated to use AddressDetail.GeoRegion
+							 .ForMember(dest => dest.CityName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.City : null))
+							 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.State : null))
+							 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.Country : null))
 							 .ReverseMap();
 
 			CreateMap<PropertyInsertRequest, Property>()
@@ -73,10 +76,13 @@ namespace eRents.Application.Shared
 			CreateMap<User, UserResponse>()
 								 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.Name} {src.LastName}"))
 								 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserType))
-								 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Location != null ? $"{src.Location.City}, {src.Location.State}, {src.Location.Country}" : string.Empty))
+								 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => 
+									 src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? 
+									 $"{src.AddressDetail.StreetLine1}, {src.AddressDetail.GeoRegion.City}, {src.AddressDetail.GeoRegion.State}, {src.AddressDetail.GeoRegion.Country}" : string.Empty))
 								 .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfilePicture != null ? Convert.ToBase64String(src.ProfilePicture) : null)) // Convert to Base64 string for response
 								 .ReverseMap()
-								 .ForMember(dest => dest.Location, opt => opt.Ignore());
+								 // Ignore AddressDetail when mapping from UserResponse to User, as UserResponse likely won't have it in a mappable format yet.
+								 .ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); 
 
 			// UserInsertRequest -> User mapping
 			CreateMap<UserInsertRequest, User>()
@@ -87,8 +93,9 @@ namespace eRents.Application.Shared
 					.ForMember(dest => dest.UpdatedDate, opt => opt.MapFrom(src => DateTime.Now))
 					.ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src =>
 							!string.IsNullOrWhiteSpace(src.ProfilePicture) ? Convert.FromBase64String(src.ProfilePicture) : null))  // Convert from Base64 string
-					.ForMember(dest => dest.LocationId, opt => opt.Ignore()) // Set LocationId in service layer
-					.ForMember(dest => dest.Location, opt => opt.Ignore()); // Handle Location in service layer
+					// Ignore AddressDetailId for now; will be handled in service layer
+					.ForMember(dest => dest.AddressDetailId, opt => opt.Ignore()) 
+					.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); 
 
 			// UserUpdateRequest -> User mapping
 			CreateMap<UserUpdateRequest, User>()
@@ -99,8 +106,9 @@ namespace eRents.Application.Shared
 					.ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => !string.IsNullOrWhiteSpace(src.ProfilePicture) ? Convert.FromBase64String(src.ProfilePicture) : null)) // Convert from Base64 string
 					.ForMember(dest => dest.PasswordHash, opt => opt.Ignore())  // Ignore if not being updated
 					.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore())  // Ignore if not being updated
-					.ForMember(dest => dest.LocationId, opt => opt.Ignore()) // Set LocationId in service layer
-					.ForMember(dest => dest.Location, opt => opt.Ignore()); // Handle Location in service layer
+					// Ignore AddressDetailId for now; will be handled in service layer
+					.ForMember(dest => dest.AddressDetailId, opt => opt.Ignore()) 
+					.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); 
 		}
 	}
 }

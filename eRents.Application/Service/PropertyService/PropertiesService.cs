@@ -111,10 +111,10 @@ namespace eRents.Application.Service
 				decimal radiusInDegrees = search.Radius.HasValue ? search.Radius.Value / 111 : 10; // Convert km to degrees (approximate)
 
 				query = query.Where(p =>
-						p.Location != null && // Ensure Location is not null
-						p.Location.Latitude.HasValue && p.Location.Longitude.HasValue && // Ensure coordinates are available
-						(p.Location.Latitude.Value - search.Latitude.Value) * (p.Location.Latitude.Value - search.Latitude.Value) +
-						(p.Location.Longitude.Value - search.Longitude.Value) * (p.Location.Longitude.Value - search.Longitude.Value) <= radiusInDegrees * radiusInDegrees);
+						p.AddressDetail != null && // Ensure AddressDetail is not null
+						p.AddressDetail.Latitude.HasValue && p.AddressDetail.Longitude.HasValue && // Ensure coordinates are available
+						(p.AddressDetail.Latitude.Value - search.Latitude.Value) * (p.AddressDetail.Latitude.Value - search.Latitude.Value) +
+						(p.AddressDetail.Longitude.Value - search.Longitude.Value) * (p.AddressDetail.Longitude.Value - search.Longitude.Value) <= radiusInDegrees * radiusInDegrees);
 			}
 
 			if (!string.IsNullOrEmpty(search.SortBy))
@@ -128,8 +128,11 @@ namespace eRents.Application.Service
 						if (search.Latitude.HasValue && search.Longitude.HasValue)
 						{
 							query = query.OrderBy(p =>
-									(p.Location.Latitude.Value - search.Latitude.Value) * (p.Location.Latitude.Value - search.Latitude.Value) +
-									(p.Location.Longitude.Value - search.Longitude.Value) * (p.Location.Longitude.Value - search.Longitude.Value));
+									p.AddressDetail != null && p.AddressDetail.Latitude.HasValue && p.AddressDetail.Longitude.HasValue ? // Check for nulls before calculating distance
+									((p.AddressDetail.Latitude.Value - search.Latitude.Value) * (p.AddressDetail.Latitude.Value - search.Latitude.Value) +
+									(p.AddressDetail.Longitude.Value - search.Longitude.Value) * (p.AddressDetail.Longitude.Value - search.Longitude.Value))
+									: decimal.MaxValue // Properties without location data go to the end
+									);
 						}
 						break;
 					default:

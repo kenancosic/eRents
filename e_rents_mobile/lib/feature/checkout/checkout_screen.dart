@@ -59,7 +59,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               // Property card using the existing PropertyCard widget
               PropertyCard(
                 title: widget.property.name,
-                location: '${widget.property.city}, ${widget.property.address}',
+                location:
+                    '${widget.property.addressDetail?.streetLine1}, ${widget.property.addressDetail?.geoRegion?.country}',
                 details: widget.property.description ?? '',
                 price: widget.property.price.toString(),
                 rating: widget.property.averageRating?.toString() ?? '4.8',

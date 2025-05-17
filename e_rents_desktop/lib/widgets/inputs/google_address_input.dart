@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http; // Import http to make direct API calls
 import 'dart:convert'; // For parsing JSON
 

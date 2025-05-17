@@ -9,8 +9,6 @@ public partial class Property
 
     public int OwnerId { get; set; }
 
-    public string Address { get; set; } = null!;
-
     public string? Description { get; set; }
 
     public decimal Price { get; set; }
@@ -23,7 +21,8 @@ public partial class Property
 
     public string Name { get; set; } = null!;
 
-    public int? LocationId { get; set; }
+    public int AddressDetailId { get; set; }
+    public virtual AddressDetail AddressDetail { get; set; } = null!;
 
     public int? PropertyTypeId { get; set; }
 
@@ -44,8 +43,6 @@ public partial class Property
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
-
-    public virtual Location? Location { get; set; }
 
     public virtual User Owner { get; set; } = null!;
 

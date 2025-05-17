@@ -1,13 +1,10 @@
+import './address_detail.dart';
+
 class User {
   final int? userId;
   final String username;
   final String email;
   final String? phoneNumber;
-  final String? address;
-  final String? city;
-  final String? zipCode;
-  final String? streetName;
-  final String? streetNumber;
   final DateTime? dateOfBirth;
   final String? userType;
   final String? name;
@@ -15,16 +12,14 @@ class User {
   final String? password;
   final String? token;
   final bool? isPublic;
+  final int? addressDetailId;
+  final AddressDetail? addressDetail;
+
   User({
     this.userId,
     required this.username,
     required this.email,
     this.phoneNumber,
-    this.address,
-    this.city,
-    this.zipCode,
-    this.streetName,
-    this.streetNumber,
     this.dateOfBirth,
     this.userType,
     this.name,
@@ -32,28 +27,30 @@ class User {
     this.password,
     this.token,
     this.isPublic,
+    this.addressDetailId,
+    this.addressDetail,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      userId: json['userId'],
-      username: json['username'],
-      email: json['email'],
-      phoneNumber: json['phoneNumber'],
-      address: json['address'],
-      city: json['city'],
-      zipCode: json['zipCode'],
-      streetName: json['streetName'],
-      streetNumber: json['streetNumber'],
+      userId: json['userId'] as int?,
+      username: json['username'] as String,
+      email: json['email'] as String,
+      phoneNumber: json['phoneNumber'] as String?,
       dateOfBirth: json['dateOfBirth'] != null
-          ? DateTime.parse(json['dateOfBirth'])
+          ? DateTime.parse(json['dateOfBirth'] as String)
           : null,
-      userType: json['userType'],
-      name: json['name'],
-      lastName: json['lastName'],
-      password: json['password'],
-      token: json['resetToken'],
-      isPublic: json['isPublic'],
+      userType: json['userType'] as String?,
+      name: json['name'] as String?,
+      lastName: json['lastName'] as String?,
+      password: json['password'] as String?,
+      token: json['resetToken'] as String?,
+      isPublic: json['isPublic'] as bool?,
+      addressDetailId: json['addressDetailId'] as int?,
+      addressDetail: json['addressDetail'] != null
+          ? AddressDetail.fromJson(
+              json['addressDetail'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -63,11 +60,6 @@ class User {
       'username': username,
       'email': email,
       'phoneNumber': phoneNumber,
-      'address': address,
-      'city': city,
-      'zipCode': zipCode,
-      'streetName': streetName,
-      'streetNumber': streetNumber,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'userType': userType,
       'name': name,
@@ -75,6 +67,7 @@ class User {
       'password': password,
       'resetToken': token,
       'isPublic': isPublic,
+      'addressDetailId': addressDetailId,
     };
   }
 
@@ -83,11 +76,6 @@ class User {
     String? username,
     String? email,
     String? phoneNumber,
-    String? address,
-    String? city,
-    String? zipCode,
-    String? streetName,
-    String? streetNumber,
     DateTime? dateOfBirth,
     String? userType,
     String? name,
@@ -95,17 +83,14 @@ class User {
     String? password,
     String? token,
     bool? isPublic,
+    int? addressDetailId,
+    AddressDetail? addressDetail,
   }) {
     return User(
       userId: userId ?? this.userId,
       username: username ?? this.username,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
-      address: address ?? this.address,
-      city: city ?? this.city,
-      zipCode: zipCode ?? this.zipCode,
-      streetName: streetName ?? this.streetName,
-      streetNumber: streetNumber ?? this.streetNumber,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       userType: userType ?? this.userType,
       name: name ?? this.name,
@@ -113,6 +98,8 @@ class User {
       password: password ?? this.password,
       token: token ?? this.token,
       isPublic: isPublic ?? this.isPublic,
+      addressDetailId: addressDetailId ?? this.addressDetailId,
+      addressDetail: addressDetail ?? this.addressDetail,
     );
   }
 }

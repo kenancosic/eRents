@@ -1,5 +1,6 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
+import './address_detail.dart';
 
 enum PropertyStatus { available, rented, maintenance, unavailable }
 
@@ -15,7 +16,6 @@ class Property {
   final RentingType rentingType;
   final PropertyStatus status;
   final List<String> images;
-  final String address;
   final int bedrooms;
   final int bathrooms;
   final double area;
@@ -24,14 +24,9 @@ class Property {
   final List<String>? amenities;
   final DateTime? lastInspectionDate;
   final DateTime? nextInspectionDate;
-  final double? latitude;
-  final double? longitude;
-  final String? streetNumber;
-  final String? streetName;
-  final String? city;
-  final String? postalCode;
-  final String? country;
   final DateTime dateAdded;
+  final String? addressDetailId;
+  final AddressDetail? addressDetail;
 
   Property({
     required this.id,
@@ -43,7 +38,6 @@ class Property {
     required this.rentingType,
     required this.status,
     required this.images,
-    required this.address,
     required this.bedrooms,
     required this.bathrooms,
     required this.area,
@@ -52,19 +46,14 @@ class Property {
     this.amenities,
     this.lastInspectionDate,
     this.nextInspectionDate,
-    this.latitude,
-    this.longitude,
-    this.streetNumber,
-    this.streetName,
-    this.city,
-    this.postalCode,
-    this.country,
     required this.dateAdded,
+    this.addressDetailId,
+    this.addressDetail,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      id: json['id'] as String? ?? '',
+      id: json['id'] as String? ?? json['propertyId']?.toString() ?? '',
       ownerId: json['ownerId'] as String? ?? '',
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
@@ -82,7 +71,6 @@ class Property {
         orElse: () => PropertyStatus.available,
       ),
       images: List<String>.from(json['images'] as List? ?? []),
-      address: json['address'] as String? ?? '',
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
       area: (json['area'] as num?)?.toDouble() ?? 0.0,
@@ -103,16 +91,16 @@ class Property {
           json['nextInspectionDate'] != null
               ? DateTime.tryParse(json['nextInspectionDate'] as String? ?? '')
               : null,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      streetNumber: json['streetNumber'] as String?,
-      streetName: json['streetName'] as String?,
-      city: json['city'] as String?,
-      postalCode: json['postalCode'] as String?,
-      country: json['country'] as String?,
       dateAdded: DateTime.parse(
         json['dateAdded'] as String? ?? DateTime.now().toIso8601String(),
       ),
+      addressDetailId: json['addressDetailId']?.toString(),
+      addressDetail:
+          json['addressDetail'] != null
+              ? AddressDetail.fromJson(
+                json['addressDetail'] as Map<String, dynamic>,
+              )
+              : null,
     );
   }
 
@@ -127,7 +115,6 @@ class Property {
       'rentingType': rentingType.name,
       'status': status.toString().split('.').last,
       'images': images,
-      'address': address,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'area': area,
@@ -136,14 +123,9 @@ class Property {
       'amenities': amenities,
       'lastInspectionDate': lastInspectionDate?.toIso8601String(),
       'nextInspectionDate': nextInspectionDate?.toIso8601String(),
-      'latitude': latitude,
-      'longitude': longitude,
-      'streetNumber': streetNumber,
-      'streetName': streetName,
-      'city': city,
-      'postalCode': postalCode,
-      'country': country,
       'dateAdded': dateAdded.toIso8601String(),
+      'addressDetailId': addressDetailId,
+      'addressDetail': addressDetail?.toJson(),
     };
   }
 
@@ -157,7 +139,6 @@ class Property {
     RentingType? rentingType,
     PropertyStatus? status,
     List<String>? images,
-    String? address,
     int? bedrooms,
     int? bathrooms,
     double? area,
@@ -166,14 +147,9 @@ class Property {
     List<String>? amenities,
     DateTime? lastInspectionDate,
     DateTime? nextInspectionDate,
-    double? latitude,
-    double? longitude,
-    String? streetNumber,
-    String? streetName,
-    String? city,
-    String? postalCode,
-    String? country,
     DateTime? dateAdded,
+    String? addressDetailId,
+    AddressDetail? addressDetail,
   }) {
     return Property(
       id: id ?? this.id,
@@ -185,7 +161,6 @@ class Property {
       rentingType: rentingType ?? this.rentingType,
       status: status ?? this.status,
       images: images ?? this.images,
-      address: address ?? this.address,
       bedrooms: bedrooms ?? this.bedrooms,
       bathrooms: bathrooms ?? this.bathrooms,
       area: area ?? this.area,
@@ -194,14 +169,9 @@ class Property {
       amenities: amenities ?? this.amenities,
       lastInspectionDate: lastInspectionDate ?? this.lastInspectionDate,
       nextInspectionDate: nextInspectionDate ?? this.nextInspectionDate,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-      streetNumber: streetNumber ?? this.streetNumber,
-      streetName: streetName ?? this.streetName,
-      city: city ?? this.city,
-      postalCode: postalCode ?? this.postalCode,
-      country: country ?? this.country,
       dateAdded: dateAdded ?? this.dateAdded,
+      addressDetailId: addressDetailId ?? this.addressDetailId,
+      addressDetail: addressDetail ?? this.addressDetail,
     );
   }
 
@@ -215,11 +185,12 @@ class Property {
     rentingType: RentingType.monthly,
     status: PropertyStatus.available,
     images: [],
-    address: '',
     bedrooms: 0,
     bathrooms: 0,
     area: 0.0,
     maintenanceIssues: [],
     dateAdded: DateTime.now(),
+    addressDetailId: null,
+    addressDetail: null,
   );
 }

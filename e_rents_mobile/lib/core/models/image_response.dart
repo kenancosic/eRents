@@ -3,7 +3,7 @@ import 'dart:typed_data';
 class ImageResponse {
   final int imageId;
   final String fileName;
-  final ByteData imageData ;
+  final ByteData imageData;
   final DateTime dateUploaded;
 
   ImageResponse({
@@ -20,5 +20,14 @@ class ImageResponse {
       imageData: json['imageData'],
       dateUploaded: DateTime.parse(json['dateUploaded']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'imageId': imageId,
+      'fileName': fileName,
+      'imageData': null,
+      'dateUploaded': dateUploaded.toIso8601String(),
+    };
   }
 }

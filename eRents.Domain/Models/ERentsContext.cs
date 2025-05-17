@@ -25,7 +25,9 @@ public partial class ERentsContext : DbContext
 
     public virtual DbSet<IssueStatus> IssueStatuses { get; set; }
 
-    public virtual DbSet<Location> Locations { get; set; }
+    public virtual DbSet<GeoRegion> GeoRegions { get; set; }
+
+    public virtual DbSet<AddressDetail> AddressDetails { get; set; }
 
     public virtual DbSet<MaintenanceIssue> MaintenanceIssues { get; set; }
 
@@ -129,21 +131,6 @@ public partial class ERentsContext : DbContext
                 .HasConstraintName("FK__Images__Maintenance__MaintenanceIssueId");
         });
 
-        modelBuilder.Entity<Location>(entity =>
-        {
-            entity.HasKey(e => e.LocationId).HasName("PK__Location__E7FEA47700C11F68");
-
-            entity.ToTable("Location");
-
-            entity.Property(e => e.LocationId).HasColumnName("location_id");
-            entity.Property(e => e.City).HasMaxLength(100);
-            entity.Property(e => e.Country).HasMaxLength(100);
-            entity.Property(e => e.Latitude).HasColumnType("decimal(9, 6)");
-            entity.Property(e => e.Longitude).HasColumnType("decimal(9, 6)");
-            entity.Property(e => e.PostalCode).HasMaxLength(20);
-            entity.Property(e => e.State).HasMaxLength(100);
-        });
-
         modelBuilder.Entity<Message>(entity =>
         {
             entity.HasKey(e => e.MessageId).HasName("PK__Messages__0BBF6EE695058BE7");
@@ -213,10 +200,6 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.PropertyId).HasName("PK__Properti__735BA4633A94E7C3");
 
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
-            entity.Property(e => e.Address)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("address");
             entity.Property(e => e.DateAdded)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
@@ -227,7 +210,6 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.Facilities)
                 .IsUnicode(false)
                 .HasColumnName("facilities");
-            entity.Property(e => e.LocationId).HasColumnName("location_id");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
@@ -240,9 +222,10 @@ public partial class ERentsContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("status");
 
-            entity.HasOne(d => d.Location).WithMany(p => p.Properties)
-                .HasForeignKey(d => d.LocationId)
-                .HasConstraintName("FK__Propertie__Locat__625A9A57");
+            entity.HasOne(d => d.AddressDetail)
+                .WithMany(p => p.Properties)
+                .HasForeignKey(d => d.AddressDetailId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(d => d.Owner).WithMany(p => p.Properties)
                 .HasForeignKey(d => d.OwnerId)
@@ -347,7 +330,6 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.LastName)
                 .HasMaxLength(100)
                 .HasColumnName("last_name");
-            entity.Property(e => e.LocationId).HasColumnName("location_id");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .HasColumnName("name");
@@ -377,9 +359,11 @@ public partial class ERentsContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("username");
 
-            entity.HasOne(d => d.Location).WithMany(p => p.Users)
-                .HasForeignKey(d => d.LocationId)
-                .HasConstraintName("FK_User_LocationID");
+            entity.HasOne(d => d.AddressDetail)
+                .WithMany(p => p.Users)
+                .HasForeignKey(d => d.AddressDetailId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(d => d.UserTypeNavigation)
                 .WithMany(p => p.Users)
@@ -504,6 +488,31 @@ public partial class ERentsContext : DbContext
                 j => j.HasOne(tpa => tpa.Amenity).WithMany().HasForeignKey(tpa => tpa.AmenityId),
                 j => j.HasOne(tpa => tpa.TenantPreference).WithMany().HasForeignKey(tpa => tpa.TenantPreferenceId)
             );
+
+        modelBuilder.Entity<GeoRegion>(entity =>
+        {
+            entity.HasKey(e => e.GeoRegionId);
+            entity.Property(e => e.City).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.State).HasMaxLength(100);
+            entity.Property(e => e.Country).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.PostalCode).HasMaxLength(20);
+
+            entity.HasIndex(e => new { e.City, e.State, e.Country, e.PostalCode }).IsUnique();
+        });
+
+        modelBuilder.Entity<AddressDetail>(entity =>
+        {
+            entity.HasKey(e => e.AddressDetailId);
+            entity.Property(e => e.StreetLine1).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.StreetLine2).HasMaxLength(255);
+            entity.Property(e => e.Latitude).HasColumnType("decimal(9, 6)");
+            entity.Property(e => e.Longitude).HasColumnType("decimal(9, 6)");
+
+            entity.HasOne(d => d.GeoRegion)
+                .WithMany(p => p.AddressDetails)
+                .HasForeignKey(d => d.GeoRegionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         OnModelCreatingPartial(modelBuilder);
     }

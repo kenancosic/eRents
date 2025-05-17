@@ -1,7 +1,6 @@
 using eRents.Application.Service;
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
-using eRents.Application.Service.LocationService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.ReviewService;
@@ -53,7 +52,6 @@ builder.Services.AddTransient<IBookingRepository, BookingRepository>();
 builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IImageRepository, ImageRepository>();
 builder.Services.AddTransient<IMessageRepository, MessageRepository>();
-builder.Services.AddTransient<IBaseRepository<Location>, LocationRepository>();
 
 // Register the services
 builder.Services.AddTransient<IUserService, UserService>();
@@ -62,7 +60,6 @@ builder.Services.AddTransient<IBookingService, BookingService>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
-builder.Services.AddTransient<ILocationService, LocationService>();
 
 
 // Configure and register PayPalService
@@ -83,8 +80,8 @@ using (var scope = app.Services.CreateScope())
 	var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
 	context.Database.EnsureCreated();
 
-	// Check if the database is empty
-	bool isEmpty = !context.Locations.Any(); // Example for 'Countries', modify for other tables
+	// Check if the database is empty, using GeoRegions as an example
+	bool isEmpty = !context.GeoRegions.Any(); 
 
 	if (isEmpty)
 	{

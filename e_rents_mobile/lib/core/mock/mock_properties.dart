@@ -7,10 +7,7 @@ class MockProperties {
     return Property(
       propertyId: id,
       ownerId: 1,
-      cityId: 1,
       name: 'Luxury Apartment with Sea View',
-      city: 'Miami',
-      address: '123 Ocean Drive',
       price: 2500.00,
       description: 'Beautiful apartment with modern amenities, '
           'featuring floor-to-ceiling windows and a spacious balcony. '

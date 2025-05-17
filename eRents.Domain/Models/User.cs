@@ -37,13 +37,13 @@ public partial class User
 
     public bool? IsPublic { get; set; }
 
-    public int? LocationId { get; set; }
+    public int? AddressDetailId { get; set; }
 
     public int? UserTypeId { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
-    public virtual Location? Location { get; set; }
+    public virtual AddressDetail? AddressDetail { get; set; }
 
     public virtual UserType? UserTypeNavigation { get; set; }
 
