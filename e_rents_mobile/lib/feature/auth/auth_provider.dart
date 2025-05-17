@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/feature/auth/data/auth_service.dart';
+import 'package:e_rents_mobile/feature/auth/auth_service.dart';
 
 class AuthProvider extends BaseProvider {
   final AuthService _authService;

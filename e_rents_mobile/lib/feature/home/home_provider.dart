@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/filter_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/feature/home/data/home_service.dart';
+import 'package:e_rents_mobile/feature/home/home_service.dart';
 
 class HomeProvider extends BaseProvider {
   final HomeService _homeService;

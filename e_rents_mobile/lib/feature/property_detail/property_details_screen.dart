@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
-import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_availability/property_availability.dart';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
-import '../data/model/booking_model.dart';
+import '../../../core/models/booking_model.dart';
 
 class BookingListItem extends StatelessWidget {
   final Booking booking;

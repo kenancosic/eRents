@@ -7,17 +7,15 @@ public partial class Tenant
 {
     public int TenantId { get; set; }
 
-    public string Name { get; set; } = null!;
-
-    public string? ContactInfo { get; set; }
-
-    public DateOnly? DateOfBirth { get; set; }
+    public int UserId { get; set; }
 
     public int? PropertyId { get; set; }
 
     public DateOnly? LeaseStartDate { get; set; }
 
     public string? TenantStatus { get; set; }
+
+    public virtual User User { get; set; } = null!;
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 

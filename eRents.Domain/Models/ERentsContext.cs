@@ -285,28 +285,27 @@ public partial class ERentsContext : DbContext
 
         modelBuilder.Entity<Tenant>(entity =>
         {
-            entity.HasKey(e => e.TenantId).HasName("PK__Tenants__D6F29F3EFB09F8FF");
+            entity.HasKey(e => e.TenantId).HasName("PK__Tenants__E3F9F43B311A209A");
+
+            entity.ToTable("Tenants");
 
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
-            entity.Property(e => e.ContactInfo)
-                .HasMaxLength(255)
-                .IsUnicode(false)
-                .HasColumnName("contact_info");
-            entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
             entity.Property(e => e.LeaseStartDate).HasColumnName("lease_start_date");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .IsUnicode(false)
-                .HasColumnName("name");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.TenantStatus)
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("tenant_status");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Tenants)
                 .HasForeignKey(d => d.PropertyId)
-                .HasConstraintName("FK__Tenants__propert__5441852A");
+                .HasConstraintName("FK__Tenants__propert__619B8048");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Tenancies)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Tenants_Users_UserId");
         });
 
         modelBuilder.Entity<User>(entity =>

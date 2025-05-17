@@ -61,4 +61,6 @@ public partial class User
     public virtual ICollection<TenantPreference> TenantPreferences { get; set; } = new List<TenantPreference>();
 
     public virtual ICollection<UserSavedProperty> UserSavedProperties { get; set; } = new List<UserSavedProperty>();
+
+    public virtual ICollection<Tenant> Tenancies { get; set; } = new List<Tenant>();
 }

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/feature/profile/data/user_service.dart';
+import 'package:e_rents_mobile/feature/profile/user_service.dart';
 
 class UserProvider extends BaseProvider {
   final UserService _userService;

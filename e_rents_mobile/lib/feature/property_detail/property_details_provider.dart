@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/feature/property_detail/data/property_service.dart';
-import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review_ui_model.dart';
+import 'package:e_rents_mobile/feature/property_detail/property_service.dart';
 import 'package:flutter/material.dart';
 
 class PropertyDetailProvider with ChangeNotifier {

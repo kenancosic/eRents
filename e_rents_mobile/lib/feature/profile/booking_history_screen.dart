@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
-import 'package:e_rents_mobile/feature/profile/data/model/booking_model.dart';
+import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/feature/profile/widgets/booking_list_item.dart';
 import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart'; // TODO: For state management

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/feature/property_detail/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/review_item.dart';
 
 class PropertyReviewsSection extends StatelessWidget {
