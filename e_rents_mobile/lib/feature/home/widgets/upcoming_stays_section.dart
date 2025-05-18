@@ -5,100 +5,69 @@ import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart'; // For date formatting
+import 'package:provider/provider.dart'; // Added import
+import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart'; // Added import
 
 class UpcomingStaysSection extends StatelessWidget {
   UpcomingStaysSection({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final List<Booking> upcomingBookings = [
-      Booking(
-        bookingId: 101,
-        propertyId: 201,
-        userId: 1,
-        propertyName: 'Sunny Beachside Condo',
-        propertyImageUrl: 'assets/images/house.jpg', // Ensure this image exists
-        startDate: DateTime.now().add(const Duration(days: 10)),
-        endDate: DateTime.now().add(const Duration(days: 17)),
-        totalPrice: 850.00,
-        status: BookingStatus.Upcoming,
-        currency: 'USD',
-        bookingDate: DateTime.now().subtract(const Duration(days: 5)),
-      ),
-      Booking(
-        bookingId: 102,
-        propertyId: 202,
-        userId: 1,
-        propertyName: 'Mountain View Cabin Retreat',
-        propertyImageUrl:
-            'assets/images/appartment.jpg', // Ensure this image exists
-        startDate: DateTime.now().add(const Duration(days: 45)),
-        endDate: DateTime.now().add(const Duration(days: 50)),
-        totalPrice: 600.00,
-        status: BookingStatus.Upcoming,
-        currency: 'USD',
-        bookingDate: DateTime.now().subtract(const Duration(days: 10)),
-      ),
-      Booking(
-        bookingId: 103,
-        propertyId: 203,
-        userId: 1,
-        propertyName: 'Historic Downtown Studio',
-        propertyImageUrl: 'assets/images/house.jpg', // Ensure this image exists
-        startDate: DateTime.now().add(const Duration(days: 90)),
-        endDate: DateTime.now().add(const Duration(days: 97)),
-        totalPrice: 475.00,
-        status: BookingStatus.Upcoming,
-        currency: 'USD',
-        bookingDate: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-    ];
+    return Consumer<UserBookingsProvider>(
+      builder: (context, bookingsProvider, child) {
+        // Filter for bookings that are Upcoming and not Active
+        final List<Booking> upcomingDisplayBookings = bookingsProvider
+            .upcomingBookings
+            .where((b) => b.status == BookingStatus.Upcoming)
+            .toList();
 
-    if (upcomingBookings.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(
-              title: 'Upcoming Stays',
-              onSeeAll: () {
-                context.push('/profile/booking-history');
-              }),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-            child: Center(
-              child: Text('No upcoming stays planned yet.',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
+        if (upcomingDisplayBookings.isEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionHeader(
+                  title: 'Upcoming Stays',
+                  onSeeAll: () {
+                    context.push('/profile/booking-history');
+                  }),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+                child: Center(
+                  child: Text('No upcoming stays planned yet.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+                title: 'Upcoming Stays',
+                onSeeAll: () {
+                  context.push('/profile/booking-history');
+                }),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 210, // Adjusted height slightly for card design
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: upcomingDisplayBookings.length,
+                itemBuilder: (context, index) {
+                  final booking = upcomingDisplayBookings[index];
+                  return SizedBox(
+                    width: MediaQuery.of(context).size.width *
+                        0.75, // Card width adjustment
+                    child: _UpcomingStayCard(booking: booking),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-            title: 'Upcoming Stays',
-            onSeeAll: () {
-              context.push('/profile/booking-history');
-            }),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 210, // Adjusted height slightly for card design
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: upcomingBookings.length,
-            itemBuilder: (context, index) {
-              final booking = upcomingBookings[index];
-              return SizedBox(
-                width: MediaQuery.of(context).size.width *
-                    0.75, // Card width adjustment
-                child: _UpcomingStayCard(booking: booking),
-              );
-            },
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

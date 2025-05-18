@@ -301,6 +301,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 "View/Manage Booking ID: ${bookingToDisplay.bookingId} (Not implemented)")),
                       );
                     }),
+                    _footerButton(context, "Cancel Stay", Icons.cancel_outlined,
+                        () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                "Cancel Booking ID: ${bookingToDisplay.bookingId} (Not implemented)")),
+                      );
+                    }),
                   ],
                 );
               }

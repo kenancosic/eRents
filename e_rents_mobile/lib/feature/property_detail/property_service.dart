@@ -157,6 +157,90 @@ class PropertyService {
         status: "Maintenance",
         dateAdded: DateTime.now().subtract(const Duration(days: 30)),
       ),
+      102: Property(
+        propertyId: 102,
+        ownerId: 6,
+        name: 'Beachside Villa Getaway (Service)',
+        price: 1200.00,
+        description:
+            'A stunning villa right by the beach, perfect for your vacation. Mock data from PropertyService.',
+        averageRating: 4.9,
+        images: [
+          ImageResponse(
+              imageId: 1021,
+              fileName: 'assets/images/house.jpg',
+              imageData: ByteData(0),
+              dateUploaded: DateTime.now()),
+        ],
+        addressDetail: AddressDetail(
+          addressDetailId: 102,
+          geoRegionId: 102,
+          streetLine1: '1 Beach Rd',
+          geoRegion: GeoRegion(
+              geoRegionId: 102,
+              city: 'Paradise City',
+              country: 'USA',
+              state: 'FL'),
+        ),
+        facilities: "Private Pool, Direct Beach Access, Ocean View",
+        status: "Available",
+        dateAdded: DateTime.now().subtract(const Duration(days: 45)),
+      ),
+      103: Property(
+        propertyId: 103,
+        ownerId: 7,
+        name: 'Mountain Cabin Retreat (Service)',
+        price: 750.00,
+        description:
+            'Cozy cabin with breathtaking mountain views. Mock data from PropertyService.',
+        averageRating: 4.7,
+        images: [
+          ImageResponse(
+              imageId: 1031,
+              fileName: 'assets/images/appartment.jpg',
+              imageData: ByteData(0),
+              dateUploaded: DateTime.now()),
+        ],
+        addressDetail: AddressDetail(
+          addressDetailId: 103,
+          geoRegionId: 103,
+          streetLine1: '5 Mountain Pass',
+          geoRegion: GeoRegion(
+              geoRegionId: 103,
+              city: 'Peak Valley',
+              country: 'USA',
+              state: 'CO'),
+        ),
+        facilities: "Fireplace, Hot Tub, Ski-in/Ski-out",
+        status: "Available",
+        dateAdded: DateTime.now().subtract(const Duration(days: 60)),
+      ),
+      108: Property(
+        propertyId: 108,
+        ownerId: 8,
+        name: 'Starts Today City Pad (Service)',
+        price: 250.00,
+        description:
+            'Modern and convenient pad in the city, available from today! Mock data from PropertyService.',
+        averageRating: 4.5,
+        images: [
+          ImageResponse(
+              imageId: 1081,
+              fileName: 'assets/images/appartment.jpg',
+              imageData: ByteData(0),
+              dateUploaded: DateTime.now()),
+        ],
+        addressDetail: AddressDetail(
+          addressDetailId: 108,
+          geoRegionId: 108,
+          streetLine1: '200 Central Ave',
+          geoRegion: GeoRegion(
+              geoRegionId: 108, city: 'Downtown', country: 'USA', state: 'TX'),
+        ),
+        facilities: "Gym, Rooftop Terrace, Concierge",
+        status: "Available",
+        dateAdded: DateTime.now().subtract(const Duration(days: 10)),
+      ),
     };
 
     if (mockProperties.containsKey(id)) {
