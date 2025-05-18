@@ -1,39 +1,41 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/models/auth/login_request_model.dart';
+import 'package:e_rents_desktop/models/auth/login_response_model.dart';
+import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
-import 'package:e_rents_desktop/utils/error_handler.dart';
 
 class AuthProvider extends BaseProvider<User> {
   AuthService _authService;
-  static User? _devCurrentUser; // Static user for development
-  String? _error;
+  User? _currentUser;
+  bool _isAuthenticated = false;
 
-  AuthProvider(ApiService super.apiService)
+  AuthProvider(ApiService apiService)
     : _authService = AuthService(
         apiService.baseUrl,
         apiService.secureStorageService,
-      ) {
-    // Initialize authentication state
+      ),
+      super(apiService) {
     _initializeAuth();
   }
 
   void _initializeAuth() async {
-    try {
-      final isAuth = await isAuthenticated();
-      if (isAuth && AuthService.isDevelopmentMode) {
-        _devCurrentUser ??= MockDataService.getMockUsers().first;
+    await execute(() async {
+      _isAuthenticated = await _authService.isAuthenticated();
+      if (_isAuthenticated) {
+        // Optionally fetch user profile here
       }
-    } catch (e) {
-      _error = ErrorHandler.getErrorMessage(e);
-    }
+    });
   }
 
-  set authService(AuthService service) => _authService = service;
+  set authService(AuthService service) {
+    _authService = service;
+    notifyListeners();
+  }
 
   @override
-  String get endpoint => '/auth';
+  String get endpoint => '/users'; // General endpoint for user data if BaseProvider CRUD is used
 
   @override
   User fromJson(Map<String, dynamic> json) => User.fromJson(json);
@@ -42,73 +44,59 @@ class AuthProvider extends BaseProvider<User> {
   Map<String, dynamic> toJson(User item) => item.toJson();
 
   @override
-  List<User> getMockItems() => MockDataService.getMockUsers();
+  List<User> getMockItems() => []; // No mock users for auth provider specifically
 
-  User? get currentUser =>
-      AuthService.isDevelopmentMode ? _devCurrentUser : null;
-  String? get error => _error;
+  User? get currentUser => _currentUser;
+  bool get isAuthenticatedState => _isAuthenticated;
 
-  Future<bool> login(String email, String password) async {
-    try {
-      _error = null;
-      final result = await _authService.login(email, password);
-      if (result['token'] != null) {
-        if (AuthService.isDevelopmentMode) {
-          _devCurrentUser = User.fromJson(result['user']);
-        }
-        notifyListeners();
-        return true;
-      }
-      _error = 'Invalid email or password';
-      return false;
-    } catch (e) {
-      _error = ErrorHandler.getErrorMessage(e);
-      return false;
+  Future<bool> login(LoginRequestModel request) async {
+    bool success = false;
+    await execute(() async {
+      await _authService.login(request);
+      _isAuthenticated = true;
+      // User details are not in LoginResponse, might need separate fetch
+      // _currentUser = await _fetchUserDetails();
+      success = true;
+    });
+    if (!success && state != ViewState.Error) {
+      _isAuthenticated = false;
+    } else if (state == ViewState.Error) {
+      _isAuthenticated = false;
     }
+    notifyListeners();
+    return success;
   }
 
-  Future<bool> register(User user) async {
-    try {
-      _error = null;
-      final success = await _authService.register(user.toJson());
-      if (success) {
-        if (AuthService.isDevelopmentMode) {
-          _devCurrentUser = user;
-        }
-        notifyListeners();
-      } else {
-        _error = 'Registration failed';
-      }
-      return success;
-    } catch (e) {
-      _error = ErrorHandler.getErrorMessage(e);
-      return false;
-    }
+  Future<User?> register(RegisterRequestModel request) async {
+    User? registeredUser;
+    await execute(() async {
+      registeredUser = await _authService.register(request);
+      _currentUser = registeredUser;
+      _isAuthenticated = true; // Assuming registration implies authentication
+    });
+    notifyListeners();
+    return registeredUser;
   }
 
   Future<void> logout() async {
-    try {
-      _error = null;
+    await execute(() async {
       await _authService.logout();
-      if (AuthService.isDevelopmentMode) {
-        _devCurrentUser = null;
+      _currentUser = null;
+      _isAuthenticated = false;
+    });
+    notifyListeners();
+  }
+
+  Future<bool> checkAndUpdateAuthStatus() async {
+    await execute(() async {
+      _isAuthenticated = await _authService.isAuthenticated();
+      if (!_isAuthenticated) {
+        _currentUser = null;
       }
-      notifyListeners();
-    } catch (e) {
-      _error = ErrorHandler.getErrorMessage(e);
-    }
+      // Else, if authenticated, _currentUser might be stale.
+      // Consider fetching/refreshing user data here if needed.
+    });
+    notifyListeners();
+    return _isAuthenticated;
   }
-
-  Future<bool> isAuthenticated() async {
-    try {
-      _error = null;
-      return await _authService.isAuthenticated();
-    } catch (e) {
-      _error = ErrorHandler.getErrorMessage(e);
-      return false;
-    }
-  }
-
-  // Alias for items to maintain backward compatibility
-  List<User> get users => items;
 }

@@ -53,6 +53,12 @@ builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IImageRepository, ImageRepository>();
 builder.Services.AddTransient<IMessageRepository, MessageRepository>();
 
+// Register UserTypeRepository or BaseRepository<UserType>
+// If you have a specific UserTypeRepository:
+// builder.Services.AddTransient<IUserTypeRepository, UserTypeRepository>(); 
+// If using the generic BaseRepository for UserType:
+builder.Services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();
+
 // Register the services
 builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddTransient<IPropertyService, PropertyService>();

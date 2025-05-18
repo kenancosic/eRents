@@ -75,14 +75,14 @@ namespace eRents.Application.Shared
 
 			CreateMap<User, UserResponse>()
 								 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.Name} {src.LastName}"))
-								 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserType))
+								 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserTypeNavigation != null ? src.UserTypeNavigation.TypeName : null))
 								 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => 
 									 src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? 
 									 $"{src.AddressDetail.StreetLine1}, {src.AddressDetail.GeoRegion.City}, {src.AddressDetail.GeoRegion.State}, {src.AddressDetail.GeoRegion.Country}" : string.Empty))
-								 .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfilePicture != null ? Convert.ToBase64String(src.ProfilePicture) : null)) // Convert to Base64 string for response
+								 .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfilePicture != null ? Convert.ToBase64String(src.ProfilePicture) : null))
 								 .ReverseMap()
-								 // Ignore AddressDetail when mapping from UserResponse to User, as UserResponse likely won't have it in a mappable format yet.
-								 .ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); 
+								 .ForMember(dest => dest.AddressDetail, opt => opt.Ignore())
+								 .ForMember(dest => dest.UserTypeNavigation, opt => opt.Ignore());
 
 			// UserInsertRequest -> User mapping
 			CreateMap<UserInsertRequest, User>()

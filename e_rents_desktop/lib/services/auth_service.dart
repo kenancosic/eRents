@@ -1,103 +1,82 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:e_rents_desktop/models/auth/change_password_request_model.dart';
+import 'package:e_rents_desktop/models/auth/forgot_password_request_model.dart';
+import 'package:e_rents_desktop/models/auth/login_request_model.dart';
+import 'package:e_rents_desktop/models/auth/login_response_model.dart';
+import 'package:e_rents_desktop/models/auth/register_request_model.dart';
+import 'package:e_rents_desktop/models/auth/reset_password_request_model.dart';
+import 'package:e_rents_desktop/models/user.dart'; // Assuming User model exists
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class AuthService extends ApiService {
-  // Development mode flag
-  static bool isDevelopmentMode = true;
-  // In-memory token storage for development
-  static String? _devToken;
-  static Map<String, dynamic>? _devUser;
-
-  // Add getter to check token existence
-  static bool get hasToken => isDevelopmentMode ? _devToken != null : false;
-
   AuthService(super.baseUrl, super.storageService);
 
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
+  Future<LoginResponseModel> login(LoginRequestModel request) async {
+    final response = await post('/Auth/Login', request.toJson());
+    final jsonResponse = json.decode(response.body);
+    final loginResponse = LoginResponseModel.fromJson(jsonResponse);
+    await secureStorageService.storeToken(loginResponse.token);
+    // Optionally store expiration or other details if needed
+    return loginResponse;
+  }
 
-    // Get mock users
-    final mockUsers = MockDataService.getMockUsers();
-
-    try {
-      // Find matching user
-      final user = mockUsers.firstWhere(
-        (user) => user.email == email && user.email.split('@')[0] == password,
-      );
-
-      // Generate mock token
-      final token = 'mock_token_${user.id}';
-
-      if (isDevelopmentMode) {
-        // Store in memory for development
-        _devToken = token;
-        _devUser = user.toJson();
-      } else {
-        // Store in secure storage for production
-        await secureStorageService.storeToken(token);
-      }
-
-      return {'token': token, 'user': user.toJson()};
-    } catch (e) {
-      // If no user found, throw invalid credentials error
-      throw Exception('Invalid email or password');
-    }
+  Future<User> register(RegisterRequestModel request) async {
+    final response = await post('/Auth/Register', request.toJson());
+    final jsonResponse = json.decode(response.body);
+    return User.fromJson(jsonResponse); // Assuming User.fromJson exists
   }
 
   Future<void> logout() async {
-    if (isDevelopmentMode) {
-      // Clear in-memory storage
-      _devToken = null;
-      _devUser = null;
-    } else {
-      // Clear secure storage
-      await secureStorageService.clearToken();
-    }
+    await secureStorageService.clearToken();
+    // Optionally call a backend logout endpoint if it exists
+    // await post('/Auth/Logout', {});
   }
 
   Future<bool> isAuthenticated() async {
-    if (isDevelopmentMode) {
-      return _devToken != null;
-    }
     final token = await secureStorageService.getToken();
+    // Optionally, add token validation logic here (e.g., check expiration)
     return token != null;
   }
 
-  @override
-  Future<Map<String, String>> getHeaders() async {
-    String? token;
-    if (isDevelopmentMode) {
-      token = _devToken;
-    } else {
-      token = await secureStorageService.getToken();
+  Future<void> changePassword(ChangePasswordRequestModel request) async {
+    await post('/Auth/ChangePassword', request.toJson(), authenticated: true);
+  }
+
+  Future<void> forgotPassword(ForgotPasswordRequestModel request) async {
+    // The C# controller expects a raw JSON string for email, e.g., "user@example.com"
+    final url = Uri.parse('$baseUrl/Auth/ForgotPassword');
+    final headers = await getHeaders();
+    // ApiService.getHeaders() sets Content-Type to application/json by default.
+    // If it didn't, we would need to set it here:
+    // headers['Content-Type'] = 'application/json';
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode(request.email), // Send the email string, JSON encoded
+    );
+
+    // Manually handle response similar to ApiService._handleResponse
+    if (response.statusCode >= 400) {
+      String errorMessage;
+      try {
+        final errorJson = json.decode(response.body);
+        errorMessage =
+            errorJson['message'] ??
+            'Unknown error occurred during forgot password';
+      } catch (e) {
+        errorMessage = 'Error: ${response.statusCode} during forgot password';
+      }
+      throw Exception(errorMessage);
     }
-
-    final headers = await super.getHeaders();
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
-    }
-    return headers;
   }
 
-  Future<bool> register(Map<String, dynamic> userData) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
-    return true; // Mock successful registration
+  Future<void> resetPassword(ResetPasswordRequestModel request) async {
+    await post('/Auth/ResetPassword', request.toJson());
   }
 
-  Future<bool> forgotPassword(String email) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
-    return true; // Mock successful password reset request
-  }
-
-  Future<bool> resetPassword(String token, String newPassword) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 500));
-    return true; // Mock successful password reset
-  }
+  // getHeaders() is inherited from ApiService and will add the auth token.
+  // _handleResponse is inherited from ApiService.
 }

@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using eRents.Application.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace eRents.WebApi.Controllers
 {
@@ -22,22 +24,58 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("Login")]
-		public IActionResult Login([FromBody] LoginRequest loginRequest)
+		public async Task<IActionResult> Login([FromBody] LoginRequest loginRequest)
 		{
-			var userResponse = _userService.LoginAsync(loginRequest.UsernameOrEmail, loginRequest.Password).Result;
+			UserResponse userResponse;
+			try
+			{
+				userResponse = await _userService.LoginAsync(loginRequest.UsernameOrEmail, loginRequest.Password);
+			}
+			catch (UserNotFoundException) 
+			{
+				return Unauthorized("Invalid credentials");
+			}
+			catch (InvalidPasswordException)
+			{
+				return Unauthorized("Invalid credentials");
+			}
+
 			if (userResponse != null)
 			{
-				// Generate JWT token
 				var tokenHandler = new JwtSecurityTokenHandler();
-				var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+				var keyString = _configuration["Jwt:Key"];
+				if (string.IsNullOrEmpty(keyString)) throw new InvalidOperationException("JWT Key is not configured.");
+				var key = Encoding.ASCII.GetBytes(keyString);
+
+				var issuer = _configuration["Jwt:Issuer"];
+				var audience = _configuration["Jwt:Audience"];
+				if (string.IsNullOrEmpty(issuer)) throw new InvalidOperationException("JWT Issuer is not configured.");
+				if (string.IsNullOrEmpty(audience)) throw new InvalidOperationException("JWT Audience is not configured.");
+
+				var tokenExpirationMinutes = _configuration.GetValue<int?>("Jwt:TokenExpirationMinutes");
+				var expires = DateTime.UtcNow.AddMinutes(tokenExpirationMinutes ?? 1440);
+
+				var claims = new List<Claim>
+				{
+					new Claim(ClaimTypes.Name, userResponse.Username),
+					new Claim(ClaimTypes.NameIdentifier, userResponse.UserId.ToString())
+				};
+
+				if (!string.IsNullOrEmpty(userResponse.Role))
+				{
+					claims.Add(new Claim(ClaimTypes.Role, userResponse.Role));
+				}
+				else
+				{
+					Console.WriteLine($"Warning: Role is missing for user {userResponse.Username}. Token generated without role claim.");
+				}
+
 				var tokenDescriptor = new SecurityTokenDescriptor
 				{
-					Subject = new ClaimsIdentity(new Claim[]
-						{
-												new Claim(ClaimTypes.Name, userResponse.Username),
-												new Claim(ClaimTypes.NameIdentifier, userResponse.UserId.ToString())
-						}),
-					Expires = DateTime.UtcNow.AddDays(7),
+					Subject = new ClaimsIdentity(claims),
+					Expires = expires,
+					Issuer = issuer,
+					Audience = audience,
 					SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
 				};
 				var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -54,9 +92,9 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("Register")]
-		public IActionResult Register([FromBody] UserInsertRequest request)
+		public async Task<IActionResult> Register([FromBody] UserInsertRequest request)
 		{
-			var userResponse = _userService.RegisterAsync(request).Result;
+			var userResponse = await _userService.RegisterAsync(request);
 			if (userResponse != null)
 			{
 				return Ok(userResponse);
@@ -66,23 +104,29 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("ChangePassword")]
-		public IActionResult ChangePassword([FromBody] ChangePasswordRequest request)
+		[Authorize]
+		public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
 		{
-			var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value); // Extract user ID from claims
-			_userService.ChangePasswordAsync(userId, request);
-			return Ok();
+			var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+			{
+				return Unauthorized("User ID claim is missing or invalid.");
+			}
+			await _userService.ChangePasswordAsync(userId, request);
+			return Ok("Password changed successfully.");
 		}
+
 		[HttpPost("ForgotPassword")]
-		public IActionResult ForgotPassword([FromBody] string email)
+		public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestClient request)
 		{
-			_userService.ForgotPasswordAsync(email);
-			return Ok("Password reset instructions have been sent to your email.");
+			await _userService.ForgotPasswordAsync(request.Email);
+			return Ok("Password reset instructions have been sent to your email if it exists in our system.");
 		}
 
 		[HttpPost("ResetPassword")]
-		public IActionResult ResetPassword([FromBody] ResetPasswordRequest request)
+		public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
 		{
-			_userService.ResetPasswordAsync(request);
+			await _userService.ResetPasswordAsync(request);
 			return Ok("Your password has been successfully reset.");
 		}
 	}

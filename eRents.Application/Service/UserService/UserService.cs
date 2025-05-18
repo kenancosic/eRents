@@ -11,6 +11,8 @@ using eRents.Shared.SearchObjects;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Service.UserService
 {
@@ -18,25 +20,33 @@ namespace eRents.Application.Service.UserService
 	{
 		private readonly IUserRepository _userRepository;
 		private readonly IRabbitMQService _rabbitMqService;
+		private readonly IBaseRepository<UserType> _userTypeRepository;
+		private readonly IConfiguration _configuration;
 
-		public UserService(IUserRepository userRepository, IMapper mapper, IRabbitMQService rabbitMqService)
+		public UserService(
+			IUserRepository userRepository,
+			IMapper mapper,
+			IRabbitMQService rabbitMqService,
+			IBaseRepository<UserType> userTypeRepository,
+			IConfiguration configuration)
 				: base(userRepository, mapper)
 		{
 			_userRepository = userRepository;
 			_rabbitMqService = rabbitMqService;
+			_userTypeRepository = userTypeRepository;
+			_configuration = configuration;
 		}
 
 		protected override async Task BeforeInsertAsync(UserInsertRequest insert, User entity)
 		{
-			if (insert.Password != insert.ConfirmPassword)
-				throw new UserException("Password and confirmation must be the same");
+			// Password hashing and confirmation are now handled directly in RegisterAsync.
+			// Name/LastName validation is also handled in RegisterAsync.
+			// This method can be used for other generic pre-insertion logic if needed in the future
+			// when using the generic InsertAsync from BaseCRUDService directly for a User.
 
-			entity.PasswordSalt = GenerateSalt();
-			entity.PasswordHash = GenerateHash(entity.PasswordSalt, insert.Password);
-
-			// Additional validation
-			if (string.IsNullOrWhiteSpace(insert.Name) || string.IsNullOrWhiteSpace(insert.LastName))
-				throw new ValidationException("Name and Last Name are required");
+			// For example, setting universal defaults if not handled by specific methods like RegisterAsync:
+			entity.CreatedDate = DateTime.UtcNow;
+			entity.UpdatedDate = DateTime.UtcNow;
 
 			await base.BeforeInsertAsync(insert, entity);
 		}
@@ -49,6 +59,8 @@ namespace eRents.Application.Service.UserService
 
 			if (!string.IsNullOrWhiteSpace(update.LastName))
 				entity.LastName = update.LastName;
+
+			entity.UpdatedDate = DateTime.UtcNow; // Always update UpdatedDate on any update
 
 			await base.BeforeUpdateAsync(update, entity);
 		}
@@ -71,29 +83,37 @@ namespace eRents.Application.Service.UserService
 			return base.AddFilter(query, search);
 		}
 
+		protected override IQueryable<User> AddInclude(IQueryable<User> query, UserSearchObject search = null)
+		{
+			// Include UserTypeNavigation for role information
+			query = query.Include(u => u.UserTypeNavigation);
+			// Also include AddressDetail and its GeoRegion for address information in UserResponse
+			query = query.Include(u => u.AddressDetail).ThenInclude(ad => ad.GeoRegion);
+			return base.AddInclude(query, search);
+		}
+
 		public async Task<UserResponse> LoginAsync(string usernameOrEmail, string password)
 		{
-			try
-			{
-				var user = await _userRepository.GetUserByUsernameOrEmailAsync(usernameOrEmail);
-				if (user == null)
-					throw new UserNotFoundException("User not found.");
+			var user = await _userRepository.GetUserByUsernameOrEmailAsync(usernameOrEmail);
+			if (user == null)
+				throw new UserNotFoundException("Invalid username or email.");
 
-				if (!ValidatePassword(password, user.PasswordSalt, user.PasswordHash))
-					throw new InvalidPasswordException("Invalid password.");
+			if (!ValidatePassword(password, user.PasswordSalt, user.PasswordHash))
+				throw new InvalidPasswordException("Invalid password.");
 
-				return _mapper.Map<UserResponse>(user);
-			}
-			catch (Exception ex)
-			{
-				throw new ServiceException("An error occurred while processing your request.", ex);
-			}
+			return _mapper.Map<UserResponse>(user);
 		}
 
 		public async Task<UserResponse> RegisterAsync(UserInsertRequest request)
 		{
 			if (string.IsNullOrWhiteSpace(request.Username))
 				throw new ValidationException("Username is required.");
+
+			if (string.IsNullOrWhiteSpace(request.Name))
+				throw new ValidationException("First name is required.");
+
+			if (string.IsNullOrWhiteSpace(request.LastName))
+				throw new ValidationException("Last name is required.");
 
 			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
 				throw new ValidationException("A valid email address is required.");
@@ -107,24 +127,33 @@ namespace eRents.Application.Service.UserService
 			if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
 				throw new ValidationException("A user with this username or email already exists.");
 
-			var allowedRoles = new List<string> { "Tenant", "Landlord" };
-			if (!allowedRoles.Contains(request.Role))
+			var userTypeEntity = _userTypeRepository.GetQueryable().FirstOrDefault(ut => ut.TypeName == request.Role);
+			if (userTypeEntity == null)
 			{
-				throw new ValidationException("Invalid role selected.");
+				throw new ValidationException($"Invalid role selected: {request.Role}. Valid roles must be predefined in UserTypes table.");
 			}
-
 
 			var salt = GenerateSalt();
 			var hash = GenerateHash(salt, request.Password);
 
-			var user = _mapper.Map<User>(request);
+			var user = _mapper.Map<User>(request); // MappingProfile sets CreatedDate/UpdatedDate from request or to DateTime.Now
 			user.PasswordSalt = salt;
 			user.PasswordHash = hash;
-			user.UserType = request.Role;
+			user.UserTypeId = userTypeEntity.UserTypeId;
+			// user.UserType = userTypeEntity.TypeName; // MappingProfile handles UserInsertRequest.Role to User.UserType
+			user.CreatedDate = DateTime.UtcNow; // Explicitly set UTC now
+			user.UpdatedDate = DateTime.UtcNow; // Explicitly set UTC now
 
 			await _userRepository.AddAsync(user);
+			await _userRepository.SaveChangesAsync(); // Ensure changes are saved to the database
 
-			return _mapper.Map<UserResponse>(user);
+			var response = _mapper.Map<UserResponse>(user);
+			if (string.IsNullOrEmpty(response.Role))
+			{
+				response.Role = userTypeEntity.TypeName;
+			}
+
+			return response;
 		}
 
 		public async Task ResetPasswordAsync(ResetPasswordRequest request)
@@ -135,11 +164,22 @@ namespace eRents.Application.Service.UserService
 				throw new UserException("Invalid or expired reset token.");
 			}
 
+			if (string.IsNullOrWhiteSpace(request.NewPassword))
+			{
+				throw new ValidationException("New password cannot be empty.");
+			}
+
+			if (request.NewPassword != request.ConfirmPassword)
+			{
+				throw new ValidationException("New password and confirmation password do not match.");
+			}
+
 			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
 			user.ResetToken = null;
 			user.ResetTokenExpiration = null;
 
 			await _userRepository.UpdateAsync(user);
+			await _userRepository.SaveChangesAsync(); // Ensure changes are saved
 		}
 
 		public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
@@ -174,7 +214,15 @@ namespace eRents.Application.Service.UserService
 
 		private async Task SendResetEmailAsync(string email, string token)
 		{
-			var resetLink = $"https://yourdomain.com/reset-password?token={token}";
+			var clientAppResetPasswordUrl = _configuration["AppSettings:ClientAppResetPasswordUrl"];
+			if (string.IsNullOrEmpty(clientAppResetPasswordUrl))
+			{
+				// Fallback or throw an exception if not configured
+				// For now, logging a warning and using a placeholder or a less ideal default.
+				Console.WriteLine("Warning: AppSettings:ClientAppResetPasswordUrl is not configured. Password reset email will use a placeholder link.");
+				clientAppResetPasswordUrl = "https://placeholder-app.com/reset-password"; // Or throw new InvalidOperationException(...)
+			}
+			var resetLink = $"{clientAppResetPasswordUrl}?token={token}";
 			var message = new EmailMessage
 			{
 				Email = email,

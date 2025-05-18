@@ -1,17 +1,32 @@
-﻿-- Seed Locations
-SET IDENTITY_INSERT Location ON;
+﻿-- Seed GeoRegions (New Table)
+SET IDENTITY_INSERT GeoRegion ON;
 
-INSERT INTO Location (location_id, City, State, Country, PostalCode, Latitude, Longitude) VALUES
-(1, 'Sarajevo', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '71000', 43.8563, 18.4131),
-(2, 'Banja Luka', 'Republika Srpska', 'Bosnia and Herzegovina', '78000', 44.7722, 17.1910),
-(3, 'Mostar', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '88000', 43.3438, 17.8078),
-(4, 'Tuzla', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '75000', 44.5384, 18.6739),
-(5, 'Zenica', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '72000', 44.2039, 17.9077),
-(6, 'Bihać', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '77000', 44.8169, 15.8700),
-(7, 'Trebinje', 'Republika Srpska', 'Bosnia and Herzegovina', '89000', 42.7116, 18.3436),
-(8, 'Prijedor', 'Republika Srpska', 'Bosnia and Herzegovina', '79000', 44.9792, 16.7147);
+INSERT INTO GeoRegion (GeoRegionId, City, State, Country, PostalCode) VALUES
+(1, 'Sarajevo', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '71000'),
+(2, 'Banja Luka', 'Republika Srpska', 'Bosnia and Herzegovina', '78000'),
+(3, 'Mostar', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '88000'),
+(4, 'Tuzla', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '75000'),
+(5, 'Zenica', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '72000'),
+(6, 'Bihać', 'Federation of Bosnia and Herzegovina', 'Bosnia and Herzegovina', '77000'),
+(7, 'Trebinje', 'Republika Srpska', 'Bosnia and Herzegovina', '89000'),
+(8, 'Prijedor', 'Republika Srpska', 'Bosnia and Herzegovina', '79000');
 
-SET IDENTITY_INSERT Location OFF;
+SET IDENTITY_INSERT GeoRegion OFF;
+
+-- Seed AddressDetails (New Table - primarily for Properties)
+SET IDENTITY_INSERT AddressDetail ON;
+
+INSERT INTO AddressDetail (AddressDetailId, GeoRegionId, StreetLine1, Latitude, Longitude) VALUES
+(1, 1, 'Maršala Tita 15', 43.8563, 18.4131),                            -- For Property 1 (Sarajevo)
+(2, 2, 'Vidikovac 3', 44.7722, 17.1910),                                -- For Property 2 (Banja Luka)
+(3, 3, 'Kujundžiluk 5', 43.3438, 17.8078),                              -- For Property 3 (Mostar)
+(4, 4, 'Hasana Kikića 10', 44.5384, 18.6739),                           -- For Property 4 (Tuzla)
+(5, 5, 'Trg Alije Izetbegovića 1', 44.2039, 17.9077),                   -- For Property 5 (Zenica)
+(6, 6, 'Una bb', 44.8169, 15.8700),                                     -- For Property 6 (Bihać)
+(7, 7, 'Njegoševa 7', 42.7116, 18.3436),                                -- For Property 7 (Trebinje)
+(8, 8, 'Kralja Petra I Oslobodyjenja 22', 44.9792, 16.7147);            -- For Property 8 (Prijedor)
+
+SET IDENTITY_INSERT AddressDetail OFF;
 
 -- Seed UserTypes
 SET IDENTITY_INSERT UserType ON;
@@ -23,18 +38,18 @@ INSERT INTO UserType (UserTypeId, TypeName) VALUES
 
 SET IDENTITY_INSERT UserType OFF;
 
--- Seed Users
+-- Seed Users (Removed location_id, Added IsPublic, Added AddressDetailId (nullable))
 SET IDENTITY_INSERT Users ON;
 
-INSERT INTO Users (user_id, username, email, PasswordHash, PasswordSalt, phone_number, location_id, date_of_birth, UserTypeId, name, last_name, created_date, updated_date) VALUES
-(1, 'amerhasic', 'amer.hasic@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761123123', 1, '1990-05-15', 1, 'Amer', 'Hasić', GETDATE(), GETDATE()),
-(2, 'lejlazukic', 'lejla.zukic@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38762321321', 2, '1988-11-20', 2, 'Lejla', 'Zukić', GETDATE(), GETDATE()),
-(3, 'adnanSA', 'adnan.sa@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761456456', 1, '1985-04-15', 1, 'Adnan', 'Sarajlić', GETDATE(), GETDATE()),
-(4, 'ivanabL', 'ivana.bl@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38765789789', 2, '1992-09-25', 2, 'Ivana', 'Babić', GETDATE(), GETDATE()),
-(5, 'markoMO', 'marko.mo@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38763123789', 3, '1987-03-22', 1, 'Marko', 'Marić', GETDATE(), GETDATE()),
-(6, 'adminuser', 'admin@erents.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38760000000', 1, '1980-01-01', 3, 'Admin', 'User', GETDATE(), GETDATE()),
-(7, 'tarikTZ', 'tarik.tz@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761987654', 4, '1995-07-10', 1, 'Tarik', 'Hadžić', GETDATE(), GETDATE()),
-(8, 'eminaBI', 'emina.bi@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38762876543', 6, '1993-02-28', 2, 'Emina', 'Kovačević', GETDATE(), GETDATE());
+INSERT INTO Users (user_id, username, email, PasswordHash, PasswordSalt, phone_number, date_of_birth, UserTypeId, name, last_name, created_date, updated_date, IsPublic, AddressDetailId) VALUES
+(1, 'amerhasic', 'amer.hasic@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761123123', '1990-05-15', 1, 'Amer', 'Hasić', GETDATE(), GETDATE(), 1, NULL),
+(2, 'lejlazukic', 'lejla.zukic@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38762321321', '1988-11-20', 2, 'Lejla', 'Zukić', GETDATE(), GETDATE(), 1, NULL),
+(3, 'adnanSA', 'adnan.sa@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761456456', '1985-04-15', 1, 'Adnan', 'Sarajlić', GETDATE(), GETDATE(), 1, NULL),
+(4, 'ivanabL', 'ivana.bl@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38765789789', '1992-09-25', 2, 'Ivana', 'Babić', GETDATE(), GETDATE(), 1, NULL),
+(5, 'markoMO', 'marko.mo@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38763123789', '1987-03-22', 1, 'Marko', 'Marić', GETDATE(), GETDATE(), 1, NULL),
+(6, 'adminuser', 'admin@erents.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38760000000', '1980-01-01', 3, 'Admin', 'User', GETDATE(), GETDATE(), 1, NULL),
+(7, 'tarikTZ', 'tarik.tz@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38761987654', '1995-07-10', 1, 'Tarik', 'Hadžić', GETDATE(), GETDATE(), 1, NULL),
+(8, 'eminaBI', 'emina.bi@example.ba', 0x8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497, 0x4823C4041A2FD159B9E4F69D05495995, '38762876543', '1993-02-28', 2, 'Emina', 'Kovačević', GETDATE(), GETDATE(), 1, NULL);
 
 SET IDENTITY_INSERT Users OFF;
 
@@ -59,18 +74,18 @@ INSERT INTO RentingType (RentingTypeId, TypeName) VALUES
 
 SET IDENTITY_INSERT RentingType OFF;
 
--- Seed Properties
+-- Seed Properties (Removed address, location_id, Added AddressDetailId)
 SET IDENTITY_INSERT Properties ON;
 
-INSERT INTO Properties (property_id, name, description, price, address, location_id, owner_id, date_added, PropertyTypeId, RentingTypeId) VALUES
-(1, 'Stan u Centru Sarajeva', 'Prostran stan na odličnoj lokaciji u Sarajevu.', 800.00, 'Maršala Tita 15', 1, 2, GETDATE(), 1, 1), 
-(2, 'Kuća s Pogledom u Banjaluci', 'Kuća sa prelijepim pogledom na grad.', 1200.00, 'Vidikovac 3', 2, 2, GETDATE(), 2, 1), 
-(3, 'Apartman Stari Most Mostar', 'Moderan apartman blizu Starog Mosta.', 600.00, 'Kujundžiluk 5', 3, 4, GETDATE(), 1, 2), 
-(4, 'Porodična Kuća Tuzla', 'Idealna kuća za porodicu u mirnom dijelu Tuzle.', 950.00, 'Hasana Kikića 10', 4, 4, GETDATE(), 2, 1), 
-(5, 'Luksuzni Apartman Zenica', 'Luksuzno opremljen apartman u centru Zenice.', 700.00, 'Trg Alije Izetbegovića 1', 5, 2, GETDATE(), 1, 2),
-(6, 'Vikendica na Uni Bihać', 'Prelijepa vikendica uz rijeku Unu.', 1500.00, 'Una bb', 6, 8, GETDATE(), 4, 3),
-(7, 'Stan u Trebinju', 'Komforan stan u sunčanom Trebinju.', 550.00, 'Njegoševa 7', 7, 8, GETDATE(), 1, 1),
-(8, 'Apartman Prijedor Centar', 'Novoopremljen apartman u centru Prijedora.', 450.00, 'Kralja Petra I Oslobodyjenja 22', 8, 4, GETDATE(), 1, 2);
+INSERT INTO Properties (property_id, name, description, price, owner_id, date_added, PropertyTypeId, RentingTypeId, AddressDetailId) VALUES
+(1, 'Stan u Centru Sarajeva', 'Prostran stan na odličnoj lokaciji u Sarajevu.', 800.00, 2, GETDATE(), 1, 1, 1), 
+(2, 'Kuća s Pogledom u Banjaluci', 'Kuća sa prelijepim pogledom na grad.', 1200.00, 2, GETDATE(), 2, 1, 2), 
+(3, 'Apartman Stari Most Mostar', 'Moderan apartman blizu Starog Mosta.', 600.00, 4, GETDATE(), 1, 2, 3), 
+(4, 'Porodična Kuća Tuzla', 'Idealna kuća za porodicu u mirnom dijelu Tuzle.', 950.00, 4, GETDATE(), 2, 1, 4), 
+(5, 'Luksuzni Apartman Zenica', 'Luksuzno opremljen apartman u centru Zenice.', 700.00, 2, GETDATE(), 1, 2, 5),
+(6, 'Vikendica na Uni Bihać', 'Prelijepa vikendica uz rijeku Unu.', 1500.00, 8, GETDATE(), 4, 3, 6),
+(7, 'Stan u Trebinju', 'Komforan stan u sunčanom Trebinju.', 550.00, 8, GETDATE(), 1, 1, 7),
+(8, 'Apartman Prijedor Centar', 'Novoopremljen apartman u centru Prijedora.', 450.00, 4, GETDATE(), 1, 2, 8);
 
 SET IDENTITY_INSERT Properties OFF;
 
@@ -109,14 +124,14 @@ INSERT INTO PropertyAmenities (property_id, amenity_id) VALUES
 (8, 1),  -- Property 8 (Prijedor) has Wi-Fi
 (8, 4);  -- Property 8 (Prijedor) has Heating
 
--- Seed Tenants (Tenants residing in these properties)
+-- Seed Tenants (Removed name, contact_info, date_of_birth. Added user_id)
 SET IDENTITY_INSERT Tenants ON;
 
-INSERT INTO Tenants (tenant_id, name, contact_info, date_of_birth, property_id, lease_start_date, tenant_status) VALUES
-(1, 'Amer Hasić', 'amer.hasic@example.ba', '1990-05-15', 1, '2023-01-01', 'Active'), -- Linked to User 1
-(2, 'Marko Marić', 'marko.mo@example.ba', '1987-03-22', 3, '2023-02-01', 'Active'), -- Linked to User 5
-(3, 'Adnan Sarajlić', 'adnan.sa@example.ba', '1985-04-15', 4, '2023-03-01', 'Active'), -- Linked to User 3
-(4, 'Tarik Hadžić', 'tarik.tz@example.ba', '1995-07-10', 7, '2023-08-15', 'Active'); -- Linked to User 7
+INSERT INTO Tenants (tenant_id, property_id, lease_start_date, tenant_status, user_id) VALUES
+(1, 1, '2023-01-01', 'Active', 1), -- Amer Hasić (User 1)
+(2, 3, '2023-02-01', 'Active', 5), -- Marko Marić (User 5)
+(3, 4, '2023-03-01', 'Active', 3), -- Adnan Sarajlić (User 3)
+(4, 7, '2023-08-15', 'Active', 7); -- Tarik Hadžić (User 7)
 
 SET IDENTITY_INSERT Tenants OFF;
 
@@ -149,10 +164,10 @@ SET IDENTITY_INSERT Reviews OFF;
 SET IDENTITY_INSERT Payments ON;
 
 INSERT INTO Payments (payment_id, tenant_id, property_id, amount, date_paid, payment_method, payment_status, payment_reference) VALUES
-(1, 1, 1, 800.00, GETDATE(), 'PayPal', 'Completed', 'BH_XYZ123'), -- Payment for Amer Hasić
-(2, 2, 3, 600.00, GETDATE(), 'PayPal', 'Pending', 'BH_ABC456'),       -- Payment for Marko Marić
-(3, 3, 4, 950.00, GETDATE(), 'PayPal', 'Completed', 'BH_DEF789'), -- Payment for Adnan Sarajlić
-(4, 4, 7, 550.00, GETDATE(), 'PayPal', 'Completed', 'BH_GHI012'); -- Payment for Tarik Hadžić
+(1, 1, 1, 800.00, GETDATE(), 'PayPal', 'Completed', 'BH_XYZ123'), -- Payment for Amer Hasić (Tenant 1)
+(2, 2, 3, 600.00, GETDATE(), 'PayPal', 'Pending', 'BH_ABC456'),       -- Payment for Marko Marić (Tenant 2)
+(3, 3, 4, 950.00, GETDATE(), 'PayPal', 'Completed', 'BH_DEF789'), -- Payment for Adnan Sarajlić (Tenant 3)
+(4, 4, 7, 550.00, GETDATE(), 'PayPal', 'Completed', 'BH_GHI012'); -- Payment for Tarik Hadžić (Tenant 4)
 
 SET IDENTITY_INSERT Payments OFF;
 
