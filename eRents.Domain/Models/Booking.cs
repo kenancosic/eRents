@@ -13,15 +13,19 @@ public partial class Booking
 
     public DateOnly StartDate { get; set; }
 
-    public DateOnly EndDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+
+    public DateOnly? MinimumStayEndDate { get; set; }
 
     public decimal TotalPrice { get; set; }
 
     public DateOnly? BookingDate { get; set; }
 
-    public string? Status { get; set; }
+    public int BookingStatusId { get; set; }
 
     public virtual Property? Property { get; set; }
 
     public virtual User? User { get; set; }
+
+    public virtual BookingStatus BookingStatus { get; set; } = null!;
 }

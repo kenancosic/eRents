@@ -10,6 +10,7 @@ import 'package:e_rents_mobile/feature/profile/profile_screen.dart';
 import 'package:e_rents_mobile/feature/profile/booking_history_screen.dart';
 import 'package:e_rents_mobile/feature/profile/tenant_preferences_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
+import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
@@ -177,7 +178,16 @@ class AppRouter {
         name: 'property_detail',
         builder: (context, state) {
           final id = int.parse(state.pathParameters['id']!);
-          return PropertyDetailScreen(propertyId: id);
+          final extras = state.extra as Map<String, dynamic>?;
+          final viewContext =
+              extras?['viewContext'] as ViewContext? ?? ViewContext.browsing;
+          final bookingId = extras?['bookingId'] as int?;
+
+          return PropertyDetailScreen(
+            propertyId: id,
+            viewContext: viewContext,
+            bookingId: bookingId,
+          );
         },
       ),
       GoRoute(

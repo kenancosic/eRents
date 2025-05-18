@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import '../../../core/models/booking_model.dart';
+import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 
 class BookingListItem extends StatelessWidget {
   final Booking booking;
@@ -39,6 +41,42 @@ class BookingListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy'); // e.g., Jan 1, 2023
+    final bool isUpcoming = booking.status == BookingStatus.Upcoming ||
+        booking.status == BookingStatus.Active;
+    final bool isCompleted = booking.status == BookingStatus.Completed;
+
+    String dateText;
+    if (isUpcoming) {
+      if (booking.status == BookingStatus.Active) {
+        dateText =
+            'Active: Ends ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
+      } else {
+        final now = DateTime.now();
+        final difference = booking.startDate.difference(now).inDays;
+        if (difference < 0) {
+          // Should ideally be caught by status, but as a fallback
+          dateText = 'Started: ${dateFormat.format(booking.startDate)}';
+        } else if (difference == 0 && booking.startDate.day == now.day) {
+          dateText = 'Starts Today';
+        } else if (difference == 1 &&
+            booking.startDate.day == now.add(const Duration(days: 1)).day) {
+          dateText = 'Starts Tomorrow';
+        } else {
+          dateText = 'Starts: ${dateFormat.format(booking.startDate)}';
+        }
+      }
+    } else if (isCompleted) {
+      dateText =
+          'Stayed: ${booking.startDate != null ? dateFormat.format(booking.startDate!) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
+    } else if (booking.status == BookingStatus.Cancelled) {
+      // Assuming bookingDate stores when the booking was made or cancelled
+      dateText = booking.bookingDate != null
+          ? 'Cancelled on: ${dateFormat.format(booking.bookingDate!)}'
+          : 'Cancelled';
+    } else {
+      dateText =
+          '${booking.startDate != null ? dateFormat.format(booking.startDate!) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -55,7 +93,7 @@ class BookingListItem extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
                   child: Image.network(
-                    booking.propertyImageUrl,
+                    booking.propertyImageUrl ?? '',
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
@@ -102,22 +140,12 @@ class BookingListItem extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${dateFormat.format(booking.startDate)} - ${dateFormat.format(booking.endDate)}',
+                        dateText,
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
                             ?.copyWith(color: Colors.grey[700]),
                       ),
-                      if (booking.numberOfGuests > 0) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Guests: ${booking.numberOfGuests}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.grey[700]),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -156,18 +184,82 @@ class BookingListItem extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    // TODO: Navigate to booking details screen
-                    // Example: Navigator.push(context, MaterialPageRoute(builder: (context) => BookingDetailsScreen(bookingId: booking.id)));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content:
-                              Text('View details for ${booking.propertyName}')),
+                    ViewContext contextForNavigation;
+                    if (booking.status == BookingStatus.Upcoming ||
+                        booking.status == BookingStatus.Active) {
+                      contextForNavigation = ViewContext.upcomingBooking;
+                    } else {
+                      contextForNavigation = ViewContext.pastBooking;
+                    }
+                    context.push(
+                      '/property/${booking.propertyId}',
+                      extra: {
+                        'viewContext': contextForNavigation,
+                        'bookingId': booking.bookingId,
+                      },
                     );
                   },
                   child: const Text('View Details'),
                 )
               ],
             ),
+            // Placeholder for contextual actions based on status
+            if (isUpcoming)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        label: const Text('Cancel Booking'),
+                        onPressed: () {
+                          // TODO: Implement cancel booking logic
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Cancel booking tapped')),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                            foregroundColor:
+                                Theme.of(context).colorScheme.error)),
+                  ],
+                ),
+              ),
+            if (isCompleted)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.rate_review_outlined, size: 18),
+                      label: const Text('Leave Review'),
+                      onPressed: () {
+                        // TODO: Navigate to leave review screen
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Leave review tapped')),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                        icon:
+                            const Icon(Icons.report_problem_outlined, size: 18),
+                        label: const Text('Report Issue'),
+                        onPressed: () {
+                          // TODO: Navigate to report maintenance issue screen
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Report issue tapped')),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                            foregroundColor:
+                                Theme.of(context).colorScheme.error)),
+                  ],
+                ),
+              )
           ],
         ),
       ),

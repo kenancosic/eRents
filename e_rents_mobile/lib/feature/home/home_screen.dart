@@ -8,6 +8,8 @@ import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/home/widgets/most_rented_props.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/feature/home/widgets/upcoming_stays_section.dart';
+import 'package:e_rents_mobile/feature/home/widgets/currently_residing_section.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -100,6 +102,15 @@ class HomeScreen extends StatelessWidget {
               // LocationWidget is now part of the AppBar, so remove from body if not needed here too.
               // const LocationWidget(title: 'Welcome back, User', location: 'Lukavac'),
               const SizedBox(height: 20), // Adjust spacing as needed
+
+              // Currently Residing Section
+              CurrentlyResidingSection(),
+              const SizedBox(height: 20),
+
+              // Upcoming Stays Section
+              UpcomingStaysSection(),
+              const SizedBox(height: 20),
+
               SectionHeader(title: 'Near your location', onSeeAll: () {}),
               CustomSlider(items: properties),
               const SizedBox(height: 20),

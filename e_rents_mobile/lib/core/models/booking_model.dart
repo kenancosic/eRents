@@ -1,27 +1,40 @@
-enum BookingStatus { Upcoming, Completed, Cancelled }
+enum BookingStatus { Upcoming, Completed, Cancelled, Active }
 
 class Booking {
-  final String id;
+  final int bookingId;
+  final int propertyId;
+  final int userId;
   final String propertyName;
-  final String propertyImageUrl;
+  final String? propertyImageUrl;
+  final String? propertyThumbnailUrl;
   final DateTime startDate;
-  final DateTime endDate;
+  final DateTime? endDate;
+  final DateTime? minimumStayEndDate;
   final double totalPrice;
   final BookingStatus status;
-  final int numberOfGuests; // Optional: if you track this
+  final String? currency;
+  final DateTime? bookingDate;
+  final String? reviewContent;
+  final int? reviewRating;
 
   Booking({
-    required this.id,
+    required this.bookingId,
+    required this.propertyId,
+    required this.userId,
     required this.propertyName,
-    required this.propertyImageUrl,
+    this.propertyImageUrl,
+    this.propertyThumbnailUrl,
     required this.startDate,
-    required this.endDate,
+    this.endDate,
+    this.minimumStayEndDate,
     required this.totalPrice,
     required this.status,
-    this.numberOfGuests = 1, // Default or make it required
+    this.currency,
+    this.bookingDate,
+    this.reviewContent,
+    this.reviewRating,
   });
 
-  // Helper to get a string representation of status for display
   String get statusDisplay {
     switch (status) {
       case BookingStatus.Upcoming:
@@ -30,43 +43,71 @@ class Booking {
         return 'Completed';
       case BookingStatus.Cancelled:
         return 'Cancelled';
+      case BookingStatus.Active:
+        return 'Active';
       default:
-        return '';
+        return 'Unknown';
     }
   }
 
-  // Helper to get a color for status chip
-  // You might want to move color definitions to your theme or constants file
-  // For now, keeping it simple here. Import 'package:flutter/material.dart'; if used in UI
-  // This model shouldn't directly depend on Flutter UI elements for better separation.
-  // Consider passing colors or using a theming approach in the widget.
+  factory Booking.fromJson(Map<String, dynamic> json) {
+    String statusString = json['bookingStatus']?['statusName'] ??
+        json['status'] ?? // Direct status string fallback
+        'Upcoming'; // Default status
 
-  // factory Booking.fromJson(Map<String, dynamic> json) {
-  //   return Booking(
-  //     id: json['id'],
-  //     propertyName: json['propertyName'],
-  //     propertyImageUrl: json['propertyImageUrl'],
-  //     startDate: DateTime.parse(json['startDate']),
-  //     endDate: DateTime.parse(json['endDate']),
-  //     totalPrice: (json['totalPrice'] as num).toDouble(),
-  //     status: BookingStatus.values.firstWhere(
-  //       (e) => e.toString() == 'BookingStatus.${json['status']}',
-  //       orElse: () => BookingStatus.Upcoming, // Default or error handling
-  //     ),
-  //     numberOfGuests: json['numberOfGuests'] ?? 1,
-  //   );
-  // }
+    BookingStatus statusEnum = BookingStatus.values.firstWhere(
+      (e) => e.name.toLowerCase() == statusString.toLowerCase(),
+      orElse: () => BookingStatus.Upcoming, // Default if parsing fails
+    );
 
-  // Map<String, dynamic> toJson() {
-  //   return {
-  //     'id': id,
-  //     'propertyName': propertyName,
-  //     'propertyImageUrl': propertyImageUrl,
-  //     'startDate': startDate.toIso8601String(),
-  //     'endDate': endDate.toIso8601String(),
-  //     'totalPrice': totalPrice,
-  //     'status': status.toString().split('.').last,
-  //     'numberOfGuests': numberOfGuests,
-  //   };
-  // }
+    return Booking(
+      bookingId: json['bookingId'] as int,
+      propertyId: json['propertyId'] as int,
+      userId: json['userId'] as int,
+      propertyName: json['propertyName'] as String? ?? 'N/A',
+      propertyImageUrl: json['propertyImageUrl'] as String?,
+      propertyThumbnailUrl: json['propertyThumbnailUrl'] ??
+          json['propertyImageUrl']
+              as String?, // Use thumbnail if available, else fallback to imageURL
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: json['endDate'] != null
+          ? DateTime.parse(json['endDate'] as String)
+          : null,
+      minimumStayEndDate: json['minimumStayEndDate'] != null
+          ? DateTime.parse(json['minimumStayEndDate'] as String)
+          : null,
+      totalPrice: (json['totalPrice'] as num).toDouble(),
+      status: statusEnum,
+      currency: json['currency'] as String?,
+      bookingDate: json['bookingDate'] != null
+          ? DateTime.parse(json['bookingDate'] as String)
+          : null,
+      reviewContent: json['reviewContent'] as String?,
+      reviewRating: json['reviewRating'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'bookingId': bookingId,
+        'propertyId': propertyId,
+        'userId': userId,
+        'propertyName': propertyName,
+        'propertyImageUrl': propertyImageUrl,
+        'propertyThumbnailUrl': propertyThumbnailUrl,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+        'minimumStayEndDate': minimumStayEndDate?.toIso8601String(),
+        'totalPrice': totalPrice,
+        'status': status.name, // Send status name
+        'currency': currency,
+        'bookingDate': bookingDate?.toIso8601String(),
+        'reviewContent': reviewContent,
+        'reviewRating': reviewRating,
+      };
+
+  bool isActive() {
+    if (endDate == null) return true;
+    DateTime now = DateTime.now();
+    return startDate.isBefore(now) && endDate!.isAfter(now);
+  }
 }

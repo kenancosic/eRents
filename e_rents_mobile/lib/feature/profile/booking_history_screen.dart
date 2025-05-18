@@ -1,10 +1,11 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/core/base/base_provider.dart'; // For ViewState
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
 import 'package:e_rents_mobile/feature/profile/widgets/booking_list_item.dart';
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart'; // TODO: For state management
-// import '../user_provider.dart'; // TODO: For state management
+import 'package:provider/provider.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
@@ -13,120 +14,68 @@ class BookingHistoryScreen extends StatefulWidget {
   State<BookingHistoryScreen> createState() => _BookingHistoryScreenState();
 }
 
-class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
-  // TODO: Replace with actual data from a provider/API call
-  List<Booking> _bookings = [];
-  bool _isLoading = true; // Simulate loading
+class _BookingHistoryScreenState extends State<BookingHistoryScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _fetchBookings();
+    _tabController = TabController(length: 3, vsync: this);
+    // Optionally, fetch bookings here if not fetched on provider initialization
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   context.read<UserBookingsProvider>().fetchUserBookings();
+    // });
   }
 
-  Future<void> _fetchBookings() async {
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
-
-    // Dummy data
-    setState(() {
-      _bookings = [
-        Booking(
-          id: '1',
-          propertyName: 'Sunny Beachfront Villa with Ocean View',
-          propertyImageUrl: 'https://picsum.photos/seed/villa1/400/300',
-          startDate: DateTime.now().subtract(const Duration(days: 30)),
-          endDate: DateTime.now().subtract(const Duration(days: 25)),
-          totalPrice: 750.99,
-          status: BookingStatus.Completed,
-          numberOfGuests: 2,
-        ),
-        Booking(
-          id: '2',
-          propertyName: 'Cozy Mountain Cabin Retreat',
-          propertyImageUrl: 'https://picsum.photos/seed/cabin2/400/300',
-          startDate: DateTime.now().add(const Duration(days: 10)),
-          endDate: DateTime.now().add(const Duration(days: 15)),
-          totalPrice: 420.50,
-          status: BookingStatus.Upcoming,
-          numberOfGuests: 4,
-        ),
-        Booking(
-          id: '3',
-          propertyName: 'Urban Loft in Downtown District',
-          propertyImageUrl: 'https://picsum.photos/seed/loft3/400/300',
-          startDate: DateTime.now().subtract(const Duration(days: 90)),
-          endDate: DateTime.now().subtract(const Duration(days: 85)),
-          totalPrice: 300.00,
-          status: BookingStatus.Completed,
-          numberOfGuests: 1,
-        ),
-        Booking(
-          id: '4',
-          propertyName: 'Quiet Lakeside Cottage Getaway',
-          propertyImageUrl: 'https://picsum.photos/seed/lake4/400/300',
-          startDate: DateTime.now().subtract(const Duration(days: 15)),
-          endDate: DateTime.now().subtract(const Duration(days: 10)),
-          totalPrice: 220.00,
-          status: BookingStatus.Cancelled,
-          numberOfGuests: 3,
-        ),
-      ];
-      _isLoading = false;
-    });
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState(BuildContext context, String message) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.event_busy_outlined, size: 60, color: Colors.grey[400]),
-          const SizedBox(height: 20),
-          Text(
-            'No Bookings Yet!',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Your past and upcoming bookings will appear here.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyLarge
-                ?.copyWith(color: Colors.grey[600]),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.search),
-            label: const Text('Explore Properties'),
-            onPressed: () {
-              // TODO: Navigate to property browsing screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Navigate to explore properties...')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              textStyle: Theme.of(context).textTheme.titleSmall,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy_outlined, size: 60, color: Colors.grey[400]),
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            Text(
+              'Your bookings for this category will appear here.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            // Optionally, add a button to explore or refresh
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBookingList() {
+  Widget _buildBookingList(List<Booking> bookings, String emptyMessage) {
+    if (bookings.isEmpty) {
+      return _buildEmptyState(context, emptyMessage);
+    }
     return ListView.builder(
-      padding: const EdgeInsets.only(
-          top: 8, bottom: 8), // Add some padding around the list
-      itemCount: _bookings.length,
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      itemCount: bookings.length,
       itemBuilder: (context, index) {
-        final booking = _bookings[index];
+        final booking = bookings[index];
         return BookingListItem(booking: booking);
       },
     );
@@ -134,26 +83,52 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appBar = CustomAppBar(
-      title: 'Booking History',
-      showBackButton: true,
-      // TODO: Add actions for filtering/sorting if needed
-      // actions: [
-      //   IconButton(
-      //     icon: Icon(Icons.filter_list),
-      //     onPressed: () { /* Show filter options */ },
-      //   ),
-      // ],
-    );
+    return Scaffold(
+      appBar: CustomAppBar(
+        title: 'Booking History',
+        showBackButton: true,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Upcoming'),
+            Tab(text: 'Completed'),
+            Tab(text: 'Cancelled'),
+          ],
+        ),
+      ),
+      body: Consumer<UserBookingsProvider>(
+        builder: (context, provider, child) {
+          if (provider.state == ViewState.busy) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (provider.state == ViewState.error) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(provider.errorMessage ?? 'Failed to load bookings.'),
+                  ElevatedButton(
+                    onPressed: () => provider.fetchBookings(),
+                    child: const Text('Try Again'),
+                  )
+                ],
+              ),
+            );
+          }
 
-    return BaseScreen(
-      showAppBar: true,
-      appBar: appBar,
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _bookings.isEmpty
-              ? _buildEmptyState(context)
-              : _buildBookingList(),
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildBookingList(
+                  provider.upcomingBookings, 'No Upcoming Bookings'),
+              _buildBookingList(
+                  provider.completedBookings, 'No Completed Bookings'),
+              _buildBookingList(
+                  provider.cancelledBookings, 'No Cancelled Bookings'),
+            ],
+          );
+        },
+      ),
     );
   }
 }

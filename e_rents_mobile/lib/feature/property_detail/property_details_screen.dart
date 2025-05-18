@@ -2,6 +2,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_availability/property_availability.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_description.dart';
@@ -14,11 +15,22 @@ import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
+  final ViewContext viewContext;
+  final int? bookingId;
 
-  const PropertyDetailScreen({super.key, required this.propertyId});
+  const PropertyDetailScreen({
+    super.key,
+    required this.propertyId,
+    this.viewContext = ViewContext.browsing,
+    this.bookingId,
+  });
 
   @override
   State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
@@ -26,36 +38,67 @@ class PropertyDetailScreen extends StatefulWidget {
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   int _currentImageIndex = 0;
+  Booking? _currentBooking;
+
+  @override
+  void initState() {
+    super.initState();
+    print(
+        "PropertyDetailsScreen initState: ViewContext: ${widget.viewContext}, BookingID: ${widget.bookingId}");
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.bookingId != null) {
+      _currentBooking = context
+          .read<UserBookingsProvider>()
+          .getBookingById(widget.bookingId!);
+      if (_currentBooking == null) {
+        print(
+            "Booking with ID ${widget.bookingId} not found during didChangeDependencies.");
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final mockProperty = MockProperties.getSingleProperty(widget.propertyId);
+    final Booking? displayedBooking = widget.bookingId != null
+        ? context
+            .watch<UserBookingsProvider>()
+            .getBookingById(widget.bookingId!)
+        : null;
+
+    final appBar = CustomAppBar(
+      title: "Detail",
+      showBackButton: true,
+    );
 
     return ChangeNotifierProvider<PropertyDetailProvider>(
       create: (_) {
         final provider = PropertyDetailProvider();
-        provider.property = mockProperty;
+        provider.fetchPropertyDetail(widget.propertyId);
         return provider;
       },
-      child: Scaffold(
-        body: BaseScreen(
-          showAppBar: false,
+      child: BaseScreen(
+        appBar: appBar,
+        body: Scaffold(
+          appBar: null,
           body: Consumer<PropertyDetailProvider>(
-            builder: (context, provider, child) {
-              if (provider.isLoading) {
+            builder: (context, propertyProvider, child) {
+              if (propertyProvider.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (provider.errorMessage != null) {
-                return Center(child: Text(provider.errorMessage!));
+              if (propertyProvider.errorMessage != null) {
+                return Center(child: Text(propertyProvider.errorMessage!));
               }
 
-              final property = provider.property;
+              final property = propertyProvider.property;
               if (property == null) {
                 return const Center(child: Text('Property not found'));
               }
 
-              // Replace this section:
               final List<ReviewUIModel> uiReviews = [
                 ReviewUIModel.mock(
                   userName: 'John Doe',
@@ -86,7 +129,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Property Image Slider
                     PropertyImageSlider(
                       property: property,
                       onPageChanged: (index) {
@@ -95,18 +137,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         });
                       },
                     ),
-
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Property Title and Favorite Button
                           PropertyHeader(property: property),
-
                           const SizedBox(height: 16),
-
-                          // Rating, Location, Rooms, and Area
                           PropertyDetails(
                             averageRating: property.averageRating,
                             numberOfReviews: 12,
@@ -115,53 +152,45 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             rooms: '2 rooms',
                             area: '874 m²',
                           ),
-
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-
-                          // Property Description Section
                           PropertyDescriptionSection(
                             description: property.description ??
                                 'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
                           ),
-
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-
-                          // Property Availability Section
-                          PropertyAvailabilitySection(property: property),
-
+                          if (widget.viewContext == ViewContext.browsing ||
+                              widget.viewContext == ViewContext.upcomingBooking)
+                            PropertyAvailabilitySection(property: property),
+                          if (widget.viewContext == ViewContext.browsing ||
+                              widget.viewContext ==
+                                  ViewContext.upcomingBooking) ...[
+                            const SizedBox(height: 16),
+                            const Divider(color: Color(0xFFE0E0E0), height: 16),
+                            const SizedBox(height: 16),
+                          ],
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-
-                          // Property Owner Section
                           const PropertyOwnerSection(),
-
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-
-                          // Facilities Section
                           const FacilitiesSection(),
-
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-
-                          // Reviews Section
                           PropertyReviewsSection(
                             reviews: uiReviews,
                             averageRating: calculateAverageRating(uiReviews),
                           ),
-
-                          // Add a "Leave a Review" button
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             onPressed: () {
-                              _showAddReviewDialog(context, provider);
+                              _showAddReviewDialog(context, propertyProvider);
                             },
                             icon: const Icon(Icons.rate_review),
                             label: const Text('Leave a Review'),
@@ -182,17 +211,108 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               );
             },
           ),
-        ),
-        bottomNavigationBar: Consumer<PropertyDetailProvider>(
-          builder: (context, provider, child) {
-            final property = provider.property;
-            if (property == null) return const SizedBox.shrink();
+          bottomNavigationBar: Consumer<PropertyDetailProvider>(
+            builder: (context, propertyProvider, child) {
+              final property = propertyProvider.property;
+              if (property == null &&
+                  widget.viewContext == ViewContext.browsing) {
+                return const SizedBox.shrink();
+              }
 
-            return PropertyPriceFooter(
-              property: property,
-              onCheckoutPressed: () => checkoutPressed(provider),
-            );
-          },
+              Booking? bookingToDisplay = displayedBooking;
+
+              if (widget.viewContext == ViewContext.activeLease) {
+                if (widget.bookingId == null || bookingToDisplay == null) {
+                  return _buildInfoFooter("Active lease details unavailable.");
+                }
+                String leaseInfo = "You are currently residing here";
+                if (bookingToDisplay.endDate == null) {
+                  leaseInfo += " (Open-ended lease).";
+                  if (bookingToDisplay.minimumStayEndDate != null &&
+                      bookingToDisplay.minimumStayEndDate!
+                          .isAfter(DateTime.now())) {
+                    leaseInfo +=
+                        " Minimum stay until ${DateFormat.yMMMd().format(bookingToDisplay.minimumStayEndDate!)}.";
+                  }
+                } else {
+                  leaseInfo +=
+                      ". Lease ends ${DateFormat.yMMMd().format(bookingToDisplay.endDate!)}.";
+                }
+                return _buildActionFooter(
+                  context: context,
+                  infoText: leaseInfo,
+                  actions: [
+                    _footerButton(context, "Report Issue", Icons.report_problem,
+                        () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                "Navigate to Report Issue screen (Not implemented)")),
+                      );
+                    }),
+                    if (bookingToDisplay.endDate == null)
+                      _footerButton(context, "Manage Lease", Icons.settings,
+                          () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  "Manage Lease action (Not implemented)")),
+                        );
+                      })
+                    else
+                      _footerButton(context, "Extend Stay", Icons.add_alarm,
+                          () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text("Extend Stay action (Not implemented)")),
+                        );
+                      }),
+                  ],
+                );
+              } else if (widget.viewContext == ViewContext.upcomingBooking) {
+                if (widget.bookingId == null || bookingToDisplay == null) {
+                  return _buildInfoFooter(
+                      "Upcoming booking details unavailable.");
+                }
+                String bookingInfo;
+                if (bookingToDisplay.endDate == null) {
+                  bookingInfo =
+                      "Upcoming open-ended stay starting ${DateFormat.yMMMd().format(bookingToDisplay.startDate)}.";
+                  if (bookingToDisplay.minimumStayEndDate != null &&
+                      bookingToDisplay.minimumStayEndDate!
+                          .isAfter(DateTime.now())) {
+                    bookingInfo +=
+                        " Minimum stay until ${DateFormat.yMMMd().format(bookingToDisplay.minimumStayEndDate!)}.";
+                  }
+                } else {
+                  bookingInfo =
+                      "Upcoming stay: ${DateFormat.yMMMd().format(bookingToDisplay.startDate)} - ${DateFormat.yMMMd().format(bookingToDisplay.endDate!)}.";
+                }
+                return _buildActionFooter(
+                  context: context,
+                  infoText: bookingInfo,
+                  actions: [
+                    _footerButton(
+                        context, "Manage Booking", Icons.event_available, () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                "View/Manage Booking ID: ${bookingToDisplay.bookingId} (Not implemented)")),
+                      );
+                    }),
+                  ],
+                );
+              }
+
+              if (property == null) return const SizedBox.shrink();
+
+              return PropertyPriceFooter(
+                property: property,
+                onCheckoutPressed: () => checkoutPressed(propertyProvider),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -294,6 +414,89 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               child: const Text('Submit'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoFooter(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      color: Colors.grey[200],
+      child: Text(text,
+          textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+    );
+  }
+
+  Widget _buildActionFooter(
+      {required BuildContext context,
+      required String infoText,
+      required List<Widget> actions}) {
+    List<Widget> columnChildren = [];
+    columnChildren.add(Text(infoText,
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        textAlign: TextAlign.center));
+
+    List<Widget> actualActionWidgets = [];
+    if (actions.isNotEmpty) {
+      if (actions.length == 1) {
+        actualActionWidgets
+            .add(SizedBox(width: double.infinity, child: actions.first));
+      } else {
+        // For multiple actions, put them in a Row
+        actualActionWidgets.add(
+          Row(
+            children: actions
+                .map((action) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: action,
+                      ),
+                    ))
+                .toList(),
+          ),
+        );
+      }
+    }
+
+    if (actualActionWidgets.isNotEmpty) {
+      columnChildren.add(const SizedBox(height: 12));
+      columnChildren.addAll(actualActionWidgets);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: columnChildren,
+      ),
+    );
+  }
+
+  Widget _footerButton(BuildContext context, String label, IconData icon,
+      VoidCallback onPressed) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 14)),
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
     );

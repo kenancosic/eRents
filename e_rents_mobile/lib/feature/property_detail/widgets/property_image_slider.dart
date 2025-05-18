@@ -30,14 +30,6 @@ class PropertyImageSlider extends StatelessWidget {
           onPageChanged: onPageChanged,
           useNumbering: true,
         ),
-        Positioned(
-          top: 16 + MediaQuery.of(context).padding.top,
-          left: 16,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => context.pop(),
-          ),
-        ),
       ],
     );
   }

@@ -8,6 +8,8 @@ import 'package:e_rents_mobile/feature/home/home_service.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
 import 'package:e_rents_mobile/feature/profile/user_service.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/core/services/booking_service.dart';
 import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
@@ -60,6 +62,13 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<UserProvider>(
           create: (context) => UserProvider(context.read<UserService>()),
+        ),
+        ProxyProvider<ApiService, BookingService>(
+          update: (_, apiService, __) => BookingService(apiService),
+        ),
+        ChangeNotifierProvider<UserBookingsProvider>(
+          create: (context) =>
+              UserBookingsProvider(context.read<BookingService>()),
         ),
         ChangeNotifierProvider<NavigationProvider>(
           create: (context) => NavigationProvider(),

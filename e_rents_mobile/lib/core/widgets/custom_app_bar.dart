@@ -11,6 +11,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? userLocationWidget;
   final VoidCallback? onBackButtonPressed;
   final List<Widget>? actions;
+  final PreferredSizeWidget? bottom;
 
   const CustomAppBar({
     super.key,
@@ -23,6 +24,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.userLocationWidget,
     this.onBackButtonPressed,
     this.actions,
+    this.bottom,
   })  : assert(showAvatar ? avatarWidget != null : true,
             'avatarWidget must be provided if showAvatar is true'),
         assert(showSearch ? searchWidget != null : true,
@@ -70,6 +72,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: userLocationWidget,
         ),
       );
+    } else if (bottom != null) {
+      appBarBottom = bottom;
+      bottomWidgetHeight = bottom?.preferredSize.height ?? 0;
     }
 
     return AppBar(
@@ -114,6 +119,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     double totalHeight = kToolbarHeight;
     if (userLocationWidget != null) {
       totalHeight += 50.0;
+    } else if (bottom != null) {
+      totalHeight += bottom!.preferredSize.height;
     }
     return Size.fromHeight(totalHeight);
   }

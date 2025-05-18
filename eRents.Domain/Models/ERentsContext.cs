@@ -19,6 +19,8 @@ public partial class ERentsContext : DbContext
 
     public virtual DbSet<Booking> Bookings { get; set; }
 
+    public virtual DbSet<BookingStatus> BookingStatuses { get; set; }
+
     public virtual DbSet<Image> Images { get; set; }
 
     public virtual DbSet<IssuePriority> IssuePriorities { get; set; }
@@ -78,31 +80,54 @@ public partial class ERentsContext : DbContext
 
         modelBuilder.Entity<Booking>(entity =>
         {
-            entity.HasKey(e => e.BookingId).HasName("PK__Bookings__5DE3A5B1D7B9142C");
+            entity.HasKey(e => e.BookingId);
+
+            entity.ToTable("Booking");
 
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
-            entity.Property(e => e.BookingDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnName("booking_date");
-            entity.Property(e => e.EndDate).HasColumnName("end_date");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
-            entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .IsUnicode(false)
-                .HasColumnName("status");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
             entity.Property(e => e.TotalPrice)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("total_price");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.BookingDate)
+                .HasColumnType("date")
+                .HasColumnName("booking_date");
+            entity.Property(e => e.BookingStatusId).HasColumnName("booking_status_id");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.PropertyId)
-                .HasConstraintName("FK__Bookings__proper__5812160E");
+                .HasConstraintName("FK__Booking__Propert__4F7CD00D");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__Bookings__user_i__59063A47");
+                .HasConstraintName("FK__Booking__UserId__5070F446");
+
+            entity.HasOne(d => d.BookingStatus).WithMany(p => p.Bookings)
+                .HasForeignKey(d => d.BookingStatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Booking_BookingStatus");
+        });
+
+        modelBuilder.Entity<BookingStatus>(entity =>
+        {
+            entity.HasKey(e => e.BookingStatusId);
+
+            entity.ToTable("BookingStatus");
+            entity.Property(e => e.BookingStatusId).HasColumnName("booking_status_id");
+            entity.Property(e => e.StatusName)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("status_name");
+
+            entity.HasData(
+                new BookingStatus { BookingStatusId = 1, StatusName = "Upcoming" },
+                new BookingStatus { BookingStatusId = 2, StatusName = "Completed" },
+                new BookingStatus { BookingStatusId = 3, StatusName = "Cancelled" },
+                new BookingStatus { BookingStatusId = 4, StatusName = "Active" }
+            );
         });
 
         modelBuilder.Entity<Image>(entity =>
