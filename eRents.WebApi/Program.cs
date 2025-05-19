@@ -8,12 +8,13 @@ using eRents.Application.Service.UserService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
-using eRents.Domain.Services;
+using eRents.Shared.Services;
 using eRents.Domain.Shared;
 using eRents.WebApi;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using eRents.RabbitMQMicroservice.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,11 +68,18 @@ builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
 
+// Register HttpClient
+builder.Services.AddSingleton<HttpClient>();
 
 // Configure and register PayPalService
-var clientId = builder.Configuration["PayPal:ClientId"];
-var clientSecret = builder.Configuration["PayPal:ClientSecret"];
-builder.Services.AddSingleton<IPaymentService>(new PayPalService(clientId, clientSecret));
+// var clientId = builder.Configuration["PayPal:ClientId"]; // No longer needed here
+// var clientSecret = builder.Configuration["PayPal:ClientSecret"]; // No longer needed here
+builder.Services.AddSingleton<IPaymentService>(sp =>
+		new PayPalService(
+				sp.GetRequiredService<HttpClient>(),
+				builder.Configuration
+		)
+);
 
 builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
 
@@ -83,21 +91,38 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-	var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-	context.Database.EnsureCreated();
-
-	// Check if the database is empty, using GeoRegions as an example
-	bool isEmpty = !context.GeoRegions.Any(); 
-
-	if (isEmpty)
+	try
 	{
-		var setupService = new SetupService();
-		setupService.Init(context);
-		setupService.InsertData(context);
+		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
+		
+		// Ensure database exists
+		context.Database.EnsureCreated();
+		
+		// Check if the database is empty, using GeoRegions as an example
+		bool isEmpty = !context.GeoRegions.Any();
+		
+		if (isEmpty)
+		{
+			Console.WriteLine("Database is empty. Starting data seeding process...");
+			var setupService = new SetupService();
+			setupService.Init(context);
+			setupService.InsertData(context);
+			Console.WriteLine("Database initialization completed.");
+		}
+		else
+		{
+			Console.WriteLine("Database is not empty. Seeding skipped.");
+		}
 	}
-	else
+	catch (Exception ex)
 	{
-		Console.WriteLine("Database is not empty. Seeding skipped.");
+		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+		logger.LogError(ex, "An error occurred while initializing the database.");
+		Console.WriteLine($"Database initialization error: {ex.Message}");
+		if (ex.InnerException != null)
+		{
+			Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+		}
 	}
 }
 

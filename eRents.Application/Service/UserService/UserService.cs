@@ -3,7 +3,7 @@ using eRents.Application.Exceptions;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
-using eRents.Domain.Services;
+using eRents.Shared.Services;
 using eRents.Domain.Shared;
 using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;

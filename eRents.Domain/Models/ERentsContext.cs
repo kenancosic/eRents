@@ -60,8 +60,16 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<UserSavedProperty> UserSavedProperties { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=localhost;Database=eRents;Trusted_Connection=True;TrustServerCertificate=True;");
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Add any default configuration if needed
+        }
+        
+        // Suppress the pending model changes warning
+        optionsBuilder.ConfigureWarnings(warnings => 
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -246,6 +254,9 @@ public partial class ERentsContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("status");
+            entity.Property(e => e.Area)
+                .HasColumnType("decimal(10, 2)")
+                .HasColumnName("area");
 
             entity.HasOne(d => d.AddressDetail)
                 .WithMany(p => p.Properties)
@@ -484,7 +495,8 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.City).HasMaxLength(100);
             entity.Property(e => e.MinPrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.MaxPrice).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.IsActive).HasDefaultValueSql("((1))");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(false);
 
             entity.HasOne(d => d.User)
                 .WithMany(p => p.TenantPreferences)

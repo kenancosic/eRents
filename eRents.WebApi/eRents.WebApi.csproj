@@ -25,12 +25,13 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.0" />
-		<PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+		<PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\eRents.Application\eRents.Application.csproj" />
+		<ProjectReference Include="..\eRents.RabbitMQMicroservice\eRents.RabbitMQMicroservice.csproj" />
 		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>
 </Project>

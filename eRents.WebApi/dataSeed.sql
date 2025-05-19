@@ -24,7 +24,7 @@ INSERT INTO AddressDetail (AddressDetailId, GeoRegionId, StreetLine1, Latitude, 
 (5, 5, 'Trg Alije Izetbegovića 1', 44.2039, 17.9077),                   -- For Property 5 (Zenica)
 (6, 6, 'Una bb', 44.8169, 15.8700),                                     -- For Property 6 (Bihać)
 (7, 7, 'Njegoševa 7', 42.7116, 18.3436),                                -- For Property 7 (Trebinje)
-(8, 8, 'Kralja Petra I Oslobodyjenja 22', 44.9792, 16.7147);            -- For Property 8 (Prijedor)
+(8, 8, 'Kralja Petra I Oslobođenja 22', 44.9792, 16.7147);              -- For Property 8 (Prijedor)
 
 SET IDENTITY_INSERT AddressDetail OFF;
 

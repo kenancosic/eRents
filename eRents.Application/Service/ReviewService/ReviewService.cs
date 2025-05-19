@@ -2,7 +2,7 @@
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
-using eRents.Domain.Services;
+using eRents.Shared.Services;
 using eRents.Shared.DTO;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
