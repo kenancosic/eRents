@@ -103,29 +103,6 @@ class CurrentlyResidingSection extends StatelessWidget {
               },
             ),
             const SizedBox(height: 12),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.report_problem_outlined),
-                label: const Text('Report Maintenance Issue'),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Report issue for ${propertyForCard.name} (Not implemented yet)')),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  foregroundColor:
-                      Theme.of(context).colorScheme.onErrorContainer,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
           ],
         );
       },

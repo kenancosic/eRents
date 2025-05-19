@@ -135,15 +135,25 @@ INSERT INTO Tenants (tenant_id, property_id, lease_start_date, tenant_status, us
 
 SET IDENTITY_INSERT Tenants OFF;
 
+-- Seed BookingStatus (New Table)
+SET IDENTITY_INSERT BookingStatus ON;
+INSERT INTO BookingStatus (BookingStatusId, StatusName) VALUES
+(1, 'Pending'),
+(2, 'Confirmed'),
+(3, 'Cancelled'),
+(4, 'Completed'),
+(5, 'Failed');
+SET IDENTITY_INSERT BookingStatus OFF;
+
 -- Seed Bookings (Bookings made by users in Bosnia and Herzegovina)
 SET IDENTITY_INSERT Bookings ON;
 
-INSERT INTO Bookings (booking_id, property_id, user_id, start_date, end_date, total_price, booking_date, status) VALUES
-(1, 1, 1, '2024-09-01', '2024-09-10', 250.00, GETDATE(), 'Confirmed'), -- Amer Hasić books Stan u Centru Sarajeva
-(2, 3, 5, '2024-10-01', '2024-10-05', 100.00, GETDATE(), 'Pending'),   -- Marko Marić books Apartman Stari Most Mostar
-(3, 2, 1, '2024-11-01', '2024-11-15', 500.00, GETDATE(), 'Confirmed'),  -- Amer Hasić books Kuća s Pogledom u Banjaluci
-(4, 6, 7, '2024-07-20', '2024-07-27', 350.00, GETDATE(), 'Confirmed'), -- Tarik Hadžić books Vikendica na Uni Bihać
-(5, 8, 3, '2024-08-05', '2024-08-10', 150.00, GETDATE(), 'Pending');    -- Adnan Sarajlić books Apartman Prijedor Centar
+INSERT INTO Bookings (booking_id, property_id, user_id, start_date, end_date, total_price, booking_date, BookingStatusId, MinimumStayEndDate) VALUES
+(1, 1, 1, '2024-09-01', '2024-09-10', 250.00, GETDATE(), 2, NULL), -- Amer Hasić books Stan u Centru Sarajeva (Confirmed)
+(2, 3, 5, '2024-10-01', '2024-10-05', 100.00, GETDATE(), 1, NULL),   -- Marko Marić books Apartman Stari Most Mostar (Pending)
+(3, 2, 1, '2024-11-01', '2024-11-15', 500.00, GETDATE(), 2, NULL),  -- Amer Hasić books Kuća s Pogledom u Banjaluci (Confirmed)
+(4, 6, 7, '2024-07-20', '2024-07-27', 350.00, GETDATE(), 2, NULL), -- Tarik Hadžić books Vikendica na Uni Bihać (Confirmed)
+(5, 8, 3, '2024-08-05', '2024-08-10', 150.00, GETDATE(), 1, NULL);    -- Adnan Sarajlić books Apartman Prijedor Centar (Pending)
 
 SET IDENTITY_INSERT Bookings OFF;
 

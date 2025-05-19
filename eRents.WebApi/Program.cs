@@ -71,9 +71,9 @@ builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
 // Configure and register PayPalService
 var clientId = builder.Configuration["PayPal:ClientId"];
 var clientSecret = builder.Configuration["PayPal:ClientSecret"];
-//builder.Services.AddSingleton<IPaymentService>(new PayPalService(clientId, clientSecret));
+builder.Services.AddSingleton<IPaymentService>(new PayPalService(clientId, clientSecret));
 
-//builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
+builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 

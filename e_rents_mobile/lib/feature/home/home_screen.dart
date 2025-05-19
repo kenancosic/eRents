@@ -117,8 +117,9 @@ class HomeScreen extends StatelessWidget {
               SectionHeader(title: 'Top rated', onSeeAll: () {}),
               CustomSlider(items: properties2),
               const SizedBox(height: 20),
-              SectionHeader(title: 'Most rented properties', onSeeAll: () {}),
-              const MostRentedProps(),
+              // Removed Most Rented Properties section
+              // SectionHeader(title: 'Most rented properties', onSeeAll: () {}),
+              // const MostRentedProps(),
             ],
           ),
         ),
