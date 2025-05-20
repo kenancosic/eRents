@@ -58,12 +58,15 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<UserType> UserTypes { get; set; }
 
     public virtual DbSet<UserSavedProperty> UserSavedProperties { get; set; }
+    
+    public virtual DbSet<PropertyAmenity> PropertyAmenities { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
         {
-            // Add any default configuration if needed
+            // Don't add default connection string here,
+            // as it will be provided via DI in Program.cs
         }
         
         // Suppress the pending model changes warning
@@ -269,22 +272,21 @@ public partial class ERentsContext : DbContext
                 .HasConstraintName("FK__Propertie__owner__4AB81AF0");
 
             entity.HasMany(d => d.Amenities).WithMany(p => p.Properties)
-                .UsingEntity<Dictionary<string, object>>(
-                    "PropertyAmenity",
-                    r => r.HasOne<Amenity>().WithMany()
-                        .HasForeignKey("AmenityId")
+                .UsingEntity<PropertyAmenity>(
+                    r => r.HasOne(pa => pa.Amenity).WithMany()
+                        .HasForeignKey(pa => pa.AmenityId)
                         .OnDelete(DeleteBehavior.ClientSetNull)
                         .HasConstraintName("FK__PropertyA__ameni__5165187F"),
-                    l => l.HasOne<Property>().WithMany()
-                        .HasForeignKey("PropertyId")
+                    l => l.HasOne(pa => pa.Property).WithMany()
+                        .HasForeignKey(pa => pa.PropertyId)
                         .OnDelete(DeleteBehavior.ClientSetNull)
                         .HasConstraintName("FK__PropertyA__prope__5070F446"),
                     j =>
                     {
-                        j.HasKey("PropertyId", "AmenityId").HasName("PK__Property__BDCB20312E16270C");
+                        j.HasKey(pa => new { pa.PropertyId, pa.AmenityId }).HasName("PK__Property__BDCB20312E16270C");
                         j.ToTable("PropertyAmenities");
-                        j.IndexerProperty<int>("PropertyId").HasColumnName("property_id");
-                        j.IndexerProperty<int>("AmenityId").HasColumnName("amenity_id");
+                        j.Property(pa => pa.PropertyId).HasColumnName("property_id");
+                        j.Property(pa => pa.AmenityId).HasColumnName("amenity_id");
                     });
 
             entity.HasOne(d => d.PropertyType)

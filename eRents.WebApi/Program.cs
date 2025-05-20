@@ -85,7 +85,20 @@ builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-builder.Services.AddDbContext<ERentsContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("eRentsConnection")));
+Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("eRentsConnection")}");
+
+builder.Services.AddDbContext<ERentsContext>(options => 
+{
+	var connectionString = builder.Configuration.GetConnectionString("eRentsConnection");
+	if (string.IsNullOrEmpty(connectionString))
+	{
+		throw new InvalidOperationException(
+			"Connection string 'eRentsConnection' is missing in configuration. " +
+			"Please check your appsettings.json file.");
+	}
+	Console.WriteLine($"Using connection string: {connectionString}");
+	options.UseSqlServer(connectionString);
+});
 
 var app = builder.Build();
 
@@ -98,12 +111,15 @@ using (var scope = app.Services.CreateScope())
 		// Ensure database exists
 		context.Database.EnsureCreated();
 		
+		// For testing purposes - set to true to force reseed the database even if it's not empty
+		bool forceSeed = true;
+		
 		// Check if the database is empty, using GeoRegions as an example
 		bool isEmpty = !context.GeoRegions.Any();
 		
-		if (isEmpty)
+		if (isEmpty || forceSeed)
 		{
-			Console.WriteLine("Database is empty. Starting data seeding process...");
+			Console.WriteLine($"Database {(isEmpty ? "is empty" : "force seed requested")}. Starting data seeding process...");
 			var setupService = new SetupService();
 			setupService.Init(context);
 			setupService.InsertData(context);
