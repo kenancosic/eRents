@@ -15,6 +15,8 @@ using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using eRents.RabbitMQMicroservice.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -102,33 +104,22 @@ builder.Services.AddDbContext<ERentsContext>(options =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+// Update Main logic to async
+// Wrap in a function to allow async/await
+async Task SeedDatabaseAsync(IServiceProvider services)
 {
+	using var scope = services.CreateScope();
 	try
 	{
 		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-		
-		// Ensure database exists
-		context.Database.EnsureCreated();
-		
+		var logger = scope.ServiceProvider.GetService<ILogger<SetupService>>();
+		var setupService = new SetupService(logger);
+
+		await setupService.InitAsync(context);
+
 		// For testing purposes - set to true to force reseed the database even if it's not empty
 		bool forceSeed = true;
-		
-		// Check if the database is empty, using GeoRegions as an example
-		bool isEmpty = !context.GeoRegions.Any();
-		
-		if (isEmpty || forceSeed)
-		{
-			Console.WriteLine($"Database {(isEmpty ? "is empty" : "force seed requested")}. Starting data seeding process...");
-			var setupService = new SetupService();
-			setupService.Init(context);
-			setupService.InsertData(context);
-			Console.WriteLine("Database initialization completed.");
-		}
-		else
-		{
-			Console.WriteLine("Database is not empty. Seeding skipped.");
-		}
+		await setupService.InsertDataAsync(context, forceSeed);
 	}
 	catch (Exception ex)
 	{
@@ -141,6 +132,9 @@ using (var scope = app.Services.CreateScope())
 		}
 	}
 }
+
+// Call the async seeding logic and wait for it to complete before starting the app
+SeedDatabaseAsync(app.Services).GetAwaiter().GetResult();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

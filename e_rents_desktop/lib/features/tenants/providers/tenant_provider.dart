@@ -69,7 +69,7 @@ class TenantProvider extends BaseProvider<User> {
       print('Loaded ${_currentTenants.length} current tenants');
       for (var tenant in _currentTenants) {
         print(
-          'Tenant: ${tenant.firstName} ${tenant.lastName} - ${tenant.city}',
+          'Tenant: ${tenant.firstName} ${tenant.lastName} - ${tenant.addressDetail?.geoRegion?.city}',
         );
       }
     } finally {

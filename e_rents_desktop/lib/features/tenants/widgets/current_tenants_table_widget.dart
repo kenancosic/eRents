@@ -63,9 +63,9 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                 widget.searchTerm.toLowerCase(),
               );
             case 'City':
-              return (tenant.city ?? '').toLowerCase().contains(
-                widget.searchTerm.toLowerCase(),
-              );
+              return (tenant.addressDetail?.geoRegion?.city ?? '')
+                  .toLowerCase()
+                  .contains(widget.searchTerm.toLowerCase());
             default:
               return tenant.fullName.toLowerCase().contains(
                 widget.searchTerm.toLowerCase(),
@@ -209,7 +209,10 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
         'column': const DataColumn(label: Text('City')),
         'cell':
             (User tenant) => DataCell(
-              Text(tenant.city ?? 'N/A', overflow: TextOverflow.ellipsis),
+              Text(
+                tenant.addressDetail?.geoRegion?.city ?? 'N/A',
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
       },
       {

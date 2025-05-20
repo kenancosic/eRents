@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/address_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
@@ -148,8 +149,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         _titleController.text = _initialProperty!.title;
         _descriptionController.text = _initialProperty!.description;
         _priceController.text = _initialProperty!.price.toString();
-        _initialAddressString = _initialProperty!.address;
-        _selectedFormattedAddress = _initialProperty!.address;
+        _initialAddressString = _initialProperty!.addressDetail?.streetLine1;
+        _selectedFormattedAddress =
+            _initialProperty!.addressDetail?.streetLine1;
         _bedroomsController.text = _initialProperty!.bedrooms.toString();
         _bathroomsController.text = _initialProperty!.bathrooms.toString();
         _areaController.text = _initialProperty!.area.toString();
@@ -157,13 +159,18 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         _status = _initialProperty!.status;
         _images = List.from(_initialProperty!.images);
         _selectedAmenities = _initialProperty!.amenities ?? [];
-        _latitude = _initialProperty!.latitude;
-        _longitude = _initialProperty!.longitude;
-        _streetNumberController.text = _initialProperty!.streetNumber ?? '';
-        _streetNameController.text = _initialProperty!.streetName ?? '';
-        _cityController.text = _initialProperty!.city ?? '';
-        _postalCodeController.text = _initialProperty!.postalCode ?? '';
-        _countryController.text = _initialProperty!.country ?? '';
+        _latitude = _initialProperty!.addressDetail?.latitude;
+        _longitude = _initialProperty!.addressDetail?.longitude;
+        _streetNumberController.text =
+            _initialProperty!.addressDetail?.streetLine1 ?? '';
+        _streetNameController.text =
+            _initialProperty!.addressDetail?.streetLine2 ?? '';
+        _cityController.text =
+            _initialProperty!.addressDetail?.geoRegion?.city ?? '';
+        _postalCodeController.text =
+            _initialProperty!.addressDetail?.geoRegion?.postalCode ?? '';
+        _countryController.text =
+            _initialProperty!.addressDetail?.geoRegion?.country ?? '';
         _isAddressDetailValid =
             (_cityController.text.isNotEmpty) &&
             (_streetNameController.text.isNotEmpty);
@@ -195,7 +202,16 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       rentingType: _rentingType,
       status: _status,
       images: _images,
-      address: _selectedFormattedAddress!,
+      addressDetail: AddressDetail(
+        addressDetailId: _initialProperty!.addressDetail?.addressDetailId ?? 0,
+        streetLine1:
+            _streetNumberController.text + ' ' + _streetNameController.text,
+        geoRegionId: _initialProperty!.addressDetail?.geoRegionId ?? 0,
+        geoRegion: _initialProperty!.addressDetail?.geoRegion,
+        streetLine2: _selectedFormattedAddress,
+        latitude: _latitude,
+        longitude: _longitude,
+      ),
       bedrooms: int.parse(_bedroomsController.text),
       bathrooms: int.parse(_bathroomsController.text),
       area: double.parse(_areaController.text),
@@ -204,13 +220,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       yearBuilt: _initialProperty?.yearBuilt,
       lastInspectionDate: _initialProperty?.lastInspectionDate,
       nextInspectionDate: _initialProperty?.nextInspectionDate,
-      latitude: _latitude,
-      longitude: _longitude,
-      streetNumber: _streetNumberController.text,
-      streetName: _streetNameController.text,
-      city: _cityController.text,
-      postalCode: _postalCodeController.text,
-      country: _countryController.text,
       dateAdded: _initialProperty?.dateAdded ?? DateTime.now(),
     );
   }

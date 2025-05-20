@@ -1,0 +1,57 @@
+<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".cs" #>
+<#
+    // Input parameters
+    string entityName = "Property";  // Replace with your actual entity name 
+    string dbSetName = entityName + "s";  // Simple pluralization
+    string serviceNamespace = "eRents.Application.Service";
+#>
+using AutoMapper;
+using eRents.Application.Shared;
+using eRents.Domain.Models;
+using eRents.Domain.Shared;
+using eRents.Shared.DTO.Requests;
+using eRents.Shared.DTO.Response;
+using Microsoft.EntityFrameworkCore;
+
+namespace <#= serviceNamespace #>.<#= entityName #>Service
+{
+    public class <#= entityName #>Service : BaseCRUDService<<#= entityName #>Response, <#= entityName #>, <#= entityName #>SearchObject, <#= entityName #>InsertRequest, <#= entityName #>UpdateRequest>
+    {
+        private readonly IMapper _mapper;
+        private readonly IBaseRepository<<#= entityName #>> _repository;
+
+        public <#= entityName #>Service(IMapper mapper, IBaseRepository<<#= entityName #>> repository) 
+            : base(mapper, repository)
+        {
+            _mapper = mapper;
+            _repository = repository;
+        }
+
+        public override async Task<IEnumerable<<#= entityName #>Response>> GetAsync(<#= entityName #>SearchObject search = null)
+        {
+            var query = _repository.GetQueryable();
+
+            // Apply filters
+            if (search != null)
+            {
+                if (!string.IsNullOrEmpty(search.SearchTerm))
+                    query = query.Where(x => x.Name.Contains(search.SearchTerm));
+
+                if (search.MinPrice.HasValue)
+                    query = query.Where(x => x.Price >= search.MinPrice.Value);
+
+                if (search.MaxPrice.HasValue)
+                    query = query.Where(x => x.Price <= search.MaxPrice.Value);
+            }
+
+            var list = await query.ToListAsync();
+            return _mapper.Map<IEnumerable<<#= entityName #>Response>>(list);
+        }
+    }
+} 

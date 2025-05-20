@@ -70,7 +70,8 @@ class TenantProfileWidget extends StatelessWidget {
         const SizedBox(height: 8),
         Text('Email: ${tenant.email}'),
         if (tenant.phone != null) Text('Phone: ${tenant.phone}'),
-        if (tenant.city != null) Text('City: ${tenant.city}'),
+        if (tenant.addressDetail?.geoRegion?.city != null)
+          Text('City: ${tenant.addressDetail?.geoRegion?.city}'),
         const Divider(),
       ],
     );
@@ -88,7 +89,7 @@ class TenantProfileWidget extends StatelessWidget {
         ...properties!.map(
           (property) => ListTile(
             title: Text(property.title),
-            subtitle: Text(property.address),
+            subtitle: Text(property.addressDetail?.streetLine1 ?? ''),
             trailing: Text('\$${property.price}/month'),
           ),
         ),

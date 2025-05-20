@@ -80,7 +80,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       listen: false,
     );
     final currentUser = profileProvider.currentUser;
-    final initialUserAddress = currentUser?.formattedAddress;
+    final initialUserAddress = currentUser?.addressDetail?.streetLine1;
 
     Widget addressDisplayWidget;
     if (_googleApiKey == 'YOUR_API_KEY_NOT_FOUND') {

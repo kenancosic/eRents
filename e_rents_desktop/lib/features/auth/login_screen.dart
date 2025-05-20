@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/base/auth_base.dart';
+import 'package:e_rents_desktop/models/auth/login_request_model.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -50,8 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.login(
-        _emailController.text,
-        _passwordController.text,
+        LoginRequestModel(
+          usernameOrEmail: _emailController.text,
+          password: _passwordController.text,
+        ),
       );
 
       if (success) {
@@ -69,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = authProvider.error;
+          _errorMessage = authProvider.errorMessage;
         });
       }
     } catch (e) {
