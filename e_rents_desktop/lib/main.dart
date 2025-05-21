@@ -24,6 +24,7 @@ import 'services/profile_service.dart';
 import 'services/report_service.dart';
 import 'features/reports/providers/reports_provider.dart';
 import 'services/tenant_service.dart';
+import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,6 +92,14 @@ void main() async {
           create:
               (context) =>
                   ReportsProvider(reportService: context.read<ReportService>()),
+        ),
+        ChangeNotifierProvider<HomeProvider>(
+          create:
+              (context) => HomeProvider(
+                context.read<PropertyService>(),
+                context.read<MaintenanceService>(),
+                context.read<StatisticsService>(),
+              ),
         ),
 
         // Core Services (can be accessed anywhere)

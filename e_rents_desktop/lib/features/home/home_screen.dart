@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
@@ -13,218 +14,162 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
+import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
+import 'package:go_router/go_router.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({Key? key}) : super(key: key);
 
-  static const double _padding = 16.0;
-  static const double _cardSpacing = 16.0;
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Load initial data using the new HomeProvider
+      Provider.of<HomeProvider>(context, listen: false).loadDashboardData();
+    });
+  }
+
+  void _navigateToProperties(BuildContext context) {
+    context.go('/properties');
+  }
+
+  void _navigateToMaintenance(BuildContext context) {
+    context.go('/maintenance');
+  }
+
+  void _navigateToReports(BuildContext context) {
+    context.go('/reports');
+  }
+
+  void _viewPropertyDetails(BuildContext context, String propertyId) {
+    context.go('/properties/$propertyId');
+  }
+
+  void _viewMaintenanceIssue(BuildContext context, String issueId) {
+    context.go('/maintenance/$issueId');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final homeProvider = Provider.of<HomeProvider>(context);
+
+    // Determine the current path for AppBaseScreen
+    final currentPath =
+        GoRouter.of(context).routerDelegate.currentConfiguration.uri.toString();
+
     return AppBaseScreen(
       title: 'Dashboard',
-      currentPath: '/',
-      child:
-          Consumer3<MaintenanceProvider, PropertyProvider, StatisticsProvider>(
-            builder: (
-              context,
-              maintenanceProvider,
-              propertyProvider,
-              statsProvider,
-              child,
-            ) {
-              final pendingIssues = maintenanceProvider.getIssuesByStatus(
-                IssueStatus.pending,
-              );
-              final highPriorityIssues = maintenanceProvider
-                  .getIssuesByPriority(IssuePriority.high);
-              final tenantComplaints =
-                  maintenanceProvider.getTenantComplaints();
-              final properties = propertyProvider.properties;
-              final financialStats = statsProvider.statistics;
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(_padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildWelcomeSection(context),
-                    const SizedBox(height: _padding),
-
-                    _buildKpiSection(
-                      context: context,
-                      propertyCount: properties.length,
-                      occupancyRate: _calculateOccupancy(properties),
-                      openIssues: pendingIssues.length,
-                      netIncome: financialStats?.netTotal ?? 0.0,
+      currentPath: currentPath,
+      child: LoadingOrErrorWidget(
+        isLoading: homeProvider.state == ViewState.Busy,
+        error: homeProvider.errorMessage,
+        onRetry: () => homeProvider.loadDashboardData(),
+        child: RefreshIndicator(
+          onRefresh: () => homeProvider.loadDashboardData(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                // KPIs Section
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _navigateToProperties(context),
+                        child: KpiCard(
+                          title: 'Total Properties',
+                          value: homeProvider.propertyCount.toString(),
+                          icon: Icons.home_work_outlined,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: _padding),
-
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        const double breakPoint = 1100.0;
-
-                        final maintenanceSection = _buildMaintenanceSection(
-                          context,
-                          pendingIssues,
-                          highPriorityIssues,
-                          tenantComplaints,
-                        );
-                        final financialSection = _buildFinancialSection(
-                          context,
-                          financialStats,
-                        );
-
-                        if (constraints.maxWidth < breakPoint) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              maintenanceSection,
-                              const SizedBox(height: _padding),
-                              financialSection,
-                            ],
-                          );
-                        } else {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: maintenanceSection),
-                              const SizedBox(width: _padding),
-                              Expanded(child: financialSection),
-                            ],
-                          );
-                        }
-                      },
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _navigateToProperties(context),
+                        child: KpiCard(
+                          title: 'Occupancy Rate',
+                          value:
+                              '${(homeProvider.occupancyRate * 100).toStringAsFixed(1)}%',
+                          icon: Icons.people_alt_outlined,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: _padding),
-
-                    _buildSectionHeader(context, 'Property Insights'),
-                    const SizedBox(height: _cardSpacing / 2),
-                    PropertyInsightsCard(
-                      properties: properties,
-                      currencyFormat: kCurrencyFormat,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _navigateToMaintenance(context),
+                        child: KpiCard(
+                          title: 'Open Issues',
+                          value: homeProvider.openIssuesCount.toString(),
+                          icon: Icons.build_circle_outlined,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _navigateToReports(context),
+                        child: KpiCard(
+                          title: 'Monthly Revenue',
+                          value:
+                              '\$${homeProvider.currentMonthRevenueForKpi.toStringAsFixed(2)}',
+                          icon: Icons.attach_money_outlined,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              );
-            },
+                const SizedBox(height: 24),
+
+                // Financial Summary
+                if (homeProvider.uiFinancialStatistics != null)
+                  FinancialSummaryCard(
+                    income: homeProvider.uiFinancialStatistics!.totalRent,
+                    expenses:
+                        homeProvider
+                            .uiFinancialStatistics!
+                            .totalMaintenanceCosts,
+                    netProfit: homeProvider.uiFinancialStatistics!.netTotal,
+                    currencyFormat: kCurrencyFormat,
+                  ),
+                const SizedBox(height: 24),
+
+                // Property and Maintenance Insights (Side-by-Side)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: PropertyInsightsCard(
+                        properties: homeProvider.properties,
+                        currencyFormat: kCurrencyFormat,
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: MaintenanceOverviewCard(
+                        pendingIssues: homeProvider.pendingIssues,
+                        highPriorityIssues: homeProvider.highPriorityIssues,
+                        tenantComplaints: homeProvider.tenantComplaints,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // TODO: Consider adding recent activity or tenant communication snippets if applicable
+              ],
+            ),
           ),
-    );
-  }
-
-  Widget _buildWelcomeSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Welcome back!',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 8),
-        Text(
-          'Here\'s your property management dashboard overview.',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildKpiSection({
-    required BuildContext context,
-    required int propertyCount,
-    required double occupancyRate,
-    required int openIssues,
-    required double netIncome,
-  }) {
-    return Wrap(
-      spacing: _cardSpacing,
-      runSpacing: _cardSpacing,
-      children: [
-        KpiCard(
-          title: 'Total Properties',
-          value: propertyCount.toString(),
-          icon: Icons.business_rounded,
-        ),
-        KpiCard(
-          title: 'Occupancy Rate',
-          value: '${kCurrencyFormat.format(occupancyRate * 100)}%',
-          icon: Icons.people_alt_rounded,
-        ),
-        KpiCard(
-          title: 'Open Issues',
-          value: openIssues.toString(),
-          icon: Icons.build_circle_outlined,
-        ),
-        KpiCard(
-          title: 'Net Income (Period)',
-          value: kCurrencyFormat.format(netIncome),
-          icon: Icons.money_rounded,
-          color: netIncome >= 0 ? Colors.green.shade700 : Colors.red.shade700,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Text(
-        title,
-        style: Theme.of(
-          context,
-        ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
-  }
-
-  Widget _buildMaintenanceSection(
-    BuildContext context,
-    List<MaintenanceIssue> pending,
-    List<MaintenanceIssue> highPriority,
-    List<MaintenanceIssue> complaints,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(context, 'Maintenance Overview'),
-        const SizedBox(height: _cardSpacing / 2),
-        MaintenanceOverviewCard(
-          pendingIssues: pending,
-          highPriorityIssues: highPriority,
-          tenantComplaints: complaints,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFinancialSection(
-    BuildContext context,
-    FinancialStatistics? stats,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(context, 'Financial Snapshot'),
-        const SizedBox(height: _cardSpacing / 2),
-        FinancialSummaryCard(
-          income: stats?.totalRent ?? 0.0,
-          expenses: stats?.totalMaintenanceCosts ?? 0.0,
-          netProfit: stats?.netTotal ?? 0.0,
-          currencyFormat: kCurrencyFormat,
-        ),
-      ],
-    );
-  }
-
-  double _calculateOccupancy(List<Property> properties) {
-    if (properties.isEmpty) return 0.0;
-    final rentedCount =
-        properties.where((p) => p.status != PropertyStatus.available).length;
-    return rentedCount / properties.length;
   }
 }

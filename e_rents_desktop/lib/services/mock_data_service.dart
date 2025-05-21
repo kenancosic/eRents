@@ -9,8 +9,15 @@ import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
+import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
+    as ui_model;
 import 'package:e_rents_desktop/models/address_detail.dart';
+import 'package:e_rents_desktop/services/statistics_service.dart'
+    show
+        DashboardStatistics,
+        PopularProperty,
+        FinancialStatistics,
+        MonthlyRevenue;
 
 class MockDataService {
   static final Map<String, IconData> _amenityIcons = {
@@ -654,14 +661,14 @@ class MockDataService {
     ];
   }
 
-  static FinancialStatistics getMockFinancialStatistics(
+  static ui_model.FinancialStatistics getMockFinancialStatistics(
     DateTime startDate,
     DateTime endDate,
   ) {
     final reportItems = getMockFinancialReportData(startDate, endDate);
 
     if (reportItems.isEmpty) {
-      return FinancialStatistics(
+      return ui_model.FinancialStatistics(
         totalRent: 0,
         totalMaintenanceCosts: 0,
         netTotal: 0,
@@ -681,7 +688,7 @@ class MockDataService {
       netTotal += item.total;
     }
 
-    return FinancialStatistics(
+    return ui_model.FinancialStatistics(
       totalRent: totalRent,
       totalMaintenanceCosts: totalMaintenance,
       netTotal: netTotal,
@@ -707,12 +714,11 @@ class MockDataService {
       'Last Quarter',
       'This Year',
       'Last Year',
-      'Custom', // Keep Custom as it indicates manual selection
+      'Custom',
     ];
   }
 
   static List<String> getQuickDateRangePresets() {
-    // These are the ranges that trigger a calculation, excluding 'Custom'
     return [
       'Last 7 Days',
       'Last 30 Days',
@@ -728,5 +734,93 @@ class MockDataService {
 
   static List<String> getSearchingTenantFilterFields() {
     return ['City', 'Price Range', 'Amenities', 'Description'];
+  }
+
+  static DashboardStatistics getMockDashboardStatistics() {
+    final mockProperties = getMockProperties();
+    final mockIssues = getMockMaintenanceIssues();
+    return DashboardStatistics(
+      totalProperties: mockProperties.length,
+      occupiedProperties:
+          mockProperties.where((p) => p.status == PropertyStatus.rented).length,
+      occupancyRate:
+          mockProperties.isEmpty
+              ? 0.0
+              : (mockProperties
+                      .where((p) => p.status == PropertyStatus.rented)
+                      .length /
+                  mockProperties.length),
+      averageRating: 4.5,
+      topProperties: [
+        PopularProperty(
+          propertyId: 1,
+          name: "Luxury Apartment",
+          bookingCount: 10,
+          totalRevenue: 25000,
+          averageRating: 4.8,
+        ),
+        PopularProperty(
+          propertyId: 2,
+          name: "Family House",
+          bookingCount: 8,
+          totalRevenue: 28000,
+          averageRating: 4.6,
+        ),
+      ],
+      pendingMaintenanceIssues:
+          mockIssues
+              .where((issue) => issue.status == IssueStatus.pending)
+              .length,
+      monthlyRevenue: 53000,
+      yearlyRevenue: 636000,
+    );
+  }
+
+  static FinancialStatistics getMockApiFinancialStatistics(
+    DateTime startDate,
+    DateTime endDate,
+  ) {
+    List<MonthlyRevenue> history = [];
+    DateTime currentDateLoop = DateTime(startDate.year, startDate.month);
+    while (currentDateLoop.isBefore(endDate) ||
+        currentDateLoop.isAtSameMomentAs(endDate)) {
+      history.add(
+        MonthlyRevenue(
+          year: currentDateLoop.year,
+          month: currentDateLoop.month,
+          revenue:
+              (currentDateLoop.month * 1500) +
+              (currentDateLoop.year - 2022) * 5000 +
+              10000,
+        ),
+      );
+      currentDateLoop = DateTime(
+        currentDateLoop.year,
+        currentDateLoop.month + 1,
+      );
+    }
+    if (history.isEmpty && (endDate.difference(startDate).inDays < 30)) {
+      history.add(
+        MonthlyRevenue(
+          year: startDate.year,
+          month: startDate.month,
+          revenue: 12000,
+        ),
+      );
+    }
+
+    return FinancialStatistics(
+      currentMonthRevenue: history.isNotEmpty ? history.last.revenue : 25000.0,
+      previousMonthRevenue:
+          history.length > 1 ? history[history.length - 2].revenue : 22000.0,
+      projectedRevenue:
+          (history.isNotEmpty ? history.last.revenue : 25000.0) * 1.1,
+      revenueHistory: history,
+      revenueByPropertyType: {
+        "Apartment": history.fold(0.0, (sum, item) => sum + item.revenue * 0.6),
+        "House": history.fold(0.0, (sum, item) => sum + item.revenue * 0.3),
+        "Studio": history.fold(0.0, (sum, item) => sum + item.revenue * 0.1),
+      },
+    );
   }
 }
