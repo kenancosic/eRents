@@ -13,6 +13,8 @@ public partial class Property
 
     public decimal Price { get; set; }
 
+    public string Currency { get; set; } = "BAM";
+
     public string? Facilities { get; set; }
 
     public string? Status { get; set; }
@@ -35,10 +37,6 @@ public partial class Property
     public decimal? Area { get; set; }
 
     public int? YearBuilt { get; set; }
-
-    public DateTime? LastInspectionDate { get; set; }
-
-    public DateTime? NextInspectionDate { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

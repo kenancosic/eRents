@@ -152,6 +152,9 @@ public partial class ERentsContext : DbContext
                 .HasMaxLength(255)
                 .IsUnicode(false)
                 .HasColumnName("file_name");
+            entity.Property(e => e.IsCover)
+                .HasDefaultValue(false)
+                .HasColumnName("is_cover");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Images)
                 .HasForeignKey(d => d.PropertyId)
@@ -253,6 +256,11 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.Price)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("price");
+            entity.Property(e => e.Currency)
+                .HasMaxLength(10)
+                .IsUnicode(false)
+                .HasDefaultValue("BAM")
+                .HasColumnName("currency");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .IsUnicode(false)
@@ -260,6 +268,9 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.Area)
                 .HasColumnType("decimal(10, 2)")
                 .HasColumnName("area");
+            entity.Property(e => e.Bedrooms).HasColumnName("bedrooms");
+            entity.Property(e => e.Bathrooms).HasColumnName("bathrooms");
+            entity.Property(e => e.YearBuilt).HasColumnName("year_built");
 
             entity.HasOne(d => d.AddressDetail)
                 .WithMany(p => p.Properties)

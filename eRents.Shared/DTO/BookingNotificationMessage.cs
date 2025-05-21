@@ -2,7 +2,7 @@
 {
 	public class BookingNotificationMessage
 	{
-		public int BookingId { get; set; }
+		public string? BookingId { get; set; }
 		public string? Message { get; set; }
 	}
 }

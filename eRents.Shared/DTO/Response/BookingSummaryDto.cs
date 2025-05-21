@@ -7,7 +7,8 @@ namespace eRents.Shared.DTO.Response
         public string BookingId { get; set; }
         public string PropertyId { get; set; }
         public string PropertyName { get; set; }
-        public string PropertyImageUrl { get; set; }
+        public int? PropertyImageId { get; set; }
+        public byte[] PropertyImageData { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public decimal TotalPrice { get; set; }

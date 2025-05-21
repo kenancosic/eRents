@@ -15,7 +15,7 @@ namespace eRents.Application.Shared
 			// Booking mappings
 			CreateMap<Booking, BookingResponse>()
 							.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name))
-							.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.Status))
+							.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName))
 							.ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Property.Currency))
 							.ReverseMap();
 			CreateMap<BookingInsertRequest, Booking>();
@@ -59,6 +59,7 @@ namespace eRents.Application.Shared
 							 .ForMember(dest => dest.CityName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.City : null))
 							 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.State : null))
 							 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.Country : null))
+							 .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Currency))
 							 .ReverseMap();
 
 			CreateMap<PropertyInsertRequest, Property>()

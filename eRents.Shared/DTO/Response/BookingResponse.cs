@@ -14,4 +14,5 @@ namespace eRents.Shared.DTO.Response
 		public DateTime DateBooked { get; set; }
 		public string PropertyName { get; set; }
 		public string Currency { get; set; }
+	}
 }

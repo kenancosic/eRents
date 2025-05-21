@@ -178,10 +178,10 @@ namespace eRents.WebApi
 			var dbRentingTypes = await context.RentingTypes.ToListAsync();
 			var properties = new[]
 			{
-				new Property { Name = "Stan u Centru Sarajeva", Description = "Prostran stan na odličnoj lokaciji u Sarajevu.", Price = 800.00m, OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[0].AddressDetailId, Bedrooms = 2, Bathrooms = 1, Area = 75.5m },
-				new Property { Name = "Kuća s Pogledom u Banjaluci", Description = "Kuća sa prelijepim pogledom na grad.", Price = 1200.00m, OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[1].AddressDetailId, Bedrooms = 3, Bathrooms = 2, Area = 120.0m },
-				new Property { Name = "Apartman Stari Most Mostar", Description = "Moderan apartman blizu Starog Mosta.", Price = 600.00m, OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Short-term").RentingTypeId, AddressDetailId = dbAddressDetails[2].AddressDetailId, Bedrooms = 1, Bathrooms = 1, Area = 55.0m },
-				new Property { Name = "Porodična Kuća Tuzla", Description = "Idealna kuća za porodicu u mirnom dijelu Tuzle.", Price = 950.00m, OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[3].AddressDetailId, Bedrooms = 4, Bathrooms = 2, Area = 150.0m }
+				new Property { Name = "Stan u Centru Sarajeva", Description = "Prostran stan na odličnoj lokaciji u Sarajevu.", Price = 800.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[0].AddressDetailId, Bedrooms = 2, Bathrooms = 1, Area = 75.5m },
+				new Property { Name = "Kuća s Pogledom u Banjaluci", Description = "Kuća sa prelijepim pogledom na grad.", Price = 1200.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[1].AddressDetailId, Bedrooms = 3, Bathrooms = 2, Area = 120.0m },
+				new Property { Name = "Apartman Stari Most Mostar", Description = "Moderan apartman blizu Starog Mosta.", Price = 600.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Short-term").RentingTypeId, AddressDetailId = dbAddressDetails[2].AddressDetailId, Bedrooms = 1, Bathrooms = 1, Area = 55.0m },
+				new Property { Name = "Porodična Kuća Tuzla", Description = "Idealna kuća za porodicu u mirnom dijelu Tuzle.", Price = 950.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[3].AddressDetailId, Bedrooms = 4, Bathrooms = 2, Area = 150.0m }
 			};
 			context.Properties.AddRange(properties);
 			await context.SaveChangesAsync();
@@ -223,6 +223,23 @@ namespace eRents.WebApi
 				new Tenant { UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, LeaseStartDate = new DateOnly(2023, 2, 1), TenantStatus = "Active" }
 			};
 			context.Tenants.AddRange(tenants);
+			await context.SaveChangesAsync();
+
+			// Add sample property images
+			await context.SaveChangesAsync();
+			dbProperties = await context.Properties.ToListAsync();
+
+			// Sample placeholder image data (1x1 transparent PNG)
+			byte[] placeholderImageData = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+
+			var images = new[]
+			{
+				new Image { PropertyId = dbProperties[0].PropertyId, ImageData = placeholderImageData, FileName = "apartment1_cover.png", DateUploaded = DateTime.Now, IsCover = true },
+				new Image { PropertyId = dbProperties[1].PropertyId, ImageData = placeholderImageData, FileName = "house1_cover.png", DateUploaded = DateTime.Now, IsCover = true },
+				new Image { PropertyId = dbProperties[2].PropertyId, ImageData = placeholderImageData, FileName = "apartment2_cover.png", DateUploaded = DateTime.Now, IsCover = true },
+				new Image { PropertyId = dbProperties[3].PropertyId, ImageData = placeholderImageData, FileName = "house2_cover.png", DateUploaded = DateTime.Now, IsCover = true }
+			};
+			context.Images.AddRange(images);
 			await context.SaveChangesAsync();
 		}
 

@@ -39,7 +39,7 @@ namespace eRents.Application.Service.BookingService
 			int propertyId = int.Parse(request.PropertyId);
 			DateOnly startDate = DateOnly.FromDateTime(request.StartDate);
 			DateOnly endDate = DateOnly.FromDateTime(request.EndDate);
-			
+
 			var isAvailable = await _bookingRepository.IsPropertyAvailableAsync(propertyId, startDate, endDate);
 			if (!isAvailable)
 			{
@@ -91,29 +91,32 @@ namespace eRents.Application.Service.BookingService
 			{
 				return new List<BookingSummaryDto>();
 			}
-			
+
 			// Get current stays from repository
 			var today = DateOnly.FromDateTime(DateTime.Today);
-			var bookings = await _bookingRepository.GetAsync(new BookingSearchObject { 
-				UserId = userIdInt,
-				StartDate = today,
-				EndDate = today
-			});
-			
-			// Map to BookingSummaryDto
-			var summaryItems = bookings.Select(b => new BookingSummaryDto
+			var bookings = await GetAsync(new BookingSearchObject
 			{
-				BookingId = b.BookingId.ToString(),
-				PropertyId = b.PropertyId.ToString(),
-				PropertyName = b.Property?.Name ?? "Unknown Property",
-				PropertyImageUrl = b.Property?.Images?.FirstOrDefault()?.FileName,
+				UserId = userIdInt,
+				StartDate = DateTime.Today,
+				EndDate = DateTime.Today
+			});
+
+			// Map to BookingSummaryDto
+			var mappedBookings = _mapper.Map<List<BookingResponse>>(bookings);
+			var summaryItems = mappedBookings.Select(b => new BookingSummaryDto
+			{
+				BookingId = b.BookingId,
+				PropertyId = b.PropertyId,
+				PropertyName = b.PropertyName ?? "Unknown Property",
+				PropertyImageId = null, // Will need to be populated from Property's images if needed
+				PropertyImageData = null, // Will need to be populated from Property's images if needed
 				StartDate = b.StartDate,
 				EndDate = b.EndDate,
 				TotalPrice = b.TotalPrice,
-				Currency = "BAM",
-				BookingStatus = b.BookingStatus.Status
+				Currency = b.Currency,
+				BookingStatus = b.Status
 			}).ToList();
-			
+
 			return summaryItems;
 		}
 
@@ -124,31 +127,34 @@ namespace eRents.Application.Service.BookingService
 			{
 				return new List<BookingSummaryDto>();
 			}
-			
+
 			// Get upcoming stays from repository
 			var tomorrow = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
-			var bookings = await _bookingRepository.GetAsync(new BookingSearchObject { 
-				UserId = userIdInt,
-				StartDate = tomorrow
-			});
-			
-			// Map to BookingSummaryDto
-			var summaryItems = bookings.Select(b => new BookingSummaryDto
+			var bookings = await GetAsync(new BookingSearchObject
 			{
-				BookingId = b.BookingId.ToString(),
-				PropertyId = b.PropertyId.ToString(),
-				PropertyName = b.Property?.Name ?? "Unknown Property",
-				PropertyImageUrl = b.Property?.Images?.FirstOrDefault()?.FileName,
+				UserId = userIdInt,
+				StartDate = DateTime.Today.AddDays(1)
+			});
+
+			// Map to BookingSummaryDto
+			var mappedBookings = _mapper.Map<List<BookingResponse>>(bookings);
+			var summaryItems = mappedBookings.Select(b => new BookingSummaryDto
+			{
+				BookingId = b.BookingId,
+				PropertyId = b.PropertyId,
+				PropertyName = b.PropertyName ?? "Unknown Property",
+				PropertyImageId = null, // Will need to be populated from Property's images if needed
+				PropertyImageData = null, // Will need to be populated from Property's images if needed
 				StartDate = b.StartDate,
 				EndDate = b.EndDate,
 				TotalPrice = b.TotalPrice,
-				Currency = "BAM",	
-				BookingStatus = b.BookingStatus.Status
+				Currency = b.Currency,
+				BookingStatus = b.Status
 			}).ToList();
-			
+
 			return summaryItems;
 		}
-		
+
 		// Add BaseCRUDService overrides as needed
 		protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearchObject search = null)
 		{
@@ -167,18 +173,18 @@ namespace eRents.Application.Service.BookingService
 
 			if (!string.IsNullOrEmpty(search.Status))
 			{
-				query = query.Where(b => b.BookingStatus.Status == search.Status);
+				query = query.Where(b => b.BookingStatus.StatusName == search.Status);
 			}
 
 			if (search.StartDate.HasValue)
 			{
-				DateOnly startDate = search.StartDate.Value;
+				DateOnly startDate = DateOnly.FromDateTime(search.StartDate.Value);
 				query = query.Where(b => b.StartDate >= startDate);
 			}
 
 			if (search.EndDate.HasValue)
 			{
-				DateOnly endDate = search.EndDate.Value;
+				DateOnly endDate = DateOnly.FromDateTime(search.EndDate.Value);
 				query = query.Where(b => b.EndDate <= endDate);
 			}
 

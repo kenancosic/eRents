@@ -18,6 +18,8 @@ public partial class Image
     public DateTime? DateUploaded { get; set; }
 
     public string? FileName { get; set; }
+    
+    public bool IsCover { get; set; }
 
     public virtual Property? Property { get; set; }
 
