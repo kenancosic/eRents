@@ -15,6 +15,8 @@ namespace eRents.Application.Shared
 			// Booking mappings
 			CreateMap<Booking, BookingResponse>()
 							.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name))
+							.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.Status))
+							.ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Property.Currency))
 							.ReverseMap();
 			CreateMap<BookingInsertRequest, Booking>();
 			CreateMap<BookingUpdateRequest, Booking>();

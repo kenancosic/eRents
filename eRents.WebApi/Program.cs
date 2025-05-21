@@ -3,8 +3,10 @@ using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
+using eRents.Application.Service.PropertyService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
+using eRents.Application.Service.StatisticsService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
@@ -69,6 +71,7 @@ builder.Services.AddTransient<IBookingService, BookingService>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
+builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 
 // Register HttpClient
 builder.Services.AddSingleton<HttpClient>();

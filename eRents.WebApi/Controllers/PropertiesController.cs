@@ -1,14 +1,16 @@
-﻿using eRents.Application.Service;
+﻿using eRents.Application.Service.PropertyService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
+	[Route("api/[controller]")]
 	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
@@ -19,15 +21,16 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet("search")]
-		public async Task<ActionResult<IEnumerable<PropertyResponse>>> Get([FromQuery] PropertySearchObject search)
+		public async Task<ActionResult<PagedList<PropertySummaryDto>>> SearchProperties([FromQuery] PropertySearchObject searchRequest)
 		{
-			var result = await _propertyService.GetAsync(search);
+			var result = await _propertyService.SearchPropertiesAsync(searchRequest);
+			return Ok(result);
+		}
 
-			if (result == null || !result.Any())
-			{
-				return NotFound("No properties found matching the search criteria.");
-			}
-
+		[HttpGet("popular")]
+		public async Task<ActionResult<List<PropertySummaryDto>>> GetPopularProperties()
+		{
+			var result = await _propertyService.GetPopularPropertiesAsync();
 			return Ok(result);
 		}
 
@@ -41,8 +44,8 @@ namespace eRents.WebApi.Controllers
 				return BadRequest("Could not save property.");
 		}
 
-		[HttpGet("recommend/{userId}/{propertyId}")]
-		public async Task<IActionResult> GetRecommendations(int userId, int propertyId)
+		[HttpGet("recommend/{userId}")]
+		public async Task<IActionResult> GetRecommendations(int userId)
 		{
 			var recommendedProperties = await _propertyService.RecommendPropertiesAsync(userId);
 			return Ok(recommendedProperties);

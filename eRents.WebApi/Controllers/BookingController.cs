@@ -3,12 +3,17 @@ using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebApi.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
+	[Route("api/bookings")]
+	[Authorize]
 	public class BookingsController : BaseCRUDController<BookingResponse, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>
 	{
 		private readonly IBookingService _bookingService;
@@ -18,16 +23,33 @@ namespace eRents.WebApi.Controllers
 			_bookingService = service;
 		}
 
-		[HttpPost]
-		public override async Task<BookingResponse> Insert([FromBody] BookingInsertRequest insert)
+		[HttpGet("current")]
+		public async Task<ActionResult<List<BookingSummaryDto>>> GetCurrentStays()
 		{
-			return await base.Insert(insert);
+			string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; 
+			if (string.IsNullOrEmpty(userId))
+				return Unauthorized();
+				
+			var result = await _bookingService.GetCurrentStaysAsync(userId);
+			return Ok(result);
 		}
 
-		[HttpGet("user/{userId}")]
-		public async Task<IEnumerable<BookingResponse>> GetBookingsForUser(int userId)
+		[HttpGet("upcoming")]
+		public async Task<ActionResult<List<BookingSummaryDto>>> GetUpcomingStays()
 		{
-			return await _bookingService.GetBookingsForUserAsync(userId);
+			string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userId))
+				return Unauthorized();
+				
+			var result = await _bookingService.GetUpcomingStaysAsync(userId);
+			return Ok(result);
+		}
+		
+		[HttpGet("user/{userId}")]
+		public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookingsForUser(int userId)
+		{
+			var bookings = await _bookingService.GetBookingsForUserAsync(userId);
+			return Ok(bookings);
 		}
 	}
 }
