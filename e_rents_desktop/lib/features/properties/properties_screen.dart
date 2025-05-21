@@ -4,7 +4,6 @@ import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
-import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
@@ -13,6 +12,7 @@ import 'package:e_rents_desktop/features/properties/widgets/property_info_row.da
 import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -96,8 +96,8 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       child: Consumer<PropertyProvider>(
         builder: (context, provider, child) {
           return LoadingOrErrorWidget(
-            isLoading: provider.isLoading,
-            error: provider.error,
+            isLoading: provider.state == ViewState.Busy,
+            error: provider.errorMessage,
             onRetry: () => provider.fetchProperties(),
             child: Column(
               children: [

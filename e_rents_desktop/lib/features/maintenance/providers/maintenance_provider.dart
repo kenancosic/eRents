@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/maintenance_service.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
-  final ApiService _apiService;
-  bool _isLoading = false;
-  String? _error;
-  final bool _useMockData = true; // Flag to toggle between mock and real data
+  final MaintenanceService _maintenanceService;
 
-  MaintenanceProvider(this._apiService) : super(_apiService) {
-    // Enable mock data for development
+  MaintenanceProvider(this._maintenanceService) : super(_maintenanceService) {
     enableMockData();
   }
 
@@ -30,71 +26,57 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
       MockDataService.getMockMaintenanceIssues();
 
   List<MaintenanceIssue> get issues => items;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
 
-  // Fetch maintenance issues using the base provider's fetch method
-  Future<void> fetchIssues() async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await fetchItems();
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<void> fetchIssues({Map<String, String>? queryParams}) async {
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_ = getMockItems();
+      } else {
+        items_ = await _maintenanceService.getIssues(queryParams: queryParams);
+      }
+    });
   }
 
   Future<void> addIssue(MaintenanceIssue issue) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await addItem(issue);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_.add(
+          issue.copyWith(id: DateTime.now().millisecondsSinceEpoch.toString()),
+        );
+      } else {
+        final newItem = await _maintenanceService.createIssue(issue);
+        items_.add(newItem);
+      }
+    });
   }
 
   Future<void> updateIssue(MaintenanceIssue issue) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await updateItem(issue);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        final index = items.indexWhere((i) => i.id == issue.id);
+        if (index != -1) items_[index] = issue;
+      } else {
+        final updatedItem = await _maintenanceService.updateIssue(
+          issue.id,
+          issue,
+        );
+        final index = items.indexWhere((i) => i.id == updatedItem.id);
+        if (index != -1) items_[index] = updatedItem;
+      }
+    });
   }
 
   Future<void> deleteIssue(String id) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await deleteItem(id);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_.removeWhere((issue) => issue.id == id);
+      } else {
+        await _maintenanceService.deleteIssue(id);
+        items_.removeWhere((issue) => issue.id == id);
+      }
+    });
   }
 
-  // Additional maintenance-specific methods
   List<MaintenanceIssue> getIssuesByProperty(String propertyId) {
     return items.where((issue) => issue.propertyId == propertyId).toList();
   }
@@ -111,23 +93,43 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
     return items.where((issue) => issue.isTenantComplaint).toList();
   }
 
-  Future<void> updateIssueStatus(String id, IssueStatus status) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      final issue = items.firstWhere((i) => i.id == id);
-      final updatedIssue = issue.copyWith(
-        status: status,
-        resolvedAt: status == IssueStatus.completed ? DateTime.now() : null,
-      );
-      await updateItem(updatedIssue);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<void> updateIssueStatus(
+    String id,
+    IssueStatus status, {
+    double? cost,
+    String? resolutionNotes,
+  }) async {
+    await execute(() async {
+      MaintenanceIssue updatedIssue;
+      if (isMockDataEnabled) {
+        final index = items.indexWhere((i) => i.id == id);
+        if (index != -1) {
+          updatedIssue = items[index].copyWith(
+            status: status,
+            resolvedAt:
+                status == IssueStatus.completed
+                    ? DateTime.now()
+                    : items[index].resolvedAt,
+            cost: cost ?? items[index].cost,
+            resolutionNotes: resolutionNotes ?? items[index].resolutionNotes,
+          );
+          items_[index] = updatedIssue;
+        } else {
+          throw Exception("Mock issue not found for status update");
+        }
+      } else {
+        updatedIssue = await _maintenanceService.updateIssueStatus(
+          id,
+          status,
+          resolutionNotes: resolutionNotes,
+          cost: cost,
+        );
+        final index = items.indexWhere((i) => i.id == updatedIssue.id);
+        if (index != -1)
+          items_[index] = updatedIssue;
+        else
+          items_.add(updatedIssue);
+      }
+    });
   }
 }

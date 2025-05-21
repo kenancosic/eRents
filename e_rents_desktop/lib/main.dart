@@ -16,6 +16,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/amenity_service.dart';
 import 'base/navigation_provider.dart';
 import 'base/preference_provider.dart';
+import 'services/statistics_service.dart';
+import 'services/chat_service.dart';
+import 'services/maintenance_service.dart';
+import 'services/property_service.dart';
+import 'services/profile_service.dart';
+import 'services/report_service.dart';
+import 'features/reports/providers/reports_provider.dart';
+import 'services/tenant_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +38,13 @@ void main() async {
   final authService = AuthService(baseUrl, secureStorageService);
   final apiService = ApiService(baseUrl, secureStorageService);
   final amenityService = AmenityService.create();
+  final chatService = ChatService(baseUrl, secureStorageService);
+  final maintenanceService = MaintenanceService(baseUrl, secureStorageService);
+  final propertyService = PropertyService(baseUrl, secureStorageService);
+  final profileService = ProfileService(baseUrl, secureStorageService);
+  final reportService = ReportService(baseUrl, secureStorageService);
+  final statisticsService = StatisticsService(apiService);
+  final tenantService = TenantService(baseUrl, secureStorageService);
 
   runApp(
     MultiProvider(
@@ -44,24 +59,51 @@ void main() async {
           create: (_) => PreferencesProvider(preferencesService: prefsService),
         ),
 
-        // Feature specific providers (can also be provided closer to features)
-        ChangeNotifierProvider(create: (_) => PropertyProvider(apiService)),
-        ChangeNotifierProvider<MaintenanceProvider>(
-          create: (context) => MaintenanceProvider(context.read<ApiService>()),
+        // Feature specific providers
+        ChangeNotifierProvider(
+          create:
+              (context) => PropertyProvider(
+                context.read<PropertyService>(),
+                context.read<AmenityService>(),
+              ),
         ),
-        ChangeNotifierProvider(create: (_) => TenantProvider()),
+        ChangeNotifierProvider<MaintenanceProvider>(
+          create:
+              (context) =>
+                  MaintenanceProvider(context.read<MaintenanceService>()),
+        ),
+        ChangeNotifierProvider<TenantProvider>(
+          create: (context) => TenantProvider(context.read<TenantService>()),
+        ),
         ChangeNotifierProvider<StatisticsProvider>(
-          create: (context) => StatisticsProvider(),
+          create:
+              (context) =>
+                  StatisticsProvider(context.read<StatisticsService>()),
         ),
         ChangeNotifierProvider<ChatProvider>(
-          create: (context) => ChatProvider(context.read<ApiService>()),
+          create:
+              (context) => ChatProvider(
+                context.read<ChatService>(),
+                context.read<AuthProvider>(),
+              ),
+        ),
+        ChangeNotifierProvider<ReportsProvider>(
+          create:
+              (context) =>
+                  ReportsProvider(reportService: context.read<ReportService>()),
         ),
 
         // Core Services (can be accessed anywhere)
-        Provider.value(value: apiService),
         Provider.value(value: secureStorageService),
         Provider.value(value: prefsService),
         Provider.value(value: amenityService),
+        Provider.value(value: chatService),
+        Provider.value(value: maintenanceService),
+        Provider.value(value: propertyService),
+        Provider.value(value: profileService),
+        Provider.value(value: reportService),
+        Provider.value(value: statisticsService),
+        Provider.value(value: tenantService),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',

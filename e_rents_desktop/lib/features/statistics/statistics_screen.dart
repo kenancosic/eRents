@@ -19,7 +19,7 @@ class StatisticsScreen extends StatelessWidget {
     DateTime end,
   ) {
     final provider = Provider.of<StatisticsProvider>(context, listen: false);
-    provider.setDateRange(start, end);
+    provider.setDateRangeAndFetch(start, end);
   }
 
   @override
@@ -46,7 +46,7 @@ class StatisticsScreen extends StatelessWidget {
             child: Consumer<StatisticsProvider>(
               builder: (context, provider, child) {
                 if (provider.state == ViewState.Busy &&
-                    provider.statistics == null) {
+                    provider.statisticsUiModel == null) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -58,7 +58,7 @@ class StatisticsScreen extends StatelessWidget {
                   );
                 }
 
-                if (provider.statistics == null) {
+                if (provider.statisticsUiModel == null) {
                   return const Center(
                     child: Text(
                       'No statistics data available for the selected period.',
@@ -66,7 +66,7 @@ class StatisticsScreen extends StatelessWidget {
                   );
                 }
 
-                final stats = provider.statistics!;
+                final stats = provider.statisticsUiModel!;
 
                 // Sort monthly breakdown by date for consistent chart order
                 stats.monthlyBreakdown.sort((a, b) {

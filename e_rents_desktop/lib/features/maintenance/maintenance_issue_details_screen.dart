@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
 class MaintenanceIssueDetailsScreen extends StatelessWidget {
   final MaintenanceIssue? issue;
@@ -34,18 +35,18 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
     return Consumer<MaintenanceProvider>(
       builder: (context, provider, child) {
         // Show loading state if provider is loading
-        if (provider.isLoading) {
+        if (provider.state == ViewState.Busy) {
           return const Center(child: CircularProgressIndicator());
         }
 
         // Show error state if there's an error
-        if (provider.error != null) {
+        if (provider.errorMessage != null) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  provider.error!,
+                  provider.errorMessage!,
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 16),
@@ -231,12 +232,14 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildActions(BuildContext context, MaintenanceIssue issue) {
+    final provider = Provider.of<MaintenanceProvider>(context, listen: false);
+
     return Row(
       children: [
         if (issue.status == IssueStatus.pending) ...[
           ElevatedButton.icon(
             onPressed: () {
-              // TODO: Implement start work action
+              provider.updateIssueStatus(issue.id, IssueStatus.inProgress);
             },
             icon: const Icon(Icons.play_arrow),
             label: const Text('Start Work'),
@@ -246,7 +249,13 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
         if (issue.status == IssueStatus.inProgress) ...[
           ElevatedButton.icon(
             onPressed: () {
-              // TODO: Implement complete action
+              // Potentially show a dialog to enter cost and resolution notes
+              // For now, just mark as complete.
+              provider.updateIssueStatus(
+                issue.id,
+                IssueStatus.completed,
+                resolutionNotes: "Work completed.",
+              );
             },
             icon: const Icon(Icons.check),
             label: const Text('Mark as Complete'),
@@ -257,10 +266,11 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
             issue.status != IssueStatus.cancelled) ...[
           TextButton.icon(
             onPressed: () {
-              // TODO: Implement cancel action
+              provider.updateIssueStatus(issue.id, IssueStatus.cancelled);
             },
             icon: const Icon(Icons.cancel),
             label: const Text('Cancel Issue'),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
           ),
         ],
         const Spacer(),

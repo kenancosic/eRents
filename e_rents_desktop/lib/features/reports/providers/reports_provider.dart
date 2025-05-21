@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/reports/providers/financial_report_prov
 import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/export_service.dart';
+import 'package:e_rents_desktop/services/report_service.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 
 /// Report type enum used for switching between report screens
@@ -16,13 +17,12 @@ enum ExportFormat { pdf, excel, csv }
 
 /// Main provider class that coordinates all individual report providers
 class ReportsProvider extends BaseReportProvider<dynamic> {
+  final ReportService _reportService;
   final Map<ReportType, BaseReportProvider?> _providers = {};
   ReportType _currentReportType = ReportType.financial;
 
-  ReportsProvider({
-    FinancialReportProvider? financialProvider,
-    TenantReportProvider? tenantProvider,
-  }) {
+  ReportsProvider({required ReportService reportService})
+    : _reportService = reportService {
     debugPrint("ReportsProvider: Initializing with lazy loading");
     _providers[_currentReportType] = _createProvider(_currentReportType);
   }
@@ -41,9 +41,9 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   BaseReportProvider _createProvider(ReportType type) {
     switch (type) {
       case ReportType.financial:
-        return FinancialReportProvider();
+        return FinancialReportProvider(reportService: _reportService);
       case ReportType.tenant:
-        return TenantReportProvider();
+        return TenantReportProvider(reportService: _reportService);
     }
   }
 
@@ -202,31 +202,27 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   List<List<String>> _getCurrentReportRows() {
     switch (_currentReportType) {
       case ReportType.financial:
-        return financialReportData
-            .map(
-              (item) => [
-                item.dateFrom,
-                item.dateTo,
-                item.property,
-                kCurrencyFormat.format(item.totalRent),
-                kCurrencyFormat.format(item.maintenanceCosts),
-                kCurrencyFormat.format(item.total),
-              ],
-            )
-            .toList();
+        return financialReportData.map((item) {
+          return [
+            item.dateFrom,
+            item.dateTo,
+            item.property,
+            kCurrencyFormat.format(item.totalRent),
+            kCurrencyFormat.format(item.maintenanceCosts),
+            kCurrencyFormat.format(item.total),
+          ];
+        }).toList();
       case ReportType.tenant:
-        return tenantReportData
-            .map(
-              (item) => [
-                item.dateFrom,
-                item.dateTo,
-                item.tenantName,
-                item.propertyName,
-                kCurrencyFormat.format(item.costOfRent),
-                kCurrencyFormat.format(item.totalPaidRent),
-              ],
-            )
-            .toList();
+        return tenantReportData.map((item) {
+          return [
+            item.tenantName,
+            item.propertyName,
+            item.dateFrom,
+            item.dateTo,
+            kCurrencyFormat.format(item.costOfRent),
+            kCurrencyFormat.format(item.totalPaidRent),
+          ];
+        }).toList();
     }
   }
 

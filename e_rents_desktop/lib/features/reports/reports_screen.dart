@@ -5,8 +5,6 @@ import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/tenant_report_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 
@@ -15,35 +13,12 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => FinancialReportProvider()),
-        ChangeNotifierProvider(create: (_) => TenantReportProvider()),
-        ChangeNotifierProxyProvider2<
-          FinancialReportProvider,
-          TenantReportProvider,
-          ReportsProvider
-        >(
-          create: (_) => ReportsProvider(),
-          update: (_, financial, tenant, previous) {
-            if (previous != null) {
-              previous.updateProviders(financial, tenant);
-              return previous;
-            }
-            return ReportsProvider(
-              financialProvider: financial,
-              tenantProvider: tenant,
-            );
-          },
-        ),
-      ],
-      child: const _ReportsScreenContent(),
-    );
+    return const _ReportsScreenContent();
   }
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  const _ReportsScreenContent({super.key});
+  const _ReportsScreenContent();
 
   void _showExportResult(
     BuildContext context,
@@ -219,6 +194,7 @@ class _ReportsScreenContent extends StatelessWidget {
                     onChanged: (String? newValue) {
                       if (newValue != null) {
                         provider.setReportTypeFromString(newValue);
+                        provider.loadCurrentReportData();
                       }
                     },
                   ),

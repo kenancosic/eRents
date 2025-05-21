@@ -48,4 +48,28 @@ class TenantFeedback {
       'stayEndDate': stayEndDate.toIso8601String(),
     };
   }
+
+  TenantFeedback copyWith({
+    String? id,
+    String? tenantId,
+    String? landlordId,
+    String? propertyId,
+    int? rating,
+    String? comment,
+    DateTime? feedbackDate,
+    DateTime? stayStartDate,
+    DateTime? stayEndDate,
+  }) {
+    return TenantFeedback(
+      id: id ?? this.id,
+      tenantId: tenantId ?? this.tenantId,
+      landlordId: landlordId ?? this.landlordId,
+      propertyId: propertyId ?? this.propertyId,
+      rating: rating ?? this.rating,
+      comment: comment ?? this.comment,
+      feedbackDate: feedbackDate ?? this.feedbackDate,
+      stayStartDate: stayStartDate ?? this.stayStartDate,
+      stayEndDate: stayEndDate ?? this.stayEndDate,
+    );
+  }
 }

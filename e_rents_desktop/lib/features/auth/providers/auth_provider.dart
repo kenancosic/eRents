@@ -24,7 +24,10 @@ class AuthProvider extends BaseProvider<User> {
     await execute(() async {
       _isAuthenticated = await _authService.isAuthenticated();
       if (_isAuthenticated) {
-        // Optionally fetch user profile here
+        await _fetchCurrentUserDetails();
+        if (_currentUser == null) {
+          _isAuthenticated = false;
+        }
       }
     });
   }
@@ -49,19 +52,30 @@ class AuthProvider extends BaseProvider<User> {
   User? get currentUser => _currentUser;
   bool get isAuthenticatedState => _isAuthenticated;
 
+  Future<void> _fetchCurrentUserDetails() async {
+    if (_isAuthenticated) {
+      try {
+        _currentUser = await _authService.getMe();
+      } catch (e) {
+        print('Error fetching user details: $e');
+        _currentUser = null;
+        _isAuthenticated = false;
+        setError('Failed to load user profile. Please try logging in again.');
+      }
+    }
+  }
+
   Future<bool> login(LoginRequestModel request) async {
     bool success = false;
     await execute(() async {
       await _authService.login(request);
       _isAuthenticated = true;
-      // User details are not in LoginResponse, might need separate fetch
-      // _currentUser = await _fetchUserDetails();
-      success = true;
+      await _fetchCurrentUserDetails();
+      success = _currentUser != null;
     });
-    if (!success && state != ViewState.Error) {
+    if (!success) {
       _isAuthenticated = false;
-    } else if (state == ViewState.Error) {
-      _isAuthenticated = false;
+      _currentUser = null;
     }
     notifyListeners();
     return success;
@@ -90,11 +104,14 @@ class AuthProvider extends BaseProvider<User> {
   Future<bool> checkAndUpdateAuthStatus() async {
     await execute(() async {
       _isAuthenticated = await _authService.isAuthenticated();
-      if (!_isAuthenticated) {
+      if (_isAuthenticated) {
+        await _fetchCurrentUserDetails();
+        if (_currentUser == null) {
+          _isAuthenticated = false;
+        }
+      } else {
         _currentUser = null;
       }
-      // Else, if authenticated, _currentUser might be stale.
-      // Consider fetching/refreshing user data here if needed.
     });
     notifyListeners();
     return _isAuthenticated;

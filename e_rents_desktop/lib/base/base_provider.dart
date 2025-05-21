@@ -18,6 +18,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
   ViewState get state => _state;
   String? get errorMessage => _errorMessage;
   List<T> get items => items_;
+  bool get isMockDataEnabled => _useMockData;
 
   // Dispose override to track disposal state
   @override

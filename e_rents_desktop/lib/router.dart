@@ -17,16 +17,28 @@ import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 class AppRouter {
   final GoRouter router = GoRouter(
     initialLocation: '/',
-    redirect: (context, state) {
-      // If we're in development mode and have a token, allow navigation
-      if (AuthService.isDevelopmentMode && AuthService.hasToken) {
+    redirect: (context, state) async {
+      // Check authentication status using auth provider
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final isAuthenticated = authProvider.isAuthenticatedState;
+
+      // Development mode check
+      final bool isDevelopmentMode =
+          // Check some environment variable, or you can hardcode for development
+          !bool.fromEnvironment('dart.vm.product') ||
+          Platform.environment.containsKey('FLUTTER_DEV_MODE');
+
+      // If we're in development mode and authenticated, allow navigation
+      if (isDevelopmentMode && isAuthenticated) {
         if (state.uri.path == '/login' ||
             state.uri.path == '/signup' ||
             state.uri.path == '/forgot-password') {
@@ -41,7 +53,7 @@ class AppRouter {
           state.uri.path == '/signup' ||
           state.uri.path == '/forgot-password';
 
-      if (!isAuthRoute) {
+      if (!isAuthRoute && !isAuthenticated) {
         return '/login';
       }
 

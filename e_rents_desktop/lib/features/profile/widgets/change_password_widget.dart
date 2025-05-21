@@ -42,31 +42,33 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
       final success = await profileProvider.changePassword(
         _currentPasswordController.text,
         _newPasswordController.text,
+        _confirmPasswordController.text,
       );
 
-      if (success) {
-        // Reset fields after successful password change
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
+      if (mounted) {
+        if (success) {
+          _currentPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password updated successfully'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              profileProvider.errorMessage ?? 'Failed to update password',
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password updated successfully'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                profileProvider.errorMessage ?? 'Failed to update password',
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
@@ -127,6 +129,18 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
                 ),
               ],
             ),
+            if (widget.isEditing)
+              Padding(
+                padding: const EdgeInsets.only(top: 24.0),
+                child: ElevatedButton.icon(
+                  onPressed: _updatePassword,
+                  icon: const Icon(Icons.key),
+                  label: const Text('Update Password'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

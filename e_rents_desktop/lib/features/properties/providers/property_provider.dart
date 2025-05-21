@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+// import 'package:e_rents_desktop/services/api_service.dart'; // No longer needed directly
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'dart:convert';
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/services/amenity_service.dart';
+import 'package:e_rents_desktop/services/property_service.dart'; // Import PropertyService
 
 class PropertyProvider extends BaseProvider<Property> {
-  final ApiService _apiService;
-  bool _isLoading = false;
-  String? _error;
-  final bool _useMockData = true; // Flag to toggle between mock and real data
+  final PropertyService _propertyService; // Use PropertyService
+  final AmenityService _amenityService;
 
-  PropertyProvider(this._apiService) : super(_apiService) {
+  PropertyProvider(this._propertyService, this._amenityService)
+    : super(_propertyService) {
     // Enable mock data for development
     enableMockData();
   }
@@ -29,77 +29,67 @@ class PropertyProvider extends BaseProvider<Property> {
   List<Property> getMockItems() => MockDataService.getMockProperties();
 
   List<Property> get properties => items;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
 
-  // Add method to update properties list for reordering
+  Map<String, IconData> get amenityIcons => _amenityService.getAmenityIcons();
+
   void updateProperties(List<Property> newProperties) {
     items_ = newProperties;
     notifyListeners();
   }
 
-  // Fetch properties using the base provider's fetch method
-  Future<void> fetchProperties() async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await fetchItems();
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+  Future<void> fetchProperties({Map<String, String>? queryParams}) async {
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_ = getMockItems();
+        // TODO: If mock data needs filtering by queryParams for testing consistency
+      } else {
+        items_ = await _propertyService.getProperties(queryParams: queryParams);
+      }
+    });
   }
 
   Future<void> addProperty(Property property) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await addItem(property);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_.add(
+          property.copyWith(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+          ),
+        );
+      } else {
+        final newItem = await _propertyService.createProperty(property);
+        items_.add(newItem);
+      }
+    });
   }
 
   Future<void> updateProperty(Property property) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await updateItem(property);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        final index = items.indexWhere((i) => i.id == property.id);
+        if (index != -1) items_[index] = property;
+      } else {
+        final updatedItem = await _propertyService.updateProperty(
+          property.id,
+          property,
+        );
+        final index = items.indexWhere((i) => i.id == updatedItem.id);
+        if (index != -1) items_[index] = updatedItem;
+      }
+    });
   }
 
   Future<void> deleteProperty(String id) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      await deleteItem(id);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        items_.removeWhere((item) => item.id == id);
+      } else {
+        await _propertyService.deleteProperty(id);
+        items_.removeWhere((item) => item.id == id);
+      }
+    });
   }
 
-  // Additional property-specific methods
   List<Property> getPropertiesByStatus(PropertyStatus status) {
     return items.where((property) => property.status == status).toList();
   }
@@ -120,12 +110,10 @@ class PropertyProvider extends BaseProvider<Property> {
         .toList();
   }
 
-  // Method to get a single property by ID from the current list
   Property? getPropertyById(String id) {
     try {
       return items.firstWhere((property) => property.id == id);
     } catch (e) {
-      // If not found, return null
       return null;
     }
   }

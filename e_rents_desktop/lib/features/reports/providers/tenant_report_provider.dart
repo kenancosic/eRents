@@ -1,11 +1,18 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
+import 'package:e_rents_desktop/services/report_service.dart';
 import 'package:flutter/foundation.dart';
 
 class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
+  final ReportService _reportService;
+
+  TenantReportProvider({required ReportService reportService})
+    : _reportService = reportService,
+      super();
+
   @override
-  String get endpoint => 'api/reports/tenants';
+  String get endpoint => '/reports/tenants';
 
   @override
   TenantReportItem fromJson(Map<String, dynamic> json) {
@@ -27,19 +34,32 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
 
   @override
   Future<List<TenantReportItem>> fetchReportData() async {
-    if (kDebugMode) {
-      print(
-        'TenantReportProvider: Fetching data for date range $startDateFormatted - $endDateFormatted',
-      );
+    if (isMockDataEnabled) {
+      if (kDebugMode) {
+        print('TenantReportProvider: Using mock data.');
+      }
+      return getMockItems();
+    } else {
+      if (kDebugMode) {
+        print('TenantReportProvider: Fetching real data.');
+      }
+      return await _reportService.getTenantReport(startDate, endDate);
     }
-    return MockDataService.getMockTenantReportData();
   }
 
   @override
   void onDateRangeChanged() {
-    // For tenant reports, we don't need to refresh data on date changes
-    // since we show all tenants regardless of dates
-    notifyListeners();
+    if (!isMockDataEnabled) {
+      debugPrint(
+        "TenantReportProvider.onDateRangeChanged: Fetching new data due to date change and real data mode.",
+      );
+      fetchItems();
+    } else {
+      debugPrint(
+        "TenantReportProvider.onDateRangeChanged: Using mock data, no refetch needed on date change.",
+      );
+      notifyListeners();
+    }
   }
 
   // Count of leases ending soon (within 30 days)

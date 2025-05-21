@@ -1,19 +1,19 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/chat_service.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/foundation.dart';
 
 class ChatProvider extends BaseProvider<Message> {
-  final ApiService _apiService;
+  final ChatService _chatService;
+  final AuthProvider _authProvider;
   final Map<String, List<Message>> _conversationMessages = {};
   final Map<String, User> _contacts = {};
   String? _selectedContactId;
-  bool _isLoading = false;
-  String? _error;
 
-  ChatProvider(this._apiService) : super(_apiService) {
-    enableMockData(); // Use mock data by default
+  ChatProvider(this._chatService, this._authProvider) : super(_chatService) {
+    disableMockData(); // Use real API calls by default now
   }
 
   // Getters
@@ -21,18 +21,20 @@ class ChatProvider extends BaseProvider<Message> {
   List<User> get contacts => _contacts.values.toList();
   User? get selectedContact =>
       _selectedContactId != null ? _contacts[_selectedContactId] : null;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
 
   // Set the currently selected contact
   void selectContact(String contactId) {
     _selectedContactId = contactId;
     notifyListeners();
-    loadMessages(contactId);
+    if (_authProvider.currentUser?.id != null) {
+      loadMessages(contactId, _authProvider.currentUser!.id);
+    } else {
+      setError("User not authenticated, cannot load messages.");
+    }
   }
 
   @override
-  String get endpoint => '/messages';
+  String get endpoint => '/Chat';
 
   @override
   Message fromJson(Map<String, dynamic> json) => Message.fromJson(json);
@@ -42,187 +44,148 @@ class ChatProvider extends BaseProvider<Message> {
 
   @override
   List<Message> getMockItems() {
-    // Just return an empty list here since we're managing messages per conversation
+    // Mock messages are generated per conversation in loadMessages if needed
     return [];
-  }
-
-  // Helper method to determine if we should use mock data
-  bool _shouldUseMockData() {
-    // In a real app, this might check if we're in debug mode or have a flag set
-    return true; // For now, always use mock data
   }
 
   // Load all contacts
   Future<void> loadContacts() async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // In a real app, we would fetch contacts from the API
-      // For now, use mock data
-      await Future.delayed(
-        const Duration(milliseconds: 500),
-      ); // Simulate network delay
-
-      final mockUsers = List.generate(
-        10,
-        (index) => User(
-          id: 'user$index',
-          email: 'user$index@example.com',
-          username: 'user$index',
-          firstName: 'User',
-          lastName: '${index + 1}',
-          role: UserType.landlord,
-          createdAt: DateTime.now().subtract(Duration(days: index * 10)),
-          updatedAt: DateTime.now(),
-        ),
-      );
-
-      for (final user in mockUsers) {
-        _contacts[user.id] = user;
+    await execute(() async {
+      if (isMockDataEnabled) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        final mockUsers = List.generate(
+          10,
+          (index) => User(
+            id: 'user$index',
+            email: 'user$index@example.com',
+            username: 'user$index',
+            firstName: 'User',
+            lastName: '${index + 1}',
+            role: UserType.landlord,
+            createdAt: DateTime.now().subtract(Duration(days: index * 10)),
+            updatedAt: DateTime.now(),
+          ),
+        );
+        _contacts.clear();
+        for (final user in mockUsers) {
+          _contacts[user.id] = user;
+        }
+      } else {
+        final fetchedContacts = await _chatService.getContacts();
+        _contacts.clear();
+        for (final user in fetchedContacts) {
+          _contacts[user.id] = user;
+        }
       }
-
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error loading contacts: $_error');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    });
   }
 
   // Load messages for a specific contact
-  Future<void> loadMessages(String contactId) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // In a real app, we would fetch messages from the API
-      // For now, use mock data
-      await Future.delayed(
-        const Duration(milliseconds: 500),
-      ); // Simulate network delay
-
-      if (!_conversationMessages.containsKey(contactId)) {
-        _conversationMessages[contactId] = [];
-
-        // Generate some mock messages
-        final currentUserId =
-            'currentUser'; // This would come from auth service
-        final mockMessages = List.generate(
-          5,
-          (index) => Message(
-            id: 'msg$index-$contactId',
-            senderId: index % 2 == 0 ? currentUserId : contactId,
-            receiverId: index % 2 == 0 ? contactId : currentUserId,
-            messageText:
-                'This is message ${index + 1} between you and contact $contactId',
-            dateSent: DateTime.now().subtract(Duration(hours: index * 2)),
-          ),
+  Future<void> loadMessages(
+    String contactId,
+    String currentUserId, {
+    int? page,
+    int? pageSize,
+  }) async {
+    await execute(() async {
+      if (isMockDataEnabled) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!_conversationMessages.containsKey(contactId)) {
+          _conversationMessages[contactId] = [];
+          final mockMessages = List.generate(
+            5,
+            (index) => Message(
+              id: 'msg$index-$contactId',
+              senderId: index % 2 == 0 ? currentUserId : contactId,
+              receiverId: index % 2 == 0 ? contactId : currentUserId,
+              messageText: 'This is mock message ${index + 1} with $contactId',
+              dateSent: DateTime.now().subtract(Duration(hours: index * 2)),
+            ),
+          );
+          _conversationMessages[contactId] = mockMessages;
+        }
+      } else {
+        final fetchedMessages = await _chatService.getMessages(
+          contactId,
+          page: page,
+          pageSize: pageSize,
         );
-
-        _conversationMessages[contactId] = mockMessages;
+        _conversationMessages[contactId] = fetchedMessages;
       }
-
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error loading messages: $_error');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    });
   }
 
   // Send a message
   Future<void> sendMessage(Message message) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // In a real app, we would send the message to the API
-      // For now, just add it to our local collection
-      await Future.delayed(
-        const Duration(milliseconds: 300),
-      ); // Simulate network delay
-
-      if (_shouldUseMockData()) {
-        if (!_conversationMessages.containsKey(message.receiverId)) {
-          _conversationMessages[message.receiverId] = [];
-        }
-
-        _conversationMessages[message.receiverId]!.add(message);
+    await execute(() async {
+      Message sentMessage;
+      if (isMockDataEnabled) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        sentMessage = message.copyWith(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+        );
       } else {
-        // In a real app, we would send the message via API
-        await _apiService.post('$endpoint/send', message.toJson());
-
-        // And then add it to our local collection
-        if (!_conversationMessages.containsKey(message.receiverId)) {
-          _conversationMessages[message.receiverId] = [];
-        }
-
-        _conversationMessages[message.receiverId]!.add(message);
+        sentMessage = await _chatService.sendMessage(
+          message.receiverId,
+          message.messageText,
+        );
       }
-
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error sending message: $_error');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+      if (!_conversationMessages.containsKey(sentMessage.receiverId)) {
+        _conversationMessages[sentMessage.receiverId] = [];
+      }
+      _conversationMessages[sentMessage.receiverId]!.add(sentMessage);
+    });
   }
 
   // Send a property offer message
   Future<void> sendPropertyOfferMessage(
     String receiverId,
     String propertyId,
-    String senderId,
   ) async {
+    final currentUserId = _authProvider.currentUser?.id;
+    if (currentUserId == null) {
+      setError("User not authenticated. Cannot send property offer.");
+      return;
+    }
     final String offerMessageContent = "PROPERTY_OFFER::$propertyId";
     final newMessage = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: senderId,
+      id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      senderId: currentUserId,
       receiverId: receiverId,
       messageText: offerMessageContent,
       dateSent: DateTime.now(),
     );
-    await sendMessage(newMessage); // Use the existing sendMessage logic
+    await sendMessage(newMessage);
   }
 
   // Delete a message
   Future<void> deleteMessage(String messageId) async {
-    if (_selectedContactId == null) return;
-
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // In a real app, we would update the message on the API
-      // For now, just update our local collection
-      await Future.delayed(
-        const Duration(milliseconds: 300),
-      ); // Simulate network delay
-
-      final messageIndex = _conversationMessages[_selectedContactId]!
-          .indexWhere((message) => message.id == messageId);
-
-      if (messageIndex != -1) {
-        final message =
-            _conversationMessages[_selectedContactId]![messageIndex];
-        _conversationMessages[_selectedContactId]![messageIndex] = message
-            .copyWith(isDeleted: true);
-      }
-
-      _error = null;
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error deleting message: $_error');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    if (_selectedContactId == null) {
+      setError("No contact selected. Cannot delete message.");
+      return;
     }
+    await execute(() async {
+      if (isMockDataEnabled) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        final messageIndex = _conversationMessages[_selectedContactId]!
+            .indexWhere((msg) => msg.id == messageId);
+        if (messageIndex != -1) {
+          _conversationMessages[_selectedContactId]![messageIndex] =
+              _conversationMessages[_selectedContactId]![messageIndex].copyWith(
+                isDeleted: true,
+              );
+        }
+      } else {
+        await _chatService.deleteMessage(messageId);
+        final messageIndex = _conversationMessages[_selectedContactId]!
+            .indexWhere((msg) => msg.id == messageId);
+        if (messageIndex != -1) {
+          _conversationMessages[_selectedContactId]![messageIndex] =
+              _conversationMessages[_selectedContactId]![messageIndex].copyWith(
+                isDeleted: true,
+              );
+        }
+      }
+    });
   }
 }

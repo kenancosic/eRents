@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
@@ -25,10 +26,15 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
   late bool _isTenantComplaint;
   List<String> _images = [];
   bool _isLoading = false;
+  String? _errorMessage;
+  late String _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _currentUserId =
+        Provider.of<AuthProvider>(context, listen: false).currentUser?.id ??
+        'unknown_user';
     _titleController = TextEditingController(text: widget.issue?.title ?? '');
     _descriptionController = TextEditingController(
       text: widget.issue?.description ?? '',
@@ -62,8 +68,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
       cost: widget.issue?.cost,
       assignedTo: widget.issue?.assignedTo,
       images: _images,
-      reportedBy:
-          widget.issue?.reportedBy ?? 'Current User', // TODO: Get actual user
+      reportedBy: _currentUserId,
       resolutionNotes: widget.issue?.resolutionNotes,
       category: _categoryController.text,
       requiresInspection: widget.issue?.requiresInspection ?? false,

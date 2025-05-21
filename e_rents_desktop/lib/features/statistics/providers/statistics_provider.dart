@@ -1,7 +1,7 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
-import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:flutter/foundation.dart';
@@ -10,21 +10,135 @@ import 'package:intl/intl.dart';
 class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
   final StatisticsService _statisticsService;
 
-  // For the new API data
   DashboardStatistics? _dashboardStats;
   FinancialStatistics? _apiFinancialStats;
 
-  // For compatibility with existing UI
-  ui_model.FinancialStatistics? _statistics;
+  ui_model.FinancialStatistics? _statisticsUiModel;
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
 
-  StatisticsProvider(ApiService apiService, this._statisticsService)
-    : super(apiService);
+  StatisticsProvider(this._statisticsService) : super();
 
-  // Required abstract method implementations
+  DashboardStatistics? get dashboardStats => _dashboardStats;
+  FinancialStatistics? get apiFinancialStats => _apiFinancialStats;
+
+  ui_model.FinancialStatistics? get statisticsUiModel => _statisticsUiModel;
+
+  DateTime get startDate => _startDate;
+  DateTime get endDate => _endDate;
+
+  static final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
+  String get formattedStartDate => dateFormat.format(_startDate);
+  String get formattedEndDate => dateFormat.format(_endDate);
+
+  Future<void> loadDashboardStatistics() async {
+    await execute(() async {
+      _dashboardStats = await _statisticsService.getDashboardStatistics();
+    });
+  }
+
+  Future<void> loadFinancialStatistics({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final effectiveStartDate = startDate ?? _startDate;
+    final effectiveEndDate = endDate ?? _endDate;
+
+    _startDate = effectiveStartDate;
+    _endDate = effectiveEndDate;
+
+    await execute(() async {
+      if (isMockDataEnabled) {
+        _apiFinancialStats = FinancialStatistics(
+          currentMonthRevenue: 12345.0,
+          previousMonthRevenue: 11000.0,
+          projectedRevenue: 13000.0,
+          revenueHistory: [
+            MonthlyRevenue(year: 2023, month: 1, revenue: 10000),
+            MonthlyRevenue(year: 2023, month: 2, revenue: 12000),
+          ],
+          revenueByPropertyType: {"Apartment": 20000, "House": 22000},
+        );
+      } else {
+        _apiFinancialStats = await _statisticsService.getFinancialStatistics(
+          startDate: effectiveStartDate,
+          endDate: effectiveEndDate,
+        );
+      }
+      _statisticsUiModel = _convertToUiModel(_apiFinancialStats);
+      if (_statisticsUiModel != null) {
+        items_ = [_statisticsUiModel!];
+      } else {
+        items_ = [];
+      }
+    });
+  }
+
+  ui_model.FinancialStatistics? _convertToUiModel(
+    FinancialStatistics? apiStats,
+  ) {
+    if (apiStats == null) {
+      return ui_model.FinancialStatistics(
+        totalRent: 0,
+        totalMaintenanceCosts: 0,
+        netTotal: 0,
+        startDate: _startDate,
+        endDate: _endDate,
+        monthlyBreakdown: [],
+      );
+    }
+
+    List<FinancialReportItem> monthlyBreakdownUi = [];
+    if (apiStats.revenueHistory.isNotEmpty) {
+      monthlyBreakdownUi =
+          apiStats.revenueHistory.map((monthlyRevenue) {
+            final monthDate = DateTime(
+              monthlyRevenue.year,
+              monthlyRevenue.month,
+              1,
+            );
+            final firstDayOfMonth = DateFormat('dd/MM/yyyy').format(monthDate);
+            final lastDayOfMonth = DateFormat('dd/MM/yyyy').format(
+              DateTime(monthlyRevenue.year, monthlyRevenue.month + 1, 0),
+            );
+
+            return FinancialReportItem(
+              dateFrom: firstDayOfMonth,
+              dateTo: lastDayOfMonth,
+              property: 'Monthly Total',
+              totalRent: monthlyRevenue.revenue,
+              maintenanceCosts: 0,
+              total: monthlyRevenue.revenue,
+            );
+          }).toList();
+    }
+
+    double calculatedTotalRent = apiStats.currentMonthRevenue;
+    if (apiStats.revenueHistory.isNotEmpty) {
+      calculatedTotalRent = apiStats.revenueHistory.fold(
+        0.0,
+        (sum, item) => sum + item.revenue,
+      );
+    }
+
+    return ui_model.FinancialStatistics(
+      totalRent: calculatedTotalRent,
+      totalMaintenanceCosts: 0,
+      netTotal: calculatedTotalRent,
+      startDate: _startDate,
+      endDate: _endDate,
+      monthlyBreakdown: monthlyBreakdownUi,
+    );
+  }
+
+  Future<void> setDateRangeAndFetch(DateTime start, DateTime end) async {
+    _startDate = start;
+    _endDate = end;
+    await loadFinancialStatistics(startDate: start, endDate: end);
+  }
+
   @override
-  String get endpoint => 'Statistics/financial';
+  String get endpoint => 'Statistics/financial_legacy_ui';
 
   @override
   ui_model.FinancialStatistics fromJson(Map<String, dynamic> json) {
@@ -38,90 +152,10 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
 
   @override
   List<ui_model.FinancialStatistics> getMockItems() {
-    return [MockDataService.getMockFinancialStatistics(_startDate, _endDate)];
-  }
-
-  // Getters for API models
-  DashboardStatistics? get dashboardStats => _dashboardStats;
-  FinancialStatistics? get apiFinancialStats => _apiFinancialStats;
-
-  // Getters for UI models (for backward compatibility)
-  ui_model.FinancialStatistics? get statistics => _statistics;
-  DateTime get startDate => _startDate;
-  DateTime get endDate => _endDate;
-
-  // Common date format
-  static final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
-  String get formattedStartDate => dateFormat.format(_startDate);
-  String get formattedEndDate => dateFormat.format(_endDate);
-
-  // Load dashboard statistics from API
-  Future<void> loadDashboardStatistics() async {
-    await execute(() async {
-      _dashboardStats = await _statisticsService.getDashboardStatistics();
-    });
-  }
-
-  // Load financial statistics from API
-  Future<void> loadFinancialStatistics({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    final effectiveStartDate = startDate ?? _startDate;
-    final effectiveEndDate = endDate ?? _endDate;
-
-    // Update the date range
-    _startDate = effectiveStartDate;
-    _endDate = effectiveEndDate;
-
-    await execute(() async {
-      _apiFinancialStats = await _statisticsService.getFinancialStatistics(
-        startDate: effectiveStartDate,
-        endDate: effectiveEndDate,
-      );
-
-      // Convert API model to UI model for backward compatibility
-      _statistics = _convertToExistingModel(_apiFinancialStats);
-    });
-  }
-
-  // For backward compatibility - convert API model to existing UI model
-  ui_model.FinancialStatistics _convertToExistingModel(
-    FinancialStatistics? apiStats,
-  ) {
-    if (apiStats == null) {
-      return ui_model.FinancialStatistics(
-        totalRent: 0,
-        totalMaintenanceCosts: 0,
-        netTotal: 0,
-        startDate: _startDate,
-        endDate: _endDate,
-      );
-    }
-
-    // Simple conversion - in a real app you'd map more fields
-    return ui_model.FinancialStatistics(
-      totalRent: apiStats.currentMonthRevenue,
-      totalMaintenanceCosts: 0, // Not available in API model
-      netTotal: apiStats.currentMonthRevenue,
-      startDate: _startDate,
-      endDate: _endDate,
-      // Map monthly breakdown if needed
+    final mockUiStat = MockDataService.getMockFinancialStatistics(
+      _startDate,
+      _endDate,
     );
-  }
-
-  // For backward compatibility with existing code
-  Future<void> setDateRange(DateTime start, DateTime end) async {
-    _startDate = start;
-    _endDate = end;
-    notifyListeners();
-
-    // Load new data with the updated date range
-    await loadFinancialStatistics(startDate: start, endDate: end);
-  }
-
-  // For backward compatibility with existing mock data
-  ui_model.FinancialStatistics getMockData() {
-    return MockDataService.getMockFinancialStatistics(_startDate, _endDate);
+    return [mockUiStat];
   }
 }

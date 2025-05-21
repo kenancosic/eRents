@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
@@ -48,17 +49,18 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       currentPath: '/maintenance',
       child: Consumer2<MaintenanceProvider, PropertyProvider>(
         builder: (context, maintenanceProvider, propertyProvider, child) {
-          if (maintenanceProvider.isLoading || propertyProvider.isLoading) {
+          if (maintenanceProvider.state == ViewState.Busy ||
+              propertyProvider.state == ViewState.Busy) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (maintenanceProvider.error != null) {
+          if (maintenanceProvider.errorMessage != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    maintenanceProvider.error!,
+                    maintenanceProvider.errorMessage!,
                     style: const TextStyle(color: Colors.red),
                   ),
                   const SizedBox(height: 16),

@@ -6,7 +6,7 @@ import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.d
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/profile_service.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     // Initialize the provider
     _profileProvider = ProfileProvider(
-      Provider.of<ApiService>(context, listen: false),
+      Provider.of<ProfileService>(context, listen: false),
     );
 
     // Load user data
@@ -108,24 +108,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           );
         }
       }
-    }
-  }
-
-  Future<void> _updatePassword() async {
-    if (_passwordFormKey.currentState?.validate() == true) {
-      // The actual password update logic is in the ChangePasswordWidget,
-      // This part might need to call a method in ChangePasswordWidget state
-      // or the ChangePasswordWidget handles its own save.
-      // For now, if ChangePasswordWidget calls provider directly, this is mostly a trigger.
-      // Assuming ChangePasswordWidget handles its own API call via provider:
-      // final success = await _profileProvider.changePassword(currentPassword, newPassword);
-      // For now, we're showing a simulated success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password update initiated (simulated)'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
     }
   }
 
@@ -233,33 +215,22 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   onPressed: _saveProfile,
                                   icon: const Icon(Icons.save),
                                   label: const Text('Save Personal Info'),
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      48,
+                                    ),
+                                  ),
                                 ),
                               ),
                           ],
                         ),
 
-                        Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: ChangePasswordWidget(
-                                  isEditing: _isEditing,
-                                  formKey: _passwordFormKey,
-                                ),
-                              ),
-                            ),
-                            if (_isEditing)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                child: ElevatedButton.icon(
-                                  onPressed: _updatePassword,
-                                  icon: const Icon(Icons.key),
-                                  label: const Text('Update Password'),
-                                ),
-                              ),
-                          ],
+                        SingleChildScrollView(
+                          child: ChangePasswordWidget(
+                            isEditing: _isEditing,
+                            formKey: _passwordFormKey,
+                          ),
                         ),
 
                         PaypalSettingsWidget(isEditing: _isEditing),

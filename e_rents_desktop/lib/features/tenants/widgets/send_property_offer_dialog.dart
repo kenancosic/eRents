@@ -3,10 +3,10 @@ import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
 class SendPropertyOfferDialog extends StatefulWidget {
   final TenantPreference tenantPreference;
@@ -33,8 +33,6 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
     final propertyProvider = Provider.of<PropertyProvider>(context);
     final tenantProvider = Provider.of<TenantProvider>(context, listen: false);
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId = authProvider.currentUser?.id ?? 'unknown_landlord_id';
 
     // Filter for available properties
     final availableProperties =
@@ -50,7 +48,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
         width: double.maxFinite,
         height: 300, // Adjust as needed
         child:
-            propertyProvider.isLoading
+            propertyProvider.state == ViewState.Busy
                 ? const Center(child: CircularProgressIndicator())
                 : availableProperties.isEmpty
                 ? const Center(child: Text('No available properties to offer.'))
@@ -85,7 +83,6 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                           await chatProvider.sendPropertyOfferMessage(
                             widget.tenantPreference.userId,
                             property.id,
-                            currentUserId,
                           );
 
                           if (!mounted) return;

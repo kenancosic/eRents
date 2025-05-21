@@ -7,6 +7,8 @@ import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_contact.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:e_rents_desktop/models/message.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -17,14 +19,28 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final String _currentUserId =
-      'currentUser'; // Replace with actual user ID from auth
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    // Load contacts when the screen is first opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      setState(() {
+        _currentUserId = authProvider.currentUser?.id;
+      });
+      if (_currentUserId == null) {
+        print("ChatScreen: Error - Current user ID is null.");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Error: User not authenticated. Cannot use chat."),
+            ),
+          );
+          context.go('/login');
+        }
+        return;
+      }
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       chatProvider.loadContacts();
     });
@@ -37,6 +53,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage(BuildContext context) {
+    if (_currentUserId == null) {
+      print("ChatScreen: Cannot send message, user ID is null.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error: Cannot send message. User not identified."),
+        ),
+      );
+      return;
+    }
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     final selectedContact = chatProvider.selectedContact;
 
@@ -46,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final newMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: _currentUserId,
+      senderId: _currentUserId!,
       receiverId: selectedContact.id,
       messageText: _messageController.text.trim(),
       dateSent: DateTime.now(),
@@ -98,7 +123,42 @@ class _ChatScreenState extends State<ChatScreen> {
           final contacts = chatProvider.contacts;
           final messages = chatProvider.messages;
           final selectedContact = chatProvider.selectedContact;
-          final isLoading = chatProvider.isLoading;
+          final bool isLoading = chatProvider.state == ViewState.Busy;
+          final String? error = chatProvider.errorMessage;
+
+          if (error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Error loading chat: $error",
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (chatProvider.selectedContact != null &&
+                          chatProvider.contacts.isNotEmpty) {
+                        final authProvider = Provider.of<AuthProvider>(
+                          context,
+                          listen: false,
+                        );
+                        if (authProvider.currentUser?.id != null) {
+                          chatProvider.loadMessages(
+                            chatProvider.selectedContact!.id,
+                            authProvider.currentUser!.id,
+                          );
+                        }
+                      } else {
+                        chatProvider.loadContacts();
+                      }
+                    },
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
+            );
+          }
 
           return Row(
             children: [

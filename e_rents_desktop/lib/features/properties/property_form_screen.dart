@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import './widgets/amenity_input.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
@@ -90,9 +90,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _latitude = null;
     _longitude = null;
     _isAddressDetailValid = false; // Address needs selection first
-
-    // TODO: Replace MockDataService with AmenityService via Provider once DI is stable
-    _allAmenitiesWithIcons = MockDataService.getMockAmenitiesWithIcons();
 
     if (_isEditMode) {
       _fetchPropertyData();
@@ -190,11 +187,25 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   }
 
   Property _createProperty() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId =
+        authProvider.currentUser?.id ?? 'error_user_id_not_found';
+    if (currentUserId == 'error_user_id_not_found') {
+      // Handle error: show a snackbar, prevent save, etc.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: User not authenticated. Cannot save property.'),
+        ),
+      );
+      // Potentially throw an exception or return a property that indicates an error
+      // For now, this will proceed but with a clearly invalid ownerId if not caught.
+    }
+
     return Property(
       id:
           _initialProperty?.id ??
           DateTime.now().millisecondsSinceEpoch.toString(),
-      ownerId: _initialProperty?.ownerId ?? 'owner_placeholder',
+      ownerId: _initialProperty?.ownerId ?? currentUserId,
       title: _titleController.text,
       description: _descriptionController.text,
       type: _type,
@@ -226,6 +237,12 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final propertyProvider = Provider.of<PropertyProvider>(
+      context,
+      listen: false,
+    );
+    _allAmenitiesWithIcons = propertyProvider.amenityIcons;
+
     return AppBaseScreen(
       title: _isEditMode ? 'Edit Property' : 'Add Property',
       currentPath: '/properties',

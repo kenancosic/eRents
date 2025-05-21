@@ -1,6 +1,6 @@
 import './address_detail.dart';
 
-enum UserType { admin, landlord }
+enum UserType { admin, landlord, tenant }
 
 class User {
   final String id;
