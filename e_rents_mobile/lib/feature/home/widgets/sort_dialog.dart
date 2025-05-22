@@ -63,7 +63,11 @@ class _SortDialogState extends State<SortDialog> {
             if (_selectedSort != null) {
               bool descending = _selectedSort!.endsWith('_desc');
               String sortBy = _selectedSort!.replaceAll('_desc', '');
-              context.read<HomeProvider>().setSort(sortBy, descending);
+              final provider = context.read<HomeProvider>();
+              final filter = provider.filter;
+              filter.sortBy = sortBy;
+              filter.sortDescending = descending;
+              provider.filterProperties(filter);
             }
             Navigator.of(context).pop();
           },

@@ -4,8 +4,9 @@ import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:e_rents_mobile/feature/auth/auth_service.dart';
-import 'package:e_rents_mobile/feature/home/home_service.dart';
-import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'package:e_rents_mobile/feature/home/home_service.dart' as feature_home;
+import 'package:e_rents_mobile/core/services/home_service.dart'
+    as core_services;
 import 'package:e_rents_mobile/feature/profile/user_service.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
@@ -15,6 +16,7 @@ import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_mobile/feature/home/home_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,11 +53,14 @@ class MyApp extends StatelessWidget {
             context.read<AuthService>(),
           ),
         ),
-        ProxyProvider<ApiService, HomeService>(
-          update: (_, apiService, __) => HomeService(apiService),
+        ProxyProvider<ApiService, feature_home.HomeService>(
+          update: (_, apiService, __) => feature_home.HomeService(apiService),
         ),
         ChangeNotifierProvider<HomeProvider>(
-          create: (context) => HomeProvider(context.read<HomeService>()),
+          create: (context) => HomeProvider(
+            context.read<core_services.HomeService>(),
+            context.read<feature_home.HomeService>(),
+          ),
         ),
         ProxyProvider<ApiService, UserService>(
           update: (_, apiService, __) => UserService(apiService),

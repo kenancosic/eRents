@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/core/models/filter_model.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -60,11 +61,11 @@ class FilterDialogState extends State<FilterDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            context.read<HomeProvider>().setFilter(
-              city: _selectedCity,
-              minPrice: _minPrice,
-              maxPrice: _maxPrice,
-            );
+            final filter = FilterModel()
+              ..city = _selectedCity
+              ..minPrice = _minPrice
+              ..maxPrice = _maxPrice;
+            context.read<HomeProvider>().filterProperties(filter);
             Navigator.of(context).pop();
           },
           child: const Text('Apply'),
