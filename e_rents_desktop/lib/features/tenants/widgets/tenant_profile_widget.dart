@@ -28,9 +28,10 @@ class TenantProfileWidget extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundImage:
-                tenant.profileImage != null
-                    ? NetworkImage(tenant.profileImage!)
-                    : null,
+                (tenant.profileImage != null &&
+                        tenant.profileImage!.url.isNotEmpty)
+                    ? NetworkImage(tenant.profileImage!.url)
+                    : const AssetImage('assets/images/user-image.png'),
             child:
                 tenant.profileImage == null
                     ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')

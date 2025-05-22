@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:http/http.dart' as http;
 
 class ChatService extends ApiService {
   ChatService(super.baseUrl, super.storageService);

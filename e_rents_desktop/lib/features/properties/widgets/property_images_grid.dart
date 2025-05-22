@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class PropertyImagesGrid extends StatelessWidget {
-  final List<String> images;
+  final List<erents.ImageInfo> images;
 
   const PropertyImagesGrid({super.key, required this.images});
 
@@ -27,14 +28,20 @@ class PropertyImagesGrid extends StatelessWidget {
           ),
           itemCount: images.length,
           itemBuilder: (context, index) {
+            final image = images[index];
             return GestureDetector(
-              onTap: () => _showImageDialog(context, images[index]),
+              onTap: () => _showImageDialog(context, image),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.asset(images[index], fit: BoxFit.cover),
+                    image.url.isNotEmpty
+                        ? Image.network(image.url, fit: BoxFit.cover)
+                        : Image.asset(
+                          'assets/images/placeholder.jpg',
+                          fit: BoxFit.cover,
+                        ),
                     if (index == 0)
                       Positioned(
                         top: 8,
@@ -68,14 +75,19 @@ class PropertyImagesGrid extends StatelessWidget {
     );
   }
 
-  void _showImageDialog(BuildContext context, String imagePath) {
+  void _showImageDialog(BuildContext context, erents.ImageInfo image) {
     showDialog(
       context: context,
       builder:
           (context) => Dialog(
             child: Stack(
               children: [
-                Image.asset(imagePath, fit: BoxFit.contain),
+                image.url.isNotEmpty
+                    ? Image.network(image.url, fit: BoxFit.contain)
+                    : Image.asset(
+                      'assets/images/placeholder.jpg',
+                      fit: BoxFit.contain,
+                    ),
                 Positioned(
                   top: 8,
                   right: 8,

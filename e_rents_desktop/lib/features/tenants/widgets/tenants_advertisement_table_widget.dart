@@ -3,10 +3,8 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
-import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 
 class TenantsAdvertisementTableWidget extends StatefulWidget {
   final List<TenantPreference> preferences;
@@ -141,11 +139,15 @@ class _TenantsAdvertisementTableWidgetState
                   CircleAvatar(
                     radius: 16,
                     backgroundImage:
-                        tenantMap[preference.userId]?.profileImage != null
+                        (tenantMap[preference.userId]?.profileImage != null &&
+                                tenantMap[preference.userId]!
+                                    .profileImage!
+                                    .url
+                                    .isNotEmpty)
                             ? NetworkImage(
-                              tenantMap[preference.userId]!.profileImage!,
+                              tenantMap[preference.userId]!.profileImage!.url,
                             )
-                            : null,
+                            : const AssetImage('assets/images/user-image.png'),
                     child:
                         tenantMap[preference.userId]?.profileImage == null
                             ? Text(
@@ -419,7 +421,6 @@ class _TenantsAdvertisementTableWidgetState
 
     final screenWidth =
         MediaQuery.of(context).size.width - 32; // Account for padding
-    final needsHorizontalScroll = totalEssentialWidth > screenWidth;
 
     // Add only visible columns
     for (final colDef in _columnDefs) {
@@ -592,26 +593,6 @@ class _TenantsAdvertisementTableWidgetState
         ),
       ],
     );
-  }
-
-  // Calculate minimum width for the table based on visible columns
-  double _calculateMinTableWidth(
-    BuildContext context,
-    List<Map<String, dynamic>> columnDefs,
-  ) {
-    // Get screen width
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // Calculate total width based on visible columns and their minimum widths
-    double totalMinWidth = 0;
-    for (final colDef in columnDefs) {
-      if (_columnVisibility[colDef['name']] == true) {
-        totalMinWidth += colDef['minWidth'] as double;
-      }
-    }
-
-    // Return the larger of the calculated width or screen width (minus padding)
-    return totalMinWidth > screenWidth ? totalMinWidth : screenWidth - 32;
   }
 
   // Helper method to check if a move-in date is urgent (within 30 days)

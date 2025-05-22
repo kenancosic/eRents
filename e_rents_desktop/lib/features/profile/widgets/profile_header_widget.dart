@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class ProfileHeaderWidget extends StatefulWidget {
   final bool isEditing;
@@ -23,7 +24,7 @@ class ProfileHeaderWidget extends StatefulWidget {
 
 class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
   final ImagePicker _picker = ImagePicker();
-  String? _tempProfileImagePath;
+  erents.ImageInfo? _tempProfileImage;
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -36,7 +37,10 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
 
       if (pickedFile != null) {
         setState(() {
-          _tempProfileImagePath = pickedFile.path;
+          _tempProfileImage = erents.ImageInfo(
+            id: pickedFile.path,
+            url: pickedFile.path,
+          );
         });
 
         if (!mounted) return;
@@ -46,7 +50,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           context,
           listen: false,
         );
-        await profileProvider.updateProfileImage(_tempProfileImagePath!);
+        await profileProvider.updateProfileImage(pickedFile.path);
       }
     } catch (e) {
       if (!mounted) return;
@@ -63,9 +67,8 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
     final user = profileProvider.currentUser;
 
     // Determine which image to show
-    if (_tempProfileImagePath == null) {
-      _tempProfileImagePath =
-          user?.profileImage ?? 'assets/images/user-image.png';
+    if (_tempProfileImage == null) {
+      _tempProfileImage = user?.profileImage;
     }
 
     return Container(
@@ -75,7 +78,8 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           Stack(
             children: [
               CustomAvatar(
-                imageUrl: _tempProfileImagePath!,
+                imageUrl:
+                    _tempProfileImage?.url ?? 'assets/images/user-image.png',
                 size: 100,
                 borderWidth: 3,
               ),

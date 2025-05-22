@@ -7,7 +7,6 @@ import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
@@ -18,6 +17,8 @@ import 'package:e_rents_desktop/services/statistics_service.dart'
         PopularProperty,
         FinancialStatistics,
         MonthlyRevenue;
+import 'package:e_rents_desktop/models/recent_activity.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class MockDataService {
   static final Map<String, IconData> _amenityIcons = {
@@ -90,7 +91,10 @@ class MockDataService {
           latitude: 40.7128,
           longitude: -74.0060,
         ),
-        profileImage: 'https://i.pravatar.cc/150?img=3',
+        profileImage: erents.ImageInfo(
+          id: '3',
+          url: 'https://i.pravatar.cc/150?img=3',
+        ),
         createdAt: DateTime.now().subtract(const Duration(days: 365)),
         updatedAt: DateTime.now(),
       ),
@@ -110,7 +114,10 @@ class MockDataService {
           latitude: 34.0522,
           longitude: -118.2437,
         ),
-        profileImage: 'https://i.pravatar.cc/150?img=4',
+        profileImage: erents.ImageInfo(
+          id: '4',
+          url: 'https://i.pravatar.cc/150?img=4',
+        ),
         createdAt: DateTime.now().subtract(const Duration(days: 180)),
         updatedAt: DateTime.now(),
       ),
@@ -130,7 +137,10 @@ class MockDataService {
           latitude: 41.8781,
           longitude: -87.6298,
         ),
-        profileImage: 'https://i.pravatar.cc/150?img=5',
+        profileImage: erents.ImageInfo(
+          id: '5',
+          url: 'https://i.pravatar.cc/150?img=5',
+        ),
         createdAt: DateTime.now().subtract(const Duration(days: 90)),
         updatedAt: DateTime.now(),
       ),
@@ -151,7 +161,10 @@ class MockDataService {
           latitude: 42.3601,
           longitude: -71.0589,
         ),
-        profileImage: 'https://i.pravatar.cc/150?img=6',
+        profileImage: erents.ImageInfo(
+          id: '6',
+          url: 'https://i.pravatar.cc/150?img=6',
+        ),
         createdAt: DateTime.now().subtract(const Duration(days: 30)),
         updatedAt: DateTime.now(),
       ),
@@ -171,7 +184,10 @@ class MockDataService {
           latitude: 47.6062,
           longitude: -122.3321,
         ),
-        profileImage: 'https://i.pravatar.cc/150?img=7',
+        profileImage: erents.ImageInfo(
+          id: '7',
+          url: 'https://i.pravatar.cc/150?img=7',
+        ),
         createdAt: DateTime.now().subtract(const Duration(days: 15)),
         updatedAt: DateTime.now(),
       ),
@@ -269,7 +285,7 @@ class MockDataService {
         reportedBy: 'John Doe',
         category: 'Plumbing',
         isTenantComplaint: true,
-        images: ['assets/images/leak1.jpg'],
+        images: [erents.ImageInfo(id: 'leak1', url: 'assets/images/leak1.jpg')],
       ),
       MaintenanceIssue(
         id: '2',
@@ -282,7 +298,9 @@ class MockDataService {
         reportedBy: 'Jane Smith',
         category: 'Structural',
         isTenantComplaint: false,
-        images: ['assets/images/window1.jpg'],
+        images: [
+          erents.ImageInfo(id: 'window1', url: 'assets/images/window1.jpg'),
+        ],
       ),
       MaintenanceIssue(
         id: '3',
@@ -296,7 +314,9 @@ class MockDataService {
         reportedBy: 'Mike Johnson',
         category: 'Electrical',
         isTenantComplaint: true,
-        images: ['assets/images/outlet1.jpg'],
+        images: [
+          erents.ImageInfo(id: 'outlet1', url: 'assets/images/outlet1.jpg'),
+        ],
       ),
       MaintenanceIssue(
         id: '4',
@@ -375,7 +395,12 @@ class MockDataService {
         price: 2500.0,
         rentingType: RentingType.monthly,
         status: PropertyStatus.available,
-        images: ['assets/images/apartment1.jpg'],
+        images: [
+          erents.ImageInfo(
+            id: 'apartment1',
+            url: 'assets/images/apartment1.jpg',
+          ),
+        ],
         addressDetail: AddressDetail(
           addressDetailId: 101,
           geoRegionId: 201,
@@ -404,7 +429,9 @@ class MockDataService {
         price: 3500.0,
         rentingType: RentingType.monthly,
         status: PropertyStatus.rented,
-        images: ['assets/images/house1.jpg'],
+        images: [
+          erents.ImageInfo(id: 'house1', url: 'assets/images/house1.jpg'),
+        ],
         addressDetail: AddressDetail(
           addressDetailId: 102,
           geoRegionId: 202,
@@ -434,7 +461,12 @@ class MockDataService {
         price: 1800.0,
         rentingType: RentingType.monthly,
         status: PropertyStatus.rented,
-        images: ['assets/images/lukavac_villa.jpg'],
+        images: [
+          erents.ImageInfo(
+            id: 'lukavac_villa',
+            url: 'assets/images/lukavac_villa.jpg',
+          ),
+        ],
         addressDetail: AddressDetail(
           addressDetailId: 103,
           geoRegionId: 203,
@@ -466,7 +498,9 @@ class MockDataService {
         price: 5000.0,
         rentingType: RentingType.monthly,
         status: PropertyStatus.available,
-        images: ['assets/images/penthouse.jpg'],
+        images: [
+          erents.ImageInfo(id: 'penthouse', url: 'assets/images/penthouse.jpg'),
+        ],
         addressDetail: AddressDetail(
           addressDetailId: 104,
           geoRegionId: 204,
@@ -500,7 +534,7 @@ class MockDataService {
         price: 4300.0,
         rentingType: RentingType.monthly,
         status: PropertyStatus.rented,
-        images: ['assets/images/villa.jpg'],
+        images: [erents.ImageInfo(id: 'villa', url: 'assets/images/villa.jpg')],
         addressDetail: AddressDetail(
           addressDetailId: 105,
           geoRegionId: 205,
@@ -822,5 +856,50 @@ class MockDataService {
         "Studio": history.fold(0.0, (sum, item) => sum + item.revenue * 0.1),
       },
     );
+  }
+
+  static List<RecentActivity> getMockRecentActivities() {
+    final issues = getMockMaintenanceIssues();
+    return [
+      if (issues.isNotEmpty)
+        RecentActivity(
+          id: issues[0].id,
+          type: ActivityType.maintenance,
+          title: 'High Priority: ${issues[0].title}',
+          subtitle:
+              'Reported for ${issues[0].propertyId}, Status: ${issues[0].status.name}',
+          date: issues[0].createdAt.subtract(const Duration(hours: 1)),
+          icon: Icons.warning_amber_rounded,
+          onTapRoute: '/maintenance/${issues[0].id}',
+        ),
+      RecentActivity(
+        id: 'system-update-1',
+        type: ActivityType.system,
+        title: 'System Maintenance Scheduled',
+        subtitle: 'Scheduled for tomorrow at 2 AM. Expect brief downtime.',
+        date: DateTime.now().subtract(const Duration(hours: 5)),
+        icon: Icons.system_update_alt,
+      ),
+      if (issues.length > 1 && issues[1].isTenantComplaint)
+        RecentActivity(
+          id: issues[1].id,
+          type: ActivityType.maintenance,
+          title: 'New Tenant Complaint: ${issues[1].title}',
+          subtitle:
+              'Complaint regarding ${issues[1].category} on ${issues[1].propertyId}',
+          date: issues[1].createdAt.subtract(const Duration(days: 1)),
+          icon: Icons.announcement_outlined,
+          onTapRoute: '/maintenance/${issues[1].id}',
+        ),
+      RecentActivity(
+        id: 'chat-1',
+        type: ActivityType.message,
+        title: 'New Message from John Doe',
+        subtitle: 'Regarding property "Modern Downtown Apartment"',
+        date: DateTime.now().subtract(const Duration(minutes: 30)),
+        icon: Icons.chat_bubble_outline,
+        onTapRoute: '/chat', // General chat route for now
+      ),
+    ]..sort((a, b) => b.date.compareTo(a.date));
   }
 }

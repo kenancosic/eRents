@@ -11,6 +11,7 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provi
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -235,15 +236,20 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.asset(
-                        property.images.first,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        errorBuilder:
-                            (context, error, stackTrace) =>
-                                const Icon(Icons.image_not_supported, size: 32),
-                      ),
+                      child:
+                          property.images.first.url.isNotEmpty
+                              ? Image.network(
+                                property.images.first.url,
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.cover,
+                              )
+                              : Image.asset(
+                                'assets/images/placeholder.jpg',
+                                width: 32,
+                                height: 32,
+                                fit: BoxFit.cover,
+                              ),
                     ),
                   )
                 else

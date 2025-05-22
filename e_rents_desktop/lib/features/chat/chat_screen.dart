@@ -9,6 +9,7 @@ import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -239,13 +240,21 @@ class _ChatScreenState extends State<ChatScreen> {
                             CircleAvatar(
                               radius: 20,
                               backgroundImage:
-                                  selectedContact.profileImage != null
+                                  selectedContact.profileImage != null &&
+                                          selectedContact
+                                              .profileImage!
+                                              .url
+                                              .isNotEmpty
                                       ? NetworkImage(
-                                        selectedContact.profileImage!,
+                                        selectedContact.profileImage!.url,
                                       )
                                       : null,
                               child:
-                                  selectedContact.profileImage == null
+                                  (selectedContact.profileImage == null ||
+                                          selectedContact
+                                              .profileImage!
+                                              .url
+                                              .isEmpty)
                                       ? Text(
                                         selectedContact.firstName[0] +
                                             selectedContact.lastName[0],

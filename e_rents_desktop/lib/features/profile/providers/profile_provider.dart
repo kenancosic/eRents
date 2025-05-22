@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'dart:convert';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 import 'package:e_rents_desktop/models/auth/change_password_request_model.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class ProfileProvider extends BaseProvider<User> {
   final ProfileService _profileService;
@@ -92,7 +93,9 @@ class ProfileProvider extends BaseProvider<User> {
     await execute(() async {
       if (isMockDataEnabled) {
         if (_currentUser != null) {
-          _currentUser = _currentUser!.copyWith(profileImage: imagePath);
+          _currentUser = _currentUser!.copyWith(
+            profileImage: erents.ImageInfo(id: imagePath, url: imagePath),
+          );
         }
         success = true;
       } else {

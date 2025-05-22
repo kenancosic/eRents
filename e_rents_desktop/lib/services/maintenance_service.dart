@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:http/http.dart' as http;
 
 class MaintenanceService extends ApiService {
   MaintenanceService(super.baseUrl, super.storageService);

@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class MaintenanceFormScreen extends StatefulWidget {
   final String? propertyId;
@@ -67,7 +68,8 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
       resolvedAt: widget.issue?.resolvedAt,
       cost: widget.issue?.cost,
       assignedTo: widget.issue?.assignedTo,
-      images: _images,
+      images:
+          _images.map((img) => erents.ImageInfo(id: img, url: img)).toList(),
       reportedBy: _currentUserId,
       resolutionNotes: widget.issue?.resolutionNotes,
       category: _categoryController.text,

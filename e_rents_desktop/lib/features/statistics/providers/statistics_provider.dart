@@ -4,7 +4,6 @@ import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
 class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {

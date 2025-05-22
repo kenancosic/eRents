@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 class LoginResponseModel {
   final String token;
   final DateTime expiration;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 enum IssuePriority { low, medium, high, emergency }
 
@@ -15,7 +16,7 @@ class MaintenanceIssue {
   final DateTime? resolvedAt;
   final double? cost;
   final String? assignedTo;
-  final List<String> images;
+  final List<erents.ImageInfo> images;
   final String reportedBy;
   final String? resolutionNotes;
   final String? category; // e.g., plumbing, electrical, structural, etc.
@@ -60,7 +61,15 @@ class MaintenanceIssue {
               : null,
       cost: json['cost'] as double?,
       assignedTo: json['assignedTo'] as String?,
-      images: List<String>.from(json['images'] as List),
+      images:
+          (json['images'] as List? ?? [])
+              .map(
+                (e) =>
+                    e is String
+                        ? erents.ImageInfo(id: e, url: e)
+                        : erents.ImageInfo.fromJson(e as Map<String, dynamic>),
+              )
+              .toList(),
       reportedBy: json['reportedBy'] as String,
       resolutionNotes: json['resolutionNotes'] as String?,
       category: json['category'] as String?,
@@ -81,7 +90,7 @@ class MaintenanceIssue {
       'resolvedAt': resolvedAt?.toIso8601String(),
       'cost': cost,
       'assignedTo': assignedTo,
-      'images': images,
+      'images': images.map((e) => e.toJson()).toList(),
       'reportedBy': reportedBy,
       'resolutionNotes': resolutionNotes,
       'category': category,
@@ -101,7 +110,7 @@ class MaintenanceIssue {
     DateTime? resolvedAt,
     double? cost,
     String? assignedTo,
-    List<String>? images,
+    List<erents.ImageInfo>? images,
     String? reportedBy,
     String? resolutionNotes,
     String? category,

@@ -1,4 +1,5 @@
 import './address_detail.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 enum UserType { admin, landlord, tenant }
 
@@ -10,7 +11,7 @@ class User {
   final String lastName;
   final String? phone;
   final UserType role;
-  final String? profileImage;
+  final erents.ImageInfo? profileImage;
   final DateTime? dateOfBirth;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -55,7 +56,17 @@ class User {
         (e) => e.toString() == 'UserType.${json['role'] ?? json['userType']}',
         orElse: () => UserType.admin,
       ),
-      profileImage: json['profileImage'] as String?,
+      profileImage:
+          json['profileImage'] != null
+              ? (json['profileImage'] is String
+                  ? erents.ImageInfo(
+                    id: json['profileImage'],
+                    url: json['profileImage'],
+                  )
+                  : erents.ImageInfo.fromJson(
+                    json['profileImage'] as Map<String, dynamic>,
+                  ))
+              : null,
       dateOfBirth:
           json['dateOfBirth'] != null
               ? DateTime.parse(json['dateOfBirth'] as String)
@@ -96,7 +107,7 @@ class User {
       'lastName': lastName,
       'phone': phone,
       'role': role.toString().split('.').last,
-      'profileImage': profileImage,
+      'profileImage': profileImage?.toJson(),
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -118,7 +129,7 @@ class User {
     String? lastName,
     String? phone,
     UserType? role,
-    String? profileImage,
+    erents.ImageInfo? profileImage,
     DateTime? dateOfBirth,
     DateTime? createdAt,
     DateTime? updatedAt,

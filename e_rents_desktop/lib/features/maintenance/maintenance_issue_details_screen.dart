@@ -195,15 +195,23 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   itemCount: issue.images.length,
                   itemBuilder: (context, index) {
+                    final image = issue.images[index];
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          issue.images[index],
-                          width: 200,
-                          fit: BoxFit.cover,
-                        ),
+                        child:
+                            image.url.isNotEmpty
+                                ? Image.network(
+                                  image.url,
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                )
+                                : Image.asset(
+                                  'assets/images/placeholder.jpg',
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                ),
                       ),
                     );
                   },

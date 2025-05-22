@@ -1,5 +1,3 @@
-import 'package:meta/meta.dart';
-
 class RegisterRequestModel {
   final String? username;
   final String? email;

@@ -56,12 +56,19 @@ class PropertyOfferCardWidget extends StatelessWidget {
           child: Row(
             children: [
               property.images.isNotEmpty
-                  ? Image.asset(
-                    property.images.first,
-                    width: 70,
-                    height: 70,
-                    fit: BoxFit.cover,
-                  )
+                  ? (property.images.first.url.startsWith('http')
+                      ? Image.network(
+                        property.images.first.url,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                      )
+                      : Image.asset(
+                        property.images.first.url,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                      ))
                   : Container(
                     width: 70,
                     height: 70,

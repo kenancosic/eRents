@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:http/http.dart' as http;
 
 class PropertyService extends ApiService {
   PropertyService(super.baseUrl, super.storageService);

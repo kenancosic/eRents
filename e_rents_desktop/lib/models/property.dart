@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import './address_detail.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 enum PropertyStatus { available, rented, maintenance, unavailable }
 
@@ -15,7 +16,7 @@ class Property {
   final double price;
   final RentingType rentingType;
   final PropertyStatus status;
-  final List<String> images;
+  final List<erents.ImageInfo> images;
   final int bedrooms;
   final int bathrooms;
   final double area;
@@ -70,7 +71,15 @@ class Property {
         (e) => e.toString() == 'PropertyStatus.${json['status']}',
         orElse: () => PropertyStatus.available,
       ),
-      images: List<String>.from(json['images'] as List? ?? []),
+      images:
+          (json['images'] as List? ?? [])
+              .map(
+                (e) =>
+                    e is String
+                        ? erents.ImageInfo(id: e, url: e)
+                        : erents.ImageInfo.fromJson(e as Map<String, dynamic>),
+              )
+              .toList(),
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
       area: (json['area'] as num?)?.toDouble() ?? 0.0,
@@ -114,7 +123,7 @@ class Property {
       'price': price,
       'rentingType': rentingType.name,
       'status': status.toString().split('.').last,
-      'images': images,
+      'images': images.map((e) => e.toJson()).toList(),
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'area': area,
@@ -138,7 +147,7 @@ class Property {
     double? price,
     RentingType? rentingType,
     PropertyStatus? status,
-    List<String>? images,
+    List<erents.ImageInfo>? images,
     int? bedrooms,
     int? bathrooms,
     double? area,

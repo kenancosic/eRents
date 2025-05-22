@@ -59,12 +59,19 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                     return ListTile(
                       leading:
                           property.images.isNotEmpty
-                              ? Image.asset(
-                                property.images.first,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              )
+                              ? (property.images.first.url.startsWith('http')
+                                  ? Image.network(
+                                    property.images.first.url,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  )
+                                  : Image.asset(
+                                    property.images.first.url,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  ))
                               : const Icon(Icons.house, size: 40),
                       title: Text(property.title),
                       subtitle: Text(

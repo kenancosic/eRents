@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
@@ -13,6 +12,8 @@ import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
+import 'package:flutter/material.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -228,12 +229,21 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
               contentPadding: const EdgeInsets.all(16),
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  property.images.first,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                ),
+                child:
+                    property.images.isNotEmpty &&
+                            property.images.first.url.isNotEmpty
+                        ? Image.network(
+                          property.images.first.url,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        )
+                        : Image.asset(
+                          'assets/images/placeholder.jpg',
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                        ),
               ),
               title: Text(
                 property.title,
@@ -360,10 +370,16 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.asset(
-                              property.images.first,
-                              fit: BoxFit.cover,
-                            ),
+                            property.images.isNotEmpty &&
+                                    property.images.first.url.isNotEmpty
+                                ? Image.network(
+                                  property.images.first.url,
+                                  fit: BoxFit.cover,
+                                )
+                                : Image.asset(
+                                  'assets/images/placeholder.jpg',
+                                  fit: BoxFit.cover,
+                                ),
                             Positioned(
                               top: 8,
                               right: 8,

@@ -12,6 +12,7 @@ import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class PropertyFormScreen extends StatefulWidget {
   final String? propertyId;
@@ -212,7 +213,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       price: double.parse(_priceController.text),
       rentingType: _rentingType,
       status: _status,
-      images: _images,
+      images:
+          _images.map((img) => erents.ImageInfo(id: img, url: img)).toList(),
       addressDetail: AddressDetail(
         addressDetailId: _initialProperty!.addressDetail?.addressDetailId ?? 0,
         streetLine1:

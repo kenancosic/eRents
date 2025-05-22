@@ -101,9 +101,10 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
               CircleAvatar(
                 radius: 16,
                 backgroundImage:
-                    tenant.profileImage != null
-                        ? NetworkImage(tenant.profileImage!)
-                        : null,
+                    (tenant.profileImage != null &&
+                            tenant.profileImage!.url.isNotEmpty)
+                        ? NetworkImage(tenant.profileImage!.url)
+                        : const AssetImage('assets/images/user-image.png'),
                 child:
                     tenant.profileImage == null
                         ? Text(
@@ -152,25 +153,21 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(4),
-                        child: Image.asset(
-                          property.images.isNotEmpty
-                              ? property.images.first
-                              : 'assets/images/placeholder.jpg', // Ensure placeholder exists
-                          width: 32,
-                          height: 32,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) => Container(
-                                width: 32,
-                                height: 32,
-                                color: Colors.grey[200],
-                                child: Icon(
-                                  Icons.image_not_supported,
-                                  size: 18,
-                                  color: Colors.grey[600],
+                        child:
+                            property.images.isNotEmpty &&
+                                    property.images.first.url.isNotEmpty
+                                ? Image.network(
+                                  property.images.first.url,
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.cover,
+                                )
+                                : Image.asset(
+                                  'assets/images/placeholder.jpg',
+                                  width: 32,
+                                  height: 32,
+                                  fit: BoxFit.cover,
                                 ),
-                              ),
-                        ),
                       ),
                     ),
                     // Property name
