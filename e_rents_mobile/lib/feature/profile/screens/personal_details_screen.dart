@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {
-  const PersonalDetailsScreen({Key? key}) : super(key: key);
+  const PersonalDetailsScreen({super.key});
 
   @override
   State<PersonalDetailsScreen> createState() => _PersonalDetailsScreenState();

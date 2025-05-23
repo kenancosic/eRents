@@ -1,4 +1,3 @@
-import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
 import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart'; // REMOVE if NavigationProvider is no longer needed here

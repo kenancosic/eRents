@@ -1,5 +1,4 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';

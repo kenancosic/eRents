@@ -1,6 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

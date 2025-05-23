@@ -3,14 +3,11 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
-import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
-import 'package:e_rents_mobile/feature/home/widgets/most_rented_props.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/home/widgets/upcoming_stays_section.dart';
 import 'package:e_rents_mobile/feature/home/widgets/currently_residing_section.dart';
-import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 

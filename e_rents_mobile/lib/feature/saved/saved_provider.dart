@@ -2,7 +2,7 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 
 class SavedProvider extends BaseProvider {
-  List<Property> _savedProperties = [];
+  final List<Property> _savedProperties = [];
 
   List<Property> get savedProperties => _savedProperties;
 

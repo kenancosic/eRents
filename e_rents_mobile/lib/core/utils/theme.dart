@@ -169,7 +169,7 @@ final ThemeData appTheme = ThemeData(
   ),
 
   // Card theme
-  cardTheme: CardTheme(
+  cardTheme: CardThemeData(
     color: Colors.white,
     elevation: 4,
     shadowColor: Colors.grey.withOpacity(0.2),

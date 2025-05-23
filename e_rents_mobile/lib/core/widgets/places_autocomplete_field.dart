@@ -14,13 +14,13 @@ class PlacesAutocompleteField extends StatefulWidget {
   final String? countryRestrictions; // e.g., 'us' or 'country:us|country:ca'
 
   const PlacesAutocompleteField({
-    Key? key,
+    super.key,
     required this.controller,
     this.hintText = 'Search for a place',
     required this.onPlaceSelected,
     this.searchType, // Default is null (all place types)
     this.countryRestrictions,
-  }) : super(key: key);
+  });
 
   @override
   _PlacesAutocompleteFieldState createState() =>

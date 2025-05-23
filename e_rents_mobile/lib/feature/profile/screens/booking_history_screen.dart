@@ -1,4 +1,3 @@
-import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart'; // For ViewState
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';

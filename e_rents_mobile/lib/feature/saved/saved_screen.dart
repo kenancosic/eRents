@@ -6,7 +6,6 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});

@@ -9,7 +9,7 @@ import 'package:provider/provider.dart'; // Added import
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart'; // Added import
 
 class UpcomingStaysSection extends StatelessWidget {
-  UpcomingStaysSection({super.key});
+  const UpcomingStaysSection({super.key});
 
   @override
   Widget build(BuildContext context) {

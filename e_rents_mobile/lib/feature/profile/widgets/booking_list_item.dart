@@ -67,7 +67,7 @@ class BookingListItem extends StatelessWidget {
       }
     } else if (isCompleted) {
       dateText =
-          'Stayed: ${booking.startDate != null ? dateFormat.format(booking.startDate!) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
+          'Stayed: ${booking.startDate != null ? dateFormat.format(booking.startDate) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
     } else if (booking.status == BookingStatus.Cancelled) {
       // Assuming bookingDate stores when the booking was made or cancelled
       dateText = booking.bookingDate != null
@@ -75,7 +75,7 @@ class BookingListItem extends StatelessWidget {
           : 'Cancelled';
     } else {
       dateText =
-          '${booking.startDate != null ? dateFormat.format(booking.startDate!) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
+          '${booking.startDate != null ? dateFormat.format(booking.startDate) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
     }
 
     return Card(

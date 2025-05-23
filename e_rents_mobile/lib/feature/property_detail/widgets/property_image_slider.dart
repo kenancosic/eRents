@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:go_router/go_router.dart';
 
 class PropertyImageSlider extends StatelessWidget {
   final Property property;

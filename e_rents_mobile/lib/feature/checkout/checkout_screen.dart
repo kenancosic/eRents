@@ -4,9 +4,7 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Property property;

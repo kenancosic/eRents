@@ -2,12 +2,17 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 // import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
-import 'package:e_rents_mobile/core/widgets/filter_screen.dart'; // Import FilterScreen
+// Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/address_detail.dart';
+import 'package:e_rents_mobile/core/models/geo_region.dart';
+import 'package:e_rents_mobile/core/models/image_response.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:go_router/go_router.dart'; // Add GoRouter import
+import 'dart:typed_data';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -18,52 +23,202 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   late GoogleMapController mapController;
-  final PanelController _panelController =
-      PanelController(); // Controller for SlidingUpPanel
-  bool _isDraggable = false; // Control panel dragging
+  final PageController _pageController = PageController();
+  int _selectedPropertyIndex = 0;
 
-  final LatLng _center =
-      const LatLng(44.5328, 18.6704); // Example: Coordinates for Lukavac
+  final LatLng _center = const LatLng(44.5328, 18.6704);
 
-  final Set<Marker> _markers = {
-    const Marker(
-      markerId: MarkerId('marker_1'),
-      position: LatLng(44.5328, 18.6704),
-      infoWindow: InfoWindow(
-        title: '\$2,430',
+  // Sample properties using your existing Property model
+  late final List<Property> _properties;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeProperties();
+  }
+
+  void _initializeProperties() {
+    // Mock data using your existing Property structure
+    _properties = [
+      Property(
+        propertyId: 1,
+        ownerId: 1,
+        name: 'Small cottage in the center of town',
+        description: 'Cozy cottage perfect for a peaceful stay',
+        price: 526.0,
+        status: 'Available',
+        dateAdded: DateTime.now(),
+        averageRating: 4.8,
+        images: [
+          ImageResponse(
+            imageId: 1,
+            fileName: 'house.jpg',
+            imageData: ByteData(0),
+            dateUploaded: DateTime.now(),
+          ),
+        ],
+        addressDetailId: 1,
+        addressDetail: AddressDetail(
+          addressDetailId: 1,
+          geoRegionId: 1,
+          streetLine1: 'Main Street 123',
+          latitude: 44.5328,
+          longitude: 18.6704,
+          geoRegion: GeoRegion(
+            geoRegionId: 1,
+            city: 'Lukavac',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
+        ),
       ),
-    ),
-    // Add more markers as needed
-  };
+      Property(
+        propertyId: 2,
+        ownerId: 2,
+        name: 'Entire private villa in Tuzla City',
+        description: 'Beautiful villa with modern amenities',
+        price: 400.0,
+        status: 'Available',
+        dateAdded: DateTime.now(),
+        averageRating: 4.9,
+        images: [
+          ImageResponse(
+            imageId: 2,
+            fileName: 'house.jpg',
+            imageData: ByteData(0),
+            dateUploaded: DateTime.now(),
+          ),
+        ],
+        addressDetailId: 2,
+        addressDetail: AddressDetail(
+          addressDetailId: 2,
+          geoRegionId: 2,
+          streetLine1: 'Villa Street 456',
+          latitude: 44.5398,
+          longitude: 18.6804,
+          geoRegion: GeoRegion(
+            geoRegionId: 2,
+            city: 'Tuzla',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
+        ),
+      ),
+      Property(
+        propertyId: 3,
+        ownerId: 3,
+        name: 'Entire rental unit, close to main square',
+        description: 'Prime location rental unit',
+        price: 1290.0,
+        status: 'Available',
+        dateAdded: DateTime.now(),
+        averageRating: 4.8,
+        images: [
+          ImageResponse(
+            imageId: 3,
+            fileName: 'house.jpg',
+            imageData: ByteData(0),
+            dateUploaded: DateTime.now(),
+          ),
+        ],
+        addressDetailId: 3,
+        addressDetail: AddressDetail(
+          addressDetailId: 3,
+          geoRegionId: 3,
+          streetLine1: 'Square Avenue 789',
+          latitude: 44.5258,
+          longitude: 18.6654,
+          geoRegion: GeoRegion(
+            geoRegionId: 3,
+            city: 'Tuzla',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Set<Marker> get _markers {
+    return _properties.asMap().entries.map((entry) {
+      int index = entry.key;
+      Property property = entry.value;
+
+      // Use coordinates from addressDetail
+      LatLng position = LatLng(
+        property.addressDetail?.latitude ?? _center.latitude,
+        property.addressDetail?.longitude ?? _center.longitude,
+      );
+
+      return Marker(
+        markerId: MarkerId(property.propertyId.toString()),
+        position: position,
+        onTap: () => _onMarkerTapped(index),
+        infoWindow: InfoWindow(
+          title: '\$${property.price.toStringAsFixed(0)}',
+          snippet: property.name,
+        ),
+        icon: _selectedPropertyIndex == index
+            ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
+            : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+      );
+    }).toSet();
+  }
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
 
+  void _onMarkerTapped(int index) {
+    setState(() {
+      _selectedPropertyIndex = index;
+    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _onPropertyCardChanged(int index) {
+    setState(() {
+      _selectedPropertyIndex = index;
+    });
+
+    Property property = _properties[index];
+    LatLng position = LatLng(
+      property.addressDetail?.latitude ?? _center.latitude,
+      property.addressDetail?.longitude ?? _center.longitude,
+    );
+
+    mapController.animateCamera(
+      CameraUpdate.newLatLngZoom(position, 15.0),
+    );
+  }
+
+  String _getLocationString(Property property) {
+    if (property.addressDetail?.geoRegion != null) {
+      final geo = property.addressDetail!.geoRegion!;
+      return '${geo.city}, ${geo.state ?? ''}, ${geo.country}';
+    }
+    return 'Location not specified';
+  }
+
   void _handleSearchChanged(String query) {
     // TODO: Implement search logic
-    // print('Search query: $query'); // Removed print
   }
 
   void _handleFilterButtonPressed() {
     context.push('/filter', extra: {
       'onApplyFilters': (Map<String, dynamic> filters) =>
           _handleApplyFilters(context, filters),
-      // 'initialFilters': _currentFilters, // Pass current filters if you have them stored
     });
   }
 
   void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
-    // TODO: Implement actual filter logic for ExploreScreen
-    // print('ExploreScreen: Filters applied: $filters'); // Removed print
-    // Example: update markers on the map, refresh list in panel
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied to map/list!')),
     );
-    // Potentially store these filters in the state if needed for re-passing
-    // setState(() {
-    //   _currentFilters = filters;
-    // });
   }
 
   @override
@@ -71,10 +226,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final searchBar = CustomSearchBar(
       onSearchChanged: _handleSearchChanged,
       hintText: 'Search places...',
-      showFilterIcon: true, // Keep filter icon inside search bar
+      showFilterIcon: true,
       onFilterIconPressed: _handleFilterButtonPressed,
-      // searchHistory: [], // Optional: Provide search history
-      // localData: [], // Optional: Provide local data for suggestions
     );
 
     final appBar = CustomAppBar(
@@ -86,151 +239,165 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return BaseScreen(
       useSlidingDrawer: false,
       appBar: appBar,
-      body: Stack(
+      body: Column(
         children: [
-          // Google Map
-          Positioned.fill(
-            child: GoogleMap(
-              onMapCreated: _onMapCreated,
-              initialCameraPosition: CameraPosition(
-                target: _center,
-                zoom: 14.0,
-              ),
-              markers: _markers,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              onTap: (LatLng location) {
-                // Add interaction for tapping on the map (if needed)
-              },
-            ),
-          ),
-          // SlidingUpPanel for Property List
-          SlidingUpPanel(
-            controller: _panelController,
-            minHeight:
-                MediaQuery.of(context).size.height * 0.15, // Minimized view
-            maxHeight:
-                MediaQuery.of(context).size.height * 0.9, // Expanded view
-            snapPoint: 0.5, // Snap at 50% of the screen
-            isDraggable:
-                _isDraggable, // Make it draggable only based on handle interaction
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-            panelBuilder: (ScrollController sc) => Column(
+          // Map Section (60% of screen)
+          Expanded(
+            flex: 6,
+            child: Stack(
               children: [
-                // Drag Handle Indicator with GestureDetector to manage dragging
-                GestureDetector(
-                  onVerticalDragUpdate: (details) {
-                    setState(() {
-                      _isDraggable = true; // Enable dragging
-                    });
-
-                    // Clamp the panel position between 0.0 and 1.0
-                    final newPosition = (_panelController.panelPosition +
-                            details.primaryDelta! /
-                                MediaQuery.of(context).size.height)
-                        .clamp(0.0, 1.0);
-
-                    _panelController.panelPosition = newPosition;
-                  },
-                  onVerticalDragEnd: (details) {
-                    setState(() {
-                      _isDraggable =
-                          false; // Disable dragging after user stops dragging
-                    });
-                    // Snap to 0.5 or 1.0 height based on user velocity and drag direction
-                    if (details.velocity.pixelsPerSecond.dy > 0) {
-                      _panelController.close(); // Minimize
-                    } else {
-                      _panelController.open(); // Maximize
-                    }
-                  },
+                GoogleMap(
+                  onMapCreated: _onMapCreated,
+                  initialCameraPosition: CameraPosition(
+                    target: _center,
+                    zoom: 14.0,
+                  ),
+                  markers: _markers,
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                ),
+                // Results counter overlay
+                Positioned(
+                  top: 16,
+                  left: 16,
                   child: Container(
-                    width: 40,
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.black
-                          .withAlpha((255 * 0.7).round()), // Fixed withOpacity
-                      borderRadius: BorderRadius.circular(10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // "Showing results" and Sort/Filter row
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Showing 72 results',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Property List - Only Scrollable content
-                Expanded(
-                  child: SafeArea(
-                    child: ListView(
-                      controller: sc,
-                      children: [
-                        PropertyCard(
-                          title: 'Small cottage in the center of town',
-                          location: 'Lukavac, T.K., F.BiH',
-                          details: '',
-                          price: '\$526',
-                          rating: '4.8',
-                          imageUrl: 'assets/images/house.jpg',
-                          review: 73,
-                          rooms: 2,
-                          area: 673,
-                          onTap: () {
-                            context.push('/property/1');
-                          },
-                        ),
-                        PropertyCard(
-                          title: 'Entire private villa in Tuzla City',
-                          location: 'Tuzla, T.K., F.BiH',
-                          details: '',
-                          price: '\$400',
-                          rating: '4.9',
-                          imageUrl: 'assets/images/house.jpg',
-                          review: 104,
-                          rooms: 2,
-                          area: 488,
-                          onTap: () {
-                            context.push('/property/2');
-                          },
-                        ),
-                        PropertyCard(
-                          title: 'Entire rental unit, close to main square',
-                          location: 'Tuzla, T.K., F.BiH',
-                          details: '',
-                          price: '\$1,290',
-                          rating: '4.8',
-                          imageUrl: 'assets/images/house.jpg',
-                          review: 73,
-                          rooms: 2,
-                          area: 874,
-                          onTap: () {
-                            context.push('/property/3');
-                          },
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
+                    ),
+                    child: Text(
+                      '${_properties.length} properties',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            body: Container(),
+          ),
+          // Property List Section (40% of screen)
+          Expanded(
+            flex: 4,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Handle indicator
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Section title
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Available Properties',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // TODO: Navigate to full list view
+                          },
+                          child: const Text('View All'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Horizontal property list
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: _onPropertyCardChanged,
+                      itemCount: _properties.length,
+                      itemBuilder: (context, index) {
+                        final property = _properties[index];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: PropertyCard(
+                            title: property.name,
+                            location: _getLocationString(property),
+                            details: property.description ?? '',
+                            price: '\$${property.price.toStringAsFixed(0)}',
+                            rating:
+                                property.averageRating?.toStringAsFixed(1) ??
+                                    '0.0',
+                            imageUrl:
+                                'assets/images/house.jpg', // Default for now
+                            review: 73, // Mock review count
+                            rooms: 2, // Mock room count
+                            area: 673, // Mock area
+                            onTap: () {
+                              context.push('/property/${property.propertyId}');
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Page indicator
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _properties.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          height: 8,
+                          width: _selectedPropertyIndex == index ? 24 : 8,
+                          decoration: BoxDecoration(
+                            color: _selectedPropertyIndex == index
+                                ? Theme.of(context).primaryColor
+                                : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

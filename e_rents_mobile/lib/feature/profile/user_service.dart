@@ -167,7 +167,7 @@ class UserService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final preferencesData =
-          prefs.getString(_tenantPreferencesKey + '_' + userId);
+          prefs.getString('${_tenantPreferencesKey}_$userId');
 
       if (preferencesData != null) {
         return TenantPreferenceModel.fromJson(json.decode(preferencesData));
@@ -202,7 +202,7 @@ class UserService {
     try {
       final prefs = await SharedPreferences.getInstance();
       // Save to local storage, using userId in the key for user-specific prefs
-      await prefs.setString(_tenantPreferencesKey + '_' + preferences.userId,
+      await prefs.setString('${_tenantPreferencesKey}_${preferences.userId}',
           json.encode(preferences.toJson()));
       print(
           'Tenant preferences saved locally for userId: ${preferences.userId}');

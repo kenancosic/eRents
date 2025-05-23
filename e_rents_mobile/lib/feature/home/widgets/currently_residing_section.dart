@@ -13,7 +13,7 @@ import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 
 class CurrentlyResidingSection extends StatelessWidget {
-  CurrentlyResidingSection({super.key});
+  const CurrentlyResidingSection({super.key});
 
   @override
   Widget build(BuildContext context) {

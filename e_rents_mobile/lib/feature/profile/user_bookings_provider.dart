@@ -117,10 +117,12 @@ class UserBookingsProvider extends BaseProvider {
 
       if (isAActive && isBActive) {
         // Both are effectively active
-        if (a.endDate == null && b.endDate != null)
+        if (a.endDate == null && b.endDate != null) {
           return -1; // Indefinite 'a' first
-        if (a.endDate != null && b.endDate == null)
+        }
+        if (a.endDate != null && b.endDate == null) {
           return 1; // Indefinite 'b' first
+        }
 
         // Both indefinite or both fixed-term, sort by start date
         int startDateComparison = a.startDate.compareTo(b.startDate);
@@ -138,9 +140,10 @@ class UserBookingsProvider extends BaseProvider {
     });
 
     _completedBookings.sort((a, b) {
-      if (a.endDate == null && b.endDate == null)
+      if (a.endDate == null && b.endDate == null) {
         return a.startDate
             .compareTo(b.startDate); // Should not happen for completed
+      }
       if (a.endDate == null) return 1;
       if (b.endDate == null) return -1;
       return b.endDate!.compareTo(a.endDate!); // Most recent completed first
