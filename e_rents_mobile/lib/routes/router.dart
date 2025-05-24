@@ -11,10 +11,14 @@ import 'package:e_rents_mobile/feature/profile/screens/booking_history_screen.da
 import 'package:e_rents_mobile/feature/profile/screens/tenant_preferences_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
+import 'package:e_rents_mobile/feature/property_detail/screens/report_issue_screen.dart';
+import 'package:e_rents_mobile/feature/property_detail/screens/manage_lease_screen.dart';
+import 'package:e_rents_mobile/feature/property_detail/screens/manage_booking_screen.dart';
 import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
@@ -189,6 +193,54 @@ class AppRouter {
             bookingId: bookingId,
           );
         },
+        routes: [
+          GoRoute(
+            path: 'report-issue',
+            name: 'report_issue',
+            builder: (context, state) {
+              final propertyId = int.parse(state.pathParameters['id']!);
+              final extras = state.extra as Map<String, dynamic>?;
+              final bookingId = extras?['bookingId'] as int? ?? 0;
+
+              return ReportIssueScreen(
+                propertyId: propertyId,
+                bookingId: bookingId,
+              );
+            },
+          ),
+          GoRoute(
+            path: 'manage-lease',
+            name: 'manage_lease',
+            builder: (context, state) {
+              final propertyId = int.parse(state.pathParameters['id']!);
+              final extras = state.extra as Map<String, dynamic>?;
+              final bookingId = extras?['bookingId'] as int? ?? 0;
+              final booking = extras?['booking'] as Booking;
+
+              return ManageLeaseScreen(
+                propertyId: propertyId,
+                bookingId: bookingId,
+                booking: booking,
+              );
+            },
+          ),
+          GoRoute(
+            path: 'manage-booking',
+            name: 'manage_booking',
+            builder: (context, state) {
+              final propertyId = int.parse(state.pathParameters['id']!);
+              final extras = state.extra as Map<String, dynamic>?;
+              final bookingId = extras?['bookingId'] as int? ?? 0;
+              final booking = extras?['booking'] as Booking;
+
+              return ManageBookingScreen(
+                propertyId: propertyId,
+                bookingId: bookingId,
+                booking: booking,
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '/filter',

@@ -18,6 +18,8 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -73,12 +75,19 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       showBackButton: true,
     );
 
-    return ChangeNotifierProvider<PropertyDetailProvider>(
-      create: (_) {
-        final provider = PropertyDetailProvider();
-        provider.fetchPropertyDetail(widget.propertyId);
-        return provider;
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<PropertyDetailProvider>(
+          create: (_) {
+            final provider = PropertyDetailProvider();
+            provider.fetchPropertyDetail(widget.propertyId);
+            return provider;
+          },
+        ),
+        ChangeNotifierProvider<SavedProvider>.value(
+          value: context.read<SavedProvider>(),
+        ),
+      ],
       child: BaseScreen(
         appBar: appBar,
         body: Scaffold(
@@ -243,29 +252,34 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   actions: [
                     _footerButton(context, "Report Issue", Icons.report_problem,
                         () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                "Navigate to Report Issue screen (Not implemented)")),
-                      );
+                      context.push(
+                          '/property/${widget.propertyId}/report-issue',
+                          extra: {
+                            'propertyId': widget.propertyId,
+                            'bookingId': widget.bookingId,
+                          });
                     }),
                     if (bookingToDisplay.endDate == null)
                       _footerButton(context, "Manage Lease", Icons.settings,
                           () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  "Manage Lease action (Not implemented)")),
-                        );
+                        context.push(
+                            '/property/${widget.propertyId}/manage-lease',
+                            extra: {
+                              'propertyId': widget.propertyId,
+                              'bookingId': widget.bookingId,
+                              'booking': bookingToDisplay,
+                            });
                       })
                     else
                       _footerButton(context, "Extend Stay", Icons.add_alarm,
                           () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text("Extend Stay action (Not implemented)")),
-                        );
+                        context.push(
+                            '/property/${widget.propertyId}/manage-lease',
+                            extra: {
+                              'propertyId': widget.propertyId,
+                              'bookingId': widget.bookingId,
+                              'booking': bookingToDisplay,
+                            });
                       }),
                   ],
                 );
@@ -294,18 +308,27 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   actions: [
                     _footerButton(
                         context, "Manage Booking", Icons.event_available, () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                "View/Manage Booking ID: ${bookingToDisplay.bookingId} (Not implemented)")),
-                      );
+                      context.push(
+                          '/property/${widget.propertyId}/manage-booking',
+                          extra: {
+                            'propertyId': widget.propertyId,
+                            'bookingId': widget.bookingId,
+                            'booking': bookingToDisplay,
+                          });
                     }),
                     _footerButton(context, "Cancel Stay", Icons.cancel_outlined,
                         () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                "Cancel Booking ID: ${bookingToDisplay.bookingId} (Not implemented)")),
+                      showDialog(
+                        context: context,
+                        builder: (context) => CancelStayDialog(
+                          booking: bookingToDisplay,
+                          onCancellationConfirmed: () {
+                            // Refresh the booking data or navigate away
+                            context
+                                .read<UserBookingsProvider>()
+                                .fetchBookings();
+                          },
+                        ),
                       );
                     }),
                   ],
