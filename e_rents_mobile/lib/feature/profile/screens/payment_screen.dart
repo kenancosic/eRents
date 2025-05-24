@@ -1,6 +1,8 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -139,39 +141,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               Row(
                                 children: [
                                   Expanded(
-                                    child: ElevatedButton(
+                                    child: CustomButton(
+                                      label: 'Save',
+                                      isLoading: isLoading,
+                                      width: ButtonWidth.expanded,
                                       onPressed:
-                                          isLoading ? null : _addPayPalAccount,
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16.0),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(16.0),
-                                        ),
-                                        backgroundColor:
-                                            Theme.of(context).primaryColor,
-                                      ),
-                                      child: const Text('Save'),
+                                          isLoading ? () {} : _addPayPalAccount,
                                     ),
                                   ),
                                   const SizedBox(width: 16),
                                   Expanded(
-                                    child: OutlinedButton(
+                                    child: CustomOutlinedButton(
+                                      label: 'Cancel',
+                                      isLoading: false,
+                                      width: OutlinedButtonWidth.expanded,
                                       onPressed: () {
                                         setState(() {
                                           _isAddingNew = false;
                                         });
                                       },
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16.0),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(16.0),
-                                        ),
-                                      ),
-                                      child: const Text('Cancel'),
                                     ),
                                   ),
                                 ],
@@ -181,22 +169,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         )
                       else
                         Center(
-                          child: ElevatedButton.icon(
+                          child: CustomButton(
+                            label: 'Add PayPal Account',
+                            icon: Icons.add,
+                            isLoading: false,
                             onPressed: () {
                               setState(() {
                                 _isAddingNew = true;
                               });
                             },
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add PayPal Account'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 16.0, horizontal: 24.0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                              backgroundColor: Theme.of(context).primaryColor,
-                            ),
                           ),
                         ),
                     ],

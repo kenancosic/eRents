@@ -5,6 +5,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/services/lease_service.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
 class CancelStayDialog extends StatefulWidget {
   final Booking booking;
@@ -301,45 +302,24 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: CustomOutlinedButton(
+                      label: 'Keep Booking',
+                      isLoading: false,
+                      width: OutlinedButtonWidth.expanded,
                       onPressed: _isSubmitting
-                          ? null
+                          ? () {}
                           : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Keep Booking'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _isSubmitting
-                        ? ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          )
-                        : ElevatedButton(
-                            onPressed: _processCancellation,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text(
-                              'Cancel Stay',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
+                    child: CustomButton(
+                      label: _isSubmitting ? 'Cancelling...' : 'Cancel Stay',
+                      isLoading: _isSubmitting,
+                      width: ButtonWidth.expanded,
+                      backgroundColor: Colors.red,
+                      onPressed: _isSubmitting ? () {} : _processCancellation,
+                    ),
                   ),
                 ],
               ),

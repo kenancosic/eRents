@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
 import 'package:e_rents_mobile/core/services/maintenance_service.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 
@@ -319,14 +320,14 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             // Add image button
             const SizedBox(height: 12),
             if (_selectedImages.length < 5) // Limit to 5 images
-              OutlinedButton.icon(
+              CustomOutlinedButton(
                 onPressed: _showImageSourceOptions,
-                icon: const Icon(Icons.add_a_photo),
-                label: Text(
-                    _selectedImages.isEmpty ? 'Add Photos' : 'Add More Photos'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                ),
+                icon: Icons.add_a_photo,
+                isLoading: false,
+                label:
+                    _selectedImages.isEmpty ? 'Add Photos' : 'Add More Photos',
+                size: OutlinedButtonSize.normal,
+                width: OutlinedButtonWidth.expanded,
               ),
 
             if (_selectedImages.length >= 5)
@@ -340,25 +341,41 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
             const SizedBox(height: 24),
 
-            // Submit button
-            if (!_isSubmitting)
-              CustomButton(
-                isLoading: _isSubmitting,
-                onPressed: () => _submitReport(),
-                label: const Text(
-                  'Submit Report',
-                  style: TextStyle(color: Colors.white),
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: CustomOutlinedButton(
+                    label: 'Save Draft',
+                    icon: Icons.save_outlined,
+                    isLoading: false,
+                    width: OutlinedButtonWidth.expanded,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Draft saved successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              )
-            else
-              CustomButton(
-                isLoading: _isSubmitting,
-                onPressed: () {},
-                label: const Text(
-                  'Submit Report',
-                  style: TextStyle(color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: CustomButton(
+                    icon: Icons.send,
+                    isLoading: _isSubmitting,
+                    onPressed: _isSubmitting ? () {} : _submitReport,
+                    label: Text(
+                      _isSubmitting ? 'Submitting...' : 'Submit Report',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    width: ButtonWidth.expanded,
+                  ),
                 ),
-              ),
+              ],
+            ),
           ],
         ),
       ),

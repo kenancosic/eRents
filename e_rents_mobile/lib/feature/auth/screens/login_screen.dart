@@ -3,12 +3,14 @@ import 'dart:ui'; // Import this for ImageFilter
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
 class LoginScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
@@ -141,20 +143,13 @@ class LoginScreen extends StatelessWidget {
                               suffixIcon: Icons.visibility_off,
                             ),
                             const SizedBox(height: 15),
-                            Align(
-                              alignment: Alignment.center,
-                              child: TextButton(
-                                onPressed: () {
-                                  context.go('/forgot_password');
-                                },
-                                child: const Text(
-                                  'Forgot Password?',
-                                  style: TextStyle(
-                                    color: Color(0xFF7065F0),
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
+                            CustomTextButton.iced(
+                              label: 'Forgot Password?',
+                              isLoading: false,
+                              textColor: const Color(0xFF7065F0),
+                              onPressed: () {
+                                context.go('/forgot_password');
+                              },
                             ),
                             const SizedBox(height: 15),
                             Consumer<AuthProvider>(
@@ -172,32 +167,24 @@ class LoginScreen extends StatelessWidget {
                               },
                             ),
                             const SizedBox(height: 10),
-                            Wrap(
-                              alignment: WrapAlignment.spaceAround,
-                              crossAxisAlignment: WrapCrossAlignment.center,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Baseline(
-                                  baselineType: TextBaseline.alphabetic,
-                                  baseline: 14,
-                                  child: Text(
-                                    "Don't have an account?",
-                                    style: TextStyle(
-                                      color: Colors.grey[300],
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                Text(
+                                  "Don't have an account?",
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                TextButton(
+                                const SizedBox(width: 8),
+                                CustomTextButton.plain(
+                                  label: 'Sign up for free',
+                                  isLoading: false,
+                                  textColor: const Color(0xFF7065F0),
                                   onPressed: () {
                                     context.go('/signup');
                                   },
-                                  child: const Text(
-                                    'Sign up for free',
-                                    style: TextStyle(
-                                      color: Color(0xFF7065F0),
-                                      fontSize: 14,
-                                    ),
-                                  ),
                                 ),
                               ],
                             ),

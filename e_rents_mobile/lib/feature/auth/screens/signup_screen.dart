@@ -5,6 +5,8 @@ import 'package:e_rents_mobile/core/services/google_places_service.dart'; // Add
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
 import 'package:e_rents_mobile/core/widgets/next_step_button.dart';
 import 'package:e_rents_mobile/core/widgets/places_autocomplete_field.dart'; // Added
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -666,17 +668,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            TextButton(
+                            CustomTextButton.iced(
+                              label: 'Back to Login',
+                              isLoading: false,
+                              textColor: const Color(0xFF7065F0),
                               onPressed: () {
                                 context.go('/login');
                               },
-                              child: const Text(
-                                'Back to Login',
-                                style: TextStyle(
-                                  color: Color(0xFF7065F0),
-                                  fontSize: 14, // Reduced font size
-                                ),
-                              ),
                             ),
                           ],
                         ),

@@ -9,7 +9,7 @@ import 'package:e_rents_mobile/feature/profile/screens/personal_details_screen.d
 import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/tenant_preferences_screen.dart';
-import 'package:e_rents_mobile/feature/property_detail/property_details_screen.dart';
+import 'package:e_rents_mobile/feature/property_detail/screens/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/screens/report_issue_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/screens/manage_lease_screen.dart';

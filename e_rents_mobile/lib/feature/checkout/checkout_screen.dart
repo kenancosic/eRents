@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
@@ -128,17 +130,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton(
+              CustomTextButton.plain(
+                label: 'More info',
+                isLoading: false,
+                textColor: accentColor,
                 onPressed: () {
                   // Show detailed price breakdown
                 },
-                child: const Text(
-                  'More info',
-                  style: TextStyle(
-                    color: accentColor, // Use accent color for text button
-                    fontSize: 14,
-                  ),
-                ),
               ),
             ],
           ),
@@ -348,15 +346,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           content: const Text(
               'Your booking has been confirmed. You will receive a confirmation email shortly.'),
           actions: [
-            TextButton(
+            CustomButton.compact(
+              label: 'OK',
+              isLoading: false,
               onPressed: () {
                 context.pop(); // Close dialog
                 context
                     .pop(); // Go back to property details (assuming it's the previous route)
               },
-              child: const Text('OK',
-                  style: TextStyle(
-                      color: accentColor)), // Use accent color for button text
             ),
           ],
         ),

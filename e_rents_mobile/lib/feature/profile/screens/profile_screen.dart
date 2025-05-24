@@ -1,5 +1,7 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -204,23 +206,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Padding(
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16.0),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16.0),
-                                ),
-                                backgroundColor: Theme.of(context).primaryColor,
-                              ),
+                            child: CustomButton(
+                              label: 'Log out',
+                              icon: Icons.logout,
+                              isLoading: false,
+                              width: ButtonWidth.expanded,
+                              backgroundColor: Theme.of(context).primaryColor,
                               onPressed: _handleLogout,
-                              child: const Text(
-                                'Log out',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                             ),
                           ),
                         ],
@@ -270,14 +262,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               content: Text(
                   'Are you sure you want to ${value ? 'make your profile public' : 'make your profile private'}?'),
               actions: <Widget>[
-                TextButton(
-                  child: const Text('Cancel'),
+                CustomOutlinedButton.compact(
+                  label: 'Cancel',
+                  isLoading: false,
                   onPressed: () {
                     Navigator.of(dialogContext).pop(false); // User cancelled
                   },
                 ),
-                TextButton(
-                  child: const Text('Confirm'),
+                CustomButton.compact(
+                  label: 'Confirm',
+                  isLoading: false,
                   onPressed: () {
                     Navigator.of(dialogContext).pop(true); // User confirmed
                   },

@@ -1,6 +1,7 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 import 'package:flutter/material.dart';
@@ -184,22 +185,12 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: isLoading ? null : _saveDetails,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16.0),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0),
-                            ),
-                            backgroundColor: Theme.of(context).primaryColor,
-                          ),
-                          child: const Text(
-                            'Save Changes',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                        CustomButton(
+                          label: 'Save Changes',
+                          icon: Icons.save,
+                          isLoading: isLoading,
+                          width: ButtonWidth.expanded,
+                          onPressed: isLoading ? () {} : _saveDetails,
                         ),
                       ],
                     ),

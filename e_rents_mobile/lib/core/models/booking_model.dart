@@ -11,6 +11,7 @@ class Booking {
   final DateTime? endDate;
   final DateTime? minimumStayEndDate;
   final double totalPrice;
+  final double dailyRate;
   final BookingStatus status;
   final String? currency;
   final DateTime? bookingDate;
@@ -28,6 +29,7 @@ class Booking {
     this.endDate,
     this.minimumStayEndDate,
     required this.totalPrice,
+    required this.dailyRate,
     required this.status,
     this.currency,
     this.bookingDate,
@@ -77,6 +79,7 @@ class Booking {
           ? DateTime.parse(json['minimumStayEndDate'] as String)
           : null,
       totalPrice: (json['totalPrice'] as num).toDouble(),
+      dailyRate: (json['dailyRate'] as num).toDouble(),
       status: statusEnum,
       currency: json['currency'] as String?,
       bookingDate: json['bookingDate'] != null
@@ -98,6 +101,7 @@ class Booking {
         'endDate': endDate?.toIso8601String(),
         'minimumStayEndDate': minimumStayEndDate?.toIso8601String(),
         'totalPrice': totalPrice,
+        'dailyRate': dailyRate,
         'status': status.name, // Send status name
         'currency': currency,
         'bookingDate': bookingDate?.toIso8601String(),

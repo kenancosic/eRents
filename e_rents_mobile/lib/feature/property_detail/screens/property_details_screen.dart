@@ -18,6 +18,8 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
 import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
@@ -196,20 +198,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             averageRating: calculateAverageRating(uiReviews),
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
+                          CustomButton(
+                            label: 'Leave a Review',
+                            icon: Icons.rate_review,
+                            isLoading: false,
+                            width: ButtonWidth.expanded,
                             onPressed: () {
                               _showAddReviewDialog(context, propertyProvider);
                             },
-                            icon: const Icon(Icons.rate_review),
-                            label: const Text('Leave a Review'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF7065F0),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(double.infinity, 48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -517,18 +513,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   Widget _footerButton(BuildContext context, String label, IconData icon,
       VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontSize: 14)),
+    return CustomButton.compact(
+      label: label,
+      icon: icon,
+      width: ButtonWidth.expanded,
+      isLoading: false,
       onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
     );
   }
 }

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 import 'package:e_rents_mobile/core/services/lease_service.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 
 class ManageBookingScreen extends StatefulWidget {
@@ -26,7 +29,12 @@ class ManageBookingScreen extends StatefulWidget {
 class _ManageBookingScreenState extends State<ManageBookingScreen> {
   Map<DateTime, bool> _availability = {};
   bool _isLoading = true;
+  bool _isExtending = false;
+  bool _isSubmittingExtension = false;
   String? _errorMessage;
+  Set<DateTime> _selectedExtensionDates = {};
+  double _extensionPrice = 0.0;
+  DateTime _currentDisplayMonth = DateTime.now();
 
   @override
   void initState() {
@@ -42,14 +50,47 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
 
     try {
       final leaseService = LeaseService(context.read<ApiService>());
+      // Load availability for a wider date range (12 months)
+      final startDate = DateTime.now().subtract(const Duration(days: 30));
+      final endDate = DateTime.now().add(const Duration(days: 365));
+
       final availability = await leaseService.getPropertyAvailability(
         widget.propertyId,
-        startDate: DateTime.now().subtract(const Duration(days: 30)),
-        endDate: DateTime.now().add(const Duration(days: 180)),
+        startDate: startDate,
+        endDate: endDate,
       );
 
+      // Generate better mock availability data with more available days
+      final Map<DateTime, bool> enhancedAvailability = {};
+
+      for (int i = -30; i <= 365; i++) {
+        final date = DateTime.now().add(Duration(days: i));
+        final normalizedDate = DateTime(date.year, date.month, date.day);
+
+        // Make most days available (80% availability) with some patterns
+        // Avoid some weekends and make scattered unavailable days
+        bool isAvailable = true;
+
+        // Make some weekend days unavailable (not all)
+        if (date.weekday == 6 || date.weekday == 7) {
+          isAvailable = i % 3 != 0; // Every 3rd weekend day unavailable
+        }
+
+        // Make some random weekdays unavailable (maintenance, existing bookings)
+        if (date.weekday <= 5) {
+          isAvailable = i % 7 != 1; // Every 7th weekday unavailable
+        }
+
+        // Always make past dates unavailable
+        if (date.isBefore(DateTime.now())) {
+          isAvailable = false;
+        }
+
+        enhancedAvailability[normalizedDate] = isAvailable;
+      }
+
       setState(() {
-        _availability = availability;
+        _availability = enhancedAvailability;
         _isLoading = false;
       });
     } catch (e) {
@@ -57,6 +98,123 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         _errorMessage = 'Failed to load availability data';
         _isLoading = false;
       });
+    }
+  }
+
+  void _calculateExtensionPrice() {
+    _extensionPrice = _selectedExtensionDates.length * widget.booking.dailyRate;
+  }
+
+  void _toggleExtensionMode() {
+    setState(() {
+      _isExtending = !_isExtending;
+      if (!_isExtending) {
+        _selectedExtensionDates.clear();
+        _extensionPrice = 0.0;
+      }
+    });
+  }
+
+  void _navigateMonth(int monthOffset) {
+    setState(() {
+      _currentDisplayMonth = DateTime(
+        _currentDisplayMonth.year,
+        _currentDisplayMonth.month + monthOffset,
+        1,
+      );
+    });
+  }
+
+  void _toggleDateSelection(DateTime date) {
+    if (!_isExtending) return;
+
+    final bookingEnd =
+        widget.booking.endDate ?? DateTime.now().add(const Duration(days: 365));
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedBookingEnd =
+        DateTime(bookingEnd.year, bookingEnd.month, bookingEnd.day);
+
+    // Only allow selection of dates after current booking end and available dates
+    if (normalizedDate.isAfter(normalizedBookingEnd) &&
+        (_availability[normalizedDate] ?? false)) {
+      setState(() {
+        if (_selectedExtensionDates.contains(normalizedDate)) {
+          _selectedExtensionDates.remove(normalizedDate);
+        } else {
+          _selectedExtensionDates.add(normalizedDate);
+        }
+        _calculateExtensionPrice();
+      });
+    }
+  }
+
+  Future<void> _submitBookingExtension() async {
+    if (_selectedExtensionDates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please select dates to extend your booking')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmittingExtension = true;
+    });
+
+    try {
+      // Sort dates to get the range
+      final sortedDates = _selectedExtensionDates.toList()..sort();
+      final endExtension = sortedDates.last;
+
+      // In a real app, you would call an API to extend the booking
+      final leaseService = LeaseService(context.read<ApiService>());
+
+      // Mock extension request - in reality this would be a separate endpoint
+      final success = await leaseService.requestLeaseExtension(
+        LeaseExtensionRequest(
+          bookingId: widget.bookingId,
+          propertyId: widget.propertyId,
+          tenantId: 1, // TODO: Get from user provider
+          newEndDate: endExtension,
+          reason:
+              'Booking extension for additional ${_selectedExtensionDates.length} days',
+          dateRequested: DateTime.now(),
+        ),
+      );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Booking extension request submitted! Additional ${_selectedExtensionDates.length} days for \$${_extensionPrice.toStringAsFixed(2)}',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _toggleExtensionMode();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Failed to submit extension request. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingExtension = false;
+        });
+      }
     }
   }
 
@@ -83,23 +241,38 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                     ],
                   ),
                 )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
+              : Column(
                   children: [
-                    // Booking summary
-                    _buildBookingInfoCard(),
-                    const SizedBox(height: 24),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          // Booking summary
+                          _buildBookingInfoCard(),
+                          const SizedBox(height: 24),
 
-                    // Calendar view
-                    _buildCalendarSection(),
-                    const SizedBox(height: 24),
+                          // Extension mode header
+                          if (_isExtending) ...[
+                            _buildExtensionHeader(),
+                            const SizedBox(height: 16),
+                          ],
 
-                    // Availability legend
-                    _buildAvailabilityLegend(),
-                    const SizedBox(height: 24),
+                          // Calendar section
+                          _buildCalendarSection(),
+                          const SizedBox(height: 24),
 
-                    // Booking status
-                    _buildBookingStatusCard(),
+                          // Availability legend
+                          _buildAvailabilityLegend(),
+                          const SizedBox(height: 24),
+
+                          // Booking status
+                          if (!_isExtending) _buildBookingStatusCard(),
+                        ],
+                      ),
+                    ),
+
+                    // Extension summary and submit button
+                    if (_isExtending) _buildExtensionBottomSheet(),
                   ],
                 ),
     );
@@ -160,35 +333,52 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
     );
   }
 
-  Widget _buildCalendarSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Property Availability Calendar',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  Widget _buildExtensionHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.add_box_outlined, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              Text(
+                'Extend Your Booking',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'View when the property is available for future bookings',
-          style: TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
+          const SizedBox(height: 8),
+          const Text(
+            'Select additional dates on the calendar below. Available dates are shown in green.',
+            style: TextStyle(fontSize: 14),
           ),
-        ),
-        const SizedBox(height: 16),
-        _buildMonthlyCalendar(),
-      ],
+          if (_selectedExtensionDates.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Selected: ${_selectedExtensionDates.length} additional days',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildMonthlyCalendar() {
-    final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month, 1);
-
+  Widget _buildCalendarSection() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -197,25 +387,61 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Month header
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              Text(
+                _isExtending
+                    ? 'Select Additional Dates'
+                    : 'Property Availability Calendar',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              // Extension toggle button moved here for better UX
+              if (!_isExtending)
+                CustomButton.compact(
+                  label: 'Extend Booking',
+                  icon: Icons.edit_calendar_outlined,
+                  width: ButtonWidth.content,
+                  isLoading: false,
+                  onPressed: _toggleExtensionMode,
+                )
+              else
+                CustomOutlinedButton.compact(
+                  label: 'Cancel',
+                  icon: Icons.close,
+                  width: OutlinedButtonWidth.content,
+                  isLoading: false,
+                  onPressed: _toggleExtensionMode,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
           Text(
-            DateFormat.yMMMM().format(currentMonth),
+            _isExtending
+                ? 'Tap on available dates (green) to add them to your booking extension'
+                : 'View when the property is available for future bookings',
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 16),
 
-          // Calendar grid
-          _buildCalendarGrid(currentMonth),
+          // Monthly calendar view with proper navigation
+          _buildMonthlyCalendar(_currentDisplayMonth),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarGrid(DateTime month) {
+  Widget _buildMonthlyCalendar(DateTime month) {
     final firstDayOfMonth = DateTime(month.year, month.month, 1);
     final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
     final firstDayOfWeek = firstDayOfMonth.weekday % 7;
@@ -223,6 +449,31 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
 
     return Column(
       children: [
+        // Month header with navigation
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              onPressed: () => _navigateMonth(-1),
+              icon: const Icon(Icons.chevron_left),
+              tooltip: 'Previous month',
+            ),
+            Text(
+              DateFormat.yMMMM().format(month),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            IconButton(
+              onPressed: () => _navigateMonth(1),
+              icon: const Icon(Icons.chevron_right),
+              tooltip: 'Next month',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
         // Weekday headers
         Row(
           children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -252,60 +503,84 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
               }
 
               final date = DateTime(month.year, month.month, dayNumber);
-              final isToday = date.day == DateTime.now().day &&
-                  date.month == DateTime.now().month &&
-                  date.year == DateTime.now().year;
-              final isBookingDate = _isDateInBookingRange(date);
-              final isAvailable =
-                  _availability[DateTime(date.year, date.month, date.day)] ??
-                      true;
-
               return Expanded(
-                child: Container(
-                  height: 40,
-                  margin: const EdgeInsets.all(1),
-                  decoration: BoxDecoration(
-                    color: isToday
-                        ? Theme.of(context).primaryColor
-                        : isBookingDate
-                            ? Colors.blue.withValues(alpha: 0.3)
-                            : isAvailable
-                                ? Colors.green.withValues(alpha: 0.2)
-                                : Colors.red.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: isToday
-                        ? Border.all(color: Colors.white, width: 2)
-                        : null,
-                  ),
-                  child: Center(
-                    child: Text(
-                      dayNumber.toString(),
-                      style: TextStyle(
-                        color: isToday
-                            ? Colors.white
-                            : isBookingDate
-                                ? Colors.blue[800]
-                                : Colors.black,
-                        fontWeight: isToday || isBookingDate
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
+                child: _buildCalendarDay(date),
               );
             }),
           );
-        })
-            .where((row) =>
-                // Only show rows that have at least one valid day
-                (row.children as List).any((child) =>
-                    child is Expanded &&
-                    child.child is Container &&
-                    (child.child as Container).child != null))
-            .toList(),
+        }).where((row) {
+          // Only show rows that have at least one valid day
+          final children = row.children as List;
+          return children.any((child) =>
+              child is Expanded &&
+              child.child != null &&
+              child.child is! SizedBox);
+        }).toList(),
       ],
+    );
+  }
+
+  Widget _buildCalendarDay(DateTime date) {
+    final isToday = date.day == DateTime.now().day &&
+        date.month == DateTime.now().month &&
+        date.year == DateTime.now().year;
+    final isInBookingRange = _isDateInBookingRange(date);
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final isAvailable = _availability[normalizedDate] ?? false;
+    final isSelected = _selectedExtensionDates.contains(normalizedDate);
+    final bookingEnd =
+        widget.booking.endDate ?? DateTime.now().add(const Duration(days: 365));
+    final isAfterBooking = normalizedDate
+        .isAfter(DateTime(bookingEnd.year, bookingEnd.month, bookingEnd.day));
+
+    Color? backgroundColor;
+    Color? textColor;
+    Border? border;
+
+    if (isToday) {
+      backgroundColor = Theme.of(context).primaryColor;
+      textColor = Colors.white;
+      border = Border.all(color: Colors.white, width: 2);
+    } else if (isInBookingRange) {
+      backgroundColor = Colors.blue.withValues(alpha: 0.3);
+      textColor = Colors.blue[800];
+    } else if (isSelected) {
+      backgroundColor = Colors.orange;
+      textColor = Colors.white;
+    } else if (_isExtending && isAfterBooking && isAvailable) {
+      backgroundColor = Colors.green.withValues(alpha: 0.3);
+      textColor = Colors.green[800];
+    } else if (!isAvailable) {
+      backgroundColor = Colors.red.withValues(alpha: 0.2);
+      textColor = Colors.red[700];
+    } else if (isAvailable) {
+      backgroundColor = Colors.green.withValues(alpha: 0.2);
+      textColor = Colors.green[700];
+    }
+
+    return GestureDetector(
+      onTap: () => _toggleDateSelection(date),
+      child: Container(
+        height: 40,
+        margin: const EdgeInsets.all(1),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+          border: border,
+        ),
+        child: Center(
+          child: Text(
+            date.day.toString(),
+            style: TextStyle(
+              color: textColor ?? Colors.black,
+              fontWeight: isToday || isSelected || isInBookingRange
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -330,7 +605,13 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
           _buildLegendItem(Theme.of(context).primaryColor, 'Today'),
           _buildLegendItem(
               Colors.blue.withValues(alpha: 0.3), 'Your booking period'),
-          _buildLegendItem(Colors.green.withValues(alpha: 0.2), 'Available'),
+          if (_isExtending) ...[
+            _buildLegendItem(Colors.orange, 'Selected for extension'),
+            _buildLegendItem(
+                Colors.green.withValues(alpha: 0.3), 'Available for extension'),
+          ] else ...[
+            _buildLegendItem(Colors.green.withValues(alpha: 0.2), 'Available'),
+          ],
           _buildLegendItem(Colors.red.withValues(alpha: 0.2), 'Unavailable'),
         ],
       ),
@@ -386,6 +667,107 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
           Text(
             _getStatusDescription(),
             style: const TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExtensionBottomSheet() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_selectedExtensionDates.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Extension Summary',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${_selectedExtensionDates.length} days',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '\$${widget.booking.dailyRate.toStringAsFixed(0)} × ${_selectedExtensionDates.length} days',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      Text(
+                        '\$${_extensionPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: CustomOutlinedButton(
+                  label: 'Cancel',
+                  width: OutlinedButtonWidth.expanded,
+                  isLoading: false,
+                  onPressed: _toggleExtensionMode,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: CustomButton(
+                  icon: Icons.edit_calendar_outlined,
+                  isLoading: _isSubmittingExtension,
+                  onPressed: _selectedExtensionDates.isNotEmpty &&
+                          !_isSubmittingExtension
+                      ? () => _submitBookingExtension()
+                      : () {},
+                  label: Text(
+                    _isSubmittingExtension ? 'Submitting...' : 'Extend Booking',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 class NextStepButton extends StatelessWidget {
   final String label;
@@ -14,23 +15,11 @@ class NextStepButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      // Adjust the height and width as needed
-      height: 50,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white, backgroundColor: const Color(0xFF7065F0),
-          textStyle: const TextStyle(fontSize: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-        ),
-        onPressed: isLoading ? null : onPressed,
-        child: isLoading
-            ? const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              )
-            : Text(label),
-      ),
+    return CustomButton(
+      label: label,
+      isLoading: isLoading,
+      onPressed: onPressed,
+      width: ButtonWidth.expanded,
     );
   }
 }

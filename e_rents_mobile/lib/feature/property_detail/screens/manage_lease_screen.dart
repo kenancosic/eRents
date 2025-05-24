@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/services/lease_service.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 
@@ -146,6 +147,76 @@ class _ManageLeaseScreenState extends State<ManageLeaseScreen> {
         });
       }
     }
+  }
+
+  void _showPreviewDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Request Preview'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildPreviewRow('Extension Type',
+                  _isIndefiniteExtension ? 'Indefinite' : 'Fixed-term'),
+              if (!_isIndefiniteExtension && _newEndDate != null)
+                _buildPreviewRow(
+                    'New End Date', DateFormat.yMMMd().format(_newEndDate!)),
+              if (_newMinimumStayEndDate != null)
+                _buildPreviewRow('Minimum Stay Until',
+                    DateFormat.yMMMd().format(_newMinimumStayEndDate!)),
+              _buildPreviewRow('Reason', _reasonController.text.trim()),
+            ],
+          ),
+        ),
+        actions: [
+          CustomOutlinedButton.compact(
+            label: 'Edit',
+            isLoading: false,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          CustomButton.compact(
+            label: 'Looks Good',
+            isLoading: false,
+            onPressed: () {
+              Navigator.of(context).pop();
+              _submitExtensionRequest();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? 'Not provided' : value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -377,25 +448,34 @@ class _ManageLeaseScreenState extends State<ManageLeaseScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Submit button
-            if (!_isSubmitting)
-              CustomButton(
-                isLoading: _isSubmitting,
-                onPressed: () => _submitExtensionRequest(),
-                label: const Text(
-                  'Submit Extension Request',
-                  style: TextStyle(color: Colors.white),
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: CustomOutlinedButton(
+                    label: 'Preview Request',
+                    icon: Icons.preview,
+                    isLoading: false,
+                    width: OutlinedButtonWidth.expanded,
+                    onPressed: _showPreviewDialog,
+                  ),
                 ),
-              )
-            else
-              CustomButton(
-                isLoading: _isSubmitting,
-                onPressed: () {},
-                label: const Text(
-                  'Submit Extension Request',
-                  style: TextStyle(color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: CustomButton(
+                    icon: Icons.send,
+                    isLoading: _isSubmitting,
+                    onPressed: _isSubmitting ? () {} : _submitExtensionRequest,
+                    width: ButtonWidth.expanded,
+                    label: Text(
+                      _isSubmitting ? 'Submitting...' : 'Submit Request',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
-              ),
+              ],
+            ),
           ],
         ),
       ),
