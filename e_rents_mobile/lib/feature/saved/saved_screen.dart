@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
@@ -183,14 +184,11 @@ class _SavedScreenState extends State<SavedScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6.0),
             child: Center(
-              child: TextButton.icon(
+              child: ElevatedTextButton.icon(
+                text: 'Refresh',
+                icon: Icons.refresh,
+                isCompact: true,
                 onPressed: _loadSavedProperties,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Refresh', style: TextStyle(fontSize: 14)),
-                style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
               ),
             ),
           ),

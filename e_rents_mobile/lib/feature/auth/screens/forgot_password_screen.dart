@@ -5,7 +5,6 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
-import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -140,10 +139,12 @@ class ForgotPasswordScreen extends StatelessWidget {
                               },
                             ),
                             const SizedBox(height: 20),
-                            CustomTextButton.iced(
+                            CustomOutlinedButton.compact(
                               label: 'Back to login',
                               isLoading: false,
+                              width: OutlinedButtonWidth.content,
                               textColor: const Color(0xFF7065F0),
+                              borderColor: const Color(0xFF7065F0),
                               onPressed: () {
                                 context.go('/login');
                               },

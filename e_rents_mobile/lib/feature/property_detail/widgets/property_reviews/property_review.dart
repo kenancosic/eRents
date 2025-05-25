@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/review_item.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 
 class PropertyReviewsSection extends StatelessWidget {
   final List<ReviewUIModel> reviews;
@@ -24,11 +25,12 @@ class PropertyReviewsSection extends StatelessWidget {
               'Reviews',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            TextButton(
+            ElevatedTextButton(
+              text: 'See All (${reviews.length})',
+              isCompact: true,
               onPressed: () {
                 // Navigate to all reviews page
               },
-              child: Text('See All (${reviews.length})'),
             ),
           ],
         ),
@@ -93,11 +95,11 @@ class PropertyReviewsSection extends StatelessWidget {
 
         if (reviews.length > 3)
           Center(
-            child: TextButton(
+            child: ElevatedTextButton(
+              text: 'View All ${reviews.length} Reviews',
               onPressed: () {
                 // Navigate to all reviews
               },
-              child: Text('View All ${reviews.length} Reviews'),
             ),
           ),
       ],

@@ -12,6 +12,7 @@ class PropertyCard extends StatelessWidget {
   final int rooms;
   final int area;
   final VoidCallback? onTap;
+  final bool isCompact; // New parameter for compact layout
 
   const PropertyCard({
     super.key,
@@ -25,16 +26,21 @@ class PropertyCard extends StatelessWidget {
     this.rooms = 0,
     this.area = 0,
     this.onTap,
+    this.isCompact = false, // Default to full size
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use different heights based on compact mode
+    final cardHeight = isCompact ? 120.0 : 160.0;
+    final padding = isCompact ? 8.0 : 12.0;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: 160,
+          height: cardHeight,
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
@@ -60,24 +66,58 @@ class PropertyCard extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      PropertyRating(rating: rating, review: review),
-                      PropertyTitle(title: title),
-                      PropertyLocation(location: location),
-                      PropertyAmenities(rooms: rooms, area: area),
-                      PropertyPrice(price: price),
-                    ],
-                  ),
+                  padding: EdgeInsets.all(padding),
+                  child: isCompact ? _buildCompactLayout() : _buildFullLayout(),
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCompactLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Rating and price in same row for space efficiency
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: PropertyRating(
+                  rating: rating, review: review, isCompact: true),
+            ),
+            PropertyPrice(price: price, isCompact: true),
+          ],
+        ),
+        const SizedBox(height: 4),
+        // Title with smaller max lines
+        Flexible(
+          child: PropertyTitle(title: title, isCompact: true),
+        ),
+        const SizedBox(height: 2),
+        // Location
+        PropertyLocation(location: location, isCompact: true),
+        const Spacer(),
+        // Amenities at bottom
+        PropertyAmenities(rooms: rooms, area: area, isCompact: true),
+      ],
+    );
+  }
+
+  Widget _buildFullLayout() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        PropertyRating(rating: rating, review: review),
+        PropertyTitle(title: title),
+        PropertyLocation(location: location),
+        PropertyAmenities(rooms: rooms, area: area),
+        PropertyPrice(price: price),
+      ],
     );
   }
 }
@@ -107,36 +147,46 @@ class PropertyImage extends StatelessWidget {
 class PropertyRating extends StatelessWidget {
   final String rating;
   final int review;
-  const PropertyRating({super.key, required this.rating, required this.review});
+  final bool isCompact;
+  const PropertyRating({
+    super.key,
+    required this.rating,
+    required this.review,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isCompact ? 10.0 : 11.0;
+    final iconSize = isCompact ? 8.0 : 10.0;
+
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          width: 10,
-          height: 10,
+          width: iconSize,
+          height: iconSize,
           child: SvgPicture.asset(
             'assets/icons/star.svg',
-            width: 10,
-            height: 10,
+            width: iconSize,
+            height: iconSize,
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: isCompact ? 2 : 4),
         Text(
           rating,
-          style: const TextStyle(
-            color: Color(0xFF1A1E25),
-            fontSize: 11,
+          style: TextStyle(
+            color: const Color(0xFF1A1E25),
+            fontSize: fontSize,
             fontFamily: 'Hind',
             fontWeight: FontWeight.w400,
           ),
         ),
         Text(
           ' ($review)',
-          style: const TextStyle(
-            color: Color(0xFF7D7F88),
-            fontSize: 11,
+          style: TextStyle(
+            color: const Color(0xFF7D7F88),
+            fontSize: fontSize,
             fontFamily: 'Hind',
             fontWeight: FontWeight.w400,
           ),
@@ -148,19 +198,27 @@ class PropertyRating extends StatelessWidget {
 
 class PropertyTitle extends StatelessWidget {
   final String title;
-  const PropertyTitle({super.key, required this.title});
+  final bool isCompact;
+  const PropertyTitle({
+    super.key,
+    required this.title,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isCompact ? 13.0 : 14.0;
+    final maxLines = isCompact ? 1 : 2;
+
     return Text(
       title,
-      style: const TextStyle(
-        color: Color(0xFF1A1E25),
-        fontSize: 14,
+      style: TextStyle(
+        color: const Color(0xFF1A1E25),
+        fontSize: fontSize,
         fontFamily: 'Hind',
         fontWeight: FontWeight.w400,
       ),
-      maxLines: 2,
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
   }
@@ -168,18 +226,27 @@ class PropertyTitle extends StatelessWidget {
 
 class PropertyLocation extends StatelessWidget {
   final String location;
-  const PropertyLocation({super.key, required this.location});
+  final bool isCompact;
+  const PropertyLocation({
+    super.key,
+    required this.location,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isCompact ? 11.0 : 12.0;
+
     return Text(
       location,
-      style: const TextStyle(
-        color: Color(0xFF7D7F88),
-        fontSize: 12,
+      style: TextStyle(
+        color: const Color(0xFF7D7F88),
+        fontSize: fontSize,
         fontFamily: 'Hind',
         fontWeight: FontWeight.w400,
       ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }
@@ -187,10 +254,20 @@ class PropertyLocation extends StatelessWidget {
 class PropertyAmenities extends StatelessWidget {
   final int rooms;
   final int area;
-  const PropertyAmenities({super.key, required this.rooms, required this.area});
+  final bool isCompact;
+  const PropertyAmenities({
+    super.key,
+    required this.rooms,
+    required this.area,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fontSize = isCompact ? 10.0 : 12.0;
+    final iconSize = isCompact ? 10.0 : 12.0;
+    final spacing = isCompact ? 4.0 : 8.0;
+
     return Wrap(
       direction: Axis.horizontal,
       alignment: WrapAlignment.start,
@@ -201,42 +278,35 @@ class PropertyAmenities extends StatelessWidget {
           alignment: WrapAlignment.start,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Icon(Icons.bed, size: 12, color: Color(0xFF7D7F88)),
-            const SizedBox(width: 4),
-            Baseline(
-              baseline: 12,
-              baselineType: TextBaseline.alphabetic,
-              child: Text(
-                '$rooms rooms',
-                style: const TextStyle(
-                  color: Color(0xFF7D7F88),
-                  fontSize: 12,
-                  fontFamily: 'Hind',
-                  fontWeight: FontWeight.w400,
-                ),
+            Icon(Icons.bed, size: iconSize, color: const Color(0xFF7D7F88)),
+            SizedBox(width: isCompact ? 2 : 4),
+            Text(
+              '$rooms rooms',
+              style: TextStyle(
+                color: const Color(0xFF7D7F88),
+                fontSize: fontSize,
+                fontFamily: 'Hind',
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: spacing),
         Wrap(
           direction: Axis.horizontal,
           alignment: WrapAlignment.start,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            const Icon(Icons.square_foot, size: 12, color: Color(0xFF7D7F88)),
-            const SizedBox(width: 4),
-            Baseline(
-              baseline: 12,
-              baselineType: TextBaseline.alphabetic,
-              child: Text(
-                '$area m2',
-                style: const TextStyle(
-                  color: Color(0xFF7D7F88),
-                  fontSize: 12,
-                  fontFamily: 'Hind',
-                  fontWeight: FontWeight.w400,
-                ),
+            Icon(Icons.square_foot,
+                size: iconSize, color: const Color(0xFF7D7F88)),
+            SizedBox(width: isCompact ? 2 : 4),
+            Text(
+              '$area m2',
+              style: TextStyle(
+                color: const Color(0xFF7D7F88),
+                fontSize: fontSize,
+                fontFamily: 'Hind',
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -248,27 +318,35 @@ class PropertyAmenities extends StatelessWidget {
 
 class PropertyPrice extends StatelessWidget {
   final String price;
-  const PropertyPrice({super.key, required this.price});
+  final bool isCompact;
+  const PropertyPrice({
+    super.key,
+    required this.price,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final priceSize = isCompact ? 14.0 : 16.0;
+    final suffixSize = isCompact ? 10.0 : 11.0;
+
     return Text.rich(
       TextSpan(
         children: [
           TextSpan(
             text: price,
-            style: const TextStyle(
-              color: Color(0xFF1A1E25),
-              fontSize: 16,
+            style: TextStyle(
+              color: const Color(0xFF1A1E25),
+              fontSize: priceSize,
               fontFamily: 'Hind',
               fontWeight: FontWeight.w700,
             ),
           ),
-          const TextSpan(
-            text: ' / month',
+          TextSpan(
+            text: isCompact ? '/mo' : ' / month',
             style: TextStyle(
-              color: Color(0xFF7D7F88),
-              fontSize: 11,
+              color: const Color(0xFF7D7F88),
+              fontSize: suffixSize,
               fontFamily: 'Hind',
               fontWeight: FontWeight.w400,
             ),

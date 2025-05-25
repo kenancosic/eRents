@@ -66,13 +66,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
-          TextButton(
+          CustomOutlinedButton.compact(
+            label: 'Cancel',
+            isLoading: false,
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
           ),
-          TextButton(
+          CustomButton.compact(
+            label: 'Logout',
+            isLoading: false,
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Logout'),
           ),
         ],
       ),

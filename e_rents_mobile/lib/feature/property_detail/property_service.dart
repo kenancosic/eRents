@@ -45,6 +45,9 @@ class PropertyService {
         facilities: "Garden, Patio, BBQ",
         status: "Available",
         dateAdded: DateTime.now().subtract(const Duration(days: 75)),
+        rentalType: PropertyRentalType.daily,
+        dailyRate: 75.0,
+        minimumStayDays: 3,
       ),
       101: Property(
         propertyId: 101,

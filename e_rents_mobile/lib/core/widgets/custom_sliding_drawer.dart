@@ -1,4 +1,7 @@
 import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -101,23 +104,18 @@ class CustomSlidingDrawer extends StatelessWidget {
             maxLines: 2,
           ),
           const SizedBox(height: 8),
-          TextButton.icon(
+          ElevatedTextButton.icon(
+            text: "Edit profile",
+            icon: Icons.edit,
+            isCompact: true,
+            textColor: Colors.white,
+            backgroundColor: Colors.transparent,
             onPressed: () {
               if (context.mounted) {
                 context.go('/profile');
                 onDrawerToggle();
               }
             },
-            icon: const Icon(Icons.edit, color: Colors.white, size: 16),
-            label: const Text(
-              "Edit profile",
-              style: TextStyle(color: Colors.white, fontSize: 14),
-            ),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
           ),
         ],
       ),
@@ -148,14 +146,16 @@ class CustomSlidingDrawer extends StatelessWidget {
                 title: const Text('Confirm Logout'),
                 content: const Text('Are you sure you want to log out?'),
                 actions: <Widget>[
-                  TextButton(
-                    child: const Text('Cancel'),
+                  CustomOutlinedButton.compact(
+                    label: 'Cancel',
+                    isLoading: false,
                     onPressed: () {
                       dialogContext.canPop() ? dialogContext.pop(false) : null;
                     },
                   ),
-                  TextButton(
-                    child: const Text('Logout'),
+                  CustomButton.compact(
+                    label: 'Logout',
+                    isLoading: false,
                     onPressed: () {
                       dialogContext.canPop() ? dialogContext.pop(true) : null;
                     },

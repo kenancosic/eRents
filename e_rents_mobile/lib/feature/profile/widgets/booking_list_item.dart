@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import '../../../core/models/booking_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 
 class BookingListItem extends StatelessWidget {
   final Booking booking;
@@ -182,7 +183,9 @@ class BookingListItem extends StatelessWidget {
                       .titleSmall
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                TextButton(
+                ElevatedTextButton(
+                  text: 'View Details',
+                  isCompact: true,
                   onPressed: () {
                     ViewContext contextForNavigation;
                     if (booking.status == BookingStatus.Upcoming ||
@@ -199,7 +202,6 @@ class BookingListItem extends StatelessWidget {
                       },
                     );
                   },
-                  child: const Text('View Details'),
                 )
               ],
             ),
@@ -210,19 +212,18 @@ class BookingListItem extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton.icon(
-                        icon: const Icon(Icons.cancel_outlined, size: 18),
-                        label: const Text('Cancel Booking'),
+                    ElevatedTextButton.icon(
+                        text: 'Cancel Booking',
+                        icon: Icons.cancel_outlined,
+                        isCompact: true,
+                        textColor: Theme.of(context).colorScheme.error,
                         onPressed: () {
                           // TODO: Implement cancel booking logic
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('Cancel booking tapped')),
                           );
-                        },
-                        style: TextButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(context).colorScheme.error)),
+                        }),
                   ],
                 ),
               ),
@@ -232,9 +233,10 @@ class BookingListItem extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton.icon(
-                      icon: const Icon(Icons.rate_review_outlined, size: 18),
-                      label: const Text('Leave Review'),
+                    ElevatedTextButton.icon(
+                      text: 'Leave Review',
+                      icon: Icons.rate_review_outlined,
+                      isCompact: true,
                       onPressed: () {
                         // TODO: Navigate to leave review screen
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -243,20 +245,18 @@ class BookingListItem extends StatelessWidget {
                       },
                     ),
                     const SizedBox(width: 8),
-                    TextButton.icon(
-                        icon:
-                            const Icon(Icons.report_problem_outlined, size: 18),
-                        label: const Text('Report Issue'),
+                    ElevatedTextButton.icon(
+                        text: 'Report Issue',
+                        icon: Icons.report_problem_outlined,
+                        isCompact: true,
+                        textColor: Theme.of(context).colorScheme.error,
                         onPressed: () {
                           // TODO: Navigate to report maintenance issue screen
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('Report issue tapped')),
                           );
-                        },
-                        style: TextButton.styleFrom(
-                            foregroundColor:
-                                Theme.of(context).colorScheme.error)),
+                        }),
                   ],
                 ),
               )

@@ -2,6 +2,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 // import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
@@ -333,11 +334,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        TextButton(
+                        ElevatedTextButton(
+                          text: 'View All',
+                          isCompact: true,
                           onPressed: () {
                             // TODO: Navigate to full list view
                           },
-                          child: const Text('View All'),
                         ),
                       ],
                     ),
@@ -365,6 +367,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             review: 73, // Mock review count
                             rooms: 2, // Mock room count
                             area: 673, // Mock area
+                            isCompact:
+                                true, // Use compact layout for explore screen
                             onTap: () {
                               context.push('/property/${property.propertyId}');
                             },

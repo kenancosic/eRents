@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
@@ -130,10 +129,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              CustomTextButton.plain(
+              CustomOutlinedButton.compact(
                 label: 'More info',
                 isLoading: false,
+                width: OutlinedButtonWidth.content,
                 textColor: accentColor,
+                borderColor: accentColor,
                 onPressed: () {
                   // Show detailed price breakdown
                 },

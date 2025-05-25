@@ -3,7 +3,7 @@ import 'package:e_rents_mobile/core/models/review_ui_model.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
-import 'package:e_rents_mobile/feature/property_detail/widgets/property_availability/property_availability.dart';
+import 'package:e_rents_mobile/feature/property_detail/widgets/property_action_sections/property_action_factory.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_description.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_detail.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_header.dart';
@@ -16,11 +16,10 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
-import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
+
 import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -172,16 +171,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          if (widget.viewContext == ViewContext.browsing ||
-                              widget.viewContext == ViewContext.upcomingBooking)
-                            PropertyAvailabilitySection(property: property),
-                          if (widget.viewContext == ViewContext.browsing ||
-                              widget.viewContext ==
-                                  ViewContext.upcomingBooking) ...[
-                            const SizedBox(height: 16),
-                            const Divider(color: Color(0xFFE0E0E0), height: 16),
-                            const SizedBox(height: 16),
-                          ],
+                          // Context-specific action section
+                          PropertyActionFactory.createActionSection(
+                            property: property,
+                            viewContext: widget.viewContext,
+                            booking: displayedBooking,
+                          ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
@@ -218,125 +213,18 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           bottomNavigationBar: Consumer<PropertyDetailProvider>(
             builder: (context, propertyProvider, child) {
               final property = propertyProvider.property;
-              if (property == null &&
-                  widget.viewContext == ViewContext.browsing) {
-                return const SizedBox.shrink();
-              }
 
-              Booking? bookingToDisplay = displayedBooking;
-
-              if (widget.viewContext == ViewContext.activeLease) {
-                if (widget.bookingId == null || bookingToDisplay == null) {
-                  return _buildInfoFooter("Active lease details unavailable.");
-                }
-                String leaseInfo = "You are currently residing here";
-                if (bookingToDisplay.endDate == null) {
-                  leaseInfo += " (Open-ended lease).";
-                  if (bookingToDisplay.minimumStayEndDate != null &&
-                      bookingToDisplay.minimumStayEndDate!
-                          .isAfter(DateTime.now())) {
-                    leaseInfo +=
-                        " Minimum stay until ${DateFormat.yMMMd().format(bookingToDisplay.minimumStayEndDate!)}.";
-                  }
-                } else {
-                  leaseInfo +=
-                      ". Lease ends ${DateFormat.yMMMd().format(bookingToDisplay.endDate!)}.";
-                }
-                return _buildActionFooter(
-                  context: context,
-                  infoText: leaseInfo,
-                  actions: [
-                    _footerButton(context, "Report Issue", Icons.report_problem,
-                        () {
-                      context.push(
-                          '/property/${widget.propertyId}/report-issue',
-                          extra: {
-                            'propertyId': widget.propertyId,
-                            'bookingId': widget.bookingId,
-                          });
-                    }),
-                    if (bookingToDisplay.endDate == null)
-                      _footerButton(context, "Manage Lease", Icons.settings,
-                          () {
-                        context.push(
-                            '/property/${widget.propertyId}/manage-lease',
-                            extra: {
-                              'propertyId': widget.propertyId,
-                              'bookingId': widget.bookingId,
-                              'booking': bookingToDisplay,
-                            });
-                      })
-                    else
-                      _footerButton(context, "Extend Stay", Icons.add_alarm,
-                          () {
-                        context.push(
-                            '/property/${widget.propertyId}/manage-lease',
-                            extra: {
-                              'propertyId': widget.propertyId,
-                              'bookingId': widget.bookingId,
-                              'booking': bookingToDisplay,
-                            });
-                      }),
-                  ],
-                );
-              } else if (widget.viewContext == ViewContext.upcomingBooking) {
-                if (widget.bookingId == null || bookingToDisplay == null) {
-                  return _buildInfoFooter(
-                      "Upcoming booking details unavailable.");
-                }
-                String bookingInfo;
-                if (bookingToDisplay.endDate == null) {
-                  bookingInfo =
-                      "Upcoming open-ended stay starting ${DateFormat.yMMMd().format(bookingToDisplay.startDate)}.";
-                  if (bookingToDisplay.minimumStayEndDate != null &&
-                      bookingToDisplay.minimumStayEndDate!
-                          .isAfter(DateTime.now())) {
-                    bookingInfo +=
-                        " Minimum stay until ${DateFormat.yMMMd().format(bookingToDisplay.minimumStayEndDate!)}.";
-                  }
-                } else {
-                  bookingInfo =
-                      "Upcoming stay: ${DateFormat.yMMMd().format(bookingToDisplay.startDate)} - ${DateFormat.yMMMd().format(bookingToDisplay.endDate!)}.";
-                }
-                return _buildActionFooter(
-                  context: context,
-                  infoText: bookingInfo,
-                  actions: [
-                    _footerButton(
-                        context, "Manage Booking", Icons.event_available, () {
-                      context.push(
-                          '/property/${widget.propertyId}/manage-booking',
-                          extra: {
-                            'propertyId': widget.propertyId,
-                            'bookingId': widget.bookingId,
-                            'booking': bookingToDisplay,
-                          });
-                    }),
-                    _footerButton(context, "Cancel Stay", Icons.cancel_outlined,
-                        () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => CancelStayDialog(
-                          booking: bookingToDisplay,
-                          onCancellationConfirmed: () {
-                            // Refresh the booking data or navigate away
-                            context
-                                .read<UserBookingsProvider>()
-                                .fetchBookings();
-                          },
-                        ),
-                      );
-                    }),
-                  ],
+              // Only show price footer for browsing context
+              if (widget.viewContext == ViewContext.browsing &&
+                  property != null) {
+                return PropertyPriceFooter(
+                  property: property,
+                  onCheckoutPressed: () => checkoutPressed(propertyProvider),
                 );
               }
 
-              if (property == null) return const SizedBox.shrink();
-
-              return PropertyPriceFooter(
-                property: property,
-                onCheckoutPressed: () => checkoutPressed(propertyProvider),
-              );
+              // For all other contexts, actions are handled by the action sections
+              return const SizedBox.shrink();
             },
           ),
         ),
@@ -420,11 +308,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             ],
           ),
           actions: [
-            TextButton(
+            CustomOutlinedButton.compact(
+              label: 'Cancel',
+              isLoading: false,
               onPressed: () => context.pop(),
-              child: const Text('Cancel'),
             ),
-            TextButton(
+            CustomButton.compact(
+              label: 'Submit',
+              isLoading: false,
               onPressed: () {
                 if (commentController.text.isNotEmpty) {
                   provider.addReview(ReviewUIModel(
@@ -437,88 +328,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   context.pop();
                 }
               },
-              child: const Text('Submit'),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoFooter(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      color: Colors.grey[200],
-      child: Text(text,
-          textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
-    );
-  }
-
-  Widget _buildActionFooter(
-      {required BuildContext context,
-      required String infoText,
-      required List<Widget> actions}) {
-    List<Widget> columnChildren = [];
-    columnChildren.add(Text(infoText,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        textAlign: TextAlign.center));
-
-    List<Widget> actualActionWidgets = [];
-    if (actions.isNotEmpty) {
-      if (actions.length == 1) {
-        actualActionWidgets
-            .add(SizedBox(width: double.infinity, child: actions.first));
-      } else {
-        // For multiple actions, put them in a Row
-        actualActionWidgets.add(
-          Row(
-            children: actions
-                .map((action) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: action,
-                      ),
-                    ))
-                .toList(),
-          ),
-        );
-      }
-    }
-
-    if (actualActionWidgets.isNotEmpty) {
-      columnChildren.add(const SizedBox(height: 12));
-      columnChildren.addAll(actualActionWidgets);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: columnChildren,
-      ),
-    );
-  }
-
-  Widget _footerButton(BuildContext context, String label, IconData icon,
-      VoidCallback onPressed) {
-    return CustomButton.compact(
-      label: label,
-      icon: icon,
-      width: ButtonWidth.expanded,
-      isLoading: false,
-      onPressed: onPressed,
     );
   }
 }

@@ -3,8 +3,8 @@ import 'dart:ui'; // Import this for ImageFilter
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -143,9 +143,10 @@ class LoginScreen extends StatelessWidget {
                               suffixIcon: Icons.visibility_off,
                             ),
                             const SizedBox(height: 15),
-                            CustomTextButton.iced(
-                              label: 'Forgot Password?',
-                              isLoading: false,
+                            ElevatedTextButton(
+                              text: 'Forgot Password?',
+                              backgroundColor: Colors.black.withAlpha(100),
+                              isCompact: true,
                               textColor: const Color(0xFF7065F0),
                               onPressed: () {
                                 context.go('/forgot_password');
@@ -167,8 +168,9 @@ class LoginScreen extends StatelessWidget {
                               },
                             ),
                             const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
                                   "Don't have an account?",
@@ -178,9 +180,10 @@ class LoginScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                CustomTextButton.plain(
-                                  label: 'Sign up for free',
-                                  isLoading: false,
+                                ElevatedTextButton(
+                                  text: 'Sign up for free',
+                                  isCompact: true,
+                                  backgroundColor: Colors.black.withAlpha(100),
                                   textColor: const Color(0xFF7065F0),
                                   onPressed: () {
                                     context.go('/signup');

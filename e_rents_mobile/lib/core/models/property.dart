@@ -1,6 +1,12 @@
 import 'package:e_rents_mobile/core/models/image_response.dart';
 import './address_detail.dart';
 
+enum PropertyRentalType {
+  daily, // Short-term daily rentals (hotels, vacation rentals)
+  monthly, // Long-term monthly leases with minimum stays
+  both // Properties that support both daily and monthly rentals
+}
+
 class Property {
   final int propertyId;
   final int ownerId;
@@ -14,6 +20,9 @@ class Property {
   final List<ImageResponse> images;
   final int? addressDetailId;
   final AddressDetail? addressDetail;
+  final PropertyRentalType rentalType;
+  final double? dailyRate; // For daily rentals
+  final int? minimumStayDays; // Minimum stay requirement
 
   Property({
     required this.propertyId,
@@ -28,6 +37,9 @@ class Property {
     required this.images,
     this.addressDetailId,
     this.addressDetail,
+    this.rentalType = PropertyRentalType.monthly,
+    this.dailyRate,
+    this.minimumStayDays,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -50,6 +62,14 @@ class Property {
           ? AddressDetail.fromJson(
               json['addressDetail'] as Map<String, dynamic>)
           : null,
+      rentalType: json['rentalType'] != null
+          ? PropertyRentalType.values.firstWhere(
+              (e) => e.toString().split('.').last == json['rentalType'],
+              orElse: () => PropertyRentalType.monthly,
+            )
+          : PropertyRentalType.monthly,
+      dailyRate: json['dailyRate']?.toDouble(),
+      minimumStayDays: json['minimumStayDays'] as int?,
     );
   }
 

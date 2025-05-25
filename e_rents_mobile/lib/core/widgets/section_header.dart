@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -19,9 +20,10 @@ class SectionHeader extends StatelessWidget {
           title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        TextButton(
+        ElevatedTextButton(
+          text: 'See all',
+          isCompact: true,
           onPressed: onSeeAll,
-          child: const Text('See all'),
         ),
       ],
     );

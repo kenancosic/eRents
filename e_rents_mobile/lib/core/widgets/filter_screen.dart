@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
+import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 class FilterScreen extends StatefulWidget {
   final Map<String, dynamic>? initialFilters;
@@ -140,10 +142,11 @@ class _FilterScreenState extends State<FilterScreen> {
           style: theme.textTheme.headlineMedium,
         ),
         actions: [
-          TextButton.icon(
+          ElevatedTextButton.icon(
+            text: 'Reset all',
+            icon: Icons.refresh,
+            isCompact: true,
             onPressed: _resetFilters,
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Reset all'),
           ),
         ],
       ),
@@ -238,20 +241,15 @@ class _FilterScreenState extends State<FilterScreen> {
               // Add reset price range button
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton.icon(
+                child: ElevatedTextButton.icon(
+                  text: 'Reset price',
+                  icon: Icons.refresh,
+                  isCompact: true,
                   onPressed: () {
                     setState(() {
                       _priceRange = const RangeValues(1200, 3000);
                     });
                   },
-                  icon: const Icon(Icons.refresh, size: 14),
-                  label:
-                      const Text('Reset price', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
                 ),
               ),
 
@@ -309,11 +307,12 @@ class _FilterScreenState extends State<FilterScreen> {
                     'Property facilities',
                     style: theme.textTheme.headlineSmall,
                   ),
-                  TextButton(
+                  ElevatedTextButton(
+                    text: 'See more',
+                    isCompact: true,
                     onPressed: () {
                       // Show more facilities
                     },
-                    child: const Text('See more'),
                   ),
                 ],
               ),
@@ -342,9 +341,11 @@ class _FilterScreenState extends State<FilterScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 50,
-                child: ElevatedButton(
+                child: CustomButton(
+                  label: 'Show results',
+                  isLoading: false,
+                  width: ButtonWidth.expanded,
                   onPressed: _applyFilters,
-                  child: const Text('Show results'),
                 ),
               ),
             ],
@@ -447,15 +448,11 @@ class _FilterScreenState extends State<FilterScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        TextButton.icon(
+        ElevatedTextButton.icon(
+          text: 'Select date range',
+          icon: Icons.date_range,
+          isCompact: true,
           onPressed: () => _selectDateRange(context, false),
-          icon: Icon(Icons.date_range, color: primaryColor),
-          label: const Text('Select date range'),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
         ),
       ],
     );
@@ -564,15 +561,11 @@ class _FilterScreenState extends State<FilterScreen> {
         // Range selector button (only if using range)
         if (_useEndDate) ...[
           const SizedBox(height: 12),
-          TextButton.icon(
+          ElevatedTextButton.icon(
+            text: 'Select month range',
+            icon: Icons.date_range,
+            isCompact: true,
             onPressed: () => _selectDateRange(context, true),
-            icon: Icon(Icons.date_range, color: primaryColor),
-            label: const Text('Select month range'),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
           ),
         ],
       ],
@@ -704,9 +697,10 @@ class _FilterScreenState extends State<FilterScreen> {
               ),
             ),
             actions: [
-              TextButton(
+              ElevatedTextButton(
+                text: 'Cancel',
+                isCompact: true,
                 onPressed: () => dialogContext.pop(),
-                child: const Text('Cancel'),
               ),
             ],
           );
@@ -793,9 +787,10 @@ class _FilterScreenState extends State<FilterScreen> {
             ),
           ),
           actions: [
-            TextButton(
+            ElevatedTextButton(
+              text: 'Cancel',
+              isCompact: true,
               onPressed: () => yearDialogContext.pop(),
-              child: const Text('Cancel'),
             ),
           ],
         );

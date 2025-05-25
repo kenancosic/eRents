@@ -1,5 +1,7 @@
 import 'package:e_rents_mobile/core/models/filter_model.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -53,13 +55,16 @@ class FilterDialogState extends State<FilterDialog> {
         ],
       ),
       actions: [
-        TextButton(
+        CustomOutlinedButton.compact(
+          label: 'Cancel',
+          isLoading: false,
           onPressed: () {
             Navigator.of(context).pop();
           },
-          child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        CustomButton.compact(
+          label: 'Apply',
+          isLoading: false,
           onPressed: () {
             final filter = FilterModel()
               ..city = _selectedCity
@@ -68,7 +73,6 @@ class FilterDialogState extends State<FilterDialog> {
             context.read<HomeProvider>().filterProperties(filter);
             Navigator.of(context).pop();
           },
-          child: const Text('Apply'),
         ),
       ],
     );
