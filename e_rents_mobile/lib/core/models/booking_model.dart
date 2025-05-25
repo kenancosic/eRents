@@ -1,4 +1,4 @@
-enum BookingStatus { Upcoming, Completed, Cancelled, Active }
+enum BookingStatus { upcoming, completed, cancelled, active }
 
 class Booking {
   final int bookingId;
@@ -39,16 +39,14 @@ class Booking {
 
   String get statusDisplay {
     switch (status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return 'Upcoming';
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return 'Completed';
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return 'Cancelled';
-      case BookingStatus.Active:
+      case BookingStatus.active:
         return 'Active';
-      default:
-        return 'Unknown';
     }
   }
 
@@ -59,7 +57,7 @@ class Booking {
 
     BookingStatus statusEnum = BookingStatus.values.firstWhere(
       (e) => e.name.toLowerCase() == statusString.toLowerCase(),
-      orElse: () => BookingStatus.Upcoming, // Default if parsing fails
+      orElse: () => BookingStatus.upcoming, // Default if parsing fails
     );
 
     return Booking(

@@ -39,7 +39,7 @@ class PropertyAvailabilityService {
       if (existingBookings != null) {
         for (final booking in existingBookings) {
           if (booking.propertyId == propertyId &&
-              booking.status != BookingStatus.Cancelled) {
+              booking.status != BookingStatus.cancelled) {
             _blockBookingDates(availability, booking);
           }
         }

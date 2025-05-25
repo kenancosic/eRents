@@ -680,7 +680,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, -3),
@@ -838,52 +838,52 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
 
   String _getStatusText(BookingStatus status) {
     switch (status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return 'Upcoming';
-      case BookingStatus.Active:
+      case BookingStatus.active:
         return 'Active';
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return 'Completed';
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return 'Cancelled';
     }
   }
 
   Color _getStatusColor() {
     switch (widget.booking.status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return Colors.blue;
-      case BookingStatus.Active:
+      case BookingStatus.active:
         return Colors.green;
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return Colors.grey;
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return Colors.red;
     }
   }
 
   IconData _getStatusIcon() {
     switch (widget.booking.status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return Icons.schedule;
-      case BookingStatus.Active:
+      case BookingStatus.active:
         return Icons.check_circle;
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return Icons.done_all;
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return Icons.cancel;
     }
   }
 
   String _getStatusDescription() {
     switch (widget.booking.status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return 'Your booking is confirmed and starts on ${DateFormat.yMMMd().format(widget.booking.startDate)}.';
-      case BookingStatus.Active:
+      case BookingStatus.active:
         return 'You are currently staying at this property. Your booking is active.';
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return 'Your stay has been completed. Thank you for choosing our property!';
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return 'This booking has been cancelled.';
     }
   }

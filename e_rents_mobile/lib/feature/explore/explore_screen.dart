@@ -9,12 +9,10 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
 import 'package:e_rents_mobile/core/models/image_response.dart';
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:sliding_up_panel/sliding_up_panel.dart';
-import 'package:go_router/go_router.dart'; // Add GoRouter import
-import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:typed_data';
 
 class ExploreScreen extends StatefulWidget {
@@ -207,14 +205,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  String _getLocationString(Property property) {
-    if (property.addressDetail?.geoRegion != null) {
-      final geo = property.addressDetail!.geoRegion!;
-      return '${geo.city}, ${geo.state ?? ''}, ${geo.country}';
-    }
-    return 'Location not specified';
-  }
-
   void _handleSearchChanged(String query) {
     // TODO: Implement search logic
   }
@@ -230,23 +220,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied to map/list!')),
     );
-  }
-
-  Future<void> _handleBookmarkTap(
-      Property property, SavedProvider savedProvider) async {
-    await savedProvider.toggleSavedStatus(property);
-
-    if (mounted) {
-      final isNowSaved = savedProvider.isPropertySaved(property.propertyId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isNowSaved ? 'Property saved!' : 'Property removed from saved',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   @override
@@ -300,7 +273,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -381,33 +354,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         final property = _properties[index];
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Consumer<SavedProvider>(
-                            builder: (context, savedProvider, child) =>
-                                PropertyCard(
-                              title: property.name,
-                              location: _getLocationString(property),
-                              details: property.description ?? '',
-                              price: '\$${property.price.toStringAsFixed(0)}',
-                              rating:
-                                  property.averageRating?.toStringAsFixed(1) ??
-                                      '0.0',
-                              imageUrl:
-                                  'assets/images/house.jpg', // Default for now
-                              review: 73, // Mock review count
-                              rooms: 2, // Mock room count
-                              area: 673, // Mock area
-                              isCompact:
-                                  true, // Use compact layout for explore screen
-                              rentalType: property.rentalType,
-                              isBookmarked: savedProvider
-                                  .isPropertySaved(property.propertyId),
-                              onBookmarkTap: () =>
-                                  _handleBookmarkTap(property, savedProvider),
-                              onTap: () {
-                                context
-                                    .push('/property/${property.propertyId}');
-                              },
-                            ),
+                          child: PropertyCard(
+                            property: property,
+                            isCompact:
+                                true, // Use compact layout for explore screen
+                            onTap: () {
+                              context.push('/property/${property.propertyId}');
+                            },
                           ),
                         );
                       },

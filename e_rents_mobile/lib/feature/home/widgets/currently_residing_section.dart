@@ -23,7 +23,7 @@ class CurrentlyResidingSection extends StatelessWidget {
         Booking? activeBooking;
         try {
           activeBooking = bookingsProvider.upcomingBookings
-              .firstWhere((b) => b.status == BookingStatus.Active);
+              .firstWhere((b) => b.status == BookingStatus.active);
         } catch (e) {
           activeBooking = null; // No active booking found
         }
@@ -79,19 +79,7 @@ class CurrentlyResidingSection extends StatelessWidget {
                 }),
             const SizedBox(height: 8),
             PropertyCard(
-              title: propertyForCard.name,
-              location: propertyForCard.addressDetail?.streetLine1 ??
-                  'Unknown location',
-              details: 'Tap to see details', // Simplified details
-              price:
-                  '\$${(activeBooking.totalPrice / ((activeBooking.endDate?.difference(activeBooking.startDate).inDays ?? 30) / 30.0)).toStringAsFixed(0)} /mo',
-              rating: propertyForCard.averageRating?.toString() ?? 'N/A',
-              imageUrl: propertyForCard.images.isNotEmpty
-                  ? propertyForCard.images.first.fileName
-                  : 'assets/images/placeholder.png',
-              review: 0, // Placeholder
-              rooms: 0, // Placeholder
-              area: 0, // Placeholder
+              property: propertyForCard,
               onTap: () {
                 context.push(
                   '/property/${propertyForCard.propertyId}',

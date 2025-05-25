@@ -60,11 +60,11 @@ class UserBookingsProvider extends BaseProvider {
               booking.endDate!.day)
           : null;
 
-      if (booking.status == BookingStatus.Cancelled) {
+      if (booking.status == BookingStatus.cancelled) {
         cancelled.add(booking);
-      } else if (booking.status == BookingStatus.Completed) {
+      } else if (booking.status == BookingStatus.completed) {
         completed.add(booking);
-      } else if (booking.status == BookingStatus.Active) {
+      } else if (booking.status == BookingStatus.active) {
         if (bookingStartDate.isAfter(today)) {
           // Active status but start date is future
           upcoming.add(booking);
@@ -75,7 +75,7 @@ class UserBookingsProvider extends BaseProvider {
           // Genuinely active
           active.add(booking);
         }
-      } else if (booking.status == BookingStatus.Upcoming) {
+      } else if (booking.status == BookingStatus.upcoming) {
         if (bookingStartDate.isBefore(today) ||
             bookingStartDate.isAtSameMomentAs(today)) {
           // Upcoming but start date has arrived
@@ -103,12 +103,12 @@ class UserBookingsProvider extends BaseProvider {
     // 2. Among active: Indefinite (null endDate) before fixed-term.
     // 3. Sort by startDate, then for active fixed-term by endDate.
     _upcomingBookings.sort((a, b) {
-      bool isAActive = a.status == BookingStatus.Active ||
-          (a.status == BookingStatus.Upcoming &&
+      bool isAActive = a.status == BookingStatus.active ||
+          (a.status == BookingStatus.upcoming &&
               DateTime(a.startDate.year, a.startDate.month, a.startDate.day)
                   .isBefore(DateTime.now()));
-      bool isBActive = b.status == BookingStatus.Active ||
-          (b.status == BookingStatus.Upcoming &&
+      bool isBActive = b.status == BookingStatus.active ||
+          (b.status == BookingStatus.upcoming &&
               DateTime(b.startDate.year, b.startDate.month, b.startDate.day)
                   .isBefore(DateTime.now()));
 
@@ -167,7 +167,7 @@ class UserBookingsProvider extends BaseProvider {
         minimumStayEndDate: now.add(const Duration(days: 30)),
         totalPrice: 1200.00,
         dailyRate: 40.00,
-        status: BookingStatus.Active,
+        status: BookingStatus.active,
       ),
       // Active - Fixed term, normal
       Booking(
@@ -180,7 +180,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.add(const Duration(days: 15)),
         totalPrice: 500.00,
         dailyRate: 16.67,
-        status: BookingStatus.Active,
+        status: BookingStatus.active,
       ),
       // Active - with minimum stay
       Booking(
@@ -194,7 +194,7 @@ class UserBookingsProvider extends BaseProvider {
         minimumStayEndDate: now.add(const Duration(days: 40)),
         totalPrice: 2500.00,
         dailyRate: 20.83,
-        status: BookingStatus.Active,
+        status: BookingStatus.active,
       ),
       // Upcoming - Indefinite
       Booking(
@@ -208,7 +208,7 @@ class UserBookingsProvider extends BaseProvider {
         minimumStayEndDate: now.add(const Duration(days: 60 + 90)),
         totalPrice: 1500.00,
         dailyRate: 50.00,
-        status: BookingStatus.Upcoming,
+        status: BookingStatus.upcoming,
       ),
       // --- Upcoming Bookings ---
       Booking(
@@ -221,7 +221,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.add(const Duration(days: 37)),
         totalPrice: 1200.00,
         dailyRate: 171.43,
-        status: BookingStatus.Upcoming,
+        status: BookingStatus.upcoming,
         currency: 'USD',
         bookingDate: now.subtract(const Duration(days: 2)),
       ),
@@ -235,7 +235,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.add(const Duration(days: 97)),
         totalPrice: 750.00,
         dailyRate: 107.14,
-        status: BookingStatus.Upcoming,
+        status: BookingStatus.upcoming,
         currency: 'USD',
         bookingDate: now.subtract(const Duration(days: 10)),
       ),
@@ -250,7 +250,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.subtract(const Duration(days: 53)),
         totalPrice: 600.00,
         dailyRate: 85.71,
-        status: BookingStatus.Completed,
+        status: BookingStatus.completed,
         currency: 'USD',
         bookingDate: now.subtract(const Duration(days: 70)),
         reviewContent: "Great place, very central!",
@@ -266,7 +266,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.subtract(const Duration(days: 110)),
         totalPrice: 950.00,
         dailyRate: 95.00,
-        status: BookingStatus.Completed,
+        status: BookingStatus.completed,
         currency: 'USD',
         bookingDate: now.subtract(const Duration(days: 130)),
       ),
@@ -281,7 +281,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.add(const Duration(days: 21)),
         totalPrice: 450.00,
         dailyRate: 64.29,
-        status: BookingStatus.Cancelled,
+        status: BookingStatus.cancelled,
         currency: 'USD',
         bookingDate: now.subtract(const Duration(days: 3)),
       ),
@@ -296,7 +296,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.subtract(const Duration(days: 1)),
         totalPrice: 300.00,
         dailyRate: 50.00,
-        status: BookingStatus.Active, // Status might still be Active in DB
+        status: BookingStatus.active, // Status might still be Active in DB
       ),
       // Upcoming booking that starts today
       Booking(
@@ -309,7 +309,7 @@ class UserBookingsProvider extends BaseProvider {
         endDate: now.add(const Duration(days: 5)),
         totalPrice: 250.00,
         dailyRate: 50.00,
-        status: BookingStatus.Upcoming, // Status might be Upcoming in DB
+        status: BookingStatus.upcoming, // Status might be Upcoming in DB
       ),
     ];
   }

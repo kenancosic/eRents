@@ -57,17 +57,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
               // Property card using the existing PropertyCard widget
               PropertyCard(
-                title: widget.property.name,
-                location:
-                    '${widget.property.addressDetail?.streetLine1}, ${widget.property.addressDetail?.geoRegion?.country}',
-                details: widget.property.description ?? '',
-                price: widget.property.price.toString(),
-                rating: widget.property.averageRating?.toString() ?? '4.8',
-                imageUrl: widget.property.images.first.fileName,
-                review: 73, // You might want to get this from the property
-                rooms: 2, // You might want to get this from the property
-                area: 874, // You might want to get this from the property
-                // No onTap needed here since we're just displaying info
+                property: widget.property,
               ),
               const SizedBox(height: 24),
               // Price details section

@@ -1,39 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
 
 class PropertyCard extends StatelessWidget {
-  final String title;
-  final String location;
-  final String details; // You can decide how to use this if needed.
-  final String price;
-  final String rating;
-  final String imageUrl;
-  final int review;
-  final int rooms;
-  final int area;
+  final Property property;
   final VoidCallback? onTap;
   final bool isCompact; // New parameter for compact layout
-  final PropertyRentalType? rentalType; // New parameter for rental type
-  final bool? isBookmarked; // New parameter for bookmark status
-  final VoidCallback? onBookmarkTap; // New parameter for bookmark callback
 
   const PropertyCard({
     super.key,
-    required this.title,
-    required this.location,
-    required this.details,
-    required this.price,
-    required this.rating,
-    required this.imageUrl,
-    this.review = 0,
-    this.rooms = 0,
-    this.area = 0,
+    required this.property,
     this.onTap,
     this.isCompact = false, // Default to full size
-    this.rentalType,
-    this.isBookmarked,
-    this.onBookmarkTap,
   });
 
   @override
@@ -68,8 +49,8 @@ class PropertyCard extends StatelessWidget {
               Flexible(
                 flex: 1,
                 child: PropertyImage(
-                  imageUrl: imageUrl,
-                  rentalType: rentalType,
+                  imageUrl: _getImageUrl(),
+                  rentalType: property.rentalType,
                   isCompact: isCompact,
                 ),
               ),
@@ -88,6 +69,53 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
+  String _getImageUrl() {
+    if (property.images.isNotEmpty) {
+      return property.images.first.fileName;
+    }
+    // Fallback image
+    return 'assets/images/house.jpg';
+  }
+
+  String _getLocationString() {
+    if (property.addressDetail?.geoRegion != null) {
+      final region = property.addressDetail!.geoRegion!;
+      final street = property.addressDetail!.streetLine1 ?? '';
+      return street.isNotEmpty ? '$street, ${region.city}' : region.city;
+    }
+    return 'Location not available';
+  }
+
+  String _getPriceString() {
+    if (property.rentalType == PropertyRentalType.daily &&
+        property.dailyRate != null) {
+      return '\$${property.dailyRate!.toStringAsFixed(0)}';
+    }
+    return '\$${property.price.toStringAsFixed(0)}';
+  }
+
+  String _getRatingString() {
+    return property.averageRating?.toStringAsFixed(1) ?? '0.0';
+  }
+
+  int _getReviewCount() {
+    // This would typically come from a separate reviews count field
+    // For now, using a mock value or could be calculated from related data
+    return 12; // Mock value - in real app this should come from the property or be passed separately
+  }
+
+  int _getRoomCount() {
+    // This would typically be parsed from facilities or be a separate field
+    // For now, using a mock value
+    return 2; // Mock value - in real app this should come from property facilities or separate field
+  }
+
+  int _getAreaValue() {
+    // This would typically be a separate field in the property model
+    // For now, using a mock value
+    return 874; // Mock value - in real app this should come from property
+  }
+
   Widget _buildCompactLayout() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,18 +126,18 @@ class PropertyCard extends StatelessWidget {
           children: [
             Flexible(
               child: PropertyRating(
-                  rating: rating, review: review, isCompact: true),
+                  rating: _getRatingString(),
+                  review: _getReviewCount(),
+                  isCompact: true),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (onBookmarkTap != null)
-                  BookmarkButton(
-                    isBookmarked: isBookmarked ?? false,
-                    onTap: onBookmarkTap!,
-                    isCompact: true,
-                  ),
-                PropertyPrice(price: price, isCompact: true),
+                BookmarkButton(
+                  property: property,
+                  isCompact: true,
+                ),
+                PropertyPrice(price: _getPriceString(), isCompact: true),
               ],
             ),
           ],
@@ -117,14 +145,15 @@ class PropertyCard extends StatelessWidget {
         const SizedBox(height: 4),
         // Title with smaller max lines
         Flexible(
-          child: PropertyTitle(title: title, isCompact: true),
+          child: PropertyTitle(title: property.name, isCompact: true),
         ),
         const SizedBox(height: 2),
         // Location
-        PropertyLocation(location: location, isCompact: true),
+        PropertyLocation(location: _getLocationString(), isCompact: true),
         const Spacer(),
         // Amenities at bottom
-        PropertyAmenities(rooms: rooms, area: area, isCompact: true),
+        PropertyAmenities(
+            rooms: _getRoomCount(), area: _getAreaValue(), isCompact: true),
       ],
     );
   }
@@ -138,20 +167,19 @@ class PropertyCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-              child: PropertyRating(rating: rating, review: review),
+              child: PropertyRating(
+                  rating: _getRatingString(), review: _getReviewCount()),
             ),
-            if (onBookmarkTap != null)
-              BookmarkButton(
-                isBookmarked: isBookmarked ?? false,
-                onTap: onBookmarkTap!,
-                isCompact: false,
-              ),
+            BookmarkButton(
+              property: property,
+              isCompact: false,
+            ),
           ],
         ),
-        PropertyTitle(title: title),
-        PropertyLocation(location: location),
-        PropertyAmenities(rooms: rooms, area: area),
-        PropertyPrice(price: price),
+        PropertyTitle(title: property.name),
+        PropertyLocation(location: _getLocationString()),
+        PropertyAmenities(rooms: _getRoomCount(), area: _getAreaValue()),
+        PropertyPrice(price: _getPriceString()),
       ],
     );
   }
@@ -228,7 +256,7 @@ class RentalTypeBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -269,14 +297,12 @@ class RentalTypeBadge extends StatelessWidget {
 }
 
 class BookmarkButton extends StatelessWidget {
-  final bool isBookmarked;
-  final VoidCallback onTap;
+  final Property property;
   final bool isCompact;
 
   const BookmarkButton({
     super.key,
-    required this.isBookmarked,
-    required this.onTap,
+    required this.property,
     this.isCompact = false,
   });
 
@@ -284,16 +310,49 @@ class BookmarkButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconSize = isCompact ? 16.0 : 20.0;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        child: Icon(
-          isBookmarked ? Icons.favorite : Icons.favorite_border,
-          size: iconSize,
-          color: isBookmarked ? Colors.red[700] : Colors.grey[600],
-        ),
-      ),
+    return Consumer<SavedProvider>(
+      builder: (context, savedProvider, child) {
+        final isBookmarked = savedProvider.isPropertySaved(property.propertyId);
+        final isLoading = savedProvider.state == ViewState.busy;
+
+        return GestureDetector(
+          onTap: isLoading
+              ? null
+              : () async {
+                  await savedProvider.toggleSavedStatus(property);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isBookmarked
+                              ? 'Property removed from saved'
+                              : 'Property saved successfully',
+                        ),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                },
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            child: isLoading
+                ? SizedBox(
+                    width: iconSize,
+                    height: iconSize,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.grey[600],
+                    ),
+                  )
+                : Icon(
+                    isBookmarked ? Icons.favorite : Icons.favorite_border,
+                    size: iconSize,
+                    color: isBookmarked ? Colors.red[700] : Colors.grey[600],
+                  ),
+          ),
+        );
+      },
     );
   }
 }

@@ -14,11 +14,11 @@ class BookingListItem extends StatelessWidget {
     // Access theme colors for consistency if possible
     final ThemeData theme = Theme.of(context);
     switch (status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return Colors.blue[100] ?? theme.primaryColorLight;
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return Colors.green[100] ?? theme.colorScheme.secondaryContainer;
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return Colors.red[100] ?? theme.colorScheme.errorContainer;
       default:
         return Colors.grey[200] ?? Colors.grey;
@@ -28,11 +28,11 @@ class BookingListItem extends StatelessWidget {
   Color _getStatusTextColor(BookingStatus status, BuildContext context) {
     final ThemeData theme = Theme.of(context);
     switch (status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return Colors.blue[800] ?? theme.primaryColorDark;
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return Colors.green[800] ?? theme.colorScheme.secondary;
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return Colors.red[800] ?? theme.colorScheme.error;
       default:
         return Colors.grey[800] ?? Colors.black;
@@ -42,13 +42,13 @@ class BookingListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy'); // e.g., Jan 1, 2023
-    final bool isUpcoming = booking.status == BookingStatus.Upcoming ||
-        booking.status == BookingStatus.Active;
-    final bool isCompleted = booking.status == BookingStatus.Completed;
+    final bool isUpcoming = booking.status == BookingStatus.upcoming ||
+        booking.status == BookingStatus.active;
+    final bool isCompleted = booking.status == BookingStatus.completed;
 
     String dateText;
     if (isUpcoming) {
-      if (booking.status == BookingStatus.Active) {
+      if (booking.status == BookingStatus.active) {
         dateText =
             'Active: Ends ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
       } else {
@@ -69,7 +69,7 @@ class BookingListItem extends StatelessWidget {
     } else if (isCompleted) {
       dateText =
           'Stayed: ${booking.startDate != null ? dateFormat.format(booking.startDate) : ''} - ${booking.endDate != null ? dateFormat.format(booking.endDate!) : ''}';
-    } else if (booking.status == BookingStatus.Cancelled) {
+    } else if (booking.status == BookingStatus.cancelled) {
       // Assuming bookingDate stores when the booking was made or cancelled
       dateText = booking.bookingDate != null
           ? 'Cancelled on: ${dateFormat.format(booking.bookingDate!)}'
@@ -188,8 +188,8 @@ class BookingListItem extends StatelessWidget {
                   isCompact: true,
                   onPressed: () {
                     ViewContext contextForNavigation;
-                    if (booking.status == BookingStatus.Upcoming ||
-                        booking.status == BookingStatus.Active) {
+                    if (booking.status == BookingStatus.upcoming ||
+                        booking.status == BookingStatus.active) {
                       contextForNavigation = ViewContext.upcomingBooking;
                     } else {
                       contextForNavigation = ViewContext.pastBooking;

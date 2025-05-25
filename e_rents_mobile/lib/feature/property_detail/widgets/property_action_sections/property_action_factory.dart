@@ -71,10 +71,10 @@ class PropertyViewContextHelper {
     );
 
     switch (booking.status) {
-      case BookingStatus.Upcoming:
+      case BookingStatus.upcoming:
         return ViewContext.upcomingBooking;
 
-      case BookingStatus.Active:
+      case BookingStatus.active:
         // Check if it's actually active or should be treated as upcoming
         if (startDate.isAfter(today)) {
           return ViewContext.upcomingBooking;
@@ -87,10 +87,10 @@ class PropertyViewContextHelper {
         }
         return ViewContext.activeBooking; // Active short-term booking
 
-      case BookingStatus.Completed:
+      case BookingStatus.completed:
         return ViewContext.pastBooking;
 
-      case BookingStatus.Cancelled:
+      case BookingStatus.cancelled:
         return ViewContext.pastBooking;
     }
   }

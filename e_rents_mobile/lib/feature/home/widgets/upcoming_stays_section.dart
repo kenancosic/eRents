@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/core/models/booking_model.dart'; // Using BookingModel for UI representation
-import 'package:e_rents_mobile/core/widgets/property_card.dart'; // Can be adapted or a new card created
+
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart'; // Added import
 import 'package:flutter/material.dart';
@@ -18,7 +18,7 @@ class UpcomingStaysSection extends StatelessWidget {
         // Filter for bookings that are Upcoming and not Active
         final List<Booking> upcomingDisplayBookings = bookingsProvider
             .upcomingBookings
-            .where((b) => b.status == BookingStatus.Upcoming)
+            .where((b) => b.status == BookingStatus.upcoming)
             .toList();
 
         if (upcomingDisplayBookings.isEmpty) {

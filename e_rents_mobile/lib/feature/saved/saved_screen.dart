@@ -1,14 +1,12 @@
 // lib/feature/saved/saved_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/mock/mock_properties.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -212,25 +210,11 @@ class _SavedScreenState extends State<SavedScreen> {
                   onDismissed: (direction) {
                     _removeFromSaved(property);
                   },
-                  child: Consumer<SavedProvider>(
-                    builder: (context, savedProvider, child) => PropertyCard(
-                      title: property.name,
-                      location:
-                          '${property.addressDetail?.geoRegion?.city}, ${property.addressDetail?.streetLine1}',
-                      details: property.description ?? '',
-                      price: property.price.toString(),
-                      rating: property.averageRating?.toString() ?? '4.8',
-                      imageUrl: property.images.first.fileName,
-                      review: 73,
-                      rooms: 2,
-                      area: 874,
-                      rentalType: property.rentalType,
-                      isBookmarked: true, // Always true in saved screen
-                      onBookmarkTap: () => _removeFromSaved(property),
-                      onTap: () {
-                        context.push('/property/${property.propertyId}');
-                      },
-                    ),
+                  child: PropertyCard(
+                    property: property,
+                    onTap: () {
+                      context.push('/property/${property.propertyId}');
+                    },
                   ),
                 ),
               )),
