@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:e_rents_mobile/core/models/property.dart';
 
 class PropertyCard extends StatelessWidget {
   final String title;
@@ -13,6 +14,9 @@ class PropertyCard extends StatelessWidget {
   final int area;
   final VoidCallback? onTap;
   final bool isCompact; // New parameter for compact layout
+  final PropertyRentalType? rentalType; // New parameter for rental type
+  final bool? isBookmarked; // New parameter for bookmark status
+  final VoidCallback? onBookmarkTap; // New parameter for bookmark callback
 
   const PropertyCard({
     super.key,
@@ -27,6 +31,9 @@ class PropertyCard extends StatelessWidget {
     this.area = 0,
     this.onTap,
     this.isCompact = false, // Default to full size
+    this.rentalType,
+    this.isBookmarked,
+    this.onBookmarkTap,
   });
 
   @override
@@ -57,10 +64,14 @@ class PropertyCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Left side: the image
+              // Left side: the image with rental type badge
               Flexible(
                 flex: 1,
-                child: PropertyImage(imageUrl: imageUrl),
+                child: PropertyImage(
+                  imageUrl: imageUrl,
+                  rentalType: rentalType,
+                  isCompact: isCompact,
+                ),
               ),
               // Right side: property details
               Expanded(
@@ -81,7 +92,7 @@ class PropertyCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Rating and price in same row for space efficiency
+        // Rating, bookmark, and price in same row for space efficiency
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -89,7 +100,18 @@ class PropertyCard extends StatelessWidget {
               child: PropertyRating(
                   rating: rating, review: review, isCompact: true),
             ),
-            PropertyPrice(price: price, isCompact: true),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onBookmarkTap != null)
+                  BookmarkButton(
+                    isBookmarked: isBookmarked ?? false,
+                    onTap: onBookmarkTap!,
+                    isCompact: true,
+                  ),
+                PropertyPrice(price: price, isCompact: true),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -112,7 +134,20 @@ class PropertyCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        PropertyRating(rating: rating, review: review),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: PropertyRating(rating: rating, review: review),
+            ),
+            if (onBookmarkTap != null)
+              BookmarkButton(
+                isBookmarked: isBookmarked ?? false,
+                onTap: onBookmarkTap!,
+                isCompact: false,
+              ),
+          ],
+        ),
         PropertyTitle(title: title),
         PropertyLocation(location: location),
         PropertyAmenities(rooms: rooms, area: area),
@@ -124,7 +159,15 @@ class PropertyCard extends StatelessWidget {
 
 class PropertyImage extends StatelessWidget {
   final String imageUrl;
-  const PropertyImage({super.key, required this.imageUrl});
+  final PropertyRentalType? rentalType;
+  final bool isCompact;
+
+  const PropertyImage({
+    super.key,
+    required this.imageUrl,
+    this.rentalType,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +181,117 @@ class PropertyImage extends StatelessWidget {
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(10),
           bottomLeft: Radius.circular(10),
+        ),
+      ),
+      child: rentalType != null
+          ? Stack(
+              children: [
+                // Rental type badge
+                Positioned(
+                  top: isCompact ? 6 : 8,
+                  left: isCompact ? 6 : 8,
+                  child: RentalTypeBadge(
+                    rentalType: rentalType!,
+                    isCompact: isCompact,
+                  ),
+                ),
+              ],
+            )
+          : null,
+    );
+  }
+}
+
+class RentalTypeBadge extends StatelessWidget {
+  final PropertyRentalType rentalType;
+  final bool isCompact;
+
+  const RentalTypeBadge({
+    super.key,
+    required this.rentalType,
+    this.isCompact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final badgeColor = _getBadgeColor();
+    final badgeText = _getBadgeText();
+    final fontSize = isCompact ? 8.0 : 10.0;
+    final padding = isCompact
+        ? const EdgeInsets.symmetric(horizontal: 4, vertical: 2)
+        : const EdgeInsets.symmetric(horizontal: 6, vertical: 3);
+
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: badgeColor,
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Text(
+        badgeText,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Color _getBadgeColor() {
+    switch (rentalType) {
+      case PropertyRentalType.daily:
+        return Colors.blue[600]!;
+      case PropertyRentalType.monthly:
+        return Colors.green[600]!;
+      case PropertyRentalType.both:
+        return Colors.purple[600]!;
+    }
+  }
+
+  String _getBadgeText() {
+    switch (rentalType) {
+      case PropertyRentalType.daily:
+        return 'Daily';
+      case PropertyRentalType.monthly:
+        return 'Monthly';
+      case PropertyRentalType.both:
+        return 'Both';
+    }
+  }
+}
+
+class BookmarkButton extends StatelessWidget {
+  final bool isBookmarked;
+  final VoidCallback onTap;
+  final bool isCompact;
+
+  const BookmarkButton({
+    super.key,
+    required this.isBookmarked,
+    required this.onTap,
+    this.isCompact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = isCompact ? 16.0 : 20.0;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        child: Icon(
+          isBookmarked ? Icons.favorite : Icons.favorite_border,
+          size: iconSize,
+          color: isBookmarked ? Colors.red[700] : Colors.grey[600],
         ),
       ),
     );

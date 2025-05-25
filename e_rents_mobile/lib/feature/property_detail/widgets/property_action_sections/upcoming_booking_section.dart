@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
+import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
 
 /// Section shown when user has an upcoming booking
 /// Shows booking details and management options
@@ -27,7 +29,6 @@ class UpcomingBookingSection extends StatelessWidget {
         const Divider(color: Color(0xFFE0E0E0), height: 16),
         const SizedBox(height: 16),
 
-        // Upcoming booking info
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -80,26 +81,29 @@ class UpcomingBookingSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Action buttons
-        Row(
+        Wrap(
+          alignment: WrapAlignment.center,
+          runAlignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(
-              child: CustomOutlinedButton(
-                label: 'Manage Booking',
-                icon: Icons.edit_calendar,
-                onPressed: () => _navigateToManageBooking(context),
-                isLoading: false,
-                width: OutlinedButtonWidth.expanded,
-              ),
+            CustomOutlinedButton(
+              label: 'Manage Booking',
+              icon: Icons.edit_calendar,
+              onPressed: () => _navigateToManageBooking(context),
+              isLoading: false,
+              width: OutlinedButtonWidth.flexible,
+              size: OutlinedButtonSize.compact,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: CustomButton(
-                label: 'Contact Host',
-                icon: Icons.message,
-                onPressed: () => _contactHost(context),
-                isLoading: false,
-                width: ButtonWidth.expanded,
-              ),
+            CustomOutlinedButton(
+              label: 'Cancel Stay',
+              icon: Icons.cancel_outlined,
+              onPressed: () => _showCancelDialog(context),
+              isLoading: false,
+              width: OutlinedButtonWidth.flexible,
+              size: OutlinedButtonSize.compact,
+              textColor: Colors.red[600] ?? Colors.red,
+              borderColor: Colors.red[300] ?? Colors.red,
             ),
           ],
         ),
@@ -147,11 +151,19 @@ class UpcomingBookingSection extends StatelessWidget {
     );
   }
 
-  void _contactHost(BuildContext context) {
-    // Navigate to chat with property owner
-    context.push('/chat', extra: {
-      'name': 'Property Owner', // This could come from property owner data
-      'imageUrl': 'assets/images/user-image.png',
-    });
+  void _showCancelDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => CancelStayDialog(
+        booking: booking,
+        onCancellationConfirmed: () {
+          // Refresh the bookings to get updated data
+          context.read<UserBookingsProvider>().fetchBookings();
+
+          // Navigate back to home or bookings screen
+          context.go('/home');
+        },
+      ),
+    );
   }
 }

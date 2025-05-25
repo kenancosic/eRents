@@ -271,7 +271,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Book Your Stay',
+              widget.property.rentalType == PropertyRentalType.daily
+                  ? 'Book Your Stay'
+                  : 'Apply for Lease',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             Container(
@@ -313,7 +315,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                 children: [
                   Expanded(
                     child: _buildDateDisplay(
-                      'Check-in',
+                      widget.property.rentalType == PropertyRentalType.daily
+                          ? 'Check-in'
+                          : 'Lease Start',
                       _startDate,
                       Icons.calendar_today,
                     ),
@@ -321,7 +325,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildDateDisplay(
-                      'Check-out',
+                      widget.property.rentalType == PropertyRentalType.daily
+                          ? 'Check-out'
+                          : 'Initial Period End',
                       _endDate,
                       Icons.event,
                     ),
@@ -342,7 +348,10 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                 runSpacing: 4,
                 children: [
                   CustomOutlinedButton(
-                    label: 'Change Dates',
+                    label:
+                        widget.property.rentalType == PropertyRentalType.daily
+                            ? 'Change Dates'
+                            : 'Change Start Date',
                     icon: Icons.edit_calendar,
                     onPressed: _selectDates,
                     isLoading: false,
@@ -351,8 +360,13 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                   ),
                   const SizedBox(width: 12),
                   CustomButton(
-                    label: 'Book Now',
-                    icon: Icons.check,
+                    label:
+                        widget.property.rentalType == PropertyRentalType.daily
+                            ? 'Book Now'
+                            : 'Apply for Lease',
+                    icon: widget.property.rentalType == PropertyRentalType.daily
+                        ? Icons.check
+                        : Icons.home_work,
                     onPressed: _proceedToCheckout,
                     isLoading: false,
                     width: ButtonWidth.flexible,
@@ -364,9 +378,11 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           ),
         ),
 
-        // Additional info
+        // Additional info and minimum stay requirements
         const SizedBox(height: 12),
-        if (widget.property.minimumStayDays != null)
+        if (widget.property.rentalType == PropertyRentalType.monthly)
+          _buildMinimumStayInfo()
+        else if (widget.property.minimumStayDays != null)
           Text(
             'Minimum stay: ${widget.property.minimumStayDays} days',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -466,6 +482,89 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                     ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMinimumStayInfo() {
+    final minimumStayDays = widget.property.minimumStayDays ?? 30;
+    final minimumStayMonths = (minimumStayDays / 30).ceil();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: Colors.amber[700], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Lease Requirements',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.amber[600], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'Minimum lease period: ',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              Text(
+                minimumStayMonths == 1
+                    ? '1 month ($minimumStayDays days)'
+                    : '$minimumStayMonths months ($minimumStayDays days)',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber[700],
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.extension, color: Colors.amber[600], size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'After minimum period: ',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              Text(
+                'Month-to-month or extend',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[600],
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Note: The dates shown represent your initial lease commitment period. You can extend or go month-to-month after the minimum period.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
           ),
         ],
       ),

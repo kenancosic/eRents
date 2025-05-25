@@ -244,6 +244,39 @@ class PropertyService {
         status: "Available",
         dateAdded: DateTime.now().subtract(const Duration(days: 10)),
       ),
+      300: Property(
+        propertyId: 300,
+        ownerId: 9,
+        name: 'Modern Downtown Apartment - Monthly Lease',
+        price: 1850.00, // Monthly rent
+        description:
+            'Professional downtown apartment perfect for long-term residents. Features modern amenities, secure building, and convenient location. Ideal for professionals and students.',
+        averageRating: 4.6,
+        images: [
+          ImageResponse(
+              imageId: 3001,
+              fileName: 'assets/images/appartment.jpg',
+              imageData: ByteData(0),
+              dateUploaded: DateTime.now()),
+          ImageResponse(
+              imageId: 3002,
+              fileName: 'assets/images/house.jpg',
+              imageData: ByteData(0),
+              dateUploaded: DateTime.now()),
+        ],
+        addressDetail: AddressDetail(
+          addressDetailId: 300,
+          geoRegionId: 300,
+          streetLine1: '500 Main Street',
+          geoRegion: GeoRegion(
+              geoRegionId: 300, city: 'Downtown', country: 'USA', state: 'NY'),
+        ),
+        facilities: "In-unit Laundry, Dishwasher, AC/Heat, Parking, Elevator",
+        status: "Available",
+        dateAdded: DateTime.now().subtract(const Duration(days: 15)),
+        rentalType: PropertyRentalType.monthly,
+        minimumStayDays: 90, // 3-month minimum lease
+      ),
     };
 
     if (mockProperties.containsKey(id)) {
