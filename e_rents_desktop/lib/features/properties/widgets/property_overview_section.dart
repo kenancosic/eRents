@@ -38,8 +38,6 @@ class PropertyOverviewSection extends StatelessWidget {
         const Divider(),
         _buildDetailRow('Description', property.description),
         const Divider(),
-        _buildDetailRow('Year Built', property.yearBuilt?.toString() ?? 'N/A'),
-        const Divider(),
         _buildDetailRow('Last Renovated', '2020'),
         const Divider(),
         _buildDetailRow('Parking', '2 Covered Spaces'),

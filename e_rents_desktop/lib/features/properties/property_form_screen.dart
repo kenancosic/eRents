@@ -230,7 +230,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       area: double.parse(_areaController.text),
       maintenanceIssues: _initialProperty?.maintenanceIssues ?? [],
       amenities: _selectedAmenities,
-      yearBuilt: _initialProperty?.yearBuilt,
       lastInspectionDate: _initialProperty?.lastInspectionDate,
       nextInspectionDate: _initialProperty?.nextInspectionDate,
       dateAdded: _initialProperty?.dateAdded ?? DateTime.now(),

@@ -23,8 +23,8 @@ public partial class Property
 
     public string Name { get; set; } = null!;
 
-    public int AddressDetailId { get; set; }
-    public virtual AddressDetail AddressDetail { get; set; } = null!;
+    public int? AddressDetailId { get; set; }
+    public virtual AddressDetail? AddressDetail { get; set; }
 
     public int? PropertyTypeId { get; set; }
 
@@ -36,7 +36,8 @@ public partial class Property
 
     public decimal? Area { get; set; }
 
-    public int? YearBuilt { get; set; }
+    public decimal? DailyRate { get; set; }
+    public int? MinimumStayDays { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

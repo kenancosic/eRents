@@ -21,6 +21,17 @@ public partial class Image
     
     public bool IsCover { get; set; }
 
+    // Additional fields for frontend unification
+    public string? ContentType { get; set; }  // e.g., "image/jpeg", "image/png"
+    
+    public int? Width { get; set; }           // Image dimensions for UI layout
+    
+    public int? Height { get; set; }
+    
+    public long? FileSizeBytes { get; set; }  // File size for optimization
+    
+    public byte[]? ThumbnailData { get; set; } // Thumbnail for mobile optimization
+
     public virtual Property? Property { get; set; }
 
     public virtual Review? Review { get; set; }

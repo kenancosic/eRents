@@ -21,8 +21,10 @@ class Property {
   final int bathrooms;
   final double area;
   final List<MaintenanceIssue> maintenanceIssues;
-  final int? yearBuilt;
   final List<String>? amenities;
+  final String currency; // Added for standardization
+  final double? dailyRate; // Added mobile-specific field
+  final int? minimumStayDays; // Added mobile-specific field
   final DateTime? lastInspectionDate;
   final DateTime? nextInspectionDate;
   final DateTime dateAdded;
@@ -43,8 +45,10 @@ class Property {
     required this.bathrooms,
     required this.area,
     required this.maintenanceIssues,
-    this.yearBuilt,
     this.amenities,
+    this.currency = "BAM",
+    this.dailyRate,
+    this.minimumStayDays,
     this.lastInspectionDate,
     this.nextInspectionDate,
     required this.dateAdded,
@@ -87,11 +91,13 @@ class Property {
           (json['maintenanceIssues'] as List? ?? [])
               .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
               .toList(),
-      yearBuilt: json['yearBuilt'] as int?,
       amenities:
           json['amenities'] != null
               ? List<String>.from(json['amenities'] as List)
               : null,
+      currency: json['currency'] as String? ?? "BAM",
+      dailyRate: (json['dailyRate'] as num?)?.toDouble(),
+      minimumStayDays: json['minimumStayDays'] as int?,
       lastInspectionDate:
           json['lastInspectionDate'] != null
               ? DateTime.tryParse(json['lastInspectionDate'] as String? ?? '')
@@ -128,8 +134,10 @@ class Property {
       'bathrooms': bathrooms,
       'area': area,
       'maintenanceIssues': maintenanceIssues.map((e) => e.toJson()).toList(),
-      'yearBuilt': yearBuilt,
       'amenities': amenities,
+      'currency': currency,
+      'dailyRate': dailyRate,
+      'minimumStayDays': minimumStayDays,
       'lastInspectionDate': lastInspectionDate?.toIso8601String(),
       'nextInspectionDate': nextInspectionDate?.toIso8601String(),
       'dateAdded': dateAdded.toIso8601String(),
@@ -152,8 +160,10 @@ class Property {
     int? bathrooms,
     double? area,
     List<MaintenanceIssue>? maintenanceIssues,
-    int? yearBuilt,
     List<String>? amenities,
+    String? currency,
+    double? dailyRate,
+    int? minimumStayDays,
     DateTime? lastInspectionDate,
     DateTime? nextInspectionDate,
     DateTime? dateAdded,
@@ -174,8 +184,10 @@ class Property {
       bathrooms: bathrooms ?? this.bathrooms,
       area: area ?? this.area,
       maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
-      yearBuilt: yearBuilt ?? this.yearBuilt,
       amenities: amenities ?? this.amenities,
+      currency: currency ?? this.currency,
+      dailyRate: dailyRate ?? this.dailyRate,
+      minimumStayDays: minimumStayDays ?? this.minimumStayDays,
       lastInspectionDate: lastInspectionDate ?? this.lastInspectionDate,
       nextInspectionDate: nextInspectionDate ?? this.nextInspectionDate,
       dateAdded: dateAdded ?? this.dateAdded,
