@@ -1,15 +1,74 @@
 import 'package:e_rents_mobile/core/models/booking_model.dart'; // Using BookingModel for UI representation
-
+import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/address_detail.dart';
+import 'package:e_rents_mobile/core/models/geo_region.dart';
+import 'package:e_rents_mobile/core/models/image_response.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
+import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart'; // Added import
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:provider/provider.dart'; // Added import
 import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart'; // Added import
+import 'dart:typed_data';
 
 class UpcomingStaysSection extends StatelessWidget {
   const UpcomingStaysSection({super.key});
+
+  /// Converts a Booking to a Property-like object for display in PropertyCard
+  Property _createPropertyFromBooking(Booking booking) {
+    return Property(
+      propertyId: booking.propertyId,
+      ownerId: 1, // Mock owner ID
+      name: booking.propertyName,
+      price: booking.totalPrice,
+      description:
+          'Your upcoming booking from ${DateFormat.yMMMd().format(booking.startDate)}${booking.endDate != null ? ' to ${DateFormat.yMMMd().format(booking.endDate!)}' : ''}',
+      averageRating: 4.8, // Mock rating since it's not in booking
+      images: [
+        ImageResponse(
+          imageId: booking.propertyId,
+          fileName: booking.propertyImageUrl ?? 'assets/images/house.jpg',
+          imageData: ByteData(0),
+          dateUploaded: DateTime.now(),
+        ),
+      ],
+      addressDetail: AddressDetail(
+        addressDetailId: booking.propertyId,
+        geoRegionId: 1,
+        streetLine1: 'Property Address', // Mock address
+        geoRegion: GeoRegion(
+          geoRegionId: 1,
+          city: 'City',
+          country: 'Country',
+          state: 'State',
+        ),
+      ),
+      facilities: "Wi-Fi, Kitchen, Air Conditioning", // Mock facilities
+      status: "Booked",
+      dateAdded: booking.bookingDate ?? DateTime.now(),
+      rentalType: _determineRentalType(booking),
+      minimumStayDays: booking.endDate != null
+          ? booking.endDate!.difference(booking.startDate).inDays
+          : 30,
+    );
+  }
+
+  /// Determines rental type based on booking duration
+  PropertyRentalType _determineRentalType(Booking booking) {
+    if (booking.endDate == null) {
+      return PropertyRentalType
+          .monthly; // Open-ended bookings are typically monthly
+    }
+
+    final duration = booking.endDate!.difference(booking.startDate).inDays;
+    if (duration <= 30) {
+      return PropertyRentalType.daily;
+    } else {
+      return PropertyRentalType.monthly;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,15 +85,18 @@ class UpcomingStaysSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SectionHeader(
-                  title: 'Upcoming Stays',
-                  onSeeAll: () {
-                    context.push('/profile/booking-history');
-                  }),
+                title: 'Upcoming Stays',
+                onSeeAll: () {
+                  context.push('/profile/booking-history');
+                },
+              ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
                 child: Center(
-                  child: Text('No upcoming stays planned yet.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey)),
+                  child: Text(
+                    'No upcoming stays planned yet.',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
                 ),
               ),
             ],
@@ -45,22 +107,46 @@ class UpcomingStaysSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionHeader(
-                title: 'Upcoming Stays',
-                onSeeAll: () {
-                  context.push('/profile/booking-history');
-                }),
-            const SizedBox(height: 8),
+              title: 'Upcoming Stays',
+              onSeeAll: () {
+                context.push('/profile/booking-history');
+              },
+            ),
             SizedBox(
-              height: 210, // Adjusted height slightly for card design
+              height: 240, // Height for vertical cards
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: upcomingDisplayBookings.length,
                 itemBuilder: (context, index) {
                   final booking = upcomingDisplayBookings[index];
+                  final property = _createPropertyFromBooking(booking);
+
                   return SizedBox(
-                    width: MediaQuery.of(context).size.width *
-                        0.75, // Card width adjustment
-                    child: _UpcomingStayCard(booking: booking),
+                    width: MediaQuery.of(context).size.width * 0.75,
+                    child: Stack(
+                      children: [
+                        // Use the new PropertyCard.vertical
+                        PropertyCard.vertical(
+                          property: property,
+                          onTap: () {
+                            context.push(
+                              '/property/${booking.propertyId}',
+                              extra: {
+                                'viewContext': ViewContext.upcomingBooking,
+                                'bookingId': booking.bookingId,
+                              },
+                            );
+                          },
+                        ),
+                        // Overlay booking-specific information
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          right: 8,
+                          child: _buildBookingOverlay(booking),
+                        ),
+                      ],
+                    ),
                   );
                 },
               ),
@@ -70,90 +156,40 @@ class UpcomingStaysSection extends StatelessWidget {
       },
     );
   }
-}
 
-class _UpcomingStayCard extends StatelessWidget {
-  final Booking booking;
-
-  const _UpcomingStayCard({required this.booking});
-
-  @override
-  Widget build(BuildContext context) {
-    final DateFormat dateFormat = DateFormat('MMM d, yyyy');
+  /// Builds an overlay with booking-specific information
+  Widget _buildBookingOverlay(Booking booking) {
     final DateFormat shortDateFormat = DateFormat('MMM d');
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(8),
       ),
-      elevation: 4,
-      child: InkWell(
-        onTap: () {
-          context.push(
-            '/property/${booking.propertyId}',
-            extra: {
-              'viewContext': ViewContext.upcomingBooking,
-              'bookingId': booking.bookingId,
-            },
-          );
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 100, // Image height
-              width: double.infinity,
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.asset(
-                  booking.propertyImageUrl ?? 'assets/images/placeholder.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                      color: Colors.grey[300],
-                      child: Icon(Icons.broken_image, color: Colors.grey[600])),
-                ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              '${shortDateFormat.format(booking.startDate)} - ${booking.endDate != null ? shortDateFormat.format(booking.endDate!) : 'Open'}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      booking.propertyName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      '${shortDateFormat.format(booking.startDate)} - ${booking.endDate != null ? shortDateFormat.format(booking.endDate!) : 'N/A'}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    Text(
-                      'Total: ${booking.totalPrice.toStringAsFixed(0)} ${booking.currency}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          ),
+          Text(
+            '${booking.totalPrice.toStringAsFixed(0)} ${booking.currency}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

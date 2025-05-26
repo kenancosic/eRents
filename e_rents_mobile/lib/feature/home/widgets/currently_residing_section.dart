@@ -77,7 +77,6 @@ class CurrentlyResidingSection extends StatelessWidget {
                 onSeeAll: () {
                   context.push('/profile/booking-history');
                 }),
-            const SizedBox(height: 8),
             PropertyCard(
               property: propertyForCard,
               onTap: () {
@@ -90,7 +89,6 @@ class CurrentlyResidingSection extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 12),
           ],
         );
       },

@@ -18,10 +18,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isAddingNew = false;
+  Map<String, dynamic>? _editingMethod;
+  final Map<String, TextEditingController> _editControllers = {};
 
   @override
   void dispose() {
     _emailController.dispose();
+    for (var controller in _editControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -55,12 +60,77 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  Future<void> _updatePayPalAccount(Map<String, dynamic> method) async {
+    final methodId = method['id']?.toString() ?? '';
+    final controller = _editControllers[methodId];
+
+    if (controller != null && controller.text.isNotEmpty) {
+      // Mock update for now since updatePaymentMethod doesn't exist
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('PayPal account updated successfully (Mock)')),
+      );
+      setState(() {
+        _editingMethod = null;
+      });
+    }
+  }
+
+  Future<void> _deletePayPalAccount(Map<String, dynamic> method) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete PayPal Account'),
+        content: Text('Are you sure you want to remove ${method['email']}?'),
+        actions: [
+          CustomOutlinedButton.compact(
+            label: 'Cancel',
+            isLoading: false,
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CustomButton.compact(
+            label: 'Delete',
+            isLoading: false,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      // Mock delete for now since deletePaymentMethod doesn't exist
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('PayPal account removed successfully (Mock)')),
+      );
+    }
+  }
+
+  void _startEditing(Map<String, dynamic> method) {
+    setState(() {
+      _editingMethod = method;
+      final methodId = method['id']?.toString() ?? '';
+      _editControllers[methodId] =
+          TextEditingController(text: method['email'] ?? '');
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      if (_editingMethod != null) {
+        final methodId = _editingMethod!['id']?.toString() ?? '';
+        _editControllers[methodId]?.dispose();
+        _editControllers.remove(methodId);
+      }
+      _editingMethod = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final appBar = CustomAppBar(
       title: 'Payment Details',
       showBackButton: true,
-      // No actions, avatar, or search for this screen
     );
 
     return Consumer<UserProvider>(
@@ -69,12 +139,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         final paymentMethods = userProvider.paymentMethods ?? [];
 
         return BaseScreen(
-          // appBarConfig: const BaseScreenAppBarConfig( // Removed
-          //   titleText: 'Payment Details',
-          //   mainContentType: AppBarMainContentType.title,
-          //   showBackButton: true,
-          // ),
-          appBar: appBar, // Pass the constructed app bar
+          appBar: appBar,
           body: isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
@@ -83,10 +148,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Your Payment Methods',
+                        'Your PayPal Accounts',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Manage your PayPal accounts for seamless payments',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -96,7 +169,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         const Center(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 32.0),
-                            child: Text('No payment methods added yet'),
+                            child: Text('No PayPal accounts added yet'),
                           ),
                         )
                       else
@@ -113,7 +186,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               const Text(
-                                'Add PayPal Account',
+                                'Add New PayPal Account',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -158,6 +231,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       onPressed: () {
                                         setState(() {
                                           _isAddingNew = false;
+                                          _emailController.clear();
                                         });
                                       },
                                     ),
@@ -189,46 +263,151 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPaymentMethodCard(Map<String, dynamic> method) {
+    final methodId = method['id']?.toString() ?? '';
+    final isEditing =
+        _editingMethod != null && _editingMethod!['id'] == method['id'];
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.blueAccent.withAlpha((255 * 0.1).round()),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.paypal,
-            color: Colors.blueAccent,
-          ),
-        ),
-        title: Text(
-          method['type']?.toString().toUpperCase() ?? 'PayPal',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text(method['email'] ?? ''),
-        trailing: method['isDefault'] == true
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withAlpha((255 * 0.1).round()),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'Default',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontSize: 12,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent.withAlpha((255 * 0.1).round()),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.paypal,
+                    color: Colors.blueAccent,
                   ),
                 ),
-              )
-            : const SizedBox(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'PayPal',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (method['isDefault'] == true)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color:
+                                    Colors.green.withAlpha((255 * 0.1).round()),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Default',
+                                style: TextStyle(
+                                  color: Colors.green,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (isEditing)
+                        TextFormField(
+                          controller: _editControllers[methodId],
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                        )
+                      else
+                        Text(
+                          method['email'] ?? '',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (!isEditing)
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'edit':
+                          _startEditing(method);
+                          break;
+                        case 'delete':
+                          _deletePayPalAccount(method);
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('Edit'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 20, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            if (isEditing) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomButton.compact(
+                      label: 'Save',
+                      isLoading: false,
+                      onPressed: () => _updatePayPalAccount(method),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: CustomOutlinedButton.compact(
+                      label: 'Cancel',
+                      isLoading: false,
+                      onPressed: _cancelEditing,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

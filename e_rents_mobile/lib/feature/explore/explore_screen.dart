@@ -53,7 +53,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         images: [
           ImageResponse(
             imageId: 1,
-            fileName: 'house.jpg',
+            fileName: 'assets/images/house.jpg',
             imageData: ByteData(0),
             dateUploaded: DateTime.now(),
           ),
@@ -87,7 +87,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         images: [
           ImageResponse(
             imageId: 2,
-            fileName: 'house.jpg',
+            fileName: 'assets/images/house.jpg',
             imageData: ByteData(0),
             dateUploaded: DateTime.now(),
           ),
@@ -122,7 +122,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         images: [
           ImageResponse(
             imageId: 3,
-            fileName: 'house.jpg',
+            fileName: 'assets/images/house.jpg',
             imageData: ByteData(0),
             dateUploaded: DateTime.now(),
           ),
@@ -355,9 +355,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: PropertyCard(
+                            layout: PropertyCardLayout.compactHorizontal,
                             property: property,
-                            isCompact:
-                                true, // Use compact layout for explore screen
                             onTap: () {
                               context.push('/property/${property.propertyId}');
                             },
@@ -368,7 +367,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   // Page indicator
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(

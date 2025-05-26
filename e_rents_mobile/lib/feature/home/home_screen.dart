@@ -136,6 +136,45 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildRecommendedSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Recommended for you',
+          onSeeAll: () {
+            context.push('/explore');
+          },
+        ),
+        // Use vertical cards for recommended section for variety
+        SizedBox(
+          height: 240, // Fixed height for vertical cards
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              final property = _createMockProperty(
+                104 + index,
+                'Recommended Property ${index + 1}',
+                PropertyRentalType.both,
+                dailyRate: 85.0 + (index * 10),
+              );
+              return SizedBox(
+                width: 180, // Fixed width for vertical cards
+                child: PropertyCard.vertical(
+                  property: property,
+                  onTap: () {
+                    context.push('/property/${property.propertyId}');
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final properties = _buildPropertyCards(context, 3);
@@ -203,6 +242,8 @@ class HomeScreen extends StatelessWidget {
                   onSeeAll: () {}),
               CustomSlider(items: mixedProperties),
               const SizedBox(height: 20),
+
+              _buildRecommendedSection(context),
             ],
           ),
         ),

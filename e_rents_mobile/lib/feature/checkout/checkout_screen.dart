@@ -4,8 +4,9 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:go_router/go_router.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Property property;
@@ -29,26 +30,28 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'PayPal';
+  bool _showPriceBreakdown = false;
+
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
 
+  // Calculate price breakdown
+  double get _basePrice =>
+      widget.totalPrice / 1.1; // Remove 10% markup to get base
+  double get _serviceFee => _basePrice * 0.05; // 5% service fee
+  double get _taxes => _basePrice * 0.05; // 5% taxes
+  double get _cleaningFee => 25.0; // Fixed cleaning fee
+  int get _nights => widget.endDate.difference(widget.startDate).inDays;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Advance Payment',
-          style: TextStyle(
-            color: accentColor, // Use the accent color for the title
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: accentColor, // Use accent color for back button
-        iconTheme: const IconThemeData(
-            color: accentColor), // Ensure back icon uses accent color
-      ),
+    final appBar = CustomAppBar(
+      title: 'Advance Payment',
+      showBackButton: true,
+    );
+
+    return BaseScreen(
+      appBar: appBar,
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -72,18 +75,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: CustomButton(
                   isLoading: false,
                   onPressed: _processPayment,
-                  label: const Text(
+                  label: Text(
                     'Pay in Advance',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  backgroundColor:
-                      accentColor, // Use the accent color for the button
                   height: 56,
-                  borderRadius: 28,
                 ),
               ),
             ],
@@ -120,36 +120,100 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
               ),
               CustomOutlinedButton.compact(
-                label: 'More info',
+                label: _showPriceBreakdown ? 'Less info' : 'More info',
                 isLoading: false,
                 width: OutlinedButtonWidth.content,
                 textColor: accentColor,
                 borderColor: accentColor,
                 onPressed: () {
-                  // Show detailed price breakdown
+                  setState(() {
+                    _showPriceBreakdown = !_showPriceBreakdown;
+                  });
                 },
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Total price',
-                style: TextStyle(
-                  fontSize: 16,
+
+          // Price breakdown (expandable)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: _showPriceBreakdown ? null : 0,
+            child: _showPriceBreakdown ? _buildExpandedPriceBreakdown() : null,
+          ),
+
+          // Total price (always visible)
+          Container(
+            margin: EdgeInsets.only(top: _showPriceBreakdown ? 16 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Colors.grey.withAlpha((255 * 0.3).round()),
+                  width: 1,
                 ),
               ),
-              Text(
-                '\$${widget.totalPrice.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: accentColor, // Use accent color for price
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total price',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+                Text(
+                  '\$${widget.totalPrice.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedPriceBreakdown() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        _buildPriceRow(
+          '\$${(_basePrice / _nights).toStringAsFixed(0)} × $_nights night${_nights > 1 ? 's' : ''}',
+          _basePrice,
+        ),
+        _buildPriceRow('Cleaning fee', _cleaningFee),
+        _buildPriceRow('Service fee', _serviceFee),
+        _buildPriceRow('Taxes', _taxes),
+      ],
+    );
+  }
+
+  Widget _buildPriceRow(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -182,46 +246,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Payment methods list
-          _buildPaymentOption(
-            'Debit card',
-            Icons.credit_card,
-            'Accepting Visa, Mastercard, etc',
-            isSelected: _selectedPaymentMethod == 'Debit card',
-          ),
-
-          const Divider(height: 1),
-
-          _buildPaymentOption(
-            'Google Pay',
-            Icons.account_balance_wallet,
-            '',
-            icon: const Icon(Icons.g_mobiledata, size: 24, color: Colors.blue),
-            isSelected: _selectedPaymentMethod == 'Google Pay',
-          ),
-
-          const Divider(height: 1),
-
-          _buildPaymentOption(
-            'Apple Pay',
-            Icons.account_balance_wallet,
-            '',
-            icon: const Icon(Icons.apple, size: 24, color: Colors.black),
-            isSelected: _selectedPaymentMethod == 'Apple Pay',
-          ),
-
-          const Divider(height: 1),
-
+          // Only PayPal payment option
           _buildPaymentOption(
             'PayPal',
             Icons.account_balance_wallet,
-            '',
+            'Fast and secure payments',
             icon: SvgPicture.asset(
               'assets/icons/paypal-icon.svg',
               width: 24,
               height: 24,
             ),
             isSelected: _selectedPaymentMethod == 'PayPal',
+          ),
+
+          const SizedBox(height: 16),
+
+          // PayPal benefits
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.security, color: Colors.blue[600], size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'PayPal Benefits',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '• Secure payment processing\n'
+                  '• Buyer protection coverage\n'
+                  '• No need to share card details',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -237,8 +313,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _selectedPaymentMethod = title;
         });
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color:
+                isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? accentColor.withValues(alpha: 0.05)
+              : Colors.transparent,
+        ),
         child: Row(
           children: [
             // Payment method icon
@@ -246,7 +333,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.grey.shade200,
+                color: isSelected
+                    ? accentColor.withValues(alpha: 0.1)
+                    : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: icon ?? Icon(defaultIcon, color: Colors.grey.shade700),
@@ -261,9 +350,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? accentColor : Colors.black,
                     ),
                   ),
                   if (subtitle.isNotEmpty)
@@ -278,24 +368,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ),
 
-            // Add payment method button or selected indicator
+            // Selected indicator
             Container(
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected
-                      ? accentColor // Use accent color for selected border
-                      : Colors.grey.shade300,
+                  color: isSelected ? accentColor : Colors.grey.shade300,
                   width: 2,
                 ),
+                color: isSelected ? accentColor : Colors.transparent,
               ),
               child: isSelected
-                  ? const Icon(Icons.check,
-                      size: 18,
-                      color: accentColor) // Use accent color for check icon
-                  : const Icon(Icons.add, size: 18, color: Colors.grey),
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
             ),
           ],
         ),
@@ -304,6 +391,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _processPayment() async {
+    // Store navigator to avoid async context usage issues
+    final navigator = Navigator.of(context);
+
     // Show loading dialog
     showDialog(
       context: context,
@@ -313,8 +403,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(
-                  accentColor), // Use accent color for loading indicator
+              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
             ),
             const SizedBox(height: 16),
             const Text('Processing payment...'),
@@ -324,31 +413,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     // Simulate payment processing
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        context.pop(); // Close loading dialog
-      }
+    await Future.delayed(const Duration(seconds: 2));
 
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Payment Successful'),
-          content: const Text(
-              'Your booking has been confirmed. You will receive a confirmation email shortly.'),
-          actions: [
-            CustomButton.compact(
-              label: 'OK',
-              isLoading: false,
-              onPressed: () {
-                context.pop(); // Close dialog
-                context
-                    .pop(); // Go back to property details (assuming it's the previous route)
-              },
-            ),
-          ],
-        ),
-      );
-    });
+    if (!mounted) return;
+
+    // Close loading dialog
+    navigator.pop();
+
+    // Show success dialog
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Payment Successful'),
+        content: const Text(
+            'Your booking has been confirmed. You will receive a confirmation email shortly.'),
+        actions: [
+          CustomButton.compact(
+            label: 'OK',
+            isLoading: false,
+            onPressed: () {
+              Navigator.of(dialogContext).pop(); // Close dialog
+              navigator.pop(); // Go back to property details
+            },
+          ),
+        ],
+      ),
+    );
   }
 }

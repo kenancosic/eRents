@@ -5,21 +5,135 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 
+enum PropertyCardLayout {
+  horizontal, // Original horizontal layout
+  compactHorizontal, // Compact horizontal layout
+  vertical, // New vertical layout similar to UpcomingStayCard
+}
+
 class PropertyCard extends StatelessWidget {
   final Property property;
   final VoidCallback? onTap;
-  final bool isCompact; // New parameter for compact layout
+  final PropertyCardLayout layout;
 
   const PropertyCard({
     super.key,
     required this.property,
     this.onTap,
-    this.isCompact = false, // Default to full size
+    this.layout = PropertyCardLayout.horizontal, // Default to full horizontal
   });
+
+  // Legacy constructor for backward compatibility
+  const PropertyCard.compact({
+    super.key,
+    required this.property,
+    this.onTap,
+  }) : layout = PropertyCardLayout.compactHorizontal;
+
+  // New constructor for vertical layout
+  const PropertyCard.vertical({
+    super.key,
+    required this.property,
+    this.onTap,
+  }) : layout = PropertyCardLayout.vertical;
 
   @override
   Widget build(BuildContext context) {
-    // Use different heights based on compact mode
+    switch (layout) {
+      case PropertyCardLayout.vertical:
+        return _buildVerticalCard(context);
+      case PropertyCardLayout.compactHorizontal:
+        return _buildHorizontalCard(context, isCompact: true);
+      case PropertyCardLayout.horizontal:
+        return _buildHorizontalCard(context, isCompact: false);
+    }
+  }
+
+  Widget _buildVerticalCard(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 4,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image section
+            SizedBox(
+              height: 120,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  PropertyImageVertical(
+                    imageUrl: _getImageUrl(),
+                    rentalType: property.rentalType,
+                  ),
+                  // Bookmark button positioned on image
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: BookmarkButton(
+                        property: property,
+                        isCompact: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Content section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PropertyTitle(title: property.name, isCompact: true),
+                        const SizedBox(height: 4),
+                        PropertyLocation(
+                            location: _getLocationString(), isCompact: true),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: PropertyRating(
+                            rating: _getRatingString(),
+                            review: _getReviewCount(),
+                            isCompact: true,
+                          ),
+                        ),
+                        PropertyPrice(
+                            price: _getPriceString(), isCompact: true),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorizontalCard(BuildContext context, {required bool isCompact}) {
     final cardHeight = isCompact ? 120.0 : 160.0;
     final padding = isCompact ? 8.0 : 12.0;
 
@@ -181,6 +295,47 @@ class PropertyCard extends StatelessWidget {
         PropertyAmenities(rooms: _getRoomCount(), area: _getAreaValue()),
         PropertyPrice(price: _getPriceString()),
       ],
+    );
+  }
+}
+
+class PropertyImageVertical extends StatelessWidget {
+  final String imageUrl;
+  final PropertyRentalType? rentalType;
+
+  const PropertyImageVertical({
+    super.key,
+    required this.imageUrl,
+    this.rentalType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(imageUrl),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: rentalType != null
+          ? Stack(
+              children: [
+                // Rental type badge
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: RentalTypeBadge(
+                    rentalType: rentalType!,
+                    isCompact: true,
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 }
