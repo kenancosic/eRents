@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/auth/login_request_model.dart';
-import 'package:e_rents_desktop/models/auth/login_response_model.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';

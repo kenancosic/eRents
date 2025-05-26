@@ -123,15 +123,15 @@ class TenantProfileWidget extends StatelessWidget {
                       Icons.star,
                       size: 18,
                       color:
-                          index < feedback.rating
+                          index < feedback.starRating
                               ? Colors.amber
                               : Colors.grey[300],
                     ),
                   ),
                 ),
-                subtitle: Text(feedback.comment),
+                subtitle: Text(feedback.description),
                 trailing: Text(
-                  '${feedback.stayStartDate.year}-${feedback.stayEndDate.year}',
+                  '${feedback.dateReported.year}',
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ),

@@ -1,16 +1,12 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
 import 'package:e_rents_desktop/features/home/widgets/financial_summary_card.dart';
 import 'package:e_rents_desktop/features/home/widgets/kpi_card.dart';
-import 'package:e_rents_desktop/features/home/widgets/maintenance_overview_card.dart';
-import 'package:e_rents_desktop/features/home/widgets/property_insights_card.dart';
-import 'package:e_rents_desktop/features/home/widgets/activity_feed_card.dart';
-import 'package:e_rents_desktop/models/user.dart';
+import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/constants.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
@@ -135,7 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       currencyFormat: kCurrencyFormat,
                     ),
                   SizedBox(height: kDefaultPadding),
-                  ActivityFeedCard(activities: homeProvider.recentActivities),
+                  // ActivityFeedCard(activities: homeProvider.recentActivities), // Deprecated - RecentActivity model removed
+                  // Placeholder for activity feed - can be replaced with alternative implementation
                 ],
               ),
             ),

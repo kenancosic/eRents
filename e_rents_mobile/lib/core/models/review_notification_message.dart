@@ -1,3 +1,7 @@
+// DEPRECATED: This should be part of the unified notification system
+// Use the unified Notification model instead
+
+/*
 class ReviewNotificationMessage {
   final int propertyId;
   final int reviewId;
@@ -21,3 +25,4 @@ class ReviewNotificationMessage {
     };
   }
 }
+*/

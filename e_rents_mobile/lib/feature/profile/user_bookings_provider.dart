@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/services/booking_service.dart';

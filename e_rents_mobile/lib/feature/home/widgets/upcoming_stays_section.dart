@@ -2,7 +2,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart'; // Using Booking
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_response.dart';
+import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart'; // Added import
@@ -27,10 +27,10 @@ class UpcomingStaysSection extends StatelessWidget {
           'Your upcoming booking from ${DateFormat.yMMMd().format(booking.startDate)}${booking.endDate != null ? ' to ${DateFormat.yMMMd().format(booking.endDate!)}' : ''}',
       averageRating: 4.8, // Mock rating since it's not in booking
       images: [
-        ImageResponse(
+        ImageModel(
           imageId: booking.propertyId,
           fileName: booking.propertyImageUrl ?? 'assets/images/house.jpg',
-          imageData: ByteData(0),
+          imageData: Uint8List(0),
           dateUploaded: DateTime.now(),
         ),
       ],
@@ -46,7 +46,7 @@ class UpcomingStaysSection extends StatelessWidget {
         ),
       ),
       facilities: "Wi-Fi, Kitchen, Air Conditioning", // Mock facilities
-      status: "Booked",
+      status: PropertyStatus.rented,
       dateAdded: booking.bookingDate ?? DateTime.now(),
       rentalType: _determineRentalType(booking),
       minimumStayDays: booking.endDate != null

@@ -9,7 +9,7 @@ import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_response.dart';
+import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/feature/home/widgets/upcoming_stays_section.dart';
 import 'package:e_rents_mobile/feature/home/widgets/currently_residing_section.dart';
 import 'package:flutter/material.dart';
@@ -33,12 +33,12 @@ class HomeScreen extends StatelessWidget {
       description: 'A beautiful property with great amenities',
       averageRating: 4.8,
       images: [
-        ImageResponse(
+        ImageModel(
           imageId: id,
           fileName: id.isEven
               ? 'assets/images/house.jpg'
               : 'assets/images/appartment.jpg',
-          imageData: ByteData(0),
+          imageData: Uint8List(0),
           dateUploaded: DateTime.now(),
         ),
       ],
@@ -66,7 +66,7 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       facilities: "Wi-Fi, Kitchen, Air Conditioning",
-      status: "Available",
+      status: PropertyStatus.available,
       dateAdded: DateTime.now().subtract(Duration(days: id * 10)),
       rentalType: rentalType,
       minimumStayDays: rentalType == PropertyRentalType.monthly ? 30 : 3,

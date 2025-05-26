@@ -172,7 +172,7 @@ final ThemeData appTheme = ThemeData(
   cardTheme: CardThemeData(
     color: Colors.white,
     elevation: 4,
-    shadowColor: Colors.grey.withOpacity(0.2),
+    shadowColor: Colors.grey.withValues(alpha: 0.2),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     margin: const EdgeInsets.all(8),
     clipBehavior: Clip.antiAlias,
@@ -188,13 +188,13 @@ final ThemeData appTheme = ThemeData(
     }),
     trackColor: WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.selected)) {
-        return primaryColor.withOpacity(0.5);
+        return primaryColor.withValues(alpha: 0.5);
       }
       return Colors.grey[200]!;
     }),
     trackOutlineColor: WidgetStateProperty.resolveWith<Color>((states) {
       if (states.contains(WidgetState.selected)) {
-        return primaryColor.withOpacity(0.5);
+        return primaryColor.withValues(alpha: 0.5);
       }
       return Colors.grey[300]!;
     }),

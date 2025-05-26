@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/core/models/image_response.dart';
+import 'package:e_rents_mobile/core/models/image_model.dart';
 import './address_detail.dart';
 
 enum PropertyRentalType {
@@ -22,7 +22,7 @@ class Property {
   final DateTime? dateAdded;
   final String name;
   final double? averageRating;
-  final List<ImageResponse> images;
+  final List<ImageModel> images;
   final int? addressDetailId;
   final AddressDetail? addressDetail;
   final PropertyRentalType rentalType;
@@ -75,7 +75,7 @@ class Property {
       name: json['name'],
       averageRating: json['averageRating']?.toDouble(),
       images: (json['images'] as List)
-          .map((i) => ImageResponse.fromJson(i as Map<String, dynamic>))
+          .map((i) => ImageModel.fromJson(i as Map<String, dynamic>))
           .toList(),
       addressDetailId: json['addressDetailId'] as int?,
       addressDetail: json['addressDetail'] != null

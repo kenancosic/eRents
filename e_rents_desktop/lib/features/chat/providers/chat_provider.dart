@@ -3,7 +3,6 @@ import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/chat_service.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:flutter/foundation.dart';
 
 class ChatProvider extends BaseProvider<Message> {
   final ChatService _chatService;

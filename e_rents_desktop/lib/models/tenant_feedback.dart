@@ -1,3 +1,7 @@
+// DEPRECATED: This should be merged with the Review system
+// Use the Review model for all feedback and rating functionality
+
+/*
 class TenantFeedback {
   final String id;
   final String tenantId;
@@ -73,3 +77,4 @@ class TenantFeedback {
     );
   }
 }
+*/

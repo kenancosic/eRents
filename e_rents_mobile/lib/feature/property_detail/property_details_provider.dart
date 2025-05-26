@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_service.dart';
 import 'package:flutter/material.dart';
 
@@ -42,7 +42,7 @@ class PropertyDetailProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void addReview(ReviewUIModel review) {
+  void addReview(Review review) {
     // In a real app, you would send this to the server
     // For now, we'll just add it to the UI
     notifyListeners();

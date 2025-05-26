@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_reviews/review_item.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 
 class PropertyReviewsSection extends StatelessWidget {
-  final List<ReviewUIModel> reviews;
+  final List<Review> reviews;
   final double averageRating;
 
   const PropertyReviewsSection({
@@ -108,7 +108,9 @@ class PropertyReviewsSection extends StatelessWidget {
 
   double _calculatePercentage(int rating) {
     if (reviews.isEmpty) return 0.0;
-    int count = reviews.where((review) => review.rating == rating).length;
+    int count = reviews
+        .where((review) => (review.starRating ?? 0.0).round() == rating)
+        .length;
     return count / reviews.length;
   }
 

@@ -2,7 +2,7 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/models/tenant_feedback.dart';
+import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
@@ -17,7 +17,7 @@ import 'package:e_rents_desktop/services/statistics_service.dart'
         PopularProperty,
         FinancialStatistics,
         MonthlyRevenue;
-import 'package:e_rents_desktop/models/recent_activity.dart';
+
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class MockDataService {
@@ -231,45 +231,10 @@ class MockDataService {
     ];
   }
 
-  static List<TenantFeedback> getMockTenantFeedbacks() {
-    return [
-      TenantFeedback(
-        id: '1',
-        tenantId: '3',
-        landlordId: '2',
-        propertyId: '1',
-        rating: 5,
-        comment:
-            'Excellent tenant, always pays on time and maintains the property well. Very communicative and responsible.',
-        feedbackDate: DateTime.now().subtract(const Duration(days: 30)),
-        stayStartDate: DateTime.now().subtract(const Duration(days: 365)),
-        stayEndDate: DateTime.now().subtract(const Duration(days: 30)),
-      ),
-      TenantFeedback(
-        id: '2',
-        tenantId: '4',
-        landlordId: '2',
-        propertyId: '2',
-        rating: 4,
-        comment:
-            'Good tenant, maintains the property well. Occasionally late with rent but always communicates in advance.',
-        feedbackDate: DateTime.now().subtract(const Duration(days: 15)),
-        stayStartDate: DateTime.now().subtract(const Duration(days: 180)),
-        stayEndDate: DateTime.now().subtract(const Duration(days: 15)),
-      ),
-      TenantFeedback(
-        id: '3',
-        tenantId: '5',
-        landlordId: '2',
-        propertyId: '3',
-        rating: 5,
-        comment:
-            'Outstanding tenant. Takes great care of the property and has even made some improvements. Highly recommended.',
-        feedbackDate: DateTime.now().subtract(const Duration(days: 7)),
-        stayStartDate: DateTime.now().subtract(const Duration(days: 90)),
-        stayEndDate: DateTime.now(),
-      ),
-    ];
+  // DEPRECATED: TenantFeedback has been replaced with the unified Review system
+  // This method is kept for backward compatibility but returns empty list
+  static List<Review> getMockTenantFeedbacks() {
+    return [];
   }
 
   static List<MaintenanceIssue> getMockMaintenanceIssues() {
@@ -416,7 +381,7 @@ class MockDataService {
             maintenanceIssues
                 .where((issue) => issue.propertyId == '1')
                 .toList(),
-        yearBuilt: 2015,
+        // yearBuilt: 2015, // Removed - field deprecated
         amenities: ['Pool', 'Gym', 'Parking'],
         dateAdded: DateTime.now().subtract(const Duration(days: 100)),
       ),
@@ -447,7 +412,7 @@ class MockDataService {
             maintenanceIssues
                 .where((issue) => issue.propertyId == '2')
                 .toList(),
-        yearBuilt: 2010,
+        // yearBuilt: 2010, // Removed - field deprecated
         amenities: ['Garden', 'Garage', 'Basement'],
         dateAdded: DateTime.now().subtract(const Duration(days: 150)),
       ),
@@ -478,7 +443,7 @@ class MockDataService {
         bedrooms: 1,
         bathrooms: 1,
         area: 800,
-        yearBuilt: 2020,
+        // yearBuilt: 2020, // Removed - field deprecated
         amenities: ['High-Speed Internet', 'Laundry', 'Bike Storage'],
         maintenanceIssues:
             maintenanceIssues
@@ -512,7 +477,7 @@ class MockDataService {
         bedrooms: 3,
         bathrooms: 3,
         area: 2000,
-        yearBuilt: 2022,
+        // yearBuilt: 2022, // Removed - field deprecated
         amenities: [
           'Private Elevator',
           'Rooftop Terrace',
@@ -546,7 +511,7 @@ class MockDataService {
         bedrooms: 3,
         bathrooms: 2,
         area: 1800,
-        yearBuilt: 2019,
+        // yearBuilt: 2019, // Removed - field deprecated
         amenities: [
           'Private Garden',
           'Patio',
@@ -858,48 +823,9 @@ class MockDataService {
     );
   }
 
-  static List<RecentActivity> getMockRecentActivities() {
-    final issues = getMockMaintenanceIssues();
-    return [
-      if (issues.isNotEmpty)
-        RecentActivity(
-          id: issues[0].id,
-          type: ActivityType.maintenance,
-          title: 'High Priority: ${issues[0].title}',
-          subtitle:
-              'Reported for ${issues[0].propertyId}, Status: ${issues[0].status.name}',
-          date: issues[0].createdAt.subtract(const Duration(hours: 1)),
-          icon: Icons.warning_amber_rounded,
-          onTapRoute: '/maintenance/${issues[0].id}',
-        ),
-      RecentActivity(
-        id: 'system-update-1',
-        type: ActivityType.system,
-        title: 'System Maintenance Scheduled',
-        subtitle: 'Scheduled for tomorrow at 2 AM. Expect brief downtime.',
-        date: DateTime.now().subtract(const Duration(hours: 5)),
-        icon: Icons.system_update_alt,
-      ),
-      if (issues.length > 1 && issues[1].isTenantComplaint)
-        RecentActivity(
-          id: issues[1].id,
-          type: ActivityType.maintenance,
-          title: 'New Tenant Complaint: ${issues[1].title}',
-          subtitle:
-              'Complaint regarding ${issues[1].category} on ${issues[1].propertyId}',
-          date: issues[1].createdAt.subtract(const Duration(days: 1)),
-          icon: Icons.announcement_outlined,
-          onTapRoute: '/maintenance/${issues[1].id}',
-        ),
-      RecentActivity(
-        id: 'chat-1',
-        type: ActivityType.message,
-        title: 'New Message from John Doe',
-        subtitle: 'Regarding property "Modern Downtown Apartment"',
-        date: DateTime.now().subtract(const Duration(minutes: 30)),
-        icon: Icons.chat_bubble_outline,
-        onTapRoute: '/chat', // General chat route for now
-      ),
-    ]..sort((a, b) => b.date.compareTo(a.date));
+  // DEPRECATED: RecentActivity has been replaced with the unified notification system
+  // This method is kept for backward compatibility but returns empty list
+  static List<dynamic> getMockRecentActivities() {
+    return [];
   }
 }

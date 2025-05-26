@@ -61,6 +61,14 @@ public partial class ERentsContext : DbContext
     
     public virtual DbSet<PropertyAmenity> PropertyAmenities { get; set; }
 
+    public virtual DbSet<LeaseExtensionRequest> LeaseExtensionRequests { get; set; }
+
+    public virtual DbSet<Notification> Notifications { get; set; }
+
+    public virtual DbSet<PropertyAvailability> PropertyAvailabilities { get; set; }
+
+    public virtual DbSet<UserPreferences> UserPreferences { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -155,6 +163,12 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.IsCover)
                 .HasDefaultValue(false)
                 .HasColumnName("is_cover");
+            entity.Property(e => e.ContentType)
+                .HasMaxLength(100)
+                .HasColumnName("content_type");
+            entity.Property(e => e.Width).HasColumnName("width");
+            entity.Property(e => e.Height).HasColumnName("height");
+            entity.Property(e => e.FileSizeBytes).HasColumnName("file_size_bytes");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Images)
                 .HasForeignKey(d => d.PropertyId)
@@ -270,7 +284,10 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("area");
             entity.Property(e => e.Bedrooms).HasColumnName("bedrooms");
             entity.Property(e => e.Bathrooms).HasColumnName("bathrooms");
-            entity.Property(e => e.YearBuilt).HasColumnName("year_built");
+            entity.Property(e => e.DailyRate)
+                .HasColumnType("decimal(10, 2)")
+                .HasColumnName("daily_rate");
+            entity.Property(e => e.MinimumStayDays).HasColumnName("minimum_stay_days");
 
             entity.HasOne(d => d.AddressDetail)
                 .WithMany(p => p.Properties)
@@ -561,6 +578,72 @@ public partial class ERentsContext : DbContext
                 .WithMany(p => p.AddressDetails)
                 .HasForeignKey(d => d.GeoRegionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LeaseExtensionRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId);
+            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DateRequested).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.LandlordResponse).HasMaxLength(500);
+            entity.Property(e => e.LandlordReason).HasMaxLength(500);
+
+            entity.HasOne(d => d.Booking)
+                .WithMany()
+                .HasForeignKey(d => d.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.Property)
+                .WithMany()
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.Tenant)
+                .WithMany()
+                .HasForeignKey(d => d.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.Message).IsRequired();
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.IsRead).HasDefaultValue(false);
+            entity.Property(e => e.DateCreated).HasDefaultValueSql("(getutcdate())");
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PropertyAvailability>(entity =>
+        {
+            entity.HasKey(e => e.AvailabilityId);
+            entity.Property(e => e.Reason).HasMaxLength(255);
+            entity.Property(e => e.DateCreated).HasDefaultValueSql("(getutcdate())");
+
+            entity.HasOne(d => d.Property)
+                .WithMany()
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserPreferences>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+            entity.Property(e => e.Theme).HasMaxLength(20).HasDefaultValue("light");
+            entity.Property(e => e.Language).HasMaxLength(10).HasDefaultValue("en");
+            entity.Property(e => e.DateCreated).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.DateUpdated).HasDefaultValueSql("(getutcdate())");
+
+            entity.HasOne(d => d.User)
+                .WithOne()
+                .HasForeignKey<UserPreferences>(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         OnModelCreatingPartial(modelBuilder);

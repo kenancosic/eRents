@@ -1,3 +1,7 @@
+// DEPRECATED: This UI-specific model should be merged with the base Review model
+// Use the Review model directly with UI formatting methods instead
+
+/*
 import 'package:e_rents_mobile/core/models/review.dart';
 
 class ReviewUIModel {
@@ -49,3 +53,4 @@ class ReviewUIModel {
     );
   }
 }
+*/

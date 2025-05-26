@@ -1,9 +1,9 @@
 // lib/feature/property_detail/widgets/property_reviews/review_item.dart
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review.dart';
 
 class ReviewItem extends StatelessWidget {
-  final ReviewUIModel review;
+  final Review review;
 
   const ReviewItem({
     super.key,
@@ -12,6 +12,15 @@ class ReviewItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extract available data from Review model
+    final rating = review.starRating ?? 0.0;
+    final comment = review.description ?? 'No comment provided';
+    final date = review.dateReported != null
+        ? '${review.dateReported!.day}/${review.dateReported!.month}/${review.dateReported!.year}'
+        : 'Unknown date';
+    // Generate a user name from review ID (placeholder)
+    final userName = 'User ${review.reviewId}';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -25,12 +34,7 @@ class ReviewItem extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                backgroundImage: review.userImage != null
-                    ? AssetImage(review.userImage!)
-                    : null,
-                child: review.userImage == null
-                    ? Text(review.userName.substring(0, 1))
-                    : null,
+                child: Text(userName.substring(0, 1)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -38,11 +42,11 @@ class ReviewItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      review.userName,
+                      userName,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      review.date,
+                      date,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -51,7 +55,7 @@ class ReviewItem extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    review.rating.toString(),
+                    rating.toStringAsFixed(1),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -64,7 +68,7 @@ class ReviewItem extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            review.comment,
+            comment,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ],

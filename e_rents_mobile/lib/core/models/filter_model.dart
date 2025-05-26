@@ -1,3 +1,7 @@
+// DEPRECATED: This model should be replaced with query parameters in search functions
+// Use search service methods with direct parameters instead
+
+/*
 class FilterModel {
   String? city;
   double? minPrice;
@@ -15,3 +19,4 @@ class FilterModel {
     };
   }
 }
+*/

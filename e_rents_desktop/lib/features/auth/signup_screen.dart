@@ -1,8 +1,7 @@
 import 'package:e_rents_desktop/base/auth_base.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:e_rents_desktop/widgets/status_dialog.dart';
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class SignupScreen extends StatefulWidget {

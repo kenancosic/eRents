@@ -1,6 +1,5 @@
 import '../models/property.dart';
-import '../models/image_response.dart';
-import 'dart:typed_data';
+import '../models/image_model.dart';
 
 class MockProperties {
   static Property getSingleProperty(int id) {
@@ -15,12 +14,13 @@ class MockProperties {
       averageRating: 4.8,
       images: List.generate(
           15,
-          (index) => ImageResponse(
+          (index) => ImageModel(
                 imageId: index + 1,
                 fileName: index.isEven
                     ? 'assets/images/house.jpg'
                     : 'assets/images/appartment.jpg',
-                imageData: ByteData(0),
+                imageData:
+                    null, // Using null since ByteData isn't the right type
                 dateUploaded: DateTime.now(),
               )),
     );

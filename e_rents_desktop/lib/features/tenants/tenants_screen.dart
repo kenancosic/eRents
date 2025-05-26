@@ -3,8 +3,6 @@ import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart'; // For filter fields, keep for now
 import 'package:provider/provider.dart';
@@ -13,6 +11,9 @@ import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/send_property_offer_dialog.dart';
 import 'package:e_rents_desktop/base/base_provider.dart'; // For ViewState
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/current_tenants_table_widget.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/tenants_advertisement_table_widget.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});

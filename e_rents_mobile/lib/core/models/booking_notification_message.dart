@@ -1,3 +1,7 @@
+// DEPRECATED: This should be part of the unified notification system
+// Use the unified Notification model instead
+
+/*
 class BookingNotificationMessage {
   final int bookingId;
   final String? message;
@@ -18,3 +22,4 @@ class BookingNotificationMessage {
     };
   }
 }
+*/

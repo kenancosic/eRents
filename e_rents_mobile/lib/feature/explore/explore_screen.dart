@@ -8,7 +8,7 @@ import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_response.dart';
+import 'package:e_rents_mobile/core/models/image_model.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -47,14 +47,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         name: 'Small cottage in the center of town',
         description: 'Cozy cottage perfect for a peaceful stay',
         price: 526.0,
-        status: 'Available',
+        status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.8,
         images: [
-          ImageResponse(
+          ImageModel(
             imageId: 1,
             fileName: 'assets/images/house.jpg',
-            imageData: ByteData(0),
+            imageData: null,
             dateUploaded: DateTime.now(),
           ),
         ],
@@ -81,14 +81,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         name: 'Entire private villa in Tuzla City',
         description: 'Beautiful villa with modern amenities',
         price: 400.0,
-        status: 'Available',
+        status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.9,
         images: [
-          ImageResponse(
+          ImageModel(
             imageId: 2,
             fileName: 'assets/images/house.jpg',
-            imageData: ByteData(0),
+            imageData: null,
             dateUploaded: DateTime.now(),
           ),
         ],
@@ -116,14 +116,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         name: 'Entire rental unit, close to main square',
         description: 'Prime location rental unit',
         price: 1290.0,
-        status: 'Available',
+        status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.8,
         images: [
-          ImageResponse(
+          ImageModel(
             imageId: 3,
             fileName: 'assets/images/house.jpg',
-            imageData: ByteData(0),
+            imageData: null,
             dateUploaded: DateTime.now(),
           ),
         ],

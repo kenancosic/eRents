@@ -1,8 +1,9 @@
+import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_response.dart';
-import 'dart:typed_data'; // For ByteData
+// Removed deprecated image_response import - using unified ImageModel
+import 'dart:typed_data'; // For Uint8List
 // import 'package:http/http.dart' as http; // Commenting out for mock implementation
 // import 'dart:convert'; // Commenting out for mock implementation
 
@@ -24,15 +25,15 @@ class PropertyService {
             'A beautiful cottage with a great view, perfect for a relaxing getaway. Displayed from a slider.',
         averageRating: 4.8,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 6,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
-          ImageResponse(
+          ImageModel(
               imageId: 7,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -43,7 +44,7 @@ class PropertyService {
               geoRegionId: 5, city: 'Viewpoint', country: 'USA', state: 'NV'),
         ),
         facilities: "Garden, Patio, BBQ",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 75)),
         rentalType: PropertyRentalType.daily,
         dailyRate: 75.0,
@@ -58,15 +59,15 @@ class PropertyService {
             'A lovely apartment in the heart of the city, ideal for long-term residence. Fetched via PropertyService.',
         averageRating: 4.7,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 1,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
-          ImageResponse(
+          ImageModel(
               imageId: 2,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -79,7 +80,7 @@ class PropertyService {
         // Ensure other potentially required fields are present for the Property model
         // Example: facilities, status, dateAdded, etc., if they are not nullable
         facilities: "Wi-Fi, Kitchen, Air Conditioning",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 100)),
       ),
       201: Property(
@@ -91,10 +92,10 @@ class PropertyService {
             'Enjoy the sun and waves in this beautiful condo. Fetched via PropertyService.',
         averageRating: 4.9,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 3,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -105,7 +106,7 @@ class PropertyService {
               geoRegionId: 2, city: 'Sunnyvale', country: 'USA', state: 'CA'),
         ),
         facilities: "Pool, Beach Access, Balcony",
-        status: "Booked",
+        status: PropertyStatus.rented,
         dateAdded: DateTime.now().subtract(const Duration(days: 50)),
       ),
       202: Property(
@@ -117,10 +118,10 @@ class PropertyService {
             'Escape to this peaceful cabin with stunning mountain views. Fetched via PropertyService.',
         averageRating: 4.6,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 4,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -131,7 +132,7 @@ class PropertyService {
               geoRegionId: 3, city: 'Evergreen', country: 'USA', state: 'CO'),
         ),
         facilities: "Fireplace, Hiking Trails, Hot Tub",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 200)),
       ),
       203: Property(
@@ -143,10 +144,10 @@ class PropertyService {
             'Charming studio in a historic building, close to everything. Fetched via PropertyService.',
         averageRating: 4.3,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 5,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -157,7 +158,7 @@ class PropertyService {
               geoRegionId: 4, city: 'Oldtown', country: 'USA', state: 'MA'),
         ),
         facilities: "Exposed Brick, High Ceilings, Walkable",
-        status: "Maintenance",
+        status: PropertyStatus.maintenance,
         dateAdded: DateTime.now().subtract(const Duration(days: 30)),
       ),
       102: Property(
@@ -169,10 +170,10 @@ class PropertyService {
             'A stunning villa right by the beach, perfect for your vacation. Mock data from PropertyService.',
         averageRating: 4.9,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 1021,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -186,7 +187,7 @@ class PropertyService {
               state: 'FL'),
         ),
         facilities: "Private Pool, Direct Beach Access, Ocean View",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 45)),
       ),
       103: Property(
@@ -198,10 +199,10 @@ class PropertyService {
             'Cozy cabin with breathtaking mountain views. Mock data from PropertyService.',
         averageRating: 4.7,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 1031,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -215,7 +216,7 @@ class PropertyService {
               state: 'CO'),
         ),
         facilities: "Fireplace, Hot Tub, Ski-in/Ski-out",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 60)),
       ),
       108: Property(
@@ -227,10 +228,10 @@ class PropertyService {
             'Modern and convenient pad in the city, available from today! Mock data from PropertyService.',
         averageRating: 4.5,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 1081,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -241,7 +242,7 @@ class PropertyService {
               geoRegionId: 108, city: 'Downtown', country: 'USA', state: 'TX'),
         ),
         facilities: "Gym, Rooftop Terrace, Concierge",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 10)),
       ),
       300: Property(
@@ -253,15 +254,15 @@ class PropertyService {
             'Professional downtown apartment perfect for long-term residents. Features modern amenities, secure building, and convenient location. Ideal for professionals and students.',
         averageRating: 4.6,
         images: [
-          ImageResponse(
+          ImageModel(
               imageId: 3001,
               fileName: 'assets/images/appartment.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
-          ImageResponse(
+          ImageModel(
               imageId: 3002,
               fileName: 'assets/images/house.jpg',
-              imageData: ByteData(0),
+              imageData: Uint8List(0),
               dateUploaded: DateTime.now()),
         ],
         addressDetail: AddressDetail(
@@ -272,7 +273,7 @@ class PropertyService {
               geoRegionId: 300, city: 'Downtown', country: 'USA', state: 'NY'),
         ),
         facilities: "In-unit Laundry, Dishwasher, AC/Heat, Parking, Elevator",
-        status: "Available",
+        status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 15)),
         rentalType: PropertyRentalType.monthly,
         minimumStayDays: 90, // 3-month minimum lease

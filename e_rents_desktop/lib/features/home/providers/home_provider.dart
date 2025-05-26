@@ -1,18 +1,16 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart'
-    show DashboardStatistics, FinancialStatistics, MonthlyRevenue;
+    show DashboardStatistics, PopularProperty, FinancialStatistics;
 import 'package:e_rents_desktop/services/maintenance_service.dart';
 import 'package:e_rents_desktop/services/property_service.dart';
-import 'package:e_rents_desktop/services/statistics_service.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart'; // Added for IconData
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
-import 'package:e_rents_desktop/models/recent_activity.dart'; // Added
+// Removed RecentActivity import - model is deprecated // Added
 
 class HomeProvider extends BaseProvider<dynamic> {
   final PropertyService _propertyService;
@@ -24,7 +22,7 @@ class HomeProvider extends BaseProvider<dynamic> {
   DashboardStatistics? _dashboardStatistics;
   FinancialStatistics? _apiFinancialStatistics; // From StatisticsService
   ui_model.FinancialStatistics? _uiFinancialStatistics; // For UI consumption
-  List<RecentActivity> _recentActivities = []; // Added
+  // List<RecentActivity> _recentActivities = []; // Deprecated model
 
   HomeProvider(
     this._propertyService,
@@ -41,7 +39,7 @@ class HomeProvider extends BaseProvider<dynamic> {
   DashboardStatistics? get dashboardStatistics => _dashboardStatistics;
   ui_model.FinancialStatistics? get uiFinancialStatistics =>
       _uiFinancialStatistics;
-  List<RecentActivity> get recentActivities => _recentActivities; // Added
+  // List<RecentActivity> get recentActivities => _recentActivities; // Deprecated model
 
   int get propertyCount => _properties.length;
 
@@ -69,74 +67,11 @@ class HomeProvider extends BaseProvider<dynamic> {
   double get currentMonthRevenueForKpi =>
       _dashboardStatistics?.monthlyRevenue ?? 0.0;
 
+  /* DEPRECATED: RecentActivity model removed
   Future<void> _fetchRecentActivity() async {
-    if (isMockDataEnabled) {
-      _recentActivities = MockDataService.getMockRecentActivities();
-    } else {
-      // Fetch top 5 high priority or pending issues
-      final urgentIssues =
-          _issues
-              .where(
-                (issue) =>
-                    issue.priority == IssuePriority.high ||
-                    issue.status == IssueStatus.pending,
-              )
-              .toList();
-      urgentIssues.sort(
-        (a, b) => b.createdAt.compareTo(a.createdAt),
-      ); // Sort by newest first
-
-      _recentActivities =
-          urgentIssues.take(5).map((issue) {
-            IconData icon;
-            String subtitle;
-            switch (issue.status) {
-              case IssueStatus.pending:
-                icon = Icons.pending_actions_outlined;
-                subtitle =
-                    'Status: Pending. Reported on ${issue.createdAt.toLocal().toString().split(' ').first}';
-                break;
-              case IssueStatus.inProgress:
-                icon = Icons.construction_outlined;
-                subtitle =
-                    'Status: In Progress. Started on ${issue.createdAt.toLocal().toString().split(' ').first}';
-                break;
-              default:
-                icon = Icons.error_outline;
-                subtitle =
-                    'Status: ${issue.status.name}. Priority: ${issue.priority.name}';
-            }
-            if (issue.priority == IssuePriority.high &&
-                issue.status != IssueStatus.completed &&
-                issue.status != IssueStatus.cancelled) {
-              icon = Icons.warning_amber_rounded;
-              subtitle = 'HIGH PRIORITY: ${subtitle}';
-            }
-
-            return RecentActivity(
-              id: issue.id,
-              type: ActivityType.maintenance,
-              title: issue.title,
-              subtitle: subtitle,
-              date: issue.createdAt,
-              icon: icon,
-              onTapRoute: '/maintenance/${issue.id}',
-            );
-          }).toList();
-    }
-    // Add a system notification for testing
-    // _recentActivities.add(RecentActivity(
-    //   id: 'system-1',
-    //   type: ActivityType.system,
-    //   title: 'System Update Available',
-    //   subtitle: 'A new version of the app is ready to be installed.',
-    //   date: DateTime.now().subtract(Duration(hours: 2)),
-    //   icon: Icons.system_update_alt,
-    // ));
-
-    // Sort all activities by date, newest first
-    _recentActivities.sort((a, b) => b.date.compareTo(a.date));
+    // Implementation removed - RecentActivity model is deprecated
   }
+  */
 
   Future<void> loadDashboardData({
     DateTime? startDate,
@@ -165,7 +100,7 @@ class HomeProvider extends BaseProvider<dynamic> {
         } else {
           _uiFinancialStatistics = null;
         }
-        await _fetchRecentActivity(); // Fetch recent activity
+        // await _fetchRecentActivity(); // Deprecated - RecentActivity model removed
       } else {
         final propertyFuture = _propertyService.getProperties();
         // Fetch issues, potentially filtered by date range if API supports it
@@ -200,7 +135,7 @@ class HomeProvider extends BaseProvider<dynamic> {
         } else {
           _uiFinancialStatistics = null;
         }
-        await _fetchRecentActivity(); // Fetch recent activity
+        // await _fetchRecentActivity(); // Deprecated - RecentActivity model removed
       }
     });
   }

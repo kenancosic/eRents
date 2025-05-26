@@ -1,7 +1,7 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/models/tenant_feedback.dart';
+import 'package:e_rents_desktop/models/review.dart';
 // import 'package:e_rents_desktop/models/message.dart'; // No longer needed for sending messages
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/services/tenant_service.dart';
@@ -13,7 +13,7 @@ class TenantProvider extends BaseProvider<User> {
 
   List<User> _currentTenants = [];
   List<TenantPreference> _searchingTenants = [];
-  final Map<String, List<TenantFeedback>> _tenantFeedbacks = {};
+  final Map<String, List<Review>> _tenantFeedbacks = {};
   // final Map<String, List<Message>> _tenantMessages = {}; // To be removed
   final Map<String, List<String>> _tenantPropertyOffers =
       {}; // For local mock or could be service driven
@@ -29,7 +29,7 @@ class TenantProvider extends BaseProvider<User> {
       _currentTenants; // Could also use items directly from BaseProvider
   List<TenantPreference> get searchingTenants => _searchingTenants;
 
-  List<TenantFeedback> getTenantFeedbacks(String tenantId) {
+  List<Review> getTenantFeedbacks(String tenantId) {
     return _tenantFeedbacks[tenantId] ?? [];
   }
 
@@ -86,10 +86,9 @@ class TenantProvider extends BaseProvider<User> {
   Future<void> loadTenantFeedbacks(String tenantId) async {
     await execute(() async {
       if (isMockDataEnabled) {
-        _tenantFeedbacks[tenantId] =
-            MockDataService.getMockTenantFeedbacks()
-                .where((feedback) => feedback.tenantId == tenantId)
-                .toList();
+        // For now, return empty list since TenantFeedback is deprecated
+        // TODO: Replace with actual Review data when available
+        _tenantFeedbacks[tenantId] = [];
       } else {
         _tenantFeedbacks[tenantId] = await _tenantService.getTenantFeedbacks(
           tenantId,
@@ -98,15 +97,20 @@ class TenantProvider extends BaseProvider<User> {
     });
   }
 
-  Future<void> addTenantFeedback(
-    String tenantId,
-    TenantFeedback feedback,
-  ) async {
+  Future<void> addTenantFeedback(String tenantId, Review feedback) async {
     await execute(() async {
-      TenantFeedback newFeedback;
+      Review newFeedback;
       if (isMockDataEnabled) {
-        newFeedback = feedback.copyWith(
+        // Create a new Review with updated ID
+        newFeedback = Review(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
+          bookingId: feedback.bookingId,
+          propertyId: feedback.propertyId,
+          starRating: feedback.starRating,
+          description: feedback.description,
+          dateReported: feedback.dateReported,
+          status: feedback.status,
+          severity: feedback.severity,
         );
         if (!_tenantFeedbacks.containsKey(tenantId)) {
           _tenantFeedbacks[tenantId] = [];

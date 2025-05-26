@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/models/review_ui_model.dart';
+import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
@@ -108,29 +108,36 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 return const Center(child: Text('Property not found'));
               }
 
-              final List<ReviewUIModel> uiReviews = [
-                ReviewUIModel.mock(
-                  userName: 'John Doe',
-                  userImage: 'assets/images/user-image.png',
-                  rating: 4.5,
-                  comment:
+              final List<Review> uiReviews = [
+                Review(
+                  reviewId: 1,
+                  propertyId: property.propertyId,
+                  description:
                       'Great property! Very clean and comfortable. The location is perfect and the host was very responsive.',
-                  date: 'Oct 15, 2023',
+                  starRating: 4.5,
+                  dateReported: DateTime(2023, 10, 15),
+                  isComplaint: false,
+                  isFlagged: false,
                 ),
-                ReviewUIModel.mock(
-                  userName: 'Jane Smith',
-                  userImage: 'assets/images/user-image.png',
-                  rating: 5.0,
-                  comment:
+                Review(
+                  reviewId: 2,
+                  propertyId: property.propertyId,
+                  description:
                       'Absolutely loved my stay here. The amenities were top-notch and everything was as described.',
-                  date: 'Sep 28, 2023',
+                  starRating: 5.0,
+                  dateReported: DateTime(2023, 9, 28),
+                  isComplaint: false,
+                  isFlagged: false,
                 ),
-                ReviewUIModel.mock(
-                  userName: 'Mike Johnson',
-                  rating: 4.0,
-                  comment:
+                Review(
+                  reviewId: 3,
+                  propertyId: property.propertyId,
+                  description:
                       'Good value for money. The property is well-maintained and in a nice neighborhood.',
-                  date: 'Aug 12, 2023',
+                  starRating: 4.0,
+                  dateReported: DateTime(2023, 8, 12),
+                  isComplaint: false,
+                  isFlagged: false,
                 ),
               ];
 
@@ -232,9 +239,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
-  double calculateAverageRating(List<ReviewUIModel> reviews) {
+  double calculateAverageRating(List<Review> reviews) {
     if (reviews.isEmpty) return 0.0;
-    double sum = reviews.fold(0.0, (prev, review) => prev + review.rating);
+    double sum =
+        reviews.fold(0.0, (prev, review) => prev + (review.starRating ?? 0.0));
     return sum / reviews.length;
   }
 
@@ -318,12 +326,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               isLoading: false,
               onPressed: () {
                 if (commentController.text.isNotEmpty) {
-                  provider.addReview(ReviewUIModel(
-                    userName: 'Current User',
-                    userImage: 'assets/images/user-image.png',
-                    rating: rating,
-                    comment: commentController.text,
-                    date: DateTime.now().toIso8601String(),
+                  provider.addReview(Review(
+                    reviewId:
+                        DateTime.now().millisecondsSinceEpoch, // Temporary ID
+                    propertyId: provider.property?.propertyId ?? 0,
+                    description: commentController.text,
+                    starRating: rating,
+                    dateReported: DateTime.now(),
+                    isComplaint: false,
+                    isFlagged: false,
                   ));
                   context.pop();
                 }

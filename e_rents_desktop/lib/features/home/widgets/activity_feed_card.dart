@@ -1,10 +1,11 @@
-import 'package:e_rents_desktop/models/recent_activity.dart';
+// import 'package:e_rents_desktop/models/recent_activity.dart'; // Deprecated model
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class ActivityFeedCard extends StatelessWidget {
-  final List<RecentActivity> activities;
+  // final List<RecentActivity> activities; // Deprecated model
+  final List<dynamic> activities; // Temporary placeholder
   final String title;
 
   const ActivityFeedCard({
@@ -51,61 +52,61 @@ class ActivityFeedCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics:
-                    const NeverScrollableScrollPhysics(), // if embedded in a scrollview
-                itemCount: activities.length,
-                itemBuilder: (context, index) {
-                  final activity = activities[index];
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      child: Icon(
-                        activity.icon,
-                        color: theme.colorScheme.onPrimaryContainer,
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      activity.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: 15,
-                      ),
-                    ),
-                    subtitle:
-                        activity.subtitle != null
-                            ? Text(
-                              activity.subtitle!,
-                              style: theme.textTheme.bodySmall,
-                            )
-                            : null,
-                    trailing: Text(
-                      _formatTimeAgo(activity.date),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    onTap:
-                        activity.onTapRoute != null
-                            ? () {
-                              if (activity.onTapRouteParams != null) {
-                                context.goNamed(
-                                  activity.onTapRoute!,
-                                  pathParameters: activity.onTapRouteParams!,
-                                );
-                              } else {
-                                context.go(activity.onTapRoute!);
-                              }
-                            }
-                            : null,
-                    dense: true,
-                  );
-                },
-                separatorBuilder: (context, index) => const Divider(height: 1),
               ),
+            // else
+            //   ListView.separated(
+            //     shrinkWrap: true,
+            //     physics:
+            //         const NeverScrollableScrollPhysics(), // if embedded in a scrollview
+            //     itemCount: activities.length,
+            //     itemBuilder: (context, index) {
+            //       final activity = activities[index];
+            //       return ListTile(
+            //         leading: CircleAvatar(
+            //           backgroundColor: theme.colorScheme.primaryContainer,
+            //           child: Icon(
+            //             activity.icon,
+            //             color: theme.colorScheme.onPrimaryContainer,
+            //             size: 20,
+            //           ),
+            //         ),
+            //         title: Text(
+            //           activity.title,
+            //           style: theme.textTheme.titleMedium?.copyWith(
+            //             fontSize: 15,
+            //           ),
+            //         ),
+            //         subtitle:
+            //             activity.subtitle != null
+            //                 ? Text(
+            //                   activity.subtitle!,
+            //                   style: theme.textTheme.bodySmall,
+            //                 )
+            //                 : null,
+            //         trailing: Text(
+            //           _formatTimeAgo(activity.date),
+            //           style: theme.textTheme.bodySmall?.copyWith(
+            //             color: Colors.grey[600],
+            //           ),
+            //         ),
+            //         onTap:
+            //             activity.onTapRoute != null
+            //                 ? () {
+            //                   if (activity.onTapRouteParams != null) {
+            //                     context.goNamed(
+            //                       activity.onTapRoute!,
+            //                       pathParameters: activity.onTapRouteParams!,
+            //                     );
+            //                   } else {
+            //                     context.go(activity.onTapRoute!);
+            //                   }
+            //                 }
+            //                 : null,
+            //         dense: true,
+            //       );
+            //     },
+            //     separatorBuilder: (context, index) => const Divider(height: 1),
+            //   ),
           ],
         ),
       ),

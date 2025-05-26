@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_response.dart';
+import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
@@ -50,10 +50,10 @@ class CurrentlyResidingSection extends StatelessWidget {
                   30.0), // Approximate monthly price if possible
           images: activeBooking.propertyImageUrl != null
               ? [
-                  ImageResponse(
+                  ImageModel(
                     imageId: 1, // Placeholder
                     fileName: activeBooking.propertyImageUrl!,
-                    imageData: ByteData(0), // Placeholder
+                    imageData: Uint8List(0), // Placeholder
                     dateUploaded: DateTime.now(),
                   )
                 ]

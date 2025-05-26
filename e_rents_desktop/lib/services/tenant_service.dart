@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/models/tenant_feedback.dart';
+import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
@@ -63,21 +63,18 @@ class TenantService extends ApiService {
     return TenantPreference.fromJson(jsonDecode(response.body));
   }
 
-  Future<List<TenantFeedback>> getTenantFeedbacks(String tenantId) async {
+  Future<List<Review>> getTenantFeedbacks(String tenantId) async {
     final response = await get('/tenants/$tenantId/feedbacks');
     final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => TenantFeedback.fromJson(json)).toList();
+    return data.map((json) => Review.fromJson(json)).toList();
   }
 
-  Future<TenantFeedback> addTenantFeedback(
-    String tenantId,
-    TenantFeedback feedback,
-  ) async {
+  Future<Review> addTenantFeedback(String tenantId, Review feedback) async {
     final response = await post(
       '/tenants/$tenantId/feedbacks',
       feedback.toJson(),
     );
-    return TenantFeedback.fromJson(jsonDecode(response.body));
+    return Review.fromJson(jsonDecode(response.body));
   }
 
   Future<void> recordPropertyOfferedToTenant(

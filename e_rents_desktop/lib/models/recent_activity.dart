@@ -1,3 +1,7 @@
+// DEPRECATED: This should be part of the unified notification system
+// Use the unified Notification model instead
+
+/*
 import 'package:flutter/material.dart';
 
 enum ActivityType { maintenance, message, system }
@@ -23,3 +27,4 @@ class RecentActivity {
     this.onTapRouteParams,
   });
 }
+*/

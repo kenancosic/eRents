@@ -11,7 +11,7 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provi
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
+import 'package:e_rents_desktop/features/maintenance/maintenance_form_screen.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});

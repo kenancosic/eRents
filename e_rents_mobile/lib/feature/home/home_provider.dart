@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/models/filter_model.dart';
+// Removed FilterModel import - using direct parameters instead
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/home_service.dart' as new_service;
 import 'package:e_rents_mobile/feature/home/home_service.dart';
@@ -16,7 +16,14 @@ class HomeProvider extends BaseProvider {
 
   List<Property> _properties = [];
   String? _error;
-  final FilterModel _filter = FilterModel();
+
+  // Filter parameters (replacing FilterModel)
+  String? _city;
+  double? _maxPrice;
+  double? _minPrice;
+  String? _sortBy;
+  bool _sortDescending = false;
+
   final bool _isLoading = false;
 
   HomeProvider(this._newHomeService, this._homeService);
@@ -62,22 +69,42 @@ class HomeProvider extends BaseProvider {
 
   List<Property> get properties => _properties;
   String? get error => _error;
-  FilterModel get filter => _filter;
   bool get isLoading => _isLoading;
+
+  // Getters for filter parameters
+  String? get city => _city;
+  double? get maxPrice => _maxPrice;
+  double? get minPrice => _minPrice;
+  String? get sortBy => _sortBy;
+  bool get sortDescending => _sortDescending;
 
   Future<void> getProperties() async {
     await execute(() async {
-      _properties = await _homeService.getProperties(_filter);
+      // Create filter map for service call
+      final filterParams = {
+        'city': _city,
+        'maxPrice': _maxPrice,
+        'minPrice': _minPrice,
+        'sortBy': _sortBy,
+        'sortDescending': _sortDescending,
+      };
+      _properties = await _homeService.getPropertiesWithFilter(filterParams);
     });
   }
 
   // Update filter and get properties
-  Future<void> filterProperties(FilterModel filter) async {
-    _filter.city = filter.city;
-    _filter.maxPrice = filter.maxPrice;
-    _filter.minPrice = filter.minPrice;
-    _filter.sortBy = filter.sortBy;
-    _filter.sortDescending = filter.sortDescending;
+  Future<void> filterProperties({
+    String? city,
+    double? maxPrice,
+    double? minPrice,
+    String? sortBy,
+    bool? sortDescending,
+  }) async {
+    _city = city;
+    _maxPrice = maxPrice;
+    _minPrice = minPrice;
+    _sortBy = sortBy;
+    _sortDescending = sortDescending ?? false;
 
     await getProperties();
   }
