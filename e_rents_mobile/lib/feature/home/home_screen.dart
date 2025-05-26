@@ -220,12 +220,10 @@ class HomeScreen extends StatelessWidget {
       appBar: appBar,
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
-
               // Currently Residing Section
               const CurrentlyResidingSection(),
               const SizedBox(height: 20),
