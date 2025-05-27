@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.WebApi", "eRents.Web
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "eRents.RabbitMQMicroservice", "eRents.RabbitMQMicroservice\eRents.RabbitMQMicroservice.csproj", "{8C8D4D0D-F51D-4D0C-9F74-1DE70021810D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "eRents.CodeGen", "eRents.CodeGen\eRents.CodeGen.csproj", "{D2A822A5-9573-05C1-B898-DD1E9B71096B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{8C8D4D0D-F51D-4D0C-9F74-1DE70021810D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C8D4D0D-F51D-4D0C-9F74-1DE70021810D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C8D4D0D-F51D-4D0C-9F74-1DE70021810D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2A822A5-9573-05C1-B898-DD1E9B71096B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2A822A5-9573-05C1-B898-DD1E9B71096B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2A822A5-9573-05C1-B898-DD1E9B71096B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2A822A5-9573-05C1-B898-DD1E9B71096B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

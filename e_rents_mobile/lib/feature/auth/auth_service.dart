@@ -9,16 +9,21 @@ class AuthService {
   AuthService(this.apiService, this._storageService);
 
   Future<bool> login(String usernameOrEmail, String password) async {
-    final response = await apiService.post('/Auth/Login', {
-      'usernameOrEmail': usernameOrEmail,
-      'password': password,
-    });
+    try {
+      final response = await apiService.post('/Auth/Login', {
+        'usernameOrEmail': usernameOrEmail,
+        'password': password,
+      });
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      await _storageService.storeToken(data['token']);
-      return true;
-    } else {
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await _storageService.storeToken(data['token']);
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      print('Login error: $e');
       return false;
     }
   }

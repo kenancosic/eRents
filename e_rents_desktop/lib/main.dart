@@ -25,6 +25,8 @@ import 'services/report_service.dart';
 import 'features/reports/providers/reports_provider.dart';
 import 'services/tenant_service.dart';
 import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
+import 'base/error_provider.dart';
+import 'widgets/global_error_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +34,7 @@ void main() async {
 
   // Get base URL from environment
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
+  print('Using API Base URL: $baseUrl');
 
   // Initialize services
   final prefsService = UserPreferencesService();
@@ -50,6 +53,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ErrorProvider()),
         // Authentication related providers
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         Provider.value(value: authService),
@@ -119,6 +123,9 @@ void main() async {
         debugShowCheckedModeBanner: false,
         routerConfig: AppRouter().router,
         theme: appTheme,
+        builder:
+            (context, child) =>
+                Stack(children: [child!, const GlobalErrorDialog()]),
       ),
     ),
   );

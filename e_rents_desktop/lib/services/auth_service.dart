@@ -77,10 +77,18 @@ class AuthService extends ApiService {
     await post('/Auth/ResetPassword', request.toJson());
   }
 
-  Future<User> getMe() async {
-    final response = await get('/Auth/Me', authenticated: true);
-    final jsonResponse = json.decode(response.body);
-    return User.fromJson(jsonResponse);
+  Future<User?> getMe() async {
+    try {
+      final response = await get('/Auth/Me', authenticated: true);
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        return User.fromJson(jsonResponse);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching current user: $e');
+      return null;
+    }
   }
 
   // getHeaders() is inherited from ApiService and will add the auth token.

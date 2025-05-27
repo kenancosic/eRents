@@ -19,6 +19,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'core/base/error_provider.dart';
+import 'core/widgets/global_error_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +42,8 @@ class MyApp extends StatelessWidget {
         ProxyProvider<SecureStorageService, ApiService>(
           update: (_, secureStorageService, __) => ApiService(
             const String.fromEnvironment('baseUrl',
-                defaultValue: 'http://10.0.2.2:4000'),
+                defaultValue:
+                    'http://10.0.2.2:5000'), // Updated to match backend port
             secureStorageService,
           ),
         ),
@@ -87,12 +90,25 @@ class MyApp extends StatelessWidget {
           create: (context) => NavigationProvider(),
         ),
         ChangeNotifierProvider(create: (_) => SavedProvider()),
+        ChangeNotifierProvider(create: (_) => ErrorProvider()),
       ],
-      child: MaterialApp.router(
-        title: 'eRents',
-        theme: appTheme,
-        routerConfig: _appRouter.router, // Use the GoRouter configuration
-        debugShowCheckedModeBanner: false,
+      child: Builder(
+        builder: (context) => Stack(
+          children: [
+            MaterialApp.router(
+              title: 'eRents',
+              theme: appTheme,
+              routerConfig: _appRouter.router,
+              debugShowCheckedModeBanner: false,
+              builder: (context, child) => Stack(
+                children: [
+                  child!,
+                  const GlobalErrorDialog(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
