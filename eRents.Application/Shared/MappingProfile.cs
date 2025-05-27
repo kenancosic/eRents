@@ -44,30 +44,49 @@ namespace eRents.Application.Shared
 
 			// Property mappings
 			CreateMap<Property, PropertyResponse>()
-							 .ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner.Username))
-							 .ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities.Select(a => a.AmenityName)))
+							 .ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : null))
+							 .ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.OwnerId))
+							 .ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities))
 							 .ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null))
-							 .ForMember(dest => dest.Images, opt => opt.MapFrom(src =>
-											 src.Images.Select(i => new ImageResponse
-											 {
-												 ImageId = i.ImageId,
-												 FileName = !string.IsNullOrEmpty(i.FileName) ? i.FileName : $"Untitled ({i.ImageId})",
-												 ImageData = i.ImageData,
-												 DateUploaded = i.DateUploaded ?? DateTime.Now
-											 }).ToList()))
-							 // Updated to use AddressDetail.GeoRegion
-							 .ForMember(dest => dest.CityName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.City : null))
-							 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.State : null))
-							 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? src.AddressDetail.GeoRegion.Country : null))
-							 .ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Currency))
+							 .ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
+							 .ForMember(dest => dest.TypeId, opt => opt.MapFrom(src => src.PropertyTypeId))
+							 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
+							 .ForMember(dest => dest.StatusId, opt => opt.MapFrom(src => src.StatusId))
+							 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status != null ? src.Status.StatusName : null))
+							 .ForMember(dest => dest.RentingTypeId, opt => opt.MapFrom(src => src.RentingTypeId))
+							 .ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
+							 .ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
+							 .ForMember(dest => dest.GeoRegion, opt => opt.MapFrom(src => src.AddressDetail != null ? src.AddressDetail.GeoRegion : null))
+							 .ForMember(dest => dest.DateAdded, opt => opt.MapFrom(src => src.DateAdded))
+							 .ReverseMap();
+
+			CreateMap<Property, PropertySummaryDto>()
+							 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
+							 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status != null ? src.Status.StatusName : null))
+							 .ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
+							 .ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.FileName))
+							 .ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.ImageId ?? src.Images.FirstOrDefault()?.ImageId))
+							 .ForMember(dest => dest.CoverImageData, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.ImageData ?? src.Images.FirstOrDefault()?.ImageData))
 							 .ReverseMap();
 
 			CreateMap<PropertyInsertRequest, Property>()
 							.ForMember(dest => dest.Amenities, opt => opt.Ignore())
-							.ForMember(dest => dest.Images, opt => opt.Ignore());
+							.ForMember(dest => dest.Images, opt => opt.Ignore())
+							.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
+							.ForMember(dest => dest.PropertyTypeId, opt => opt.MapFrom(src => src.TypeId))
+							.ForMember(dest => dest.StatusId, opt => opt.MapFrom(src => src.StatusId))
+							.ForMember(dest => dest.RentingTypeId, opt => opt.MapFrom(src => src.RentingTypeId));
+
 			CreateMap<PropertyUpdateRequest, Property>()
 							.ForMember(dest => dest.Amenities, opt => opt.Ignore())
-							.ForMember(dest => dest.Images, opt => opt.Ignore());
+							.ForMember(dest => dest.Images, opt => opt.Ignore())
+							.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
+							.ForMember(dest => dest.PropertyTypeId, opt => opt.MapFrom(src => src.TypeId))
+							.ForMember(dest => dest.StatusId, opt => opt.MapFrom(src => src.StatusId))
+							.ForMember(dest => dest.RentingTypeId, opt => opt.MapFrom(src => src.RentingTypeId));
+
+			CreateMap<AddressDetail, AddressDetailDto>().ReverseMap();
+			CreateMap<GeoRegion, GeoRegionDto>().ReverseMap();
 
 			// Review mappings
 			CreateMap<Review, ReviewResponse>()
@@ -82,7 +101,8 @@ namespace eRents.Application.Shared
 								 .ForMember(dest => dest.Address, opt => opt.MapFrom(src => 
 									 src.AddressDetail != null && src.AddressDetail.GeoRegion != null ? 
 									 $"{src.AddressDetail.StreetLine1}, {src.AddressDetail.GeoRegion.City}, {src.AddressDetail.GeoRegion.State}, {src.AddressDetail.GeoRegion.Country}" : string.Empty))
-								 .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfilePicture != null ? Convert.ToBase64String(src.ProfilePicture) : null))
+								 .ForMember(dest => dest.ProfilePicture, opt => opt.MapFrom(src => src.ProfilePicture))
+								 .ForMember(dest => dest.DateOfBirth, opt => opt.MapFrom(src => src.DateOfBirth))
 								 .ReverseMap()
 								 .ForMember(dest => dest.AddressDetail, opt => opt.Ignore())
 								 .ForMember(dest => dest.UserTypeNavigation, opt => opt.Ignore());
@@ -112,6 +132,14 @@ namespace eRents.Application.Shared
 					// Ignore AddressDetailId for now; will be handled in service layer
 					.ForMember(dest => dest.AddressDetailId, opt => opt.Ignore()) 
 					.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); 
+
+			// MaintenanceIssue mappings
+			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
+					.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
+					.ReverseMap();
+
+			CreateMap<MaintenanceIssueRequest, MaintenanceIssue>()
+					.ForMember(dest => dest.Images, opt => opt.Ignore());
 		}
 	}
 }

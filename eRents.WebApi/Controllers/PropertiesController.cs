@@ -6,6 +6,7 @@ using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace eRents.WebApi.Controllers
 {
@@ -49,6 +50,27 @@ namespace eRents.WebApi.Controllers
 		{
 			var recommendedProperties = await _propertyService.RecommendPropertiesAsync(userId);
 			return Ok(recommendedProperties);
+		}
+
+		[HttpPost("{propertyId}/images")]
+		public async Task<IActionResult> UploadImage(int propertyId, [FromForm] ImageUploadRequest request)
+		{
+			var imageResponse = await _propertyService.UploadImageAsync(propertyId, request);
+			return Ok(imageResponse);
+		}
+
+		[HttpGet("{propertyId}/availability")]
+		public async Task<IActionResult> GetAvailability(int propertyId, [FromQuery] DateTime? start, [FromQuery] DateTime? end)
+		{
+			var availability = await _propertyService.GetAvailabilityAsync(propertyId, start, end);
+			return Ok(availability);
+		}
+
+		[HttpPut("{propertyId}/status")]
+		public async Task<IActionResult> UpdateStatus(int propertyId, [FromBody] PropertyStatusUpdateRequest request)
+		{
+			await _propertyService.UpdateStatusAsync(propertyId, request.StatusId);
+			return NoContent();
 		}
 
 		// Additional endpoints related to properties can be added here

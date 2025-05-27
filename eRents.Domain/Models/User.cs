@@ -13,7 +13,7 @@ public partial class User
 
     public string? PhoneNumber { get; set; }
 
-    public DateOnly? DateOfBirth { get; set; }
+    public DateOnly DateOfBirth { get; set; }
 
     public string? UserType { get; set; }
 

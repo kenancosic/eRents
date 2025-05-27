@@ -27,21 +27,50 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()));
 builder.Services.AddLogging();
 
+// Add CORS for frontend applications
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("AllowFrontends", policy =>
+	{
+		if (builder.Environment.IsDevelopment())
+		{
+			policy.AllowAnyOrigin()
+				  .AllowAnyMethod()
+				  .AllowAnyHeader();
+		}
+		else
+		{
+			policy.WithOrigins(
+				"http://localhost:3000",   // Desktop app
+				"http://localhost:4000",   // Mobile app  
+				"http://10.0.2.2:5000"     // Android emulator
+			)
+			.AllowAnyMethod()
+			.AllowAnyHeader()
+			.AllowCredentials();
+		}
+	});
+});
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-	c.AddSecurityDefinition("basicAuth", new OpenApiSecurityScheme
+	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 	{
 		Type = SecuritySchemeType.Http,
-		Scheme = "basic"
+		Scheme = "bearer",
+		BearerFormat = "JWT",
+		In = ParameterLocation.Header,
+		Name = "Authorization",
+		Description = "Enter JWT token"
 	});
 	c.AddSecurityRequirement(new OpenApiSecurityRequirement
 		{
 				{
 						new OpenApiSecurityScheme
 						{
-								Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "basicAuth"}
+								Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer"}
 						},
 						new string[]{}
 				}
@@ -57,6 +86,7 @@ builder.Services.AddTransient<IBookingRepository, BookingRepository>();
 builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IImageRepository, ImageRepository>();
 builder.Services.AddTransient<IMessageRepository, MessageRepository>();
+builder.Services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
 
 // Register UserTypeRepository or BaseRepository<UserType>
 // If you have a specific UserTypeRepository:
@@ -67,6 +97,7 @@ builder.Services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType
 // Register the services
 builder.Services.AddTransient<IUserService, UserService>();
 builder.Services.AddTransient<IPropertyService, PropertyService>();
+builder.Services.AddTransient<IMaintenanceService, MaintenanceService>();
 builder.Services.AddTransient<IBookingService, BookingService>();
 builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
@@ -148,6 +179,9 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// Enable CORS
+app.UseCors("AllowFrontends");
 
 app.UseAuthentication();
 app.UseAuthorization();

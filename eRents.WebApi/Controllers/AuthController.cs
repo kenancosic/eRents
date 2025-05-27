@@ -82,11 +82,13 @@ namespace eRents.WebApi.Controllers
 				var token = tokenHandler.CreateToken(tokenDescriptor);
 				var tokenString = tokenHandler.WriteToken(token);
 
-				return Ok(new
+				var loginResponse = new LoginResponse
 				{
 					Token = tokenString,
-					Expiration = token.ValidTo
-				});
+					Expiration = token.ValidTo,
+					User = userResponse
+				};
+				return Ok(loginResponse);
 			}
 
 			return Unauthorized("Invalid credentials");
@@ -129,6 +131,25 @@ namespace eRents.WebApi.Controllers
 		{
 			await _userService.ResetPasswordAsync(request);
 			return Ok("Your password has been successfully reset.");
+		}
+
+		[HttpGet("Me")]
+		[Authorize]
+		public async Task<IActionResult> GetCurrentUser()
+		{
+			var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+			{
+				return Unauthorized("User ID claim is missing or invalid.");
+			}
+
+			var userResponse = await _userService.GetByIdAsync(userId);
+			if (userResponse == null)
+			{
+				return NotFound("User not found.");
+			}
+
+			return Ok(userResponse);
 		}
 	}
 }

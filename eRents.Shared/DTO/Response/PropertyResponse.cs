@@ -11,22 +11,42 @@ namespace eRents.Shared.DTO.Response
 		public string Description { get; set; }
 		public decimal Price { get; set; }
 		public string Currency { get; set; } = "BAM";
-		public string Address { get; set; }
-		public DateTime DateListed { get; set; }
-		public string? CityName { get; set; }  // City is now retrieved from the Location entity
-		public string? StateName { get; set; } // State is now retrieved from the Location entity
-		public string? CountryName { get; set; } // Country is now retrieved from the Location entity
+		public int? TypeId { get; set; }
+		public string? Type { get; set; }
+		public int? StatusId { get; set; }
+		public string? Status { get; set; }
+		public int? RentingTypeId { get; set; }
+		public string? RentingType { get; set; }
+		public int? OwnerId { get; set; }
 		public string? OwnerName { get; set; }
-		public List<string>? Amenities { get; set; }
+		public AddressDetailDto? AddressDetail { get; set; }
+		public GeoRegionDto? GeoRegion { get; set; }
+		public List<AmenityResponse>? Amenities { get; set; }
 		public double? AverageRating { get; set; }
 		public List<ImageResponse> Images { get; set; }  // List of images related to the property
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }
+		public decimal? DailyRate { get; set; }
+		public int? MinimumStayDays { get; set; }
+		public DateTime? DateAdded { get; set; }
+	}
 
-		public PropertyResponse()
-		{
-			Images = new List<ImageResponse>();
-		}
+	public class AddressDetailDto
+	{
+		public string StreetLine1 { get; set; }
+		public string? StreetLine2 { get; set; }
+		public int? GeoRegionId { get; set; }
+		public GeoRegionDto? GeoRegion { get; set; }
+		public decimal? Latitude { get; set; }
+		public decimal? Longitude { get; set; }
+	}
+
+	public class GeoRegionDto
+	{
+		public string City { get; set; }
+		public string? State { get; set; }
+		public string Country { get; set; }
+		public string? PostalCode { get; set; }
 	}
 }

@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using System.Text.Json;
+using eRents.Application.Exceptions;
 
 namespace eRents.WebApi
 {
@@ -29,15 +31,27 @@ namespace eRents.WebApi
 		private static Task HandleExceptionAsync(HttpContext context, Exception exception)
 		{
 			context.Response.ContentType = "application/json";
-			context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+			int statusCode = (int)HttpStatusCode.InternalServerError;
+			string message = "Internal Server Error from the custom middleware.";
+			string detailedMessage = exception.Message;
 
-			return context.Response.WriteAsync(new ErrorResponse
+			if (exception is ValidationException)
 			{
-				StatusCode = context.Response.StatusCode,
-				Message = "Internal Server Error from the custom middleware.",
-				DetailedMessage = exception.Message // Optional: Include detailed error message
-			}.ToString());
+				statusCode = (int)HttpStatusCode.BadRequest;
+				message = "Validation failed";
+				detailedMessage = exception.Message;
+			}
+
+			context.Response.StatusCode = statusCode;
+
+			var errorResponse = new ErrorResponse
+			{
+				StatusCode = statusCode,
+				Message = message,
+				DetailedMessage = detailedMessage
+			};
+
+			return context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse));
 		}
 	}
-
 }

@@ -22,5 +22,13 @@ namespace eRents.Application.Service.PropertyService
         // Task<PropertyResponse> InsertAsync(PropertyInsertRequest insert);
         // Task<PropertyResponse> UpdateAsync(string id, PropertyUpdateRequest update);
         // Task<PropertyResponse> DeleteAsync(string id);
+
+        Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request);
+        Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
+        Task UpdateStatusAsync(int propertyId, int statusId);
+        Task<List<AmenityResponse>> GetAmenitiesAsync();
+        Task<AmenityResponse> AddAmenityAsync(AmenityRequest request);
+        Task<AmenityResponse> UpdateAmenityAsync(int id, AmenityRequest request);
+        Task DeleteAmenityAsync(int id);
     }
 }

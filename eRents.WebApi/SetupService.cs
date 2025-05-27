@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Data;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace eRents.WebApi
@@ -51,7 +53,17 @@ namespace eRents.WebApi
 
 		private async Task SeedReferenceDataAsync(ERentsContext context)
 		{
-			// UserTypes
+			// Clear any existing IDENTITY_INSERT settings first (safety measure)
+			try 
+			{
+				await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes OFF");
+			}
+			catch { } // Ignore if it's already off or table doesn't exist
+			
+			// Enable IDENTITY_INSERT for UserTypes to set explicit IDs
+			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes ON");
+			
+			// UserTypes - with explicit IDs for consistency
 			var userTypes = new[]
 			{
 				new UserType { UserTypeId = 1, TypeName = "Tenant" },
@@ -59,6 +71,10 @@ namespace eRents.WebApi
 				new UserType { UserTypeId = 3, TypeName = "Admin" }
 			};
 			context.UserTypes.AddRange(userTypes);
+			await context.SaveChangesAsync();
+			
+			// Disable IDENTITY_INSERT for UserTypes
+			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes OFF");
 
 			// PropertyTypes
 			var propertyTypes = new[]
@@ -66,16 +82,21 @@ namespace eRents.WebApi
 				new PropertyType { TypeName = "Apartment" },
 				new PropertyType { TypeName = "House" },
 				new PropertyType { TypeName = "Condo" },
-				new PropertyType { TypeName = "Villa" }
+				new PropertyType { TypeName = "Villa" },
+				new PropertyType { TypeName = "Studio" },
+				new PropertyType { TypeName = "Townhouse" }
 			};
 			context.PropertyTypes.AddRange(propertyTypes);
 
-			// RentingTypes
+			// RentingTypes - Updated based on model alignment requirements
 			var rentingTypes = new[]
 			{
 				new RentingType { TypeName = "Long-term" },
 				new RentingType { TypeName = "Short-term" },
-				new RentingType { TypeName = "Vacation" }
+				new RentingType { TypeName = "Vacation" },
+				new RentingType { TypeName = "Daily" },
+				new RentingType { TypeName = "Monthly" },
+				new RentingType { TypeName = "Both" }
 			};
 			context.RentingTypes.AddRange(rentingTypes);
 
@@ -86,7 +107,9 @@ namespace eRents.WebApi
 				new BookingStatus { StatusName = "Confirmed" },
 				new BookingStatus { StatusName = "Cancelled" },
 				new BookingStatus { StatusName = "Completed" },
-				new BookingStatus { StatusName = "Failed" }
+				new BookingStatus { StatusName = "Failed" },
+				new BookingStatus { StatusName = "Upcoming" },
+				new BookingStatus { StatusName = "Active" }
 			};
 			context.BookingStatuses.AddRange(bookingStatuses);
 
@@ -95,7 +118,9 @@ namespace eRents.WebApi
 			{
 				new IssuePriority { PriorityName = "Low" },
 				new IssuePriority { PriorityName = "Medium" },
-				new IssuePriority { PriorityName = "High" }
+				new IssuePriority { PriorityName = "High" },
+				new IssuePriority { PriorityName = "Emergency" },
+				new IssuePriority { PriorityName = "Urgent" }
 			};
 			context.IssuePriorities.AddRange(issuePriorities);
 
@@ -105,7 +130,8 @@ namespace eRents.WebApi
 				new IssueStatus { StatusName = "Open" },
 				new IssueStatus { StatusName = "In Progress" },
 				new IssueStatus { StatusName = "Resolved" },
-				new IssueStatus { StatusName = "Closed" }
+				new IssueStatus { StatusName = "Closed" },
+				new IssueStatus { StatusName = "Reported" }
 			};
 			context.IssueStatuses.AddRange(issueStatuses);
 
@@ -126,7 +152,12 @@ namespace eRents.WebApi
 				new Amenity { AmenityName = "Air Conditioning" },
 				new Amenity { AmenityName = "Parking" },
 				new Amenity { AmenityName = "Heating" },
-				new Amenity { AmenityName = "Balcony" }
+				new Amenity { AmenityName = "Balcony" },
+				new Amenity { AmenityName = "Pool" },
+				new Amenity { AmenityName = "Gym" },
+				new Amenity { AmenityName = "Kitchen" },
+				new Amenity { AmenityName = "Laundry" },
+				new Amenity { AmenityName = "Pet Friendly" }
 			};
 			context.Amenities.AddRange(amenities);
 
@@ -138,6 +169,8 @@ namespace eRents.WebApi
 				new GeoRegion { City = "Mostar", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "88000" },
 				new GeoRegion { City = "Tuzla", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "75000" },
 				new GeoRegion { City = "Zenica", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "72000" },
+				new GeoRegion { City = "New York", State = "New York", Country = "United States", PostalCode = "10001" },
+				new GeoRegion { City = "Los Angeles", State = "California", Country = "United States", PostalCode = "90001" }
 			};
 			context.GeoRegions.AddRange(geoRegions);
 
@@ -155,33 +188,67 @@ namespace eRents.WebApi
 				new AddressDetail { GeoRegionId = dbGeoRegions[2].GeoRegionId, StreetLine1 = "Kujundžiluk 5", Latitude = 43.3438m, Longitude = 17.8078m },
 				new AddressDetail { GeoRegionId = dbGeoRegions[3].GeoRegionId, StreetLine1 = "Hasana Kikića 10", Latitude = 44.5384m, Longitude = 18.6739m },
 				new AddressDetail { GeoRegionId = dbGeoRegions[4].GeoRegionId, StreetLine1 = "Trg Alije Izetbegovića 1", Latitude = 44.2039m, Longitude = 17.9077m },
+				new AddressDetail { GeoRegionId = dbGeoRegions[5].GeoRegionId, StreetLine1 = "123 Test Street", Latitude = 40.7128m, Longitude = -74.0060m },
+				new AddressDetail { GeoRegionId = dbGeoRegions[6].GeoRegionId, StreetLine1 = "456 Main Avenue", Latitude = 34.0522m, Longitude = -118.2437m }
 			};
 			context.AddressDetails.AddRange(addressDetails);
 			await context.SaveChangesAsync();
 
 			// Users
 			var dbUserTypes = await context.UserTypes.ToListAsync();
+			var dbAddressDetails = await context.AddressDetails.ToListAsync();
+
+			// Generate password hashes for test users
+			var landlordSalt = GenerateSalt();
+			var landlordHash = GenerateHash(landlordSalt, "Landlord123!");
+			var tenantSalt = GenerateSalt();
+			var tenantHash = GenerateHash(tenantSalt, "Tenant123!");
+
+			// Generate common password for existing users (Test123!)
+			var commonSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995");
+			var commonHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497");
+
 			var users = new[]
 			{
-				new User { Username = "amerhasic", Email = "amer.hasic@example.ba", PasswordHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497"), PasswordSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995"), PhoneNumber = "38761123123", DateOfBirth = new DateOnly(1990, 5, 15), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Amer", LastName = "Hasić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true },
-				new User { Username = "lejlazukic", Email = "lejla.zukic@example.ba", PasswordHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497"), PasswordSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995"), PhoneNumber = "38762321321", DateOfBirth = new DateOnly(1988, 11, 20), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Lejla", LastName = "Zukić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true },
-				new User { Username = "adnanSA", Email = "adnan.sa@example.ba", PasswordHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497"), PasswordSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995"), PhoneNumber = "38761456456", DateOfBirth = new DateOnly(1985, 4, 15), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Adnan", LastName = "Sarajlić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true },
-				new User { Username = "ivanabL", Email = "ivana.bl@example.ba", PasswordHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497"), PasswordSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995"), PhoneNumber = "38765789789", DateOfBirth = new DateOnly(1992, 9, 25), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Ivana", LastName = "Babić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true },
+				// Existing users with common password
+				new User { Username = "amerhasic", Email = "amer.hasic@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38761123123", DateOfBirth = new DateOnly(1990, 5, 15), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Amer", LastName = "Hasić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[0].AddressDetailId },
+				new User { Username = "lejlazukic", Email = "lejla.zukic@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38762321321", DateOfBirth = new DateOnly(1988, 11, 20), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Lejla", LastName = "Zukić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[1].AddressDetailId },
+				new User { Username = "adnanSA", Email = "adnan.sa@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38761456456", DateOfBirth = new DateOnly(1985, 4, 15), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Adnan", LastName = "Sarajlić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[2].AddressDetailId },
+				new User { Username = "ivanabL", Email = "ivana.bl@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38765789789", DateOfBirth = new DateOnly(1992, 9, 25), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Ivana", LastName = "Babić", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[3].AddressDetailId },
+				
+				// New test users with specific passwords
+				new User { Username = "testLandlord", Email = "testLandlord@example.com", PasswordHash = landlordHash, PasswordSalt = landlordSalt, PhoneNumber = "1234567890", DateOfBirth = new DateOnly(1985, 1, 1), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Test", LastName = "Landlord", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[5].AddressDetailId },
+				new User { Username = "testUser", Email = "testUser@example.com", PasswordHash = tenantHash, PasswordSalt = tenantSalt, PhoneNumber = "0987654321", DateOfBirth = new DateOnly(1990, 6, 15), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Test", LastName = "User", CreatedDate = DateTime.Now, UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[6].AddressDetailId },
+				
+				// Additional diverse users
+				new User { Username = "marianovac", Email = "mario.novac@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38761789789", DateOfBirth = new DateOnly(1987, 3, 12), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId, Name = "Mario", LastName = "Novac", CreatedDate = DateTime.Now.AddDays(-90), UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[1].AddressDetailId },
+				new User { Username = "anamaric", Email = "ana.maric@example.ba", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38762234567", DateOfBirth = new DateOnly(1993, 7, 8), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Landlord").UserTypeId, Name = "Ana", LastName = "Marić", CreatedDate = DateTime.Now.AddDays(-120), UpdatedDate = DateTime.Now, IsPublic = true, AddressDetailId = dbAddressDetails[3].AddressDetailId },
+				new User { Username = "petar_admin", Email = "petar.admin@erents.com", PasswordHash = commonHash, PasswordSalt = commonSalt, PhoneNumber = "38761555000", DateOfBirth = new DateOnly(1980, 12, 5), UserTypeId = dbUserTypes.First(ut => ut.TypeName == "Admin").UserTypeId, Name = "Petar", LastName = "Administrator", CreatedDate = DateTime.Now.AddDays(-365), UpdatedDate = DateTime.Now, IsPublic = false, AddressDetailId = dbAddressDetails[0].AddressDetailId }
 			};
 			context.Users.AddRange(users);
 			await context.SaveChangesAsync();
 
 			// Properties
-			var dbAddressDetails = await context.AddressDetails.ToListAsync();
 			var dbUsers = await context.Users.ToListAsync();
 			var dbPropertyTypes = await context.PropertyTypes.ToListAsync();
 			var dbRentingTypes = await context.RentingTypes.ToListAsync();
 			var properties = new[]
 			{
+				// Existing properties
 				new Property { Name = "Stan u Centru Sarajeva", Description = "Prostran stan na odličnoj lokaciji u Sarajevu.", Price = 800.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[0].AddressDetailId, Bedrooms = 2, Bathrooms = 1, Area = 75.5m },
 				new Property { Name = "Kuća s Pogledom u Banjaluci", Description = "Kuća sa prelijepim pogledom na grad.", Price = 1200.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[1].AddressDetailId, Bedrooms = 3, Bathrooms = 2, Area = 120.0m },
 				new Property { Name = "Apartman Stari Most Mostar", Description = "Moderan apartman blizu Starog Mosta.", Price = 600.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Short-term").RentingTypeId, AddressDetailId = dbAddressDetails[2].AddressDetailId, Bedrooms = 1, Bathrooms = 1, Area = 55.0m },
-				new Property { Name = "Porodična Kuća Tuzla", Description = "Idealna kuća za porodicu u mirnom dijelu Tuzle.", Price = 950.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[3].AddressDetailId, Bedrooms = 4, Bathrooms = 2, Area = 150.0m }
+				new Property { Name = "Porodična Kuća Tuzla", Description = "Idealna kuća za porodicu u mirnom dijelu Tuzle.", Price = 950.00m, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Long-term").RentingTypeId, AddressDetailId = dbAddressDetails[3].AddressDetailId, Bedrooms = 4, Bathrooms = 2, Area = 150.0m },
+				
+				// New test properties with daily rates and minimum stays
+				new Property { Name = "Test Daily Rental Apartment", Description = "Perfect for short stays in the city center.", Price = 1500.00m, DailyRate = 75.00m, MinimumStayDays = 3, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Daily").RentingTypeId, AddressDetailId = dbAddressDetails[5].AddressDetailId, Bedrooms = 2, Bathrooms = 1, Area = 85.0m },
+				new Property { Name = "Test Monthly Lease House", Description = "Spacious house available for monthly lease with flexible terms.", Price = 2500.00m, DailyRate = 120.00m, MinimumStayDays = 30, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now, PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Both").RentingTypeId, AddressDetailId = dbAddressDetails[6].AddressDetailId, Bedrooms = 3, Bathrooms = 2, Area = 140.0m },
+				
+				// Additional diverse properties
+				new Property { Name = "Luxury Villa Zenica", Description = "Stunning villa with garden and pool, perfect for families.", Price = 2200.00m, DailyRate = 180.00m, MinimumStayDays = 7, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "lejlazukic").UserId, DateAdded = DateTime.Now.AddDays(-30), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Villa").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Both").RentingTypeId, AddressDetailId = dbAddressDetails[4].AddressDetailId, Bedrooms = 5, Bathrooms = 3, Area = 280.0m },
+				new Property { Name = "Modern Studio Downtown", Description = "Compact modern studio in the heart of the city.", Price = 450.00m, DailyRate = 35.00m, MinimumStayDays = 2, Currency = "BAM", OwnerId = dbUsers.First(u => u.Username == "ivanabL").UserId, DateAdded = DateTime.Now.AddDays(-15), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Studio").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Daily").RentingTypeId, AddressDetailId = dbAddressDetails[0].AddressDetailId, Bedrooms = 0, Bathrooms = 1, Area = 35.0m },
+				new Property { Name = "Penthouse Manhattan Style", Description = "Exclusive penthouse with panoramic city views.", Price = 4500.00m, DailyRate = 350.00m, MinimumStayDays = 5, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now.AddDays(-45), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Condo").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Vacation").RentingTypeId, AddressDetailId = dbAddressDetails[5].AddressDetailId, Bedrooms = 3, Bathrooms = 3, Area = 220.0m },
+				new Property { Name = "Cozy Townhouse LA", Description = "Beautiful townhouse in a quiet neighborhood with great amenities.", Price = 3200.00m, DailyRate = 125.00m, MinimumStayDays = 14, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now.AddDays(-60), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Townhouse").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Monthly").RentingTypeId, AddressDetailId = dbAddressDetails[6].AddressDetailId, Bedrooms = 4, Bathrooms = 2, Area = 180.0m }
 			};
 			context.Properties.AddRange(properties);
 			await context.SaveChangesAsync();
@@ -191,6 +258,7 @@ namespace eRents.WebApi
 			var dbAmenities = await context.Amenities.ToListAsync();
 			var propertyAmenities = new List<PropertyAmenity>
 			{
+				// Existing property amenities
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Balcony").AmenityId },
@@ -201,17 +269,65 @@ namespace eRents.WebApi
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Porodična Kuća Tuzla").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
 				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Porodična Kuća Tuzla").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Parking").AmenityId },
-				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Porodična Kuća Tuzla").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Balcony").AmenityId }
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Porodična Kuća Tuzla").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Balcony").AmenityId },
+				
+				// New test property amenities
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Kitchen").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Parking").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Pool").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Gym").AmenityId },
+				
+				// Additional diverse property amenities
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Pool").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Parking").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Balcony").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Gym").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Balcony").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Parking").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Laundry").AmenityId },
+				new PropertyAmenity { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, AmenityId = dbAmenities.First(a => a.AmenityName == "Pet Friendly").AmenityId }
 			};
 			context.PropertyAmenities.AddRange(propertyAmenities);
+			await context.SaveChangesAsync();
+
+			// Property Availability
+			var propertyAvailabilities = new[]
+			{
+				// Test property availability blocks
+				new PropertyAvailability { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, StartDate = new DateOnly(2024, 12, 24), EndDate = new DateOnly(2024, 12, 26), IsAvailable = false, Reason = "booked" },
+				new PropertyAvailability { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, StartDate = new DateOnly(2025, 1, 15), EndDate = new DateOnly(2025, 1, 17), IsAvailable = false, Reason = "maintenance" },
+				new PropertyAvailability { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, StartDate = new DateOnly(2025, 2, 1), EndDate = new DateOnly(2025, 2, 28), IsAvailable = false, Reason = "booked" }
+			};
+			context.PropertyAvailabilities.AddRange(propertyAvailabilities);
 			await context.SaveChangesAsync();
 
 			// Bookings
 			var dbBookingStatuses = await context.BookingStatuses.ToListAsync();
 			var bookings = new[]
 			{
+				// Existing bookings
 				new Booking { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, UserId = dbUsers.First(u => u.Username == "amerhasic").UserId, StartDate = new DateOnly(2024, 9, 1), EndDate = new DateOnly(2024, 9, 10), TotalPrice = 250.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Confirmed").BookingStatusId },
-				new Booking { PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, StartDate = new DateOnly(2024, 10, 1), EndDate = new DateOnly(2024, 10, 5), TotalPrice = 100.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Pending").BookingStatusId }
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, StartDate = new DateOnly(2024, 10, 1), EndDate = new DateOnly(2024, 10, 5), TotalPrice = 100.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Pending").BookingStatusId },
+				
+				// New test bookings
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, UserId = dbUsers.First(u => u.Username == "testUser").UserId, StartDate = new DateOnly(2024, 12, 24), EndDate = new DateOnly(2024, 12, 26), MinimumStayEndDate = new DateOnly(2024, 12, 27), TotalPrice = 225.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Upcoming").BookingStatusId },
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, UserId = dbUsers.First(u => u.Username == "testUser").UserId, StartDate = new DateOnly(2025, 2, 1), EndDate = new DateOnly(2025, 2, 28), MinimumStayEndDate = new DateOnly(2025, 3, 2), TotalPrice = 2500.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Confirmed").BookingStatusId },
+				
+				// Additional diverse bookings
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, UserId = dbUsers.First(u => u.Username == "marianovac").UserId, StartDate = new DateOnly(2024, 7, 15), EndDate = new DateOnly(2024, 7, 22), MinimumStayEndDate = new DateOnly(2024, 7, 22), TotalPrice = 1540.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-120)), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Completed").BookingStatusId },
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, UserId = dbUsers.First(u => u.Username == "amerhasic").UserId, StartDate = new DateOnly(2024, 8, 5), EndDate = new DateOnly(2024, 8, 12), MinimumStayEndDate = new DateOnly(2024, 8, 7), TotalPrice = 315.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-80)), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Completed").BookingStatusId },
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, UserId = dbUsers.First(u => u.Username == "marianovac").UserId, StartDate = new DateOnly(2025, 1, 10), EndDate = new DateOnly(2025, 1, 15), MinimumStayEndDate = new DateOnly(2025, 1, 15), TotalPrice = 1750.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-20)), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Active").BookingStatusId },
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, StartDate = new DateOnly(2024, 11, 1), EndDate = new DateOnly(2024, 11, 15), MinimumStayEndDate = new DateOnly(2024, 11, 15), TotalPrice = 1875.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-35)), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Completed").BookingStatusId },
+				new Booking { PropertyId = dbProperties.First(p => p.Name == "Kuća s Pogledom u Banjaluci").PropertyId, UserId = dbUsers.First(u => u.Username == "marianovac").UserId, StartDate = new DateOnly(2024, 6, 1), EndDate = new DateOnly(2024, 8, 31), TotalPrice = 3600.00m, BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-150)), BookingStatusId = dbBookingStatuses.First(bs => bs.StatusName == "Completed").BookingStatusId }
 			};
 			context.Bookings.AddRange(bookings);
 			await context.SaveChangesAsync();
@@ -219,25 +335,141 @@ namespace eRents.WebApi
 			// Tenants
 			var tenants = new[]
 			{
+				// Existing tenants
 				new Tenant { UserId = dbUsers.First(u => u.Username == "amerhasic").UserId, PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, LeaseStartDate = new DateOnly(2023, 1, 1), TenantStatus = "Active" },
-				new Tenant { UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, LeaseStartDate = new DateOnly(2023, 2, 1), TenantStatus = "Active" }
+				new Tenant { UserId = dbUsers.First(u => u.Username == "adnanSA").UserId, PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, LeaseStartDate = new DateOnly(2023, 2, 1), TenantStatus = "Active" },
+				
+				// New test tenant
+				new Tenant { UserId = dbUsers.First(u => u.Username == "testUser").UserId, PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, LeaseStartDate = new DateOnly(2025, 2, 1), TenantStatus = "Pending" }
 			};
 			context.Tenants.AddRange(tenants);
 			await context.SaveChangesAsync();
 
-			// Add sample property images
+			// Tenant Preferences
+			var tenantPreferences = new[]
+			{
+				new TenantPreference { UserId = dbUsers.First(u => u.Username == "testUser").UserId, SearchStartDate = DateTime.Now.AddDays(30), SearchEndDate = DateTime.Now.AddDays(90), MinPrice = 500m, MaxPrice = 2000m, City = "New York", Description = "Looking for a modern apartment with good transportation links", IsActive = true }
+			};
+			context.TenantPreferences.AddRange(tenantPreferences);
+			await context.SaveChangesAsync();
+
+			// Maintenance Issues
+			var dbIssuePriorities = await context.IssuePriorities.ToListAsync();
+			var dbIssueStatuses = await context.IssueStatuses.ToListAsync();
+			var maintenanceIssues = new[]
+			{
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, Title = "Leaky Faucet in Kitchen", Description = "The kitchen faucet has been dripping for a few days", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Open").StatusId, CreatedAt = DateTime.Now, ReportedByUserId = dbUsers.First(u => u.Username == "testUser").UserId, Category = "Plumbing", RequiresInspection = true, IsTenantComplaint = true },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, Title = "Air Conditioning Not Working", Description = "AC unit not responding to remote control", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "High").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "In Progress").StatusId, CreatedAt = DateTime.Now.AddDays(-2), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "HVAC", RequiresInspection = false, IsTenantComplaint = false },
+				
+				// Additional diverse maintenance issues
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, Title = "Pool Filter Needs Replacement", Description = "Pool water is getting cloudy, filter system requires maintenance", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Reported").StatusId, CreatedAt = DateTime.Now.AddDays(-7), ReportedByUserId = dbUsers.First(u => u.Username == "lejlazukic").UserId, Category = "Pool Maintenance", RequiresInspection = true, IsTenantComplaint = false },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, Title = "Elevator Making Unusual Noises", Description = "Elevator is operational but making grinding sounds between floors 15-16", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Urgent").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "In Progress").StatusId, CreatedAt = DateTime.Now.AddDays(-3), ReportedByUserId = dbUsers.First(u => u.Username == "marianovac").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Mechanical", RequiresInspection = true, IsTenantComplaint = true },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, Title = "Bathroom Light Bulb Out", Description = "Main bathroom light not working, likely just needs bulb replacement", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Resolved").StatusId, CreatedAt = DateTime.Now.AddDays(-14), ResolvedAt = DateTime.Now.AddDays(-12), ReportedByUserId = dbUsers.First(u => u.Username == "amerhasic").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "ivanabL").UserId, Category = "Electrical", RequiresInspection = false, IsTenantComplaint = true, Cost = 15.50m, ResolutionNotes = "Replaced LED bulb, tested all bathroom fixtures" },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, Title = "Garden Sprinkler System Malfunction", Description = "Automatic sprinkler system not activating properly in back yard", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Closed").StatusId, CreatedAt = DateTime.Now.AddDays(-21), ResolvedAt = DateTime.Now.AddDays(-18), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Landscaping", RequiresInspection = false, IsTenantComplaint = false, Cost = 125.00m, ResolutionNotes = "Replaced faulty timer control and tested all zones" }
+			};
+			context.MaintenanceIssues.AddRange(maintenanceIssues);
+			await context.SaveChangesAsync();
+
+			// Lease Extension Requests
+			var dbBookings = await context.Bookings.ToListAsync();
+			var dbTenants = await context.Tenants.ToListAsync();
+			var leaseExtensionRequests = new[]
+			{
+				new LeaseExtensionRequest { BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId).BookingId, PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, TenantId = dbTenants.First(t => t.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantId, NewEndDate = new DateTime(2025, 5, 1), NewMinimumStayEndDate = new DateTime(2025, 5, 3), Reason = "Project extension", Status = "pending", DateRequested = DateTime.Now.AddDays(-5) }
+			};
+			context.LeaseExtensionRequests.AddRange(leaseExtensionRequests);
+			await context.SaveChangesAsync();
+
+			// Reviews
+			var reviews = new[]
+			{
+				new Review { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId).BookingId, Description = "Great apartment with excellent amenities. Would stay again!", StarRating = 4.8m, DateReported = DateTime.Now.AddDays(-10) },
+				new Review { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId).BookingId, Description = "Nice location but could use some updates", StarRating = 3.5m, DateReported = DateTime.Now.AddDays(-30) }
+			};
+			context.Reviews.AddRange(reviews);
+			await context.SaveChangesAsync();
+
+			// Notifications
+			var notifications = new[]
+			{
+				new Notification { UserId = dbUsers.First(u => u.Username == "testUser").UserId, Title = "Booking Confirmed", Message = "Your booking for Test Monthly Lease House has been confirmed", Type = "booking", ReferenceId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId).BookingId, IsRead = false },
+				new Notification { UserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Title = "New Maintenance Issue", Message = "A new maintenance issue has been reported for Test Monthly Lease House", Type = "maintenance", ReferenceId = maintenanceIssues.First().MaintenanceIssueId, IsRead = false },
+				new Notification { UserId = dbUsers.First(u => u.Username == "testUser").UserId, Title = "Lease Extension Request", Message = "Your lease extension request is under review", Type = "system", ReferenceId = leaseExtensionRequests.First().RequestId, IsRead = true }
+			};
+			context.Notifications.AddRange(notifications);
+			await context.SaveChangesAsync();
+
+			// User Preferences
+			var userPreferences = new[]
+			{
+				new UserPreferences { UserId = dbUsers.First(u => u.Username == "testUser").UserId, Theme = "dark", Language = "en", NotificationSettings = "{\"email\":true,\"push\":true,\"maintenance\":true,\"booking\":true}" },
+				new UserPreferences { UserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Theme = "light", Language = "en", NotificationSettings = "{\"email\":true,\"push\":false,\"maintenance\":true,\"booking\":true}" }
+			};
+			context.UserPreferences.AddRange(userPreferences);
+			await context.SaveChangesAsync();
+
+			// Messages
+			var messages = new[]
+			{
+				new Message { SenderId = dbUsers.First(u => u.Username == "testUser").UserId, ReceiverId = dbUsers.First(u => u.Username == "testLandlord").UserId, MessageText = "Hi, I'm interested in your property listing.", DateSent = DateTime.Now.AddDays(-3), IsRead = true, IsDeleted = false },
+				new Message { SenderId = dbUsers.First(u => u.Username == "testLandlord").UserId, ReceiverId = dbUsers.First(u => u.Username == "testUser").UserId, MessageText = "Thank you for your interest! The property is available for viewing this weekend.", DateSent = DateTime.Now.AddDays(-2), IsRead = false, IsDeleted = false }
+			};
+			context.Messages.AddRange(messages);
+			await context.SaveChangesAsync();
+
+			// Payments
+			var payments = new[]
+			{
+				new Payment { TenantId = dbTenants.First(t => t.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantId, PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, Amount = 2500.00m, DatePaid = DateOnly.FromDateTime(DateTime.Now.AddDays(-15)), PaymentMethod = "Credit Card", PaymentStatus = "Completed", PaymentReference = "PAY-TEST-001" }
+			};
+			context.Payments.AddRange(payments);
+			await context.SaveChangesAsync();
+
+			// Enhanced Images with real image data
 			await context.SaveChangesAsync();
 			dbProperties = await context.Properties.ToListAsync();
+			var dbMaintenanceIssues = await context.MaintenanceIssues.ToListAsync();
 
-			// Sample placeholder image data (1x1 transparent PNG)
-			byte[] placeholderImageData = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+			// Load real image data from files
+			var apartment1Data = LoadImageFromFile("SeedImages/Properties/apartment1.jpg");
+			var house1Data = LoadImageFromFile("SeedImages/Properties/house1.jpg");
+			var apartment2Data = LoadImageFromFile("SeedImages/Properties/apartment2.jpg");
+			var house2Data = LoadImageFromFile("SeedImages/Properties/house2.jpg");
+			var villa1Data = LoadImageFromFile("SeedImages/Properties/villa1.jpg");
+			var villa2Data = LoadImageFromFile("SeedImages/Properties/villa2.jpg");
+			var penthouseData = LoadImageFromFile("SeedImages/Properties/penthouse1.jpg");
+			var cityApartmentData = LoadImageFromFile("SeedImages/Properties/city_apartment.jpg");
+			var userImageData = LoadImageFromFile("SeedImages/Users/user1.png");
+			var leak1Data = LoadImageFromFile("SeedImages/Maintenance/leak1.jpg");
+			var leak2Data = LoadImageFromFile("SeedImages/Maintenance/leak2.jpg");
+			var outletData = LoadImageFromFile("SeedImages/Maintenance/outlet1.jpg");
 
 			var images = new[]
 			{
-				new Image { PropertyId = dbProperties[0].PropertyId, ImageData = placeholderImageData, FileName = "apartment1_cover.png", DateUploaded = DateTime.Now, IsCover = true },
-				new Image { PropertyId = dbProperties[1].PropertyId, ImageData = placeholderImageData, FileName = "house1_cover.png", DateUploaded = DateTime.Now, IsCover = true },
-				new Image { PropertyId = dbProperties[2].PropertyId, ImageData = placeholderImageData, FileName = "apartment2_cover.png", DateUploaded = DateTime.Now, IsCover = true },
-				new Image { PropertyId = dbProperties[3].PropertyId, ImageData = placeholderImageData, FileName = "house2_cover.png", DateUploaded = DateTime.Now, IsCover = true }
+				// Existing property images with real data
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, ImageData = apartment1Data, FileName = "apartment1.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = apartment1Data.Length, ThumbnailData = CreateThumbnail(apartment1Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Kuća s Pogledom u Banjaluci").PropertyId, ImageData = house1Data, FileName = "house1.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = house1Data.Length, ThumbnailData = CreateThumbnail(house1Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Apartman Stari Most Mostar").PropertyId, ImageData = apartment2Data, FileName = "apartment2.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = apartment2Data.Length, ThumbnailData = CreateThumbnail(apartment2Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Porodična Kuća Tuzla").PropertyId, ImageData = house2Data, FileName = "house2.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = house2Data.Length, ThumbnailData = CreateThumbnail(house2Data) },
+				
+				// New test property images with real data
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, ImageData = cityApartmentData, FileName = "city_apartment.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 1200, Height = 800, FileSizeBytes = cityApartmentData.Length, ThumbnailData = CreateThumbnail(cityApartmentData) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, ImageData = apartment1Data, FileName = "apartment1_interior.jpg", DateUploaded = DateTime.Now, IsCover = false, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = apartment1Data.Length, ThumbnailData = CreateThumbnail(apartment1Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, ImageData = house2Data, FileName = "house2_exterior.jpg", DateUploaded = DateTime.Now, IsCover = true, ContentType = "image/jpeg", Width = 1200, Height = 800, FileSizeBytes = house2Data.Length, ThumbnailData = CreateThumbnail(house2Data) },
+				
+				// Additional diverse property images
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, ImageData = villa1Data, FileName = "villa1.jpg", DateUploaded = DateTime.Now.AddDays(-30), IsCover = true, ContentType = "image/jpeg", Width = 1200, Height = 900, FileSizeBytes = villa1Data.Length, ThumbnailData = CreateThumbnail(villa1Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, ImageData = villa2Data, FileName = "villa2_garden.jpg", DateUploaded = DateTime.Now.AddDays(-29), IsCover = false, ContentType = "image/jpeg", Width = 1000, Height = 750, FileSizeBytes = villa2Data.Length, ThumbnailData = CreateThumbnail(villa2Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, ImageData = apartment2Data, FileName = "studio_interior.jpg", DateUploaded = DateTime.Now.AddDays(-15), IsCover = true, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = apartment2Data.Length, ThumbnailData = CreateThumbnail(apartment2Data) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, ImageData = penthouseData, FileName = "penthouse.jpg", DateUploaded = DateTime.Now.AddDays(-45), IsCover = true, ContentType = "image/jpeg", Width = 1400, Height = 1000, FileSizeBytes = penthouseData.Length, ThumbnailData = CreateThumbnail(penthouseData) },
+				new Image { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, ImageData = house1Data, FileName = "townhouse_exterior.jpg", DateUploaded = DateTime.Now.AddDays(-60), IsCover = true, ContentType = "image/jpeg", Width = 1000, Height = 750, FileSizeBytes = house1Data.Length, ThumbnailData = CreateThumbnail(house1Data) },
+				
+				// User profile images
+				new Image { PropertyId = null, ImageData = userImageData, FileName = "user_profile.png", DateUploaded = DateTime.Now, IsCover = false, ContentType = "image/png", Width = 200, Height = 200, FileSizeBytes = userImageData.Length, ThumbnailData = CreateThumbnail(userImageData) },
+				
+				// Maintenance issue images with real data
+				new Image { MaintenanceIssueId = dbMaintenanceIssues.First(m => m.Title == "Leaky Faucet in Kitchen").MaintenanceIssueId, ImageData = leak1Data, FileName = "kitchen_leak.jpg", DateUploaded = DateTime.Now, IsCover = false, ContentType = "image/jpeg", Width = 640, Height = 480, FileSizeBytes = leak1Data.Length, ThumbnailData = CreateThumbnail(leak1Data) },
+				new Image { MaintenanceIssueId = dbMaintenanceIssues.First(m => m.Title == "Air Conditioning Not Working").MaintenanceIssueId, ImageData = outletData, FileName = "ac_unit.jpg", DateUploaded = DateTime.Now.AddDays(-2), IsCover = false, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = outletData.Length, ThumbnailData = CreateThumbnail(outletData) }
 			};
 			context.Images.AddRange(images);
 			await context.SaveChangesAsync();
@@ -246,6 +478,10 @@ namespace eRents.WebApi
 		private async Task ClearExistingDataAsync(ERentsContext context)
 		{
 			// Remove in reverse dependency order
+			context.LeaseExtensionRequests.RemoveRange(context.LeaseExtensionRequests);
+			context.Notifications.RemoveRange(context.Notifications);
+			context.PropertyAvailabilities.RemoveRange(context.PropertyAvailabilities);
+			context.UserPreferences.RemoveRange(context.UserPreferences);
 			context.Bookings.RemoveRange(context.Bookings);
 			context.PropertyAmenities.RemoveRange(context.PropertyAmenities);
 			context.UserSavedProperties.RemoveRange(context.UserSavedProperties);
@@ -270,6 +506,55 @@ namespace eRents.WebApi
 			context.RentingTypes.RemoveRange(context.RentingTypes);
 			context.UserTypes.RemoveRange(context.UserTypes);
 			await context.SaveChangesAsync();
+		}
+
+		// Password hashing utilities matching UserService implementation
+		private static byte[] GenerateSalt()
+		{
+			using (var rng = new RNGCryptoServiceProvider())
+			{
+				var salt = new byte[16];
+				rng.GetBytes(salt);
+				return salt;
+			}
+		}
+
+		private static byte[] GenerateHash(byte[] salt, string password)
+		{
+			using (var sha256 = SHA256.Create())
+			{
+				var combinedBytes = salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
+				return sha256.ComputeHash(combinedBytes);
+			}
+		}
+
+		// Image loading utilities
+		private static byte[] LoadImageFromFile(string imagePath)
+		{
+			try
+			{
+				if (File.Exists(imagePath))
+				{
+					return File.ReadAllBytes(imagePath);
+				}
+				else
+				{
+					// Fallback to placeholder if file doesn't exist
+					return Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+				}
+			}
+			catch
+			{
+				// Return placeholder on any error
+				return Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=");
+			}
+		}
+
+		private static byte[] CreateThumbnail(byte[] imageData, int maxWidth = 200, int maxHeight = 200)
+		{
+			// For now, return the original image data as thumbnail
+			// In a real implementation, you would resize the image here using a library like SixLabors.ImageSharp
+			return imageData.Length > 50000 ? Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=") : imageData;
 		}
 	}
 }
