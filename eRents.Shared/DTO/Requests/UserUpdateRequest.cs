@@ -1,4 +1,5 @@
 ﻿using System;
+using eRents.Shared.DTO.Response;
 
 namespace eRents.Shared.DTO.Requests
 {

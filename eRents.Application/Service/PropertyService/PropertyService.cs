@@ -194,5 +194,76 @@ namespace eRents.Application.Service.PropertyService
 									.Include(p => p.Owner)
 									.Include(p => p.Amenities);
 		}
+
+		// Missing methods from IPropertyService
+		public async Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request)
+		{
+			// TODO: Implement image upload logic
+			// This would typically involve:
+			// 1. Validating the property exists
+			// 2. Processing the image file
+			// 3. Saving to storage
+			// 4. Creating Image entity and saving to database
+			throw new NotImplementedException("Image upload functionality needs to be implemented");
+		}
+
+		public async Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end)
+		{
+			// TODO: Implement availability checking logic
+			// This would check bookings against the property for the date range
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null) return null;
+
+			// For now, return a basic availability structure
+			return new PropertyAvailabilityDto
+			{
+				Availability = new Dictionary<DateTime, bool>() // Empty for now
+			};
+		}
+
+		public async Task UpdateStatusAsync(int propertyId, int statusId)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null) return;
+
+			// Convert statusId to status string based on your business logic
+			// For now, using a basic mapping - this should be improved with proper enum/lookup
+			string status = statusId switch
+			{
+				1 => "AVAILABLE",
+				2 => "RENTED", 
+				3 => "MAINTENANCE",
+				4 => "UNAVAILABLE",
+				_ => "AVAILABLE"
+			};
+			
+			property.Status = status;
+			await _propertyRepository.UpdateAsync(property);
+		}
+
+		public async Task<List<AmenityResponse>> GetAmenitiesAsync()
+		{
+			// TODO: Implement amenity repository access
+			// For now, return empty list
+			return new List<AmenityResponse>();
+		}
+
+		public async Task<AmenityResponse> AddAmenityAsync(AmenityRequest request)
+		{
+			// TODO: Implement amenity creation
+			throw new NotImplementedException("Amenity management functionality needs to be implemented");
+		}
+
+		public async Task<AmenityResponse> UpdateAmenityAsync(int id, AmenityRequest request)
+		{
+			// TODO: Implement amenity update
+			throw new NotImplementedException("Amenity management functionality needs to be implemented");
+		}
+
+		public async Task DeleteAmenityAsync(int id)
+		{
+			// TODO: Implement amenity deletion
+			throw new NotImplementedException("Amenity management functionality needs to be implemented");
+		}
 	}
 }

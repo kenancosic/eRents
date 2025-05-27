@@ -11,7 +11,7 @@ namespace eRents.Shared.SearchObjects
 		public string? Category { get; set; }
 		public bool? IsTenantComplaint { get; set; }
 		public bool? RequiresInspection { get; set; }
-		public DateTime? CreatedFrom { get; set; }
+		public DateTime? CreatedAt { get; set; }
 		public DateTime? CreatedTo { get; set; }
 	}
-} 
+}

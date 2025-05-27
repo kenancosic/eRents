@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Shared.DTO.Response;
 
 namespace eRents.Shared.DTO.Requests
 {
@@ -20,23 +21,5 @@ namespace eRents.Shared.DTO.Requests
 		public AddressDetailDto? AddressDetail { get; set; }
 		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; }
-	}
-
-	public class AddressDetailDto
-	{
-		public string StreetLine1 { get; set; }
-		public string? StreetLine2 { get; set; }
-		public int? GeoRegionId { get; set; }
-		public GeoRegionDto? GeoRegion { get; set; }
-		public decimal? Latitude { get; set; }
-		public decimal? Longitude { get; set; }
-	}
-
-	public class GeoRegionDto
-	{
-		public string City { get; set; }
-		public string? State { get; set; }
-		public string Country { get; set; }
-		public string? PostalCode { get; set; }
 	}
 }

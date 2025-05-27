@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using eRents.Shared.DTO.Response;
 
 namespace eRents.Shared.DTO.Requests
 {

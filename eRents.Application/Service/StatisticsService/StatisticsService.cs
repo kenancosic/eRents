@@ -3,6 +3,8 @@ using eRents.Shared.DTO.Response;
 using System.Threading.Tasks;
 using System.Collections.Generic; // For List in PropertyStatisticsDto placeholder
 using eRents.Domain.Repositories;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace eRents.Application.Service.StatisticsService
 {
@@ -24,14 +26,14 @@ namespace eRents.Application.Service.StatisticsService
 
         public async Task<PropertyStatisticsDto> GetPropertyStatisticsAsync()
         {
-            var allProperties = await _propertyRepository.GetAllAsync();
+            var allProperties = await _propertyRepository.GetQueryable().ToListAsync();
             var total = allProperties.Count();
-            var available = allProperties.Count(p => p.Status != null && p.Status.StatusName == "Available");
-            var rented = allProperties.Count(p => p.Status != null && p.Status.StatusName == "Rented");
+            var available = allProperties.Count(p => p.Status == "AVAILABLE");
+            var rented = allProperties.Count(p => p.Status == "RENTED");
             double occupancyRate = total > 0 ? (double)rented / total : 0.0;
 
             var vacantPreview = allProperties
-                .Where(p => p.Status != null && p.Status.StatusName == "Available")
+                .Where(p => p.Status == "AVAILABLE")
                 .Take(5)
                 .Select(p => new PropertyMiniSummaryDto
                 {
@@ -70,7 +72,9 @@ namespace eRents.Application.Service.StatisticsService
         public async Task<FinancialSummaryDto> GetFinancialSummaryAsync(FinancialStatisticsRequest request)
         {
             // For demo: sum all bookings as rent income, sum all maintenance costs
-            var allProperties = await _propertyRepository.GetAllAsync();
+            var allProperties = await _propertyRepository.GetQueryable()
+                .Include(p => p.MaintenanceIssues)
+                .ToListAsync();
             decimal totalRent = 0;
             decimal totalMaintenance = 0;
 

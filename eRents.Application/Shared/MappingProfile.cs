@@ -47,9 +47,9 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
 				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
 				.ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
-				.ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.FileName))
-				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.ImageId ?? src.Images.FirstOrDefault()?.ImageId))
-				.ForMember(dest => dest.CoverImageData, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover)?.ImageData ?? src.Images.FirstOrDefault()?.ImageData));
+				.ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover) != null ? src.Images.FirstOrDefault(i => i.IsCover).FileName : (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().FileName : null)))
+				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover) != null ? src.Images.FirstOrDefault(i => i.IsCover).ImageId : (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().ImageId : (int?)null)))
+				.ForMember(dest => dest.CoverImageData, opt => opt.MapFrom(src => src.Images.FirstOrDefault(i => i.IsCover) != null ? src.Images.FirstOrDefault(i => i.IsCover).ImageData : (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().ImageData : null)));
 
 			CreateMap<PropertyInsertRequest, Property>()
 				.ForMember(dest => dest.Amenities, opt => opt.Ignore())

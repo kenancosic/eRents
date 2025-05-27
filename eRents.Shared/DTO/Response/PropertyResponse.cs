@@ -31,22 +31,4 @@ namespace eRents.Shared.DTO.Response
 		public int? MinimumStayDays { get; set; }
 		public DateTime? DateAdded { get; set; }
 	}
-
-	public class AddressDetailDto
-	{
-		public string StreetLine1 { get; set; }
-		public string? StreetLine2 { get; set; }
-		public int? GeoRegionId { get; set; }
-		public GeoRegionDto? GeoRegion { get; set; }
-		public decimal? Latitude { get; set; }
-		public decimal? Longitude { get; set; }
-	}
-
-	public class GeoRegionDto
-	{
-		public string City { get; set; }
-		public string? State { get; set; }
-		public string Country { get; set; }
-		public string? PostalCode { get; set; }
-	}
 }

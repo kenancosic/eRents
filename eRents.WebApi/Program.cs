@@ -1,6 +1,7 @@
 using eRents.Application.Service;
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
+using eRents.Application.Service.MaintenanceService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.PropertyService;
