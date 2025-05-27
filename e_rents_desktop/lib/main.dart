@@ -54,9 +54,22 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ErrorProvider()),
+
+        // Core Services (must be first so other providers can access them)
+        Provider.value(value: secureStorageService),
+        Provider.value(value: prefsService),
+        Provider.value(value: authService),
+        Provider.value(value: amenityService),
+        Provider.value(value: chatService),
+        Provider.value(value: maintenanceService),
+        Provider.value(value: propertyService),
+        Provider.value(value: profileService),
+        Provider.value(value: reportService),
+        Provider.value(value: statisticsService),
+        Provider.value(value: tenantService),
+
         // Authentication related providers
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
-        Provider.value(value: authService),
 
         // App State/Navigation providers
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
@@ -64,7 +77,7 @@ void main() async {
           create: (_) => PreferencesProvider(preferencesService: prefsService),
         ),
 
-        // Feature specific providers
+        // Feature specific providers (these can now access services via context.read)
         ChangeNotifierProvider(
           create:
               (context) => PropertyProvider(
@@ -105,18 +118,6 @@ void main() async {
                 context.read<StatisticsService>(),
               ),
         ),
-
-        // Core Services (can be accessed anywhere)
-        Provider.value(value: secureStorageService),
-        Provider.value(value: prefsService),
-        Provider.value(value: amenityService),
-        Provider.value(value: chatService),
-        Provider.value(value: maintenanceService),
-        Provider.value(value: propertyService),
-        Provider.value(value: profileService),
-        Provider.value(value: reportService),
-        Provider.value(value: statisticsService),
-        Provider.value(value: tenantService),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',

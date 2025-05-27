@@ -1,12 +1,12 @@
 class GeoRegion {
-  final int geoRegionId;
+  final int? geoRegionId;
   final String city;
   final String? state;
   final String country;
   final String? postalCode;
 
   GeoRegion({
-    required this.geoRegionId,
+    this.geoRegionId,
     required this.city,
     this.state,
     required this.country,
@@ -15,10 +15,10 @@ class GeoRegion {
 
   factory GeoRegion.fromJson(Map<String, dynamic> json) {
     return GeoRegion(
-      geoRegionId: json['geoRegionId'] as int,
-      city: json['city'] as String,
+      geoRegionId: json['geoRegionId'] as int?,
+      city: json['city'] as String? ?? '',
       state: json['state'] as String?,
-      country: json['country'] as String,
+      country: json['country'] as String? ?? '',
       postalCode: json['postalCode'] as String?,
     );
   }

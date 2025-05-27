@@ -20,6 +20,17 @@ namespace eRents.Controllers
 			_userService = service;
 		}
 
+		/// <summary>
+		/// Admin only - Get all users with advanced filtering
+		/// </summary>
+		[HttpGet("all")]
+		[Authorize(Roles = "Admin")]
+		public async Task<ActionResult<IEnumerable<UserResponse>>> GetAllUsers([FromQuery] UserSearchObject searchObject)
+		{
+			var users = await _userService.GetAllUsersAsync(searchObject);
+			return Ok(users);
+		}
+
 		[HttpPost]
 		public override async Task<UserResponse> Insert([FromBody] UserInsertRequest insert)
 		{
@@ -30,17 +41,6 @@ namespace eRents.Controllers
 		public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest update)
 		{
 			return await base.Update(id, update);
-		}
-
-		/// <summary>
-		/// Admin only - Get all users with filtering
-		/// </summary>
-		[HttpGet]
-		[Authorize(Roles = "Admin")]
-		public async Task<ActionResult<IEnumerable<UserResponse>>> GetAllUsers([FromQuery] UserSearchObject searchObject)
-		{
-			var users = await _userService.GetAllUsersAsync(searchObject);
-			return Ok(users);
 		}
 
 		/// <summary>

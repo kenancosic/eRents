@@ -1,8 +1,8 @@
 import './geo_region.dart';
 
 class AddressDetail {
-  final int addressDetailId;
-  final int geoRegionId;
+  final int? addressDetailId;
+  final int? geoRegionId;
   final String streetLine1;
   final String? streetLine2;
   final double? latitude;
@@ -10,8 +10,8 @@ class AddressDetail {
   final GeoRegion? geoRegion; // Nested GeoRegion object
 
   AddressDetail({
-    required this.addressDetailId,
-    required this.geoRegionId,
+    this.addressDetailId,
+    this.geoRegionId,
     required this.streetLine1,
     this.streetLine2,
     this.latitude,
@@ -21,9 +21,9 @@ class AddressDetail {
 
   factory AddressDetail.fromJson(Map<String, dynamic> json) {
     return AddressDetail(
-      addressDetailId: json['addressDetailId'] as int,
-      geoRegionId: json['geoRegionId'] as int,
-      streetLine1: json['streetLine1'] as String,
+      addressDetailId: json['addressDetailId'] as int?,
+      geoRegionId: json['geoRegionId'] as int?,
+      streetLine1: json['streetLine1'] as String? ?? '',
       streetLine2: json['streetLine2'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),

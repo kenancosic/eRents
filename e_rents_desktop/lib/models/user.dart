@@ -46,16 +46,13 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String? ?? json['userId']?.toString() ?? '',
-      email: json['email'] as String,
-      username: json['username'] as String,
-      firstName: json['firstName'] as String? ?? json['name'] as String? ?? '',
+      id: (json['userId'] ?? json['id'])?.toString() ?? '',
+      email: json['email'] as String? ?? '',
+      username: json['username'] as String? ?? '',
+      firstName: json['firstName'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
-      phone: json['phone'] as String? ?? json['phoneNumber'] as String?,
-      role: UserType.values.firstWhere(
-        (e) => e.toString() == 'UserType.${json['role'] ?? json['userType']}',
-        orElse: () => UserType.admin,
-      ),
+      phone: json['phoneNumber'] as String? ?? json['phone'] as String?,
+      role: _parseUserRole(json['role']),
       profileImage:
           json['profileImage'] != null
               ? (json['profileImage'] is String
@@ -71,16 +68,8 @@ class User {
           json['dateOfBirth'] != null
               ? DateTime.parse(json['dateOfBirth'] as String)
               : null,
-      createdAt: DateTime.parse(
-        json['createdAt'] as String? ??
-            json['createdDate'] as String? ??
-            DateTime.now().toIso8601String(),
-      ),
-      updatedAt: DateTime.parse(
-        json['updatedAt'] as String? ??
-            json['updatedDate'] as String? ??
-            DateTime.now().toIso8601String(),
-      ),
+      createdAt: _parseDateTime(json['createdAt'] ?? json['createdDate']),
+      updatedAt: _parseDateTime(json['updatedAt'] ?? json['updatedDate']),
       resetToken: json['resetToken'] as String?,
       resetTokenExpiration:
           json['resetTokenExpiration'] != null
@@ -96,6 +85,34 @@ class User {
               )
               : null,
     );
+  }
+
+  static UserType _parseUserRole(dynamic role) {
+    if (role == null) return UserType.tenant;
+
+    String roleStr = role.toString().toLowerCase();
+    switch (roleStr) {
+      case 'admin':
+        return UserType.admin;
+      case 'landlord':
+        return UserType.landlord;
+      case 'tenant':
+        return UserType.tenant;
+      default:
+        return UserType.tenant;
+    }
+  }
+
+  static DateTime _parseDateTime(dynamic dateValue) {
+    if (dateValue == null) return DateTime.now();
+    if (dateValue is String) {
+      try {
+        return DateTime.parse(dateValue);
+      } catch (e) {
+        return DateTime.now();
+      }
+    }
+    return DateTime.now();
   }
 
   Map<String, dynamic> toJson() {
