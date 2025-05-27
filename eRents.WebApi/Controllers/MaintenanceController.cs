@@ -4,6 +4,7 @@ using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebApi.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
@@ -31,6 +32,14 @@ namespace eRents.WebApi.Controllers
 			return Ok(imageResponse);
 		}
 
-		// Add status update endpoint if needed
+	
+
+		[HttpPut("{issueId}/status")]
+		[Authorize]
+		public async Task<IActionResult> UpdateStatus(int issueId, [FromBody] MaintenanceIssueStatusUpdateRequest request)
+		{
+			await _maintenanceService.UpdateStatusAsync(issueId, request.Status, request.ResolutionNotes, request.Cost, request.ResolvedAt);
+			return NoContent();
+		}
 	}
 } 

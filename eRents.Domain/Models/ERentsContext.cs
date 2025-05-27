@@ -379,50 +379,54 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.UserId).HasName("PK__Users__B9BE370FCB53D7B9");
 
             entity.HasIndex(e => e.Email, "UQ__Users__AB6E61648C818EE9").IsUnique();
-
             entity.HasIndex(e => e.Username, "UQ__Users__F3DBC5724649C4DE").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.CreatedDate)
+            entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
-                .HasColumnName("created_date");
-            entity.Property(e => e.DateOfBirth).HasColumnName("date_of_birth");
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
                 .IsUnicode(false)
                 .HasColumnName("email");
+            entity.Property(e => e.FirstName)
+                .HasMaxLength(100)
+                .HasColumnName("first_name");
             entity.Property(e => e.LastName)
                 .HasMaxLength(100)
                 .HasColumnName("last_name");
-            entity.Property(e => e.Name)
-                .HasMaxLength(100)
-                .HasColumnName("name");
             entity.Property(e => e.PasswordHash).HasMaxLength(64);
             entity.Property(e => e.PasswordSalt).HasMaxLength(64);
             entity.Property(e => e.PhoneNumber)
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasColumnName("phone_number");
-            entity.Property(e => e.ProfilePicture).HasColumnName("profile_picture");
+            entity.Property(e => e.ProfileImageId).HasColumnName("profile_image_id");
+            entity.Property(e => e.IsPaypalLinked).HasColumnName("is_paypal_linked");
+            entity.Property(e => e.PaypalUserIdentifier)
+                .HasMaxLength(255)
+                .HasColumnName("paypal_user_identifier");
             entity.Property(e => e.ResetToken)
                 .HasMaxLength(256)
                 .HasColumnName("reset_token");
             entity.Property(e => e.ResetTokenExpiration)
                 .HasColumnType("datetime")
                 .HasColumnName("reset_token_expiration");
-            entity.Property(e => e.UpdatedDate)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("updated_date");
-            entity.Property(e => e.UserType)
-                .HasMaxLength(20)
-                .IsUnicode(false)
-                .HasColumnName("user_type");
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
                 .IsUnicode(false)
                 .HasColumnName("username");
+            entity.Property(e => e.IsPublic).HasColumnName("is_public");
+            entity.Property(e => e.AddressDetailId).HasColumnName("address_detail_id");
+            entity.Property(e => e.UserTypeId).HasColumnName("user_type_id");
+            entity.Property(e => e.DateOfBirth)
+                .HasColumnType("date")
+                .HasColumnName("date_of_birth");
 
             entity.HasOne(d => d.AddressDetail)
                 .WithMany(p => p.Users)
@@ -433,6 +437,12 @@ public partial class ERentsContext : DbContext
             entity.HasOne(d => d.UserTypeNavigation)
                 .WithMany(p => p.Users)
                 .HasForeignKey(d => d.UserTypeId);
+
+            entity.HasOne(d => d.ProfileImage)
+                .WithMany()
+                .HasForeignKey(d => d.ProfileImageId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<UserSavedProperty>(entity =>

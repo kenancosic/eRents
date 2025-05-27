@@ -11,25 +11,35 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
+    public string? FirstName { get; set; }
+
+    public string? LastName { get; set; }
+
+    public int? ProfileImageId { get; set; }
+
+    public virtual Image? ProfileImage { get; set; }
+
+    public int? AddressDetailId { get; set; }
+
+    public virtual AddressDetail? AddressDetail { get; set; }
+
+    public int? UserTypeId { get; set; }
+
+    public virtual UserType? UserTypeNavigation { get; set; }
+
     public string? PhoneNumber { get; set; }
 
-    public DateOnly DateOfBirth { get; set; }
+    public bool IsPaypalLinked { get; set; }
 
-    public string? UserType { get; set; }
+    public string? PaypalUserIdentifier { get; set; }
 
-    public byte[]? ProfilePicture { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime? CreatedDate { get; set; }
-
-    public DateTime? UpdatedDate { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public byte[] PasswordSalt { get; set; } = null!;
 
     public byte[] PasswordHash { get; set; } = null!;
-
-    public string? Name { get; set; }
-
-    public string? LastName { get; set; }
 
     public string? ResetToken { get; set; }
 
@@ -37,22 +47,15 @@ public partial class User
 
     public bool? IsPublic { get; set; }
 
-    public int? AddressDetailId { get; set; }
-
-    public int? UserTypeId { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-
-    public virtual AddressDetail? AddressDetail { get; set; }
-
-    public virtual UserType? UserTypeNavigation { get; set; }
 
     public virtual ICollection<Message> MessageReceivers { get; set; } = new List<Message>();
 
     public virtual ICollection<Message> MessageSenders { get; set; } = new List<Message>();
 
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
-
 
     public virtual ICollection<MaintenanceIssue> AssignedMaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
 

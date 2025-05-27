@@ -12,5 +12,10 @@ namespace eRents.Application.Service.UserService
 		Task ChangePasswordAsync(int userId, ChangePasswordRequest request);
 		Task ForgotPasswordAsync(string email);
 		Task ResetPasswordAsync(ResetPasswordRequest request);
+		
+		// User list operations for admin and tenant management
+		Task<IEnumerable<UserResponse>> GetAllUsersAsync(UserSearchObject searchObject);
+		Task<IEnumerable<UserResponse>> GetTenantsByLandlordAsync(int landlordId);
+		Task<IEnumerable<UserResponse>> GetUsersByRoleAsync(string role, UserSearchObject searchObject);
 	}
 }

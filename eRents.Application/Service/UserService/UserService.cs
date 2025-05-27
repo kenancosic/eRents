@@ -40,32 +40,16 @@ namespace eRents.Application.Service.UserService
 
 		protected override async Task BeforeInsertAsync(UserInsertRequest insert, User entity)
 		{
-			// Password hashing and confirmation are now handled directly in RegisterAsync.
-			// Name/LastName validation is also handled in RegisterAsync.
-			// This method can be used for other generic pre-insertion logic if needed in the future
-			// when using the generic InsertAsync from BaseCRUDService directly for a User.
-
-			// For example, setting universal defaults if not handled by specific methods like RegisterAsync:
-			entity.CreatedDate = DateTime.UtcNow;
-			entity.UpdatedDate = DateTime.UtcNow;
-
+			entity.CreatedAt = DateTime.UtcNow;
+			entity.UpdatedAt = DateTime.UtcNow;
 			await base.BeforeInsertAsync(insert, entity);
 		}
 
-
 		protected override async Task BeforeUpdateAsync(UserUpdateRequest update, User entity)
 		{
-			if (!string.IsNullOrWhiteSpace(update.Name))
-				entity.Name = update.Name;
-
-			if (!string.IsNullOrWhiteSpace(update.LastName))
-				entity.LastName = update.LastName;
-
-			entity.UpdatedDate = DateTime.UtcNow; // Always update UpdatedDate on any update
-
+			entity.UpdatedAt = DateTime.UtcNow;
 			await base.BeforeUpdateAsync(update, entity);
 		}
-
 
 		protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
 		{
@@ -77,7 +61,7 @@ namespace eRents.Application.Service.UserService
 			if (!string.IsNullOrWhiteSpace(search?.NameFTS))
 			{
 				query = query.Where(x => x.Username.Contains(search.NameFTS)
-								|| x.Name.Contains(search.NameFTS)
+								|| x.FirstName.Contains(search.NameFTS)
 								|| x.LastName.Contains(search.NameFTS));
 			}
 
@@ -109,51 +93,34 @@ namespace eRents.Application.Service.UserService
 		{
 			if (string.IsNullOrWhiteSpace(request.Username))
 				throw new ValidationException("Username is required.");
-
-			if (string.IsNullOrWhiteSpace(request.Name))
+			if (string.IsNullOrWhiteSpace(request.FirstName))
 				throw new ValidationException("First name is required.");
-
 			if (string.IsNullOrWhiteSpace(request.LastName))
 				throw new ValidationException("Last name is required.");
-
 			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
 				throw new ValidationException("A valid email address is required.");
-
 			if (string.IsNullOrWhiteSpace(request.Password))
 				throw new ValidationException("Password is required.");
-
 			if (request.Password != request.ConfirmPassword)
 				throw new ValidationException("Passwords do not match.");
-
 			if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
 				throw new ValidationException("A user with this username or email already exists.");
-
 			var userTypeEntity = _userTypeRepository.GetQueryable().FirstOrDefault(ut => ut.TypeName == request.Role);
 			if (userTypeEntity == null)
-			{
 				throw new ValidationException($"Invalid role selected: {request.Role}. Valid roles must be predefined in UserTypes table.");
-			}
-
 			var salt = GenerateSalt();
 			var hash = GenerateHash(salt, request.Password);
-
-			var user = _mapper.Map<User>(request); // MappingProfile sets CreatedDate/UpdatedDate from request or to DateTime.Now
+			var user = _mapper.Map<User>(request);
 			user.PasswordSalt = salt;
 			user.PasswordHash = hash;
 			user.UserTypeId = userTypeEntity.UserTypeId;
-			// user.UserType = userTypeEntity.TypeName; // MappingProfile handles UserInsertRequest.Role to User.UserType
-			user.CreatedDate = DateTime.UtcNow; // Explicitly set UTC now
-			user.UpdatedDate = DateTime.UtcNow; // Explicitly set UTC now
-
+			user.CreatedAt = DateTime.UtcNow;
+			user.UpdatedAt = DateTime.UtcNow;
 			await _userRepository.AddAsync(user);
-			await _userRepository.SaveChangesAsync(); // Ensure changes are saved to the database
-
+			await _userRepository.SaveChangesAsync();
 			var response = _mapper.Map<UserResponse>(user);
 			if (string.IsNullOrEmpty(response.Role))
-			{
 				response.Role = userTypeEntity.TypeName;
-			}
-
 			return response;
 		}
 
@@ -261,6 +228,25 @@ namespace eRents.Application.Service.UserService
 		private bool IsValidEmail(string email)
 		{
 			return Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+		}
+
+		// User list operations for admin and tenant management
+		public async Task<IEnumerable<UserResponse>> GetAllUsersAsync(UserSearchObject searchObject)
+		{
+			var users = await _userRepository.GetAllUsersAsync(searchObject);
+			return _mapper.Map<IEnumerable<UserResponse>>(users);
+		}
+
+		public async Task<IEnumerable<UserResponse>> GetTenantsByLandlordAsync(int landlordId)
+		{
+			var tenants = await _userRepository.GetTenantsByLandlordAsync(landlordId);
+			return _mapper.Map<IEnumerable<UserResponse>>(tenants);
+		}
+
+		public async Task<IEnumerable<UserResponse>> GetUsersByRoleAsync(string role, UserSearchObject searchObject)
+		{
+			var users = await _userRepository.GetUsersByRoleAsync(role, searchObject);
+			return _mapper.Map<IEnumerable<UserResponse>>(users);
 		}
 	}
 }

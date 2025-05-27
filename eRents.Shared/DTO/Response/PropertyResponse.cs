@@ -11,7 +11,7 @@ namespace eRents.Shared.DTO.Response
 		public string Description { get; set; }
 		public decimal Price { get; set; }
 		public string Currency { get; set; } = "BAM";
-		public int? TypeId { get; set; }
+		public int? PropertyTypeId { get; set; }
 		public string? Type { get; set; }
 		public int? StatusId { get; set; }
 		public string? Status { get; set; }

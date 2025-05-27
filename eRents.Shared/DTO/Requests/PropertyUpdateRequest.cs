@@ -1,14 +1,17 @@
-﻿namespace eRents.Shared.DTO.Requests
+﻿using System;
+using System.Collections.Generic;
+
+namespace eRents.Shared.DTO.Requests
 {
 	public class PropertyUpdateRequest
 	{
 		public string? Name { get; set; }
+		public int? PropertyTypeId { get; set; }
+		public string? Status { get; set; }
+		public int? RentingTypeId { get; set; }
 		public string? Description { get; set; }
 		public decimal? Price { get; set; }
 		public string? Currency { get; set; }
-		public int? TypeId { get; set; }
-		public int? StatusId { get; set; }
-		public int? RentingTypeId { get; set; }
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }

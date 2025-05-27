@@ -1,14 +1,17 @@
-﻿namespace eRents.Shared.DTO.Requests
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace eRents.Shared.DTO.Requests
 {
 	public class PropertyInsertRequest
 	{
-		public string Name { get; set; }
-		public string Description { get; set; }
-		public decimal Price { get; set; }
-		public string? Currency { get; set; }
-		public int? TypeId { get; set; }
-		public int? StatusId { get; set; }
+		public string? Name { get; set; }
+		public int? PropertyTypeId { get; set; }
+		public string? Status { get; set; }
 		public int? RentingTypeId { get; set; }
+		public string? Description { get; set; }
+		public decimal Price { get; set; }
+		public string Currency { get; set; } = "BAM";
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }
@@ -18,6 +21,7 @@
 		public AddressDetailDto? AddressDetail { get; set; }
 		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; } // IDs of uploaded images
+		public List<string>? AmenityNames { get; set; }
 	}
 
 	public class AddressDetailDto

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace eRents.Shared.DTO.Requests
 {
@@ -16,14 +17,16 @@ namespace eRents.Shared.DTO.Requests
 		[Required]
 		public string? ConfirmPassword { get; set; }
 
-		public string? Address { get; set; }
-		public DateTime DateOfBirth { get; set; }
-		public string? PhoneNumber { get; set; }
-		public string? Name { get; set; }
+		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
+		public int? ProfileImageId { get; set; }
+		public AddressDetailDto? AddressDetail { get; set; }
+		public DateTime? CreatedAt { get; set; }
+		public DateTime? UpdatedAt { get; set; }
+		public bool? IsPaypalLinked { get; set; }
+		public string? PaypalUserIdentifier { get; set; }
 		[Required]
 		public string Role { get; set; }
-		public string? ProfilePicture { get; set; }
 	}
 }
 
