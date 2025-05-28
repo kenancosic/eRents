@@ -8,10 +8,10 @@ namespace eRents.Domain.Repositories
 {
     public interface IMaintenanceRepository : IBaseRepository<MaintenanceIssue>
     {
-        Task<int> GetOpenIssuesCountAsync();
-        Task<int> GetPendingIssuesCountAsync();
-        Task<int> GetHighPriorityIssuesCountAsync();
-        Task<int> GetTenantComplaintsCountAsync();
+        Task<int> GetOpenIssuesCountAsync(IEnumerable<int> propertyIds);
+        Task<int> GetPendingIssuesCountAsync(IEnumerable<int> propertyIds);
+        Task<int> GetHighPriorityIssuesCountAsync(IEnumerable<int> propertyIds);
+        Task<int> GetTenantComplaintsCountAsync(IEnumerable<int> propertyIds);
         Task<IEnumerable<MaintenanceIssue>> GetAllAsync(MaintenanceIssueSearchObject searchObject);
         // Add more as needed for statistics
     }

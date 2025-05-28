@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using eRents.Shared.Enums;
 
 namespace eRents.WebApi.Controllers
 {
@@ -67,9 +68,10 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPut("{propertyId}/status")]
-		public async Task<IActionResult> UpdateStatus(int propertyId, [FromBody] PropertyStatusUpdateRequest request)
+		public async Task<IActionResult> UpdateStatus(int propertyId, [FromBody] int statusId)
 		{
-			await _propertyService.UpdateStatusAsync(propertyId, request.StatusId);
+			var statusEnum = (PropertyStatusEnum)statusId;
+			await _propertyService.UpdateStatusAsync(propertyId, statusEnum);
 			return NoContent();
 		}
 

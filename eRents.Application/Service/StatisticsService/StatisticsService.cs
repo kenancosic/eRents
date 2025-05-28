@@ -5,6 +5,7 @@ using System.Collections.Generic; // For List in PropertyStatisticsDto placehold
 using eRents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System;
 
 namespace eRents.Application.Service.StatisticsService
 {
@@ -24,14 +25,103 @@ namespace eRents.Application.Service.StatisticsService
             _maintenanceRepository = maintenanceRepository;
         }
 
-        public async Task<PropertyStatisticsDto> GetPropertyStatisticsAsync()
+        public async Task<DashboardStatisticsDto> GetDashboardStatisticsAsync(string userId)
         {
-            var allProperties = await _propertyRepository.GetQueryable().ToListAsync();
+            var propertyStats = await GetPropertyStatisticsAsync(userId);
+            var maintenanceStats = await GetMaintenanceStatisticsAsync(userId);
+            var financialStats = await GetFinancialSummaryAsync(userId, new FinancialStatisticsRequest());
+            var topProperties = await GetTopPropertiesAsync(userId);
+            var monthlyRevenue = await GetMonthlyRevenueAsync(userId);
+            var yearlyRevenue = await GetYearlyRevenueAsync(userId);
+            var averageRating = await GetAveragePropertyRatingAsync(userId);
+
+            return new DashboardStatisticsDto
+            {
+                TotalProperties = propertyStats.TotalProperties,
+                OccupiedProperties = propertyStats.RentedUnits,
+                OccupancyRate = propertyStats.OccupancyRate,
+                AverageRating = averageRating,
+                TopProperties = topProperties,
+                PendingMaintenanceIssues = maintenanceStats.PendingIssuesCount,
+                MonthlyRevenue = monthlyRevenue,
+                YearlyRevenue = yearlyRevenue,
+                TotalRentIncome = (double)financialStats.TotalRentIncome,
+                TotalMaintenanceCosts = (double)financialStats.TotalMaintenanceCosts,
+                NetTotal = (double)financialStats.NetTotal
+            };
+        }
+
+        private async Task<List<PopularPropertyDto>> GetTopPropertiesAsync(string userId)
+        {
+            var properties = await _propertyRepository.GetQueryable()
+                .Where(p => p.OwnerId.ToString() == userId)
+                .Include(p => p.Bookings)
+                .Include(p => p.Reviews)
+                .OrderByDescending(p => p.Bookings.Count())
+                .Take(5)
+                .ToListAsync();
+
+            return properties.Select(p => new PopularPropertyDto
+            {
+                PropertyId = p.PropertyId,
+                Name = p.Name,
+                BookingCount = p.Bookings?.Count() ?? 0,
+                TotalRevenue = CalculatePropertyRevenue(p),
+                AverageRating = p.Reviews?.Any() == true && p.Reviews.Any(r => r.StarRating.HasValue) 
+                    ? (double)p.Reviews.Where(r => r.StarRating.HasValue).Average(r => r.StarRating!.Value) 
+                    : null
+            }).ToList();
+        }
+
+        private async Task<double> GetMonthlyRevenueAsync(string userId)
+        {
+            var currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+            var monthlyBookings = await _bookingRepository.GetQueryable()
+                .Where(b => b.UserId.ToString() == userId && b.StartDate.Month == currentMonth && b.StartDate.Year == currentYear)
+                .ToListAsync();
+            return monthlyBookings.Sum(b => (double)b.TotalPrice);
+        }
+
+        private async Task<double> GetYearlyRevenueAsync(string userId)
+        {
+            var currentYear = DateTime.Now.Year;
+            var yearlyBookings = await _bookingRepository.GetQueryable()
+                .Where(b => b.UserId.ToString() == userId && b.StartDate.Year == currentYear)
+                .ToListAsync();
+            return yearlyBookings.Sum(b => (double)b.TotalPrice);
+        }
+
+        private async Task<double> GetAveragePropertyRatingAsync(string userId)
+        {
+            var properties = await _propertyRepository.GetQueryable()
+                .Where(p => p.OwnerId.ToString() == userId)
+                .Include(p => p.Reviews)
+                .Where(p => p.Reviews.Any(r => r.StarRating.HasValue))
+                .ToListAsync();
+            if (!properties.Any()) return 0.0;
+            var totalRating = properties.Sum(p => 
+                p.Reviews.Any(r => r.StarRating.HasValue) 
+                    ? (double)p.Reviews.Where(r => r.StarRating.HasValue).Average(r => r.StarRating!.Value)
+                    : 0.0
+            );
+            return totalRating / properties.Count;
+        }
+
+        private double CalculatePropertyRevenue(Domain.Models.Property property)
+        {
+            return property.Bookings?.Sum(b => (double)b.TotalPrice) ?? 0.0;
+        }
+
+        public async Task<PropertyStatisticsDto> GetPropertyStatisticsAsync(string userId)
+        {
+            var allProperties = await _propertyRepository.GetQueryable()
+                .Where(p => p.OwnerId.ToString() == userId)
+                .ToListAsync();
             var total = allProperties.Count();
             var available = allProperties.Count(p => p.Status == "AVAILABLE");
             var rented = allProperties.Count(p => p.Status == "RENTED");
             double occupancyRate = total > 0 ? (double)rented / total : 0.0;
-
             var vacantPreview = allProperties
                 .Where(p => p.Status == "AVAILABLE")
                 .Take(5)
@@ -42,7 +132,6 @@ namespace eRents.Application.Service.StatisticsService
                     Price = p.Price
                 })
                 .ToList();
-
             return new PropertyStatisticsDto
             {
                 TotalProperties = total,
@@ -53,13 +142,17 @@ namespace eRents.Application.Service.StatisticsService
             };
         }
 
-        public async Task<MaintenanceStatisticsDto> GetMaintenanceStatisticsAsync()
+        public async Task<MaintenanceStatisticsDto> GetMaintenanceStatisticsAsync(string userId)
         {
-            var open = await _maintenanceRepository.GetOpenIssuesCountAsync();
-            var pending = await _maintenanceRepository.GetPendingIssuesCountAsync();
-            var highPriority = await _maintenanceRepository.GetHighPriorityIssuesCountAsync();
-            var tenantComplaints = await _maintenanceRepository.GetTenantComplaintsCountAsync();
-
+            // For maintenance, filter by properties owned by user
+            var propertyIds = await _propertyRepository.GetQueryable()
+                .Where(p => p.OwnerId.ToString() == userId)
+                .Select(p => p.PropertyId)
+                .ToListAsync();
+            var open = await _maintenanceRepository.GetOpenIssuesCountAsync(propertyIds);
+            var pending = await _maintenanceRepository.GetPendingIssuesCountAsync(propertyIds);
+            var highPriority = await _maintenanceRepository.GetHighPriorityIssuesCountAsync(propertyIds);
+            var tenantComplaints = await _maintenanceRepository.GetTenantComplaintsCountAsync(propertyIds);
             return new MaintenanceStatisticsDto
             {
                 OpenIssuesCount = open,
@@ -69,26 +162,22 @@ namespace eRents.Application.Service.StatisticsService
             };
         }
 
-        public async Task<FinancialSummaryDto> GetFinancialSummaryAsync(FinancialStatisticsRequest request)
+        public async Task<FinancialSummaryDto> GetFinancialSummaryAsync(string userId, FinancialStatisticsRequest request)
         {
-            // For demo: sum all bookings as rent income, sum all maintenance costs
             var allProperties = await _propertyRepository.GetQueryable()
+                .Where(p => p.OwnerId.ToString() == userId)
                 .Include(p => p.MaintenanceIssues)
                 .ToListAsync();
             decimal totalRent = 0;
             decimal totalMaintenance = 0;
-
             foreach (var property in allProperties)
             {
                 totalRent += await _propertyRepository.GetTotalRevenueAsync(property.PropertyId);
-                // Sum maintenance costs for this property
                 if (property.MaintenanceIssues != null)
                 {
                     totalMaintenance += property.MaintenanceIssues.Where(m => m.Cost.HasValue).Sum(m => m.Cost.Value);
                 }
             }
-
-            // OtherIncome/OtherExpenses can be extended as needed
             return new FinancialSummaryDto
             {
                 TotalRentIncome = totalRent,

@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using eRents.Shared.Enums;
 
 namespace eRents.Application.Service.PropertyService
 {
@@ -221,23 +222,26 @@ namespace eRents.Application.Service.PropertyService
 			};
 		}
 
-		public async Task UpdateStatusAsync(int propertyId, int statusId)
+		public async Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum)
 		{
 			var property = await _propertyRepository.GetByIdAsync(propertyId);
 			if (property == null) return;
 
-			// Convert statusId to status string based on your business logic
-			// For now, using a basic mapping - this should be improved with proper enum/lookup
-			string status = statusId switch
+			// Fetch status from DB using enum value
+			var status = await _propertyRepository.GetQueryable()
+				.Select(p => p.Status)
+				.Distinct()
+				.ToListAsync();
+			// Map enum to status name
+			string statusName = statusEnum switch
 			{
-				1 => "AVAILABLE",
-				2 => "RENTED", 
-				3 => "MAINTENANCE",
-				4 => "UNAVAILABLE",
-				_ => "AVAILABLE"
+				PropertyStatusEnum.Available => "Available",
+				PropertyStatusEnum.Rented => "Rented",
+				PropertyStatusEnum.UnderMaintenance => "Under Maintenance",
+				PropertyStatusEnum.Unavailable => "Unavailable",
+				_ => "Available"
 			};
-			
-			property.Status = status;
+			property.Status = statusName;
 			await _propertyRepository.UpdateAsync(property);
 		}
 

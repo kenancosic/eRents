@@ -53,30 +53,26 @@ namespace eRents.WebApi
 
 		private async Task SeedReferenceDataAsync(ERentsContext context)
 		{
-			// Clear any existing IDENTITY_INSERT settings first (safety measure)
-			try 
-			{
-				await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes OFF");
-			}
-			catch { } // Ignore if it's already off or table doesn't exist
-			
-			// Enable IDENTITY_INSERT for UserTypes to set explicit IDs
-			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes ON");
-			
-			// UserTypes - with explicit IDs for consistency
+			// UserTypes (Upsert by UserTypeId)
 			var userTypes = new[]
 			{
 				new UserType { UserTypeId = 1, TypeName = "Tenant" },
 				new UserType { UserTypeId = 2, TypeName = "Landlord" },
 				new UserType { UserTypeId = 3, TypeName = "Admin" }
 			};
-			context.UserTypes.AddRange(userTypes);
+			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes ON");
+			foreach (var ut in userTypes)
+			{
+				var existing = await context.UserTypes.FindAsync(ut.UserTypeId);
+				if (existing == null)
+					context.UserTypes.Add(ut);
+				else if (existing.TypeName != ut.TypeName)
+					existing.TypeName = ut.TypeName;
+			}
 			await context.SaveChangesAsync();
-			
-			// Disable IDENTITY_INSERT for UserTypes
 			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes OFF");
 
-			// PropertyTypes
+			// PropertyTypes (Upsert by TypeName)
 			var propertyTypes = new[]
 			{
 				new PropertyType { TypeName = "Apartment" },
@@ -86,9 +82,15 @@ namespace eRents.WebApi
 				new PropertyType { TypeName = "Studio" },
 				new PropertyType { TypeName = "Townhouse" }
 			};
-			context.PropertyTypes.AddRange(propertyTypes);
+			foreach (var pt in propertyTypes)
+			{
+				var existing = await context.PropertyTypes.FirstOrDefaultAsync(x => x.TypeName == pt.TypeName);
+				if (existing == null)
+					context.PropertyTypes.Add(pt);
+			}
+			await context.SaveChangesAsync();
 
-			// RentingTypes - Updated based on model alignment requirements
+			// RentingTypes (Upsert by TypeName)
 			var rentingTypes = new[]
 			{
 				new RentingType { TypeName = "Long-term" },
@@ -98,9 +100,15 @@ namespace eRents.WebApi
 				new RentingType { TypeName = "Monthly" },
 				new RentingType { TypeName = "Both" }
 			};
-			context.RentingTypes.AddRange(rentingTypes);
+			foreach (var rt in rentingTypes)
+			{
+				var existing = await context.RentingTypes.FirstOrDefaultAsync(x => x.TypeName == rt.TypeName);
+				if (existing == null)
+					context.RentingTypes.Add(rt);
+			}
+			await context.SaveChangesAsync();
 
-			// BookingStatuses
+			// BookingStatuses (Upsert by StatusName)
 			var bookingStatuses = new[]
 			{
 				new BookingStatus { StatusName = "Pending" },
@@ -111,9 +119,15 @@ namespace eRents.WebApi
 				new BookingStatus { StatusName = "Upcoming" },
 				new BookingStatus { StatusName = "Active" }
 			};
-			context.BookingStatuses.AddRange(bookingStatuses);
+			foreach (var bs in bookingStatuses)
+			{
+				var existing = await context.BookingStatuses.FirstOrDefaultAsync(x => x.StatusName == bs.StatusName);
+				if (existing == null)
+					context.BookingStatuses.Add(bs);
+			}
+			await context.SaveChangesAsync();
 
-			// IssuePriorities
+			// IssuePriorities (Upsert by PriorityName)
 			var issuePriorities = new[]
 			{
 				new IssuePriority { PriorityName = "Low" },
@@ -122,20 +136,33 @@ namespace eRents.WebApi
 				new IssuePriority { PriorityName = "Emergency" },
 				new IssuePriority { PriorityName = "Urgent" }
 			};
-			context.IssuePriorities.AddRange(issuePriorities);
+			foreach (var ip in issuePriorities)
+			{
+				var existing = await context.IssuePriorities.FirstOrDefaultAsync(x => x.PriorityName == ip.PriorityName);
+				if (existing == null)
+					context.IssuePriorities.Add(ip);
+			}
+			await context.SaveChangesAsync();
 
-			// IssueStatuses
+			// IssueStatuses (Upsert by StatusName)
 			var issueStatuses = new[]
 			{
 				new IssueStatus { StatusName = "Open" },
 				new IssueStatus { StatusName = "In Progress" },
 				new IssueStatus { StatusName = "Resolved" },
 				new IssueStatus { StatusName = "Closed" },
-				new IssueStatus { StatusName = "Reported" }
+				new IssueStatus { StatusName = "Reported" },
+				new IssueStatus { StatusName = "Pending" }
 			};
-			context.IssueStatuses.AddRange(issueStatuses);
+			foreach (var isv in issueStatuses)
+			{
+				var existing = await context.IssueStatuses.FirstOrDefaultAsync(x => x.StatusName == isv.StatusName);
+				if (existing == null)
+					context.IssueStatuses.Add(isv);
+			}
+			await context.SaveChangesAsync();
 
-			// PropertyStatuses
+			// PropertyStatuses (Upsert by StatusName)
 			var propertyStatuses = new[]
 			{
 				new PropertyStatus { StatusName = "Available" },
@@ -143,9 +170,15 @@ namespace eRents.WebApi
 				new PropertyStatus { StatusName = "Under Maintenance" },
 				new PropertyStatus { StatusName = "Unavailable" }
 			};
-			context.PropertyStatuses.AddRange(propertyStatuses);
+			foreach (var ps in propertyStatuses)
+			{
+				var existing = await context.PropertyStatuses.FirstOrDefaultAsync(x => x.StatusName == ps.StatusName);
+				if (existing == null)
+					context.PropertyStatuses.Add(ps);
+			}
+			await context.SaveChangesAsync();
 
-			// Amenities
+			// Amenities (Upsert by AmenityName)
 			var amenities = new[]
 			{
 				new Amenity { AmenityName = "Wi-Fi" },
@@ -159,9 +192,15 @@ namespace eRents.WebApi
 				new Amenity { AmenityName = "Laundry" },
 				new Amenity { AmenityName = "Pet Friendly" }
 			};
-			context.Amenities.AddRange(amenities);
+			foreach (var am in amenities)
+			{
+				var existing = await context.Amenities.FirstOrDefaultAsync(x => x.AmenityName == am.AmenityName);
+				if (existing == null)
+					context.Amenities.Add(am);
+			}
+			await context.SaveChangesAsync();
 
-			// GeoRegions
+			// GeoRegions (Upsert by City+State+Country+PostalCode)
 			var geoRegions = new[]
 			{
 				new GeoRegion { City = "Sarajevo", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "71000" },
@@ -172,8 +211,12 @@ namespace eRents.WebApi
 				new GeoRegion { City = "New York", State = "New York", Country = "United States", PostalCode = "10001" },
 				new GeoRegion { City = "Los Angeles", State = "California", Country = "United States", PostalCode = "90001" }
 			};
-			context.GeoRegions.AddRange(geoRegions);
-
+			foreach (var gr in geoRegions)
+			{
+				var existing = await context.GeoRegions.FirstOrDefaultAsync(x => x.City == gr.City && x.State == gr.State && x.Country == gr.Country && x.PostalCode == gr.PostalCode);
+				if (existing == null)
+					context.GeoRegions.Add(gr);
+			}
 			await context.SaveChangesAsync();
 		}
 
@@ -375,7 +418,7 @@ namespace eRents.WebApi
 			var dbTenants = await context.Tenants.ToListAsync();
 			var leaseExtensionRequests = new[]
 			{
-				new LeaseExtensionRequest { BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId).BookingId, PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, TenantId = dbTenants.First(t => t.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantId, NewEndDate = new DateTime(2025, 5, 1), NewMinimumStayEndDate = new DateTime(2025, 5, 3), Reason = "Project extension", Status = "pending", DateRequested = DateTime.Now.AddDays(-5) }
+				new LeaseExtensionRequest { BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId).BookingId, PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, TenantId = dbTenants.First(t => t.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantId, NewEndDate = new DateTime(2025, 5, 1), NewMinimumStayEndDate = new DateTime(2025, 5, 3), Reason = "Project extension", Status = "Pending", DateRequested = DateTime.Now.AddDays(-5) }
 			};
 			context.LeaseExtensionRequests.AddRange(leaseExtensionRequests);
 			await context.SaveChangesAsync();
@@ -472,6 +515,136 @@ namespace eRents.WebApi
 				new Image { MaintenanceIssueId = dbMaintenanceIssues.First(m => m.Title == "Air Conditioning Not Working").MaintenanceIssueId, ImageData = outletData, FileName = "ac_unit.jpg", DateUploaded = DateTime.Now.AddDays(-2), IsCover = false, ContentType = "image/jpeg", Width = 800, Height = 600, FileSizeBytes = outletData.Length, ThumbnailData = CreateThumbnail(outletData) }
 			};
 			context.Images.AddRange(images);
+			await context.SaveChangesAsync();
+
+			// --- SCALE UP testLandlord DATA ---
+			// Add more properties for testLandlord
+			var moreProperties = new[]
+			{
+				new Property { Name = "City Loft Downtown", Description = "Modern loft in city center.", Price = 1800.00m, DailyRate = 90.00m, MinimumStayDays = 2, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now.AddDays(-10), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Apartment").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Daily").RentingTypeId, AddressDetailId = dbAddressDetails[0].AddressDetailId, Bedrooms = 1, Bathrooms = 1, Area = 60.0m },
+				new Property { Name = "Suburban Family Home", Description = "Spacious home in quiet suburb.", Price = 2700.00m, DailyRate = 130.00m, MinimumStayDays = 7, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now.AddDays(-20), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "House").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Both").RentingTypeId, AddressDetailId = dbAddressDetails[1].AddressDetailId, Bedrooms = 4, Bathrooms = 3, Area = 200.0m },
+				new Property { Name = "Lakeview Retreat", Description = "Beautiful house with lake view.", Price = 3200.00m, DailyRate = 160.00m, MinimumStayDays = 5, Currency = "USD", OwnerId = dbUsers.First(u => u.Username == "testLandlord").UserId, DateAdded = DateTime.Now.AddDays(-30), PropertyTypeId = dbPropertyTypes.First(pt => pt.TypeName == "Villa").TypeId, RentingTypeId = dbRentingTypes.First(rt => rt.TypeName == "Vacation").RentingTypeId, AddressDetailId = dbAddressDetails[2].AddressDetailId, Bedrooms = 5, Bathrooms = 4, Area = 300.0m }
+			};
+			context.Properties.AddRange(moreProperties);
+			await context.SaveChangesAsync();
+
+			// Refresh dbProperties after adding more
+			var allTestLandlordProperties = dbProperties
+				.Where(p => p.OwnerId == dbUsers.First(u => u.Username == "testLandlord").UserId)
+				.Concat(moreProperties)
+				.ToList();
+
+			// Add more bookings for testLandlord's properties
+			var moreBookings = new List<Booking>();
+			var tenantUsers = dbUsers.Where(u => u.UserTypeId == dbUserTypes.First(ut => ut.TypeName == "Tenant").UserTypeId).ToList();
+			int bookingCounter = 1;
+			foreach (var property in allTestLandlordProperties)
+			{
+				foreach (var tenant in tenantUsers)
+				{
+					// Ensure month is always 1-12 and day is always 1-28 (safe for all months)
+					int month = ((bookingCounter - 1) % 12) + 1;
+					int day = ((bookingCounter - 1) % 28) + 1;
+					moreBookings.Add(new Booking
+					{
+						PropertyId = property.PropertyId,
+						UserId = tenant.UserId,
+						StartDate = new DateOnly(2025, month, day),
+						EndDate = new DateOnly(2025, month, Math.Min(day + 4, 28)), // 5-day booking, never exceeds 28
+						TotalPrice = 500.00m + 100 * bookingCounter,
+						BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-bookingCounter)),
+						BookingStatusId = dbBookingStatuses[bookingCounter % dbBookingStatuses.Count].BookingStatusId
+					});
+					bookingCounter++;
+				}
+			}
+			context.Bookings.AddRange(moreBookings);
+			await context.SaveChangesAsync();
+
+			// Add more maintenance issues for testLandlord's properties
+			var moreIssues = new List<MaintenanceIssue>();
+			int issueCounter = 1;
+			foreach (var property in allTestLandlordProperties)
+			{
+				moreIssues.Add(new MaintenanceIssue
+				{
+					PropertyId = property.PropertyId,
+					Title = $"Issue {issueCounter} for {property.Name}",
+					Description = "Auto-generated issue for testing.",
+					PriorityId = dbIssuePriorities[issueCounter % dbIssuePriorities.Count].PriorityId,
+					StatusId = dbIssueStatuses[issueCounter % dbIssueStatuses.Count].StatusId,
+					CreatedAt = DateTime.Now.AddDays(-issueCounter),
+					ReportedByUserId = tenantUsers[issueCounter % tenantUsers.Count].UserId,
+					Category = "General",
+					RequiresInspection = (issueCounter % 2 == 0),
+					IsTenantComplaint = (issueCounter % 3 == 0)
+				});
+				issueCounter++;
+			}
+			context.MaintenanceIssues.AddRange(moreIssues);
+			await context.SaveChangesAsync();
+
+			// Add more reviews for testLandlord's properties
+			var moreReviews = new List<Review>();
+			int reviewCounter = 1;
+			foreach (var property in allTestLandlordProperties)
+			{
+				var propertyBookings = dbBookings.Where(b => b.PropertyId == property.PropertyId).ToList();
+				foreach (var booking in propertyBookings.Take(2)) // Add 2 reviews per property
+				{
+					moreReviews.Add(new Review
+					{
+						PropertyId = property.PropertyId,
+						BookingId = booking.BookingId,
+						Description = $"Review {reviewCounter} for {property.Name}",
+						StarRating = 3.0m + (reviewCounter % 3),
+						DateReported = DateTime.Now.AddDays(-reviewCounter)
+					});
+					reviewCounter++;
+				}
+			}
+			context.Reviews.AddRange(moreReviews);
+			await context.SaveChangesAsync();
+
+			// Add more pending maintenance issues for testLandlord's properties
+			var pendingStatus = dbIssueStatuses.First(s => s.StatusName == "Pending");
+			var mediumPriority = dbIssuePriorities.First(p => p.PriorityName == "Medium");
+			var highPriority = dbIssuePriorities.First(p => p.PriorityName == "High");
+			var categories = new[] { "Plumbing", "Electrical", "Appliances", "General" };
+
+			foreach (var property in allTestLandlordProperties.Take(3)) // Add to first 3 properties for variety
+			{
+				// Find tenants for this property
+				var propertyTenants = context.Tenants.Where(t => t.PropertyId == property.PropertyId).ToList();
+				var reporter = propertyTenants.Any() ? propertyTenants.First().UserId : tenantUsers.First().UserId;
+
+				context.MaintenanceIssues.Add(new MaintenanceIssue
+				{
+					PropertyId = property.PropertyId,
+					Title = $"Leaking sink in {property.Name}",
+					Description = "Tenant reports a persistent leak under the kitchen sink.",
+					PriorityId = mediumPriority.PriorityId,
+					StatusId = pendingStatus.StatusId,
+					CreatedAt = DateTime.Now.AddDays(-5),
+					ReportedByUserId = reporter,
+					Category = categories[0],
+					RequiresInspection = true,
+					IsTenantComplaint = true
+				});
+				context.MaintenanceIssues.Add(new MaintenanceIssue
+				{
+					PropertyId = property.PropertyId,
+					Title = $"Power outage in {property.Name}",
+					Description = "Partial power outage affecting several rooms.",
+					PriorityId = highPriority.PriorityId,
+					StatusId = pendingStatus.StatusId,
+					CreatedAt = DateTime.Now.AddDays(-2),
+					ReportedByUserId = reporter,
+					Category = categories[1],
+					RequiresInspection = false,
+					IsTenantComplaint = true
+				});
+			}
 			await context.SaveChangesAsync();
 		}
 

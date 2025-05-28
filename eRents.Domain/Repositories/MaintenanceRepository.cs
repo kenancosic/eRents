@@ -12,24 +12,32 @@ namespace eRents.Domain.Repositories
 	{
 		public MaintenanceRepository(ERentsContext context) : base(context) { }
 
-		public async Task<int> GetOpenIssuesCountAsync()
+		public async Task<int> GetOpenIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
-			return await _context.MaintenanceIssues.AsNoTracking().CountAsync(m => m.Status.StatusName == "Open");
+			return await _context.MaintenanceIssues.AsNoTracking()
+				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "Open")
+				.CountAsync();
 		}
 
-		public async Task<int> GetPendingIssuesCountAsync()
+		public async Task<int> GetPendingIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
-			return await _context.MaintenanceIssues.AsNoTracking().CountAsync(m => m.Status.StatusName == "Pending");
+			return await _context.MaintenanceIssues.AsNoTracking()
+				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "Pending")
+				.CountAsync();
 		}
 
-		public async Task<int> GetHighPriorityIssuesCountAsync()
+		public async Task<int> GetHighPriorityIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
-			return await _context.MaintenanceIssues.AsNoTracking().CountAsync(m => m.Priority.PriorityName == "High" || m.Priority.PriorityName == "Emergency" || m.Priority.PriorityName == "Urgent");
+			return await _context.MaintenanceIssues.AsNoTracking()
+				.Where(m => propertyIds.Contains(m.PropertyId) && (m.Priority.PriorityName == "High" || m.Priority.PriorityName == "Emergency" || m.Priority.PriorityName == "Urgent"))
+				.CountAsync();
 		}
 
-		public async Task<int> GetTenantComplaintsCountAsync()
+		public async Task<int> GetTenantComplaintsCountAsync(IEnumerable<int> propertyIds)
 		{
-			return await _context.MaintenanceIssues.AsNoTracking().CountAsync(m => m.IsTenantComplaint);
+			return await _context.MaintenanceIssues.AsNoTracking()
+				.Where(m => propertyIds.Contains(m.PropertyId) && m.IsTenantComplaint)
+				.CountAsync();
 		}
 
 		public async Task<IEnumerable<MaintenanceIssue>> GetAllAsync(MaintenanceIssueSearchObject searchObject)

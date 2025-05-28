@@ -25,7 +25,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()));
+builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
+	.AddJsonOptions(options =>
+	{
+		// Configure JSON serialization to use camelCase
+		options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+		options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+	});
 builder.Services.AddLogging();
 
 // Add CORS for frontend applications
@@ -121,6 +127,10 @@ builder.Services.AddSingleton<IPaymentService>(sp =>
 builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Register IHttpContextAccessor and CurrentUserService for user context access
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<eRents.Shared.Services.ICurrentUserService, eRents.WebApi.Shared.CurrentUserService>();
 
 Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("eRentsConnection")}");
 
