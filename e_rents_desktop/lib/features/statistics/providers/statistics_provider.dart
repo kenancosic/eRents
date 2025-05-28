@@ -2,6 +2,7 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
+import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:intl/intl.dart';

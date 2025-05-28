@@ -2,7 +2,6 @@ import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
@@ -24,131 +23,121 @@ class StatisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title: 'Financial Statistics',
-      currentPath: '/statistics',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Consumer<StatisticsProvider>(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Consumer<StatisticsProvider>(
+          builder: (context, provider, child) {
+            return ReportFilters(
+              startDate: provider.startDate,
+              endDate: provider.endDate,
+              onDateRangeChanged:
+                  (start, end) => _handleDateRangeChanged(context, start, end),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Consumer<StatisticsProvider>(
             builder: (context, provider, child) {
-              return ReportFilters(
-                startDate: provider.startDate,
-                endDate: provider.endDate,
-                onDateRangeChanged:
-                    (start, end) =>
-                        _handleDateRangeChanged(context, start, end),
+              if (provider.state == ViewState.Busy &&
+                  provider.statisticsUiModel == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (provider.state == ViewState.Error) {
+                return Center(
+                  child: Text(
+                    'Error loading statistics: ${provider.errorMessage ?? "Unknown error"}',
+                  ),
+                );
+              }
+
+              if (provider.statisticsUiModel == null) {
+                return const Center(
+                  child: Text(
+                    'No statistics data available for the selected period.',
+                  ),
+                );
+              }
+
+              final stats = provider.statisticsUiModel!;
+
+              // Sort monthly breakdown by date for consistent chart order
+              stats.monthlyBreakdown.sort((a, b) {
+                final DateFormat formatter = DateFormat('dd/MM/yyyy');
+                try {
+                  final dateA = formatter.parse(a.dateFrom);
+                  final dateB = formatter.parse(b.dateFrom);
+                  return dateA.compareTo(dateB);
+                } catch (e) {
+                  return 0; // Should not happen with valid data
+                }
+              });
+
+              return ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  Card(
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Financial Summary (${stats.formattedDateRange})',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildStatRow(
+                            'Total Rental Income:',
+                            kCurrencyFormat.format(stats.totalRent),
+                            Colors.green,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildStatRow(
+                            'Total Maintenance Costs:',
+                            kCurrencyFormat.format(stats.totalMaintenanceCosts),
+                            Colors.orange,
+                          ),
+                          const Divider(height: 24, thickness: 1),
+                          _buildStatRow(
+                            'Net Total:',
+                            kCurrencyFormat.format(stats.netTotal),
+                            stats.netTotal >= 0 ? Colors.blue : Colors.red,
+                            isBold: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Row to hold both charts
+                  Row(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start, // Align charts at the top
+                    children: [
+                      // Expanded Bar Chart
+                      Expanded(
+                        child: _buildBarChart(context, stats.monthlyBreakdown),
+                      ),
+                      const SizedBox(
+                        width: 16,
+                      ), // Horizontal spacing between charts
+                      // Expanded Pie Chart
+                      Expanded(child: _buildPieChart(context, stats)),
+                    ],
+                  ),
+                ],
               );
             },
           ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: Consumer<StatisticsProvider>(
-              builder: (context, provider, child) {
-                if (provider.state == ViewState.Busy &&
-                    provider.statisticsUiModel == null) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (provider.state == ViewState.Error) {
-                  return Center(
-                    child: Text(
-                      'Error loading statistics: ${provider.errorMessage ?? "Unknown error"}',
-                    ),
-                  );
-                }
-
-                if (provider.statisticsUiModel == null) {
-                  return const Center(
-                    child: Text(
-                      'No statistics data available for the selected period.',
-                    ),
-                  );
-                }
-
-                final stats = provider.statisticsUiModel!;
-
-                // Sort monthly breakdown by date for consistent chart order
-                stats.monthlyBreakdown.sort((a, b) {
-                  final DateFormat formatter = DateFormat('dd/MM/yyyy');
-                  try {
-                    final dateA = formatter.parse(a.dateFrom);
-                    final dateB = formatter.parse(b.dateFrom);
-                    return dateA.compareTo(dateB);
-                  } catch (e) {
-                    return 0; // Should not happen with valid data
-                  }
-                });
-
-                return ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: [
-                    Card(
-                      elevation: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Financial Summary (${stats.formattedDateRange})',
-                              style: Theme.of(context).textTheme.headlineSmall,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 24),
-                            _buildStatRow(
-                              'Total Rental Income:',
-                              kCurrencyFormat.format(stats.totalRent),
-                              Colors.green,
-                            ),
-                            const SizedBox(height: 12),
-                            _buildStatRow(
-                              'Total Maintenance Costs:',
-                              kCurrencyFormat.format(
-                                stats.totalMaintenanceCosts,
-                              ),
-                              Colors.orange,
-                            ),
-                            const Divider(height: 24, thickness: 1),
-                            _buildStatRow(
-                              'Net Total:',
-                              kCurrencyFormat.format(stats.netTotal),
-                              stats.netTotal >= 0 ? Colors.blue : Colors.red,
-                              isBold: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Row to hold both charts
-                    Row(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start, // Align charts at the top
-                      children: [
-                        // Expanded Bar Chart
-                        Expanded(
-                          child: _buildBarChart(
-                            context,
-                            stats.monthlyBreakdown,
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 16,
-                        ), // Horizontal spacing between charts
-                        // Expanded Pie Chart
-                        Expanded(child: _buildPieChart(context, stats)),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

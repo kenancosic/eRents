@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/models/address_detail.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:provider/provider.dart';
@@ -244,421 +243,412 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     );
     _allAmenitiesWithIcons = propertyProvider.amenityIcons;
 
-    return AppBaseScreen(
-      title: _isEditMode ? 'Edit Property' : 'Add Property',
-      currentPath: '/properties',
-      child: LoadingOrErrorWidget(
-        isLoading: _isFetchingData,
-        error: _fetchError,
-        onRetry: _isEditMode ? _fetchPropertyData : null,
-        errorTitle: 'Failed to Load Property Data',
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Property Details',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Title',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a title';
-                          }
-                          return null;
-                        },
+    return LoadingOrErrorWidget(
+      isLoading: _isFetchingData,
+      error: _fetchError,
+      onRetry: _isEditMode ? _fetchPropertyData : null,
+      errorTitle: 'Failed to Load Property Data',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Property Details',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                        isDense: true,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: TextFormField(
-                        controller: _priceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Price',
-                          border: OutlineInputBorder(),
-                          suffixText: 'KM',
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a price';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid price';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<RentingType>(
-                        value: _rentingType,
-                        decoration: const InputDecoration(
-                          labelText: 'Renting Type',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items:
-                            RentingType.values
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(type.displayName),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _rentingType = value);
-                          }
-                        },
-                        validator: (value) {
-                          if (value == null) {
-                            return 'Please select a renting type';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  maxLines: 3,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a description';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<PropertyType>(
-                        value: _type,
-                        decoration: const InputDecoration(
-                          labelText: 'Type',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items:
-                            PropertyType.values
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(
-                                      type.toString().split('.').last,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _type = value);
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<PropertyStatus>(
-                        value: _status,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items:
-                            PropertyStatus.values
-                                .map(
-                                  (status) => DropdownMenuItem(
-                                    value: status,
-                                    child: Text(
-                                      status.toString().split('.').last,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() => _status = value);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                GoogleAddressInput(
-                  googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                  initialValue: _initialAddressString,
-                  countries: const ["BA"],
-                  onAddressSelected: (selectedDetails) {
-                    setState(() {
-                      if (selectedDetails != null) {
-                        _selectedFormattedAddress =
-                            selectedDetails.formattedAddress;
-                        _latitude = selectedDetails.latitude;
-                        _longitude = selectedDetails.longitude;
-                        _streetNumberController.text =
-                            selectedDetails.streetNumber ?? '';
-                        _streetNameController.text =
-                            selectedDetails.streetName ?? '';
-                        _cityController.text = selectedDetails.city ?? '';
-                        _postalCodeController.text =
-                            selectedDetails.postalCode ?? '';
-                        _countryController.text = selectedDetails.country ?? '';
-                      } else {
-                        _selectedFormattedAddress = null;
-                        _latitude = null;
-                        _longitude = null;
-                      }
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select an address or fill details manually';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _streetNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Street Name *',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Street name is required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _streetNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Street No.',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _cityController,
-                        decoration: const InputDecoration(
-                          labelText: 'City *',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'City is required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _postalCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Postal Code',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _countryController,
-                        decoration: const InputDecoration(
-                          labelText: 'Country',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bedroomsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Bedrooms',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter number of bedrooms';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bathroomsController,
-                        decoration: const InputDecoration(
-                          labelText: 'Bathrooms',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter number of bathrooms';
-                          }
-                          if (int.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _areaController,
-                        decoration: const InputDecoration(
-                          labelText: 'Area (sqft)',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter area';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Please enter a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Amenities',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                AmenityInput(
-                  initialAmenities: _selectedAmenities,
-                  availableAmenitiesWithIcons: _allAmenitiesWithIcons,
-                  onChanged: _updateSelectedAmenities,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Property Images',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                ImagePickerInput(
-                  initialImages: _images,
-                  onChanged: _updateSelectedImages,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () async {
-                        // Perform form validation first
-                        if (!_formKey.currentState!.validate()) {
-                          return; // Stop if basic form validation fails
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a title';
                         }
-
-                        // Proceed with saving if all validations pass
-                        final propertyToSave = _createProperty();
-                        final provider = context.read<PropertyProvider>();
-                        try {
-                          if (_isEditMode) {
-                            await provider.updateProperty(propertyToSave);
-                          } else {
-                            await provider.addProperty(propertyToSave);
-                          }
-                          if (context.mounted) context.pop();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Failed to save property: ${e.toString()}',
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: TextFormField(
+                      controller: _priceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Price',
+                        border: OutlineInputBorder(),
+                        suffixText: 'KM',
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a price';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Please enter a valid price';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: DropdownButtonFormField<RentingType>(
+                      value: _rentingType,
+                      decoration: const InputDecoration(
+                        labelText: 'Renting Type',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items:
+                          RentingType.values
+                              .map(
+                                (type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Text(type.displayName),
                                 ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
+                              )
+                              .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _rentingType = value);
                         }
                       },
-                      child: const Text('Save'),
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a renting type';
+                        }
+                        return null;
+                      },
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                  isDense: true,
                 ),
-              ],
-            ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<PropertyType>(
+                      value: _type,
+                      decoration: const InputDecoration(
+                        labelText: 'Type',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items:
+                          PropertyType.values
+                              .map(
+                                (type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Text(type.toString().split('.').last),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _type = value);
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<PropertyStatus>(
+                      value: _status,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items:
+                          PropertyStatus.values
+                              .map(
+                                (status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(
+                                    status.toString().split('.').last,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _status = value);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              GoogleAddressInput(
+                googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
+                initialValue: _initialAddressString,
+                countries: const ["BA"],
+                onAddressSelected: (selectedDetails) {
+                  setState(() {
+                    if (selectedDetails != null) {
+                      _selectedFormattedAddress =
+                          selectedDetails.formattedAddress;
+                      _latitude = selectedDetails.latitude;
+                      _longitude = selectedDetails.longitude;
+                      _streetNumberController.text =
+                          selectedDetails.streetNumber ?? '';
+                      _streetNameController.text =
+                          selectedDetails.streetName ?? '';
+                      _cityController.text = selectedDetails.city ?? '';
+                      _postalCodeController.text =
+                          selectedDetails.postalCode ?? '';
+                      _countryController.text = selectedDetails.country ?? '';
+                    } else {
+                      _selectedFormattedAddress = null;
+                      _latitude = null;
+                      _longitude = null;
+                    }
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select an address or fill details manually';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _streetNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Street Name *',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Street name is required';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _streetNumberController,
+                      decoration: const InputDecoration(
+                        labelText: 'Street No.',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City *',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'City is required';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _postalCodeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Postal Code',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _countryController,
+                      decoration: const InputDecoration(
+                        labelText: 'Country',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _bedroomsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Bedrooms',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter number of bedrooms';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _bathroomsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Bathrooms',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter number of bathrooms';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _areaController,
+                      decoration: const InputDecoration(
+                        labelText: 'Area (sqft)',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter area';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Please enter a valid number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text('Amenities', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              AmenityInput(
+                initialAmenities: _selectedAmenities,
+                availableAmenitiesWithIcons: _allAmenitiesWithIcons,
+                onChanged: _updateSelectedAmenities,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Property Images',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              ImagePickerInput(
+                initialImages: _images,
+                onChanged: _updateSelectedImages,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      // Perform form validation first
+                      if (!_formKey.currentState!.validate()) {
+                        return; // Stop if basic form validation fails
+                      }
+
+                      // Proceed with saving if all validations pass
+                      final propertyToSave = _createProperty();
+                      final provider = context.read<PropertyProvider>();
+                      try {
+                        if (_isEditMode) {
+                          await provider.updateProperty(propertyToSave);
+                        } else {
+                          await provider.addProperty(propertyToSave);
+                        }
+                        if (context.mounted) context.pop();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Failed to save property: ${e.toString()}',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

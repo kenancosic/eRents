@@ -1,6 +1,5 @@
 import 'package:provider/provider.dart';
 import 'package:flutter_reorderable_grid_view/widgets/widgets.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
@@ -14,6 +13,8 @@ import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/utils/constants.dart';
+import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -91,124 +92,114 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title: 'Properties',
-      currentPath: '/properties',
-      child: Consumer<PropertyProvider>(
-        builder: (context, provider, child) {
-          return LoadingOrErrorWidget(
-            isLoading: provider.state == ViewState.Busy,
-            error: provider.errorMessage,
-            onRetry: () => provider.fetchProperties(),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomSearchBar(
-                        controller: _searchController,
-                        hintText: 'Search Properties by Name...',
-                        onChanged: _filterProperties,
-                      ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          if (constraints.maxWidth < 600) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Total Properties: ${_filteredProperties.length}',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        _isListView
-                                            ? Icons.grid_view
-                                            : Icons.list,
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _isListView = !_isListView;
-                                        });
-                                      },
+    return Consumer<PropertyProvider>(
+      builder: (context, provider, child) {
+        return LoadingOrErrorWidget(
+          isLoading: provider.state == ViewState.Busy,
+          error: provider.errorMessage,
+          onRetry: () => provider.fetchProperties(),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomSearchBar(
+                      controller: _searchController,
+                      hintText: 'Search Properties by Name...',
+                      onChanged: _filterProperties,
+                    ),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 600) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total Properties: ${_filteredProperties.length}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      _isListView
+                                          ? Icons.grid_view
+                                          : Icons.list,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
-                                    ElevatedButton.icon(
-                                      onPressed:
-                                          () => _navigateToAddProperty(context),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Add Property'),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isListView = !_isListView;
+                                      });
+                                    },
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed:
+                                        () => _navigateToAddProperty(context),
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Add Property'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        } else {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Properties: ${_filteredProperties.length}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      _isListView
+                                          ? Icons.grid_view
+                                          : Icons.list,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          } else {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Total Properties: ${_filteredProperties.length}',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
-                                ),
-                                Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        _isListView
-                                            ? Icons.grid_view
-                                            : Icons.list,
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _isListView = !_isListView;
-                                        });
-                                      },
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed:
-                                          () => _navigateToAddProperty(context),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Add Property'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isListView = !_isListView;
+                                      });
+                                    },
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed:
+                                        () => _navigateToAddProperty(context),
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Add Property'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child:
-                      _isListView
-                          ? _buildListView(_filteredProperties)
-                          : _buildGridView(_filteredProperties),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+              ),
+              Expanded(
+                child:
+                    _isListView
+                        ? _buildListView(_filteredProperties)
+                        : _buildGridView(_filteredProperties),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -230,13 +221,18 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child:
-                    property.images.isNotEmpty &&
-                            property.images.first.url.isNotEmpty
-                        ? Image.network(
+                    property.images.isNotEmpty
+                        ? ImageUtils.buildImage(
                           property.images.first.url,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
+                          errorWidget: Image.asset(
+                            'assets/images/placeholder.jpg',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
                         )
                         : Image.asset(
                           'assets/images/placeholder.jpg',
@@ -370,11 +366,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            property.images.isNotEmpty &&
-                                    property.images.first.url.isNotEmpty
-                                ? Image.network(
+                            property.images.isNotEmpty
+                                ? ImageUtils.buildImage(
                                   property.images.first.url,
                                   fit: BoxFit.cover,
+                                  errorWidget: Image.asset(
+                                    'assets/images/placeholder.jpg',
+                                    fit: BoxFit.cover,
+                                  ),
                                 )
                                 : Image.asset(
                                   'assets/images/placeholder.jpg',

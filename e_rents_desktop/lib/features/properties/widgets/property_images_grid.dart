@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
+import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<erents.ImageInfo> images;
@@ -36,12 +37,14 @@ class PropertyImagesGrid extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    image.url.isNotEmpty
-                        ? Image.network(image.url, fit: BoxFit.cover)
-                        : Image.asset(
-                          'assets/images/placeholder.jpg',
-                          fit: BoxFit.cover,
-                        ),
+                    ImageUtils.buildImage(
+                      image.url,
+                      fit: BoxFit.cover,
+                      errorWidget: Image.asset(
+                        'assets/images/placeholder.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                     if (index == 0)
                       Positioned(
                         top: 8,
@@ -82,12 +85,14 @@ class PropertyImagesGrid extends StatelessWidget {
           (context) => Dialog(
             child: Stack(
               children: [
-                image.url.isNotEmpty
-                    ? Image.network(image.url, fit: BoxFit.contain)
-                    : Image.asset(
-                      'assets/images/placeholder.jpg',
-                      fit: BoxFit.contain,
-                    ),
+                ImageUtils.buildImage(
+                  image.url,
+                  fit: BoxFit.contain,
+                  errorWidget: Image.asset(
+                    'assets/images/placeholder.jpg',
+                    fit: BoxFit.contain,
+                  ),
+                ),
                 Positioned(
                   top: 8,
                   right: 8,

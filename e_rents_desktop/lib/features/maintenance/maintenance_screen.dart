@@ -4,7 +4,6 @@ import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
@@ -12,6 +11,7 @@ import 'package:e_rents_desktop/features/properties/providers/property_provider.
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/features/maintenance/maintenance_form_screen.dart';
+import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -45,61 +45,57 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title: 'Maintenance Issues',
-      currentPath: '/maintenance',
-      child: Consumer2<MaintenanceProvider, PropertyProvider>(
-        builder: (context, maintenanceProvider, propertyProvider, child) {
-          if (maintenanceProvider.state == ViewState.Busy ||
-              propertyProvider.state == ViewState.Busy) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer2<MaintenanceProvider, PropertyProvider>(
+      builder: (context, maintenanceProvider, propertyProvider, child) {
+        if (maintenanceProvider.state == ViewState.Busy ||
+            propertyProvider.state == ViewState.Busy) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (maintenanceProvider.errorMessage != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    maintenanceProvider.errorMessage!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => maintenanceProvider.fetchIssues(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final filteredIssues = _filterIssues(
-            maintenanceProvider.issues,
-            propertyProvider.properties,
-          );
-
-          return Column(
-            children: [
-              _buildHeader(context, maintenanceProvider),
-              const SizedBox(height: 16),
-              Expanded(
-                child: CustomTableWidget<MaintenanceIssue>(
-                  data: filteredIssues,
-                  columns: _getTableColumns(),
-                  cellsBuilder:
-                      (issue) => _buildTableCells(issue, propertyProvider),
-                  searchStringBuilder:
-                      (issue) =>
-                          '${issue.title} ${issue.description} ${_getPropertyTitle(issue.propertyId, propertyProvider)}',
-                  emptyStateWidget: _buildEmptyState(context),
-                  defaultRowsPerPage: 10,
+        if (maintenanceProvider.errorMessage != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  maintenanceProvider.errorMessage!,
+                  style: const TextStyle(color: Colors.red),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => maintenanceProvider.fetchIssues(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           );
-        },
-      ),
+        }
+
+        final filteredIssues = _filterIssues(
+          maintenanceProvider.issues,
+          propertyProvider.properties,
+        );
+
+        return Column(
+          children: [
+            _buildHeader(context, maintenanceProvider),
+            const SizedBox(height: 16),
+            Expanded(
+              child: CustomTableWidget<MaintenanceIssue>(
+                data: filteredIssues,
+                columns: _getTableColumns(),
+                cellsBuilder:
+                    (issue) => _buildTableCells(issue, propertyProvider),
+                searchStringBuilder:
+                    (issue) =>
+                        '${issue.title} ${issue.description} ${_getPropertyTitle(issue.propertyId, propertyProvider)}',
+                emptyStateWidget: _buildEmptyState(context),
+                defaultRowsPerPage: 10,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

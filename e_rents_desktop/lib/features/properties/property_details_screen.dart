@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_header.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
@@ -60,80 +59,71 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title:
-          _isLoading
-              ? 'Loading Property...'
-              : (_error != null
-                  ? 'Error'
-                  : (_property?.title ?? 'Property Details')),
-      currentPath: '/properties',
-      child: LoadingOrErrorWidget(
-        isLoading: _isLoading,
-        error: _error,
-        onRetry: _fetchPropertyDetails,
-        errorTitle: 'Failed to Load Property',
-        child:
-            _property == null
-                ? const Center(child: Text('Property data is not available.'))
-                : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildBackButton(context),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                PropertyHeader(property: _property!),
-                                const SizedBox(height: 16),
-                                PropertyImagesGrid(images: _property!.images),
-                                const SizedBox(height: 16),
-                                Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: PropertyOverviewSection(
-                                      property: _property!,
-                                      onEdit:
-                                          () => _navigateToEditScreen(
-                                            context,
-                                            _property!.id,
-                                          ),
-                                    ),
+    return LoadingOrErrorWidget(
+      isLoading: _isLoading,
+      error: _error,
+      onRetry: _fetchPropertyDetails,
+      errorTitle: 'Failed to Load Property',
+      child:
+          _property == null
+              ? const Center(child: Text('Property data is not available.'))
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildBackButton(context),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              PropertyHeader(property: _property!),
+                              const SizedBox(height: 16),
+                              PropertyImagesGrid(images: _property!.images),
+                              const SizedBox(height: 16),
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: PropertyOverviewSection(
+                                    property: _property!,
+                                    onEdit:
+                                        () => _navigateToEditScreen(
+                                          context,
+                                          _property!.id,
+                                        ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              children: [
-                                Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: TenantInfo(property: _property!),
-                                  ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: TenantInfo(property: _property!),
                                 ),
-                                const SizedBox(height: 16),
-                                _buildCompactStatistics(),
-                                const SizedBox(height: 16),
-                                _buildMaintenanceIssues(context, _property!),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildCompactStatistics(),
+                              const SizedBox(height: 16),
+                              _buildMaintenanceIssues(context, _property!),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-      ),
+              ),
     );
   }
 

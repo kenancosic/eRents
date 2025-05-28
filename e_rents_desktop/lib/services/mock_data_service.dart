@@ -11,12 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
 import 'package:e_rents_desktop/models/address_detail.dart';
+import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart'
-    show
-        DashboardStatistics,
-        PopularProperty,
-        FinancialStatistics,
-        MonthlyRevenue;
+    show FinancialStatistics, MonthlyRevenue;
 
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
@@ -735,45 +732,45 @@ class MockDataService {
     return ['City', 'Price Range', 'Amenities', 'Description'];
   }
 
-  static DashboardStatistics getMockDashboardStatistics() {
-    final mockProperties = getMockProperties();
-    final mockIssues = getMockMaintenanceIssues();
-    return DashboardStatistics(
-      totalProperties: mockProperties.length,
-      occupiedProperties:
-          mockProperties.where((p) => p.status == PropertyStatus.rented).length,
-      occupancyRate:
-          mockProperties.isEmpty
-              ? 0.0
-              : (mockProperties
-                      .where((p) => p.status == PropertyStatus.rented)
-                      .length /
-                  mockProperties.length),
-      averageRating: 4.5,
-      topProperties: [
-        PopularProperty(
-          propertyId: 1,
-          name: "Luxury Apartment",
-          bookingCount: 10,
-          totalRevenue: 25000,
-          averageRating: 4.8,
-        ),
-        PopularProperty(
-          propertyId: 2,
-          name: "Family House",
-          bookingCount: 8,
-          totalRevenue: 28000,
-          averageRating: 4.6,
-        ),
-      ],
-      pendingMaintenanceIssues:
-          mockIssues
-              .where((issue) => issue.status == IssueStatus.pending)
-              .length,
-      monthlyRevenue: 53000,
-      yearlyRevenue: 636000,
-    );
-  }
+  // static DashboardStatistics getMockDashboardStatistics() {
+  //   final mockProperties = getMockProperties();
+  //   final mockIssues = getMockMaintenanceIssues();
+  //   return DashboardStatistics(
+  //     totalProperties: mockProperties.length,
+  //     occupiedProperties:
+  //         mockProperties.where((p) => p.status == PropertyStatus.rented).length,
+  //     occupancyRate:
+  //         mockProperties.isEmpty
+  //             ? 0.0
+  //             : (mockProperties
+  //                     .where((p) => p.status == PropertyStatus.rented)
+  //                     .length /
+  //                 mockProperties.length),
+  //     averageRating: 4.5,
+  //     topProperties: [
+  //       PopularProperty(
+  //         propertyId: 1,
+  //         name: "Luxury Apartment",
+  //         bookingCount: 10,
+  //         totalRevenue: 25000,
+  //         averageRating: 4.8,
+  //       ),
+  //       PopularProperty(
+  //         propertyId: 2,
+  //         name: "Family House",
+  //         bookingCount: 8,
+  //         totalRevenue: 28000,
+  //         averageRating: 4.6,
+  //       ),
+  //     ],
+  //     pendingMaintenanceIssues:
+  //         mockIssues
+  //             .where((issue) => issue.status == IssueStatus.pending)
+  //             .length,
+  //     monthlyRevenue: 53000,
+  //     yearlyRevenue: 636000,
+  //   );
+  // }
 
   static FinancialStatistics getMockApiFinancialStatistics(
     DateTime startDate,

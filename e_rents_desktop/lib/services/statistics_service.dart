@@ -1,70 +1,8 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/services/api_service.dart';
-
-class DashboardStatistics {
-  final int totalProperties;
-  final int occupiedProperties;
-  final double occupancyRate;
-  final double averageRating;
-  final List<PopularProperty> topProperties;
-  final int pendingMaintenanceIssues;
-  final double monthlyRevenue;
-  final double yearlyRevenue;
-
-  DashboardStatistics({
-    required this.totalProperties,
-    required this.occupiedProperties,
-    required this.occupancyRate,
-    required this.averageRating,
-    required this.topProperties,
-    required this.pendingMaintenanceIssues,
-    required this.monthlyRevenue,
-    required this.yearlyRevenue,
-  });
-
-  factory DashboardStatistics.fromJson(Map<String, dynamic> json) {
-    return DashboardStatistics(
-      totalProperties: json['totalProperties'] ?? 0,
-      occupiedProperties: json['occupiedProperties'] ?? 0,
-      occupancyRate: json['occupancyRate']?.toDouble() ?? 0.0,
-      averageRating: json['averageRating']?.toDouble() ?? 0.0,
-      topProperties:
-          (json['topProperties'] as List<dynamic>?)
-              ?.map((property) => PopularProperty.fromJson(property))
-              .toList() ??
-          [],
-      pendingMaintenanceIssues: json['pendingMaintenanceIssues'] ?? 0,
-      monthlyRevenue: json['monthlyRevenue']?.toDouble() ?? 0.0,
-      yearlyRevenue: json['yearlyRevenue']?.toDouble() ?? 0.0,
-    );
-  }
-}
-
-class PopularProperty {
-  final int propertyId;
-  final String name;
-  final int bookingCount;
-  final double totalRevenue;
-  final double? averageRating;
-
-  PopularProperty({
-    required this.propertyId,
-    required this.name,
-    required this.bookingCount,
-    required this.totalRevenue,
-    this.averageRating,
-  });
-
-  factory PopularProperty.fromJson(Map<String, dynamic> json) {
-    return PopularProperty(
-      propertyId: json['propertyId'] ?? 0,
-      name: json['name'] ?? '',
-      bookingCount: json['bookingCount'] ?? 0,
-      totalRevenue: json['totalRevenue']?.toDouble() ?? 0.0,
-      averageRating: json['averageRating']?.toDouble(),
-    );
-  }
-}
+import 'package:e_rents_desktop/models/statistics/property_statistics.dart';
+import 'package:e_rents_desktop/models/statistics/maintenance_statistics.dart';
+import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 
 class FinancialStatistics {
   final double currentMonthRevenue;
@@ -124,57 +62,64 @@ class MonthlyRevenue {
   }
 }
 
-class StatisticsService {
-  final ApiService _apiService;
+class StatisticsService extends ApiService {
+  StatisticsService(super.baseUrl, super.storageService);
 
-  StatisticsService(this._apiService);
-
+  // Single comprehensive dashboard call
   Future<DashboardStatistics> getDashboardStatistics() async {
-    try {
-      final response = await _apiService.get('/Statistics/dashboard');
+    final response = await get(
+      '/api/Statistics/dashboard',
+      authenticated: true,
+    );
+    final data = json.decode(response.body);
+    return DashboardStatistics.fromJson(data);
+  }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return DashboardStatistics.fromJson(data);
-      } else {
-        throw Exception(
-          'Failed to load dashboard statistics: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      throw Exception('Error fetching dashboard statistics: $e');
-    }
+  // Legacy methods - kept for backward compatibility if needed
+  Future<PropertyStatistics> getPropertyStatistics() async {
+    final response = await get(
+      '/api/Statistics/properties',
+      authenticated: true,
+    );
+    final data = json.decode(response.body);
+    return PropertyStatistics.fromJson(data);
+  }
+
+  Future<MaintenanceStatistics> getMaintenanceStatistics() async {
+    final response = await get(
+      '/api/Statistics/maintenance',
+      authenticated: true,
+    );
+    final data = json.decode(response.body);
+    return MaintenanceStatistics.fromJson(data);
+  }
+
+  Future<Map<String, dynamic>> getFinancialSummary() async {
+    final response = await get(
+      '/api/Statistics/financial',
+      authenticated: true,
+    );
+    return json.decode(response.body);
   }
 
   Future<FinancialStatistics> getFinancialStatistics({
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    try {
-      // Build query parameters
-      String queryParams = '';
-      if (startDate != null) {
-        queryParams += 'startDate=${startDate.toIso8601String()}';
-      }
-      if (endDate != null) {
-        queryParams += queryParams.isNotEmpty ? '&' : '';
-        queryParams += 'endDate=${endDate.toIso8601String()}';
-      }
-
-      final endpoint =
-          '/Statistics/financial${queryParams.isNotEmpty ? '?$queryParams' : ''}';
-      final response = await _apiService.get(endpoint);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return FinancialStatistics.fromJson(data);
-      } else {
-        throw Exception(
-          'Failed to load financial statistics: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      throw Exception('Error fetching financial statistics: $e');
+    // Build query parameters
+    String queryParams = '';
+    if (startDate != null) {
+      queryParams += 'startDate=${startDate.toIso8601String()}';
     }
+    if (endDate != null) {
+      queryParams += queryParams.isNotEmpty ? '&' : '';
+      queryParams += 'endDate=${endDate.toIso8601String()}';
+    }
+
+    final endpoint =
+        '/api/Statistics/financial${queryParams.isNotEmpty ? '?$queryParams' : ''}';
+    final response = await get(endpoint, authenticated: true);
+    final data = json.decode(response.body);
+    return FinancialStatistics.fromJson(data);
   }
 }

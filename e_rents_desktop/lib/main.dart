@@ -47,7 +47,7 @@ void main() async {
   final propertyService = PropertyService(baseUrl, secureStorageService);
   final profileService = ProfileService(baseUrl, secureStorageService);
   final reportService = ReportService(baseUrl, secureStorageService);
-  final statisticsService = StatisticsService(apiService);
+  final statisticsService = StatisticsService(baseUrl, secureStorageService);
   final tenantService = TenantService(baseUrl, secureStorageService);
 
   runApp(

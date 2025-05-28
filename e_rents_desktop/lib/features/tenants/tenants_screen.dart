@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
@@ -138,130 +137,126 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title: 'Tenants',
-      currentPath: '/tenants',
-      child: Consumer<TenantProvider>(
-        builder: (context, provider, child) {
-          // Updated loading state check
-          if (provider.state == ViewState.Busy &&
-              provider.items.isEmpty &&
-              provider.searchingTenants.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer<TenantProvider>(
+      builder: (context, provider, child) {
+        // Updated loading state check
+        if (provider.state == ViewState.Busy &&
+            provider.items.isEmpty &&
+            provider.searchingTenants.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          // Added error handling
-          if (provider.state == ViewState.Error) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+        // Added error handling
+        if (provider.state == ViewState.Error) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  provider.errorMessage ?? 'Failed to load tenant data.',
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => provider.loadAllData(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Use provider.items for current tenants if TenantProvider maps _currentTenants to items_
+        final currentTenants = provider.items;
+        final searchingTenants = provider.searchingTenants;
+
+        if (currentTenants.isEmpty && searchingTenants.isEmpty) {
+          return const Center(
+            child: Text(
+              'No tenants data available.',
+              style: TextStyle(fontSize: 18),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'Current Tenants'),
+                Tab(text: 'Tenants Advertisements'),
+              ],
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Theme.of(context).colorScheme.primary,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    provider.errorMessage ?? 'Failed to load tenant data.',
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
-                    textAlign: TextAlign.center,
+                    _searchLabelText,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.loadAllData(),
-                    child: const Text('Retry'),
-                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildSearchBar(provider)),
                 ],
               ),
-            );
-          }
-
-          // Use provider.items for current tenants if TenantProvider maps _currentTenants to items_
-          final currentTenants = provider.items;
-          final searchingTenants = provider.searchingTenants;
-
-          if (currentTenants.isEmpty && searchingTenants.isEmpty) {
-            return const Center(
-              child: Text(
-                'No tenants data available.',
-                style: TextStyle(fontSize: 18),
-              ),
-            );
-          }
-
-          return Column(
-            children: [
-              TabBar(
+            ),
+            Expanded(
+              child: TabBarView(
                 controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Current Tenants'),
-                  Tab(text: 'Tenants Advertisements'),
+                children: [
+                  CurrentTenantsTableWidget(
+                    tenants: currentTenants, // Using updated variable
+                    searchTerm: _searchTerm,
+                    currentFilterField: _currentFilterField,
+                    onSendMessage:
+                        (tenant) => _sendMessage(
+                          context,
+                          tenant,
+                        ), // Pass context if needed by impl
+                    onShowProfile:
+                        (tenant, properties) => _showTenantProfile(
+                          context,
+                          tenant,
+                          properties,
+                        ), // Adjusted
+                    onNavigateToProperty:
+                        (property) => // Adjusted to take Property object
+                            _navigateToPropertyDetails(context, property),
+                  ),
+                  TenantsAdvertisementTableWidget(
+                    preferences: searchingTenants, // Using updated variable
+                    tenants:
+                        currentTenants, // Pass current tenants if needed for context
+                    searchTerm: _searchTerm,
+                    currentFilterField: _currentFilterField,
+                    onSendMessage:
+                        (pref) => _sendMessageToSearchingTenant(
+                          context,
+                          pref,
+                        ), // Pass context
+                    onShowDetails:
+                        (pref, tenant) => _showTenantPreferenceDetails(
+                          // Adjusted
+                          context,
+                          pref,
+                          tenant,
+                        ), // Pass context
+                  ),
                 ],
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Colors.grey,
-                indicatorColor: Theme.of(context).colorScheme.primary,
               ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      _searchLabelText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildSearchBar(provider)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    CurrentTenantsTableWidget(
-                      tenants: currentTenants, // Using updated variable
-                      searchTerm: _searchTerm,
-                      currentFilterField: _currentFilterField,
-                      onSendMessage:
-                          (tenant) => _sendMessage(
-                            context,
-                            tenant,
-                          ), // Pass context if needed by impl
-                      onShowProfile:
-                          (tenant, properties) => _showTenantProfile(
-                            context,
-                            tenant,
-                            properties,
-                          ), // Adjusted
-                      onNavigateToProperty:
-                          (property) => // Adjusted to take Property object
-                              _navigateToPropertyDetails(context, property),
-                    ),
-                    TenantsAdvertisementTableWidget(
-                      preferences: searchingTenants, // Using updated variable
-                      tenants:
-                          currentTenants, // Pass current tenants if needed for context
-                      searchTerm: _searchTerm,
-                      currentFilterField: _currentFilterField,
-                      onSendMessage:
-                          (pref) => _sendMessageToSearchingTenant(
-                            context,
-                            pref,
-                          ), // Pass context
-                      onShowDetails:
-                          (pref, tenant) => _showTenantPreferenceDetails(
-                            // Adjusted
-                            context,
-                            pref,
-                            tenant,
-                          ), // Pass context
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -18,10 +18,81 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
+
+// Shell layout that includes the persistent navigation bar
+class AppShell extends StatelessWidget {
+  final Widget child;
+
+  const AppShell({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).uri.path;
+
+    return Scaffold(
+      body: Row(
+        children: [
+          AppNavigationBar(currentPath: location),
+          Expanded(
+            child: Scaffold(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              body: child,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Content wrapper that provides consistent styling for main app content
+class ContentWrapper extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const ContentWrapper({super.key, required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Page Title
+          Text(title, style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 12),
+
+          // Main Content Area
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: child,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class AppRouter {
   final GoRouter router = GoRouter(
@@ -60,7 +131,7 @@ class AppRouter {
       return null;
     },
     routes: [
-      // Auth routes
+      // Auth routes (no shell - they use their own layout)
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/signup',
@@ -70,106 +141,169 @@ class AppRouter {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      // Main routes
-      GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
-      GoRoute(
-        path: '/properties',
-        builder: (context, state) => const PropertiesScreen(),
+
+      // Main app shell with persistent navigation
+      ShellRoute(
+        builder: (context, state, child) => AppShell(child: child),
         routes: [
+          // Main routes
           GoRoute(
-            path: 'add',
+            path: '/',
             builder:
-                (context, state) => const PropertyFormScreen(propertyId: null),
+                (context, state) => const ContentWrapper(
+                  title: 'Dashboard',
+                  child: HomeScreen(),
+                ),
           ),
           GoRoute(
-            path: ':id',
-            builder: (context, state) {
-              final propertyId = state.pathParameters['id'];
-              if (propertyId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('Error: Missing Property ID')),
-                );
-              }
-              return PropertyDetailsScreen(propertyId: propertyId);
-            },
+            path: '/properties',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Properties',
+                  child: PropertiesScreen(),
+                ),
             routes: [
               GoRoute(
-                path: 'edit',
+                path: 'add',
+                builder:
+                    (context, state) => const ContentWrapper(
+                      title: 'Add Property',
+                      child: PropertyFormScreen(propertyId: null),
+                    ),
+              ),
+              GoRoute(
+                path: ':id',
                 builder: (context, state) {
                   final propertyId = state.pathParameters['id'];
                   if (propertyId == null) {
-                    return const Scaffold(
-                      body: Center(
-                        child: Text('Error: Missing Property ID for Edit'),
-                      ),
+                    return const ContentWrapper(
+                      title: 'Error',
+                      child: Center(child: Text('Error: Missing Property ID')),
                     );
                   }
-                  return PropertyFormScreen(propertyId: propertyId);
+                  return ContentWrapper(
+                    title: 'Property Details',
+                    child: PropertyDetailsScreen(propertyId: propertyId),
+                  );
                 },
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    builder: (context, state) {
+                      final propertyId = state.pathParameters['id'];
+                      if (propertyId == null) {
+                        return const ContentWrapper(
+                          title: 'Error',
+                          child: Center(
+                            child: Text('Error: Missing Property ID for Edit'),
+                          ),
+                        );
+                      }
+                      return ContentWrapper(
+                        title: 'Edit Property',
+                        child: PropertyFormScreen(propertyId: propertyId),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
+          GoRoute(
+            path: '/maintenance',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Maintenance Issues',
+                  child: MaintenanceScreen(),
+                ),
+          ),
+          GoRoute(
+            path: '/maintenance/new',
+            builder: (context, state) {
+              final propertyId = state.uri.queryParameters['propertyId'];
+              return ContentWrapper(
+                title: 'New Maintenance Issue',
+                child: MaintenanceFormScreen(propertyId: propertyId),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/maintenance/:id',
+            builder: (context, state) {
+              final maintenanceProvider = context.read<MaintenanceProvider>();
+              final propertyProvider = context.read<PropertyProvider>();
+              final issueId = state.pathParameters['id']!;
+
+              // Instead of fetching immediately, schedule it for after the build
+              Future.microtask(() {
+                if (maintenanceProvider.issues.isEmpty) {
+                  maintenanceProvider.fetchIssues();
+                }
+                if (propertyProvider.properties.isEmpty) {
+                  propertyProvider.fetchProperties();
+                }
+              });
+
+              // Try to find the issue if it already exists
+              MaintenanceIssue? issue;
+              try {
+                issue = maintenanceProvider.issues.firstWhere(
+                  (i) => i.id == issueId,
+                );
+              } catch (_) {
+                // Issue will be loaded after fetchIssues completes
+              }
+
+              // Return the screen even if the issue isn't loaded yet
+              // The screen should handle the loading state
+              return ContentWrapper(
+                title: 'Maintenance Issue',
+                child: MaintenanceIssueDetailsScreen(
+                  issueId: issueId,
+                  issue: issue,
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/chat',
+            builder:
+                (context, state) =>
+                    const ContentWrapper(title: 'Chat', child: ChatScreen()),
+          ),
+          GoRoute(
+            path: '/statistics',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Statistics',
+                  child: StatisticsScreen(),
+                ),
+          ),
+          GoRoute(
+            path: '/reports',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Reports',
+                  child: ReportsScreen(),
+                ),
+          ),
+          GoRoute(
+            path: '/profile',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Profile',
+                  child: ProfileScreen(),
+                ),
+          ),
+          GoRoute(
+            path: '/tenants',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Tenants',
+                  child: TenantsScreen(),
+                ),
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/maintenance',
-        builder: (context, state) => const MaintenanceScreen(),
-      ),
-      GoRoute(
-        path: '/maintenance/new',
-        builder: (context, state) {
-          final propertyId = state.uri.queryParameters['propertyId'];
-          return MaintenanceFormScreen(propertyId: propertyId);
-        },
-      ),
-      GoRoute(
-        path: '/maintenance/:id',
-        builder: (context, state) {
-          final maintenanceProvider = context.read<MaintenanceProvider>();
-          final propertyProvider = context.read<PropertyProvider>();
-          final issueId = state.pathParameters['id']!;
-
-          // Instead of fetching immediately, schedule it for after the build
-          Future.microtask(() {
-            if (maintenanceProvider.issues.isEmpty) {
-              maintenanceProvider.fetchIssues();
-            }
-            if (propertyProvider.properties.isEmpty) {
-              propertyProvider.fetchProperties();
-            }
-          });
-
-          // Try to find the issue if it already exists
-          MaintenanceIssue? issue;
-          try {
-            issue = maintenanceProvider.issues.firstWhere(
-              (i) => i.id == issueId,
-            );
-          } catch (_) {
-            // Issue will be loaded after fetchIssues completes
-          }
-
-          // Return the screen even if the issue isn't loaded yet
-          // The screen should handle the loading state
-          return MaintenanceIssueDetailsScreen(issueId: issueId, issue: issue);
-        },
-      ),
-      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
-      GoRoute(
-        path: '/statistics',
-        builder: (context, state) => const StatisticsScreen(),
-      ),
-      GoRoute(
-        path: '/reports',
-        builder: (context, state) => const ReportsScreen(),
-      ),
-      GoRoute(
-        path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
-      ),
-      GoRoute(
-        path: '/tenants',
-        builder: (context, state) => const TenantsScreen(),
       ),
     ],
   );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
@@ -146,85 +145,81 @@ class _ReportsScreenContent extends StatelessWidget {
     final provider = Provider.of<ReportsProvider>(context);
     final List<String> reportTypes = MockDataService.getReportTypes();
 
-    return AppBaseScreen(
-      title: 'Reports',
-      currentPath: '/reports',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header section with title and report type selector
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(13), // 0.05 opacity
-                  offset: const Offset(0, 2),
-                  blurRadius: 5,
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Text(
-                  'Report Type:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 16),
-                SizedBox(
-                  width: 240,
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header section with title and report type selector
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(13), // 0.05 opacity
+                offset: const Offset(0, 2),
+                blurRadius: 5,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Text(
+                'Report Type:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 240,
+                child: DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    value: provider.getReportTypeString(),
-                    items:
-                        reportTypes.map((String type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Text(type),
-                          );
-                        }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        provider.setReportTypeFromString(newValue);
-                        provider.loadCurrentReportData();
-                      }
-                    },
                   ),
+                  value: provider.getReportTypeString(),
+                  items:
+                      reportTypes.map((String type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        );
+                      }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      provider.setReportTypeFromString(newValue);
+                      provider.loadCurrentReportData();
+                    }
+                  },
                 ),
-                const Spacer(),
-                ExportOptions(
-                  onExportPDF: () => _handleExportPDF(context),
-                  onExportExcel: () => _handleExportExcel(context),
-                  onExportCSV: () => _handleExportCSV(context),
-                ),
-              ],
-            ),
+              ),
+              const Spacer(),
+              ExportOptions(
+                onExportPDF: () => _handleExportPDF(context),
+                onExportExcel: () => _handleExportExcel(context),
+                onExportCSV: () => _handleExportCSV(context),
+              ),
+            ],
           ),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          // Filters section
-          ReportFilters(
-            startDate: provider.startDate,
-            endDate: provider.endDate,
-            onDateRangeChanged:
-                (start, end) => _handleDateRangeChanged(context, start, end),
-          ),
+        // Filters section
+        ReportFilters(
+          startDate: provider.startDate,
+          endDate: provider.endDate,
+          onDateRangeChanged:
+              (start, end) => _handleDateRangeChanged(context, start, end),
+        ),
 
-          const SizedBox(height: 16),
+        const SizedBox(height: 16),
 
-          // Report data table section
-          const Expanded(child: ReportTable()),
-        ],
-      ),
+        // Report data table section
+        const Expanded(child: ReportTable()),
+      ],
     );
   }
 }

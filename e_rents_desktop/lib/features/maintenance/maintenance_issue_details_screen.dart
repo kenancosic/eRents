@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:provider/provider.dart';
@@ -18,11 +17,7 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBaseScreen(
-      title: 'Maintenance Issue',
-      currentPath: '/maintenance',
-      child: _buildContent(context),
-    );
+    return _buildContent(context);
   }
 
   Widget _buildContent(BuildContext context) {

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/app_base_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
@@ -115,133 +114,120 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
       value: _profileProvider,
-      child: AppBaseScreen(
-        title: 'Profile',
-        currentPath: '/profile',
-        child: Consumer<ProfileProvider>(
-          builder: (context, provider, child) {
-            if (provider.state == ViewState.Busy) {
-              return const Center(child: CircularProgressIndicator());
-            }
+      child: Consumer<ProfileProvider>(
+        builder: (context, provider, child) {
+          if (provider.state == ViewState.Busy) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (provider.state == ViewState.Error) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 64,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Error loading profile: ${provider.errorMessage ?? 'Unknown error'}',
-                      textAlign:
-                          TextAlign.center, // Added for better text display
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => provider.fetchUserProfile(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              children: [
-                ProfileHeaderWidget(
-                  isEditing: _isEditing,
-                  onEditPressed: _toggleEditing,
-                  onCancelPressed: _isEditing ? _cancelEditing : null,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
+          if (provider.state == ViewState.Error) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading profile: ${provider.errorMessage ?? 'Unknown error'}',
+                    textAlign:
+                        TextAlign.center, // Added for better text display
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: const Color.fromRGBO(0, 0, 0, 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      labelColor: Theme.of(context).colorScheme.primary,
-                      unselectedLabelColor:
-                          Theme.of(context).colorScheme.onSurface,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      indicatorColor: Theme.of(context).colorScheme.primary,
-                      tabs: const [
-                        Tab(icon: Icon(Icons.person), text: 'Personal Info'),
-                        Tab(icon: Icon(Icons.lock), text: 'Change Password'),
-                        Tab(icon: Icon(Icons.payment), text: 'Payments'),
-                      ],
-                    ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => provider.fetchUserProfile(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              ProfileHeaderWidget(
+                isEditing: _isEditing,
+                onEditPressed: _toggleEditing,
+                onCancelPressed: _isEditing ? _cancelEditing : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: const Color.fromRGBO(0, 0, 0, 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: Theme.of(context).colorScheme.primary,
+                    unselectedLabelColor:
+                        Theme.of(context).colorScheme.onSurface,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicatorColor: Theme.of(context).colorScheme.primary,
+                    tabs: const [
+                      Tab(icon: Icon(Icons.person), text: 'Personal Info'),
+                      Tab(icon: Icon(Icons.lock), text: 'Change Password'),
+                      Tab(icon: Icon(Icons.payment), text: 'Payments'),
+                    ],
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        Column(
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                child: PersonalInfoFormWidget(
-                                  isEditing: _isEditing,
-                                  formKey: _personalInfoFormKey,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      Column(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: PersonalInfoFormWidget(
+                                isEditing: _isEditing,
+                                formKey: _personalInfoFormKey,
+                              ),
+                            ),
+                          ),
+                          if (_isEditing)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: ElevatedButton.icon(
+                                onPressed: _saveProfile,
+                                icon: const Icon(Icons.save),
+                                label: const Text('Save Personal Info'),
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 48),
                                 ),
                               ),
                             ),
-                            if (_isEditing)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                child: ElevatedButton.icon(
-                                  onPressed: _saveProfile,
-                                  icon: const Icon(Icons.save),
-                                  label: const Text('Save Personal Info'),
-                                  style: ElevatedButton.styleFrom(
-                                    minimumSize: const Size(
-                                      double.infinity,
-                                      48,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
+                        ],
+                      ),
 
-                        SingleChildScrollView(
-                          child: ChangePasswordWidget(
-                            isEditing: _isEditing,
-                            formKey: _passwordFormKey,
-                          ),
+                      SingleChildScrollView(
+                        child: ChangePasswordWidget(
+                          isEditing: _isEditing,
+                          formKey: _passwordFormKey,
                         ),
+                      ),
 
-                        PaypalSettingsWidget(isEditing: _isEditing),
-                      ],
-                    ),
+                      PaypalSettingsWidget(isEditing: _isEditing),
+                    ],
                   ),
                 ),
-              ],
-            );
-          },
-        ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
