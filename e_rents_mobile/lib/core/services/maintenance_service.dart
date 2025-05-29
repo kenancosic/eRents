@@ -27,7 +27,7 @@ class MaintenanceService {
       for (File image in images) {
         var request = http.MultipartRequest(
           'POST',
-          Uri.parse('${_apiService.baseUrl}/api/maintenance/upload-image'),
+          Uri.parse('${_apiService.baseUrl}/maintenance/upload-image'),
         );
         
         // Add auth token
@@ -54,8 +54,8 @@ class MaintenanceService {
       issueData['imageIds'] = imageIds;
       
       final response = await _apiService.post(
-        '/api/maintenance/issues',
-        issueData,
+        '/maintenance/issues',
+        body: issueData,
         authenticated: true,
       );
       
@@ -103,7 +103,7 @@ class MaintenanceService {
 
       /* Real API call:
       final response = await _apiService.get(
-        '/api/maintenance/issues/tenant/$tenantId',
+        '/maintenance/issues/tenant/$tenantId',
         authenticated: true,
       );
       
@@ -142,6 +142,23 @@ class MaintenanceService {
     } catch (e) {
       print('Error getting maintenance issue details: $e');
       return null;
+    }
+  }
+
+  /// Update maintenance issue details
+  Future<bool> updateMaintenanceIssueDetails(
+      int issueId, Map<String, dynamic> updateData) async {
+    try {
+      final response = await _apiService.put(
+        '/maintenance/issues/$issueId',
+        updateData,
+        authenticated: true,
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error updating maintenance issue details: $e');
+      return false;
     }
   }
 }

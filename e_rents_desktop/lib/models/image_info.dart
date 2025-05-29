@@ -18,23 +18,27 @@ class ImageInfo {
   });
 
   factory ImageInfo.fromJson(Map<String, dynamic> json) => ImageInfo(
-    id: json['id'] as String,
-    url: json['url'] as String,
+    id: (json['imageId'] ?? json['id'])?.toString() ?? '',
+    url: json['url'] as String? ?? '',
     fileName: json['fileName'] as String?,
     width: json['width'] as int?,
     height: json['height'] as int?,
-    sizeBytes: json['sizeBytes'] as int?,
+    sizeBytes: json['fileSizeBytes'] as int? ?? json['sizeBytes'] as int?,
     uploadedAt:
-        json['uploadedAt'] != null ? DateTime.parse(json['uploadedAt']) : null,
+        json['dateUploaded'] != null
+            ? DateTime.tryParse(json['dateUploaded'] as String)
+            : json['uploadedAt'] != null
+            ? DateTime.tryParse(json['uploadedAt'] as String)
+            : null,
   );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
+    'imageId': int.tryParse(id) ?? id,
     'url': url,
     if (fileName != null) 'fileName': fileName,
     if (width != null) 'width': width,
     if (height != null) 'height': height,
-    if (sizeBytes != null) 'sizeBytes': sizeBytes,
-    if (uploadedAt != null) 'uploadedAt': uploadedAt!.toIso8601String(),
+    if (sizeBytes != null) 'fileSizeBytes': sizeBytes,
+    if (uploadedAt != null) 'dateUploaded': uploadedAt!.toIso8601String(),
   };
 }

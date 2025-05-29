@@ -30,9 +30,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      context.read<MaintenanceProvider>().fetchIssues();
-      context.read<PropertyProvider>().fetchProperties();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<MaintenanceProvider>().fetchIssues();
+        context.read<PropertyProvider>().fetchProperties();
+      }
     });
     _searchController.addListener(() => setState(() {}));
   }
@@ -232,20 +234,25 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child:
-                          property.images.first.url.isNotEmpty
-                              ? Image.network(
-                                property.images.first.url,
-                                width: 32,
-                                height: 32,
-                                fit: BoxFit.cover,
-                              )
-                              : Image.asset(
-                                'assets/images/placeholder.jpg',
-                                width: 32,
-                                height: 32,
-                                fit: BoxFit.cover,
-                              ),
+                      child: ImageUtils.buildImage(
+                        property.images.first.url,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorWidget: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            Icons.apartment,
+                            size: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
                     ),
                   )
                 else

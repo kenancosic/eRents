@@ -32,7 +32,7 @@ class ImageUtils {
         errorBuilder: (context, error, stackTrace) {
           return errorWidget ??
               Image.asset(
-                'assets/images/placeholder.jpg',
+                'assets/images/placeholder.png',
                 fit: fit,
                 width: width,
                 height: height,
@@ -48,7 +48,7 @@ class ImageUtils {
         errorBuilder: (context, error, stackTrace) {
           return errorWidget ??
               Image.asset(
-                'assets/images/placeholder.jpg',
+                'assets/images/placeholder.png',
                 fit: fit,
                 width: width,
                 height: height,
@@ -58,7 +58,7 @@ class ImageUtils {
     } else {
       // Assume it's a local file path
       return Image.asset(
-        'assets/images/placeholder.jpg',
+        'assets/images/placeholder.png',
         fit: fit,
         width: width,
         height: height,
@@ -69,7 +69,7 @@ class ImageUtils {
   /// Creates the appropriate ImageProvider based on the URL type
   static ImageProvider buildImageProvider(String url) {
     if (url.isEmpty) {
-      return const AssetImage('assets/images/placeholder.jpg');
+      return const AssetImage('assets/images/placeholder.png');
     }
 
     if (isAssetPath(url)) {
@@ -78,7 +78,7 @@ class ImageUtils {
       return NetworkImage(url);
     } else {
       // Assume it's a local file path
-      return const AssetImage('assets/images/placeholder.jpg');
+      return const AssetImage('assets/images/placeholder.png');
     }
   }
 }

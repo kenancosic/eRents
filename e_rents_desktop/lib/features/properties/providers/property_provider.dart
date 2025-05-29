@@ -12,8 +12,7 @@ class PropertyProvider extends BaseProvider<Property> {
 
   PropertyProvider(this._propertyService, this._amenityService)
     : super(_propertyService) {
-    // Enable mock data for development
-    enableMockData();
+    // enableMockData();
   }
 
   @override

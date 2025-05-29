@@ -17,7 +17,7 @@ class LeaseService {
       // In a real app, this would send the request to the server
       /* Real API call:
       final response = await _apiService.post(
-        '/api/leases/extension-requests',
+        '/leases/extension-requests',
         request.toJson(),
         authenticated: true,
       );
@@ -55,7 +55,7 @@ class LeaseService {
 
       /* Real API call:
       final response = await _apiService.get(
-        '/api/leases/extension-requests/tenant/$tenantId',
+        '/leases/extension-requests/tenant/$tenantId',
         authenticated: true,
       );
       
@@ -84,7 +84,7 @@ class LeaseService {
 
       /* Real API call:
       final response = await _apiService.put(
-        '/api/bookings/$bookingId/cancel',
+        '/bookings/$bookingId/cancel',
         {'reason': reason},
         authenticated: true,
       );
@@ -123,7 +123,7 @@ class LeaseService {
 
       /* Real API call:
       final response = await _apiService.get(
-        '/api/properties/$propertyId/availability?start=${start.toIso8601String()}&end=${end.toIso8601String()}',
+        '/properties/$propertyId/availability?start=${start.toIso8601String()}&end=${end.toIso8601String()}',
         authenticated: true,
       );
       
@@ -150,7 +150,7 @@ class LeaseService {
 
       /* Real API call:
       final response = await _apiService.get(
-        '/api/bookings/$bookingId',
+        '/bookings/$bookingId',
         authenticated: true,
       );
       

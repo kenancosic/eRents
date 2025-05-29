@@ -67,38 +67,26 @@ class StatisticsService extends ApiService {
 
   // Single comprehensive dashboard call
   Future<DashboardStatistics> getDashboardStatistics() async {
-    final response = await get(
-      '/api/Statistics/dashboard',
-      authenticated: true,
-    );
+    final response = await get('/Statistics/dashboard', authenticated: true);
     final data = json.decode(response.body);
     return DashboardStatistics.fromJson(data);
   }
 
   // Legacy methods - kept for backward compatibility if needed
   Future<PropertyStatistics> getPropertyStatistics() async {
-    final response = await get(
-      '/api/Statistics/properties',
-      authenticated: true,
-    );
+    final response = await get('/Statistics/properties', authenticated: true);
     final data = json.decode(response.body);
     return PropertyStatistics.fromJson(data);
   }
 
   Future<MaintenanceStatistics> getMaintenanceStatistics() async {
-    final response = await get(
-      '/api/Statistics/maintenance',
-      authenticated: true,
-    );
+    final response = await get('/Statistics/maintenance', authenticated: true);
     final data = json.decode(response.body);
     return MaintenanceStatistics.fromJson(data);
   }
 
   Future<Map<String, dynamic>> getFinancialSummary() async {
-    final response = await get(
-      '/api/Statistics/financial',
-      authenticated: true,
-    );
+    final response = await get('/Statistics/financial', authenticated: true);
     return json.decode(response.body);
   }
 
@@ -117,7 +105,7 @@ class StatisticsService extends ApiService {
     }
 
     final endpoint =
-        '/api/Statistics/financial${queryParams.isNotEmpty ? '?$queryParams' : ''}';
+        '/Statistics/financial${queryParams.isNotEmpty ? '?$queryParams' : ''}';
     final response = await get(endpoint, authenticated: true);
     final data = json.decode(response.body);
     return FinancialStatistics.fromJson(data);

@@ -58,43 +58,20 @@ class Property {
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      id: json['id'] as String? ?? json['propertyId']?.toString() ?? '',
-      ownerId: json['ownerId'] as String? ?? '',
-      title: json['title'] as String? ?? '',
+      id: json['propertyId']?.toString() ?? json['id']?.toString() ?? '',
+      ownerId: json['ownerId']?.toString() ?? '',
+      title: json['name'] as String? ?? json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      type: PropertyType.values.firstWhere(
-        (e) => e.toString() == 'PropertyType.${json['type']}',
-        orElse: () => PropertyType.apartment,
-      ),
+      type: _parsePropertyType(json['type']),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      rentingType: RentingType.values.firstWhere(
-        (e) => e.name == json['rentingType'],
-        orElse: () => RentingType.monthly,
-      ),
-      status: PropertyStatus.values.firstWhere(
-        (e) => e.toString() == 'PropertyStatus.${json['status']}',
-        orElse: () => PropertyStatus.available,
-      ),
-      images:
-          (json['images'] as List? ?? [])
-              .map(
-                (e) =>
-                    e is String
-                        ? erents.ImageInfo(id: e, url: e)
-                        : erents.ImageInfo.fromJson(e as Map<String, dynamic>),
-              )
-              .toList(),
+      rentingType: _parseRentingType(json['rentingType']),
+      status: _parsePropertyStatus(json['status']),
+      images: _parseImages(json['images']),
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
       area: (json['area'] as num?)?.toDouble() ?? 0.0,
-      maintenanceIssues:
-          (json['maintenanceIssues'] as List? ?? [])
-              .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
-              .toList(),
-      amenities:
-          json['amenities'] != null
-              ? List<String>.from(json['amenities'] as List)
-              : null,
+      maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
+      amenities: _parseAmenities(json['amenities']),
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
@@ -106,9 +83,10 @@ class Property {
           json['nextInspectionDate'] != null
               ? DateTime.tryParse(json['nextInspectionDate'] as String? ?? '')
               : null,
-      dateAdded: DateTime.parse(
-        json['dateAdded'] as String? ?? DateTime.now().toIso8601String(),
-      ),
+      dateAdded:
+          json['dateAdded'] != null
+              ? DateTime.parse(json['dateAdded'] as String)
+              : DateTime.now(),
       addressDetailId: json['addressDetailId']?.toString(),
       addressDetail:
           json['addressDetail'] != null
@@ -119,11 +97,126 @@ class Property {
     );
   }
 
+  static PropertyType _parsePropertyType(dynamic typeValue) {
+    if (typeValue == null) return PropertyType.apartment;
+
+    String typeString = typeValue.toString().toLowerCase();
+    switch (typeString) {
+      case 'apartment':
+        return PropertyType.apartment;
+      case 'house':
+        return PropertyType.house;
+      case 'condo':
+        return PropertyType.condo;
+      case 'townhouse':
+        return PropertyType.townhouse;
+      case 'studio':
+        return PropertyType.studio;
+      default:
+        return PropertyType.apartment;
+    }
+  }
+
+  static RentingType _parseRentingType(dynamic rentingTypeValue) {
+    if (rentingTypeValue == null) return RentingType.monthly;
+
+    String rentingTypeString = rentingTypeValue.toString().toLowerCase();
+    switch (rentingTypeString) {
+      case 'daily':
+        return RentingType.daily;
+      case 'monthly':
+        return RentingType.monthly;
+      default:
+        return RentingType.monthly;
+    }
+  }
+
+  static PropertyStatus _parsePropertyStatus(dynamic statusValue) {
+    if (statusValue == null) return PropertyStatus.available;
+
+    String statusString = statusValue.toString().toLowerCase();
+    switch (statusString) {
+      case 'available':
+        return PropertyStatus.available;
+      case 'rented':
+        return PropertyStatus.rented;
+      case 'maintenance':
+        return PropertyStatus.maintenance;
+      case 'unavailable':
+        return PropertyStatus.unavailable;
+      default:
+        return PropertyStatus.available;
+    }
+  }
+
+  static List<erents.ImageInfo> _parseImages(dynamic imagesValue) {
+    if (imagesValue == null) return [];
+
+    try {
+      final List<dynamic> imagesList = imagesValue as List;
+      return imagesList.map((e) {
+        if (e is String) {
+          return erents.ImageInfo(id: e, url: e);
+        } else if (e is Map<String, dynamic>) {
+          return erents.ImageInfo.fromJson(e);
+        } else {
+          return erents.ImageInfo(id: '', url: '');
+        }
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static List<MaintenanceIssue> _parseMaintenanceIssues(
+    dynamic maintenanceValue,
+  ) {
+    if (maintenanceValue == null) return [];
+
+    try {
+      final List<dynamic> maintenanceList = maintenanceValue as List;
+      return maintenanceList
+          .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static List<String>? _parseAmenities(dynamic amenitiesValue) {
+    if (amenitiesValue == null) return null;
+
+    try {
+      if (amenitiesValue is List) {
+        // Handle list of amenity objects or strings
+        return amenitiesValue
+            .map((amenity) {
+              if (amenity is String) {
+                return amenity;
+              } else if (amenity is Map<String, dynamic>) {
+                return amenity['name']?.toString() ??
+                    amenity['amenityName']?.toString() ??
+                    '';
+              } else {
+                return amenity.toString();
+              }
+            })
+            .where((name) => name.isNotEmpty)
+            .toList()
+            .cast<String>();
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'ownerId': ownerId,
-      'title': title,
+      'propertyId': id.isNotEmpty ? int.tryParse(id) : null,
+      'ownerId': ownerId.isNotEmpty ? int.tryParse(ownerId) : null,
+      'name': title,
       'description': description,
       'type': type.toString().split('.').last,
       'price': price,
@@ -133,16 +226,12 @@ class Property {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'area': area,
-      'maintenanceIssues': maintenanceIssues.map((e) => e.toJson()).toList(),
-      'amenities': amenities,
       'currency': currency,
       'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
-      'lastInspectionDate': lastInspectionDate?.toIso8601String(),
-      'nextInspectionDate': nextInspectionDate?.toIso8601String(),
       'dateAdded': dateAdded.toIso8601String(),
-      'addressDetailId': addressDetailId,
       'addressDetail': addressDetail?.toJson(),
+      'amenities': amenities,
     };
   }
 

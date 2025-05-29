@@ -52,7 +52,7 @@ class PropertyAvailabilityService {
 
       /* Real API call would be:
       final response = await _apiService.get(
-        '/api/properties/$propertyId/availability?start=${start.toIso8601String()}&end=${end.toIso8601String()}',
+        '/properties/$propertyId/availability?start=${start.toIso8601String()}&end=${end.toIso8601String()}',
         authenticated: true,
       );
       
