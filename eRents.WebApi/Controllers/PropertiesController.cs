@@ -4,22 +4,26 @@ using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using eRents.Shared.Enums;
+using Microsoft.AspNetCore.Authorization;
+using eRents.Shared.Services;
 
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
+	[Authorize] // All endpoints require authentication
 	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
+		private readonly ICurrentUserService _currentUserService;
+		private readonly IConfiguration _configuration;
 
-		public PropertiesController(IPropertyService service) : base(service)
+		public PropertiesController(IPropertyService service, ICurrentUserService currentUserService, IConfiguration configuration) : base(service)
 		{
 			_propertyService = service;
+			_currentUserService = currentUserService;
+			_configuration = configuration;
 		}
 
 		[HttpGet("search")]
@@ -37,23 +41,24 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPost("{propertyId}/save")]
-		public async Task<IActionResult> SaveProperty(int propertyId, int userId)
+		public async Task<IActionResult> SaveProperty(int propertyId)
 		{
-			var result = await _propertyService.SavePropertyAsync(propertyId, userId);
+			var result = await _propertyService.SavePropertyAsync(propertyId, 0);
 			if (result)
 				return Ok();
 			else
 				return BadRequest("Could not save property.");
 		}
 
-		[HttpGet("recommend/{userId}")]
-		public async Task<IActionResult> GetRecommendations(int userId)
+		[HttpGet("recommend")]
+		public async Task<IActionResult> GetRecommendations()
 		{
-			var recommendedProperties = await _propertyService.RecommendPropertiesAsync(userId);
+			var recommendedProperties = await _propertyService.RecommendPropertiesAsync(0);
 			return Ok(recommendedProperties);
 		}
 
 		[HttpPost("{propertyId}/images")]
+		[Authorize(Roles = "Landlord")]
 		public async Task<IActionResult> UploadImage(int propertyId, [FromForm] ImageUploadRequest request)
 		{
 			var imageResponse = await _propertyService.UploadImageAsync(propertyId, request);
@@ -68,11 +73,34 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpPut("{propertyId}/status")]
+		[Authorize(Roles = "Landlord")]
 		public async Task<IActionResult> UpdateStatus(int propertyId, [FromBody] int statusId)
 		{
 			var statusEnum = (PropertyStatusEnum)statusId;
 			await _propertyService.UpdateStatusAsync(propertyId, statusEnum);
 			return NoContent();
+		}
+
+		[HttpPost]
+		[Authorize(Roles = "Landlord")]
+		public override async Task<PropertyResponse> Insert([FromBody] PropertyInsertRequest insert)
+		{
+			return await base.Insert(insert);
+		}
+
+		[HttpPut("{id}")]
+		[Authorize(Roles = "Landlord")]
+		public override async Task<PropertyResponse> Update(int id, [FromBody] PropertyUpdateRequest update)
+		{
+			return await base.Update(id, update);
+		}
+
+		[HttpDelete("{id}")]
+		[Authorize(Roles = "Landlord")]
+		public override async Task<IActionResult> Delete(int id)
+		{
+			var result = await base.Delete(id);
+			return result;
 		}
 
 		// Additional endpoints related to properties can be added here

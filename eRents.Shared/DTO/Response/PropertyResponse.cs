@@ -6,7 +6,7 @@ namespace eRents.Shared.DTO.Response
 	public class PropertyResponse
 	{
 		// Corresponds to the Property entity
-		public string PropertyId { get; set; }
+		public int PropertyId { get; set; }
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public decimal Price { get; set; }

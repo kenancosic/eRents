@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace eRents.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	public class UsersController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
 		private readonly IUserService _userService;

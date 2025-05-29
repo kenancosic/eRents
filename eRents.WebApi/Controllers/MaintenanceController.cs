@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	public class MaintenanceController : BaseCRUDController<MaintenanceIssueResponse, MaintenanceIssueSearchObject, MaintenanceIssueRequest, MaintenanceIssueRequest>
 	{
 		private readonly IMaintenanceService _maintenanceService;

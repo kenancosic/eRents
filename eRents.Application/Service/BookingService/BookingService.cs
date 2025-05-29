@@ -20,23 +20,107 @@ namespace eRents.Application.Service.BookingService
 	public class BookingService : BaseCRUDService<BookingResponse, Booking, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>, IBookingService
 	{
 		private readonly IBookingRepository _bookingRepository;
+		private readonly ICurrentUserService _currentUserService;
 		private readonly IPaymentService _paymentService;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly IMapper _mapper;
 
-		public BookingService(IBookingRepository bookingRepository, IPaymentService paymentService, IRabbitMQService rabbitMqService, IMapper mapper)
+		public BookingService(IBookingRepository bookingRepository, ICurrentUserService currentUserService, IPaymentService paymentService, IRabbitMQService rabbitMqService, IMapper mapper)
 				: base(bookingRepository, mapper)
 		{
 			_bookingRepository = bookingRepository;
+			_currentUserService = currentUserService;
 			_paymentService = paymentService;
 			_rabbitMqService = rabbitMqService;
 			_mapper = mapper;
 		}
 
+		// Override GetByIdAsync to implement user-scoped access
+		public override async Task<BookingResponse> GetByIdAsync(int id)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			var booking = await _bookingRepository.GetByIdWithOwnerCheckAsync(id, currentUserId, currentUserRole);
+			if (booking == null)
+				throw new KeyNotFoundException("Booking not found or access denied");
+
+			return _mapper.Map<BookingResponse>(booking);
+		}
+
+		// Override GetAllAsync to implement user-scoped filtering
+		public override async Task<IEnumerable<BookingResponse>> GetAsync(BookingSearchObject search = null)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			List<Booking> bookings;
+
+			if (currentUserRole == "Tenant" || currentUserRole == "User")
+			{
+				// Tenants and Users see only their own bookings
+				bookings = await _bookingRepository.GetByTenantIdAsync(currentUserId);
+			}
+			else if (currentUserRole == "Landlord")
+			{
+				// Landlords see bookings for their properties
+				bookings = await _bookingRepository.GetByLandlordIdAsync(currentUserId);
+			}
+			else
+			{
+				throw new UnauthorizedAccessException("Invalid user role");
+			}
+
+			// Apply additional filtering if search object is provided
+			if (search != null)
+			{
+				var query = bookings.AsQueryable();
+
+				if (search.PropertyId.HasValue)
+				{
+					query = query.Where(b => b.PropertyId == search.PropertyId);
+				}
+
+				if (!string.IsNullOrEmpty(search.Status))
+				{
+					query = query.Where(b => b.BookingStatus != null && b.BookingStatus.StatusName == search.Status);
+				}
+
+				if (search.StartDate.HasValue)
+				{
+					DateOnly startDate = DateOnly.FromDateTime(search.StartDate.Value);
+					query = query.Where(b => b.StartDate >= startDate);
+				}
+
+				if (search.EndDate.HasValue)
+				{
+					DateOnly endDate = DateOnly.FromDateTime(search.EndDate.Value);
+					query = query.Where(b => b.EndDate.HasValue && b.EndDate <= endDate);
+				}
+
+				bookings = query.ToList();
+			}
+
+			return _mapper.Map<IEnumerable<BookingResponse>>(bookings);
+		}
+
+		// Override InsertAsync to set UserId to current user
 		public override async Task<BookingResponse> InsertAsync(BookingInsertRequest request)
 		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || (currentUserRole != "User" && currentUserRole != "Tenant"))
+				throw new UnauthorizedAccessException("Only users and tenants can create bookings");
+
 			// Check property availability - ensure proper type conversions
-			int propertyId = int.Parse(request.PropertyId);
+			int propertyId = request.PropertyId;
 			DateOnly startDate = DateOnly.FromDateTime(request.StartDate);
 			DateOnly endDate = DateOnly.FromDateTime(request.EndDate);
 
@@ -62,8 +146,18 @@ namespace eRents.Application.Service.BookingService
 
 			// Proceed with creating the booking - ensure proper type conversions
 			var bookingEntity = _mapper.Map<Booking>(request);
+
+			// Set the user to the current user (never trust client data)
+			if (int.TryParse(currentUserId, out int userIdInt))
+			{
+				bookingEntity.UserId = userIdInt;
+			}
+			else
+			{
+				throw new InvalidOperationException("Invalid user ID format");
+			}
+
 			await _bookingRepository.AddAsync(bookingEntity);
-			await _bookingRepository.SaveChangesAsync();
 
 			var bookingResponse = _mapper.Map<BookingResponse>(bookingEntity);
 
@@ -78,43 +172,98 @@ namespace eRents.Application.Service.BookingService
 			return bookingResponse;
 		}
 
-		public async Task<IEnumerable<BookingResponse>> GetBookingsForUserAsync(int userId)
+		// Override UpdateAsync to validate ownership
+		public override async Task<BookingResponse> UpdateAsync(int id, BookingUpdateRequest update)
 		{
-			var bookings = await _bookingRepository.GetBookingsByUserAsync(userId);
-			return _mapper.Map<IEnumerable<BookingResponse>>(bookings);
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Check if user has access to this booking
+			if (!await _bookingRepository.IsBookingOwnerOrPropertyOwnerAsync(id, currentUserId, currentUserRole))
+				throw new UnauthorizedAccessException("You can only update your own bookings or bookings for your properties");
+
+			var entity = await _bookingRepository.GetByIdAsync(id);
+			if (entity == null)
+				throw new KeyNotFoundException("Booking not found");
+
+			_mapper.Map(update, entity);
+
+			await BeforeUpdateAsync(update, entity);
+
+			await _bookingRepository.UpdateAsync(entity);
+
+			return _mapper.Map<BookingResponse>(entity);
+		}
+
+		// Override DeleteAsync to validate ownership
+		public override async Task<bool> DeleteAsync(int id)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Check if user has access to this booking
+			if (!await _bookingRepository.IsBookingOwnerOrPropertyOwnerAsync(id, currentUserId, currentUserRole))
+				throw new UnauthorizedAccessException("You can only cancel your own bookings or bookings for your properties");
+
+			var entity = await _bookingRepository.GetByIdAsync(id);
+			if (entity == null)
+				throw new KeyNotFoundException("Booking not found");
+
+			await _bookingRepository.DeleteAsync(entity);
+			await _bookingRepository.SaveChangesAsync();
+
+			return true;
 		}
 
 		public async Task<List<BookingSummaryDto>> GetCurrentStaysAsync(string userId)
 		{
-			// Convert string userId to int if needed for repository method
-			if (!int.TryParse(userId, out int userIdInt))
+			// This method still takes userId for backward compatibility but uses current user
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Get current stays based on user role
+			List<Booking> bookings;
+			if (currentUserRole == "Tenant" || currentUserRole == "User")
 			{
-				return new List<BookingSummaryDto>();
+				bookings = await _bookingRepository.GetByTenantIdAsync(currentUserId);
+			}
+			else if (currentUserRole == "Landlord")
+			{
+				bookings = await _bookingRepository.GetByLandlordIdAsync(currentUserId);
+			}
+			else
+			{
+				throw new UnauthorizedAccessException("Invalid user role");
 			}
 
-			// Get current stays from repository
-			var today = DateOnly.FromDateTime(DateTime.Today);
-			var bookings = await GetAsync(new BookingSearchObject
-			{
-				UserId = userIdInt,
-				StartDate = DateTime.Today,
-				EndDate = DateTime.Today
-			});
+			// Filter for current stays
+			var today = DateTime.Today;
+			var currentBookings = bookings.Where(b =>
+				b.StartDate <= DateOnly.FromDateTime(today) &&
+				(b.EndDate == null || b.EndDate >= DateOnly.FromDateTime(today))
+			).ToList();
 
 			// Map to BookingSummaryDto
-			var mappedBookings = _mapper.Map<List<BookingResponse>>(bookings);
-			var summaryItems = mappedBookings.Select(b => new BookingSummaryDto
+			var summaryItems = currentBookings.Select(b => new BookingSummaryDto
 			{
 				BookingId = b.BookingId,
-				PropertyId = b.PropertyId,
-				PropertyName = b.PropertyName ?? "Unknown Property",
-				PropertyImageId = null, // Will need to be populated from Property's images if needed
-				PropertyImageData = null, // Will need to be populated from Property's images if needed
-				StartDate = b.StartDate,
-				EndDate = b.EndDate,
+				PropertyId = b.PropertyId ?? 0,
+				PropertyName = b.Property?.Name ?? "Unknown Property",
+				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
+				PropertyImageData = b.Property?.Images?.FirstOrDefault()?.ImageData,
+				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,
-				Currency = b.Currency,
-				BookingStatus = b.Status
+				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown"
 			}).ToList();
 
 			return summaryItems;
@@ -122,79 +271,49 @@ namespace eRents.Application.Service.BookingService
 
 		public async Task<List<BookingSummaryDto>> GetUpcomingStaysAsync(string userId)
 		{
-			// Convert string userId to int if needed for repository method
-			if (!int.TryParse(userId, out int userIdInt))
+			// This method still takes userId for backward compatibility but uses current user
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Get upcoming stays based on user role
+			List<Booking> bookings;
+			if (currentUserRole == "Tenant" || currentUserRole == "User")
 			{
-				return new List<BookingSummaryDto>();
+				bookings = await _bookingRepository.GetByTenantIdAsync(currentUserId);
+			}
+			else if (currentUserRole == "Landlord")
+			{
+				bookings = await _bookingRepository.GetByLandlordIdAsync(currentUserId);
+			}
+			else
+			{
+				throw new UnauthorizedAccessException("Invalid user role");
 			}
 
-			// Get upcoming stays from repository
-			var tomorrow = DateOnly.FromDateTime(DateTime.Today.AddDays(1));
-			var bookings = await GetAsync(new BookingSearchObject
-			{
-				UserId = userIdInt,
-				StartDate = DateTime.Today.AddDays(1)
-			});
+			// Filter for upcoming stays
+			var today = DateTime.Today;
+			var upcomingBookings = bookings.Where(b =>
+				b.StartDate > DateOnly.FromDateTime(today)
+			).ToList();
 
 			// Map to BookingSummaryDto
-			var mappedBookings = _mapper.Map<List<BookingResponse>>(bookings);
-			var summaryItems = mappedBookings.Select(b => new BookingSummaryDto
+			var summaryItems = upcomingBookings.Select(b => new BookingSummaryDto
 			{
 				BookingId = b.BookingId,
-				PropertyId = b.PropertyId,
-				PropertyName = b.PropertyName ?? "Unknown Property",
-				PropertyImageId = null, // Will need to be populated from Property's images if needed
-				PropertyImageData = null, // Will need to be populated from Property's images if needed
-				StartDate = b.StartDate,
-				EndDate = b.EndDate,
+				PropertyId = b.PropertyId ?? 0,
+				PropertyName = b.Property?.Name ?? "Unknown Property",
+				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
+				PropertyImageData = b.Property?.Images?.FirstOrDefault()?.ImageData,
+				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,
-				Currency = b.Currency,
-				BookingStatus = b.Status
+				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown"
 			}).ToList();
 
 			return summaryItems;
-		}
-
-		// Add BaseCRUDService overrides as needed
-		protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearchObject search = null)
-		{
-			if (search == null)
-				return query;
-
-			if (search.PropertyId.HasValue)
-			{
-				query = query.Where(b => b.PropertyId == search.PropertyId);
-			}
-
-			if (search.UserId.HasValue)
-			{
-				query = query.Where(b => b.UserId == search.UserId);
-			}
-
-			if (!string.IsNullOrEmpty(search.Status))
-			{
-				query = query.Where(b => b.BookingStatus.StatusName == search.Status);
-			}
-
-			if (search.StartDate.HasValue)
-			{
-				DateOnly startDate = DateOnly.FromDateTime(search.StartDate.Value);
-				query = query.Where(b => b.StartDate >= startDate);
-			}
-
-			if (search.EndDate.HasValue)
-			{
-				DateOnly endDate = DateOnly.FromDateTime(search.EndDate.Value);
-				query = query.Where(b => b.EndDate <= endDate);
-			}
-
-			return query;
-		}
-
-		protected override IQueryable<Booking> AddInclude(IQueryable<Booking> query, BookingSearchObject search = null)
-		{
-			return query.Include(b => b.Property)
-						.ThenInclude(p => p.Images);
 		}
 	}
 }

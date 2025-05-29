@@ -22,10 +22,12 @@ namespace eRents.Application.Shared
 
 			// Image mappings - Only map non-matching properties
 			CreateMap<Image, ImageResponse>()
+				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => $"/Image/{src.ImageId}"))
 				.ForMember(dest => dest.FileName, opt => opt.MapFrom(src =>
 					string.IsNullOrWhiteSpace(src.FileName) ? $"Untitled ({src.ImageId})" : src.FileName))
 				.ForMember(dest => dest.DateUploaded, opt => opt.MapFrom(src =>
-					src.DateUploaded ?? DateTime.Now));
+					src.DateUploaded ?? DateTime.Now))
+				.ForMember(dest => dest.ImageData, opt => opt.Ignore()); // Don't include binary data by default
 			CreateMap<ImageUploadRequest, Image>()
 				.ForMember(dest => dest.ImageData, opt => opt.Ignore());
 

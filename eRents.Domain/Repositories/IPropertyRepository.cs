@@ -14,5 +14,11 @@ namespace eRents.Domain.Repositories
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<int> GetNumberOfReviewsAsync(int propertyId);
 		public Task<IEnumerable<Review>> GetAllRatings();
+
+		// User-scoped methods for security
+		Task<List<Property>> GetByOwnerIdAsync(string ownerId);
+		Task<List<Property>> GetAvailablePropertiesAsync();
+		Task<bool> IsOwnerAsync(int propertyId, string userId);
+		Task<Property> GetByIdWithOwnerCheckAsync(int propertyId, string currentUserId, string currentUserRole);
 	}
 }

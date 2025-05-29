@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	public class AmenitiesController : ControllerBase
 	{
 		private readonly IPropertyService _propertyService;

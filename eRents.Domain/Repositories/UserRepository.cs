@@ -53,8 +53,7 @@ namespace eRents.Domain.Repositories
 						.ThenInclude(ad => ad.GeoRegion)
 					.Include(u => u.UserTypeNavigation)
 					.AsNoTracking()
-					.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail)
-					?? throw new KeyNotFoundException("User not found.");
+					.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
 			}
 			catch (Exception ex)
 			{

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace eRents.WebApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [Authorize(Roles = "Landlord")]
     public class StatisticsController : ControllerBase
     {

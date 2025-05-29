@@ -11,6 +11,5 @@ namespace eRents.Application.Service.BookingService
     {
         Task<List<BookingSummaryDto>> GetCurrentStaysAsync(string userId);
         Task<List<BookingSummaryDto>> GetUpcomingStaysAsync(string userId);
-        Task<IEnumerable<BookingResponse>> GetBookingsForUserAsync(int userId);
     }
 }

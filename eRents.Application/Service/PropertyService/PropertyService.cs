@@ -15,27 +15,179 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using eRents.Shared.Enums;
+using eRents.Shared.Services;
 
 namespace eRents.Application.Service.PropertyService
 {
 	public class PropertyService : BaseCRUDService<PropertyResponse, Property, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>, IPropertyService
 	{
 		private readonly IPropertyRepository _propertyRepository;
+		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private static MLContext _mlContext = null;
 		private static ITransformer _model = null;
 		private static object _lock = new object();
 
-		public PropertyService(IPropertyRepository propertyRepository, IMapper mapper)
+		public PropertyService(IPropertyRepository propertyRepository, ICurrentUserService currentUserService, IMapper mapper)
 				: base(propertyRepository, mapper)
 		{
 			_propertyRepository = propertyRepository;
+			_currentUserService = currentUserService;
 			_mapper = mapper;
+		}
+
+		// Override GetByIdAsync to implement user-scoped access
+		public override async Task<PropertyResponse> GetByIdAsync(int id)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			var property = await _propertyRepository.GetByIdWithOwnerCheckAsync(id, currentUserId, currentUserRole);
+			if (property == null)
+				throw new KeyNotFoundException("Property not found or access denied");
+
+			return _mapper.Map<PropertyResponse>(property);
+		}
+
+		// Override GetAllAsync to implement user-scoped filtering
+		public override async Task<IEnumerable<PropertyResponse>> GetAsync(PropertySearchObject search = null)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			List<Property> properties;
+
+			if (currentUserRole == "Landlord")
+			{
+				// Landlords see only their own properties
+				properties = await _propertyRepository.GetByOwnerIdAsync(currentUserId);
+			}
+			else if (currentUserRole == "Tenant" || currentUserRole == "User")
+			{
+				// Tenants and Regular Users see available properties
+				properties = await _propertyRepository.GetAvailablePropertiesAsync();
+			}
+			else
+			{
+				throw new UnauthorizedAccessException("Invalid user role");
+			}
+
+			// Apply additional filtering if search object is provided
+			if (search != null)
+			{
+				var query = properties.AsQueryable();
+				if (!string.IsNullOrEmpty(search.Name))
+				{
+					query = query.Where(p => p.Name.Contains(search.Name));
+				}
+				// Add more filters as needed
+				properties = query.ToList();
+			}
+
+			return _mapper.Map<IEnumerable<PropertyResponse>>(properties);
+		}
+
+		// Override InsertAsync to set OwnerId to current user
+		public override async Task<PropertyResponse> InsertAsync(PropertyInsertRequest insert)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
+				throw new UnauthorizedAccessException("Only landlords can create properties");
+
+			// Map the request to entity
+			var entity = _mapper.Map<Property>(insert);
+
+			// Set the owner to the current user (never trust client data)
+			if (int.TryParse(currentUserId, out int ownerIdInt))
+			{
+				entity.OwnerId = ownerIdInt;
+			}
+			else
+			{
+				throw new InvalidOperationException("Invalid user ID format");
+			}
+
+			await BeforeInsertAsync(insert, entity);
+
+			await _propertyRepository.AddAsync(entity);
+
+			return _mapper.Map<PropertyResponse>(entity);
+		}
+
+		// Override UpdateAsync to validate ownership
+		public override async Task<PropertyResponse> UpdateAsync(int id, PropertyUpdateRequest update)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
+				throw new UnauthorizedAccessException("Only landlords can update properties");
+
+			// Check if user owns the property
+			if (!await _propertyRepository.IsOwnerAsync(id, currentUserId))
+				throw new UnauthorizedAccessException("You can only update your own properties");
+
+			var entity = await _propertyRepository.GetByIdAsync(id);
+			if (entity == null)
+				throw new KeyNotFoundException("Property not found");
+
+			_mapper.Map(update, entity);
+
+			await BeforeUpdateAsync(update, entity);
+
+			await _propertyRepository.UpdateAsync(entity);
+
+			return _mapper.Map<PropertyResponse>(entity);
+		}
+
+		// Override DeleteAsync to validate ownership
+		public override async Task<bool> DeleteAsync(int id)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
+				throw new UnauthorizedAccessException("Only landlords can delete properties");
+
+			// Check if user owns the property
+			if (!await _propertyRepository.IsOwnerAsync(id, currentUserId))
+				throw new UnauthorizedAccessException("You can only delete your own properties");
+
+			var entity = await _propertyRepository.GetByIdAsync(id);
+			if (entity == null)
+				throw new KeyNotFoundException("Property not found");
+
+			await _propertyRepository.DeleteAsync(entity);
+			await _propertyRepository.SaveChangesAsync();
+
+			return true;
 		}
 
 		public async Task<PagedList<PropertySummaryDto>> SearchPropertiesAsync(PropertySearchObject searchRequest)
 		{
+			// For search, we allow both Tenants and Regular Users to see available properties
+			// Landlords searching should see available properties too (not their own) as they might be looking for competitors
 			var query = _propertyRepository.GetQueryable();
+
+			// Apply role-based filtering
+			var currentUserRole = _currentUserService.UserRole;
+			if (currentUserRole == "Tenant" || currentUserRole == "User" || currentUserRole == "Landlord")
+			{
+				// All roles can search available properties
+				query = query.Where(p => p.Status == "Available"); // Using string value for Status
+			}
+			else
+			{
+				throw new UnauthorizedAccessException("Invalid user role");
+			}
 
 			// Filtering logic
 			if (!string.IsNullOrWhiteSpace(searchRequest.CityName))
@@ -100,7 +252,7 @@ namespace eRents.Application.Service.PropertyService
 			// Map to DTOs
 			var summaryItems = items.Select(p => new PropertySummaryDto
 			{
-				PropertyId = p.PropertyId.ToString(),
+				PropertyId = p.PropertyId,
 				Name = p.Name,
 				LocationString = $"{p.AddressDetail?.GeoRegion?.City}, {p.AddressDetail?.GeoRegion?.Country}",
 				Price = p.Price,
@@ -130,7 +282,7 @@ namespace eRents.Application.Service.PropertyService
 
 			var summaryItems = popularProps.Select(p => new PropertySummaryDto
 			{
-				PropertyId = p.PropertyId.ToString(),
+				PropertyId = p.PropertyId,
 				Name = p.Name,
 				LocationString = $"{p.AddressDetail?.GeoRegion?.City}, {p.AddressDetail?.GeoRegion?.Country}",
 				Price = p.Price,
@@ -148,26 +300,42 @@ namespace eRents.Application.Service.PropertyService
 
 		public async Task<bool> SavePropertyAsync(int propertyId, int userId)
 		{
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			// This method should use the current user instead of accepting userId parameter
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Check if property exists and is available
+			var property = await _propertyRepository.GetByIdWithOwnerCheckAsync(propertyId, currentUserId, currentUserRole);
 			if (property == null)
 				return false;
 
 			// Logic to save the property for the user
 			// This could involve adding an entry in a UserProperties table or similar
+			// For now, just return true if property is accessible
 
 			return true;
 		}
 
 		public async Task<List<PropertyResponse>> RecommendPropertiesAsync(int userId)
 		{
-			// Recommendation logic from existing code
-			// For now, just return a few default properties
+			// This method should also use current user instead of accepting userId parameter
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Recommendation logic - show available properties for all user types
 			var properties = await _propertyRepository.GetQueryable()
 					.Include(p => p.AddressDetail)
 					.Include(p => p.Owner)
 					.Include(p => p.Amenities)
 					.Include(p => p.Reviews)
 					.Include(p => p.Images)
+					.Where(p => p.Status == "Available") // Available properties only
 					.Take(5)
 					.ToListAsync();
 
@@ -199,6 +367,16 @@ namespace eRents.Application.Service.PropertyService
 		// Missing methods from IPropertyService
 		public async Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request)
 		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
+				throw new UnauthorizedAccessException("Only landlords can upload property images");
+
+			// Check if user owns the property
+			if (!await _propertyRepository.IsOwnerAsync(propertyId, currentUserId))
+				throw new UnauthorizedAccessException("You can only upload images for your own properties");
+
 			// TODO: Implement image upload logic
 			// This would typically involve:
 			// 1. Validating the property exists
@@ -210,10 +388,19 @@ namespace eRents.Application.Service.PropertyService
 
 		public async Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end)
 		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Check if user has access to this property
+			var property = await _propertyRepository.GetByIdWithOwnerCheckAsync(propertyId, currentUserId, currentUserRole);
+			if (property == null)
+				throw new KeyNotFoundException("Property not found or access denied");
+
 			// TODO: Implement availability checking logic
 			// This would check bookings against the property for the date range
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
-			if (property == null) return null;
 
 			// For now, return a basic availability structure
 			return new PropertyAvailabilityDto
@@ -224,16 +411,22 @@ namespace eRents.Application.Service.PropertyService
 
 		public async Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum)
 		{
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
-			if (property == null) return;
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
 
-			// Fetch status from DB using enum value
-			var status = await _propertyRepository.GetQueryable()
-				.Select(p => p.Status)
-				.Distinct()
-				.ToListAsync();
-			// Map enum to status name
-			string statusName = statusEnum switch
+			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
+				throw new UnauthorizedAccessException("Only landlords can update property status");
+
+			// Check if user owns the property
+			if (!await _propertyRepository.IsOwnerAsync(propertyId, currentUserId))
+				throw new UnauthorizedAccessException("You can only update status for your own properties");
+
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null)
+				throw new KeyNotFoundException("Property not found");
+
+			// Map enum to status string value
+			property.Status = statusEnum switch
 			{
 				PropertyStatusEnum.Available => "Available",
 				PropertyStatusEnum.Rented => "Rented",
@@ -241,8 +434,9 @@ namespace eRents.Application.Service.PropertyService
 				PropertyStatusEnum.Unavailable => "Unavailable",
 				_ => "Available"
 			};
-			property.Status = statusName;
+
 			await _propertyRepository.UpdateAsync(property);
+			await _propertyRepository.SaveChangesAsync();
 		}
 
 		public async Task<List<AmenityResponse>> GetAmenitiesAsync()

@@ -117,5 +117,80 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Reviews.AsNoTracking().ToListAsync();
 		}
+
+		// User-scoped methods for security
+		public async Task<List<Property>> GetByOwnerIdAsync(string ownerId)
+		{
+			if (!int.TryParse(ownerId, out int ownerIdInt))
+				return new List<Property>();
+
+			return await _context.Properties
+				.Include(p => p.Images)
+				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
+				.Include(p => p.Owner)
+				.Include(p => p.Amenities)
+				.AsNoTracking()
+				.Where(p => p.OwnerId == ownerIdInt)
+				.ToListAsync();
+		}
+
+		public async Task<List<Property>> GetAvailablePropertiesAsync()
+		{
+			return await _context.Properties
+				.Include(p => p.Images)
+				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
+				.Include(p => p.Owner)
+				.Include(p => p.Amenities)
+				.AsNoTracking()
+				.Where(p => p.Status == "Available") // Using string value for Status
+				.ToListAsync();
+		}
+
+		public async Task<bool> IsOwnerAsync(int propertyId, string userId)
+		{
+			if (!int.TryParse(userId, out int userIdInt))
+				return false;
+
+			return await _context.Properties
+				.AsNoTracking()
+				.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == userIdInt);
+		}
+
+		public async Task<Property> GetByIdWithOwnerCheckAsync(int propertyId, string currentUserId, string currentUserRole)
+		{
+			var property = await _context.Properties
+				.Include(p => p.Images)
+				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
+				.Include(p => p.Owner)
+				.Include(p => p.Amenities)
+				.AsNoTracking()
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+			if (property == null)
+				return null;
+
+			// Apply role-based access control
+			if (currentUserRole == "Landlord")
+			{
+				// Landlords can only see their own properties
+				if (int.TryParse(currentUserId, out int userId) && property.OwnerId != userId)
+					return null;
+			}
+			else if (currentUserRole == "Tenant" || currentUserRole == "User")
+			{
+				// Tenants and Regular Users can only see available properties
+				// TODO: Tenants should also see properties they have bookings for
+				if (property.Status != "Available") // Using string value for Status
+					return null;
+			}
+
+			return property;
+		}
 	}
 }

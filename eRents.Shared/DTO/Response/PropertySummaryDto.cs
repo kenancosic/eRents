@@ -4,7 +4,7 @@ namespace eRents.Shared.DTO.Response
 {
 	public class PropertySummaryDto
 	{
-		public string PropertyId { get; set; }
+		public int PropertyId { get; set; }
 		public string Name { get; set; }
 		public string LocationString { get; set; }
 		public decimal Price { get; set; }

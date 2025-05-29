@@ -8,25 +8,28 @@ using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using eRents.Shared.Services;
 
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/bookings")]
+	[Route("[controller]")]
 	[Authorize]
 	public class BookingsController : BaseCRUDController<BookingResponse, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>
 	{
 		private readonly IBookingService _bookingService;
+		private readonly ICurrentUserService _currentUserService;
 
-		public BookingsController(IBookingService service) : base(service)
+		public BookingsController(IBookingService service, ICurrentUserService currentUserService) : base(service)
 		{
 			_bookingService = service;
+			_currentUserService = currentUserService;
 		}
 
 		[HttpGet("current")]
 		public async Task<ActionResult<List<BookingSummaryDto>>> GetCurrentStays()
 		{
-			string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; 
+			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
 				
@@ -37,7 +40,7 @@ namespace eRents.WebApi.Controllers
 		[HttpGet("upcoming")]
 		public async Task<ActionResult<List<BookingSummaryDto>>> GetUpcomingStays()
 		{
-			string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
 				
@@ -45,11 +48,27 @@ namespace eRents.WebApi.Controllers
 			return Ok(result);
 		}
 		
-		[HttpGet("user/{userId}")]
-		public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookingsForUser(int userId)
+		// Override CRUD operations to ensure proper authorization
+		[HttpPost]
+		[Authorize(Roles = "User,Tenant")] // Regular users and tenants can create bookings
+		public override async Task<BookingResponse> Insert([FromBody] BookingInsertRequest insert)
 		{
-			var bookings = await _bookingService.GetBookingsForUserAsync(userId);
-			return Ok(bookings);
+			return await base.Insert(insert);
+		}
+
+		[HttpPut("{id}")]
+		[Authorize(Roles = "User,Tenant,Landlord")] // Users can update their bookings, landlords can update bookings for their properties
+		public override async Task<BookingResponse> Update(int id, [FromBody] BookingUpdateRequest update)
+		{
+			return await base.Update(id, update);
+		}
+
+		[HttpDelete("{id}")]
+		[Authorize(Roles = "User,Tenant,Landlord")] // Users can cancel their bookings, landlords can cancel bookings for their properties
+		public override async Task<IActionResult> Delete(int id)
+		{
+			var result = await base.Delete(id);
+			return result;
 		}
 	}
 }

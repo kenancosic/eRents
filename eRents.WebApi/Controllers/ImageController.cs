@@ -34,8 +34,20 @@ namespace eRents.WebApi.Controllers
 		{
 			var image = await _imageService.GetImageByIdAsync(id);
 			if (image == null) return NotFound();
-			return File(image.ImageData, "image/jpeg", image.FileName);
+			
+			var contentType = image.ContentType ?? "image/jpeg";
+			return File(image.ImageData, contentType, image.FileName);
+		}
+
+		[HttpGet("{id}/thumbnail")]
+		public async Task<IActionResult> GetThumbnail(int id)
+		{
+			var image = await _imageService.GetImageByIdAsync(id);
+			if (image == null) return NotFound();
+			
+			var thumbnailData = image.ThumbnailData ?? image.ImageData;
+			var contentType = image.ContentType ?? "image/jpeg";
+			return File(thumbnailData, contentType, $"thumb_{image.FileName}");
 		}
 	}
-
 }
