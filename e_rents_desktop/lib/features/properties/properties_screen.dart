@@ -227,18 +227,32 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          errorWidget: Image.asset(
-                            'assets/images/placeholder.jpg',
+                          errorWidget: Container(
                             width: 80,
                             height: 80,
-                            fit: BoxFit.cover,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[600],
+                              size: 32,
+                            ),
                           ),
                         )
-                        : Image.asset(
-                          'assets/images/placeholder.jpg',
+                        : Container(
                           width: 80,
                           height: 80,
-                          fit: BoxFit.cover,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.apartment,
+                            color: Colors.grey[600],
+                            size: 32,
+                          ),
                         ),
               ),
               title: Text(
@@ -271,7 +285,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                       ),
                       PropertyInfoRow(
                         icon: Icons.square_foot,
-                        text: '${property.area} sqft',
+                        text: '${property.area} m2',
                       ),
                     ],
                   ),
@@ -370,14 +384,32 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                                 ? ImageUtils.buildImage(
                                   property.images.first.url,
                                   fit: BoxFit.cover,
-                                  errorWidget: Image.asset(
-                                    'assets/images/placeholder.jpg',
-                                    fit: BoxFit.cover,
+                                  errorWidget: Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.image_not_supported,
+                                      color: Colors.grey[600],
+                                      size: 32,
+                                    ),
                                   ),
                                 )
-                                : Image.asset(
-                                  'assets/images/placeholder.jpg',
-                                  fit: BoxFit.cover,
+                                : Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.apartment,
+                                    color: Colors.grey[600],
+                                    size: 32,
+                                  ),
                                 ),
                             Positioned(
                               top: 8,

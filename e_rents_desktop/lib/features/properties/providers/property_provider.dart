@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
-// import 'package:e_rents_desktop/services/api_service.dart'; // No longer needed directly
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/services/amenity_service.dart';
-import 'package:e_rents_desktop/services/property_service.dart'; // Import PropertyService
+import 'package:e_rents_desktop/services/property_service.dart';
 
 class PropertyProvider extends BaseProvider<Property> {
-  final PropertyService _propertyService; // Use PropertyService
+  final PropertyService _propertyService;
   final AmenityService _amenityService;
 
   PropertyProvider(this._propertyService, this._amenityService)
-    : super(_propertyService) {
-    // enableMockData();
-  }
+    : super(_propertyService);
 
   @override
   String get endpoint => '/properties';
@@ -25,7 +21,7 @@ class PropertyProvider extends BaseProvider<Property> {
   Map<String, dynamic> toJson(Property item) => item.toJson();
 
   @override
-  List<Property> getMockItems() => MockDataService.getMockProperties();
+  List<Property> getMockItems() => []; // Not using mock data
 
   List<Property> get properties => items;
 
@@ -38,54 +34,34 @@ class PropertyProvider extends BaseProvider<Property> {
 
   Future<void> fetchProperties({Map<String, String>? queryParams}) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_ = getMockItems();
-        // TODO: If mock data needs filtering by queryParams for testing consistency
-      } else {
-        items_ = await _propertyService.getProperties(queryParams: queryParams);
-      }
+      items_ = await _propertyService.getProperties(queryParams: queryParams);
     });
   }
 
   Future<void> addProperty(Property property) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_.add(
-          property.copyWith(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-          ),
-        );
-      } else {
-        final newItem = await _propertyService.createProperty(property);
-        items_.add(newItem);
-      }
+      final newProperty = await _propertyService.createProperty(property);
+      items_.add(newProperty);
     });
   }
 
   Future<void> updateProperty(Property property) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        final index = items.indexWhere((i) => i.id == property.id);
-        if (index != -1) items_[index] = property;
-      } else {
-        final updatedItem = await _propertyService.updateProperty(
-          property.id,
-          property,
-        );
-        final index = items.indexWhere((i) => i.id == updatedItem.id);
-        if (index != -1) items_[index] = updatedItem;
+      final updatedProperty = await _propertyService.updateProperty(
+        property.id,
+        property,
+      );
+      final index = items.indexWhere((p) => p.id == updatedProperty.id);
+      if (index != -1) {
+        items_[index] = updatedProperty;
       }
     });
   }
 
   Future<void> deleteProperty(String id) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_.removeWhere((item) => item.id == id);
-      } else {
-        await _propertyService.deleteProperty(id);
-        items_.removeWhere((item) => item.id == id);
-      }
+      await _propertyService.deleteProperty(id);
+      items_.removeWhere((property) => property.id == id);
     });
   }
 
@@ -115,5 +91,40 @@ class PropertyProvider extends BaseProvider<Property> {
     } catch (e) {
       return null;
     }
+  }
+
+  // Additional utility methods for better data management
+  int get totalProperties => items.length;
+
+  int get availablePropertiesCount =>
+      items.where((p) => p.status == PropertyStatus.available).length;
+
+  int get occupiedPropertiesCount =>
+      items.where((p) => p.status == PropertyStatus.rented).length;
+
+  double get occupancyRate {
+    if (totalProperties == 0) return 0.0;
+    return occupiedPropertiesCount / totalProperties;
+  }
+
+  // Filter properties by multiple criteria
+  List<Property> filterProperties({
+    PropertyStatus? status,
+    PropertyType? type,
+    String? searchQuery,
+  }) {
+    return items.where((property) {
+      bool matchesStatus = status == null || property.status == status;
+      bool matchesType = type == null || property.type == type;
+      bool matchesSearch =
+          searchQuery == null ||
+          searchQuery.isEmpty ||
+          property.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          property.description.toLowerCase().contains(
+            searchQuery.toLowerCase(),
+          );
+
+      return matchesStatus && matchesType && matchesSearch;
+    }).toList();
   }
 }

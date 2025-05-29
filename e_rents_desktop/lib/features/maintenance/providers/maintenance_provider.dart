@@ -1,14 +1,11 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/services/maintenance_service.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
   final MaintenanceService _maintenanceService;
 
-  MaintenanceProvider(this._maintenanceService) : super(_maintenanceService) {
-    enableMockData();
-  }
+  MaintenanceProvider(this._maintenanceService) : super(_maintenanceService);
 
   @override
   String get endpoint => '/maintenance';
@@ -21,58 +18,40 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
   Map<String, dynamic> toJson(MaintenanceIssue item) => item.toJson();
 
   @override
-  List<MaintenanceIssue> getMockItems() =>
-      MockDataService.getMockMaintenanceIssues();
+  List<MaintenanceIssue> getMockItems() => []; // Not using mock data
 
   List<MaintenanceIssue> get issues => items;
 
   Future<void> fetchIssues({Map<String, String>? queryParams}) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_ = getMockItems();
-      } else {
-        items_ = await _maintenanceService.getIssues(queryParams: queryParams);
-      }
+      items_ = await _maintenanceService.getIssues(queryParams: queryParams);
     });
   }
 
   Future<void> addIssue(MaintenanceIssue issue) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_.add(
-          issue.copyWith(id: DateTime.now().millisecondsSinceEpoch.toString()),
-        );
-      } else {
-        final newItem = await _maintenanceService.createIssue(issue);
-        items_.add(newItem);
-      }
+      final newIssue = await _maintenanceService.createIssue(issue);
+      items_.add(newIssue);
     });
   }
 
   Future<void> updateIssue(MaintenanceIssue issue) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        final index = items.indexWhere((i) => i.id == issue.id);
-        if (index != -1) items_[index] = issue;
-      } else {
-        final updatedItem = await _maintenanceService.updateIssue(
-          issue.id,
-          issue,
-        );
-        final index = items.indexWhere((i) => i.id == updatedItem.id);
-        if (index != -1) items_[index] = updatedItem;
+      final updatedIssue = await _maintenanceService.updateIssue(
+        issue.id,
+        issue,
+      );
+      final index = items.indexWhere((i) => i.id == updatedIssue.id);
+      if (index != -1) {
+        items_[index] = updatedIssue;
       }
     });
   }
 
   Future<void> deleteIssue(String id) async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        items_.removeWhere((issue) => issue.id == id);
-      } else {
-        await _maintenanceService.deleteIssue(id);
-        items_.removeWhere((issue) => issue.id == id);
-      }
+      await _maintenanceService.deleteIssue(id);
+      items_.removeWhere((issue) => issue.id == id);
     });
   }
 
@@ -99,36 +78,69 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
     String? resolutionNotes,
   }) async {
     await execute(() async {
-      MaintenanceIssue updatedIssue;
-      if (isMockDataEnabled) {
-        final index = items.indexWhere((i) => i.id == id);
-        if (index != -1) {
-          updatedIssue = items[index].copyWith(
-            status: status,
-            resolvedAt:
-                status == IssueStatus.completed
-                    ? DateTime.now()
-                    : items[index].resolvedAt,
-            cost: cost ?? items[index].cost,
-            resolutionNotes: resolutionNotes ?? items[index].resolutionNotes,
-          );
-          items_[index] = updatedIssue;
-        } else {
-          throw Exception("Mock issue not found for status update");
-        }
+      final updatedIssue = await _maintenanceService.updateIssueStatus(
+        id,
+        status,
+        resolutionNotes: resolutionNotes,
+        cost: cost,
+      );
+      final index = items.indexWhere((i) => i.id == updatedIssue.id);
+      if (index != -1) {
+        items_[index] = updatedIssue;
       } else {
-        updatedIssue = await _maintenanceService.updateIssueStatus(
-          id,
-          status,
-          resolutionNotes: resolutionNotes,
-          cost: cost,
-        );
-        final index = items.indexWhere((i) => i.id == updatedIssue.id);
-        if (index != -1)
-          items_[index] = updatedIssue;
-        else
-          items_.add(updatedIssue);
+        items_.add(updatedIssue);
       }
     });
+  }
+
+  // Additional utility methods for better data management
+  int get totalIssues => items.length;
+
+  int get pendingIssuesCount =>
+      items.where((i) => i.status == IssueStatus.pending).length;
+
+  int get inProgressIssuesCount =>
+      items.where((i) => i.status == IssueStatus.inProgress).length;
+
+  int get completedIssuesCount =>
+      items.where((i) => i.status == IssueStatus.completed).length;
+
+  int get highPriorityIssuesCount =>
+      items
+          .where(
+            (i) =>
+                i.priority == IssuePriority.high ||
+                i.priority == IssuePriority.emergency,
+          )
+          .length;
+
+  // Filter issues by multiple criteria
+  List<MaintenanceIssue> filterIssues({
+    IssueStatus? status,
+    IssuePriority? priority,
+    String? propertyId,
+    bool? isTenantComplaint,
+    String? searchQuery,
+  }) {
+    return items.where((issue) {
+      bool matchesStatus = status == null || issue.status == status;
+      bool matchesPriority = priority == null || issue.priority == priority;
+      bool matchesProperty =
+          propertyId == null || issue.propertyId == propertyId;
+      bool matchesComplaint =
+          isTenantComplaint == null ||
+          issue.isTenantComplaint == isTenantComplaint;
+      bool matchesSearch =
+          searchQuery == null ||
+          searchQuery.isEmpty ||
+          issue.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
+          issue.description.toLowerCase().contains(searchQuery.toLowerCase());
+
+      return matchesStatus &&
+          matchesPriority &&
+          matchesProperty &&
+          matchesComplaint &&
+          matchesSearch;
+    }).toList();
   }
 }

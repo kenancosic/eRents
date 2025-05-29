@@ -40,9 +40,16 @@ class PropertyImagesGrid extends StatelessWidget {
                     ImageUtils.buildImage(
                       image.url,
                       fit: BoxFit.cover,
-                      errorWidget: Image.asset(
-                        'assets/images/placeholder.jpg',
-                        fit: BoxFit.cover,
+                      errorWidget: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey[600],
+                          size: 48,
+                        ),
                       ),
                     ),
                     if (index == 0)
@@ -88,9 +95,16 @@ class PropertyImagesGrid extends StatelessWidget {
                 ImageUtils.buildImage(
                   image.url,
                   fit: BoxFit.contain,
-                  errorWidget: Image.asset(
-                    'assets/images/placeholder.jpg',
-                    fit: BoxFit.contain,
+                  errorWidget: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey[600],
+                      size: 64,
+                    ),
                   ),
                 ),
                 Positioned(
