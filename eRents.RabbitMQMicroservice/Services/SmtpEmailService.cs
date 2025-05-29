@@ -1,4 +1,4 @@
-﻿using eRents.Shared.DTO;
+﻿using eRents.Shared.Messaging;
 using System;
 using System.Net;
 using System.Net.Mail;

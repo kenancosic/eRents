@@ -10,6 +10,5 @@ namespace eRents.Application.Service.ReviewService
 	{
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<IEnumerable<ReviewResponse>> GetReviewsForPropertyAsync(int propertyId);
-
 	}
 }

@@ -11,6 +11,7 @@ namespace eRents.Shared.DTO.Requests
 		public int? ReviewId { get; set; }
 		public int? MaintenanceIssueId { get; set; }
 		public IFormFile ImageFile { get; set; }  // The image file to upload
+		public bool? IsCover { get; set; }  // Whether this image is the cover/primary image
 	}
 
 }

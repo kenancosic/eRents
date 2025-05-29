@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
-using eRents.Shared.DTO;
+using eRents.Shared.Messaging;
+using eRents.Shared.Services;
 
 namespace eRents.Application.Service.MessagingService
 {

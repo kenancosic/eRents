@@ -3,11 +3,12 @@ using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.Services;
-using eRents.Shared.DTO;
+using eRents.Shared.Messaging;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Service.ReviewService
 {
@@ -46,18 +47,10 @@ namespace eRents.Application.Service.ReviewService
 
 		public async Task<IEnumerable<ReviewResponse>> GetReviewsForPropertyAsync(int propertyId)
 		{
-			var reviews = await _reviewRepository.GetReviewsByPropertyAsync(propertyId);
+			var reviews = await _repository.GetQueryable()
+				.Where(r => r.PropertyId == propertyId)
+				.ToListAsync();
 			return _mapper.Map<IEnumerable<ReviewResponse>>(reviews);
-		}
-		public async Task FlagReviewAsync(ReviewFlagRequest request)
-		{
-			var review = await _repository.GetByIdAsync(request.ReviewId);
-			if (review == null)
-			{
-				throw new KeyNotFoundException("Review not found.");
-			}
-
-			await _repository.UpdateAsync(review);
 		}
 		public async Task<bool> DeleteReviewAsync(int reviewId)
 		{

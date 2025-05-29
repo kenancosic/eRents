@@ -249,21 +249,8 @@ namespace eRents.Application.Service.PropertyService
 			var totalCount = await query.CountAsync();
 			var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-			// Map to DTOs
-			var summaryItems = items.Select(p => new PropertySummaryDto
-			{
-				PropertyId = p.PropertyId,
-				Name = p.Name,
-				LocationString = $"{p.AddressDetail?.GeoRegion?.City}, {p.AddressDetail?.GeoRegion?.Country}",
-				Price = p.Price,
-				AverageRating = p.Reviews.Any() ? (double?)p.Reviews.Average(r => r.StarRating) : null,
-				ReviewCount = p.Reviews?.Count ?? 0,
-				CoverImageId = p.Images?.FirstOrDefault(i => i.IsCover)?.ImageId ?? p.Images?.FirstOrDefault()?.ImageId,
-				CoverImageData = p.Images?.FirstOrDefault(i => i.IsCover)?.ImageData ?? p.Images?.FirstOrDefault()?.ImageData,
-				Rooms = p.Bedrooms,
-				Area = p.Area,
-				Currency = p.Currency
-			}).ToList();
+			// Use AutoMapper instead of manual mapping
+			var summaryItems = _mapper.Map<List<PropertySummaryDto>>(items);
 
 			return new PagedList<PropertySummaryDto>(summaryItems, page, pageSize, totalCount);
 		}
@@ -280,22 +267,8 @@ namespace eRents.Application.Service.PropertyService
 
 			var popularProps = await popularPropsQuery.ToListAsync();
 
-			var summaryItems = popularProps.Select(p => new PropertySummaryDto
-			{
-				PropertyId = p.PropertyId,
-				Name = p.Name,
-				LocationString = $"{p.AddressDetail?.GeoRegion?.City}, {p.AddressDetail?.GeoRegion?.Country}",
-				Price = p.Price,
-				AverageRating = p.Reviews.Any() ? (double?)p.Reviews.Average(r => r.StarRating) : null,
-				ReviewCount = p.Reviews?.Count ?? 0,
-				CoverImageId = p.Images?.FirstOrDefault(i => i.IsCover)?.ImageId ?? p.Images?.FirstOrDefault()?.ImageId,
-				CoverImageData = p.Images?.FirstOrDefault(i => i.IsCover)?.ImageData ?? p.Images?.FirstOrDefault()?.ImageData,
-				Rooms = p.Bedrooms,
-				Area = p.Area,
-				Currency = p.Currency
-			}).ToList();
-
-			return summaryItems;
+			// Use AutoMapper instead of manual mapping
+			return _mapper.Map<List<PropertySummaryDto>>(popularProps);
 		}
 
 		public async Task<bool> SavePropertyAsync(int propertyId, int userId)
@@ -446,13 +419,13 @@ namespace eRents.Application.Service.PropertyService
 			return new List<AmenityResponse>();
 		}
 
-		public async Task<AmenityResponse> AddAmenityAsync(AmenityRequest request)
+		public async Task<AmenityResponse> AddAmenityAsync(string amenityName)
 		{
 			// TODO: Implement amenity creation
 			throw new NotImplementedException("Amenity management functionality needs to be implemented");
 		}
 
-		public async Task<AmenityResponse> UpdateAmenityAsync(int id, AmenityRequest request)
+		public async Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName)
 		{
 			// TODO: Implement amenity update
 			throw new NotImplementedException("Amenity management functionality needs to be implemented");

@@ -119,11 +119,19 @@ namespace eRents.WebApi.Controllers
 			return Ok("Password changed successfully.");
 		}
 
-		[HttpPost("ForgotPassword")]
-		public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestClient request)
+		[HttpPost("forgot-password")]
+		[AllowAnonymous]
+		public async Task<IActionResult> ForgotPassword([FromBody] string email)
 		{
-			await _userService.ForgotPasswordAsync(request.Email);
-			return Ok("Password reset instructions have been sent to your email if it exists in our system.");
+			try
+			{
+				await _userService.ForgotPasswordAsync(email);
+				return Ok(new { message = "If the email exists, a password reset link has been sent." });
+			}
+			catch (Exception ex)
+			{
+				return BadRequest(new { message = ex.Message });
+			}
 		}
 
 		[HttpPost("ResetPassword")]

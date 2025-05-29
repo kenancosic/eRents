@@ -27,8 +27,8 @@ namespace eRents.Application.Service.PropertyService
 		Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum);
 		Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
 		Task<List<AmenityResponse>> GetAmenitiesAsync();
-		Task<AmenityResponse> AddAmenityAsync(AmenityRequest request);
-		Task<AmenityResponse> UpdateAmenityAsync(int id, AmenityRequest request);
+		Task<AmenityResponse> AddAmenityAsync(string amenityName);
+		Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName);
 		Task DeleteAmenityAsync(int id);
 	}
 }

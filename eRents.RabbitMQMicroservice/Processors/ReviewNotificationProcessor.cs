@@ -1,5 +1,5 @@
 ﻿using eRents.RabbitMQMicroservice.Services;
-using eRents.Shared.DTO;
+using eRents.Shared.Messaging;
 using Newtonsoft.Json;
 using RabbitMQ.Client.Events;
 using System.Text;

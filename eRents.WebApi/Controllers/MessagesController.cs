@@ -1,5 +1,6 @@
 ﻿using eRents.Application.Service.MessagingService;
-using eRents.Shared.DTO;
+using eRents.Shared.Messaging;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eRents.WebApi.Controllers

@@ -1,15 +1,14 @@
-﻿namespace eRents.Shared.DTO.Requests
+﻿using System;
+using System.Collections.Generic;
+
+namespace eRents.Shared.DTO.Requests
 {
 	public class ReviewInsertRequest
 	{
-		public int? TenantId { get; set; }
 		public int? PropertyId { get; set; }
 		public string? Description { get; set; }
-		public string? Severity { get; set; }
-		public DateTime? DateReported { get; set; }
-		public string? Status { get; set; }
-		public bool IsComplaint { get; set; }
-		public bool IsFlagged { get; set; }
 		public decimal? StarRating { get; set; }
+		public int? BookingId { get; set; }
+		public List<int> ImageIds { get; set; } = new List<int>();
 	}
 }

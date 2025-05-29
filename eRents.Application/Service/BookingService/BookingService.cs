@@ -4,7 +4,7 @@ using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Domain.Shared;
-using eRents.Shared.DTO;
+using eRents.Shared.Messaging;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
