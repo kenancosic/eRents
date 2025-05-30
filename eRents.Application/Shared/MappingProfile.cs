@@ -103,8 +103,14 @@ namespace eRents.Application.Shared
 			CreateMap<UserUpdateRequest, User>()
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow));
 
-			// MaintenanceIssue mappings - AutoMapper can handle most automatically
-			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>();
+			// MaintenanceIssue mappings - Fix field name mismatches
+			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
+				.ForMember(dest => dest.IssueId, opt => opt.MapFrom(src => src.MaintenanceIssueId))
+				.ForMember(dest => dest.TenantId, opt => opt.MapFrom(src => src.ReportedByUserId))
+				.ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority != null ? src.Priority.PriorityName : null))
+				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status != null ? src.Status.StatusName : null))
+				.ForMember(dest => dest.DateReported, opt => opt.MapFrom(src => src.CreatedAt))
+				.ForMember(dest => dest.DateResolved, opt => opt.MapFrom(src => src.ResolvedAt));
 			CreateMap<MaintenanceIssueRequest, MaintenanceIssue>()
 				.ForMember(dest => dest.Images, opt => opt.Ignore());
 		}

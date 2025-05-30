@@ -5,8 +5,10 @@ using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
+using eRents.Shared.Enums;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Service.MaintenanceService
 {
@@ -14,11 +16,13 @@ namespace eRents.Application.Service.MaintenanceService
     {
         private readonly IMaintenanceRepository _repository;
         private readonly IMapper _mapper;
+        private readonly ERentsContext _context;
 
-        public MaintenanceService(IMaintenanceRepository repository, IMapper mapper)
+        public MaintenanceService(IMaintenanceRepository repository, IMapper mapper, ERentsContext context)
         {
             _repository = repository;
             _mapper = mapper;
+            _context = context;
         }
 
         // Sync methods required by IService interface
@@ -74,9 +78,14 @@ namespace eRents.Application.Service.MaintenanceService
             var entity = await _repository.GetByIdAsync(issueId);
             if (entity == null) return;
             
-            // Note: This would need proper enum/lookup handling in a real implementation
-            // For now, assuming status is handled via StatusId and navigation property
-            // entity.StatusId = GetStatusIdFromName(status); // You'd need to implement this
+            // Since status names are now unified, we can use them directly
+            var statusEntity = await _context.IssueStatuses
+                .FirstOrDefaultAsync(s => s.StatusName == status);
+                
+            if (statusEntity != null)
+            {
+                entity.StatusId = statusEntity.StatusId;
+            }
             
             if (resolutionNotes != null) entity.ResolutionNotes = resolutionNotes;
             if (cost.HasValue) entity.Cost = cost.Value;

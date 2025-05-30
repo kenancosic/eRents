@@ -12,24 +12,34 @@ namespace eRents.Domain.Repositories
 	{
 		public MaintenanceRepository(ERentsContext context) : base(context) { }
 
+		public override async Task<MaintenanceIssue> GetByIdAsync(int id)
+		{
+			return await _context.MaintenanceIssues
+				.Include(m => m.Images)
+				.Include(m => m.Priority)
+				.Include(m => m.Status)
+				.AsNoTracking()
+				.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
+		}
+
 		public async Task<int> GetOpenIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
 			return await _context.MaintenanceIssues.AsNoTracking()
-				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "Open")
+				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "pending")
 				.CountAsync();
 		}
 
 		public async Task<int> GetPendingIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
 			return await _context.MaintenanceIssues.AsNoTracking()
-				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "Pending")
+				.Where(m => propertyIds.Contains(m.PropertyId) && m.Status.StatusName == "pending")
 				.CountAsync();
 		}
 
 		public async Task<int> GetHighPriorityIssuesCountAsync(IEnumerable<int> propertyIds)
 		{
 			return await _context.MaintenanceIssues.AsNoTracking()
-				.Where(m => propertyIds.Contains(m.PropertyId) && (m.Priority.PriorityName == "High" || m.Priority.PriorityName == "Emergency" || m.Priority.PriorityName == "Urgent"))
+				.Where(m => propertyIds.Contains(m.PropertyId) && (m.Priority.PriorityName == "High" || m.Priority.PriorityName == "Emergency"))
 				.CountAsync();
 		}
 
@@ -44,6 +54,8 @@ namespace eRents.Domain.Repositories
 		{
 			var query = _context.MaintenanceIssues
 					.Include(m => m.Images)
+					.Include(m => m.Priority)
+					.Include(m => m.Status)
 					.AsNoTracking()
 					.AsQueryable();
 

@@ -127,14 +127,13 @@ namespace eRents.WebApi
 			}
 			await context.SaveChangesAsync();
 
-			// IssuePriorities (Upsert by PriorityName)
+			// IssuePriorities (Upsert by PriorityName) - Updated to match frontend enum
 			var issuePriorities = new[]
 			{
 				new IssuePriority { PriorityName = "Low" },
 				new IssuePriority { PriorityName = "Medium" },
 				new IssuePriority { PriorityName = "High" },
-				new IssuePriority { PriorityName = "Emergency" },
-				new IssuePriority { PriorityName = "Urgent" }
+				new IssuePriority { PriorityName = "Emergency" }
 			};
 			foreach (var ip in issuePriorities)
 			{
@@ -144,15 +143,13 @@ namespace eRents.WebApi
 			}
 			await context.SaveChangesAsync();
 
-			// IssueStatuses (Upsert by StatusName)
+			// IssueStatuses (Upsert by StatusName) - Updated to match frontend enum
 			var issueStatuses = new[]
 			{
-				new IssueStatus { StatusName = "Open" },
-				new IssueStatus { StatusName = "In Progress" },
-				new IssueStatus { StatusName = "Resolved" },
-				new IssueStatus { StatusName = "Closed" },
-				new IssueStatus { StatusName = "Reported" },
-				new IssueStatus { StatusName = "Pending" }
+				new IssueStatus { StatusName = "pending" },
+				new IssueStatus { StatusName = "inProgress" },
+				new IssueStatus { StatusName = "completed" },
+				new IssueStatus { StatusName = "cancelled" }
 			};
 			foreach (var isv in issueStatuses)
 			{
@@ -405,14 +402,14 @@ namespace eRents.WebApi
 			var dbIssueStatuses = await context.IssueStatuses.ToListAsync();
 			var maintenanceIssues = new[]
 			{
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, Title = "Leaky Faucet in Kitchen", Description = "The kitchen faucet has been dripping for a few days", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Open").StatusId, CreatedAt = DateTime.Now, ReportedByUserId = dbUsers.First(u => u.Username == "testUser").UserId, Category = "Plumbing", RequiresInspection = true, IsTenantComplaint = true },
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, Title = "Air Conditioning Not Working", Description = "AC unit not responding to remote control", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "High").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "In Progress").StatusId, CreatedAt = DateTime.Now.AddDays(-2), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "HVAC", RequiresInspection = false, IsTenantComplaint = false },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Monthly Lease House").PropertyId, Title = "Leaky Faucet in Kitchen", Description = "The kitchen faucet has been dripping for a few days", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "pending").StatusId, CreatedAt = DateTime.Now, ReportedByUserId = dbUsers.First(u => u.Username == "testUser").UserId, Category = "Plumbing", RequiresInspection = true, IsTenantComplaint = true },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, Title = "Air Conditioning Not Working", Description = "AC unit not responding to remote control", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "High").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "inProgress").StatusId, CreatedAt = DateTime.Now.AddDays(-2), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "HVAC", RequiresInspection = false, IsTenantComplaint = false },
 				
 				// Additional diverse maintenance issues
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, Title = "Pool Filter Needs Replacement", Description = "Pool water is getting cloudy, filter system requires maintenance", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Reported").StatusId, CreatedAt = DateTime.Now.AddDays(-7), ReportedByUserId = dbUsers.First(u => u.Username == "lejlazukic").UserId, Category = "Pool Maintenance", RequiresInspection = true, IsTenantComplaint = false },
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, Title = "Elevator Making Unusual Noises", Description = "Elevator is operational but making grinding sounds between floors 15-16", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Urgent").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "In Progress").StatusId, CreatedAt = DateTime.Now.AddDays(-3), ReportedByUserId = dbUsers.First(u => u.Username == "marianovac").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Mechanical", RequiresInspection = true, IsTenantComplaint = true },
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, Title = "Bathroom Light Bulb Out", Description = "Main bathroom light not working, likely just needs bulb replacement", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Resolved").StatusId, CreatedAt = DateTime.Now.AddDays(-14), ResolvedAt = DateTime.Now.AddDays(-12), ReportedByUserId = dbUsers.First(u => u.Username == "amerhasic").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "ivanabL").UserId, Category = "Electrical", RequiresInspection = false, IsTenantComplaint = true, Cost = 15.50m, ResolutionNotes = "Replaced LED bulb, tested all bathroom fixtures" },
-				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, Title = "Garden Sprinkler System Malfunction", Description = "Automatic sprinkler system not activating properly in back yard", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "Closed").StatusId, CreatedAt = DateTime.Now.AddDays(-21), ResolvedAt = DateTime.Now.AddDays(-18), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Landscaping", RequiresInspection = false, IsTenantComplaint = false, Cost = 125.00m, ResolutionNotes = "Replaced faulty timer control and tested all zones" }
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Luxury Villa Zenica").PropertyId, Title = "Pool Filter Needs Replacement", Description = "Pool water is getting cloudy, filter system requires maintenance", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "pending").StatusId, CreatedAt = DateTime.Now.AddDays(-7), ReportedByUserId = dbUsers.First(u => u.Username == "lejlazukic").UserId, Category = "Pool Maintenance", RequiresInspection = true, IsTenantComplaint = false },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Penthouse Manhattan Style").PropertyId, Title = "Elevator Making Unusual Noises", Description = "Elevator is operational but making grinding sounds between floors 15-16", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Emergency").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "inProgress").StatusId, CreatedAt = DateTime.Now.AddDays(-3), ReportedByUserId = dbUsers.First(u => u.Username == "marianovac").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Mechanical", RequiresInspection = true, IsTenantComplaint = true },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Modern Studio Downtown").PropertyId, Title = "Bathroom Light Bulb Out", Description = "Main bathroom light not working, likely just needs bulb replacement", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Low").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "completed").StatusId, CreatedAt = DateTime.Now.AddDays(-14), ResolvedAt = DateTime.Now.AddDays(-12), ReportedByUserId = dbUsers.First(u => u.Username == "amerhasic").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "ivanabL").UserId, Category = "Electrical", RequiresInspection = false, IsTenantComplaint = true, Cost = 15.50m, ResolutionNotes = "Replaced LED bulb, tested all bathroom fixtures" },
+				new MaintenanceIssue { PropertyId = dbProperties.First(p => p.Name == "Cozy Townhouse LA").PropertyId, Title = "Garden Sprinkler System Malfunction", Description = "Automatic sprinkler system not activating properly in back yard", PriorityId = dbIssuePriorities.First(p => p.PriorityName == "Medium").PriorityId, StatusId = dbIssueStatuses.First(s => s.StatusName == "cancelled").StatusId, CreatedAt = DateTime.Now.AddDays(-21), ResolvedAt = DateTime.Now.AddDays(-18), ReportedByUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, AssignedToUserId = dbUsers.First(u => u.Username == "testLandlord").UserId, Category = "Landscaping", RequiresInspection = false, IsTenantComplaint = false, Cost = 125.00m, ResolutionNotes = "Replaced faulty timer control and tested all zones" }
 			};
 			context.MaintenanceIssues.AddRange(maintenanceIssues);
 			await context.SaveChangesAsync();
@@ -668,7 +665,7 @@ namespace eRents.WebApi
 			await context.SaveChangesAsync();
 
 			// Add more pending maintenance issues for testLandlord's properties
-			var pendingStatus = dbIssueStatuses.First(s => s.StatusName == "Pending");
+			var pendingStatus = dbIssueStatuses.First(s => s.StatusName == "pending");
 			var mediumPriority = dbIssuePriorities.First(p => p.PriorityName == "Medium");
 			var highPriority = dbIssuePriorities.First(p => p.PriorityName == "High");
 			var categories = new[] { "Plumbing", "Electrical", "Appliances", "General" };

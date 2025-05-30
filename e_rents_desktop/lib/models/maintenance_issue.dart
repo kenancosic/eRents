@@ -44,7 +44,12 @@ class MaintenanceIssue {
 
   factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
     return MaintenanceIssue(
-      id: json['maintenanceIssueId'] as int? ?? json['id'] as int? ?? 0,
+      id:
+          json['IssueId'] as int? ??
+          json['issueId'] as int? ??
+          json['maintenanceIssueId'] as int? ??
+          json['id'] as int? ??
+          0,
       propertyId: json['propertyId'] as int? ?? 0,
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
@@ -53,16 +58,23 @@ class MaintenanceIssue {
       createdAt:
           json['createdAt'] != null
               ? DateTime.parse(json['createdAt'] as String)
+              : json['dateReported'] != null
+              ? DateTime.parse(json['dateReported'] as String)
               : DateTime.now(),
       resolvedAt:
           json['resolvedAt'] != null
               ? DateTime.parse(json['resolvedAt'] as String)
+              : json['dateResolved'] != null
+              ? DateTime.parse(json['dateResolved'] as String)
               : null,
       cost: (json['cost'] as num?)?.toDouble(),
       assignedTo: json['assignedTo'] as String?,
       images: _parseImages(json['images']),
       reportedBy:
-          json['reportedBy'] as int? ?? json['reportedByUserId'] as int? ?? 0,
+          json['reportedBy'] as int? ??
+          json['reportedByUserId'] as int? ??
+          json['tenantId'] as int? ??
+          0,
       resolutionNotes: json['resolutionNotes'] as String?,
       category: json['category'] as String?,
       requiresInspection: json['requiresInspection'] as bool? ?? false,

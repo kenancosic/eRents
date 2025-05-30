@@ -21,16 +21,37 @@ class MaintenanceService extends ApiService {
     print('MaintenanceService: Calling endpoint: $endpoint');
     try {
       final response = await get(endpoint, authenticated: true);
+      print('MaintenanceService: API Response status: ${response.statusCode}');
+      print('MaintenanceService: Raw API Response body: ${response.body}');
+
       final List<dynamic> jsonResponse = json.decode(response.body);
+      print(
+        'MaintenanceService: Parsed JSON response length: ${jsonResponse.length}',
+      );
+
+      // Log the first item to see the structure
+      if (jsonResponse.isNotEmpty) {
+        print(
+          'MaintenanceService: First item structure: ${jsonResponse.first}',
+        );
+      }
+
       // Add individual item parsing try-catch if needed, similar to other services
       final issues =
           jsonResponse
               .map((json) {
                 try {
-                  return MaintenanceIssue.fromJson(json);
+                  print(
+                    'MaintenanceService: Parsing item with keys: ${json.keys.toList()}',
+                  );
+                  final issue = MaintenanceIssue.fromJson(json);
+                  print(
+                    'MaintenanceService: Successfully parsed issue with ID: ${issue.id}',
+                  );
+                  return issue;
                 } catch (e) {
                   print(
-                    'MaintenanceService: Error parsing a maintenance issue: $e. Returning null for this item.',
+                    'MaintenanceService: Error parsing a maintenance issue: $e. Item data: $json',
                   );
                   return null; // Or handle more gracefully depending on UI needs
                 }
