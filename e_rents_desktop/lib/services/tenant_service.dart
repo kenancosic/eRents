@@ -5,20 +5,25 @@ import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
-// TODO: Full backend integration for all tenant features is pending.
-// Ensure all endpoints are functional and error handling is robust.
+/// ✅ Backend Integration Complete: All tenant management endpoints implemented
+/// Backend API Endpoints: /Tenant/*
+/// Security: User-scoped access control with ownership validation
+/// Pattern: Business Logic Controller (Non-CRUD) following established patterns
 class TenantService extends ApiService {
   TenantService(String baseUrl, SecureStorageService secureStorageService)
     : super(baseUrl, secureStorageService);
 
+  /// Get current tenants for the authenticated landlord
+  /// Backend: GET /Tenant/current
+  /// Returns: List<UserResponseDto> from backend ITenantService.GetCurrentTenantsAsync()
   Future<List<User>> getCurrentTenants({
     Map<String, String>? queryParams,
   }) async {
-    print('TenantService: Attempting to fetch current tenants...');
-    String endpoint = '/users?role=TENANT&status=ACTIVE';
+    print('TenantService: Fetching current tenants...');
+    String endpoint = '/Tenant/current';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
-      endpoint += '&$queryString';
+      endpoint += '?$queryString';
     }
     try {
       final response = await get(endpoint, authenticated: true);
@@ -29,20 +34,19 @@ class TenantService extends ApiService {
       );
       return tenants;
     } catch (e) {
-      print(
-        'TenantService: Error fetching current tenants: $e. Backend integration might be pending or endpoint unavailable.',
-      );
-      throw Exception(
-        'Failed to fetch current tenants. Backend integration pending or endpoint unavailable. Cause: $e',
-      );
+      print('TenantService: Error fetching current tenants: $e');
+      rethrow;
     }
   }
 
+  /// Get prospective tenants (tenants actively searching)
+  /// Backend: GET /Tenant/prospective
+  /// Returns: List<TenantPreferenceResponseDto> from backend ITenantService.GetProspectiveTenantsAsync()
   Future<List<TenantPreference>> getProspectiveTenants({
     Map<String, String>? queryParams,
   }) async {
-    print('TenantService: Attempting to fetch prospective tenants...');
-    String endpoint = '/tenant-preferences/search';
+    print('TenantService: Fetching prospective tenants...');
+    String endpoint = '/Tenant/prospective';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
       endpoint += '?$queryString';
@@ -53,75 +57,166 @@ class TenantService extends ApiService {
       final preferences =
           data.map((json) => TenantPreference.fromJson(json)).toList();
       print(
-        'TenantService: Successfully fetched ${preferences.length} prospective tenant preferences.',
+        'TenantService: Successfully fetched ${preferences.length} prospective tenants.',
       );
       return preferences;
     } catch (e) {
-      print(
-        'TenantService: Error fetching prospective tenants: $e. Backend integration might be pending or endpoint unavailable.',
-      );
-      throw Exception(
-        'Failed to fetch prospective tenants. Backend integration pending or endpoint unavailable. Cause: $e',
-      );
+      print('TenantService: Error fetching prospective tenants: $e');
+      rethrow;
     }
   }
 
-  Future<User> getTenantById(String tenantId) async {
-    print('TenantService: Attempting to fetch tenant $tenantId...');
+  /// Get specific tenant details
+  /// Backend: GET /Tenant/current/{tenantId}
+  /// Returns: UserResponseDto from backend ITenantService.GetTenantByIdAsync()
+  Future<User> getTenantById(int tenantId) async {
+    print('TenantService: Fetching tenant $tenantId...');
     try {
-      final response = await get('/users/$tenantId', authenticated: true);
+      final response = await get(
+        '/Tenant/current/$tenantId',
+        authenticated: true,
+      );
       final user = User.fromJson(jsonDecode(response.body));
       print('TenantService: Successfully fetched tenant $tenantId.');
       return user;
     } catch (e) {
-      print(
-        'TenantService: Error fetching tenant $tenantId: $e. Backend integration might be pending or endpoint unavailable.',
-      );
-      throw Exception(
-        'Failed to fetch tenant $tenantId. Backend integration pending or endpoint unavailable. Cause: $e',
-      );
+      print('TenantService: Error fetching tenant $tenantId: $e');
+      rethrow;
     }
   }
 
-  Future<TenantPreference> getTenantPreferences(String tenantId) async {
-    final response = await get('/tenant-preferences/$tenantId');
-    // Adjust if preferences are nested under user/tenant: `/tenants/$tenantId/preferences`
-    return TenantPreference.fromJson(jsonDecode(response.body));
+  /// Get tenant preferences
+  /// Backend: GET /Tenant/preferences/{tenantId}
+  /// Returns: TenantPreferenceResponseDto from backend ITenantService.GetTenantPreferencesAsync()
+  Future<TenantPreference> getTenantPreferences(int tenantId) async {
+    print('TenantService: Fetching preferences for tenant $tenantId...');
+    try {
+      final response = await get(
+        '/Tenant/preferences/$tenantId',
+        authenticated: true,
+      );
+      return TenantPreference.fromJson(jsonDecode(response.body));
+    } catch (e) {
+      print('TenantService: Error fetching tenant preferences: $e');
+      rethrow;
+    }
   }
 
+  /// Update tenant preferences
+  /// Backend: PUT /Tenant/preferences/{tenantId}
+  /// Returns: TenantPreferenceResponseDto from backend ITenantService.UpdateTenantPreferencesAsync()
   Future<TenantPreference> updateTenantPreferences(
-    String tenantId,
+    int tenantId,
     TenantPreference preferences,
   ) async {
-    final response = await put(
-      '/tenant-preferences/$tenantId',
-      preferences.toJson(),
-    );
-    return TenantPreference.fromJson(jsonDecode(response.body));
+    print('TenantService: Updating preferences for tenant $tenantId...');
+    try {
+      final response = await put(
+        '/Tenant/preferences/$tenantId',
+        preferences.toJson(),
+        authenticated: true,
+      );
+      return TenantPreference.fromJson(jsonDecode(response.body));
+    } catch (e) {
+      print('TenantService: Error updating tenant preferences: $e');
+      rethrow;
+    }
   }
 
-  Future<List<Review>> getTenantFeedbacks(String tenantId) async {
-    final response = await get('/tenants/$tenantId/feedbacks');
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => Review.fromJson(json)).toList();
+  /// Get tenant feedbacks/reviews
+  /// Backend: GET /Tenant/feedback/{tenantId}
+  /// Returns: List<ReviewResponseDto> from backend ITenantService.GetTenantFeedbacksAsync()
+  Future<List<Review>> getTenantFeedbacks(int tenantId) async {
+    print('TenantService: Fetching feedbacks for tenant $tenantId...');
+    try {
+      final response = await get(
+        '/Tenant/feedback/$tenantId',
+        authenticated: true,
+      );
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => Review.fromJson(json)).toList();
+    } catch (e) {
+      print('TenantService: Error fetching tenant feedbacks: $e');
+      rethrow;
+    }
   }
 
-  Future<Review> addTenantFeedback(String tenantId, Review feedback) async {
-    final response = await post(
-      '/tenants/$tenantId/feedbacks',
-      feedback.toJson(),
-    );
-    return Review.fromJson(jsonDecode(response.body));
+  /// Add tenant feedback/review
+  /// Backend: POST /Tenant/feedback/{tenantId}
+  /// Returns: ReviewResponseDto from backend ITenantService.AddTenantFeedbackAsync()
+  Future<Review> addTenantFeedback(int tenantId, Review feedback) async {
+    print('TenantService: Adding feedback for tenant $tenantId...');
+    try {
+      final response = await post(
+        '/Tenant/feedback/$tenantId',
+        feedback.toJson(),
+        authenticated: true,
+      );
+      return Review.fromJson(jsonDecode(response.body));
+    } catch (e) {
+      print('TenantService: Error adding tenant feedback: $e');
+      rethrow;
+    }
   }
 
+  /// Record property offered to tenant
+  /// Backend: POST /Tenant/{tenantId}/offer/{propertyId}
+  /// Returns: void from backend ITenantService.RecordPropertyOfferedToTenantAsync()
   Future<void> recordPropertyOfferedToTenant(
     int tenantId,
     int propertyId,
   ) async {
-    // Assuming this endpoint just needs a 200/201 for success and doesn't return a body
-    // or returns a simple confirmation that we don't need to parse.
-    await post('/tenants/$tenantId/offered-properties', {
-      'propertyId': propertyId,
-    });
+    print(
+      'TenantService: Recording property offer: tenant $tenantId, property $propertyId...',
+    );
+    try {
+      await post(
+        '/Tenant/$tenantId/offer/$propertyId',
+        {},
+        authenticated: true,
+      );
+      print('TenantService: Property offer recorded successfully.');
+    } catch (e) {
+      print('TenantService: Error recording property offer: $e');
+      rethrow;
+    }
+  }
+
+  /// Get tenant relationships for landlord portfolio
+  /// Backend: GET /Tenant/relationships
+  /// Returns: List<TenantRelationshipDto> from backend ITenantService.GetTenantRelationshipsForLandlordAsync()
+  Future<List<Map<String, dynamic>>> getTenantRelationships() async {
+    print('TenantService: Fetching tenant relationships...');
+    try {
+      final response = await get('/Tenant/relationships', authenticated: true);
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('TenantService: Error fetching tenant relationships: $e');
+      rethrow;
+    }
+  }
+
+  /// Get property assignments for tenants
+  /// Backend: GET /Tenant/assignments
+  /// Returns: Dictionary<int, PropertyResponseDto> from backend ITenantService.GetTenantPropertyAssignmentsAsync()
+  Future<Map<String, dynamic>> getTenantPropertyAssignments(
+    List<int> tenantIds,
+  ) async {
+    print(
+      'TenantService: Fetching property assignments for ${tenantIds.length} tenants...',
+    );
+    try {
+      final queryParams = {'tenantIds': tenantIds.join(',')};
+      final queryString = Uri(queryParameters: queryParams).query;
+      final response = await get(
+        '/Tenant/assignments?$queryString',
+        authenticated: true,
+      );
+      return jsonDecode(response.body);
+    } catch (e) {
+      print('TenantService: Error fetching tenant property assignments: $e');
+      rethrow;
+    }
   }
 }

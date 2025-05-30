@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
-	[Route("api/[controller]")]
+	[Route("[controller]")]
 	[Authorize] // Require authentication for all endpoints
 	public class StatisticsController : ControllerBase
 	{

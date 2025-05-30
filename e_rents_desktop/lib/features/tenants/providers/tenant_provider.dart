@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
@@ -16,10 +15,9 @@ class TenantProvider extends BaseProvider<User> {
 
   List<User> _currentTenants = [];
   List<TenantPreference> _searchingTenants = [];
-  final Map<String, List<Review>> _tenantFeedbacks = {};
+  final Map<int, List<Review>> _tenantFeedbacks = {};
   // final Map<String, List<Message>> _tenantMessages = {}; // To be removed
-  final Map<String, List<String>> _tenantPropertyOffers =
-      {}; // For local mock or could be service driven
+  final Map<int, List<String>> _tenantPropertyOffers = {};
 
   // Constructor updated
   TenantProvider(this._tenantService /*, this._authProvider */) : super() {
@@ -32,11 +30,11 @@ class TenantProvider extends BaseProvider<User> {
       _currentTenants; // Could also use items directly from BaseProvider
   List<TenantPreference> get searchingTenants => _searchingTenants;
 
-  List<Review> getTenantFeedbacks(String tenantId) {
+  List<Review> getTenantFeedbacks(int tenantId) {
     return _tenantFeedbacks[tenantId] ?? [];
   }
 
-  List<String> getTenantPropertyOffers(String tenantId) {
+  List<String> getTenantPropertyOffers(int tenantId) {
     return _tenantPropertyOffers[tenantId] ?? [];
   }
 
@@ -82,7 +80,7 @@ class TenantProvider extends BaseProvider<User> {
     });
   }
 
-  Future<void> loadTenantFeedbacks(String tenantId) async {
+  Future<void> loadTenantFeedbacks(int tenantId) async {
     // isMockDataEnabled check removed.
     await execute(() async {
       _tenantFeedbacks[tenantId] = await _tenantService.getTenantFeedbacks(
@@ -91,7 +89,7 @@ class TenantProvider extends BaseProvider<User> {
     });
   }
 
-  Future<void> addTenantFeedback(String tenantId, Review feedback) async {
+  Future<void> addTenantFeedback(int tenantId, Review feedback) async {
     // isMockDataEnabled check removed.
     await execute(() async {
       Review newFeedback = await _tenantService.addTenantFeedback(

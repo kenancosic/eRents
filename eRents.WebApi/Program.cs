@@ -8,6 +8,7 @@ using eRents.Application.Service.PropertyService;
 using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
 using eRents.Application.Service.StatisticsService;
+using eRents.Application.Service.TenantService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
@@ -94,6 +95,8 @@ builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
 builder.Services.AddTransient<IImageRepository, ImageRepository>();
 builder.Services.AddTransient<IMessageRepository, MessageRepository>();
 builder.Services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
+builder.Services.AddTransient<ITenantRepository, TenantRepository>();
+builder.Services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
 
 // Register UserTypeRepository or BaseRepository<UserType>
 // If you have a specific UserTypeRepository:
@@ -110,6 +113,7 @@ builder.Services.AddTransient<IReviewService, ReviewService>();
 builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
+builder.Services.AddTransient<ITenantService, TenantService>();
 
 // Register HttpClient
 builder.Services.AddSingleton<HttpClient>();

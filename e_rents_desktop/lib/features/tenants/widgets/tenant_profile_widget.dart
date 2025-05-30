@@ -20,7 +20,7 @@ class TenantProfileWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<TenantProvider>(context, listen: false);
-    provider.loadTenantFeedbacks(tenant.id.toString());
+    provider.loadTenantFeedbacks(tenant.id);
 
     return AlertDialog(
       title: Row(
@@ -103,7 +103,7 @@ class TenantProfileWidget extends StatelessWidget {
   Widget _buildFeedbackSection() {
     return Consumer<TenantProvider>(
       builder: (context, provider, child) {
-        final feedbacks = provider.getTenantFeedbacks(tenant.id.toString());
+        final feedbacks = provider.getTenantFeedbacks(tenant.id);
         if (feedbacks.isEmpty) {
           return const Text('No feedback available');
         }

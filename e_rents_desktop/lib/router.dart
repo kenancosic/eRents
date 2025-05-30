@@ -310,10 +310,9 @@ class AppRouter {
           GoRoute(
             path: '/tenants',
             builder:
-                (context, state) => const Scaffold(
-                  body: Center(
-                    child: Text('Tenants feature temporarily disabled'),
-                  ),
+                (context, state) => const ContentWrapper(
+                  title: 'Tenant Management',
+                  child: TenantsScreen(),
                 ),
           ),
         ],

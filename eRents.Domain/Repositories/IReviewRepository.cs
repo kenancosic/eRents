@@ -7,6 +7,8 @@ namespace eRents.Domain.Repositories
 	{
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<IEnumerable<Review>> GetReviewsByPropertyAsync(int propertyId);
-
+		
+		// Tenant review methods
+		Task<List<Review>> GetTenantReviewsByLandlordAsync(int landlordId, int tenantId);
 	}
 }

@@ -22,5 +22,18 @@ namespace eRents.Domain.Repositories
 							.ToListAsync();
 		}
 
+		public async Task<List<Review>> GetTenantReviewsByLandlordAsync(int landlordId, int tenantId)
+		{
+			return await _context.Reviews
+				.Include(r => r.Reviewer)
+				.Include(r => r.Reviewee)
+				.Include(r => r.Property)
+				.Where(r => r.ReviewType == ReviewType.TenantReview &&
+							r.ReviewerId == landlordId &&
+							r.RevieweeId == tenantId)
+				.OrderByDescending(r => r.DateCreated)
+				.AsNoTracking()
+				.ToListAsync();
+		}
 	}
 }

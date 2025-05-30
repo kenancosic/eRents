@@ -65,116 +65,97 @@ class MonthlyRevenue {
 class StatisticsService extends ApiService {
   StatisticsService(super.baseUrl, super.secureStorageService);
 
-  /// Get comprehensive dashboard statistics for landlords
+  /// Get dashboard statistics for the authenticated landlord
+  /// Returns overview of portfolio including occupancy, revenue, top properties, etc.
   Future<DashboardStatistics> getDashboardStatistics() async {
     try {
-      final response = await get(
-        '/api/Statistics/dashboard',
-        authenticated: true,
+      print('StatisticsService: Fetching dashboard statistics...');
+
+      final response = await get('/Statistics/dashboard', authenticated: true);
+
+      final statistics = DashboardStatistics.fromJson(
+        jsonDecode(response.body),
       );
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return DashboardStatistics.fromJson(jsonData);
-      } else {
-        throw Exception(
-          'Failed to load dashboard statistics: ${response.statusCode}',
-        );
-      }
+      print(
+        'StatisticsService: Successfully fetched dashboard statistics. Total Properties: ${statistics.totalProperties}',
+      );
+
+      return statistics;
     } catch (e) {
-      throw Exception('Error fetching dashboard statistics: $e');
+      print('StatisticsService: Error fetching dashboard statistics: $e');
+      rethrow;
     }
   }
 
-  /// Get property statistics for landlords
-  Future<Map<String, dynamic>> getPropertyStatistics() async {
+  /// Get property statistics
+  /// Returns detailed statistics about property performance
+  Future<PropertyStatistics> getPropertyStatistics() async {
     try {
-      final response = await get(
-        '/api/Statistics/properties',
-        authenticated: true,
+      print('StatisticsService: Fetching property statistics...');
+
+      final response = await get('/Statistics/properties', authenticated: true);
+
+      final PropertyStatistics properties = PropertyStatistics.fromJson(
+        jsonDecode(response.body),
       );
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception(
-          'Failed to load property statistics: ${response.statusCode}',
-        );
-      }
+      print('StatisticsService: Successfully fetched property statistics.');
+
+      return properties;
     } catch (e) {
-      throw Exception('Error fetching property statistics: $e');
+      print('StatisticsService: Error fetching property statistics: $e');
+      rethrow;
     }
   }
 
-  /// Get maintenance statistics for landlords
-  Future<Map<String, dynamic>> getMaintenanceStatistics() async {
+  /// Get maintenance statistics
+  /// Returns summary of maintenance issues across all properties
+  Future<MaintenanceStatistics> getMaintenanceStatistics() async {
     try {
+      print('StatisticsService: Fetching maintenance statistics...');
+
       final response = await get(
-        '/api/Statistics/maintenance',
+        '/Statistics/maintenance',
         authenticated: true,
       );
 
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception(
-          'Failed to load maintenance statistics: ${response.statusCode}',
-        );
-      }
+      final MaintenanceStatistics maintenanceStats =
+          MaintenanceStatistics.fromJson(jsonDecode(response.body));
+
+      print('StatisticsService: Successfully fetched maintenance statistics.');
+
+      return maintenanceStats;
     } catch (e) {
-      throw Exception('Error fetching maintenance statistics: $e');
+      print('StatisticsService: Error fetching maintenance statistics: $e');
+      rethrow;
     }
   }
 
-  /// Get financial summary for landlords
-  Future<Map<String, dynamic>> getFinancialSummary({
-    String? period,
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
+  /// Get financial statistics
+  /// Returns detailed financial data including revenue trends and breakdowns
+  Future<Map<String, dynamic>> getFinancialStatistics([
+    Map<String, String>? filters,
+  ]) async {
     try {
-      final requestBody = {
-        'period': period,
-        'startDate': startDate?.toIso8601String(),
-        'endDate': endDate?.toIso8601String(),
-      };
+      print('StatisticsService: Fetching financial statistics...');
 
-      final response = await post(
-        '/api/Statistics/financial',
-        requestBody,
-        authenticated: true,
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception(
-          'Failed to load financial summary: ${response.statusCode}',
-        );
+      String endpoint = '/Statistics/financial';
+      if (filters != null && filters.isNotEmpty) {
+        final queryString = Uri(queryParameters: filters).query;
+        endpoint += '?$queryString';
       }
+
+      final response = await get(endpoint, authenticated: true);
+
+      final financialData = jsonDecode(response.body) as Map<String, dynamic>;
+
+      print('StatisticsService: Successfully fetched financial statistics.');
+
+      return financialData;
     } catch (e) {
-      throw Exception('Error fetching financial summary: $e');
+      print('StatisticsService: Error fetching financial statistics: $e');
+      rethrow;
     }
-  }
-
-  Future<FinancialStatistics> getFinancialStatistics({
-    DateTime? startDate,
-    DateTime? endDate,
-  }) async {
-    // Build query parameters
-    String queryParams = '';
-    if (startDate != null) {
-      queryParams += 'startDate=${startDate.toIso8601String()}';
-    }
-    if (endDate != null) {
-      queryParams += queryParams.isNotEmpty ? '&' : '';
-      queryParams += 'endDate=${endDate.toIso8601String()}';
-    }
-
-    final endpoint =
-        '/Statistics/financial${queryParams.isNotEmpty ? '?$queryParams' : ''}';
-    final response = await get(endpoint, authenticated: true);
-    final data = json.decode(response.body);
-    return FinancialStatistics.fromJson(data);
   }
 }
