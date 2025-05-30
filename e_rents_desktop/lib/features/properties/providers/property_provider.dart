@@ -27,6 +27,16 @@ class PropertyProvider extends BaseProvider<Property> {
 
   Map<String, IconData> get amenityIcons => _amenityService.getAmenityIcons();
 
+  /// Enhanced method to fetch amenities from backend with icons
+  Future<Map<String, IconData>> fetchAmenitiesWithIcons() async {
+    return await _amenityService.fetchAmenitiesWithIcons();
+  }
+
+  /// Adds custom amenities to the existing set
+  Map<String, IconData> addCustomAmenities(List<String> customAmenities) {
+    return _amenityService.addCustomAmenities(customAmenities);
+  }
+
   void updateProperties(List<Property> newProperties) {
     items_ = newProperties;
     notifyListeners();

@@ -446,8 +446,6 @@ class MockDataService {
             maintenanceIssues
                 .where((issue) => issue.propertyId == '3')
                 .toList(),
-        lastInspectionDate: DateTime.now().subtract(const Duration(days: 15)),
-        nextInspectionDate: DateTime.now().add(const Duration(days: 75)),
         dateAdded: DateTime.now().subtract(const Duration(days: 200)),
       ),
       Property(
@@ -482,8 +480,6 @@ class MockDataService {
           'Concierge',
         ],
         maintenanceIssues: [],
-        lastInspectionDate: DateTime.now().subtract(const Duration(days: 10)),
-        nextInspectionDate: DateTime.now().add(const Duration(days: 80)),
         dateAdded: DateTime.now().subtract(const Duration(days: 50)),
       ),
       Property(
@@ -516,8 +512,6 @@ class MockDataService {
           'Security System',
         ],
         maintenanceIssues: [],
-        lastInspectionDate: DateTime.now().subtract(const Duration(days: 20)),
-        nextInspectionDate: DateTime.now().add(const Duration(days: 70)),
         dateAdded: DateTime.now().subtract(const Duration(days: 180)),
       ),
     ];

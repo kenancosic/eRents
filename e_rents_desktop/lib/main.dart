@@ -30,7 +30,15 @@ import 'widgets/global_error_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: "lib/.env");
+
+  // Try to load .env file, but don't crash if it doesn't exist
+  try {
+    await dotenv.load(fileName: "lib/.env");
+  } catch (e) {
+    print('Warning: .env file not found. Some features may be limited: $e');
+    // Initialize with empty values if .env doesn't exist
+    dotenv.env.clear();
+  }
 
   // Get base URL from environment
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';

@@ -25,8 +25,6 @@ class Property {
   final String currency; // Added for standardization
   final double? dailyRate; // Added mobile-specific field
   final int? minimumStayDays; // Added mobile-specific field
-  final DateTime? lastInspectionDate;
-  final DateTime? nextInspectionDate;
   final DateTime dateAdded;
   final String? addressDetailId;
   final AddressDetail? addressDetail;
@@ -49,8 +47,6 @@ class Property {
     this.currency = "BAM",
     this.dailyRate,
     this.minimumStayDays,
-    this.lastInspectionDate,
-    this.nextInspectionDate,
     required this.dateAdded,
     this.addressDetailId,
     this.addressDetail,
@@ -75,14 +71,6 @@ class Property {
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
-      lastInspectionDate:
-          json['lastInspectionDate'] != null
-              ? DateTime.tryParse(json['lastInspectionDate'] as String? ?? '')
-              : null,
-      nextInspectionDate:
-          json['nextInspectionDate'] != null
-              ? DateTime.tryParse(json['nextInspectionDate'] as String? ?? '')
-              : null,
       dateAdded:
           json['dateAdded'] != null
               ? DateTime.parse(json['dateAdded'] as String)
@@ -253,8 +241,6 @@ class Property {
     String? currency,
     double? dailyRate,
     int? minimumStayDays,
-    DateTime? lastInspectionDate,
-    DateTime? nextInspectionDate,
     DateTime? dateAdded,
     String? addressDetailId,
     AddressDetail? addressDetail,
@@ -277,8 +263,6 @@ class Property {
       currency: currency ?? this.currency,
       dailyRate: dailyRate ?? this.dailyRate,
       minimumStayDays: minimumStayDays ?? this.minimumStayDays,
-      lastInspectionDate: lastInspectionDate ?? this.lastInspectionDate,
-      nextInspectionDate: nextInspectionDate ?? this.nextInspectionDate,
       dateAdded: dateAdded ?? this.dateAdded,
       addressDetailId: addressDetailId ?? this.addressDetailId,
       addressDetail: addressDetail ?? this.addressDetail,

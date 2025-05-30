@@ -168,10 +168,22 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
           itemCount: _images.length,
           itemBuilder: (context, index) {
             final imagePath = _images[index];
-            // Use FileImage for local paths, NetworkImage for URLs
-            // Assuming local paths for now
-            // TODO: Handle potential errors loading image (e.g., file not found)
-            final imageProvider = FileImage(File(imagePath));
+            // Handle both URLs and local file paths
+            ImageProvider imageProvider;
+
+            if (imagePath.startsWith('http://') ||
+                imagePath.startsWith('https://')) {
+              // Use NetworkImage for URLs
+              imageProvider = NetworkImage(imagePath);
+            } else if (imagePath.startsWith('file://') ||
+                !imagePath.startsWith('/')) {
+              // Handle file:// URLs or relative paths
+              final cleanPath = imagePath.replaceFirst('file://', '');
+              imageProvider = FileImage(File(cleanPath));
+            } else {
+              // Use FileImage for local paths
+              imageProvider = FileImage(File(imagePath));
+            }
 
             return Card(
               key: ValueKey(imagePath), // Use path as key

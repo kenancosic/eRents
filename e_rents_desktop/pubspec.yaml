@@ -82,7 +82,7 @@ flutter:
     - assets/images/
     - assets/fonts/
     - lib/.env
-   # - assets/icons/
+    - assets/icons/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
