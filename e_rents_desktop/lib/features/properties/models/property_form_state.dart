@@ -125,7 +125,7 @@ class PropertyFormState extends ChangeNotifier {
     _type = property.type;
     _status = property.status;
     _rentingType = property.rentingType;
-    _images = property.images.map((imageInfo) => imageInfo.url).toList();
+    _images = property.images.map((imageInfo) => imageInfo.url!).toList();
     _selectedAmenities = property.amenities ?? [];
 
     if (property.addressDetail != null) {
@@ -145,11 +145,9 @@ class PropertyFormState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Property createProperty(String currentUserId, Property? initialProperty) {
+  Property createProperty(int currentUserId, Property? initialProperty) {
     return Property(
-      id:
-          initialProperty?.id ??
-          DateTime.now().millisecondsSinceEpoch.toString(),
+      id: initialProperty?.id ?? 0,
       ownerId: initialProperty?.ownerId ?? currentUserId,
       title: titleController.text,
       description: descriptionController.text,
@@ -157,8 +155,7 @@ class PropertyFormState extends ChangeNotifier {
       price: double.parse(priceController.text),
       rentingType: _rentingType,
       status: _status,
-      images:
-          _images.map((img) => erents.ImageInfo(id: img, url: img)).toList(),
+      images: _images.map((img) => erents.ImageInfo(id: 0, url: img)).toList(),
       addressDetail: AddressDetail(
         addressDetailId: initialProperty?.addressDetail?.addressDetailId ?? 0,
         streetLine1:

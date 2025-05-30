@@ -10,7 +10,6 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provi
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:e_rents_desktop/features/maintenance/maintenance_form_screen.dart';
 import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class MaintenanceScreen extends StatefulWidget {
@@ -93,6 +92,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                         '${issue.title} ${issue.description} ${_getPropertyTitle(issue.propertyId, propertyProvider)}',
                 emptyStateWidget: _buildEmptyState(context),
                 defaultRowsPerPage: 10,
+                onRowTap: (issue) {
+                  // Single click highlights row
+                  print('Selected maintenance issue: ${issue.title}');
+                },
+                onRowDoubleTap: (issue) {
+                  context.push('/maintenance/${issue.id}');
+                },
               ),
             ),
           ],
@@ -221,7 +227,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       DataCell(
         InkWell(
           onTap: () {
-            if (property.id.isNotEmpty) {
+            if (property.id != 0) {
               context.push('/properties/${property.id}');
             }
           },
@@ -235,7 +241,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: ImageUtils.buildImage(
-                        property.images.first.url,
+                        property.images.first.url!,
                         width: 32,
                         height: 32,
                         fit: BoxFit.cover,
@@ -311,10 +317,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     ];
   }
 
-  String _getPropertyTitle(
-    String propertyId,
-    PropertyProvider propertyProvider,
-  ) {
+  String _getPropertyTitle(int propertyId, PropertyProvider propertyProvider) {
     return propertyProvider.properties
         .firstWhere((p) => p.id == propertyId, orElse: () => Property.empty())
         .title;

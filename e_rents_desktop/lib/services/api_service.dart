@@ -10,7 +10,9 @@ class ApiService {
 
   ApiService(this.baseUrl, this.secureStorageService);
 
-  Future<Map<String, String>> getHeaders() async {
+  Future<Map<String, String>> getHeaders({
+    Map<String, String>? customHeaders,
+  }) async {
     final token = await secureStorageService.getToken();
     final headers = {
       'Content-Type': 'application/json',
@@ -18,6 +20,9 @@ class ApiService {
     };
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
+    }
+    if (customHeaders != null) {
+      headers.addAll(customHeaders);
     }
     return headers;
   }
@@ -27,12 +32,13 @@ class ApiService {
     String method,
     Map<String, dynamic>? body, {
     bool authenticated = false,
+    Map<String, String>? customHeaders,
   }) async {
     int retryCount = 0;
     while (retryCount < maxRetries) {
       try {
         final url = Uri.parse('$baseUrl$endpoint');
-        final headers = await getHeaders();
+        final headers = await getHeaders(customHeaders: customHeaders);
 
         http.Response response;
         switch (method) {
@@ -74,24 +80,58 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body, {
     bool authenticated = false,
+    Map<String, String>? customHeaders,
   }) {
-    return _request(endpoint, 'POST', body, authenticated: authenticated);
+    return _request(
+      endpoint,
+      'POST',
+      body,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
   }
 
-  Future<http.Response> get(String endpoint, {bool authenticated = false}) {
-    return _request(endpoint, 'GET', null, authenticated: authenticated);
+  Future<http.Response> get(
+    String endpoint, {
+    bool authenticated = false,
+    Map<String, String>? customHeaders,
+  }) {
+    return _request(
+      endpoint,
+      'GET',
+      null,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
   }
 
   Future<http.Response> put(
     String endpoint,
     Map<String, dynamic> body, {
     bool authenticated = false,
+    Map<String, String>? customHeaders,
   }) {
-    return _request(endpoint, 'PUT', body, authenticated: authenticated);
+    return _request(
+      endpoint,
+      'PUT',
+      body,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
   }
 
-  Future<http.Response> delete(String endpoint, {bool authenticated = false}) {
-    return _request(endpoint, 'DELETE', null, authenticated: authenticated);
+  Future<http.Response> delete(
+    String endpoint, {
+    bool authenticated = false,
+    Map<String, String>? customHeaders,
+  }) {
+    return _request(
+      endpoint,
+      'DELETE',
+      null,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
   }
 
   void _handleResponse(http.Response response) {

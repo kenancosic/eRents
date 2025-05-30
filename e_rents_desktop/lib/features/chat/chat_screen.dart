@@ -18,7 +18,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  String? _currentUserId;
+  int? _currentUserId;
 
   @override
   void initState() {
@@ -69,7 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final newMessage = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().millisecondsSinceEpoch,
       senderId: _currentUserId!,
       receiverId: selectedContact.id,
       messageText: _messageController.text.trim(),
@@ -236,20 +236,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             radius: 20,
                             backgroundImage:
                                 selectedContact.profileImage != null &&
-                                        selectedContact
-                                            .profileImage!
-                                            .url
-                                            .isNotEmpty
+                                        selectedContact.profileImage!.url !=
+                                            null
                                     ? NetworkImage(
-                                      selectedContact.profileImage!.url,
+                                      selectedContact.profileImage!.url!,
                                     )
                                     : null,
                             child:
                                 (selectedContact.profileImage == null ||
-                                        selectedContact
-                                            .profileImage!
-                                            .url
-                                            .isEmpty)
+                                        selectedContact.profileImage!.url ==
+                                            null)
                                     ? Text(
                                       selectedContact.firstName[0] +
                                           selectedContact.lastName[0],
@@ -296,7 +292,9 @@ class _ChatScreenState extends State<ChatScreen> {
                               itemCount: messages.length,
                               itemBuilder: (context, index) {
                                 final message = messages[index];
-                                final isMe = message.senderId == _currentUserId;
+                                final isMe =
+                                    message.senderId ==
+                                    _currentUserId.toString();
                                 return ChatMessageBubble(
                                   message: message,
                                   isMe: isMe,

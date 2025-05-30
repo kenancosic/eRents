@@ -3,7 +3,7 @@ import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
     as ui_model;
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
+// import 'package:e_rents_desktop/services/mock_data_service.dart'; // To be removed
 import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:intl/intl.dart';
 
@@ -48,23 +48,11 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
     _endDate = effectiveEndDate;
 
     await execute(() async {
-      if (isMockDataEnabled) {
-        _apiFinancialStats = FinancialStatistics(
-          currentMonthRevenue: 12345.0,
-          previousMonthRevenue: 11000.0,
-          projectedRevenue: 13000.0,
-          revenueHistory: [
-            MonthlyRevenue(year: 2023, month: 1, revenue: 10000),
-            MonthlyRevenue(year: 2023, month: 2, revenue: 12000),
-          ],
-          revenueByPropertyType: {"Apartment": 20000, "House": 22000},
-        );
-      } else {
-        _apiFinancialStats = await _statisticsService.getFinancialStatistics(
-          startDate: effectiveStartDate,
-          endDate: effectiveEndDate,
-        );
-      }
+      _apiFinancialStats = await _statisticsService.getFinancialStatistics(
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate,
+      );
+
       _statisticsUiModel = _convertToUiModel(_apiFinancialStats);
       if (_statisticsUiModel != null) {
         items_ = [_statisticsUiModel!];
@@ -152,10 +140,9 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
 
   @override
   List<ui_model.FinancialStatistics> getMockItems() {
-    final mockUiStat = MockDataService.getMockFinancialStatistics(
-      _startDate,
-      _endDate,
+    print(
+      'StatisticsProvider: getMockItems() called. Backend integration is primary. Returning empty list as placeholder.',
     );
-    return [mockUiStat];
+    return [];
   }
 }

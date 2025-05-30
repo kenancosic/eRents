@@ -91,14 +91,14 @@ class _TenantsAdvertisementTableWidgetState
     }
 
     // Find tenant data for each preference
-    final tenantMap = <String, User>{};
+    final tenantMap = <int, User>{};
     for (var preference in filteredPreferences) {
       // Find the user associated with this preference
       tenantMap[preference.userId] = widget.tenants.firstWhere(
         (user) => user.id == preference.userId,
         orElse:
             () => User(
-              id: 'unknown',
+              id: 0,
               email: 'unknown@example.com',
               username: 'unknown',
               firstName: 'Unknown',
@@ -111,7 +111,7 @@ class _TenantsAdvertisementTableWidgetState
     }
 
     // Calculate mock match scores - this would be replaced with real algorithm
-    final matchScores = <String, int>{};
+    final matchScores = <int, int>{};
     for (var preference in filteredPreferences) {
       // Simulate a match score between 0-100 based on some criteria
       final random = DateTime.now().millisecondsSinceEpoch % 100;
@@ -141,11 +141,15 @@ class _TenantsAdvertisementTableWidgetState
                     backgroundImage:
                         (tenantMap[preference.userId]?.profileImage != null &&
                                 tenantMap[preference.userId]!
+                                        .profileImage!
+                                        .url !=
+                                    null &&
+                                tenantMap[preference.userId]!
                                     .profileImage!
-                                    .url
+                                    .url!
                                     .isNotEmpty)
                             ? NetworkImage(
-                              tenantMap[preference.userId]!.profileImage!.url,
+                              tenantMap[preference.userId]!.profileImage!.url!,
                             )
                             : const AssetImage('assets/images/user-image.png'),
                     child:

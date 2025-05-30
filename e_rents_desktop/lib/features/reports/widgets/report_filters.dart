@@ -1,17 +1,14 @@
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 
 class ReportFilters extends StatefulWidget {
-  final DateTime startDate;
-  final DateTime endDate;
-  final void Function(DateTime, DateTime) onDateRangeChanged;
+  final Function(DateTime, DateTime) onDateRangeChanged;
+  final Function(List<String>) onPropertyFilterChanged;
 
   const ReportFilters({
     super.key,
-    required this.startDate,
-    required this.endDate,
     required this.onDateRangeChanged,
+    required this.onPropertyFilterChanged,
   });
 
   @override
@@ -19,45 +16,33 @@ class ReportFilters extends StatefulWidget {
 }
 
 class _ReportFiltersState extends State<ReportFilters> {
-  late DateTime _startDate;
-  late DateTime _endDate;
-  late TextEditingController _startDateController;
-  late TextEditingController _endDateController;
-  final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
-  final List<String> _quickDateRanges = MockDataService.getQuickDateRanges();
-  final String _selectedRange = 'This Month';
+  DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
+  DateTime _endDate = DateTime.now();
+  List<String> _selectedProperties = [];
+
+  // TODO: Replace with actual property service call
+  List<String> _availableProperties = [];
 
   @override
   void initState() {
     super.initState();
-    _startDate = widget.startDate;
-    _endDate = widget.endDate;
-    _startDateController = TextEditingController(
-      text: _dateFormat.format(_startDate),
-    );
-    _endDateController = TextEditingController(
-      text: _dateFormat.format(_endDate),
-    );
+    _loadAvailableProperties();
+  }
+
+  /// TODO: Replace with actual API call to get properties
+  void _loadAvailableProperties() {
+    // Placeholder - replace with actual property service
+    _availableProperties = [];
   }
 
   @override
   void dispose() {
-    _startDateController.dispose();
-    _endDateController.dispose();
     super.dispose();
   }
 
   @override
   void didUpdateWidget(ReportFilters oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.startDate != oldWidget.startDate) {
-      _startDate = widget.startDate;
-      _startDateController.text = _dateFormat.format(_startDate);
-    }
-    if (widget.endDate != oldWidget.endDate) {
-      _endDate = widget.endDate;
-      _endDateController.text = _dateFormat.format(_endDate);
-    }
   }
 
   void _showDatePicker(bool isStartDate) async {
@@ -72,10 +57,8 @@ class _ReportFiltersState extends State<ReportFilters> {
       setState(() {
         if (isStartDate) {
           _startDate = picked;
-          _startDateController.text = _dateFormat.format(_startDate);
         } else {
           _endDate = picked;
-          _endDateController.text = _dateFormat.format(_endDate);
         }
       });
 
@@ -112,8 +95,6 @@ class _ReportFiltersState extends State<ReportFilters> {
     setState(() {
       _startDate = newStartDate;
       _endDate = newEndDate;
-      _startDateController.text = _dateFormat.format(_startDate);
-      _endDateController.text = _dateFormat.format(_endDate);
     });
 
     widget.onDateRangeChanged(_startDate, _endDate);
@@ -150,16 +131,14 @@ class _ReportFiltersState extends State<ReportFilters> {
                     labelText: 'Date Range',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedRange,
-                  items:
-                      _quickDateRanges
-                          .map(
-                            (range) => DropdownMenuItem(
-                              value: range,
-                              child: Text(range),
-                            ),
-                          )
-                          .toList(),
+                  value: 'This Month',
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'This Month',
+                      child: Text('This Month'),
+                    ),
+                    DropdownMenuItem(value: 'Custom', child: Text('Custom')),
+                  ],
                   onChanged: (value) {
                     if (value != null && value != 'Custom') {
                       _applyPresetRange(value);
@@ -170,7 +149,6 @@ class _ReportFiltersState extends State<ReportFilters> {
               const SizedBox(width: 16),
               Expanded(
                 child: TextField(
-                  controller: _startDateController,
                   readOnly: true,
                   onTap: () => _showDatePicker(true),
                   decoration: const InputDecoration(
@@ -183,7 +161,6 @@ class _ReportFiltersState extends State<ReportFilters> {
               const SizedBox(width: 16),
               Expanded(
                 child: TextField(
-                  controller: _endDateController,
                   readOnly: true,
                   onTap: () => _showDatePicker(false),
                   decoration: const InputDecoration(
@@ -199,16 +176,9 @@ class _ReportFiltersState extends State<ReportFilters> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children:
-                  MockDataService.getQuickDateRangePresets().map((preset) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: ActionChip(
-                        label: Text(preset),
-                        onPressed: () => _applyPresetRange(preset),
-                      ),
-                    );
-                  }).toList(),
+              children: const [
+                // Placeholder for property filter
+              ],
             ),
           ),
         ],

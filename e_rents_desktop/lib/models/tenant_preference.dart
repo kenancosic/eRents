@@ -1,6 +1,6 @@
 class TenantPreference {
-  final String id;
-  final String userId;
+  final int id;
+  final int userId;
   final DateTime searchStartDate;
   final DateTime? searchEndDate;
   final double? minPrice;
@@ -25,8 +25,8 @@ class TenantPreference {
 
   factory TenantPreference.fromJson(Map<String, dynamic> json) {
     return TenantPreference(
-      id: json['id'],
-      userId: json['userId'],
+      id: json['id'] as int,
+      userId: json['userId'] as int,
       searchStartDate: DateTime.parse(json['searchStartDate']),
       searchEndDate:
           json['searchEndDate'] != null

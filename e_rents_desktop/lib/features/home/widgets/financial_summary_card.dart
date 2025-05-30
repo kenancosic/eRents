@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import for NumberFormat
 
-// Displays a summary of financial data
+/// Displays a summary of financial data for landlord dashboard
+/// Optimized for backend integration and simplified property management
 class FinancialSummaryCard extends StatelessWidget {
   final double income;
   final double expenses;
@@ -23,49 +24,36 @@ class FinancialSummaryCard extends StatelessWidget {
     final Color profitColor =
         isProfit ? Colors.green.shade700 : Colors.red.shade700;
 
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Removed redundant header, handled by _buildSectionHeader in home_screen
-            // Text(
-            //   'Financial Snapshot',
-            //   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            // ),
-            // const SizedBox(height: 16),
-            _buildFinancialRow(
-              context: context,
-              icon: Icons.arrow_downward_rounded,
-              iconColor: Colors.green.shade600,
-              label: 'Total Income',
-              value: currencyFormat.format(income),
-            ),
-            const Divider(height: 20),
-            _buildFinancialRow(
-              context: context,
-              icon: Icons.arrow_upward_rounded,
-              iconColor: Colors.red.shade600,
-              label: 'Total Expenses',
-              value: currencyFormat.format(expenses),
-            ),
-            const Divider(height: 20),
-            _buildFinancialRow(
-              context: context,
-              icon: Icons.account_balance_wallet_outlined,
-              iconColor: profitColor,
-              label: 'Net Profit/Loss',
-              value: currencyFormat.format(netProfit),
-              valueStyle: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: profitColor,
-              ),
-            ),
-          ],
+    return Column(
+      children: [
+        _buildFinancialRow(
+          context: context,
+          icon: Icons.arrow_downward_rounded,
+          iconColor: Colors.green.shade600,
+          label: 'Total Income',
+          value: currencyFormat.format(income),
         ),
-      ),
+        const Divider(height: 20),
+        _buildFinancialRow(
+          context: context,
+          icon: Icons.arrow_upward_rounded,
+          iconColor: Colors.red.shade600,
+          label: 'Total Expenses',
+          value: currencyFormat.format(expenses),
+        ),
+        const Divider(height: 20),
+        _buildFinancialRow(
+          context: context,
+          icon: Icons.account_balance_wallet_outlined,
+          iconColor: profitColor,
+          label: 'Net Profit/Loss',
+          value: currencyFormat.format(netProfit),
+          valueStyle: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: profitColor,
+          ),
+        ),
+      ],
     );
   }
 

@@ -8,7 +8,7 @@ import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class MaintenanceFormScreen extends StatefulWidget {
-  final String? propertyId;
+  final int? propertyId;
   final MaintenanceIssue? issue;
 
   const MaintenanceFormScreen({super.key, this.propertyId, this.issue});
@@ -24,17 +24,16 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
   late final TextEditingController _categoryController;
   late IssuePriority _priority;
   late bool _isTenantComplaint;
-  List<String> _images = [];
+  List<erents.ImageInfo> _images = [];
   bool _isLoading = false;
   String? _errorMessage;
-  late String _currentUserId;
+  int _currentUserId = 0;
 
   @override
   void initState() {
     super.initState();
     _currentUserId =
-        Provider.of<AuthProvider>(context, listen: false).currentUser?.id ??
-        'unknown_user';
+        Provider.of<AuthProvider>(context, listen: false).currentUser?.id ?? 0;
     _titleController = TextEditingController(text: widget.issue?.title ?? '');
     _descriptionController = TextEditingController(
       text: widget.issue?.description ?? '',
@@ -57,8 +56,8 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
 
   MaintenanceIssue _createIssue() {
     return MaintenanceIssue(
-      id: widget.issue?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      propertyId: widget.propertyId ?? widget.issue?.propertyId ?? '',
+      id: widget.issue?.id ?? 0,
+      propertyId: widget.propertyId ?? widget.issue?.propertyId ?? 0,
       title: _titleController.text,
       description: _descriptionController.text,
       priority: _priority,
@@ -67,8 +66,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
       resolvedAt: widget.issue?.resolvedAt,
       cost: widget.issue?.cost,
       assignedTo: widget.issue?.assignedTo,
-      images:
-          _images.map((img) => erents.ImageInfo(id: img, url: img)).toList(),
+      images: _images,
       reportedBy: _currentUserId,
       resolutionNotes: widget.issue?.resolutionNotes,
       category: _categoryController.text,
@@ -180,10 +178,13 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             ),
             const SizedBox(height: 16),
             ImagePickerInput(
-              initialImages: _images,
+              initialImages: _images.map((img) => img.url!).toList(),
               onChanged: (updatedImages) {
                 setState(() {
-                  _images = updatedImages;
+                  _images =
+                      updatedImages
+                          .map((url) => erents.ImageInfo(id: 0, url: url))
+                          .toList();
                 });
               },
             ),
@@ -211,6 +212,21 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                         setState(() => _isLoading = true);
                         if (widget.issue == null) {
                           await provider.addItem(issue);
+                          final newIssues =
+                              provider.issues
+                                  .where(
+                                    (i) =>
+                                        i.title == issue.title &&
+                                        i.propertyId == issue.propertyId &&
+                                        i.id != 0,
+                                  )
+                                  .toList();
+
+                          if (mounted && newIssues.isNotEmpty) {
+                            final newIssue = newIssues.last;
+                            context.go('/maintenance/${newIssue.id}');
+                            return;
+                          }
                         } else {
                           await provider.updateItem(issue);
                         }

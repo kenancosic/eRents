@@ -32,13 +32,16 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
     await execute(() async {
       final newIssue = await _maintenanceService.createIssue(issue);
       items_.add(newIssue);
+
+      // Update the provider to notify listeners so the UI can refresh with the new issue ID
+      notifyListeners();
     });
   }
 
   Future<void> updateIssue(MaintenanceIssue issue) async {
     await execute(() async {
       final updatedIssue = await _maintenanceService.updateIssue(
-        issue.id,
+        issue.id.toString(),
         issue,
       );
       final index = items.indexWhere((i) => i.id == updatedIssue.id);
@@ -51,12 +54,17 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
   Future<void> deleteIssue(String id) async {
     await execute(() async {
       await _maintenanceService.deleteIssue(id);
-      items_.removeWhere((issue) => issue.id == id);
+      final idInt = int.tryParse(id);
+      if (idInt != null) {
+        items_.removeWhere((issue) => issue.id == idInt);
+      }
     });
   }
 
   List<MaintenanceIssue> getIssuesByProperty(String propertyId) {
-    return items.where((issue) => issue.propertyId == propertyId).toList();
+    final propertyIdInt = int.tryParse(propertyId);
+    if (propertyIdInt == null) return [];
+    return items.where((issue) => issue.propertyId == propertyIdInt).toList();
   }
 
   List<MaintenanceIssue> getIssuesByStatus(IssueStatus status) {
@@ -122,11 +130,13 @@ class MaintenanceProvider extends BaseProvider<MaintenanceIssue> {
     bool? isTenantComplaint,
     String? searchQuery,
   }) {
+    final propertyIdInt = propertyId != null ? int.tryParse(propertyId) : null;
+
     return items.where((issue) {
       bool matchesStatus = status == null || issue.status == status;
       bool matchesPriority = priority == null || issue.priority == priority;
       bool matchesProperty =
-          propertyId == null || issue.propertyId == propertyId;
+          propertyIdInt == null || issue.propertyId == propertyIdInt;
       bool matchesComplaint =
           isTenantComplaint == null ||
           issue.isTenantComplaint == isTenantComplaint;

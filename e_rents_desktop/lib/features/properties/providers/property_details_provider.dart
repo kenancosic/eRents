@@ -1,19 +1,24 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 import 'package:e_rents_desktop/models/review.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/services/booking_service.dart';
 import 'package:e_rents_desktop/services/review_service.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart';
+import 'package:e_rents_desktop/services/maintenance_service.dart';
 
 class PropertyDetailsProvider extends BaseProvider<Property> {
   final BookingService _bookingService;
   final ReviewService _reviewService;
   final StatisticsService _statisticsService;
+  final MaintenanceService _maintenanceService;
 
   PropertyDetailsProvider(
     this._bookingService,
     this._reviewService,
     this._statisticsService,
+    this._maintenanceService,
   );
 
   // Property statistics
@@ -25,6 +30,7 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   List<BookingSummary> _upcomingBookings = [];
   List<BookingSummary> _recentBookings = [];
   List<Review> _reviews = [];
+  List<MaintenanceIssue> _maintenanceIssues = [];
 
   // Loading state
   bool _isLoadingDetails = false;
@@ -37,6 +43,7 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   List<BookingSummary> get upcomingBookings => _upcomingBookings;
   List<BookingSummary> get recentBookings => _recentBookings;
   List<Review> get reviews => _reviews;
+  List<MaintenanceIssue> get fetchedMaintenanceIssues => _maintenanceIssues;
   bool get isLoadingDetails => _isLoadingDetails;
   String? get detailsError => _detailsError;
 
@@ -47,6 +54,17 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   int get totalReviews => _reviewStats?.totalReviews ?? 0;
   double get occupancyRate => _bookingStats?.occupancyRate ?? 0.0;
   int get currentOccupancy => _bookingStats?.currentOccupancy ?? 0;
+
+  // Maintenance convenience getters
+  int get totalMaintenanceIssues => _maintenanceIssues.length;
+  int get pendingMaintenanceIssues =>
+      _maintenanceIssues
+          .where((issue) => issue.status == IssueStatus.pending)
+          .length;
+  int get inProgressMaintenanceIssues =>
+      _maintenanceIssues
+          .where((issue) => issue.status == IssueStatus.inProgress)
+          .length;
 
   // Current tenant info
   BookingSummary? get currentTenant =>
@@ -66,6 +84,7 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
           _loadReviewStats(propertyId),
           _loadBookings(propertyId),
           _loadReviews(propertyId),
+          _loadMaintenanceIssues(propertyId),
         ]);
 
         _isLoadingDetails = false;
@@ -133,10 +152,41 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
     try {
       _reviews = await _reviewService.getPropertyReviews(propertyId);
       // Sort by date, most recent first
-      _reviews.sort((a, b) => b.dateReported.compareTo(a.dateReported));
+      _reviews.sort((a, b) => b.dateCreated.compareTo(a.dateCreated));
     } catch (e) {
       print('Error loading reviews: $e');
       _reviews = [];
+    }
+  }
+
+  Future<void> _loadMaintenanceIssues(String propertyId) async {
+    try {
+      print(
+        'PropertyDetailsProvider: Loading maintenance issues for property $propertyId',
+      );
+      // Convert propertyId to int and filter by property
+      final propertyIdInt = int.tryParse(propertyId);
+      if (propertyIdInt != null) {
+        print(
+          'PropertyDetailsProvider: Calling maintenance service with PropertyId: $propertyIdInt',
+        );
+        _maintenanceIssues = await _maintenanceService.getIssues(
+          queryParams: {'PropertyId': propertyIdInt.toString()},
+        );
+        // Sort by creation date, most recent first
+        _maintenanceIssues.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        print(
+          'PropertyDetailsProvider: Successfully loaded ${_maintenanceIssues.length} maintenance issues for property $propertyId',
+        );
+      } else {
+        print(
+          'PropertyDetailsProvider: Invalid propertyId format: $propertyId',
+        );
+        _maintenanceIssues = [];
+      }
+    } catch (e) {
+      print('Error loading maintenance issues: $e');
+      _maintenanceIssues = [];
     }
   }
 

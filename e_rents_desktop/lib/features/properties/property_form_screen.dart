@@ -83,10 +83,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId =
-        authProvider.currentUser?.id ?? 'error_user_id_not_found';
+    final currentUserId = authProvider.currentUser?.id ?? 0;
 
-    if (currentUserId == 'error_user_id_not_found') {
+    if (currentUserId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Error: User not authenticated. Cannot save property.'),

@@ -5,6 +5,8 @@ import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
+// TODO: Full backend integration for all tenant features is pending.
+// Ensure all endpoints are functional and error handling is robust.
 class TenantService extends ApiService {
   TenantService(String baseUrl, SecureStorageService secureStorageService)
     : super(baseUrl, secureStorageService);
@@ -12,38 +14,73 @@ class TenantService extends ApiService {
   Future<List<User>> getCurrentTenants({
     Map<String, String>? queryParams,
   }) async {
+    print('TenantService: Attempting to fetch current tenants...');
     String endpoint = '/users?role=TENANT&status=ACTIVE';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
-      endpoint += '&$queryString'; // Append additional query params
+      endpoint += '&$queryString';
     }
-    final response = await get(endpoint);
-    // Assuming a generic /users endpoint that can be filtered by role and status
-    // Adjust endpoint to `/tenants/current` if a specific one exists.
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => User.fromJson(json)).toList();
+    try {
+      final response = await get(endpoint, authenticated: true);
+      final List<dynamic> data = jsonDecode(response.body);
+      final tenants = data.map((json) => User.fromJson(json)).toList();
+      print(
+        'TenantService: Successfully fetched ${tenants.length} current tenants.',
+      );
+      return tenants;
+    } catch (e) {
+      print(
+        'TenantService: Error fetching current tenants: $e. Backend integration might be pending or endpoint unavailable.',
+      );
+      throw Exception(
+        'Failed to fetch current tenants. Backend integration pending or endpoint unavailable. Cause: $e',
+      );
+    }
   }
 
   Future<List<TenantPreference>> getProspectiveTenants({
     Map<String, String>? queryParams,
   }) async {
+    print('TenantService: Attempting to fetch prospective tenants...');
     String endpoint = '/tenant-preferences/search';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
-      endpoint += '?$queryString'; // Append query params
+      endpoint += '?$queryString';
     }
-    final response = await get(endpoint);
-    // Adjust endpoint to `/tenants/prospective` or `/users?role=TENANT&isSearching=true`
-    // if that's more appropriate
-    final List<dynamic> data = jsonDecode(response.body);
-    return data.map((json) => TenantPreference.fromJson(json)).toList();
+    try {
+      final response = await get(endpoint, authenticated: true);
+      final List<dynamic> data = jsonDecode(response.body);
+      final preferences =
+          data.map((json) => TenantPreference.fromJson(json)).toList();
+      print(
+        'TenantService: Successfully fetched ${preferences.length} prospective tenant preferences.',
+      );
+      return preferences;
+    } catch (e) {
+      print(
+        'TenantService: Error fetching prospective tenants: $e. Backend integration might be pending or endpoint unavailable.',
+      );
+      throw Exception(
+        'Failed to fetch prospective tenants. Backend integration pending or endpoint unavailable. Cause: $e',
+      );
+    }
   }
 
   Future<User> getTenantById(String tenantId) async {
-    final response = await get('/users/$tenantId');
-    // Assuming /users/{id} can fetch any user, including tenants
-    // Adjust to `/tenants/$tenantId` if specific
-    return User.fromJson(jsonDecode(response.body));
+    print('TenantService: Attempting to fetch tenant $tenantId...');
+    try {
+      final response = await get('/users/$tenantId', authenticated: true);
+      final user = User.fromJson(jsonDecode(response.body));
+      print('TenantService: Successfully fetched tenant $tenantId.');
+      return user;
+    } catch (e) {
+      print(
+        'TenantService: Error fetching tenant $tenantId: $e. Backend integration might be pending or endpoint unavailable.',
+      );
+      throw Exception(
+        'Failed to fetch tenant $tenantId. Backend integration pending or endpoint unavailable. Cause: $e',
+      );
+    }
   }
 
   Future<TenantPreference> getTenantPreferences(String tenantId) async {
@@ -78,8 +115,8 @@ class TenantService extends ApiService {
   }
 
   Future<void> recordPropertyOfferedToTenant(
-    String tenantId,
-    String propertyId,
+    int tenantId,
+    int propertyId,
   ) async {
     // Assuming this endpoint just needs a 200/201 for success and doesn't return a body
     // or returns a simple confirmation that we don't need to parse.

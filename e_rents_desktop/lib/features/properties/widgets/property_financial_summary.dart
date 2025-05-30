@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 import 'package:e_rents_desktop/services/booking_service.dart';
 
 class PropertyFinancialSummary extends StatelessWidget {
@@ -65,7 +67,7 @@ class PropertyFinancialSummary extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 20),

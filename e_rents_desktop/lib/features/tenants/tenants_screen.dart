@@ -3,7 +3,6 @@ import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart'; // For filter fields, keep for now
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
@@ -25,10 +24,23 @@ class _TenantsScreenState extends State<TenantsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String _searchTerm = '';
-  String _currentFilterField =
-      MockDataService.getCurrentTenantFilterFields().first;
+  String _currentFilterField = 'Full Name'; // Default placeholder
   final TextEditingController _searchController = TextEditingController();
   String _searchLabelText = 'Search current tenants: ';
+
+  // Placeholder filter fields
+  final List<String> _currentTenantFilterFields = [
+    'Full Name',
+    'Email',
+    'Phone',
+    'City',
+  ];
+  final List<String> _searchingTenantFilterFields = [
+    'City',
+    'Price Range',
+    'Amenities',
+    'Description',
+  ];
 
   @override
   void initState() {
@@ -53,7 +65,7 @@ class _TenantsScreenState extends State<TenantsScreen>
     if (_tabController.index == 0) {
       setState(() {
         _currentFilterField =
-            MockDataService.getCurrentTenantFilterFields().first;
+            _currentTenantFilterFields.first; // Use placeholder
         _searchController.clear();
         _searchTerm = '';
         _searchLabelText = 'Search current tenants: ';
@@ -61,7 +73,7 @@ class _TenantsScreenState extends State<TenantsScreen>
     } else {
       setState(() {
         _currentFilterField =
-            MockDataService.getSearchingTenantFilterFields().first;
+            _searchingTenantFilterFields.first; // Use placeholder
         _searchController.clear();
         _searchTerm = '';
         _searchLabelText = 'Search tenants advertisements: ';
@@ -85,7 +97,7 @@ class _TenantsScreenState extends State<TenantsScreen>
     // Or show a dialog to compose a message, then use ChatProvider.
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
     chatProvider.selectContact(tenant.id);
-    context.go('/chat/${tenant.id}');
+    context.go('/chat/${tenant.id.toString()}');
   }
 
   void _sendMessageToSearchingTenant(
@@ -263,8 +275,8 @@ class _TenantsScreenState extends State<TenantsScreen>
   Widget _buildSearchBar(TenantProvider provider) {
     final List<String> filterFields =
         _tabController.index == 0
-            ? MockDataService.getCurrentTenantFilterFields()
-            : MockDataService.getSearchingTenantFilterFields();
+            ? _currentTenantFilterFields
+            : _searchingTenantFilterFields;
 
     return CustomSearchBar(
       controller: _searchController,

@@ -5,7 +5,6 @@ import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:flutter/services.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -143,7 +142,7 @@ class _ReportsScreenContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<ReportsProvider>(context);
-    final List<String> reportTypes = MockDataService.getReportTypes();
+    final List<String> reportTypes = ["Financial Report", "Tenant Report"];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,10 +208,12 @@ class _ReportsScreenContent extends StatelessWidget {
 
         // Filters section
         ReportFilters(
-          startDate: provider.startDate,
-          endDate: provider.endDate,
           onDateRangeChanged:
               (start, end) => _handleDateRangeChanged(context, start, end),
+          onPropertyFilterChanged: (selectedProps) {
+            // TODO: Implement property filter logic if needed by reports
+            print('Property filter changed: $selectedProps');
+          },
         ),
 
         const SizedBox(height: 16),

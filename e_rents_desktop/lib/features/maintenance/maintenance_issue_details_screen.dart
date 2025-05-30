@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 
-class MaintenanceIssueDetailsScreen extends StatelessWidget {
+class MaintenanceIssueDetailsScreen extends StatefulWidget {
   final MaintenanceIssue? issue;
   final String issueId;
 
@@ -16,14 +16,46 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
   });
 
   @override
+  State<MaintenanceIssueDetailsScreen> createState() =>
+      _MaintenanceIssueDetailsScreenState();
+}
+
+class _MaintenanceIssueDetailsScreenState
+    extends State<MaintenanceIssueDetailsScreen> {
+  late MaintenanceIssue? _issue;
+  late String _issueId;
+  late TextEditingController _costController;
+  late TextEditingController _notesController;
+  late IssueStatus _selectedStatus;
+  late IssueStatus _originalStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _issue = widget.issue;
+    _issueId = widget.issueId;
+    _costController = TextEditingController();
+    _notesController = TextEditingController(text: 'Work completed.');
+    _selectedStatus = _issue?.status ?? IssueStatus.pending;
+    _originalStatus = _selectedStatus;
+  }
+
+  @override
+  void dispose() {
+    _costController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _buildContent(context);
   }
 
   Widget _buildContent(BuildContext context) {
     // If issue was passed directly, show it
-    if (issue != null) {
-      return _buildIssueContent(context, issue!);
+    if (_issue != null) {
+      return _buildIssueContent(context, _issue!);
     }
 
     // Otherwise, use Consumer to listen for changes in the provider
@@ -56,8 +88,15 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
 
         // Try to find issue in provider
         try {
-          final foundIssue = provider.issues.firstWhere((i) => i.id == issueId);
-          return _buildIssueContent(context, foundIssue);
+          final issueIdInt = int.tryParse(_issueId);
+          if (issueIdInt != null) {
+            final foundIssue = provider.issues.firstWhere(
+              (i) => i.id == issueIdInt,
+            );
+            return _buildIssueContent(context, foundIssue);
+          } else {
+            throw Exception('Invalid issue ID format');
+          }
         } catch (_) {
           // If issue not found and provider is not loading, show not found error
           return Center(
@@ -196,9 +235,9 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child:
-                            image.url.isNotEmpty
+                            image.url != null && image.url!.isNotEmpty
                                 ? Image.network(
-                                  image.url,
+                                  image.url!,
                                   width: 200,
                                   fit: BoxFit.cover,
                                 )
@@ -237,55 +276,269 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
   Widget _buildActions(BuildContext context, MaintenanceIssue issue) {
     final provider = Provider.of<MaintenanceProvider>(context, listen: false);
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (issue.status == IssueStatus.pending) ...[
-          ElevatedButton.icon(
-            onPressed: () {
-              provider.updateIssueStatus(issue.id, IssueStatus.inProgress);
-            },
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Start Work'),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Change Status',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildStatusSelection(issue),
+                const SizedBox(height: 16),
+                if (_selectedStatus == IssueStatus.completed) ...[
+                  TextField(
+                    controller: _costController,
+                    decoration: const InputDecoration(
+                      labelText: 'Resolution Cost',
+                      prefixText: '\$',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Resolution Notes',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed:
+                          _canSaveChanges(issue)
+                              ? () => _saveChanges(provider, issue)
+                              : null,
+                      icon: const Icon(Icons.save),
+                      label: const Text('Save Changes'),
+                    ),
+                    const SizedBox(width: 16),
+                    if (_canSaveChanges(issue))
+                      TextButton(
+                        onPressed: _resetChanges,
+                        child: const Text('Reset'),
+                      ),
+                  ],
+                ),
+                if (issue.id == 0 && _hasChanges()) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Note: Status changes can only be saved for existing issues.',
+                    style: TextStyle(
+                      color: Colors.orange.shade700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
-        ],
-        if (issue.status == IssueStatus.inProgress) ...[
-          ElevatedButton.icon(
-            onPressed: () {
-              // Potentially show a dialog to enter cost and resolution notes
-              // For now, just mark as complete.
-              provider.updateIssueStatus(
-                issue.id,
-                IssueStatus.completed,
-                resolutionNotes: "Work completed.",
-              );
-            },
-            icon: const Icon(Icons.check),
-            label: const Text('Mark as Complete'),
-          ),
-          const SizedBox(width: 16),
-        ],
-        if (issue.status != IssueStatus.completed &&
-            issue.status != IssueStatus.cancelled) ...[
-          TextButton.icon(
-            onPressed: () {
-              provider.updateIssueStatus(issue.id, IssueStatus.cancelled);
-            },
-            icon: const Icon(Icons.cancel),
-            label: const Text('Cancel Issue'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-          ),
-        ],
-        const Spacer(),
-        TextButton.icon(
-          onPressed: () {
-            context.go('/properties/${issue.propertyId}');
-          },
-          icon: const Icon(Icons.home),
-          label: const Text('View Property'),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            TextButton.icon(
+              onPressed: () {
+                context.go('/properties/${issue.propertyId}');
+              },
+              icon: const Icon(Icons.home),
+              label: const Text('View Property'),
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  Widget _buildStatusSelection(MaintenanceIssue issue) {
+    return Column(
+      children:
+          IssueStatus.values.map((status) {
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: RadioListTile<IssueStatus>(
+                title: Row(
+                  children: [
+                    Icon(
+                      _getStatusIcon(status),
+                      color: _getStatusColor(status),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_getStatusDisplayName(status)),
+                  ],
+                ),
+                subtitle: Text(_getStatusDescription(status)),
+                value: status,
+                groupValue: _selectedStatus,
+                onChanged: (IssueStatus? value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedStatus = value;
+                      if (value == IssueStatus.completed &&
+                          _notesController.text.isEmpty) {
+                        _notesController.text = 'Work completed.';
+                      }
+                    });
+                  }
+                },
+              ),
+            );
+          }).toList(),
+    );
+  }
+
+  IconData _getStatusIcon(IssueStatus status) {
+    switch (status) {
+      case IssueStatus.pending:
+        return Icons.pending_actions_outlined;
+      case IssueStatus.inProgress:
+        return Icons.construction_outlined;
+      case IssueStatus.completed:
+        return Icons.check_circle_outline_rounded;
+      case IssueStatus.cancelled:
+        return Icons.cancel_outlined;
+    }
+  }
+
+  Color _getStatusColor(IssueStatus status) {
+    switch (status) {
+      case IssueStatus.pending:
+        return Colors.orange;
+      case IssueStatus.inProgress:
+        return Colors.blue;
+      case IssueStatus.completed:
+        return Colors.green;
+      case IssueStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  String _getStatusDescription(IssueStatus status) {
+    switch (status) {
+      case IssueStatus.pending:
+        return 'Issue reported, waiting to be addressed';
+      case IssueStatus.inProgress:
+        return 'Work is currently in progress';
+      case IssueStatus.completed:
+        return 'Issue has been resolved';
+      case IssueStatus.cancelled:
+        return 'Issue has been cancelled';
+    }
+  }
+
+  bool _hasChanges() {
+    return _selectedStatus != _originalStatus ||
+        (_selectedStatus == IssueStatus.completed &&
+            _costController.text.isNotEmpty);
+  }
+
+  bool _canSaveChanges(MaintenanceIssue issue) {
+    return _hasChanges() && issue.id != 0;
+  }
+
+  void _resetChanges() {
+    setState(() {
+      _selectedStatus = _originalStatus;
+      _costController.clear();
+      _notesController.text = 'Work completed.';
+    });
+  }
+
+  void _saveChanges(MaintenanceProvider provider, MaintenanceIssue issue) {
+    // Validate that we have a valid issue ID
+    if (issue.id == 0) {
+      // Try to find the issue in the provider by title and property ID
+      // (for cases where issue was just created but UI hasn't refreshed)
+      try {
+        final foundIssue = provider.issues.firstWhere(
+          (i) =>
+              i.title == issue.title &&
+              i.propertyId == issue.propertyId &&
+              i.id != 0,
+        );
+
+        // Use the found issue with proper ID
+        _saveChangesForIssue(provider, foundIssue);
+        return;
+      } catch (e) {
+        // Issue not found in provider, show error
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Cannot update status for unsaved issue. Please save the issue first and try again.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    _saveChangesForIssue(provider, issue);
+  }
+
+  void _saveChangesForIssue(
+    MaintenanceProvider provider,
+    MaintenanceIssue issue,
+  ) {
+    final cost =
+        _selectedStatus == IssueStatus.completed
+            ? double.tryParse(_costController.text)
+            : null;
+    final notes =
+        _selectedStatus == IssueStatus.completed &&
+                _notesController.text.isNotEmpty
+            ? _notesController.text
+            : null;
+
+    provider.updateIssueStatus(
+      issue.id.toString(),
+      _selectedStatus,
+      cost: cost,
+      resolutionNotes: notes,
+    );
+
+    setState(() {
+      _originalStatus = _selectedStatus;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Status updated to ${_getStatusDisplayName(_selectedStatus)}',
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  String _getStatusDisplayName(IssueStatus status) {
+    switch (status) {
+      case IssueStatus.pending:
+        return 'Pending';
+      case IssueStatus.inProgress:
+        return 'In Progress';
+      case IssueStatus.completed:
+        return 'Completed';
+      case IssueStatus.cancelled:
+        return 'Cancelled';
+    }
   }
 
   String _formatTimeAgo(DateTime dateTime) {

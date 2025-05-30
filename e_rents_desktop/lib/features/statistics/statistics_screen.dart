@@ -29,10 +29,13 @@ class StatisticsScreen extends StatelessWidget {
         Consumer<StatisticsProvider>(
           builder: (context, provider, child) {
             return ReportFilters(
-              startDate: provider.startDate,
-              endDate: provider.endDate,
               onDateRangeChanged:
                   (start, end) => _handleDateRangeChanged(context, start, end),
+              onPropertyFilterChanged: (selectedProps) {
+                print(
+                  'Statistics Screen: Property filter changed (not used): $selectedProps',
+                );
+              },
             );
           },
         ),

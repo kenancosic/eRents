@@ -20,7 +20,7 @@ class TenantProfileWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<TenantProvider>(context, listen: false);
-    provider.loadTenantFeedbacks(tenant.id);
+    provider.loadTenantFeedbacks(tenant.id.toString());
 
     return AlertDialog(
       title: Row(
@@ -29,8 +29,9 @@ class TenantProfileWidget extends StatelessWidget {
             radius: 20,
             backgroundImage:
                 (tenant.profileImage != null &&
-                        tenant.profileImage!.url.isNotEmpty)
-                    ? NetworkImage(tenant.profileImage!.url)
+                        tenant.profileImage!.url != null &&
+                        tenant.profileImage!.url!.isNotEmpty)
+                    ? NetworkImage(tenant.profileImage!.url!)
                     : const AssetImage('assets/images/user-image.png'),
             child:
                 tenant.profileImage == null
@@ -102,7 +103,7 @@ class TenantProfileWidget extends StatelessWidget {
   Widget _buildFeedbackSection() {
     return Consumer<TenantProvider>(
       builder: (context, provider, child) {
-        final feedbacks = provider.getTenantFeedbacks(tenant.id);
+        final feedbacks = provider.getTenantFeedbacks(tenant.id.toString());
         if (feedbacks.isEmpty) {
           return const Text('No feedback available');
         }
@@ -123,7 +124,7 @@ class TenantProfileWidget extends StatelessWidget {
                       Icons.star,
                       size: 18,
                       color:
-                          index < feedback.starRating
+                          index < feedback.starRating!.toInt()
                               ? Colors.amber
                               : Colors.grey[300],
                     ),
@@ -131,7 +132,7 @@ class TenantProfileWidget extends StatelessWidget {
                 ),
                 subtitle: Text(feedback.description),
                 trailing: Text(
-                  '${feedback.dateReported.year}',
+                  '${feedback.dateCreated.year}',
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ),

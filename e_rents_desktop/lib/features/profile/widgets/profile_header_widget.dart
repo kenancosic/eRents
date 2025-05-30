@@ -37,10 +37,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
 
       if (pickedFile != null) {
         setState(() {
-          _tempProfileImage = erents.ImageInfo(
-            id: pickedFile.path,
-            url: pickedFile.path,
-          );
+          _tempProfileImage = erents.ImageInfo(id: 0, url: pickedFile.path);
         });
 
         if (!mounted) return;

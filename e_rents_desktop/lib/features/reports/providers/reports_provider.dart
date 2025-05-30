@@ -18,7 +18,7 @@ enum ExportFormat { pdf, excel, csv }
 /// Main provider class that coordinates all individual report providers
 class ReportsProvider extends BaseReportProvider<dynamic> {
   final ReportService _reportService;
-  final Map<ReportType, BaseReportProvider?> _providers = {};
+  final Map<ReportType, BaseReportProvider<dynamic>?> _providers = {};
   ReportType _currentReportType = ReportType.financial;
 
   ReportsProvider({required ReportService reportService})
@@ -32,18 +32,21 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     FinancialReportProvider financial,
     TenantReportProvider tenant,
   ) {
-    _providers[ReportType.financial] = financial;
-    _providers[ReportType.tenant] = tenant;
+    _providers[ReportType.financial] =
+        financial as BaseReportProvider<dynamic>?;
+    _providers[ReportType.tenant] = tenant as BaseReportProvider<dynamic>?;
     notifyListeners();
   }
 
   // Lazy provider creation
-  BaseReportProvider _createProvider(ReportType type) {
+  BaseReportProvider<dynamic> _createProvider(ReportType type) {
     switch (type) {
       case ReportType.financial:
-        return FinancialReportProvider(reportService: _reportService);
+        return FinancialReportProvider(_reportService)
+            as BaseReportProvider<dynamic>;
       case ReportType.tenant:
-        return TenantReportProvider(reportService: _reportService);
+        return TenantReportProvider(_reportService)
+            as BaseReportProvider<dynamic>;
     }
   }
 
@@ -52,19 +55,19 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
     if (_providers[ReportType.financial] == null) {
       _providers[ReportType.financial] = _createProvider(ReportType.financial);
     }
-    return _providers[ReportType.financial] as FinancialReportProvider;
+    return _providers[ReportType.financial]! as FinancialReportProvider;
   }
 
   TenantReportProvider get tenantProvider {
     if (_providers[ReportType.tenant] == null) {
       _providers[ReportType.tenant] = _createProvider(ReportType.tenant);
     }
-    return _providers[ReportType.tenant] as TenantReportProvider;
+    return _providers[ReportType.tenant]! as TenantReportProvider;
   }
 
   // Current provider getters with lazy initialization
   ReportType get currentReportType => _currentReportType;
-  BaseReportProvider get currentProvider {
+  BaseReportProvider<dynamic> get currentProvider {
     if (_providers[_currentReportType] == null) {
       _providers[_currentReportType] = _createProvider(_currentReportType);
     }

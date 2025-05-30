@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_details_provider.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final String propertyId;
@@ -154,7 +155,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     bookingStats: detailsProvider.bookingStats,
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildMaintenanceIssues(context, _property!),
+                                  _buildMaintenanceIssues(
+                                    context,
+                                    _property!,
+                                    detailsProvider.fetchedMaintenanceIssues,
+                                  ),
                                 ],
                               ),
                             ),
@@ -245,7 +250,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  Widget _buildMaintenanceIssues(BuildContext context, Property property) {
+  Widget _buildMaintenanceIssues(
+    BuildContext context,
+    Property property,
+    List<MaintenanceIssue> issues,
+  ) {
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +295,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
           const Divider(height: 1),
-          if (property.maintenanceIssues.isEmpty)
+          if (issues.isEmpty)
             const Padding(
               padding: EdgeInsets.all(16),
               child: Center(child: Text('No maintenance issues found')),
@@ -295,10 +304,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: property.maintenanceIssues.length,
+              itemCount: issues.length,
               separatorBuilder: (context, index) => const Divider(height: 1),
               itemBuilder: (context, index) {
-                final issue = property.maintenanceIssues[index];
+                final issue = issues[index];
                 return ListTile(
                   leading: Container(
                     width: 8,
@@ -369,7 +378,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
-  void _navigateToEditScreen(BuildContext context, String propertyId) {
+  void _navigateToEditScreen(BuildContext context, int propertyId) {
     context.push('/properties/${propertyId}/edit');
   }
 }

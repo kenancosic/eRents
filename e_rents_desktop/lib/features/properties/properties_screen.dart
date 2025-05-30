@@ -223,7 +223,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                 child:
                     property.images.isNotEmpty
                         ? ImageUtils.buildImage(
-                          property.images.first.url,
+                          property.images.first.url!,
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
@@ -382,7 +382,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                           children: [
                             property.images.isNotEmpty
                                 ? ImageUtils.buildImage(
-                                  property.images.first.url,
+                                  property.images.first.url!,
                                   fit: BoxFit.cover,
                                   errorWidget: Container(
                                     width: 80,

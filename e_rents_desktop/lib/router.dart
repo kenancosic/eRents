@@ -151,7 +151,7 @@ class AppRouter {
             path: '/',
             builder:
                 (context, state) => const ContentWrapper(
-                  title: 'Dashboard',
+                  title: 'Landlord Dashboard',
                   child: HomeScreen(),
                 ),
           ),
@@ -159,7 +159,7 @@ class AppRouter {
             path: '/properties',
             builder:
                 (context, state) => const ContentWrapper(
-                  title: 'Properties',
+                  title: 'My Properties',
                   child: PropertiesScreen(),
                 ),
             routes: [
@@ -213,14 +213,18 @@ class AppRouter {
             path: '/maintenance',
             builder:
                 (context, state) => const ContentWrapper(
-                  title: 'Maintenance Issues',
+                  title: 'Maintenance Dashboard',
                   child: MaintenanceScreen(),
                 ),
           ),
           GoRoute(
             path: '/maintenance/new',
             builder: (context, state) {
-              final propertyId = state.uri.queryParameters['propertyId'];
+              final propertyIdString = state.uri.queryParameters['propertyId'];
+              final int? propertyId =
+                  propertyIdString == null
+                      ? null
+                      : int.tryParse(propertyIdString);
               return ContentWrapper(
                 title: 'New Maintenance Issue',
                 child: MaintenanceFormScreen(propertyId: propertyId),
@@ -232,7 +236,8 @@ class AppRouter {
             builder: (context, state) {
               final maintenanceProvider = context.read<MaintenanceProvider>();
               final propertyProvider = context.read<PropertyProvider>();
-              final issueId = state.pathParameters['id']!;
+              final issueIdString = state.pathParameters['id']!;
+              final issueId = int.tryParse(issueIdString);
 
               // Instead of fetching immediately, schedule it for after the build
               Future.microtask(() {
@@ -247,9 +252,11 @@ class AppRouter {
               // Try to find the issue if it already exists
               MaintenanceIssue? issue;
               try {
-                issue = maintenanceProvider.issues.firstWhere(
-                  (i) => i.id == issueId,
-                );
+                if (issueId != null) {
+                  issue = maintenanceProvider.issues.firstWhere(
+                    (i) => i.id == issueId,
+                  );
+                }
               } catch (_) {
                 // Issue will be loaded after fetchIssues completes
               }
@@ -259,7 +266,7 @@ class AppRouter {
               return ContentWrapper(
                 title: 'Maintenance Issue',
                 child: MaintenanceIssueDetailsScreen(
-                  issueId: issueId,
+                  issueId: issueIdString,
                   issue: issue,
                 ),
               );
@@ -268,14 +275,19 @@ class AppRouter {
           GoRoute(
             path: '/chat',
             builder:
-                (context, state) =>
-                    const ContentWrapper(title: 'Chat', child: ChatScreen()),
+                (context, state) => const Scaffold(
+                  body: Center(
+                    child: Text(
+                      'Chat feature is temporarily disabled for system maintenance',
+                    ),
+                  ),
+                ),
           ),
           GoRoute(
-            path: '/statistics',
+            path: '/revenue',
             builder:
                 (context, state) => const ContentWrapper(
-                  title: 'Statistics',
+                  title: 'Revenue & Analytics',
                   child: StatisticsScreen(),
                 ),
           ),
@@ -283,7 +295,7 @@ class AppRouter {
             path: '/reports',
             builder:
                 (context, state) => const ContentWrapper(
-                  title: 'Reports',
+                  title: 'Business Reports',
                   child: ReportsScreen(),
                 ),
           ),
@@ -298,9 +310,10 @@ class AppRouter {
           GoRoute(
             path: '/tenants',
             builder:
-                (context, state) => const ContentWrapper(
-                  title: 'Tenants',
-                  child: TenantsScreen(),
+                (context, state) => const Scaffold(
+                  body: Center(
+                    child: Text('Tenants feature temporarily disabled'),
+                  ),
                 ),
           ),
         ],

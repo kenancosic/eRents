@@ -54,7 +54,14 @@ class AuthProvider extends BaseProvider<User> {
   Future<void> _fetchCurrentUserDetails() async {
     if (_isAuthenticated) {
       try {
-        _currentUser = await _authService.getMe();
+        final userResponse = await _authService.getMe();
+        if (userResponse != null && userResponse['user'] != null) {
+          _currentUser = User.fromJson(userResponse['user']);
+        } else {
+          _currentUser = null;
+          _isAuthenticated = false;
+          setError('Failed to load user profile. Please try logging in again.');
+        }
       } catch (e) {
         print('Error fetching user details: $e');
         _currentUser = null;
@@ -70,8 +77,20 @@ class AuthProvider extends BaseProvider<User> {
       await _authService.login(request);
       _isAuthenticated = true;
       await _fetchCurrentUserDetails();
-      success = _currentUser != null;
+
+      // Verify we have a valid landlord user
+      if (_currentUser == null || _currentUser!.role != UserType.landlord) {
+        _isAuthenticated = false;
+        _currentUser = null;
+        await _authService.logout(); // Clear any stored data
+        throw Exception(
+          'Desktop application is for landlords only. Please use the mobile app to access your account.',
+        );
+      }
+
+      success = true;
     });
+
     if (!success) {
       _isAuthenticated = false;
       _currentUser = null;
@@ -81,14 +100,12 @@ class AuthProvider extends BaseProvider<User> {
   }
 
   Future<User?> register(RegisterRequestModel request) async {
-    User? registeredUser;
-    await execute(() async {
-      registeredUser = await _authService.register(request);
-      _currentUser = registeredUser;
-      _isAuthenticated = true; // Assuming registration implies authentication
-    });
-    notifyListeners();
-    return registeredUser;
+    // Registration is not supported in desktop app as it's landlord-only
+    // Landlord accounts should be created through proper business processes
+    setError(
+      'Account registration is not available in the desktop application. Please contact support for landlord account setup.',
+    );
+    return null;
   }
 
   Future<void> logout() async {

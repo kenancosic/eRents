@@ -2,6 +2,7 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 
 /// Base class for all report providers that handles common date functionality
 abstract class BaseReportProvider<T> extends BaseProvider<T> {
@@ -19,8 +20,7 @@ abstract class BaseReportProvider<T> extends BaseProvider<T> {
   final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
 
   // Constructor
-  BaseReportProvider() {
-    enableMockData(); // Use mock data by default
+  BaseReportProvider({ApiService? apiService}) : super(apiService) {
     debugPrint(
       "BaseReportProvider initialized with date range: ${dateFormat.format(_startDate)} to ${dateFormat.format(_endDate)}",
     );
@@ -96,4 +96,12 @@ abstract class BaseReportProvider<T> extends BaseProvider<T> {
 
   // Abstract method to get report name - to be implemented by subclasses
   String getReportName();
+
+  // Helper to explicitly call BaseProvider's getItems
+  // Future<List<T>> fetchItemsFromBaseProvider({
+  //   Map<String, String>? queryParams,
+  // }) {
+  //   // This super call is from BaseReportProvider to BaseProvider
+  //   return super.getItems(queryParams: queryParams);
+  // }
 }

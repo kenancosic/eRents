@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'package:go_router/go_router.dart';
 
 class CurrentTenantsTableWidget extends StatefulWidget {
@@ -82,13 +81,19 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
       );
     }
 
-    // TODO: Replace this mock property assignment with real data
-    final properties = MockDataService.getMockProperties();
-    final Map<String, Property> tenantProperties = {};
-    for (int i = 0; i < filteredTenants.length; i++) {
-      tenantProperties[filteredTenants[i].id] =
-          properties[i % properties.length];
-    }
+    // TODO: Replace this mock property assignment with real data from Tenant object or related service call.
+    final Map<String, Property?> tenantProperties =
+        {}; // Initialize as potentially nullable or handle missing properties
+
+    // Example: If tenant objects had a list of associated properties or a primary property ID:
+    // for (final tenant in filteredTenants) {
+    //   if (tenant.associatedPropertyId != null) { // Assuming tenant model has such a field
+    //     // You would need a way to fetch this property by ID, perhaps from a PropertyProvider
+    //     // This is a placeholder for where that logic would go.
+    //     // tenantProperties[tenant.id] = propertyProvider.getPropertyById(tenant.associatedPropertyId);
+    //   }
+    // }
+    // For now, without a clear source, we will leave tenantProperties map empty or handle nulls in cell builder.
 
     _columnDefs = [
       {
@@ -102,8 +107,9 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                 radius: 16,
                 backgroundImage:
                     (tenant.profileImage != null &&
-                            tenant.profileImage!.url.isNotEmpty)
-                        ? NetworkImage(tenant.profileImage!.url)
+                            tenant.profileImage!.url != null &&
+                            tenant.profileImage!.url!.isNotEmpty)
+                        ? NetworkImage(tenant.profileImage!.url!)
                         : const AssetImage('assets/images/user-image.png'),
                 child:
                     tenant.profileImage == null
@@ -134,7 +140,9 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
           // Get the property, handle null case if assignment fails
           final property = tenantProperties[tenant.id];
           if (property == null) {
-            return const DataCell(Text('N/A')); // Or other placeholder
+            return const DataCell(
+              Text('N/A - Property data pending'),
+            ); // Placeholder for missing property
           }
 
           return DataCell(
@@ -155,9 +163,10 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                         borderRadius: BorderRadius.circular(4),
                         child:
                             property.images.isNotEmpty &&
-                                    property.images.first.url.isNotEmpty
+                                    property.images.first.url != null &&
+                                    property.images.first.url!.isNotEmpty
                                 ? Image.network(
-                                  property.images.first.url,
+                                  property.images.first.url!,
                                   width: 32,
                                   height: 32,
                                   fit: BoxFit.cover,
@@ -241,9 +250,12 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                       size: 20,
                     ),
                     onPressed:
-                        () => widget.onShowProfile(tenant, [
-                          tenantProperties[tenant.id]!,
-                        ]),
+                        () => widget.onShowProfile(
+                          tenant,
+                          tenantProperties[tenant.id] != null
+                              ? [tenantProperties[tenant.id]!]
+                              : [],
+                        ),
                     tooltip: 'View Profile',
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),

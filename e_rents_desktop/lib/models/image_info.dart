@@ -1,6 +1,6 @@
 class ImageInfo {
-  final String id;
-  final String url;
+  final int? id;
+  final String? url;
   final String? fileName;
   final int? width;
   final int? height;
@@ -18,7 +18,7 @@ class ImageInfo {
   });
 
   factory ImageInfo.fromJson(Map<String, dynamic> json) => ImageInfo(
-    id: (json['imageId'] ?? json['id'])?.toString() ?? '',
+    id: (json['imageId'] ?? json['id']) as int?,
     url: json['url'] as String? ?? '',
     fileName: json['fileName'] as String?,
     width: json['width'] as int?,
@@ -33,7 +33,7 @@ class ImageInfo {
   );
 
   Map<String, dynamic> toJson() => {
-    'imageId': int.tryParse(id) ?? id,
+    'imageId': id,
     'url': url,
     if (fileName != null) 'fileName': fileName,
     if (width != null) 'width': width,

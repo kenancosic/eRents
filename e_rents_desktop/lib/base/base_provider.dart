@@ -5,14 +5,14 @@ import 'dart:convert';
 enum ViewState { Idle, Busy, Error }
 
 abstract class BaseProvider<T> extends ChangeNotifier {
-  final ApiService? _apiService;
+  final ApiService? apiService;
   List<T> items_ = []; // Protected field
   ViewState _state = ViewState.Idle;
   String? _errorMessage;
   bool _useMockData = false; // Default to false for production
   bool _isDisposed = false;
 
-  BaseProvider([this._apiService]);
+  BaseProvider([this.apiService]);
 
   // State management
   ViewState get state => _state;
@@ -108,11 +108,11 @@ abstract class BaseProvider<T> extends ChangeNotifier {
           'BaseProvider.fetchItems: Got ${mockItems.length} mock items',
         );
         items_ = mockItems;
-      } else if (_apiService != null) {
+      } else if (apiService != null) {
         debugPrint(
           'BaseProvider.fetchItems: Fetching from API endpoint $endpoint',
         );
-        final response = await _apiService.get(endpoint);
+        final response = await apiService!.get(endpoint);
 
         if (_isDisposed) {
           debugPrint(
@@ -150,21 +150,21 @@ abstract class BaseProvider<T> extends ChangeNotifier {
   }
 
   Future<void> addItem(T item) async {
-    if (_apiService == null) return;
+    if (apiService == null) return;
 
     await execute(() async {
       if (_useMockData) {
         await Future.delayed(const Duration(seconds: 1));
         items_.add(item);
       } else {
-        final response = await _apiService.post(endpoint, toJson(item));
+        final response = await apiService!.post(endpoint, toJson(item));
         items_.add(fromJson(json.decode(response.body)));
       }
     });
   }
 
   Future<void> updateItem(T item) async {
-    if (_apiService == null) return;
+    if (apiService == null) return;
 
     await execute(() async {
       if (_useMockData) {
@@ -176,7 +176,7 @@ abstract class BaseProvider<T> extends ChangeNotifier {
           items_[index] = item;
         }
       } else {
-        await _apiService.put('$endpoint/${_getItemId(item)}', toJson(item));
+        await apiService!.put('$endpoint/${_getItemId(item)}', toJson(item));
         final index = items_.indexWhere(
           (i) => _getItemId(i) == _getItemId(item),
         );
@@ -188,14 +188,14 @@ abstract class BaseProvider<T> extends ChangeNotifier {
   }
 
   Future<void> deleteItem(String id) async {
-    if (_apiService == null) return;
+    if (apiService == null) return;
 
     await execute(() async {
       if (_useMockData) {
         await Future.delayed(const Duration(seconds: 1));
         items_.removeWhere((item) => _getItemId(item) == id);
       } else {
-        await _apiService.delete('$endpoint/$id');
+        await apiService!.delete('$endpoint/$id');
         items_.removeWhere((item) => _getItemId(item) == id);
       }
     });

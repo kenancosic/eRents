@@ -1,18 +1,21 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
-import 'package:e_rents_desktop/services/report_service.dart';
-import 'package:flutter/foundation.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'dart:convert';
 
 class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
-  final ReportService _reportService;
+  // String? _reportTitle; // Now in BaseReportProvider via getReportTitle()
+  // String? _reportPeriod; // Similarly derived
+  // DateTime? _startDate; // Now in BaseReportProvider
+  // DateTime? _endDate; // Now in BaseReportProvider
 
-  TenantReportProvider({required ReportService reportService})
-    : _reportService = reportService,
-      super();
+  TenantReportProvider(ApiService? apiService) : super(apiService: apiService);
+
+  // String? get reportTitle => _reportTitle; // Redundant
+  // String? get reportPeriod => _reportPeriod; // Redundant
 
   @override
-  String get endpoint => '/reports/tenants';
+  String get endpoint => '/reports/tenant';
 
   @override
   TenantReportItem fromJson(Map<String, dynamic> json) {
@@ -26,51 +29,62 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
 
   @override
   List<TenantReportItem> getMockItems() {
-    return MockDataService.getMockTenantReportData();
+    // TODO: Replace with proper mock data structure
+    return [];
   }
 
+  // This method is required by BaseReportProvider
   @override
   String getReportName() => 'Tenant Report';
 
   @override
   Future<List<TenantReportItem>> fetchReportData() async {
     if (isMockDataEnabled) {
-      if (kDebugMode) {
-        print('TenantReportProvider: Using mock data.');
-      }
       return getMockItems();
-    } else {
-      if (kDebugMode) {
-        print('TenantReportProvider: Fetching real data.');
-      }
-      return await _reportService.getTenantReport(startDate, endDate);
+    }
+    if (apiService == null) {
+      print("TenantReportProvider: ApiService is null. Cannot fetch data.");
+      throw Exception("ApiService not available for TenantReportProvider");
+    }
+
+    String urlWithParams = endpoint;
+    final queryParamsMap = {
+      'startDate': dateFormat.format(startDate),
+      'endDate': dateFormat.format(endDate),
+    };
+
+    if (queryParamsMap.isNotEmpty) {
+      final queryString = Uri(queryParameters: queryParamsMap).query;
+      urlWithParams = '$urlWithParams?$queryString';
+    }
+
+    try {
+      final response = await apiService!.get(urlWithParams);
+      final List<dynamic> jsonData = json.decode(response.body);
+      return jsonData.map((itemJson) => fromJson(itemJson)).toList();
+    } catch (e) {
+      print(
+        'TenantReportProvider.fetchReportData error for URL $urlWithParams: $e',
+      );
+      throw Exception('Failed to fetch tenant report data: $e');
     }
   }
 
-  @override
-  void onDateRangeChanged() {
-    if (!isMockDataEnabled) {
-      debugPrint(
-        "TenantReportProvider.onDateRangeChanged: Fetching new data due to date change and real data mode.",
-      );
-      fetchItems();
-    } else {
-      debugPrint(
-        "TenantReportProvider.onDateRangeChanged: Using mock data, no refetch needed on date change.",
-      );
-      notifyListeners();
-    }
-  }
+  /// Generate tenant report for date range
+  Future<void> generateReport({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    // _startDate = startDate; // Handled by BaseReportProvider
+    // _endDate = endDate; // Handled by BaseReportProvider
+    // _reportTitle = 'Tenant Report'; // Handled by BaseReportProvider
+    // _reportPeriod = // Handled by BaseReportProvider
+    //     '${startDate.toString().substring(0, 10)} - ${endDate.toString().substring(0, 10)}';
 
-  // Count of leases ending soon (within 30 days)
-  int get leasesEndingSoonCount =>
-      items
-          .where((item) => item.daysRemaining > 0 && item.daysRemaining <= 30)
-          .length;
-
-  // Calculate average rent
-  double get averageRent {
-    if (items.isEmpty) return 0;
-    return items.fold(0.0, (sum, item) => sum + item.costOfRent) / items.length;
+    // await fetchItems(); // fetchItems is automatically called by setDateRange if data not cached
+    setDateRange(
+      startDate,
+      endDate,
+    ); // This will trigger onDateRangeChanged -> fetchItems
   }
 }

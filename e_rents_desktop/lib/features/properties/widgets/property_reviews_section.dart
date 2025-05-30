@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/review.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 import 'package:e_rents_desktop/services/review_service.dart';
 import 'package:intl/intl.dart';
 
@@ -148,10 +149,10 @@ class PropertyReviewsSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                _buildStars(review.starRating),
+                _buildStars(review.starRating ?? 0.0),
                 const Spacer(),
                 Text(
-                  DateFormat.yMMMd().format(review.dateReported),
+                  DateFormat.yMMMd().format(review.dateCreated),
                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],

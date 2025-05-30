@@ -110,11 +110,11 @@ class MaintenanceIssue {
       final List<dynamic> imagesList = imagesValue as List;
       return imagesList.map((e) {
         if (e is String) {
-          return erents.ImageInfo(id: e, url: e);
+          return erents.ImageInfo(id: int.parse(e), url: e);
         } else if (e is Map<String, dynamic>) {
           return erents.ImageInfo.fromJson(e);
         } else {
-          return erents.ImageInfo(id: '', url: '');
+          return erents.ImageInfo(id: 0, url: '');
         }
       }).toList();
     } catch (e) {

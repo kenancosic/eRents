@@ -51,7 +51,6 @@ void main() async {
   final prefsService = UserPreferencesService();
   final secureStorageService = SecureStorageService();
   final authService = AuthService(baseUrl, secureStorageService);
-  final apiService = ApiService(baseUrl, secureStorageService);
   final amenityService = AmenityService.create();
   final bookingService = BookingService(baseUrl, secureStorageService);
   final reviewService = ReviewService(baseUrl, secureStorageService);
@@ -106,6 +105,7 @@ void main() async {
                 context.read<BookingService>(),
                 context.read<ReviewService>(),
                 context.read<StatisticsService>(),
+                context.read<MaintenanceService>(),
               ),
         ),
         ChangeNotifierProvider<MaintenanceProvider>(
@@ -134,13 +134,16 @@ void main() async {
                   ReportsProvider(reportService: context.read<ReportService>()),
         ),
         ChangeNotifierProvider<HomeProvider>(
-          create:
-              (context) => HomeProvider(
-                context.read<PropertyService>(),
-                context.read<MaintenanceService>(),
-                context.read<StatisticsService>(),
-              ),
+          create: (context) => HomeProvider(context.read<StatisticsService>()),
         ),
+        // MockDataService temporarily disabled due to type mismatches
+        // Provider<MockDataService>(
+        //   create: (context) => MockDataService(),
+        // ),
+        // ReviewService temporarily disabled due to model mismatch
+        // Provider<ReviewService>(
+        //   create: (context) => ReviewService(context.read<ApiService>()),
+        // ),
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',

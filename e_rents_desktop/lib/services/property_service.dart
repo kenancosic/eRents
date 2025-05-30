@@ -37,10 +37,7 @@ class PropertyService extends ApiService {
     ); // Expect backend to return the created property with its ID
   }
 
-  Future<Property> updateProperty(
-    String propertyId,
-    Property propertyData,
-  ) async {
+  Future<Property> updateProperty(int propertyId, Property propertyData) async {
     final response = await put(
       '/properties/$propertyId',
       propertyData.toJson(),
@@ -50,7 +47,7 @@ class PropertyService extends ApiService {
     return Property.fromJson(jsonResponse);
   }
 
-  Future<void> deleteProperty(String propertyId) async {
+  Future<void> deleteProperty(int propertyId) async {
     await delete('/properties/$propertyId', authenticated: true);
   }
 }

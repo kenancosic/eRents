@@ -1,7 +1,7 @@
 class Message {
-  final String id;
-  final String senderId;
-  final String receiverId;
+  final int id;
+  final int senderId;
+  final int receiverId;
   final String messageText;
   final DateTime dateSent;
   final bool isRead;
@@ -19,9 +19,9 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      id: json['id'] as String,
-      senderId: json['senderId'] as String,
-      receiverId: json['receiverId'] as String,
+      id: json['id'] as int,
+      senderId: json['senderId'] as int,
+      receiverId: json['receiverId'] as int,
       messageText: json['messageText'] as String,
       dateSent: DateTime.parse(json['dateSent'] as String),
       isRead: json['isRead'] as bool? ?? false,
@@ -42,9 +42,9 @@ class Message {
   }
 
   Message copyWith({
-    String? id,
-    String? senderId,
-    String? receiverId,
+    int? id,
+    int? senderId,
+    int? receiverId,
     String? messageText,
     DateTime? dateSent,
     bool? isRead,

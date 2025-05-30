@@ -2,7 +2,6 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/address_detail.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/profile_service.dart';
-import 'package:e_rents_desktop/services/mock_data_service.dart';
 import 'dart:convert';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 import 'package:e_rents_desktop/models/auth/change_password_request_model.dart';
@@ -26,21 +25,6 @@ class ProfileProvider extends BaseProvider<User> {
 
   @override
   Map<String, dynamic> toJson(User item) => item.toJson();
-
-  @override
-  List<User> getMockItems() {
-    final mockUser = MockDataService.getMockUsers().first;
-    return [
-      mockUser.copyWith(
-        addressDetail: AddressDetail(
-          geoRegionId: 123,
-          addressDetailId: 123,
-          streetLine1: '123 Mock Street, Mockville',
-          streetLine2: '',
-        ),
-      ),
-    ];
-  }
 
   Future<void> fetchUserProfile() async {
     await execute(() async {
@@ -94,7 +78,7 @@ class ProfileProvider extends BaseProvider<User> {
       if (isMockDataEnabled) {
         if (_currentUser != null) {
           _currentUser = _currentUser!.copyWith(
-            profileImage: erents.ImageInfo(id: imagePath, url: imagePath),
+            profileImage: erents.ImageInfo(id: 0, url: imagePath),
           );
         }
         success = true;
@@ -176,5 +160,10 @@ class ProfileProvider extends BaseProvider<User> {
       _currentUser = _currentUser!.copyWith(addressDetail: null);
       notifyListeners();
     }
+  }
+
+  @override
+  List<User> getMockItems() {
+    return [];
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/services/booking_service.dart';
 import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 
 class PropertyBookingsSection extends StatelessWidget {
   final List<BookingSummary> currentBookings;
@@ -113,7 +114,7 @@ class PropertyBookingsSection extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border(left: BorderSide(width: 3, color: color)),
-        color: color.withOpacity(0.05),
+        color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -133,13 +134,15 @@ class PropertyBookingsSection extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(booking.status).withOpacity(0.1),
+                  color: _getStatusColor(
+                    booking.bookingStatus,
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  booking.status,
+                  booking.bookingStatus,
                   style: TextStyle(
-                    color: _getStatusColor(booking.status),
+                    color: _getStatusColor(booking.bookingStatus),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),

@@ -1,77 +1,73 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/services/statistics_service.dart';
-import 'package:e_rents_desktop/services/maintenance_service.dart';
-import 'package:e_rents_desktop/services/property_service.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 
-class HomeProvider extends BaseProvider<dynamic> {
-  // Keep services for potential future use, but mark as unused for now
-  // ignore: unused_field
-  final PropertyService _propertyService;
-  // ignore: unused_field
-  final MaintenanceService _maintenanceService;
+/// Simplified Home Provider focused on landlord dashboard
+/// Uses single consolidated dashboard endpoint for optimal performance
+class HomeProvider extends BaseProvider<DashboardStatistics> {
   final StatisticsService _statisticsService;
 
-  // Single comprehensive dashboard data from backend
+  // Single source of truth from backend dashboard endpoint
   DashboardStatistics? _dashboardStatistics;
 
-  // Optionally keep full lists for details elsewhere
-  final List<Property> _properties = [];
-  final List<MaintenanceIssue> _issues = [];
+  HomeProvider(this._statisticsService);
 
-  HomeProvider(
-    this._propertyService,
-    this._maintenanceService,
-    this._statisticsService,
-  ) {
-    // Default to using real data; can be overridden by calling enableMockData()
-    // disableMockData();
-  }
-
-  // Main getter for dashboard data
+  // Main dashboard data getter
   DashboardStatistics? get dashboardStatistics => _dashboardStatistics;
 
-  // Convenience getters for UI (null-safe with fallback)
+  // Convenience getters for UI components (with null-safe fallbacks)
   int get propertyCount => _dashboardStatistics?.totalProperties ?? 0;
   double get occupancyRate => _dashboardStatistics?.occupancyRate ?? 0.0;
   int get openIssuesCount =>
       _dashboardStatistics?.pendingMaintenanceIssues ?? 0;
-  double get netIncome => _dashboardStatistics?.netTotal ?? 0.0;
+  double get monthlyRevenue => _dashboardStatistics?.monthlyRevenue ?? 0.0;
+  double get yearlyRevenue => _dashboardStatistics?.yearlyRevenue ?? 0.0;
 
-  // Financial summary properties for FinancialSummaryCard widget
-  double get totalRent => _dashboardStatistics?.totalRentIncome ?? 0.0;
+  // Financial summary for dashboard cards
+  double get totalRentIncome => _dashboardStatistics?.totalRentIncome ?? 0.0;
   double get totalMaintenanceCosts =>
       _dashboardStatistics?.totalMaintenanceCosts ?? 0.0;
-  double get netTotal => _dashboardStatistics?.netTotal ?? 0.0;
+  double get netIncome => _dashboardStatistics?.netTotal ?? 0.0;
 
-  // Optionally expose full lists for details
-  List<Property> get properties => _properties;
-  List<MaintenanceIssue> get issues => _issues;
+  // Top performing properties
+  List<PopularProperty> get topProperties =>
+      _dashboardStatistics?.topProperties ?? [];
 
+  // Property performance metrics
+  double get averageRating => _dashboardStatistics?.averageRating ?? 0.0;
+  int get occupiedProperties => _dashboardStatistics?.occupiedProperties ?? 0;
+  int get availableProperties => propertyCount - occupiedProperties;
+
+  /// Load all dashboard data from single backend endpoint
+  /// This is the main method called by UI to refresh dashboard
   Future<void> loadDashboardData() async {
     await execute(() async {
-      // Single comprehensive call to get all dashboard data
       _dashboardStatistics = await _statisticsService.getDashboardStatistics();
     });
   }
 
+  /// Force refresh dashboard data
+  Future<void> refreshDashboard() async {
+    await loadDashboardData();
+  }
+
+  // BaseProvider implementation for consistency
   @override
-  dynamic fromJson(Map<String, dynamic> json) {
-    throw UnimplementedError();
+  DashboardStatistics fromJson(Map<String, dynamic> json) {
+    return DashboardStatistics.fromJson(json);
   }
 
   @override
-  Map<String, dynamic> toJson(dynamic item) {
-    throw UnimplementedError();
+  Map<String, dynamic> toJson(DashboardStatistics item) {
+    return item.toJson();
   }
 
   @override
-  String get endpoint => '/home_dashboard';
+  String get endpoint => '/statistics/dashboard';
 
   @override
-  List<dynamic> getMockItems() {
+  List<DashboardStatistics> getMockItems() {
+    // Return empty list - we use real backend data only
     return [];
   }
 }

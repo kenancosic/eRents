@@ -68,7 +68,7 @@ class PropertyProvider extends BaseProvider<Property> {
     });
   }
 
-  Future<void> deleteProperty(String id) async {
+  Future<void> deleteProperty(int id) async {
     await execute(() async {
       await _propertyService.deleteProperty(id);
       items_.removeWhere((property) => property.id == id);
@@ -97,7 +97,10 @@ class PropertyProvider extends BaseProvider<Property> {
 
   Property? getPropertyById(String id) {
     try {
-      return items.firstWhere((property) => property.id == id);
+      final intId = int.tryParse(id);
+      if (intId == null)
+        return null; // Handle cases where ID is not a valid integer
+      return items.firstWhere((property) => property.id == intId);
     } catch (e) {
       return null;
     }

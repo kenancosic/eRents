@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/services/booking_service.dart';
 import 'package:intl/intl.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 
 class TenantInfo extends StatelessWidget {
   final Property property;
@@ -100,7 +101,7 @@ class TenantInfo extends StatelessWidget {
         const Divider(),
         _buildLeaseInfo(
           'Status',
-          _isOccupied ? _formatStatus(currentTenant!.status) : 'Vacant',
+          _isOccupied ? _formatStatus(currentTenant!.bookingStatus) : 'Vacant',
         ),
       ],
     );

@@ -24,8 +24,9 @@ class TenantPreferenceDetailsWidget extends StatelessWidget {
             radius: 20,
             backgroundImage:
                 (tenant.profileImage != null &&
-                        tenant.profileImage!.url.isNotEmpty)
-                    ? NetworkImage(tenant.profileImage!.url)
+                        tenant.profileImage!.url != null &&
+                        tenant.profileImage!.url!.isNotEmpty)
+                    ? NetworkImage(tenant.profileImage!.url!)
                     : const AssetImage('assets/images/user-image.png'),
             child:
                 tenant.profileImage == null

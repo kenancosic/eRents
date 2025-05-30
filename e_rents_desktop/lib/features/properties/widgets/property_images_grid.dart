@@ -38,7 +38,7 @@ class PropertyImagesGrid extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     ImageUtils.buildImage(
-                      image.url,
+                      image.url!,
                       fit: BoxFit.cover,
                       errorWidget: Container(
                         decoration: BoxDecoration(
@@ -93,7 +93,7 @@ class PropertyImagesGrid extends StatelessWidget {
             child: Stack(
               children: [
                 ImageUtils.buildImage(
-                  image.url,
+                  image.url!,
                   fit: BoxFit.contain,
                   errorWidget: Container(
                     decoration: BoxDecoration(

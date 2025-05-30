@@ -7,9 +7,9 @@ import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 class ChatProvider extends BaseProvider<Message> {
   final ChatService _chatService;
   final AuthProvider _authProvider;
-  final Map<String, List<Message>> _conversationMessages = {};
-  final Map<String, User> _contacts = {};
-  String? _selectedContactId;
+  final Map<int, List<Message>> _conversationMessages = {};
+  final Map<int, User> _contacts = {};
+  int? _selectedContactId;
 
   ChatProvider(this._chatService, this._authProvider) : super(_chatService) {
     disableMockData(); // Use real API calls by default now
@@ -22,7 +22,7 @@ class ChatProvider extends BaseProvider<Message> {
       _selectedContactId != null ? _contacts[_selectedContactId] : null;
 
   // Set the currently selected contact
-  void selectContact(String contactId) {
+  void selectContact(int contactId) {
     _selectedContactId = contactId;
     notifyListeners();
     if (_authProvider.currentUser?.id != null) {
@@ -55,7 +55,7 @@ class ChatProvider extends BaseProvider<Message> {
         final mockUsers = List.generate(
           10,
           (index) => User(
-            id: 'user$index',
+            id: index,
             email: 'user$index@example.com',
             username: 'user$index',
             firstName: 'User',
@@ -81,8 +81,8 @@ class ChatProvider extends BaseProvider<Message> {
 
   // Load messages for a specific contact
   Future<void> loadMessages(
-    String contactId,
-    String currentUserId, {
+    int contactId,
+    int currentUserId, {
     int? page,
     int? pageSize,
   }) async {
@@ -94,7 +94,7 @@ class ChatProvider extends BaseProvider<Message> {
           final mockMessages = List.generate(
             5,
             (index) => Message(
-              id: 'msg$index-$contactId',
+              id: index,
               senderId: index % 2 == 0 ? currentUserId : contactId,
               receiverId: index % 2 == 0 ? contactId : currentUserId,
               messageText: 'This is mock message ${index + 1} with $contactId',
@@ -121,7 +121,7 @@ class ChatProvider extends BaseProvider<Message> {
       if (isMockDataEnabled) {
         await Future.delayed(const Duration(milliseconds: 300));
         sentMessage = message.copyWith(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: DateTime.now().millisecondsSinceEpoch,
         );
       } else {
         sentMessage = await _chatService.sendMessage(
@@ -137,10 +137,7 @@ class ChatProvider extends BaseProvider<Message> {
   }
 
   // Send a property offer message
-  Future<void> sendPropertyOfferMessage(
-    String receiverId,
-    String propertyId,
-  ) async {
+  Future<void> sendPropertyOfferMessage(int receiverId, int propertyId) async {
     final currentUserId = _authProvider.currentUser?.id;
     if (currentUserId == null) {
       setError("User not authenticated. Cannot send property offer.");
@@ -148,7 +145,7 @@ class ChatProvider extends BaseProvider<Message> {
     }
     final String offerMessageContent = "PROPERTY_OFFER::$propertyId";
     final newMessage = Message(
-      id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
+      id: DateTime.now().millisecondsSinceEpoch,
       senderId: currentUserId,
       receiverId: receiverId,
       messageText: offerMessageContent,
@@ -158,7 +155,7 @@ class ChatProvider extends BaseProvider<Message> {
   }
 
   // Delete a message
-  Future<void> deleteMessage(String messageId) async {
+  Future<void> deleteMessage(int messageId) async {
     if (_selectedContactId == null) {
       setError("No contact selected. Cannot delete message.");
       return;

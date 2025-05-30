@@ -63,31 +63,98 @@ class MonthlyRevenue {
 }
 
 class StatisticsService extends ApiService {
-  StatisticsService(super.baseUrl, super.storageService);
+  StatisticsService(super.baseUrl, super.secureStorageService);
 
-  // Single comprehensive dashboard call
+  /// Get comprehensive dashboard statistics for landlords
   Future<DashboardStatistics> getDashboardStatistics() async {
-    final response = await get('/Statistics/dashboard', authenticated: true);
-    final data = json.decode(response.body);
-    return DashboardStatistics.fromJson(data);
+    try {
+      final response = await get(
+        '/api/Statistics/dashboard',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return DashboardStatistics.fromJson(jsonData);
+      } else {
+        throw Exception(
+          'Failed to load dashboard statistics: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching dashboard statistics: $e');
+    }
   }
 
-  // Legacy methods - kept for backward compatibility if needed
-  Future<PropertyStatistics> getPropertyStatistics() async {
-    final response = await get('/Statistics/properties', authenticated: true);
-    final data = json.decode(response.body);
-    return PropertyStatistics.fromJson(data);
+  /// Get property statistics for landlords
+  Future<Map<String, dynamic>> getPropertyStatistics() async {
+    try {
+      final response = await get(
+        '/api/Statistics/properties',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+          'Failed to load property statistics: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching property statistics: $e');
+    }
   }
 
-  Future<MaintenanceStatistics> getMaintenanceStatistics() async {
-    final response = await get('/Statistics/maintenance', authenticated: true);
-    final data = json.decode(response.body);
-    return MaintenanceStatistics.fromJson(data);
+  /// Get maintenance statistics for landlords
+  Future<Map<String, dynamic>> getMaintenanceStatistics() async {
+    try {
+      final response = await get(
+        '/api/Statistics/maintenance',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+          'Failed to load maintenance statistics: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching maintenance statistics: $e');
+    }
   }
 
-  Future<Map<String, dynamic>> getFinancialSummary() async {
-    final response = await get('/Statistics/financial', authenticated: true);
-    return json.decode(response.body);
+  /// Get financial summary for landlords
+  Future<Map<String, dynamic>> getFinancialSummary({
+    String? period,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      final requestBody = {
+        'period': period,
+        'startDate': startDate?.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+      };
+
+      final response = await post(
+        '/api/Statistics/financial',
+        requestBody,
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+          'Failed to load financial summary: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching financial summary: $e');
+    }
   }
 
   Future<FinancialStatistics> getFinancialStatistics({

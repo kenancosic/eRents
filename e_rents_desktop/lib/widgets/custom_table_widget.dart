@@ -11,6 +11,8 @@ class CustomTableWidget<T> extends StatefulWidget {
   final Widget? emptyStateWidget;
   final Map<int, TableColumnWidth>? columnWidths;
   final double? dataRowHeight;
+  final void Function(T)? onRowDoubleTap;
+  final void Function(T)? onRowTap;
 
   const CustomTableWidget({
     super.key,
@@ -23,6 +25,8 @@ class CustomTableWidget<T> extends StatefulWidget {
     this.emptyStateWidget,
     this.columnWidths,
     this.dataRowHeight,
+    this.onRowDoubleTap,
+    this.onRowTap,
   });
 
   @override
@@ -36,6 +40,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   int? _sortColumnIndex;
   bool _sortAscending = true;
   final List<int> _availableRowsPerPage = [10, 25, 50, 100];
+  T? _selectedItem;
 
   @override
   void initState() {
@@ -263,13 +268,16 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   // Build an individual data row
   Widget _buildDataRow(T item, Map<int, TableColumnWidth> columnWidths) {
     final cells = widget.cellsBuilder(item);
+    final bool isSelected = _selectedItem == item;
 
-    return Container(
+    Widget rowWidget = Container(
       height: widget.dataRowHeight ?? 56.0,
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(width: 1, color: Colors.grey.shade200),
         ),
+        color:
+            isSelected ? Theme.of(context).primaryColor.withOpacity(0.1) : null,
       ),
       child: Row(
         children:
@@ -278,6 +286,28 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
             }).toList(),
       ),
     );
+
+    // Add click functionality if callbacks are provided
+    if (widget.onRowTap != null || widget.onRowDoubleTap != null) {
+      rowWidget = GestureDetector(
+        onTap:
+            widget.onRowTap != null
+                ? () {
+                  setState(() {
+                    _selectedItem = isSelected ? null : item;
+                  });
+                  widget.onRowTap!(item);
+                }
+                : null,
+        onDoubleTap:
+            widget.onRowDoubleTap != null
+                ? () => widget.onRowDoubleTap!(item)
+                : null,
+        child: MouseRegion(cursor: SystemMouseCursors.click, child: rowWidget),
+      );
+    }
+
+    return rowWidget;
   }
 
   // Build an individual data cell
