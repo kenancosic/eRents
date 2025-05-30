@@ -8,8 +8,8 @@ enum PropertyStatus { available, rented, maintenance, unavailable }
 enum PropertyType { apartment, house, condo, townhouse, studio }
 
 class Property {
-  final String id;
-  final String ownerId;
+  final int id;
+  final int ownerId;
   final String title;
   final String description;
   final PropertyType type;
@@ -26,7 +26,7 @@ class Property {
   final double? dailyRate; // Added mobile-specific field
   final int? minimumStayDays; // Added mobile-specific field
   final DateTime dateAdded;
-  final String? addressDetailId;
+  final int? addressDetailId;
   final AddressDetail? addressDetail;
 
   Property({
@@ -54,8 +54,8 @@ class Property {
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      id: json['propertyId']?.toString() ?? json['id']?.toString() ?? '',
-      ownerId: json['ownerId']?.toString() ?? '',
+      id: json['propertyId'] as int? ?? json['id'] as int? ?? 0,
+      ownerId: json['ownerId'] as int? ?? 0,
       title: json['name'] as String? ?? json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       type: _parsePropertyType(json['type']),
@@ -75,7 +75,7 @@ class Property {
           json['dateAdded'] != null
               ? DateTime.parse(json['dateAdded'] as String)
               : DateTime.now(),
-      addressDetailId: json['addressDetailId']?.toString(),
+      addressDetailId: json['addressDetailId'] as int?,
       addressDetail:
           json['addressDetail'] != null
               ? AddressDetail.fromJson(
@@ -202,8 +202,8 @@ class Property {
 
   Map<String, dynamic> toJson() {
     return {
-      'propertyId': id.isNotEmpty ? int.tryParse(id) : null,
-      'ownerId': ownerId.isNotEmpty ? int.tryParse(ownerId) : null,
+      'propertyId': id,
+      'ownerId': ownerId,
       'name': title,
       'description': description,
       'type': type.toString().split('.').last,
@@ -224,8 +224,8 @@ class Property {
   }
 
   Property copyWith({
-    String? id,
-    String? ownerId,
+    int? id,
+    int? ownerId,
     String? title,
     String? description,
     PropertyType? type,
@@ -242,7 +242,7 @@ class Property {
     double? dailyRate,
     int? minimumStayDays,
     DateTime? dateAdded,
-    String? addressDetailId,
+    int? addressDetailId,
     AddressDetail? addressDetail,
   }) {
     return Property(
@@ -270,8 +270,8 @@ class Property {
   }
 
   factory Property.empty() => Property(
-    id: '',
-    ownerId: '',
+    id: 0,
+    ownerId: 0,
     title: 'N/A',
     description: '',
     type: PropertyType.apartment,

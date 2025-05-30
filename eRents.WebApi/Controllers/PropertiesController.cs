@@ -121,7 +121,7 @@ namespace eRents.WebApi.Controllers
 			var reviews = await _reviewService.GetReviewsForPropertyAsync(propertyId);
 			
 			var ratingDistribution = reviews
-				.Where(r => r.StarRating.HasValue)
+				.Where(r => r.StarRating.HasValue) // Only include reviews with ratings
 				.GroupBy(r => (int)Math.Floor(r.StarRating.Value))
 				.ToDictionary(g => g.Key, g => g.Count());
 
@@ -130,7 +130,7 @@ namespace eRents.WebApi.Controllers
 				averageRating = (double)averageRating,
 				totalReviews = reviews.Count(),
 				ratingDistribution = ratingDistribution,
-				recentReviews = reviews.OrderByDescending(r => r.DateReported).Take(3).ToList()
+				recentReviews = reviews.OrderByDescending(r => r.DateCreated).Take(3).ToList()
 			};
 
 			return Ok(stats);

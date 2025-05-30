@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/models/image_info.dart' as erents;
 enum UserType { admin, landlord, tenant }
 
 class User {
-  final String id;
+  final int id;
   final String email;
   final String username;
   final String firstName;
@@ -18,7 +18,7 @@ class User {
   final String? resetToken;
   final DateTime? resetTokenExpiration;
 
-  final String? addressDetailId;
+  final int? addressDetailId;
   final AddressDetail? addressDetail;
 
   final bool isPaypalLinked;
@@ -46,38 +46,33 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: (json['userId'] ?? json['id'])?.toString() ?? '',
+      id: json['userId'] as int? ?? json['id'] as int? ?? 0,
       email: json['email'] as String? ?? '',
       username: json['username'] as String? ?? '',
       firstName: json['firstName'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
-      phone: json['phoneNumber'] as String? ?? json['phone'] as String?,
-      role: _parseUserRole(json['role']),
+      phone: json['phone'] as String? ?? json['phoneNumber'] as String?,
+      role: _parseUserType(json['role']),
       profileImage:
           json['profileImage'] != null
-              ? (json['profileImage'] is String
-                  ? erents.ImageInfo(
-                    id: json['profileImage'],
-                    url: json['profileImage'],
-                  )
-                  : erents.ImageInfo.fromJson(
-                    json['profileImage'] as Map<String, dynamic>,
-                  ))
+              ? erents.ImageInfo.fromJson(
+                json['profileImage'] as Map<String, dynamic>,
+              )
               : null,
       dateOfBirth:
           json['dateOfBirth'] != null
-              ? DateTime.parse(json['dateOfBirth'] as String)
+              ? DateTime.tryParse(json['dateOfBirth'] as String)
               : null,
-      createdAt: _parseDateTime(json['createdAt'] ?? json['createdDate']),
-      updatedAt: _parseDateTime(json['updatedAt'] ?? json['updatedDate']),
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
       resetToken: json['resetToken'] as String?,
       resetTokenExpiration:
           json['resetTokenExpiration'] != null
-              ? DateTime.parse(json['resetTokenExpiration'] as String)
+              ? DateTime.tryParse(json['resetTokenExpiration'] as String)
               : null,
       isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
       paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
-      addressDetailId: json['addressDetailId']?.toString(),
+      addressDetailId: json['addressDetailId'] as int?,
       addressDetail:
           json['addressDetail'] != null
               ? AddressDetail.fromJson(
@@ -87,7 +82,7 @@ class User {
     );
   }
 
-  static UserType _parseUserRole(dynamic role) {
+  static UserType _parseUserType(dynamic role) {
     if (role == null) return UserType.tenant;
 
     String roleStr = role.toString().toLowerCase();
@@ -139,7 +134,7 @@ class User {
   String get fullName => '$firstName $lastName';
 
   User copyWith({
-    String? id,
+    int? id,
     String? email,
     String? username,
     String? firstName,
@@ -154,7 +149,7 @@ class User {
     DateTime? resetTokenExpiration,
     bool? isPaypalLinked,
     String? paypalUserIdentifier,
-    String? addressDetailId,
+    int? addressDetailId,
     AddressDetail? addressDetail,
   }) {
     return User(

@@ -331,22 +331,47 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ReviewId).HasName("PK__Complain__A771F61C85B78CAA");
 
             entity.Property(e => e.ReviewId).HasColumnName("review_id");
-            entity.Property(e => e.DateReported)
+            entity.Property(e => e.ReviewType)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasColumnName("review_type");
+            entity.Property(e => e.DateCreated)
                 .HasDefaultValueSql("(getdate())")
-                .HasColumnName("date_reported");
+                .HasColumnName("date_created");
             entity.Property(e => e.Description)
                 .HasColumnType("text")
                 .HasColumnName("description");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
+            entity.Property(e => e.RevieweeId).HasColumnName("reviewee_id");
+            entity.Property(e => e.ReviewerId).HasColumnName("reviewer_id");
+            entity.Property(e => e.BookingId).HasColumnName("booking_id");
             entity.Property(e => e.StarRating).HasColumnType("decimal(2, 1)");
+            entity.Property(e => e.ParentReviewId).HasColumnName("parent_review_id");
 
             entity.HasOne(d => d.Property).WithMany(p => p.Reviews)
                 .HasForeignKey(d => d.PropertyId)
-                .HasConstraintName("FK__Complaint__prope__5EBF139D");
+                .HasConstraintName("FK__Review__property_id");
 
             entity.HasOne(d => d.Booking)
                 .WithMany()
-                .HasForeignKey(d => d.BookingId);
+                .HasForeignKey(d => d.BookingId)
+                .HasConstraintName("FK__Review__booking_id");
+
+            entity.HasOne(d => d.Reviewer)
+                .WithMany()
+                .HasForeignKey(d => d.ReviewerId)
+                .HasConstraintName("FK__Review__reviewer_id");
+
+            entity.HasOne(d => d.Reviewee)
+                .WithMany()
+                .HasForeignKey(d => d.RevieweeId)
+                .HasConstraintName("FK__Review__reviewee_id");
+
+            // Self-referencing relationship for threaded conversations
+            entity.HasOne(d => d.ParentReview)
+                .WithMany(p => p.Replies)
+                .HasForeignKey(d => d.ParentReviewId)
+                .HasConstraintName("FK__Review__parent_review_id");
         });
 
         modelBuilder.Entity<Tenant>(entity =>

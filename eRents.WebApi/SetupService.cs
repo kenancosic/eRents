@@ -430,8 +430,24 @@ namespace eRents.WebApi
 			// Reviews
 			var reviews = new[]
 			{
-				new Review { PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId).BookingId, Description = "Great apartment with excellent amenities. Would stay again!", StarRating = 4.8m, DateReported = DateTime.Now.AddDays(-10) },
-				new Review { PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId).BookingId, Description = "Nice location but could use some updates", StarRating = 3.5m, DateReported = DateTime.Now.AddDays(-30) }
+				new Review { 
+					ReviewType = ReviewType.PropertyReview,
+					PropertyId = dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId, 
+					BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId).BookingId, 
+					ReviewerId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Test Daily Rental Apartment").PropertyId).UserId ?? 0,
+					Description = "Great apartment with excellent amenities. Would stay again!", 
+					StarRating = 4.8m, 
+					DateCreated = DateTime.Now.AddDays(-10)
+				},
+				new Review { 
+					ReviewType = ReviewType.PropertyReview,
+					PropertyId = dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId, 
+					BookingId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId).BookingId, 
+					ReviewerId = dbBookings.First(b => b.PropertyId == dbProperties.First(p => p.Name == "Stan u Centru Sarajeva").PropertyId).UserId ?? 0,
+					Description = "Nice location but could use some updates", 
+					StarRating = 3.5m, 
+					DateCreated = DateTime.Now.AddDays(-30)
+				}
 			};
 			context.Reviews.AddRange(reviews);
 			await context.SaveChangesAsync();
@@ -637,11 +653,13 @@ namespace eRents.WebApi
 				{
 					moreReviews.Add(new Review
 					{
+						ReviewType = ReviewType.PropertyReview,
 						PropertyId = property.PropertyId,
 						BookingId = booking.BookingId,
+						ReviewerId = booking.UserId ?? 0,
 						Description = $"Review {reviewCounter} for {property.Name}",
 						StarRating = 3.0m + (reviewCounter % 3),
-						DateReported = DateTime.Now.AddDays(-reviewCounter)
+						DateCreated = DateTime.Now.AddDays(-reviewCounter)
 					});
 					reviewCounter++;
 				}

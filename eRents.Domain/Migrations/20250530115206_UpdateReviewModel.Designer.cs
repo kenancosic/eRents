@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eRents.Domain.Models;
 
@@ -11,9 +12,11 @@ using eRents.Domain.Models;
 namespace eRents.Domain.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    partial class ERentsContextModelSnapshot : ModelSnapshot
+    [Migration("20250530115206_UpdateReviewModel")]
+    partial class UpdateReviewModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -809,7 +812,7 @@ namespace eRents.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
 
-                    b.Property<int?>("BookingId")
+                    b.Property<int>("BookingId")
                         .HasColumnType("int")
                         .HasColumnName("booking_id");
 
@@ -822,10 +825,6 @@ namespace eRents.Domain.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<int?>("ParentReviewId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_review_id");
 
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int")
@@ -847,6 +846,13 @@ namespace eRents.Domain.Migrations
                     b.Property<decimal?>("StarRating")
                         .HasColumnType("decimal(2, 1)");
 
+                    b.Property<string>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Approved")
+                        .HasColumnName("status");
+
                     b.Property<int?>("TenantId")
                         .HasColumnType("int");
 
@@ -854,8 +860,6 @@ namespace eRents.Domain.Migrations
                         .HasName("PK__Complain__A771F61C85B78CAA");
 
                     b.HasIndex("BookingId");
-
-                    b.HasIndex("ParentReviewId");
 
                     b.HasIndex("PropertyId");
 
@@ -1400,12 +1404,9 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.Booking", "Booking")
                         .WithMany()
                         .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
                         .HasConstraintName("FK__Review__booking_id");
-
-                    b.HasOne("eRents.Domain.Models.Review", "ParentReview")
-                        .WithMany("Replies")
-                        .HasForeignKey("ParentReviewId")
-                        .HasConstraintName("FK__Review__parent_review_id");
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Reviews")
@@ -1427,8 +1428,6 @@ namespace eRents.Domain.Migrations
                         .HasForeignKey("TenantId");
 
                     b.Navigation("Booking");
-
-                    b.Navigation("ParentReview");
 
                     b.Navigation("Property");
 
@@ -1607,8 +1606,6 @@ namespace eRents.Domain.Migrations
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
                 {
                     b.Navigation("Images");
-
-                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>

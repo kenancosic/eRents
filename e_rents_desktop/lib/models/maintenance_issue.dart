@@ -6,8 +6,8 @@ enum IssuePriority { low, medium, high, emergency }
 enum IssueStatus { pending, inProgress, completed, cancelled }
 
 class MaintenanceIssue {
-  final String id;
-  final String propertyId;
+  final int id;
+  final int propertyId;
   final String title;
   final String description;
   final IssuePriority priority;
@@ -17,7 +17,7 @@ class MaintenanceIssue {
   final double? cost;
   final String? assignedTo;
   final List<erents.ImageInfo> images;
-  final String reportedBy;
+  final int reportedBy;
   final String? resolutionNotes;
   final String? category; // e.g., plumbing, electrical, structural, etc.
   final bool requiresInspection;
@@ -44,38 +44,82 @@ class MaintenanceIssue {
 
   factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
     return MaintenanceIssue(
-      id: json['id'] as String,
-      propertyId: json['propertyId'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      priority: IssuePriority.values.firstWhere(
-        (e) => e.toString() == 'IssuePriority.${json['priority']}',
-      ),
-      status: IssueStatus.values.firstWhere(
-        (e) => e.toString() == 'IssueStatus.${json['status']}',
-      ),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['maintenanceIssueId'] as int? ?? json['id'] as int? ?? 0,
+      propertyId: json['propertyId'] as int? ?? 0,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      priority: _parsePriority(json['priority']),
+      status: _parseStatus(json['status']),
+      createdAt:
+          json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'] as String)
+              : DateTime.now(),
       resolvedAt:
           json['resolvedAt'] != null
               ? DateTime.parse(json['resolvedAt'] as String)
               : null,
-      cost: json['cost'] as double?,
+      cost: (json['cost'] as num?)?.toDouble(),
       assignedTo: json['assignedTo'] as String?,
-      images:
-          (json['images'] as List? ?? [])
-              .map(
-                (e) =>
-                    e is String
-                        ? erents.ImageInfo(id: e, url: e)
-                        : erents.ImageInfo.fromJson(e as Map<String, dynamic>),
-              )
-              .toList(),
-      reportedBy: json['reportedBy'] as String,
+      images: _parseImages(json['images']),
+      reportedBy:
+          json['reportedBy'] as int? ?? json['reportedByUserId'] as int? ?? 0,
       resolutionNotes: json['resolutionNotes'] as String?,
       category: json['category'] as String?,
       requiresInspection: json['requiresInspection'] as bool? ?? false,
       isTenantComplaint: json['isTenantComplaint'] as bool? ?? false,
     );
+  }
+
+  static IssuePriority _parsePriority(dynamic priority) {
+    if (priority == null) return IssuePriority.medium;
+
+    String priorityStr = priority.toString().toLowerCase();
+    switch (priorityStr) {
+      case 'low':
+        return IssuePriority.low;
+      case 'high':
+        return IssuePriority.high;
+      case 'emergency':
+        return IssuePriority.emergency;
+      default:
+        return IssuePriority.medium;
+    }
+  }
+
+  static IssueStatus _parseStatus(dynamic status) {
+    if (status == null) return IssueStatus.pending;
+
+    String statusStr = status.toString().toLowerCase();
+    switch (statusStr) {
+      case 'inprogress':
+      case 'in_progress':
+        return IssueStatus.inProgress;
+      case 'completed':
+        return IssueStatus.completed;
+      case 'cancelled':
+        return IssueStatus.cancelled;
+      default:
+        return IssueStatus.pending;
+    }
+  }
+
+  static List<erents.ImageInfo> _parseImages(dynamic imagesValue) {
+    if (imagesValue == null) return [];
+
+    try {
+      final List<dynamic> imagesList = imagesValue as List;
+      return imagesList.map((e) {
+        if (e is String) {
+          return erents.ImageInfo(id: e, url: e);
+        } else if (e is Map<String, dynamic>) {
+          return erents.ImageInfo.fromJson(e);
+        } else {
+          return erents.ImageInfo(id: '', url: '');
+        }
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -100,8 +144,8 @@ class MaintenanceIssue {
   }
 
   MaintenanceIssue copyWith({
-    String? id,
-    String? propertyId,
+    int? id,
+    int? propertyId,
     String? title,
     String? description,
     IssuePriority? priority,
@@ -111,7 +155,7 @@ class MaintenanceIssue {
     double? cost,
     String? assignedTo,
     List<erents.ImageInfo>? images,
-    String? reportedBy,
+    int? reportedBy,
     String? resolutionNotes,
     String? category,
     bool? requiresInspection,

@@ -26,6 +26,10 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   List<BookingSummary> _recentBookings = [];
   List<Review> _reviews = [];
 
+  // Loading state
+  bool _isLoadingDetails = false;
+  String? _detailsError;
+
   // Getters
   PropertyBookingStats? get bookingStats => _bookingStats;
   PropertyReviewStats? get reviewStats => _reviewStats;
@@ -33,6 +37,8 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   List<BookingSummary> get upcomingBookings => _upcomingBookings;
   List<BookingSummary> get recentBookings => _recentBookings;
   List<Review> get reviews => _reviews;
+  bool get isLoadingDetails => _isLoadingDetails;
+  String? get detailsError => _detailsError;
 
   // Convenience getters for UI
   int get totalBookings => _bookingStats?.totalBookings ?? 0;
@@ -47,14 +53,31 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
       _currentBookings.isNotEmpty ? _currentBookings.first : null;
 
   Future<void> loadPropertyDetails(String propertyId) async {
-    await execute(() async {
-      // Load all data concurrently
-      final futures = await Future.wait([
-        _loadBookingStats(propertyId),
-        _loadReviewStats(propertyId),
-        _loadBookings(propertyId),
-        _loadReviews(propertyId),
-      ]);
+    // Set loading state immediately without triggering setState during build
+    _isLoadingDetails = true;
+    _detailsError = null;
+
+    // Schedule the actual loading for the next frame to avoid setState during build
+    Future.microtask(() async {
+      try {
+        // Load all data concurrently
+        await Future.wait([
+          _loadBookingStats(propertyId),
+          _loadReviewStats(propertyId),
+          _loadBookings(propertyId),
+          _loadReviews(propertyId),
+        ]);
+
+        _isLoadingDetails = false;
+        _detailsError = null;
+      } catch (e) {
+        _isLoadingDetails = false;
+        _detailsError = e.toString();
+        print('Error loading property details: $e');
+      }
+
+      // Only trigger setState after the initial build is complete
+      notifyListeners();
     });
   }
 

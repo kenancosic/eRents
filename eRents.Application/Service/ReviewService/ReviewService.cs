@@ -86,7 +86,7 @@ namespace eRents.Application.Service.ReviewService
 			{
 				if (search.SortBy == "Date")
 				{
-					query = search.SortDescending ? query.OrderByDescending(x => x.DateReported) : query.OrderBy(x => x.DateReported);
+					query = search.SortDescending ? query.OrderByDescending(x => x.DateCreated) : query.OrderBy(x => x.DateCreated);
 				}
 				else if (search.SortBy == "Rating")
 				{
