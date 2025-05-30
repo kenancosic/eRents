@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using eRents.Shared.Services;
+using System.Linq;
 
 namespace eRents.WebApi.Controllers
 {

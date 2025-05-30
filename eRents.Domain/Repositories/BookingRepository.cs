@@ -35,6 +35,7 @@ namespace eRents.Domain.Repositories
 						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
+				.Include(b => b.BookingStatus)
 				.AsNoTracking()
 				.Where(b => b.UserId == tenantIdInt)
 				.ToListAsync();
@@ -51,6 +52,7 @@ namespace eRents.Domain.Repositories
 						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
+				.Include(b => b.BookingStatus)
 				.AsNoTracking()
 				.Where(b => b.Property.OwnerId == landlordIdInt)
 				.ToListAsync();
@@ -102,6 +104,7 @@ namespace eRents.Domain.Repositories
 						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
+				.Include(b => b.BookingStatus)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(b => b.BookingId == bookingId);
 

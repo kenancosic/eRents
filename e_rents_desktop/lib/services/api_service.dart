@@ -137,12 +137,24 @@ class ApiService {
   void _handleResponse(http.Response response) {
     if (response.statusCode >= 400) {
       String errorMessage;
+
+      // Log the error details for debugging
+      print('ApiService: Error response status: ${response.statusCode}');
+      print('ApiService: Error response body: ${response.body}');
+
       try {
         final errorJson = json.decode(response.body);
-        errorMessage = errorJson['message'] ?? 'Unknown error occurred';
+        errorMessage =
+            errorJson['message'] ??
+            errorJson['title'] ??
+            errorJson['error'] ??
+            'Server returned error ${response.statusCode}';
       } catch (e) {
-        errorMessage = 'Error: ${response.statusCode}';
+        errorMessage =
+            'Error: ${response.statusCode}. Response: ${response.body}';
       }
+
+      print('ApiService: Parsed error message: $errorMessage');
       throw Exception(errorMessage);
     }
   }

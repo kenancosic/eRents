@@ -18,7 +18,6 @@ namespace eRents.Domain.Repositories
 				.Include(m => m.Images)
 				.Include(m => m.Priority)
 				.Include(m => m.Status)
-				.AsNoTracking()
 				.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
 		}
 

@@ -263,7 +263,10 @@ namespace eRents.Application.Service.BookingService
 				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
 				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,
-				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown"
+				Currency = "BAM", // Default currency
+				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown",
+				TenantName = b.User != null ? $"{b.User.FirstName} {b.User.LastName}".Trim() : null,
+				TenantEmail = b.User?.Email
 			}).ToList();
 
 			return summaryItems;
@@ -310,7 +313,10 @@ namespace eRents.Application.Service.BookingService
 				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
 				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,
-				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown"
+				Currency = "BAM", // Default currency
+				BookingStatus = b.BookingStatus?.StatusName ?? "Unknown",
+				TenantName = b.User != null ? $"{b.User.FirstName} {b.User.LastName}".Trim() : null,
+				TenantEmail = b.User?.Email
 			}).ToList();
 
 			return summaryItems;

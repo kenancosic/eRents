@@ -14,7 +14,7 @@ class MaintenanceService extends ApiService {
     if (queryParams != null && queryParams.isNotEmpty) {
       print('MaintenanceService: Using query params: $queryParams');
     }
-    String endpoint = '/maintenance';
+    String endpoint = '/Maintenance';
     if (queryParams != null && queryParams.isNotEmpty) {
       endpoint += '?' + Uri(queryParameters: queryParams).query;
     }
@@ -78,7 +78,7 @@ class MaintenanceService extends ApiService {
       'MaintenanceService: Attempting to fetch maintenance issue $issueId...',
     );
     try {
-      final response = await get('/maintenance/$issueId', authenticated: true);
+      final response = await get('/Maintenance/$issueId', authenticated: true);
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final issue = MaintenanceIssue.fromJson(jsonResponse);
       print(
@@ -99,7 +99,7 @@ class MaintenanceService extends ApiService {
     print('MaintenanceService: Attempting to create maintenance issue...');
     try {
       final response = await post(
-        '/maintenance',
+        '/Maintenance',
         issue.toJson(),
         authenticated: true,
       );
@@ -128,7 +128,7 @@ class MaintenanceService extends ApiService {
     );
     try {
       final response = await put(
-        '/maintenance/$issueId',
+        '/Maintenance/$issueId',
         issueData.toJson(),
         authenticated: true,
       );
@@ -153,7 +153,7 @@ class MaintenanceService extends ApiService {
       'MaintenanceService: Attempting to delete maintenance issue $issueId...',
     );
     try {
-      await delete('/maintenance/$issueId', authenticated: true);
+      await delete('/Maintenance/$issueId', authenticated: true);
       print(
         'MaintenanceService: Successfully deleted maintenance issue $issueId.',
       );
@@ -176,6 +176,10 @@ class MaintenanceService extends ApiService {
     print(
       'MaintenanceService: Attempting to update status for maintenance issue $issueId...',
     );
+    print('MaintenanceService: New status: $newStatus');
+    print('MaintenanceService: Resolution notes: $resolutionNotes');
+    print('MaintenanceService: Cost: $cost');
+
     Map<String, dynamic> payload = {
       'status':
           newStatus.toString().split('.').last, // Send string representation
@@ -191,12 +195,24 @@ class MaintenanceService extends ApiService {
       payload['resolvedAt'] = DateTime.now().toIso8601String();
     }
 
+    print('MaintenanceService: Request payload: ${jsonEncode(payload)}');
+    print(
+      'MaintenanceService: Request URL: $baseUrl/Maintenance/$issueId/status',
+    );
+
+    // Add platform header to ensure backend recognizes this as desktop request
+    final customHeaders = {'Client-Type': 'Desktop'};
+
     try {
       final response = await put(
-        '/maintenance/$issueId/status',
+        '/Maintenance/$issueId/status',
         payload,
         authenticated: true,
+        customHeaders: customHeaders,
       );
+      print('MaintenanceService: Response status code: ${response.statusCode}');
+      print('MaintenanceService: Raw response body: ${response.body}');
+
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final updatedIssue = MaintenanceIssue.fromJson(jsonResponse);
       print(
@@ -207,6 +223,8 @@ class MaintenanceService extends ApiService {
       print(
         'MaintenanceService: Error updating status for maintenance issue $issueId: $e. Backend integration might be pending or endpoint unavailable.',
       );
+      print('MaintenanceService: Error type: ${e.runtimeType}');
+      print('MaintenanceService: Full error details: $e');
       throw Exception(
         'Failed to update status for maintenance issue $issueId. Backend integration pending or endpoint unavailable. Cause: $e',
       );

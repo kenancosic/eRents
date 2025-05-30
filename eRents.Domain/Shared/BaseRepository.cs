@@ -33,13 +33,13 @@ namespace eRents.Domain.Shared
 		{
 			try
 			{
-				await _context.Set<TEntity>().AddAsync(entity);
+				_context.Set<TEntity>().Update(entity);
 				await _context.SaveChangesAsync();
 			}
 			catch (DbUpdateException ex)
 			{
 				// Log error and rethrow
-				throw new RepositoryException("An error occurred while adding the entity to the database.", ex);
+				throw new RepositoryException("An error occurred while updating the entity in the database.", ex);
 			}
 		}
 

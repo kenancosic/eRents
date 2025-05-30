@@ -12,7 +12,9 @@ namespace eRents.Shared.DTO.Response
 		public DateTime StartDate { get; set; }
 		public DateTime? EndDate { get; set; }
 		public decimal TotalPrice { get; set; }
-		public string Currency { get; set; }
+		public string Currency { get; set; } = "BAM";
 		public string BookingStatus { get; set; }
+		public string? TenantName { get; set; }
+		public string? TenantEmail { get; set; }
 	}
 }
