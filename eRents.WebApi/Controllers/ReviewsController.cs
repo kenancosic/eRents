@@ -46,10 +46,11 @@ namespace eRents.WebApi.Controllers
 			return await _reviewService.GetReviewsForPropertyAsync(propertyId);
 		}
 
-		[HttpGet("property/{propertyId}/average-rating")]
-		public async Task<decimal> GetAverageRating(int propertyId)
+		[HttpGet("{propertyId}/average-rating")]
+		public async Task<IActionResult> GetAverageRating(int propertyId)
 		{
-			return await _reviewService.GetAverageRatingAsync(propertyId);
+			var averageRating = await _reviewService.GetAverageRatingAsync(propertyId);
+			return Ok(new { averageRating = averageRating });
 		}
 	}
 }

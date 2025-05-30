@@ -1,4 +1,6 @@
 ﻿using eRents.Application.Service.PropertyService;
+using eRents.Application.Service.BookingService;
+using eRents.Application.Service.ReviewService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
@@ -16,12 +18,21 @@ namespace eRents.WebApi.Controllers
 	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
+		private readonly IBookingService _bookingService;
+		private readonly IReviewService _reviewService;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IConfiguration _configuration;
 
-		public PropertiesController(IPropertyService service, ICurrentUserService currentUserService, IConfiguration configuration) : base(service)
+		public PropertiesController(
+			IPropertyService service, 
+			IBookingService bookingService,
+			IReviewService reviewService,
+			ICurrentUserService currentUserService, 
+			IConfiguration configuration) : base(service)
 		{
 			_propertyService = service;
+			_bookingService = bookingService;
+			_reviewService = reviewService;
 			_currentUserService = currentUserService;
 			_configuration = configuration;
 		}
@@ -70,6 +81,59 @@ namespace eRents.WebApi.Controllers
 		{
 			var availability = await _propertyService.GetAvailabilityAsync(propertyId, start, end);
 			return Ok(availability);
+		}
+
+		[HttpGet("{propertyId}/booking-stats")]
+		[Authorize(Roles = "Landlord")]
+		public async Task<IActionResult> GetPropertyBookingStats(int propertyId)
+		{
+			// Validate that the landlord owns this property
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+			
+			if (currentUserRole != "Landlord")
+				return Forbid("Only landlords can view property booking statistics");
+
+			var property = await _propertyService.GetByIdAsync(propertyId);
+			if (property == null)
+				return NotFound("Property not found");
+
+			// Additional ownership check would be implemented in the service
+			var bookingSearch = new BookingSearchObject { PropertyId = propertyId };
+			var bookings = await _bookingService.GetAsync(bookingSearch);
+			
+			var stats = new
+			{
+				totalBookings = bookings.Count(),
+				totalRevenue = bookings.Sum(b => (double)b.TotalPrice),
+				averageBookingValue = bookings.Any() ? bookings.Average(b => (double)b.TotalPrice) : 0.0,
+				currentOccupancy = bookings.Count(b => b.Status == "Active"),
+				occupancyRate = bookings.Any() ? (double)bookings.Count(b => b.Status == "Active") / bookings.Count() : 0.0
+			};
+
+			return Ok(stats);
+		}
+
+		[HttpGet("{propertyId}/review-stats")]
+		public async Task<IActionResult> GetPropertyReviewStats(int propertyId)
+		{
+			var averageRating = await _reviewService.GetAverageRatingAsync(propertyId);
+			var reviews = await _reviewService.GetReviewsForPropertyAsync(propertyId);
+			
+			var ratingDistribution = reviews
+				.Where(r => r.StarRating.HasValue)
+				.GroupBy(r => (int)Math.Floor(r.StarRating.Value))
+				.ToDictionary(g => g.Key, g => g.Count());
+
+			var stats = new
+			{
+				averageRating = (double)averageRating,
+				totalReviews = reviews.Count(),
+				ratingDistribution = ratingDistribution,
+				recentReviews = reviews.OrderByDescending(r => r.DateReported).Take(3).ToList()
+			};
+
+			return Ok(stats);
 		}
 
 		[HttpPut("{propertyId}/status")]

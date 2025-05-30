@@ -27,25 +27,47 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet("current")]
-		public async Task<ActionResult<List<BookingSummaryDto>>> GetCurrentStays()
+		public async Task<ActionResult<List<BookingSummaryDto>>> GetCurrentStays([FromQuery] int? propertyId = null)
 		{
 			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
 				
 			var result = await _bookingService.GetCurrentStaysAsync(userId);
+			
+			// Filter by property if specified (for landlord property details)
+			if (propertyId.HasValue)
+			{
+				result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
+			}
+			
 			return Ok(result);
 		}
 
 		[HttpGet("upcoming")]
-		public async Task<ActionResult<List<BookingSummaryDto>>> GetUpcomingStays()
+		public async Task<ActionResult<List<BookingSummaryDto>>> GetUpcomingStays([FromQuery] int? propertyId = null)
 		{
 			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))
 				return Unauthorized();
 				
 			var result = await _bookingService.GetUpcomingStaysAsync(userId);
+			
+			// Filter by property if specified (for landlord property details)
+			if (propertyId.HasValue)
+			{
+				result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
+			}
+			
 			return Ok(result);
+		}
+
+		[HttpGet]
+		public override async Task<IEnumerable<BookingResponse>> Get([FromQuery] BookingSearchObject search)
+		{
+			// This will automatically filter by user context based on role
+			var result = await _bookingService.GetAsync(search);
+			return result;
 		}
 		
 		// Override CRUD operations to ensure proper authorization

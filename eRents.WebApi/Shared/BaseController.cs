@@ -17,15 +17,15 @@ namespace eRents.WebApi.Shared
 		}
 
 		[HttpGet]
-		public virtual IEnumerable<T> Get([FromQuery] TSearch search = null)
+		public virtual async Task<IEnumerable<T>> Get([FromQuery] TSearch search = null)
 		{
-			return Service.Get(search);
+			return await Service.GetAsync(search);
 		}
 
 		[HttpGet("{id}")]
-		public virtual T GetById(int id)
+		public virtual async Task<T> GetById(int id)
 		{
-			return Service.GetById(id);
+			return await Service.GetByIdAsync(id);
 		}
 	}
 }
