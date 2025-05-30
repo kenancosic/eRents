@@ -39,7 +39,10 @@ namespace eRents.WebApi.Controllers
 		public async Task<IActionResult> UpdateStatus(int issueId, [FromBody] MaintenanceIssueStatusUpdateRequest request)
 		{
 			await _maintenanceService.UpdateStatusAsync(issueId, request.Status, request.ResolutionNotes, request.Cost, request.ResolvedAt);
-			return NoContent();
+			
+			// Return the updated issue instead of NoContent
+			var updatedIssue = await _maintenanceService.GetByIdAsync(issueId);
+			return Ok(updatedIssue);
 		}
 	}
 } 

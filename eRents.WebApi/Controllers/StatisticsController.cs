@@ -1,69 +1,142 @@
 using eRents.Application.Service.StatisticsService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
-using eRents.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace eRents.WebApi.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
-    [Authorize(Roles = "Landlord")]
-    public class StatisticsController : ControllerBase
-    {
-        private readonly IStatisticsService _statisticsService;
-        private readonly ICurrentUserService _currentUserService;
+	[ApiController]
+	[Route("api/[controller]")]
+	[Authorize] // Require authentication for all endpoints
+	public class StatisticsController : ControllerBase
+	{
+		private readonly IStatisticsService _statisticsService;
 
-        public StatisticsController(IStatisticsService statisticsService, ICurrentUserService currentUserService)
-        {
-            _statisticsService = statisticsService;
-            _currentUserService = currentUserService;
-        }
+		public StatisticsController(IStatisticsService statisticsService)
+		{
+			_statisticsService = statisticsService;
+		}
 
-        [HttpGet("dashboard")]
-        public async Task<ActionResult<DashboardStatisticsDto>> GetDashboardStatistics()
-        {
-            var userId = _currentUserService.UserId;
-            if (userId == null)
-                return Unauthorized();
+		/// <summary>
+		/// Get comprehensive dashboard statistics for desktop users
+		/// </summary>
+		[HttpGet("dashboard")]
+		public async Task<ActionResult<DashboardStatisticsDto>> GetDashboardStatistics()
+		{
+			try
+			{
+				// Check platform context from JWT - only desktop users get analytics
+				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
+				if (clientType != "desktop")
+				{
+					return BadRequest("Analytics are only available on desktop platform");
+				}
 
-            var dashboard = await _statisticsService.GetDashboardStatisticsAsync(userId);
-            return Ok(dashboard);
-        }
+				var userIdClaim = User.FindFirst("UserId")?.Value;
+				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				{
+					return Unauthorized("Invalid user ID in token");
+				}
 
-        [HttpGet("properties")]
-        public async Task<ActionResult<PropertyStatisticsDto>> GetPropertyStatistics()
-        {
-            var userId = _currentUserService.UserId;
-            if (userId == null)
-                return Unauthorized();
+				var statistics = await _statisticsService.GetDashboardStatisticsAsync(userId);
+				return Ok(statistics);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest($"Error retrieving dashboard statistics: {ex.Message}");
+			}
+		}
 
-            var stats = await _statisticsService.GetPropertyStatisticsAsync(userId);
-            return Ok(stats);
-        }
+		/// <summary>
+		/// Get property statistics for desktop users
+		/// </summary>
+		[HttpGet("properties")]
+		public async Task<ActionResult<PropertyStatisticsDto>> GetPropertyStatistics()
+		{
+			try
+			{
+				// Check platform context from JWT - only desktop users get analytics
+				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
+				if (clientType != "desktop")
+				{
+					return BadRequest("Analytics are only available on desktop platform");
+				}
 
-        [HttpGet("maintenance")]
-        public async Task<ActionResult<MaintenanceStatisticsDto>> GetMaintenanceStatistics()
-        {
-            var userId = _currentUserService.UserId;
-            if (userId == null)
-                return Unauthorized();
+				var userIdClaim = User.FindFirst("UserId")?.Value;
+				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				{
+					return Unauthorized("Invalid user ID in token");
+				}
 
-            var stats = await _statisticsService.GetMaintenanceStatisticsAsync(userId);
-            return Ok(stats);
-        }
+				var statistics = await _statisticsService.GetPropertyStatisticsAsync(userId);
+				return Ok(statistics);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest($"Error retrieving property statistics: {ex.Message}");
+			}
+		}
 
-        [HttpGet("financial")]
-        public async Task<ActionResult<FinancialSummaryDto>> GetFinancialSummary([FromQuery] FinancialStatisticsRequest request)
-        {
-            var userId = _currentUserService.UserId;
-            if (userId == null)
-                return Unauthorized();
+		/// <summary>
+		/// Get maintenance statistics for desktop users
+		/// </summary>
+		[HttpGet("maintenance")]
+		public async Task<ActionResult<MaintenanceStatisticsDto>> GetMaintenanceStatistics()
+		{
+			try
+			{
+				// Check platform context from JWT - only desktop users get analytics
+				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
+				if (clientType != "desktop")
+				{
+					return BadRequest("Analytics are only available on desktop platform");
+				}
 
-            var summary = await _statisticsService.GetFinancialSummaryAsync(userId, request);
-            return Ok(summary);
-        }
-    }
+				var userIdClaim = User.FindFirst("UserId")?.Value;
+				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				{
+					return Unauthorized("Invalid user ID in token");
+				}
+
+				var statistics = await _statisticsService.GetMaintenanceStatisticsAsync(userId);
+				return Ok(statistics);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest($"Error retrieving maintenance statistics: {ex.Message}");
+			}
+		}
+
+		/// <summary>
+		/// Get financial summary for desktop users
+		/// </summary>
+		[HttpPost("financial")]
+		public async Task<ActionResult<FinancialSummaryDto>> GetFinancialSummary([FromBody] FinancialStatisticsRequest request)
+		{
+			try
+			{
+				// Check platform context from JWT - only desktop users get analytics
+				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
+				if (clientType != "desktop")
+				{
+					return BadRequest("Financial analytics are only available on desktop platform");
+				}
+
+				var userIdClaim = User.FindFirst("UserId")?.Value;
+				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				{
+					return Unauthorized("Invalid user ID in token");
+				}
+
+				var statistics = await _statisticsService.GetFinancialSummaryAsync(userId, request);
+				return Ok(statistics);
+			}
+			catch (Exception ex)
+			{
+				return BadRequest($"Error retrieving financial summary: {ex.Message}");
+			}
+		}
+	}
 } 

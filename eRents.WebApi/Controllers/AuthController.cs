@@ -43,10 +43,13 @@ namespace eRents.WebApi.Controllers
 
 			if (userResponse != null)
 			{
+				// Get platform context from header and store in JWT
+				var clientType = Request.Headers["Client-Type"].FirstOrDefault() ?? "Unknown";
+
 				var tokenHandler = new JwtSecurityTokenHandler();
 				var keyString = _configuration["Jwt:Key"];
 				if (string.IsNullOrEmpty(keyString)) throw new InvalidOperationException("JWT Key is not configured.");
-				var key = Encoding.ASCII.GetBytes(keyString);
+				var key = Encoding.UTF8.GetBytes(keyString);
 
 				var issuer = _configuration["Jwt:Issuer"];
 				var audience = _configuration["Jwt:Audience"];
@@ -59,7 +62,9 @@ namespace eRents.WebApi.Controllers
 				var claims = new List<Claim>
 				{
 					new Claim(ClaimTypes.Name, userResponse.Username),
-					new Claim(ClaimTypes.NameIdentifier, userResponse.UserId.ToString())
+					new Claim(ClaimTypes.NameIdentifier, userResponse.UserId.ToString()),
+					new Claim("UserId", userResponse.UserId.ToString()),
+					new Claim("ClientType", clientType) // Store platform context for backend filtering
 				};
 
 				if (!string.IsNullOrEmpty(userResponse.Role))
@@ -82,11 +87,13 @@ namespace eRents.WebApi.Controllers
 				var token = tokenHandler.CreateToken(tokenDescriptor);
 				var tokenString = tokenHandler.WriteToken(token);
 
+				// Simple response - backend will handle platform filtering
 				var loginResponse = new LoginResponse
 				{
 					Token = tokenString,
 					Expiration = token.ValidTo,
-					User = userResponse
+					User = userResponse,
+					Platform = clientType // Just for info, not for frontend logic
 				};
 				return Ok(loginResponse);
 			}
@@ -100,7 +107,8 @@ namespace eRents.WebApi.Controllers
 			var userResponse = await _userService.RegisterAsync(request);
 			if (userResponse != null)
 			{
-				return Ok(userResponse);
+				var clientType = Request.Headers["Client-Type"].FirstOrDefault() ?? "Unknown";
+				return Ok(new { User = userResponse, Platform = clientType });
 			}
 
 			return BadRequest("User registration failed");
@@ -157,7 +165,8 @@ namespace eRents.WebApi.Controllers
 				return NotFound("User not found.");
 			}
 
-			return Ok(userResponse);
+			var clientType = User.FindFirst("ClientType")?.Value ?? "Unknown";
+			return Ok(new { User = userResponse, Platform = clientType });
 		}
 	}
 }
