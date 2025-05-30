@@ -4,9 +4,13 @@ import 'package:e_rents_desktop/features/properties/widgets/property_header.dart
 import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_overview_section.dart';
 import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_reviews_section.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_financial_summary.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_bookings_section.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_details_provider.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
@@ -37,15 +41,22 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     });
 
     try {
-      final provider = context.read<PropertyProvider>();
-      if (provider.properties.isEmpty) {
-        await provider.fetchProperties();
+      final propertyProvider = context.read<PropertyProvider>();
+      final detailsProvider = context.read<PropertyDetailsProvider>();
+
+      // Get basic property info
+      if (propertyProvider.properties.isEmpty) {
+        await propertyProvider.fetchProperties();
       }
-      _property = provider.getPropertyById(widget.propertyId);
+      _property = propertyProvider.getPropertyById(widget.propertyId);
 
       if (_property == null) {
         _error = 'Property with ID ${widget.propertyId} not found.';
+        return;
       }
+
+      // Load detailed property statistics and data
+      await detailsProvider.loadPropertyDetails(widget.propertyId);
     } catch (e) {
       _error = "Failed to fetch property details: ${e.toString()}";
     } finally {
@@ -67,62 +78,92 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       child:
           _property == null
               ? const Center(child: Text('Property data is not available.'))
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildBackButton(context),
-                    const SizedBox(height: 16),
-                    Row(
+              : Consumer<PropertyDetailsProvider>(
+                builder: (context, detailsProvider, child) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            children: [
-                              PropertyHeader(property: _property!),
-                              const SizedBox(height: 16),
-                              PropertyImagesGrid(images: _property!.images),
-                              const SizedBox(height: 16),
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: PropertyOverviewSection(
-                                    property: _property!,
-                                    onEdit:
-                                        () => _navigateToEditScreen(
-                                          context,
-                                          _property!.id,
-                                        ),
+                        _buildBackButton(context),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  PropertyHeader(property: _property!),
+                                  const SizedBox(height: 16),
+                                  PropertyImagesGrid(images: _property!.images),
+                                  const SizedBox(height: 16),
+                                  Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: PropertyOverviewSection(
+                                        property: _property!,
+                                        onEdit:
+                                            () => _navigateToEditScreen(
+                                              context,
+                                              _property!.id,
+                                            ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(height: 16),
+                                  // Reviews Section
+                                  PropertyReviewsSection(
+                                    reviewStats: detailsProvider.reviewStats,
+                                    reviews: detailsProvider.reviews,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Bookings Section
+                                  PropertyBookingsSection(
+                                    currentBookings:
+                                        detailsProvider.currentBookings,
+                                    upcomingBookings:
+                                        detailsProvider.upcomingBookings,
+                                    recentBookings:
+                                        detailsProvider.recentBookings,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            children: [
-                              Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: TenantInfo(property: _property!),
-                                ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 1,
+                              child: Column(
+                                children: [
+                                  Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: TenantInfo(
+                                        property: _property!,
+                                        currentTenant:
+                                            detailsProvider.currentTenant,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Real Statistics instead of hardcoded
+                                  _buildRealStatistics(detailsProvider),
+                                  const SizedBox(height: 16),
+                                  // Financial Summary
+                                  PropertyFinancialSummary(
+                                    bookingStats: detailsProvider.bookingStats,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildMaintenanceIssues(context, _property!),
+                                ],
                               ),
-                              const SizedBox(height: 16),
-                              _buildCompactStatistics(),
-                              const SizedBox(height: 16),
-                              _buildMaintenanceIssues(context, _property!),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
     );
   }
@@ -147,7 +188,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  Widget _buildCompactStatistics() {
+  Widget _buildRealStatistics(PropertyDetailsProvider detailsProvider) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -158,7 +199,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Quick Stats',
+                  'Property Stats',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 TextButton(
@@ -173,9 +214,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatistic('Tenants', '15'),
-                _buildStatistic('Avg. Stay', '12m'),
-                _buildStatistic('Vacancy', '20%'),
+                _buildStatistic('Bookings', '${detailsProvider.totalBookings}'),
+                _buildStatistic(
+                  'Rating',
+                  detailsProvider.averageRating > 0
+                      ? '${detailsProvider.averageRating.toStringAsFixed(1)}★'
+                      : 'No ratings',
+                ),
+                _buildStatistic(
+                  'Occupancy',
+                  '${(detailsProvider.occupancyRate * 100).toStringAsFixed(0)}%',
+                ),
               ],
             ),
           ],

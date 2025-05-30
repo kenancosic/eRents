@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_details_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
@@ -14,6 +15,8 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/services/user_preferences_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/amenity_service.dart';
+import 'services/booking_service.dart';
+import 'services/review_service.dart';
 import 'base/navigation_provider.dart';
 import 'base/preference_provider.dart';
 import 'services/statistics_service.dart';
@@ -50,6 +53,8 @@ void main() async {
   final authService = AuthService(baseUrl, secureStorageService);
   final apiService = ApiService(baseUrl, secureStorageService);
   final amenityService = AmenityService.create();
+  final bookingService = BookingService(baseUrl, secureStorageService);
+  final reviewService = ReviewService(baseUrl, secureStorageService);
   final chatService = ChatService(baseUrl, secureStorageService);
   final maintenanceService = MaintenanceService(baseUrl, secureStorageService);
   final propertyService = PropertyService(baseUrl, secureStorageService);
@@ -68,6 +73,8 @@ void main() async {
         Provider.value(value: prefsService),
         Provider.value(value: authService),
         Provider.value(value: amenityService),
+        Provider.value(value: bookingService),
+        Provider.value(value: reviewService),
         Provider.value(value: chatService),
         Provider.value(value: maintenanceService),
         Provider.value(value: propertyService),
@@ -91,6 +98,14 @@ void main() async {
               (context) => PropertyProvider(
                 context.read<PropertyService>(),
                 context.read<AmenityService>(),
+              ),
+        ),
+        ChangeNotifierProvider(
+          create:
+              (context) => PropertyDetailsProvider(
+                context.read<BookingService>(),
+                context.read<ReviewService>(),
+                context.read<StatisticsService>(),
               ),
         ),
         ChangeNotifierProvider<MaintenanceProvider>(
