@@ -414,9 +414,14 @@ namespace eRents.Application.Service.PropertyService
 
 		public async Task<List<AmenityResponse>> GetAmenitiesAsync()
 		{
-			// TODO: Implement amenity repository access
-			// For now, return empty list
-			return new List<AmenityResponse>();
+			// Fetch all amenities from the database using the repository
+			var amenities = await _propertyRepository.GetAllAmenitiesAsync();
+
+			return amenities.Select(a => new AmenityResponse
+			{
+				AmenityId = a.AmenityId,
+				AmenityName = a.AmenityName
+			}).ToList();
 		}
 
 		public async Task<AmenityResponse> AddAmenityAsync(string amenityName)

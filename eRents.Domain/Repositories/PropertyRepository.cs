@@ -61,6 +61,14 @@ namespace eRents.Domain.Repositories
 							.ToListAsync();
 		}
 
+		public async Task<IEnumerable<Amenity>> GetAllAmenitiesAsync()
+		{
+			return await _context.Amenities
+							.AsNoTracking()
+							.OrderBy(a => a.AmenityName)
+							.ToListAsync();
+		}
+
 		public override async Task<Property> GetByIdAsync(int propertyId)
 		{
 			return await _context.Properties

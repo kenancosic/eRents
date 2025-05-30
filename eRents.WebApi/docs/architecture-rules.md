@@ -17,7 +17,78 @@ This document defines the architectural principles and coding standards that mus
 - **WebApi layer** can depend on Application, Domain, and Shared
 - **Shared layer** should be dependency-free or minimal dependencies
 
-## 2. Code Generation Principles
+## 2. User-Scoped Data Access & Security
+
+### Current User Context
+- **Always use `ICurrentUserService`** from `eRents.Shared/Services/` to access current user information
+- **Filter all data by current user context** unless explicitly designed for admin/cross-user access
+- **Never trust client-provided user IDs** - always use the authenticated user's ID from `ICurrentUserService.UserId`
+
+### Data Filtering Patterns
+```csharp
+// Service Layer - Filter by current user
+public class PropertyService : IPropertyService
+{
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IPropertyRepository _propertyRepository;
+    
+    public async Task<List<PropertyResponseDto>> GetPropertiesAsync()
+    {
+        var currentUserId = _currentUserService.UserId;
+        var currentUserRole = _currentUserService.UserRole;
+        
+        // Landlords see only their properties
+        if (currentUserRole == "Landlord")
+        {
+            return await _propertyRepository.GetByOwnerIdAsync(currentUserId);
+        }
+        
+        // Tenants and Regular Users see available properties
+        if (currentUserRole == "Tenant" || currentUserRole == "User")
+        {
+            return await _propertyRepository.GetAvailablePropertiesAsync();
+        }
+        
+        throw new UnauthorizedAccessException("Invalid user role");
+    }
+}
+
+// Repository Layer - Include user context in queries
+public async Task<List<Property>> GetByOwnerIdAsync(string ownerId)
+{
+    return await _context.Properties
+        .Where(p => p.OwnerId == ownerId)
+        .ToListAsync();
+}
+```
+
+### Role-Based Data Access Rules
+- **Landlords**: Can only access their own properties, maintenance issues for their properties, bookings for their properties
+- **Tenants**: Can access available properties, their own bookings, maintenance issues they reported
+- **Regular Users**: Can browse available properties, create accounts, become tenants by making bookings
+- **Unknown roles**: Should be denied access by default
+
+### Security Validation Pattern
+```csharp
+// Always validate ownership before operations
+public async Task<PropertyResponseDto> UpdatePropertyAsync(int propertyId, UpdatePropertyRequest request)
+{
+    var currentUserId = _currentUserService.UserId;
+    var currentUserRole = _currentUserService.UserRole;
+    var property = await _propertyRepository.GetByIdAsync(propertyId);
+    
+    if (property == null)
+        throw new NotFoundException("Property not found");
+        
+    // Security check: Only landlords can update properties, and only their own
+    if (currentUserRole != "Landlord" || property.OwnerId != currentUserId)
+        throw new ForbiddenException("You can only update your own properties");
+        
+    // Proceed with update...
+}
+```
+
+## 3. Code Generation Principles
 
 ### Always Use Existing Patterns
 Before creating new files, examine existing patterns:
@@ -34,7 +105,7 @@ Before creating new files, examine existing patterns:
 - **DTOs**: `{Purpose}{Entity}Dto.cs` (e.g., `CreatePropertyDto.cs`, `PropertyResponseDto.cs`)
 - **Models**: Use singular names (e.g., `Property.cs`, not `Properties.cs`)
 
-## 3. Shared Folder Utilization
+## 4. Shared Folder Utilization
 
 ### Mandatory Shared Components
 Always use these existing components from `eRents.Shared`:
@@ -62,7 +133,7 @@ Always use these existing components from `eRents.Shared`:
 - Check `eRents.Shared/Services/` for reusable components
 - Don't duplicate functionality that exists here
 
-## 4. Repository Pattern Rules
+## 5. Repository Pattern Rules
 
 ### Base Repository Usage
 - All repositories MUST implement `IBaseRepository<T>`
@@ -93,7 +164,7 @@ Always implement these standard operations:
 - `DeleteAsync(int id)`
 - `ExistsAsync(int id)`
 
-## 5. Service Layer Architecture
+## 6. Service Layer Architecture
 
 ### Service Organization
 - Group services by feature under `Application/Service/`
@@ -119,7 +190,7 @@ public class {Feature}Service : I{Feature}Service
 - Use interface-based dependency injection
 - Prefer constructor injection
 
-## 6. API Controller Standards
+## 7. API Controller Standards
 
 ### Controller Structure
 ```csharp
@@ -148,7 +219,7 @@ public class {Feature}Controller : ControllerBase
 - Return appropriate HTTP status codes
 - Use `ActionResult<T>` for typed responses
 
-## 7. Authentication & Authorization
+## 8. Authentication & Authorization
 
 ### Security Rules
 - All endpoints except public ones (login, register) require authentication
@@ -161,7 +232,7 @@ public class {Feature}Controller : ControllerBase
 - Check user ownership for resource access
 - Implement resource-based authorization where needed
 
-## 8. Error Handling
+## 9. Error Handling
 
 ### Exception Handling
 - Use existing exception types from `eRents.Shared/Exceptions/`
@@ -174,7 +245,7 @@ public class {Feature}Controller : ControllerBase
 - Implement custom validators for complex business rules
 - Validate in both DTOs and services
 
-## 9. Database Interactions
+## 10. Database Interactions
 
 ### Entity Framework Patterns
 - Use existing `ERentsContext` from `Domain/Models/`
@@ -188,7 +259,7 @@ public class {Feature}Controller : ControllerBase
 - Use pagination for list endpoints
 - Consider query performance implications
 
-## 10. DTO and Model Mapping
+## 11. DTO and Model Mapping
 
 ### Mapping Rules
 - Never expose Domain models directly in API
@@ -201,7 +272,7 @@ public class {Feature}Controller : ControllerBase
 - Response DTOs for output formatting
 - Keep DTOs focused and specific to use case
 
-## 11. Image and File Handling
+## 12. Image and File Handling
 
 ### Image Management
 - Follow existing patterns in `Domain/Models/Image.cs`
@@ -215,7 +286,7 @@ public class {Feature}Controller : ControllerBase
 - Store files with proper naming conventions
 - Implement file validation (size, type, security)
 
-## 12. Real-time Features
+## 13. Real-time Features
 
 ### SignalR Integration
 - Use existing RabbitMQ microservice patterns
@@ -228,7 +299,7 @@ public class {Feature}Controller : ControllerBase
 - Implement proper event handlers
 - Follow existing processor patterns
 
-## 13. Testing Considerations
+## 14. Testing Considerations
 
 ### Test Data
 - Use `SetupService.cs` for test data generation
@@ -241,7 +312,7 @@ public class {Feature}Controller : ControllerBase
 - Integration tests for controllers
 - Use dependency injection for testable code
 
-## 14. Performance Guidelines
+## 15. Performance Guidelines
 
 ### Caching Strategy
 - Implement caching for frequently accessed data
@@ -253,7 +324,7 @@ public class {Feature}Controller : ControllerBase
 - Avoid blocking calls
 - Implement proper cancellation token usage
 
-## 15. Configuration and Environment
+## 16. Configuration and Environment
 
 ### Configuration Management
 - Use existing configuration patterns
@@ -267,7 +338,7 @@ public class {Feature}Controller : ControllerBase
 - Implement proper log levels
 - Consider log aggregation needs
 
-## 16. Code Quality Standards
+## 17. Code Quality Standards
 
 ### Code Style
 - Follow existing C# conventions
@@ -286,7 +357,7 @@ Before submitting code, verify:
 - [ ] Includes necessary unit tests
 - [ ] Uses dependency injection correctly
 
-## 17. Migration and Database Changes
+## 18. Migration and Database Changes
 
 ### Entity Framework Migrations
 - Create migrations for all model changes
