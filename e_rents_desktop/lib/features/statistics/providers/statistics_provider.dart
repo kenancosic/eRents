@@ -1,28 +1,28 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
-import 'package:e_rents_desktop/models/statistics/financial_statistics.dart'
-    as ui_model;
+import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
+import 'package:e_rents_desktop/models/statistics/financial_statistics_api.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 // import 'package:e_rents_desktop/services/mock_data_service.dart'; // To be removed
 import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:intl/intl.dart';
 
-class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
+class StatisticsProvider extends BaseProvider<FinancialStatistics> {
   final StatisticsService _statisticsService;
 
   DashboardStatistics? _dashboardStats;
-  FinancialStatistics? _apiFinancialStats;
+  FinancialStatisticsApi? _apiFinancialStats;
 
-  ui_model.FinancialStatistics? _statisticsUiModel;
+  FinancialStatistics? _statisticsUiModel;
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _endDate = DateTime.now();
 
   StatisticsProvider(this._statisticsService) : super();
 
   DashboardStatistics? get dashboardStats => _dashboardStats;
-  FinancialStatistics? get apiFinancialStats => _apiFinancialStats;
+  FinancialStatisticsApi? get apiFinancialStats => _apiFinancialStats;
 
-  ui_model.FinancialStatistics? get statisticsUiModel => _statisticsUiModel;
+  FinancialStatistics? get statisticsUiModel => _statisticsUiModel;
 
   DateTime get startDate => _startDate;
   DateTime get endDate => _endDate;
@@ -62,11 +62,9 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
     });
   }
 
-  ui_model.FinancialStatistics? _convertToUiModel(
-    FinancialStatistics? apiStats,
-  ) {
+  FinancialStatistics? _convertToUiModel(FinancialStatisticsApi? apiStats) {
     if (apiStats == null) {
-      return ui_model.FinancialStatistics(
+      return FinancialStatistics(
         totalRent: 0,
         totalMaintenanceCosts: 0,
         netTotal: 0,
@@ -109,7 +107,7 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
       );
     }
 
-    return ui_model.FinancialStatistics(
+    return FinancialStatistics(
       totalRent: calculatedTotalRent,
       totalMaintenanceCosts: 0,
       netTotal: calculatedTotalRent,
@@ -129,17 +127,17 @@ class StatisticsProvider extends BaseProvider<ui_model.FinancialStatistics> {
   String get endpoint => 'Statistics/financial_legacy_ui';
 
   @override
-  ui_model.FinancialStatistics fromJson(Map<String, dynamic> json) {
-    return ui_model.FinancialStatistics.fromJson(json);
+  FinancialStatistics fromJson(Map<String, dynamic> json) {
+    return FinancialStatistics.fromJson(json);
   }
 
   @override
-  Map<String, dynamic> toJson(ui_model.FinancialStatistics item) {
+  Map<String, dynamic> toJson(FinancialStatistics item) {
     return item.toJson();
   }
 
   @override
-  List<ui_model.FinancialStatistics> getMockItems() {
+  List<FinancialStatistics> getMockItems() {
     print(
       'StatisticsProvider: getMockItems() called. Backend integration is primary. Returning empty list as placeholder.',
     );
