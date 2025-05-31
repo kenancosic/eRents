@@ -2,13 +2,12 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
 
 /// Base class for all report providers that handles common date functionality
 abstract class BaseReportProvider<T> extends BaseProvider<T> {
   // Date range for filtering/contextual information
-  DateTime _startDate = DateTime(2023, 6, 1); // Using fixed date in 2023
-  DateTime _endDate = DateTime(2023, 7, 31); // Using fixed date in 2023
+  DateTime _startDate = DateTime.now().subtract(Duration(days: 30));
+  DateTime _endDate = DateTime.now();
 
   // Cache for report data
   final Map<String, List<T>> _cache = {};
@@ -19,8 +18,8 @@ abstract class BaseReportProvider<T> extends BaseProvider<T> {
   // Common date format
   final DateFormat dateFormat = DateFormat('dd/MM/yyyy');
 
-  // Constructor
-  BaseReportProvider({ApiService? apiService}) : super(apiService) {
+  // Constructor - no longer requires ApiService
+  BaseReportProvider() : super() {
     debugPrint(
       "BaseReportProvider initialized with date range: ${dateFormat.format(_startDate)} to ${dateFormat.format(_endDate)}",
     );

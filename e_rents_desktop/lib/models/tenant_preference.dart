@@ -10,6 +10,17 @@ class TenantPreference {
   final String description;
   final bool isActive;
 
+  // User information from backend TenantPreferenceResponseDto
+  final String? userFullName;
+  final String? userEmail;
+  final String? userPhone;
+  final String? userCity;
+  final String? profileImageUrl;
+
+  // Match scoring from backend
+  final double matchScore;
+  final List<String> matchReasons;
+
   TenantPreference({
     required this.id,
     required this.userId,
@@ -21,6 +32,13 @@ class TenantPreference {
     required this.amenities,
     required this.description,
     this.isActive = true,
+    this.userFullName,
+    this.userEmail,
+    this.userPhone,
+    this.userCity,
+    this.profileImageUrl,
+    this.matchScore = 0.0,
+    this.matchReasons = const [],
   });
 
   factory TenantPreference.fromJson(Map<String, dynamic> json) {
@@ -35,9 +53,18 @@ class TenantPreference {
       minPrice: json['minPrice'],
       maxPrice: json['maxPrice'],
       city: json['city'],
-      amenities: List<String>.from(json['amenities']),
-      description: json['description'],
+      amenities: List<String>.from(json['amenities'] ?? []),
+      description: json['description'] ?? '',
       isActive: json['isActive'] ?? true,
+      // User information from backend
+      userFullName: json['userFullName'],
+      userEmail: json['userEmail'],
+      userPhone: json['userPhone'],
+      userCity: json['userCity'],
+      profileImageUrl: json['profileImageUrl'],
+      // Match scoring
+      matchScore: (json['matchScore'] ?? 0.0).toDouble(),
+      matchReasons: List<String>.from(json['matchReasons'] ?? []),
     );
   }
 
@@ -53,6 +80,13 @@ class TenantPreference {
       'amenities': amenities,
       'description': description,
       'isActive': isActive,
+      'userFullName': userFullName,
+      'userEmail': userEmail,
+      'userPhone': userPhone,
+      'userCity': userCity,
+      'profileImageUrl': profileImageUrl,
+      'matchScore': matchScore,
+      'matchReasons': matchReasons,
     };
   }
 }

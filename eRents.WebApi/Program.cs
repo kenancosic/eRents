@@ -9,6 +9,7 @@ using eRents.Application.Service.ReviewService;
 using eRents.Application.Service.UserService;
 using eRents.Application.Service.StatisticsService;
 using eRents.Application.Service.TenantService;
+using eRents.Application.Service.ReportService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
@@ -114,6 +115,8 @@ builder.Services.AddTransient<IImageService, ImageService>();
 builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 builder.Services.AddTransient<ITenantService, TenantService>();
+builder.Services.AddTransient<IReportService, ReportService>();
+// TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
 
 // Register HttpClient
 builder.Services.AddSingleton<HttpClient>();

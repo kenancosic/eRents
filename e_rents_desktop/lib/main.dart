@@ -26,6 +26,8 @@ import 'services/property_service.dart';
 import 'services/profile_service.dart';
 import 'services/report_service.dart';
 import 'features/reports/providers/reports_provider.dart';
+import 'features/reports/providers/financial_report_provider.dart';
+import 'features/reports/providers/tenant_report_provider.dart';
 import 'services/tenant_service.dart';
 import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
 import 'base/error_provider.dart';
@@ -135,6 +137,15 @@ void main() async {
         ),
         ChangeNotifierProvider<HomeProvider>(
           create: (context) => HomeProvider(context.read<StatisticsService>()),
+        ),
+        ChangeNotifierProvider<FinancialReportProvider>(
+          create:
+              (context) =>
+                  FinancialReportProvider(context.read<ReportService>()),
+        ),
+        ChangeNotifierProvider<TenantReportProvider>(
+          create:
+              (context) => TenantReportProvider(context.read<ReportService>()),
         ),
         // MockDataService temporarily disabled due to type mismatches
         // Provider<MockDataService>(

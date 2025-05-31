@@ -40,12 +40,12 @@ class TenantReportItem {
 
   factory TenantReportItem.fromJson(Map<String, dynamic> json) {
     return TenantReportItem(
-      dateFrom: json['leaseStart'],
-      dateTo: json['leaseEnd'],
-      tenantName: json['tenant'],
-      propertyName: json['property'],
-      costOfRent: json['costOfRent'],
-      totalPaidRent: json['totalPaidRent'],
+      dateFrom: json['leaseStart'] ?? '',
+      dateTo: json['leaseEnd'] ?? '',
+      tenantName: json['tenant'] ?? '',
+      propertyName: json['property'] ?? '',
+      costOfRent: (json['costOfRent'] ?? 0.0).toDouble(),
+      totalPaidRent: (json['totalPaidRent'] ?? 0.0).toDouble(),
     );
   }
 }

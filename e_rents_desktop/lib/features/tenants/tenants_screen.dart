@@ -9,9 +9,8 @@ import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/send_property_offer_dialog.dart';
 import 'package:e_rents_desktop/base/base_provider.dart'; // For ViewState
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
-import 'package:e_rents_desktop/features/tenants/widgets/current_tenants_table_widget.dart';
-import 'package:e_rents_desktop/features/tenants/widgets/tenants_advertisement_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});
@@ -158,12 +157,15 @@ class _TenantsScreenState extends State<TenantsScreen>
     TenantPreference preference,
     User tenant, // Added User parameter
   ) {
-    // TODO: Implement navigation or dialog to show tenant preference details
-    // User object can be used if needed for the details view.
-    print(
-      "Show details for preference in city: ${preference.city} for tenant ${tenant.fullName}",
+    // Show the tenant preference details dialog
+    showDialog(
+      context: context,
+      builder:
+          (context) => TenantPreferenceDetailsDialog(
+            preference: preference,
+            tenant: tenant,
+          ),
     );
-    // Example: showDialog(context: context, builder: (_) => TenantPreferenceDetailsWidget(preference: preference, tenant: tenant));
   }
 
   @override

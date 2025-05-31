@@ -4,19 +4,61 @@ import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/services.dart';
 
-class ReportsScreen extends StatelessWidget {
+class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
   @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load reports data when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.isAuthenticatedState) {
+        final reportsProvider = Provider.of<ReportsProvider>(
+          context,
+          listen: false,
+        );
+        reportsProvider.loadCurrentReportData();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const _ReportsScreenContent();
+    return Consumer2<ReportsProvider, AuthProvider>(
+      builder: (context, reportsProvider, authProvider, _) {
+        // If not authenticated, show login prompt
+        if (!authProvider.isAuthenticatedState) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline, size: 64),
+                SizedBox(height: 16),
+                Text('Please log in to view reports'),
+              ],
+            ),
+          );
+        }
+
+        return _ReportsScreenContent(reportsProvider: reportsProvider);
+      },
+    );
   }
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  const _ReportsScreenContent();
+  final ReportsProvider reportsProvider;
+
+  const _ReportsScreenContent({required this.reportsProvider});
 
   void _showExportResult(
     BuildContext context,
@@ -81,8 +123,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportPDF(BuildContext context) async {
     try {
-      final provider = Provider.of<ReportsProvider>(context, listen: false);
-      final filePath = await provider.exportToPDF();
+      final filePath = await reportsProvider.exportToPDF();
       if (!context.mounted) return;
 
       _showExportResult(
@@ -98,8 +139,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportExcel(BuildContext context) async {
     try {
-      final provider = Provider.of<ReportsProvider>(context, listen: false);
-      final filePath = await provider.exportToExcel();
+      final filePath = await reportsProvider.exportToExcel();
       if (!context.mounted) return;
 
       _showExportResult(
@@ -115,8 +155,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportCSV(BuildContext context) async {
     try {
-      final provider = Provider.of<ReportsProvider>(context, listen: false);
-      final filePath = await provider.exportToCSV();
+      final filePath = await reportsProvider.exportToCSV();
       if (!context.mounted) return;
 
       _showExportResult(
@@ -135,13 +174,11 @@ class _ReportsScreenContent extends StatelessWidget {
     DateTime start,
     DateTime end,
   ) {
-    final provider = Provider.of<ReportsProvider>(context, listen: false);
-    provider.setDateRange(start, end);
+    reportsProvider.setDateRange(start, end);
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ReportsProvider>(context);
     final List<String> reportTypes = ["Financial Report", "Tenant Report"];
 
     return Column(
@@ -178,7 +215,7 @@ class _ReportsScreenContent extends StatelessWidget {
                       vertical: 8,
                     ),
                   ),
-                  value: provider.getReportTypeString(),
+                  value: reportsProvider.getReportTypeString(),
                   items:
                       reportTypes.map((String type) {
                         return DropdownMenuItem<String>(
@@ -188,8 +225,8 @@ class _ReportsScreenContent extends StatelessWidget {
                       }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
-                      provider.setReportTypeFromString(newValue);
-                      provider.loadCurrentReportData();
+                      reportsProvider.setReportTypeFromString(newValue);
+                      reportsProvider.loadCurrentReportData();
                     }
                   },
                 ),

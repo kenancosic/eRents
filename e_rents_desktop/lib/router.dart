@@ -292,6 +292,14 @@ class AppRouter {
                 ),
           ),
           GoRoute(
+            path: '/statistics',
+            builder:
+                (context, state) => const ContentWrapper(
+                  title: 'Revenue & Analytics',
+                  child: StatisticsScreen(),
+                ),
+          ),
+          GoRoute(
             path: '/reports',
             builder:
                 (context, state) => const ContentWrapper(

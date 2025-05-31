@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
+import 'package:e_rents_desktop/features/tenants/widgets/tenant_preference_details_dialog.dart';
+import 'package:e_rents_desktop/models/tenant_preference.dart';
+import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:go_router/go_router.dart';
 
 class TenantsAdvertisementTableWidget extends StatefulWidget {
   final List<TenantPreference> preferences;
-  final List<User> tenants;
+  final List<User>
+  tenants; // Keep for compatibility, but won't be used for user data
   final String searchTerm;
   final String currentFilterField;
   final Function(TenantPreference) onSendMessage;
-  final Function(TenantPreference, User) onShowDetails;
+  final Function(TenantPreference, User)
+  onShowDetails; // Keep signature for compatibility
 
   const TenantsAdvertisementTableWidget({
     super.key,
@@ -90,32 +95,11 @@ class _TenantsAdvertisementTableWidgetState
       );
     }
 
-    // Find tenant data for each preference
-    final tenantMap = <int, User>{};
-    for (var preference in filteredPreferences) {
-      // Find the user associated with this preference
-      tenantMap[preference.userId] = widget.tenants.firstWhere(
-        (user) => user.id == preference.userId,
-        orElse:
-            () => User(
-              id: 0,
-              email: 'unknown@example.com',
-              username: 'unknown',
-              firstName: 'Unknown',
-              lastName: 'User',
-              role: UserType.landlord,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-      );
-    }
-
-    // Calculate mock match scores - this would be replaced with real algorithm
+    // Calculate match scores using the backend-provided values
     final matchScores = <int, int>{};
     for (var preference in filteredPreferences) {
-      // Simulate a match score between 0-100 based on some criteria
-      final random = DateTime.now().millisecondsSinceEpoch % 100;
-      matchScores[preference.id] = random;
+      // Convert decimal score (0.75) to percentage (75)
+      matchScores[preference.id] = (preference.matchScore * 100).round();
     }
 
     // Create the list of columns based on visibility settings
@@ -139,23 +123,17 @@ class _TenantsAdvertisementTableWidgetState
                   CircleAvatar(
                     radius: 16,
                     backgroundImage:
-                        (tenantMap[preference.userId]?.profileImage != null &&
-                                tenantMap[preference.userId]!
-                                        .profileImage!
-                                        .url !=
-                                    null &&
-                                tenantMap[preference.userId]!
-                                    .profileImage!
-                                    .url!
-                                    .isNotEmpty)
-                            ? NetworkImage(
-                              tenantMap[preference.userId]!.profileImage!.url!,
-                            )
-                            : const AssetImage('assets/images/user-image.png'),
+                        (preference.profileImageUrl != null &&
+                                preference.profileImageUrl!.isNotEmpty)
+                            ? NetworkImage(preference.profileImageUrl!)
+                            : null,
                     child:
-                        tenantMap[preference.userId]?.profileImage == null
+                        preference.profileImageUrl == null ||
+                                preference.profileImageUrl!.isEmpty
                             ? Text(
-                              '${tenantMap[preference.userId]!.firstName[0]}${tenantMap[preference.userId]!.lastName[0]}',
+                              _getInitials(
+                                preference.userFullName ?? 'Unknown User',
+                              ),
                               style: const TextStyle(fontSize: 10),
                             )
                             : null,
@@ -168,12 +146,12 @@ class _TenantsAdvertisementTableWidgetState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          tenantMap[preference.userId]!.fullName,
+                          preference.userFullName ?? 'Unknown User',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          tenantMap[preference.userId]!.email,
+                          preference.userEmail ?? 'No email',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -399,7 +377,7 @@ class _TenantsAdvertisementTableWidgetState
                     onPressed:
                         () => widget.onShowDetails(
                           preference,
-                          tenantMap[preference.userId]!,
+                          _createUserFromPreference(preference),
                         ),
                     tooltip: 'View Details',
                     padding: EdgeInsets.zero,
@@ -609,5 +587,31 @@ class _TenantsAdvertisementTableWidgetState
   // Helper method to format dates in a user-friendly way
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // Helper method to get initials from a full name
+  String _getInitials(String fullName) {
+    final names = fullName.split(' ');
+    return names.map((name) => name[0]).join();
+  }
+
+  // Helper method to create a User object from a TenantPreference
+  User _createUserFromPreference(TenantPreference preference) {
+    final fullName = preference.userFullName ?? 'Unknown User';
+    final nameParts = fullName.split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts.first : 'Unknown';
+    final lastName =
+        nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'User';
+
+    return User(
+      id: preference.userId,
+      email: preference.userEmail ?? 'no-email@example.com',
+      username: preference.userEmail?.split('@').first ?? 'unknown',
+      firstName: firstName,
+      lastName: lastName,
+      role: UserType.tenant, // Prospective tenants should be tenant role
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
   }
 }

@@ -397,6 +397,21 @@ namespace eRents.WebApi
 			context.TenantPreferences.AddRange(tenantPreferences);
 			await context.SaveChangesAsync();
 
+			// Tenant Preference Amenities
+			var dbTenantPreferences = await context.TenantPreferences.ToListAsync();
+			var tenantPreferenceAmenities = new[]
+			{
+				// testUser's preferred amenities for modern apartment living
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Wi-Fi").AmenityId },
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Air Conditioning").AmenityId },
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Kitchen").AmenityId },
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Parking").AmenityId },
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Laundry").AmenityId },
+				new TenantPreferenceAmenity { TenantPreferenceId = dbTenantPreferences.First(tp => tp.UserId == dbUsers.First(u => u.Username == "testUser").UserId).TenantPreferenceId, AmenityId = dbAmenities.First(a => a.AmenityName == "Heating").AmenityId }
+			};
+			context.TenantPreferenceAmenities.AddRange(tenantPreferenceAmenities);
+			await context.SaveChangesAsync();
+
 			// Maintenance Issues
 			var dbIssuePriorities = await context.IssuePriorities.ToListAsync();
 			var dbIssueStatuses = await context.IssueStatuses.ToListAsync();

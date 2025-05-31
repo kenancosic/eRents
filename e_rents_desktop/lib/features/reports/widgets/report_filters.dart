@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
+import 'package:intl/intl.dart';
 
 class ReportFilters extends StatefulWidget {
   final Function(DateTime, DateTime) onDateRangeChanged;
@@ -20,12 +21,23 @@ class _ReportFiltersState extends State<ReportFilters> {
   DateTime _endDate = DateTime.now();
   List<String> _selectedProperties = [];
 
+  // Date formatters and controllers
+  final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
+  late TextEditingController _startDateController;
+  late TextEditingController _endDateController;
+
   // TODO: Replace with actual property service call
   List<String> _availableProperties = [];
 
   @override
   void initState() {
     super.initState();
+    _startDateController = TextEditingController(
+      text: _dateFormat.format(_startDate),
+    );
+    _endDateController = TextEditingController(
+      text: _dateFormat.format(_endDate),
+    );
     _loadAvailableProperties();
   }
 
@@ -37,6 +49,8 @@ class _ReportFiltersState extends State<ReportFilters> {
 
   @override
   void dispose() {
+    _startDateController.dispose();
+    _endDateController.dispose();
     super.dispose();
   }
 
@@ -46,19 +60,53 @@ class _ReportFiltersState extends State<ReportFilters> {
   }
 
   void _showDatePicker(bool isStartDate) async {
+    final now = DateTime.now();
+    final firstDate = DateTime(2020);
+    final lastDate = now.add(const Duration(days: 365));
+
+    // Ensure initial date is within bounds
+    DateTime initialDate;
+    if (isStartDate) {
+      initialDate = _startDate;
+      if (initialDate.isBefore(firstDate)) {
+        initialDate = firstDate;
+      } else if (initialDate.isAfter(lastDate)) {
+        initialDate = now;
+      }
+    } else {
+      initialDate = _endDate;
+      if (initialDate.isBefore(firstDate)) {
+        initialDate = firstDate;
+      } else if (initialDate.isAfter(lastDate)) {
+        initialDate = now;
+      }
+    }
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isStartDate ? _startDate : _endDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2025),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
 
     if (picked != null) {
       setState(() {
         if (isStartDate) {
           _startDate = picked;
+          _startDateController.text = _dateFormat.format(_startDate);
+          // Ensure end date is not before start date
+          if (_endDate.isBefore(_startDate)) {
+            _endDate = _startDate;
+            _endDateController.text = _dateFormat.format(_endDate);
+          }
         } else {
           _endDate = picked;
+          _endDateController.text = _dateFormat.format(_endDate);
+          // Ensure start date is not after end date
+          if (_startDate.isAfter(_endDate)) {
+            _startDate = _endDate;
+            _startDateController.text = _dateFormat.format(_startDate);
+          }
         }
       });
 
@@ -95,6 +143,8 @@ class _ReportFiltersState extends State<ReportFilters> {
     setState(() {
       _startDate = newStartDate;
       _endDate = newEndDate;
+      _startDateController.text = _dateFormat.format(_startDate);
+      _endDateController.text = _dateFormat.format(_endDate);
     });
 
     widget.onDateRangeChanged(_startDate, _endDate);
@@ -149,6 +199,7 @@ class _ReportFiltersState extends State<ReportFilters> {
               const SizedBox(width: 16),
               Expanded(
                 child: TextField(
+                  controller: _startDateController,
                   readOnly: true,
                   onTap: () => _showDatePicker(true),
                   decoration: const InputDecoration(
@@ -161,6 +212,7 @@ class _ReportFiltersState extends State<ReportFilters> {
               const SizedBox(width: 16),
               Expanded(
                 child: TextField(
+                  controller: _endDateController,
                   readOnly: true,
                   onTap: () => _showDatePicker(false),
                   decoration: const InputDecoration(

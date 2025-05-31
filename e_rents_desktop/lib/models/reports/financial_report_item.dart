@@ -35,12 +35,12 @@ class FinancialReportItem {
 
   factory FinancialReportItem.fromJson(Map<String, dynamic> json) {
     return FinancialReportItem(
-      dateFrom: json['dateFrom'],
-      dateTo: json['dateTo'],
-      property: json['property'],
-      totalRent: json['totalRent'],
-      maintenanceCosts: json['maintenanceCosts'],
-      total: json['total'],
+      dateFrom: json['dateFrom'] ?? '',
+      dateTo: json['dateTo'] ?? '',
+      property: json['property'] ?? '',
+      totalRent: (json['totalRent'] ?? 0.0).toDouble(),
+      maintenanceCosts: (json['maintenanceCosts'] ?? 0.0).toDouble(),
+      total: (json['total'] ?? 0.0).toDouble(),
     );
   }
 }

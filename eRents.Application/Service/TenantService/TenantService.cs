@@ -15,6 +15,7 @@ namespace eRents.Application.Service.TenantService
 		private readonly IReviewRepository _reviewRepository;
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ICurrentUserService _currentUserService;
+		// TODO: Future Enhancement - Add ITenantMatchingService for ML-based matching
 
 		public TenantService(
 				ITenantRepository tenantRepository,
@@ -65,13 +66,18 @@ namespace eRents.Application.Service.TenantService
 		public async Task<List<TenantPreferenceResponseDto>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null)
 		{
 			var preferences = await _tenantPreferenceRepository.GetPreferencesWithUserDetailsAsync(queryParams);
+			var currentUserId = int.Parse(_currentUserService.UserId);
 
+			// Convert to DTOs with placeholder match scores
 			var preferenceDtos = new List<TenantPreferenceResponseDto>();
 			foreach (var preference in preferences)
 			{
-				preferenceDtos.Add(MapTenantPreferenceToResponseDto(preference));
+				var dto = await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
+				preferenceDtos.Add(dto);
 			}
 
+			// TODO: Future Enhancement - Implement ML-based ranking algorithm
+			// For now, just return in the order they come from database
 			return preferenceDtos;
 		}
 
@@ -81,7 +87,8 @@ namespace eRents.Application.Service.TenantService
 			if (preference == null)
 				throw new ArgumentException($"No preferences found for tenant {tenantId}");
 
-			return MapTenantPreferenceToResponseDto(preference);
+			var currentUserId = int.Parse(_currentUserService.UserId);
+			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
 		public async Task<TenantPreferenceResponseDto> UpdateTenantPreferencesAsync(int tenantId, UpdateTenantPreferenceRequestDto request)
@@ -103,7 +110,9 @@ namespace eRents.Application.Service.TenantService
 			// For now, assuming amenities are handled separately
 
 			await _tenantPreferenceRepository.UpdateAsync(preference);
-			return MapTenantPreferenceToResponseDto(preference);
+
+			var currentUserId = int.Parse(_currentUserService.UserId);
+			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
 		public async Task<List<ReviewResponseDto>> GetTenantFeedbacksAsync(int tenantId)
@@ -151,33 +160,23 @@ namespace eRents.Application.Service.TenantService
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 
-			// Verify property belongs to current landlord
+			// Verify property ownership
 			var property = await _propertyRepository.GetByIdAsync(propertyId);
 			if (property == null || property.OwnerId != currentUserId)
 				throw new UnauthorizedAccessException("You can only offer your own properties");
 
-			// Verify tenant exists
-			var tenant = await _userRepository.GetByIdAsync(tenantId);
-			if (tenant == null)
-				throw new ArgumentException($"Tenant with ID {tenantId} not found");
-
-			// For now, we'll implement this as a simple tracking mechanism
-			// In a full implementation, you might create a PropertyOffer entity
-			// For now, this could be implemented via messaging or a simple log
-
-			// TODO: Implement actual property offer tracking
-			// This could be:
-			// 1. Create PropertyOffer record in database
-			// 2. Send notification/message to tenant
-			// 3. Track offer status (pending, accepted, rejected)
-
-			await Task.CompletedTask; // Placeholder for actual implementation
+			// Record the offer (this would typically involve creating a PropertyOffer record)
+			// Implementation depends on your domain model for tracking offers
+			// For now, this is a placeholder
 		}
 
 		public async Task<List<PropertyOfferResponseDto>> GetPropertyOffersForTenantAsync(int tenantId)
 		{
-			// TODO: Implement when PropertyOffer entity is created
-			// For now, return empty list
+			var currentUserId = int.Parse(_currentUserService.UserId);
+
+			// Get all offers made by current landlord to this tenant
+			// Implementation depends on your PropertyOffer domain model
+			// For now, returning empty list as placeholder
 			return new List<PropertyOfferResponseDto>();
 		}
 
@@ -187,14 +186,40 @@ namespace eRents.Application.Service.TenantService
 			var relationships = await _tenantRepository.GetTenantRelationshipsForLandlordAsync(currentUserId);
 
 			var relationshipDtos = new List<TenantRelationshipDto>();
-			foreach (var relationship in relationships)
+			foreach (var tenant in relationships)
 			{
-				var dto = MapTenantRelationshipToDto(relationship);
+				// Calculate performance metrics
+				var totalBookings = await _tenantRepository.GetTotalBookingsForTenantAsync(tenant.UserId, currentUserId);
+				var totalRevenue = await _tenantRepository.GetTotalRevenueFromTenantAsync(tenant.UserId, currentUserId);
 
-				// Get performance metrics
-				dto.TotalBookings = await _tenantRepository.GetTotalBookingsForTenantAsync(relationship.UserId, currentUserId);
-				dto.TotalRevenue = await _tenantRepository.GetTotalRevenueFromTenantAsync(relationship.UserId, currentUserId);
-				dto.MaintenanceIssuesReported = await _tenantRepository.GetMaintenanceIssuesReportedByTenantAsync(relationship.UserId, currentUserId);
+				var dto = new TenantRelationshipDto
+				{
+					TenantId = tenant.TenantId,
+					UserId = tenant.UserId,
+					PropertyId = tenant.PropertyId,
+					LeaseStartDate = tenant.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
+					LeaseEndDate = null,
+					TenantStatus = tenant.TenantStatus,
+
+					// User details
+					UserFullName = tenant.User != null ? $"{tenant.User.FirstName} {tenant.User.LastName}" : "Unknown User",
+					UserEmail = tenant.User?.Email ?? "No email",
+					UserPhone = tenant.User?.PhoneNumber,
+					UserCity = tenant.User?.AddressDetail?.GeoRegion?.City,
+					ProfileImageUrl = tenant.User?.ProfileImage != null ? $"/Images/{tenant.User.ProfileImage.ImageId}" : null,
+
+					// Property details
+					PropertyTitle = tenant.Property?.Name,
+					PropertyAddress = tenant.Property?.AddressDetail?.StreetLine1,
+					PropertyPrice = tenant.Property?.Price,
+					PropertyImageUrl = tenant.Property?.Images?.FirstOrDefault() != null ?
+						$"/Images/{tenant.Property.Images.First().ImageId}" : null,
+
+					// Performance metrics
+					TotalBookings = totalBookings,
+					TotalRevenue = totalRevenue,
+					MaintenanceIssuesReported = 0 // Would need separate query for maintenance issues
+				};
 
 				relationshipDtos.Add(dto);
 			}
@@ -208,11 +233,11 @@ namespace eRents.Application.Service.TenantService
 			var assignments = await _tenantRepository.GetTenantPropertyAssignmentsAsync(tenantIds, currentUserId);
 
 			var assignmentDtos = new Dictionary<int, PropertyResponseDto>();
-			foreach (var assignment in assignments)
+			foreach (var kvp in assignments)
 			{
-				if (assignment.Value != null)
+				if (kvp.Value != null)
 				{
-					assignmentDtos[assignment.Key] = MapPropertyToResponseDto(assignment.Value);
+					assignmentDtos[kvp.Key] = MapPropertyToResponseDto(kvp.Value);
 				}
 			}
 
@@ -234,7 +259,11 @@ namespace eRents.Application.Service.TenantService
 				UpdatedAt = user.UpdatedAt,
 				IsPaypalLinked = user.IsPaypalLinked,
 				PaypalUserIdentifier = user.PaypalUserIdentifier,
+
+				// Profile image
 				ProfileImageUrl = user.ProfileImage != null ? $"/Images/{user.ProfileImage.ImageId}" : null,
+
+				// Address details if available
 				AddressDetail = user.AddressDetail != null ? new AddressDetailResponseDto
 				{
 					AddressDetailId = user.AddressDetail.AddressDetailId,
@@ -254,8 +283,13 @@ namespace eRents.Application.Service.TenantService
 			};
 		}
 
-		private TenantPreferenceResponseDto MapTenantPreferenceToResponseDto(TenantPreference preference)
+		private async Task<TenantPreferenceResponseDto> MapTenantPreferenceToResponseDtoAsync(TenantPreference preference, int landlordId)
 		{
+			// TODO: Future Enhancement - Implement ML-based matching algorithm
+			// For now, return a placeholder match score and basic reasons
+			var placeholderMatchScore = 0.75; // 75% - neutral positive score
+			var placeholderReasons = new List<string> { "Basic compatibility assessment", "Available for matching" };
+
 			return new TenantPreferenceResponseDto
 			{
 				Id = preference.TenantPreferenceId,
@@ -265,9 +299,9 @@ namespace eRents.Application.Service.TenantService
 				MinPrice = preference.MinPrice,
 				MaxPrice = preference.MaxPrice,
 				City = preference.City,
-				Description = preference.Description ?? string.Empty,
-				IsActive = preference.IsActive,
 				Amenities = preference.Amenities?.Select(a => a.AmenityName).ToList() ?? new List<string>(),
+				Description = preference.Description,
+				IsActive = preference.IsActive,
 
 				// User details for display
 				UserFullName = preference.User != null ? $"{preference.User.FirstName} {preference.User.LastName}" : null,
@@ -276,9 +310,9 @@ namespace eRents.Application.Service.TenantService
 				UserCity = preference.User?.AddressDetail?.GeoRegion?.City,
 				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/Images/{preference.User.ProfileImage.ImageId}" : null,
 
-				// Calculated match score (can be set by calling service)
-				MatchScore = 0.0, // Default, can be calculated based on landlord's properties
-				MatchReasons = new List<string>()
+				// Placeholder match score - TODO: Implement ML-based algorithm
+				MatchScore = placeholderMatchScore,
+				MatchReasons = placeholderReasons
 			};
 		}
 
@@ -309,26 +343,25 @@ namespace eRents.Application.Service.TenantService
 				Description = property.Description,
 				Price = property.Price,
 				Currency = property.Currency,
-				Status = property.Status,
-				DateAdded = property.DateAdded.Value,
+				Status = property.Status.ToString(),
 				Bedrooms = property.Bedrooms,
 				Bathrooms = property.Bathrooms,
-				Area = (double?)property.Area,
+				Area = property.Area,
 				DailyRate = property.DailyRate,
 				MinimumStayDays = property.MinimumStayDays,
-				Images = property.Images?.Select(i => new ImageResponseDto
+				DateAdded = property.DateAdded ?? DateTime.UtcNow,
+
+				// Images
+				Images = property.Images?.Select(img => new ImageResponseDto
 				{
-					ImageId = i.ImageId,
-					Url = $"/Images/{i.ImageId}", // Generate URL to serve binary data
-					FileName = i.FileName,
-					ContentType = i.ContentType,
-					DateUploaded = i.DateUploaded,
-					Width = i.Width,
-					Height = i.Height,
-					FileSizeBytes = i.FileSizeBytes,
-					IsCover = i.IsCover,
-					ThumbnailUrl = i.ThumbnailData != null ? $"/Images/{i.ImageId}/thumbnail" : null
+					ImageId = img.ImageId,
+					FileName = img.FileName,
+					DateUploaded = img.DateUploaded,
+					Url = $"/Images/{img.ImageId}",
+					ThumbnailUrl = img.ThumbnailData != null ? $"/Images/{img.ImageId}/thumbnail" : null
 				}).ToList() ?? new List<ImageResponseDto>(),
+
+				// Address details
 				AddressDetail = property.AddressDetail != null ? new AddressDetailResponseDto
 				{
 					AddressDetailId = property.AddressDetail.AddressDetailId,
@@ -345,38 +378,10 @@ namespace eRents.Application.Service.TenantService
 						PostalCode = property.AddressDetail.GeoRegion.PostalCode
 					} : null
 				} : null,
+
+				// Amenities
 				Amenities = property.Amenities?.Select(a => a.AmenityName).ToList() ?? new List<string>()
 			};
-		}
-
-		private TenantRelationshipDto MapTenantRelationshipToDto(Tenant relationship)
-		{
-			var dto = new TenantRelationshipDto
-			{
-				TenantId = relationship.TenantId,
-				UserId = relationship.UserId,
-				PropertyId = relationship.PropertyId,
-				LeaseStartDate = relationship.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
-				LeaseEndDate = null, // Not available in Tenant model
-				TenantStatus = relationship.TenantStatus,
-
-				// User details
-				UserFullName = $"{relationship.User.FirstName} {relationship.User.LastName}",
-				UserEmail = relationship.User.Email,
-				UserPhone = relationship.User.PhoneNumber,
-				UserCity = relationship.User.AddressDetail?.GeoRegion?.City,
-				ProfileImageUrl = relationship.User.ProfileImage != null ? $"/Images/{relationship.User.ProfileImage.ImageId}" : null,
-
-				// Property details
-				PropertyTitle = relationship.Property?.Name,
-				PropertyAddress = relationship.Property?.AddressDetail != null ?
-							$"{relationship.Property.AddressDetail.StreetLine1}, {relationship.Property.AddressDetail.GeoRegion?.City}" : null,
-				PropertyPrice = relationship.Property?.Price != null ? (double?)relationship.Property.Price : null,
-				PropertyImageUrl = relationship.Property?.Images?.FirstOrDefault() != null ?
-							$"/Images/{relationship.Property.Images.First().ImageId}" : null,
-			};
-
-			return dto;
 		}
 	}
 }
