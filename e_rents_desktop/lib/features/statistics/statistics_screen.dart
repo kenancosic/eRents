@@ -1,4 +1,4 @@
-import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
+import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -64,7 +64,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ReportFilters(
+            StatisticsFilters(
               onDateRangeChanged:
                   (start, end) => _handleDateRangeChanged(context, start, end),
               onPropertyFilterChanged: (selectedProps) {

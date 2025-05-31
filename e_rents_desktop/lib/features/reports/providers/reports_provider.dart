@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/export_service.dart';
 import 'package:e_rents_desktop/services/report_service.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:intl/intl.dart';
 
 /// Report type enum used for switching between report screens
 enum ReportType { financial, tenant }
@@ -20,6 +21,8 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   final ReportService _reportService;
   final Map<ReportType, BaseReportProvider<dynamic>?> _providers = {};
   ReportType _currentReportType = ReportType.financial;
+  DateTime _startDate = DateTime.now();
+  DateTime _endDate = DateTime.now();
 
   ReportsProvider({required ReportService reportService})
     : _reportService = reportService {
@@ -81,23 +84,44 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
   // Date range management
   @override
   void setDateRange(DateTime startDate, DateTime endDate) {
-    super.setDateRange(startDate, endDate);
-    // Only update initialized providers
-    for (final provider in _providers.values) {
+    debugPrint(
+      "ReportsProvider.setDateRange: Setting range from ${DateFormat('dd/MM/yyyy').format(startDate)} to ${DateFormat('dd/MM/yyyy').format(endDate)}",
+    );
+
+    // Update our own date range without triggering parent's onDateRangeChanged
+    // because ReportsProvider is a coordinator, not a data fetcher
+    _startDate = startDate;
+    _endDate = endDate;
+
+    // Only update initialized providers - they will trigger their own data fetching
+    for (final entry in _providers.entries) {
+      final provider = entry.value;
       if (provider != null) {
+        debugPrint(
+          "ReportsProvider.setDateRange: Updating ${entry.key} provider",
+        );
         provider.setDateRange(startDate, endDate);
       }
     }
   }
 
+  // Date range getters
+  DateTime get startDate => _startDate;
+  DateTime get endDate => _endDate;
+
   // Report type management
   void setReportType(ReportType type) {
     if (_currentReportType != type) {
-      debugPrint("ReportsProvider: Switching to report type $type");
+      debugPrint(
+        "ReportsProvider: Switching from $_currentReportType to $type",
+      );
       _currentReportType = type;
       // Initialize the new provider if needed
       if (_providers[type] == null) {
+        debugPrint("ReportsProvider: Creating new provider for $type");
         _providers[type] = _createProvider(type);
+        // Set the current date range for the new provider
+        _providers[type]!.setDateRange(_startDate, _endDate);
       }
       notifyListeners();
     }

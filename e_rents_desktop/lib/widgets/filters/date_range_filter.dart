@@ -1,24 +1,55 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:intl/intl.dart';
 
-class ReportFilters extends StatefulWidget {
-  final Function(DateTime, DateTime) onDateRangeChanged;
-  final Function(List<String>) onPropertyFilterChanged;
+/// Configuration class for date range filter behavior
+class DateRangeFilterConfig {
+  final String title;
+  final List<String> presetRanges;
+  final DateTime? initialStartDate;
+  final DateTime? initialEndDate;
+  final DateTime? firstDate;
+  final DateTime? lastDate;
+  final bool showPresets;
+  final bool showPropertyFilter;
 
-  const ReportFilters({
+  const DateRangeFilterConfig({
+    this.title = 'Filter Options',
+    this.presetRanges = const [
+      'Last 7 Days',
+      'Last 30 Days',
+      'Last 90 Days',
+      'This Year',
+      'Last Year',
+    ],
+    this.initialStartDate,
+    this.initialEndDate,
+    this.firstDate,
+    this.lastDate,
+    this.showPresets = true,
+    this.showPropertyFilter = false,
+  });
+}
+
+/// Flexible and reusable date range filter widget
+class DateRangeFilter extends StatefulWidget {
+  final Function(DateTime, DateTime) onDateRangeChanged;
+  final Function(List<String>)? onPropertyFilterChanged;
+  final DateRangeFilterConfig config;
+
+  const DateRangeFilter({
     super.key,
     required this.onDateRangeChanged,
-    required this.onPropertyFilterChanged,
+    this.onPropertyFilterChanged,
+    this.config = const DateRangeFilterConfig(),
   });
 
   @override
-  State<ReportFilters> createState() => _ReportFiltersState();
+  State<DateRangeFilter> createState() => _DateRangeFilterState();
 }
 
-class _ReportFiltersState extends State<ReportFilters> {
-  DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
-  DateTime _endDate = DateTime.now();
+class _DateRangeFilterState extends State<DateRangeFilter> {
+  late DateTime _startDate;
+  late DateTime _endDate;
   List<String> _selectedProperties = [];
 
   // Date formatters and controllers
@@ -32,13 +63,28 @@ class _ReportFiltersState extends State<ReportFilters> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize dates from config or defaults
+    _startDate =
+        widget.config.initialStartDate ??
+        DateTime.now().subtract(const Duration(days: 30));
+    _endDate = widget.config.initialEndDate ?? DateTime.now();
+
     _startDateController = TextEditingController(
       text: _dateFormat.format(_startDate),
     );
     _endDateController = TextEditingController(
       text: _dateFormat.format(_endDate),
     );
-    _loadAvailableProperties();
+
+    if (widget.config.showPropertyFilter) {
+      _loadAvailableProperties();
+    }
+
+    // Notify parent of initial date range
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onDateRangeChanged(_startDate, _endDate);
+    });
   }
 
   /// TODO: Replace with actual API call to get properties
@@ -54,15 +100,11 @@ class _ReportFiltersState extends State<ReportFilters> {
     super.dispose();
   }
 
-  @override
-  void didUpdateWidget(ReportFilters oldWidget) {
-    super.didUpdateWidget(oldWidget);
-  }
-
   void _showDatePicker(bool isStartDate) async {
     final now = DateTime.now();
-    final firstDate = DateTime(2020);
-    final lastDate = now.add(const Duration(days: 365));
+    final firstDate = widget.config.firstDate ?? DateTime(2020);
+    final lastDate =
+        widget.config.lastDate ?? now.add(const Duration(days: 365));
 
     // Ensure initial date is within bounds
     DateTime initialDate;
@@ -129,12 +171,33 @@ class _ReportFiltersState extends State<ReportFilters> {
       case 'Last 90 Days':
         newStartDate = newEndDate.subtract(const Duration(days: 90));
         break;
+      case 'Last 3 Months':
+        // Go back 3 months from current date
+        newStartDate = DateTime(now.year, now.month - 3, now.day);
+        // If the day doesn't exist in the target month, use the last day of that month
+        if (newStartDate.month != now.month - 3) {
+          newStartDate = DateTime(
+            now.year,
+            now.month - 2,
+            0,
+          ); // Last day of the month before
+        }
+        break;
       case 'This Year':
         newStartDate = DateTime(now.year, 1, 1);
         break;
       case 'Last Year':
         newStartDate = DateTime(now.year - 1, 1, 1);
         newEndDate = DateTime(now.year - 1, 12, 31);
+        break;
+      case 'This Month':
+        newStartDate = DateTime(now.year, now.month, 1);
+        newEndDate = DateTime(now.year, now.month + 1, 0);
+        break;
+      case 'Last Month':
+        final lastMonth = DateTime(now.year, now.month - 1, 1);
+        newStartDate = lastMonth;
+        newEndDate = DateTime(lastMonth.year, lastMonth.month + 1, 0);
         break;
       default:
         return;
@@ -168,35 +231,43 @@ class _ReportFiltersState extends State<ReportFilters> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Filter Reports',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            widget.config.title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    labelText: 'Date Range',
-                    border: OutlineInputBorder(),
-                  ),
-                  value: 'This Month',
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'This Month',
-                      child: Text('This Month'),
+              // Preset dropdown (optional)
+              if (widget.config.showPresets) ...[
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Date Range',
+                      border: OutlineInputBorder(),
                     ),
-                    DropdownMenuItem(value: 'Custom', child: Text('Custom')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null && value != 'Custom') {
-                      _applyPresetRange(value);
-                    }
-                  },
+                    value: 'Custom',
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'Custom',
+                        child: Text('Custom'),
+                      ),
+                      ...widget.config.presetRanges.map(
+                        (range) =>
+                            DropdownMenuItem(value: range, child: Text(range)),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null && value != 'Custom') {
+                        _applyPresetRange(value);
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
+              ],
+
+              // Start date picker
               Expanded(
                 child: TextField(
                   controller: _startDateController,
@@ -210,6 +281,8 @@ class _ReportFiltersState extends State<ReportFilters> {
                 ),
               ),
               const SizedBox(width: 16),
+
+              // End date picker
               Expanded(
                 child: TextField(
                   controller: _endDateController,
@@ -224,15 +297,16 @@ class _ReportFiltersState extends State<ReportFilters> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: const [
-                // Placeholder for property filter
-              ],
+
+          // Property filter section (optional)
+          if (widget.config.showPropertyFilter) ...[
+            const SizedBox(height: 16),
+            // TODO: Implement property filter UI
+            const Text(
+              'Property filters will be implemented here',
+              style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
             ),
-          ),
+          ],
         ],
       ),
     );

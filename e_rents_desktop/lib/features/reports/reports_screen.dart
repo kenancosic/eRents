@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
-import 'package:e_rents_desktop/features/reports/widgets/report_filters.dart';
+import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
@@ -174,6 +174,8 @@ class _ReportsScreenContent extends StatelessWidget {
     DateTime start,
     DateTime end,
   ) {
+    // setDateRange automatically triggers data loading via onDateRangeChanged
+    // No need to call loadCurrentReportData() separately
     reportsProvider.setDateRange(start, end);
   }
 

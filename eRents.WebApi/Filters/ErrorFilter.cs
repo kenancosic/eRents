@@ -16,7 +16,7 @@ namespace eRents.WebAPI.Filters
 			}
 			else
 			{
-				context.ModelState.AddModelError("ERROR", "Greška na serveru");
+				context.ModelState.AddModelError("ERROR", "Error on server");
 				context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 			}
 
