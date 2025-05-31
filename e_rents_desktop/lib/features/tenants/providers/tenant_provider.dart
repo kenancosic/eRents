@@ -18,6 +18,8 @@ class TenantProvider extends BaseProvider<User> {
   final Map<int, List<Review>> _tenantFeedbacks = {};
   // final Map<String, List<Message>> _tenantMessages = {}; // To be removed
   final Map<int, List<String>> _tenantPropertyOffers = {};
+  final Map<int, Map<String, dynamic>> _tenantPropertyAssignments =
+      {}; // Add property assignments
 
   // Constructor updated
   TenantProvider(this._tenantService /*, this._authProvider */) : super() {
@@ -36,6 +38,14 @@ class TenantProvider extends BaseProvider<User> {
 
   List<String> getTenantPropertyOffers(int tenantId) {
     return _tenantPropertyOffers[tenantId] ?? [];
+  }
+
+  Map<int, Map<String, dynamic>> get tenantPropertyAssignments =>
+      _tenantPropertyAssignments;
+
+  /// Get property assignment for a specific tenant
+  Map<String, dynamic>? getTenantPropertyAssignment(int tenantId) {
+    return _tenantPropertyAssignments[tenantId];
   }
 
   @override
@@ -103,11 +113,57 @@ class TenantProvider extends BaseProvider<User> {
     });
   }
 
+  Future<void> loadTenantPropertyAssignments(List<int> tenantIds) async {
+    if (tenantIds.isEmpty) return;
+
+    await execute(() async {
+      try {
+        final assignments = await _tenantService.getTenantPropertyAssignments(
+          tenantIds,
+        );
+
+        // Clear existing assignments
+        _tenantPropertyAssignments.clear();
+
+        // Handle empty or null response
+        if (assignments.isEmpty) {
+          print(
+            'TenantProvider: No property assignments returned from backend',
+          );
+          return;
+        }
+
+        // Convert string keys to int and store assignments
+        for (final entry in assignments.entries) {
+          final tenantId = int.tryParse(entry.key);
+          if (tenantId != null && entry.value != null) {
+            _tenantPropertyAssignments[tenantId] = entry.value;
+          }
+        }
+
+        print(
+          'TenantProvider: Loaded ${_tenantPropertyAssignments.length} tenant property assignments',
+        );
+      } catch (e) {
+        print('TenantProvider: Error loading tenant property assignments: $e');
+        // Don't rethrow - allow the rest of the app to continue working
+        // Just log the error and continue without property assignments
+      }
+    });
+  }
+
   Future<void> loadAllData() async {
     setState(ViewState.Busy);
     try {
-      // Assuming these service calls now correctly throw exceptions on failure
+      // Load tenants first
       await Future.wait([loadCurrentTenants(), loadSearchingTenants()]);
+
+      // Then load property assignments for current tenants
+      if (_currentTenants.isNotEmpty) {
+        final tenantIds = _currentTenants.map((t) => t.id).toList();
+        await loadTenantPropertyAssignments(tenantIds);
+      }
+
       setState(ViewState.Idle);
     } catch (e) {
       print('TenantProvider: Error in loadAllData: $e');

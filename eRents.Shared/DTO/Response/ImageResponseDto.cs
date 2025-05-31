@@ -5,7 +5,7 @@ namespace eRents.Shared.DTO.Response
         public int ImageId { get; set; }
         
         /// <summary>
-        /// Generated URL to access the image via API endpoint (e.g., "/api/images/{ImageId}")
+        /// Generated URL to access the image via API endpoint (e.g., "/Images/{ImageId}")
         /// </summary>
         public string Url { get; set; } = null!;
         

@@ -22,7 +22,7 @@ namespace eRents.Application.Shared
 
 			// Image mappings - Only map non-matching properties
 			CreateMap<Image, ImageResponse>()
-				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => $"http://localhost:5000/Image/{src.ImageId}"))
+				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => $"http://localhost:5000/Images/{src.ImageId}"))
 				.ForMember(dest => dest.FileName, opt => opt.MapFrom(src =>
 					string.IsNullOrWhiteSpace(src.FileName) ? $"Untitled ({src.ImageId})" : src.FileName))
 				.ForMember(dest => dest.DateUploaded, opt => opt.MapFrom(src =>
@@ -62,8 +62,8 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.Rooms, opt => opt.MapFrom(src => src.Bedrooms))
 				.ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
-						? $"http://localhost:5000/Image/{src.Images.FirstOrDefault(i => i.IsCover).ImageId}"
-						: (src.Images.FirstOrDefault() != null ? $"http://localhost:5000/Image/{src.Images.FirstOrDefault().ImageId}" : null)))
+						? $"http://localhost:5000/Images/{src.Images.FirstOrDefault(i => i.IsCover).ImageId}"
+						: (src.Images.FirstOrDefault() != null ? $"http://localhost:5000/Images/{src.Images.FirstOrDefault().ImageId}" : null)))
 				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
 						? src.Images.FirstOrDefault(i => i.IsCover).ImageId 

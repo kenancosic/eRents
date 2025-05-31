@@ -124,13 +124,32 @@ class _TenantsScreenState extends State<TenantsScreen>
     User tenant,
     List<Property> properties,
   ) {
-    // TODO: Implement navigation or dialog to show tenant profile details
-    // For now, properties are not used, but the signature matches.
     print("Show profile for tenant: ${tenant.fullName}");
-    // Example: context.go('/tenants/${tenant.id}/profile');
+
+    // Show the tenant profile dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return TenantProfileWidget(
+          tenant: tenant,
+          properties: properties,
+          onSendMessage: () {
+            // Close dialog first
+            Navigator.of(dialogContext).pop();
+            // Then navigate to chat
+            _sendMessage(context, tenant);
+          },
+        );
+      },
+    );
   }
 
   void _navigateToPropertyDetails(BuildContext context, Property property) {
+    print(
+      'TenantsScreen: Navigating to property details for property ID: ${property.id}',
+    );
+    print('TenantsScreen: Property title: ${property.title}');
+    print('TenantsScreen: Full property data: ${property.toString()}');
     context.push('/properties/${property.id}');
   }
 

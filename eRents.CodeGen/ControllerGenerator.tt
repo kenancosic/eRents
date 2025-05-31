@@ -35,7 +35,7 @@ using System.Collections.Generic; // For IEnumerable<T>
 namespace <#= controllerNamespace #>
 {
     [ApiController]
-    [Route("api/[controller]")] // Standard API route: api/Entitys
+    [Route("[controller]")] // Standard API route:/Entitys
     // [Authorize] // Uncomment if authorization is typically required
     public class <#= pluralizedEntityName #>Controller : BaseCRUDController<<#= entityName #>Response, <#= entityName #>SearchObject, <#= entityName #>InsertRequest, <#= entityName #>UpdateRequest>
     {

@@ -31,7 +31,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchPropertyDetails();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchPropertyDetails();
+    });
   }
 
   Future<void> _fetchPropertyDetails() async {
@@ -42,17 +44,41 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     });
 
     try {
+      print(
+        'PropertyDetailsScreen: Fetching details for property ID: ${widget.propertyId}',
+      );
+
       final propertyProvider = context.read<PropertyProvider>();
       final detailsProvider = context.read<PropertyDetailsProvider>();
 
       // Get basic property info
       if (propertyProvider.properties.isEmpty) {
+        print(
+          'PropertyDetailsScreen: Property list is empty, fetching properties first...',
+        );
         await propertyProvider.fetchProperties();
+        print(
+          'PropertyDetailsScreen: Fetched ${propertyProvider.properties.length} properties',
+        );
+      } else {
+        print(
+          'PropertyDetailsScreen: Already have ${propertyProvider.properties.length} properties loaded',
+        );
       }
+
+      // Debug: Print all available property IDs
+      final availableIds =
+          propertyProvider.properties.map((p) => p.id).toList();
+      print('PropertyDetailsScreen: Available property IDs: $availableIds');
+
       _property = propertyProvider.getPropertyById(widget.propertyId);
+      print(
+        'PropertyDetailsScreen: Found property: ${_property?.title ?? 'null'}',
+      );
 
       if (_property == null) {
         _error = 'Property with ID ${widget.propertyId} not found.';
+        print('PropertyDetailsScreen: Error - $_error');
         return;
       }
 
@@ -60,6 +86,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       await detailsProvider.loadPropertyDetails(widget.propertyId);
     } catch (e) {
       _error = "Failed to fetch property details: ${e.toString()}";
+      print('PropertyDetailsScreen: Exception - $_error');
     } finally {
       if (mounted) {
         setState(() {

@@ -234,7 +234,7 @@ namespace eRents.Application.Service.TenantService
 				UpdatedAt = user.UpdatedAt,
 				IsPaypalLinked = user.IsPaypalLinked,
 				PaypalUserIdentifier = user.PaypalUserIdentifier,
-				ProfileImageUrl = user.ProfileImage != null ? $"/api/images/{user.ProfileImage.ImageId}" : null,
+				ProfileImageUrl = user.ProfileImage != null ? $"/Images/{user.ProfileImage.ImageId}" : null,
 				AddressDetail = user.AddressDetail != null ? new AddressDetailResponseDto
 				{
 					AddressDetailId = user.AddressDetail.AddressDetailId,
@@ -274,7 +274,7 @@ namespace eRents.Application.Service.TenantService
 				UserEmail = preference.User?.Email,
 				UserPhone = preference.User?.PhoneNumber,
 				UserCity = preference.User?.AddressDetail?.GeoRegion?.City,
-				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/api/images/{preference.User.ProfileImage.ImageId}" : null,
+				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/Images/{preference.User.ProfileImage.ImageId}" : null,
 
 				// Calculated match score (can be set by calling service)
 				MatchScore = 0.0, // Default, can be calculated based on landlord's properties
@@ -319,7 +319,7 @@ namespace eRents.Application.Service.TenantService
 				Images = property.Images?.Select(i => new ImageResponseDto
 				{
 					ImageId = i.ImageId,
-					Url = $"/api/images/{i.ImageId}", // Generate URL to serve binary data
+					Url = $"/Images/{i.ImageId}", // Generate URL to serve binary data
 					FileName = i.FileName,
 					ContentType = i.ContentType,
 					DateUploaded = i.DateUploaded,
@@ -327,7 +327,7 @@ namespace eRents.Application.Service.TenantService
 					Height = i.Height,
 					FileSizeBytes = i.FileSizeBytes,
 					IsCover = i.IsCover,
-					ThumbnailUrl = i.ThumbnailData != null ? $"/api/images/{i.ImageId}/thumbnail" : null
+					ThumbnailUrl = i.ThumbnailData != null ? $"/Images/{i.ImageId}/thumbnail" : null
 				}).ToList() ?? new List<ImageResponseDto>(),
 				AddressDetail = property.AddressDetail != null ? new AddressDetailResponseDto
 				{
@@ -365,7 +365,7 @@ namespace eRents.Application.Service.TenantService
 				UserEmail = relationship.User.Email,
 				UserPhone = relationship.User.PhoneNumber,
 				UserCity = relationship.User.AddressDetail?.GeoRegion?.City,
-				ProfileImageUrl = relationship.User.ProfileImage != null ? $"/api/images/{relationship.User.ProfileImage.ImageId}" : null,
+				ProfileImageUrl = relationship.User.ProfileImage != null ? $"/Images/{relationship.User.ProfileImage.ImageId}" : null,
 
 				// Property details
 				PropertyTitle = relationship.Property?.Name,
@@ -373,7 +373,7 @@ namespace eRents.Application.Service.TenantService
 							$"{relationship.Property.AddressDetail.StreetLine1}, {relationship.Property.AddressDetail.GeoRegion?.City}" : null,
 				PropertyPrice = relationship.Property?.Price != null ? (double?)relationship.Property.Price : null,
 				PropertyImageUrl = relationship.Property?.Images?.FirstOrDefault() != null ?
-							$"/api/images/{relationship.Property.Images.First().ImageId}" : null,
+							$"/Images/{relationship.Property.Images.First().ImageId}" : null,
 			};
 
 			return dto;

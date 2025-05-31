@@ -5,7 +5,7 @@ import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart'
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-class TenantProfileWidget extends StatelessWidget {
+class TenantProfileWidget extends StatefulWidget {
   final User tenant;
   final List<Property>? properties;
   final VoidCallback onSendMessage;
@@ -18,28 +18,42 @@ class TenantProfileWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final provider = Provider.of<TenantProvider>(context, listen: false);
-    provider.loadTenantFeedbacks(tenant.id);
+  State<TenantProfileWidget> createState() => _TenantProfileWidgetState();
+}
 
+class _TenantProfileWidgetState extends State<TenantProfileWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // Load tenant feedbacks after the widget is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<TenantProvider>(context, listen: false);
+      provider.loadTenantFeedbacks(widget.tenant.id);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AlertDialog(
       title: Row(
         children: [
           CircleAvatar(
             radius: 20,
             backgroundImage:
-                (tenant.profileImage != null &&
-                        tenant.profileImage!.url != null &&
-                        tenant.profileImage!.url!.isNotEmpty)
-                    ? NetworkImage(tenant.profileImage!.url!)
+                (widget.tenant.profileImage != null &&
+                        widget.tenant.profileImage!.url != null &&
+                        widget.tenant.profileImage!.url!.isNotEmpty)
+                    ? NetworkImage(widget.tenant.profileImage!.url!)
                     : const AssetImage('assets/images/user-image.png'),
             child:
-                tenant.profileImage == null
-                    ? Text('${tenant.firstName[0]}${tenant.lastName[0]}')
+                widget.tenant.profileImage == null
+                    ? Text(
+                      '${widget.tenant.firstName[0]}${widget.tenant.lastName[0]}',
+                    )
                     : null,
           ),
           const SizedBox(width: 12),
-          Text(tenant.fullName),
+          Text(widget.tenant.fullName),
         ],
       ),
       content: SingleChildScrollView(
@@ -48,7 +62,7 @@ class TenantProfileWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildProfileSection(),
-            if (properties != null && properties!.isNotEmpty)
+            if (widget.properties != null && widget.properties!.isNotEmpty)
               _buildPropertiesSection(),
             _buildFeedbackSection(),
           ],
@@ -56,7 +70,10 @@ class TenantProfileWidget extends StatelessWidget {
       ),
       actions: [
         TextButton(onPressed: () => context.pop(), child: const Text('Close')),
-        TextButton(onPressed: onSendMessage, child: const Text('Send Message')),
+        TextButton(
+          onPressed: widget.onSendMessage,
+          child: const Text('Send Message'),
+        ),
       ],
     );
   }
@@ -70,10 +87,10 @@ class TenantProfileWidget extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Text('Email: ${tenant.email}'),
-        if (tenant.phone != null) Text('Phone: ${tenant.phone}'),
-        if (tenant.addressDetail?.geoRegion?.city != null)
-          Text('City: ${tenant.addressDetail?.geoRegion?.city}'),
+        Text('Email: ${widget.tenant.email}'),
+        if (widget.tenant.phone != null) Text('Phone: ${widget.tenant.phone}'),
+        if (widget.tenant.addressDetail?.geoRegion?.city != null)
+          Text('City: ${widget.tenant.addressDetail?.geoRegion?.city}'),
         const Divider(),
       ],
     );
@@ -88,7 +105,7 @@ class TenantProfileWidget extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        ...properties!.map(
+        ...widget.properties!.map(
           (property) => ListTile(
             title: Text(property.title),
             subtitle: Text(property.addressDetail?.streetLine1 ?? ''),
@@ -103,7 +120,7 @@ class TenantProfileWidget extends StatelessWidget {
   Widget _buildFeedbackSection() {
     return Consumer<TenantProvider>(
       builder: (context, provider, child) {
-        final feedbacks = provider.getTenantFeedbacks(tenant.id);
+        final feedbacks = provider.getTenantFeedbacks(widget.tenant.id);
         if (feedbacks.isEmpty) {
           return const Text('No feedback available');
         }

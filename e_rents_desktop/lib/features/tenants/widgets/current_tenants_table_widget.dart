@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class CurrentTenantsTableWidget extends StatefulWidget {
@@ -41,280 +45,501 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
   // Add column definitions as class member
   List<Map<String, dynamic>> _columnDefs = [];
 
+  // Helper method to convert relative image URLs to absolute URLs
+  String? _getAbsoluteImageUrl(String? relativeUrl) {
+    if (relativeUrl == null || relativeUrl.isEmpty) return null;
+
+    if (relativeUrl.startsWith('/Images/')) {
+      // TODO: Get base URL from configuration instead of hardcoding
+      return 'http://localhost:5000$relativeUrl';
+    } else if (relativeUrl.startsWith('http')) {
+      return relativeUrl;
+    }
+    return null;
+  }
+
+  // Helper method to get cover image or first image
+  String? _getPropertyImageUrl(List<dynamic>? images) {
+    if (images == null || images.isEmpty) return null;
+
+    // Try to find cover image first
+    var coverImage = images.firstWhere(
+      (img) => img != null && img['isCover'] == true,
+      orElse: () => null,
+    );
+
+    // If no cover image, use first image
+    if (coverImage == null && images.isNotEmpty) {
+      coverImage = images[0];
+    }
+
+    // Convert relative URL to absolute URL
+    if (coverImage != null && coverImage['url'] != null) {
+      return _getAbsoluteImageUrl(coverImage['url'].toString());
+    }
+
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Apply filter based on search term and current filter field
-    final filteredTenants =
-        widget.tenants.where((tenant) {
-          if (widget.searchTerm.isEmpty) return true;
+    return Consumer<TenantProvider>(
+      builder: (context, tenantProvider, child) {
+        // Safety check: Handle loading or empty states
+        if (tenantProvider.state == ViewState.Busy) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          switch (widget.currentFilterField) {
-            case 'Full Name':
-              return tenant.fullName.toLowerCase().contains(
-                widget.searchTerm.toLowerCase(),
-              );
-            case 'Email':
-              return tenant.email.toLowerCase().contains(
-                widget.searchTerm.toLowerCase(),
-              );
-            case 'Phone':
-              return (tenant.phone ?? '').toLowerCase().contains(
-                widget.searchTerm.toLowerCase(),
-              );
-            case 'City':
-              return (tenant.addressDetail?.geoRegion?.city ?? '')
-                  .toLowerCase()
-                  .contains(widget.searchTerm.toLowerCase());
-            default:
-              return tenant.fullName.toLowerCase().contains(
-                widget.searchTerm.toLowerCase(),
-              );
-          }
-        }).toList();
-
-    if (filteredTenants.isEmpty) {
-      return const Center(
-        child: Text(
-          'No current tenants found matching your search',
-          style: TextStyle(fontSize: 18),
-        ),
-      );
-    }
-
-    // TODO: Replace this mock property assignment with real data from Tenant object or related service call.
-    final Map<String, Property?> tenantProperties =
-        {}; // Initialize as potentially nullable or handle missing properties
-
-    // Example: If tenant objects had a list of associated properties or a primary property ID:
-    // for (final tenant in filteredTenants) {
-    //   if (tenant.associatedPropertyId != null) { // Assuming tenant model has such a field
-    //     // You would need a way to fetch this property by ID, perhaps from a PropertyProvider
-    //     // This is a placeholder for where that logic would go.
-    //     // tenantProperties[tenant.id] = propertyProvider.getPropertyById(tenant.associatedPropertyId);
-    //   }
-    // }
-    // For now, without a clear source, we will leave tenantProperties map empty or handle nulls in cell builder.
-
-    _columnDefs = [
-      {
-        'name': 'Profile',
-        'width': const FixedColumnWidth(50),
-        'isEssential': true,
-        'column': const DataColumn(label: Text('Profile')),
-        'cell':
-            (User tenant) => DataCell(
-              CircleAvatar(
-                radius: 16,
-                backgroundImage:
-                    (tenant.profileImage != null &&
-                            tenant.profileImage!.url != null &&
-                            tenant.profileImage!.url!.isNotEmpty)
-                        ? NetworkImage(tenant.profileImage!.url!)
-                        : const AssetImage('assets/images/user-image.png'),
-                child:
-                    tenant.profileImage == null
-                        ? Text(
-                          '${tenant.firstName[0]}${tenant.lastName[0]}',
-                          style: const TextStyle(fontSize: 12),
-                        )
-                        : null,
-              ),
-            ),
-      },
-      {
-        'name': 'Full Name',
-        'width': const FlexColumnWidth(1.2),
-        'isEssential': true,
-        'column': const DataColumn(label: Text('Full Name')),
-        'cell':
-            (User tenant) => DataCell(
-              Text(tenant.fullName, overflow: TextOverflow.ellipsis),
-            ),
-      },
-      {
-        'name': 'Property',
-        'width': const FlexColumnWidth(1.5),
-        'isEssential': true,
-        'column': const DataColumn(label: Text('Property')),
-        'cell': (User tenant) {
-          // Get the property, handle null case if assignment fails
-          final property = tenantProperties[tenant.id];
-          if (property == null) {
-            return const DataCell(
-              Text('N/A - Property data pending'),
-            ); // Placeholder for missing property
-          }
-
-          return DataCell(
-            InkWell(
-              // Changed from GestureDetector
-              onTap:
-                  () => widget.onNavigateToProperty(
-                    property,
-                  ), // Use push if the callback allows or modify callback
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Row(
-                  children: [
-                    // Property image placeholder/actual image
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child:
-                            property.images.isNotEmpty &&
-                                    property.images.first.url != null &&
-                                    property.images.first.url!.isNotEmpty
-                                ? Image.network(
-                                  property.images.first.url!,
-                                  width: 32,
-                                  height: 32,
-                                  fit: BoxFit.cover,
-                                )
-                                : Image.asset(
-                                  'assets/images/placeholder.jpg',
-                                  width: 32,
-                                  height: 32,
-                                  fit: BoxFit.cover,
-                                ),
-                      ),
-                    ),
-                    // Property name
-                    Expanded(
-                      // Use Expanded instead of Flexible for simpler layout
-                      child: Text(
-                        property.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                  ],
+        if (tenantProvider.state == ViewState.Error) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                SizedBox(height: 16),
+                Text(
+                  'Error loading tenant data',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              ),
+                SizedBox(height: 8),
+                Text(
+                  tenantProvider.errorMessage ?? 'Unknown error occurred',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ],
             ),
           );
-        },
-      },
-      {
-        'name': 'Phone',
-        'width': const FlexColumnWidth(1),
-        'isEssential': false,
-        'column': const DataColumn(label: Text('Phone')),
-        'cell':
-            (User tenant) => DataCell(
-              Text(tenant.phone ?? 'N/A', overflow: TextOverflow.ellipsis),
+        }
+
+        // Get property assignments from provider with debug info
+        final propertyAssignments = tenantProvider.tenantPropertyAssignments;
+        print(
+          'TenantTableWidget: Building with ${widget.tenants.length} tenants, ${propertyAssignments.length} property assignments',
+        );
+
+        // Apply filter based on search term and current filter field
+        final filteredTenants =
+            widget.tenants.where((tenant) {
+              if (widget.searchTerm.isEmpty) return true;
+
+              switch (widget.currentFilterField) {
+                case 'Full Name':
+                  return tenant.fullName.toLowerCase().contains(
+                    widget.searchTerm.toLowerCase(),
+                  );
+                case 'Email':
+                  return tenant.email.toLowerCase().contains(
+                    widget.searchTerm.toLowerCase(),
+                  );
+                case 'Phone':
+                  return (tenant.phone ?? '').toLowerCase().contains(
+                    widget.searchTerm.toLowerCase(),
+                  );
+                case 'City':
+                  return (tenant.addressDetail?.geoRegion?.city ?? '')
+                      .toLowerCase()
+                      .contains(widget.searchTerm.toLowerCase());
+                default:
+                  return tenant.fullName.toLowerCase().contains(
+                    widget.searchTerm.toLowerCase(),
+                  );
+              }
+            }).toList();
+
+        if (filteredTenants.isEmpty) {
+          return const Center(
+            child: Text(
+              'No current tenants found matching your search',
+              style: TextStyle(fontSize: 18),
             ),
-      },
-      {
-        'name': 'City',
-        'width': const FlexColumnWidth(1),
-        'isEssential': false,
-        'column': const DataColumn(label: Text('City')),
-        'cell':
-            (User tenant) => DataCell(
-              Text(
-                tenant.addressDetail?.geoRegion?.city ?? 'N/A',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-      },
-      {
-        'name': 'Actions',
-        'width': const FixedColumnWidth(80),
-        'isEssential': true,
-        'column': const DataColumn(label: Text('Actions')),
-        'cell':
-            (User tenant) => DataCell(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.message,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    onPressed: () => widget.onSendMessage(tenant),
-                    tooltip: 'Send Message',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+          );
+        }
+
+        _columnDefs = [
+          {
+            'name': 'Profile',
+            'width': const FixedColumnWidth(50),
+            'isEssential': true,
+            'column': const DataColumn(label: Text('Profile')),
+            'cell':
+                (User tenant) => DataCell(
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundImage:
+                        (tenant.profileImage != null &&
+                                tenant.profileImage!.url != null &&
+                                tenant.profileImage!.url!.isNotEmpty)
+                            ? NetworkImage(tenant.profileImage!.url!)
+                            : const AssetImage('assets/images/user-image.png'),
+                    child:
+                        tenant.profileImage == null
+                            ? Text(
+                              '${tenant.firstName[0]}${tenant.lastName[0]}',
+                              style: const TextStyle(fontSize: 12),
+                            )
+                            : null,
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.person,
-                      color: Colors.green,
-                      size: 20,
-                    ),
-                    onPressed:
-                        () => widget.onShowProfile(
-                          tenant,
-                          tenantProperties[tenant.id] != null
-                              ? [tenantProperties[tenant.id]!]
-                              : [],
-                        ),
-                    tooltip: 'View Profile',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
-              ),
-            ),
-      },
-    ];
+                ),
+          },
+          {
+            'name': 'Full Name',
+            'width': const FlexColumnWidth(1.2),
+            'isEssential': true,
+            'column': const DataColumn(label: Text('Full Name')),
+            'cell':
+                (User tenant) => DataCell(
+                  Text(tenant.fullName, overflow: TextOverflow.ellipsis),
+                ),
+          },
+          {
+            'name': 'Property',
+            'width': const FlexColumnWidth(1.5),
+            'isEssential': true,
+            'column': const DataColumn(label: Text('Property')),
+            'cell': (User tenant) {
+              // Get property assignment from provider
+              final propertyData = propertyAssignments[tenant.id];
 
-    // Create the list of columns based on visibility settings
-    final List<DataColumn> columns = [];
-    final Map<int, TableColumnWidth> columnWidths = {};
-    int columnIndex = 0;
+              if (propertyData == null || propertyData.isEmpty) {
+                return const DataCell(Text('N/A - No active lease'));
+              }
 
-    // Add only visible columns
-    for (final colDef in _columnDefs) {
-      if (_columnVisibility[colDef['name']] == true) {
-        columns.add(colDef['column'] as DataColumn);
-        columnWidths[columnIndex] = colDef['width'] as TableColumnWidth;
-        columnIndex++;
-      }
-    }
+              // Parse property data from backend response with null safety
+              final propertyTitle =
+                  propertyData['title']?.toString() ?? 'Unknown Property';
 
-    return Column(
-      children: [
-        // Column visibility controls
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-          child: _buildColumnVisibilityControls(),
-        ),
-        // Fitted table container
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Use the available width from constraints
-              final availableWidth = constraints.maxWidth;
+              // Get cover image or first image with proper URL conversion
+              final propertyImageUrl = _getPropertyImageUrl(
+                propertyData['images'] as List<dynamic>?,
+              );
 
-              return CustomTableWidget<User>(
-                data: filteredTenants,
-                dataRowHeight: 60,
-                columnWidths: columnWidths,
-                columns: columns,
-                cellsBuilder: (tenant) {
-                  final cells = <DataCell>[];
-                  for (final colDef in _columnDefs) {
-                    if (_columnVisibility[colDef['name']] == true) {
-                      final cellBuilder = colDef['cell'] as Function;
-                      cells.add(cellBuilder(tenant));
+              return DataCell(
+                InkWell(
+                  onTap: () {
+                    print('TenantTable: Property cell clicked!');
+                    print(
+                      'TenantTable: propertyData is null: ${propertyData == null}',
+                    );
+                    print(
+                      'TenantTable: propertyData keys: ${propertyData?.keys.toList()}',
+                    );
+
+                    // Create a property object from the data to navigate
+                    if (propertyData['id'] != null) {
+                      print(
+                        'TenantTable: Creating property from data: $propertyData',
+                      );
+
+                      final propertyIdInt =
+                          int.tryParse(propertyData['id'].toString()) ?? 0;
+
+                      print('TenantTable: Parsed property ID: $propertyIdInt');
+
+                      final property = Property(
+                        id: propertyIdInt,
+                        title: propertyTitle,
+                        // Add other required fields with safe defaults
+                        ownerId:
+                            int.tryParse(
+                              propertyData['ownerId']?.toString() ?? '0',
+                            ) ??
+                            0,
+                        description:
+                            propertyData['description']?.toString() ?? '',
+                        type: PropertyType.apartment, // Default type
+                        price:
+                            (propertyData['price']?.toString() != null
+                                ? double.tryParse(
+                                      propertyData['price'].toString(),
+                                    ) ??
+                                    0.0
+                                : 0.0),
+                        rentingType: RentingType.monthly, // Default
+                        status: PropertyStatus.available, // Default
+                        images: [], // Will be populated if needed
+                        bedrooms:
+                            int.tryParse(
+                              propertyData['bedrooms']?.toString() ?? '0',
+                            ) ??
+                            0,
+                        bathrooms:
+                            int.tryParse(
+                              propertyData['bathrooms']?.toString() ?? '0',
+                            ) ??
+                            0,
+                        area:
+                            (propertyData['area']?.toString() != null
+                                ? double.tryParse(
+                                      propertyData['area'].toString(),
+                                    ) ??
+                                    0.0
+                                : 0.0),
+                        maintenanceIssues: [], // Add required field
+                        amenities: [],
+                        dateAdded: DateTime.now(),
+                        addressDetail: null,
+                      );
+
+                      print(
+                        'TenantTable: Created property object with ID: ${property.id}, title: ${property.title}',
+                      );
+                      widget.onNavigateToProperty(property);
+                    } else {
+                      print(
+                        'TenantTable: propertyData[\'id\'] is null or missing!',
+                      );
+                      print('TenantTable: Full propertyData: $propertyData');
                     }
-                  }
-                  return cells;
-                },
-                searchStringBuilder: (tenant) => tenant.fullName,
+                  },
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Row(
+                      children: [
+                        // Property image placeholder/actual image
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child:
+                                propertyImageUrl != null &&
+                                        propertyImageUrl.isNotEmpty
+                                    ? Image.network(
+                                      propertyImageUrl,
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Container(
+                                                width: 32,
+                                                height: 32,
+                                                color: Colors.grey[300],
+                                                child: const Icon(
+                                                  Icons.home,
+                                                  color: Colors.grey,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                    )
+                                    : Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        color: Colors.grey[300],
+                                      ),
+                                      child: const Icon(
+                                        Icons.home,
+                                        color: Colors.grey,
+                                        size: 20,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                        // Property name with additional null safety
+                        Expanded(
+                          child: Text(
+                            propertyTitle.isEmpty
+                                ? 'Unknown Property'
+                                : propertyTitle,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             },
-          ),
-        ),
-      ],
+          },
+          {
+            'name': 'Phone',
+            'width': const FlexColumnWidth(1),
+            'isEssential': false,
+            'column': const DataColumn(label: Text('Phone')),
+            'cell':
+                (User tenant) => DataCell(
+                  Text(tenant.phone ?? 'N/A', overflow: TextOverflow.ellipsis),
+                ),
+          },
+          {
+            'name': 'City',
+            'width': const FlexColumnWidth(1),
+            'isEssential': false,
+            'column': const DataColumn(label: Text('City')),
+            'cell':
+                (User tenant) => DataCell(
+                  Text(
+                    tenant.addressDetail?.geoRegion?.city ?? 'N/A',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+          },
+          {
+            'name': 'Actions',
+            'width': const FixedColumnWidth(120),
+            'isEssential': true,
+            'column': const DataColumn(label: Text('Actions')),
+            'cell':
+                (User tenant) => DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.message,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
+                        onPressed: () => widget.onSendMessage(tenant),
+                        tooltip: 'Send Message',
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.person,
+                          color: Colors.green,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          // Create properties list from assignment data
+                          final propertyData = propertyAssignments[tenant.id];
+                          final properties = <Property>[];
+
+                          if (propertyData != null &&
+                              propertyData.isNotEmpty &&
+                              propertyData['id'] != null) {
+                            // Get property image URL using helper method
+                            final mainImageUrl = _getPropertyImageUrl(
+                              propertyData['images'] as List<dynamic>?,
+                            );
+
+                            final property = Property(
+                              id:
+                                  int.tryParse(propertyData['id'].toString()) ??
+                                  0,
+                              title:
+                                  propertyData['title']?.toString() ??
+                                  'Unknown Property',
+                              ownerId:
+                                  int.tryParse(
+                                    propertyData['ownerId']?.toString() ?? '0',
+                                  ) ??
+                                  0,
+                              description:
+                                  propertyData['description']?.toString() ?? '',
+                              type: PropertyType.apartment, // Default type
+                              price:
+                                  (propertyData['price']?.toString() != null
+                                      ? double.tryParse(
+                                            propertyData['price'].toString(),
+                                          ) ??
+                                          0.0
+                                      : 0.0),
+                              rentingType: RentingType.monthly, // Default
+                              status: PropertyStatus.available, // Default
+                              images: [], // Will be populated if needed
+                              bedrooms:
+                                  int.tryParse(
+                                    propertyData['bedrooms']?.toString() ?? '0',
+                                  ) ??
+                                  0,
+                              bathrooms:
+                                  int.tryParse(
+                                    propertyData['bathrooms']?.toString() ??
+                                        '0',
+                                  ) ??
+                                  0,
+                              area:
+                                  (propertyData['area']?.toString() != null
+                                      ? double.tryParse(
+                                            propertyData['area'].toString(),
+                                          ) ??
+                                          0.0
+                                      : 0.0),
+                              maintenanceIssues: [], // Add required field
+                              amenities: [],
+                              dateAdded: DateTime.now(),
+                              addressDetail: null,
+                            );
+                            properties.add(property);
+                          }
+
+                          widget.onShowProfile(tenant, properties);
+                        },
+                        tooltip: 'View Profile',
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          },
+        ];
+
+        // Create the list of columns based on visibility settings
+        final List<DataColumn> columns = [];
+        final Map<int, TableColumnWidth> columnWidths = {};
+        int columnIndex = 0;
+
+        // Add only visible columns
+        for (final colDef in _columnDefs) {
+          if (_columnVisibility[colDef['name']] == true) {
+            columns.add(colDef['column'] as DataColumn);
+            columnWidths[columnIndex] = colDef['width'] as TableColumnWidth;
+            columnIndex++;
+          }
+        }
+
+        return Column(
+          children: [
+            // Column visibility controls
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+              child: _buildColumnVisibilityControls(),
+            ),
+            // Fitted table container
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Use the available width from constraints
+                  final availableWidth = constraints.maxWidth;
+
+                  return CustomTableWidget<User>(
+                    data: filteredTenants,
+                    dataRowHeight: 60,
+                    columnWidths: columnWidths,
+                    columns: columns,
+                    cellsBuilder: (tenant) {
+                      final cells = <DataCell>[];
+                      for (final colDef in _columnDefs) {
+                        if (_columnVisibility[colDef['name']] == true) {
+                          final cellBuilder = colDef['cell'] as Function;
+                          cells.add(cellBuilder(tenant));
+                        }
+                      }
+                      return cells;
+                    },
+                    searchStringBuilder: (tenant) => tenant.fullName,
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 

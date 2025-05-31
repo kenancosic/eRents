@@ -207,13 +207,27 @@ class TenantService extends ApiService {
       'TenantService: Fetching property assignments for ${tenantIds.length} tenants...',
     );
     try {
-      final queryParams = {'tenantIds': tenantIds.join(',')};
-      final queryString = Uri(queryParameters: queryParams).query;
+      // Build query string with multiple tenantIds parameters
+      // Backend expects List<int> tenantIds which requires multiple parameters like: tenantIds=1&tenantIds=2&tenantIds=3
+      final queryParts = tenantIds.map((id) => 'tenantIds=$id').toList();
+      final queryString = queryParts.join('&');
+
       final response = await get(
         '/Tenant/assignments?$queryString',
         authenticated: true,
       );
-      return jsonDecode(response.body);
+
+      // Check if response body is empty
+      if (response.body.isEmpty) {
+        print('TenantService: Empty response body from /Tenant/assignments');
+        return <String, dynamic>{};
+      }
+
+      final result = jsonDecode(response.body);
+      print(
+        'TenantService: Successfully fetched property assignments for ${tenantIds.length} tenants',
+      );
+      return result;
     } catch (e) {
       print('TenantService: Error fetching tenant property assignments: $e');
       rethrow;
