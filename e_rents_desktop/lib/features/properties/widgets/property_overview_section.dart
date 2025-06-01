@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -74,7 +74,7 @@ class PropertyOverviewSection extends StatelessWidget {
         const Divider(),
         _buildDetailRow('Currency', property.currency),
         const Divider(),
-        _buildAmenityRow(context, 'Amenities', property.amenities ?? []),
+        _buildAmenitySection(context),
       ],
     );
   }
@@ -98,67 +98,29 @@ class PropertyOverviewSection extends StatelessWidget {
     );
   }
 
-  Widget _buildAmenityRow(
-    BuildContext context,
-    String label,
-    List<String> amenities,
-  ) {
-    return Consumer<PropertyProvider>(
-      builder: (context, propertyProvider, _) {
-        return FutureBuilder<Map<String, IconData>>(
-          future: propertyProvider.fetchAmenitiesWithIcons(),
-          builder: (context, snapshot) {
-            // Use fetched amenities if available, otherwise fallback to provider's local amenities
-            final Map<String, IconData> amenityIcons =
-                snapshot.data ?? propertyProvider.amenityIcons;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    child: Text(
-                      label,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  Expanded(
-                    child:
-                        amenities.isEmpty
-                            ? Text(
-                              'None',
-                              style: TextStyle(color: Colors.grey[600]),
-                            )
-                            : Wrap(
-                              spacing: 8.0,
-                              runSpacing: 4.0,
-                              children:
-                                  amenities.map((amenity) {
-                                    final icon = amenityIcons[amenity];
-                                    return Chip(
-                                      avatar:
-                                          icon != null
-                                              ? Icon(icon, size: 18)
-                                              : null,
-                                      label: Text(amenity),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      labelStyle: const TextStyle(fontSize: 12),
-                                      backgroundColor: Colors.grey[200],
-                                    );
-                                  }).toList(),
-                            ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+  Widget _buildAmenitySection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(
+            width: 120,
+            child: Text(
+              'Amenities',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: AmenityManager(
+              mode: AmenityManagerMode.view,
+              initialAmenityIds: property.amenityIds,
+              initialAmenityNames: property.amenities,
+              showTitle: false,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

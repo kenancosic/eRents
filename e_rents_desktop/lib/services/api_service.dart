@@ -17,6 +17,7 @@ class ApiService {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Client-Type': 'Desktop',
     };
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
@@ -46,14 +47,14 @@ class ApiService {
             response = await http.post(
               url,
               headers: headers,
-              body: jsonEncode(body),
+              body: body != null ? jsonEncode(body) : null,
             );
             break;
           case 'PUT':
             response = await http.put(
               url,
               headers: headers,
-              body: jsonEncode(body),
+              body: body != null ? jsonEncode(body) : null,
             );
             break;
           case 'DELETE':
@@ -66,6 +67,9 @@ class ApiService {
         _handleResponse(response);
         return response;
       } catch (e) {
+        print(
+          'ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries): $e',
+        );
         retryCount++;
         if (retryCount == maxRetries) {
           rethrow;

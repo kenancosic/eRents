@@ -206,14 +206,14 @@ namespace eRents.Application.Service.TenantService
 					UserEmail = tenant.User?.Email ?? "No email",
 					UserPhone = tenant.User?.PhoneNumber,
 					UserCity = tenant.User?.AddressDetail?.GeoRegion?.City,
-					ProfileImageUrl = tenant.User?.ProfileImage != null ? $"/Images/{tenant.User.ProfileImage.ImageId}" : null,
+					ProfileImageUrl = tenant.User?.ProfileImage != null ? $"/Image/{tenant.User.ProfileImage.ImageId}" : null,
 
 					// Property details
 					PropertyTitle = tenant.Property?.Name,
 					PropertyAddress = tenant.Property?.AddressDetail?.StreetLine1,
 					PropertyPrice = tenant.Property?.Price,
 					PropertyImageUrl = tenant.Property?.Images?.FirstOrDefault() != null ?
-						$"/Images/{tenant.Property.Images.First().ImageId}" : null,
+						$"/Image/{tenant.Property.Images.First().ImageId}" : null,
 
 					// Performance metrics
 					TotalBookings = totalBookings,
@@ -261,7 +261,7 @@ namespace eRents.Application.Service.TenantService
 				PaypalUserIdentifier = user.PaypalUserIdentifier,
 
 				// Profile image
-				ProfileImageUrl = user.ProfileImage != null ? $"/Images/{user.ProfileImage.ImageId}" : null,
+				ProfileImageUrl = user.ProfileImage != null ? $"/Image/{user.ProfileImage.ImageId}" : null,
 
 				// Address details if available
 				AddressDetail = user.AddressDetail != null ? new AddressDetailResponseDto
@@ -308,7 +308,7 @@ namespace eRents.Application.Service.TenantService
 				UserEmail = preference.User?.Email,
 				UserPhone = preference.User?.PhoneNumber,
 				UserCity = preference.User?.AddressDetail?.GeoRegion?.City,
-				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/Images/{preference.User.ProfileImage.ImageId}" : null,
+				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/Image/{preference.User.ProfileImage.ImageId}" : null,
 
 				// Placeholder match score - TODO: Implement ML-based algorithm
 				MatchScore = placeholderMatchScore,
@@ -357,8 +357,8 @@ namespace eRents.Application.Service.TenantService
 					ImageId = img.ImageId,
 					FileName = img.FileName,
 					DateUploaded = img.DateUploaded,
-					Url = $"/Images/{img.ImageId}",
-					ThumbnailUrl = img.ThumbnailData != null ? $"/Images/{img.ImageId}/thumbnail" : null
+									Url = $"/Image/{img.ImageId}",
+				ThumbnailUrl = img.ThumbnailData != null ? $"/Image/{img.ImageId}/thumbnail" : null
 				}).ToList() ?? new List<ImageResponseDto>(),
 
 				// Address details

@@ -1,17 +1,64 @@
 import 'dart:io'; // Required for File operations if using actual file paths
+import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:e_rents_desktop/utils/image_utils.dart';
 
 /// A widget for picking, displaying, and managing a list of image paths.
+class ImageInfo {
+  final int? id;
+  final String? fileName;
+  final String? url;
+  final Uint8List? data;
+  final bool isCover;
+  final bool isNew; // Flag to indicate if this is a newly selected image
+
+  ImageInfo({
+    this.id,
+    this.fileName,
+    this.url,
+    this.data,
+    this.isCover = false,
+    this.isNew = false,
+  });
+
+  ImageInfo copyWith({
+    int? id,
+    String? fileName,
+    String? url,
+    Uint8List? data,
+    bool? isCover,
+    bool? isNew,
+  }) {
+    return ImageInfo(
+      id: id ?? this.id,
+      fileName: fileName ?? this.fileName,
+      url: url ?? this.url,
+      data: data ?? this.data,
+      isCover: isCover ?? this.isCover,
+      isNew: isNew ?? this.isNew,
+    );
+  }
+}
+
 class ImagePickerInput extends StatefulWidget {
-  final List<String> initialImages; // List of image paths (or identifiers)
-  final Function(List<String> updatedImages) onChanged;
+  final List<dynamic> initialImages;
+  final Function(List<ImageInfo>) onChanged;
+  final int maxImages;
+  final bool allowReordering;
+  final bool allowCoverSelection;
+  final String emptyStateText;
 
   const ImagePickerInput({
     super.key,
-    required this.initialImages,
+    this.initialImages = const [],
     required this.onChanged,
+    this.maxImages = 10,
+    this.allowReordering = true,
+    this.allowCoverSelection = true,
+    this.emptyStateText = 'No images selected. Click to add images.',
   });
 
   @override
@@ -19,55 +66,78 @@ class ImagePickerInput extends StatefulWidget {
 }
 
 class _ImagePickerInputState extends State<ImagePickerInput> {
-  late List<String> _images;
-  bool _isLoading = false;
+  List<ImageInfo> _images = [];
 
   @override
   void initState() {
     super.initState();
-    _images = List.from(widget.initialImages);
+    _initializeImages();
   }
 
   @override
-  void didUpdateWidget(covariant ImagePickerInput oldWidget) {
+  void didUpdateWidget(ImagePickerInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update state if initial images change externally
-    if (widget.initialImages != oldWidget.initialImages) {
-      setState(() {
-        _images = List.from(widget.initialImages);
-      });
+    if (oldWidget.initialImages != widget.initialImages) {
+      _initializeImages();
     }
   }
 
-  Future<void> _pickImages() async {
-    setState(() => _isLoading = true);
-    try {
-      final typeGroup = XTypeGroup(
-        label: 'images',
-        extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'], // Added webp
-      );
-      // Use openFiles to allow selecting multiple images
-      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+  void _initializeImages() {
+    _images =
+        widget.initialImages.map((img) {
+          if (img is Map<String, dynamic>) {
+            // Backend image format
+            return ImageInfo(
+              id: img['imageId'] ?? img['id'],
+              fileName: img['fileName'] ?? 'image.jpg',
+              url: img['url'],
+              isCover: img['isCover'] ?? false,
+              isNew: false,
+            );
+          } else if (img is ImageInfo) {
+            return img;
+          } else {
+            // Fallback
+            return ImageInfo(fileName: 'image.jpg', isNew: false);
+          }
+        }).toList();
+  }
 
-      if (files.isNotEmpty) {
-        // Assuming we store paths. If storing bytes, handle that here.
-        final newImagePaths = files.map((file) => file.path).toList();
+  Future<void> _pickImages() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: true,
+        withData: true,
+      );
+
+      if (result != null) {
+        final newImages =
+            result.files.map((file) {
+              return ImageInfo(
+                fileName: file.name,
+                data: file.bytes,
+                isNew: true,
+              );
+            }).toList();
+
         setState(() {
-          _images.addAll(newImagePaths);
+          _images.addAll(newImages);
+          // Limit to maxImages
+          if (_images.length > widget.maxImages) {
+            _images = _images.sublist(0, widget.maxImages);
+          }
         });
+
         widget.onChanged(_images);
       }
     } catch (e) {
-      // Handle potential errors during file picking
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error picking images: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking images: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -78,214 +148,341 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
     widget.onChanged(_images);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              // Dynamic count based on the current state
-              '${_images.length} Image${_images.length == 1 ? '' : 's'}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            ElevatedButton.icon(
-              onPressed: _isLoading ? null : _pickImages,
-              icon:
-                  _isLoading
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Icon(Icons.add_photo_alternate),
-              label: const Text('Add Images'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (_images.isEmpty) _buildEmptyState() else _buildImageGrid(),
-      ],
-    );
+  void _setCoverImage(int index) {
+    if (!widget.allowCoverSelection) return;
+
+    setState(() {
+      for (int i = 0; i < _images.length; i++) {
+        _images[i] = _images[i].copyWith(isCover: i == index);
+      }
+    });
+    widget.onChanged(_images);
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity, // Take full available width
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-      decoration: BoxDecoration(
-        color: Colors.grey[100], // Subtle background
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  void _reorderImages(int oldIndex, int newIndex) {
+    if (!widget.allowReordering) return;
+
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _images.removeAt(oldIndex);
+      _images.insert(newIndex, item);
+    });
+    widget.onChanged(_images);
+  }
+
+  Widget _buildImageTile(ImageInfo image, int index) {
+    return Card(
+      margin: const EdgeInsets.all(4.0),
+      child: Stack(
         children: [
-          Icon(
-            Icons.image_search, // More descriptive icon
-            size: 48,
-            color: Colors.grey[400],
+          // Image display
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8.0),
+              color: Colors.grey[200],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8.0),
+              child: _buildImageWidget(image),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'No images selected',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+
+          // Cover badge
+          if (image.isCover && widget.allowCoverSelection)
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'COVER',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+          // New badge
+          if (image.isNew)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'NEW',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+          // Action buttons
+          Positioned(
+            bottom: 4,
+            right: 4,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.allowCoverSelection && !image.isCover)
+                  InkWell(
+                    onTap: () => _setCoverImage(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.star_border,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => _removeImage(index),
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Click the button above to add images.',
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+
+          // File name
+          Positioned(
+            bottom: 4,
+            left: 4,
+            right: 50,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                image.fileName ?? 'image.jpg',
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildImageGrid() {
-    // Determine cross axis count based on available width
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        int crossAxisCount = (constraints.maxWidth / 150).floor().clamp(2, 5);
-        // Adjust the 150 (approx item width) as needed
+  Widget _buildImageWidget(ImageInfo image) {
+    if (image.data != null) {
+      // New image with local data
+      return Image.memory(
+        image.data!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildErrorWidget();
+        },
+      );
+    } else if (image.url != null) {
+      // Existing image with URL - use ImageUtils for proper handling
+      return ImageUtils.buildImage(
+        image.url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorWidget: _buildErrorWidget(),
+      );
+    } else {
+      return _buildErrorWidget();
+    }
+  }
 
-        return GridView.builder(
-          shrinkWrap: true, // Important for use in Column/ScrollView
-          physics:
-              const NeverScrollableScrollPhysics(), // Disable grid scrolling
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 1, // Square images
+  Widget _buildErrorWidget() {
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(
+        child: Icon(Icons.error_outline, color: Colors.grey, size: 32),
+      ),
+    );
+  }
+
+  Widget _buildAddImageButton() {
+    return Card(
+      margin: const EdgeInsets.all(4.0),
+      child: InkWell(
+        onTap: _images.length < widget.maxImages ? _pickImages : null,
+        borderRadius: BorderRadius.circular(8.0),
+        child: Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8.0),
+            border: Border.all(
+              color: Colors.grey[400]!,
+              style: BorderStyle.solid,
+              width: 2,
+            ),
+            color:
+                _images.length < widget.maxImages
+                    ? Colors.grey[50]
+                    : Colors.grey[200],
           ),
-          itemCount: _images.length,
-          itemBuilder: (context, index) {
-            final imagePath = _images[index];
-            // Handle both URLs and local file paths
-            ImageProvider imageProvider;
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_photo_alternate_outlined,
+                size: 32,
+                color:
+                    _images.length < widget.maxImages
+                        ? Colors.grey[600]
+                        : Colors.grey[400],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _images.length < widget.maxImages
+                    ? 'Add Images'
+                    : 'Max ${widget.maxImages}',
+                style: TextStyle(
+                  color:
+                      _images.length < widget.maxImages
+                          ? Colors.grey[600]
+                          : Colors.grey[400],
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            if (imagePath.startsWith('http://') ||
-                imagePath.startsWith('https://')) {
-              // Use NetworkImage for URLs
-              imageProvider = NetworkImage(imagePath);
-            } else if (imagePath.startsWith('file://') ||
-                !imagePath.startsWith('/')) {
-              // Handle file:// URLs or relative paths
-              final cleanPath = imagePath.replaceFirst('file://', '');
-              imageProvider = FileImage(File(cleanPath));
-            } else {
-              // Use FileImage for local paths
-              imageProvider = FileImage(File(imagePath));
-            }
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Images grid
+        if (_images.isNotEmpty || _images.length < widget.maxImages)
+          Container(
+            height: 140,
+            child:
+                widget.allowReordering
+                    ? ReorderableListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount:
+                          _images.length +
+                          (_images.length < widget.maxImages ? 1 : 0),
+                      onReorder: _reorderImages,
+                      itemBuilder: (context, index) {
+                        if (index == _images.length) {
+                          return Container(
+                            key: const ValueKey('add_button'),
+                            child: _buildAddImageButton(),
+                          );
+                        }
+                        return Container(
+                          key: ValueKey(
+                            'image_${_images[index].id ?? index}_$index',
+                          ),
+                          child: _buildImageTile(_images[index], index),
+                        );
+                      },
+                    )
+                    : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount:
+                          _images.length +
+                          (_images.length < widget.maxImages ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index == _images.length) {
+                          return Container(
+                            key: const ValueKey('add_image_button'),
+                            child: _buildAddImageButton(),
+                          );
+                        }
+                        return Container(
+                          key: ValueKey('image_${_images[index].id ?? index}'),
+                          child: _buildImageTile(_images[index], index),
+                        );
+                      },
+                    ),
+          ),
 
-            return Card(
-              key: ValueKey(imagePath), // Use path as key
-              clipBehavior: Clip.antiAlias,
-              elevation: 2,
-              child: Stack(
-                fit: StackFit.expand,
+        // Empty state
+        if (_images.isEmpty)
+          Container(
+            height: 140,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8.0),
+              color: Colors.grey[50],
+            ),
+            child: InkWell(
+              onTap: _pickImages,
+              borderRadius: BorderRadius.circular(8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image(
-                    image: imageProvider,
-                    fit: BoxFit.cover,
-                    // Add error builder for robustness
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[200],
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.broken_image, color: Colors.grey[400]),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Text(
-                                'Load Error',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    // Optional: Add loading builder
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value:
-                              loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                          strokeWidth: 2,
-                        ),
-                      );
-                    },
+                  Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 48,
+                    color: Colors.grey[400],
                   ),
-                  // Remove button
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: Material(
-                      // Use Material for InkWell effect
-                      color: Colors.black.withOpacity(0.6),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: () => _removeImage(index),
-                        customBorder: const CircleBorder(),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.emptyStateText,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    textAlign: TextAlign.center,
                   ),
-                  // Cover image indicator (optional)
-                  if (index == 0)
-                    Positioned(
-                      bottom: 4,
-                      left: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Cover',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+
+        // Instructions
+        const SizedBox(height: 8),
+        Text(
+          widget.allowCoverSelection
+              ? 'Tip: Click the star icon to set a cover image. Drag to reorder.'
+              : 'Click "Add Images" or drag images here.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+        ),
+      ],
     );
   }
 }

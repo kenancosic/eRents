@@ -49,7 +49,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
   String? _getAbsoluteImageUrl(String? relativeUrl) {
     if (relativeUrl == null || relativeUrl.isEmpty) return null;
 
-    if (relativeUrl.startsWith('/Images/')) {
+    if (relativeUrl.startsWith('/Image/')) {
       // TODO: Get base URL from configuration instead of hardcoding
       return 'http://localhost:5000$relativeUrl';
     } else if (relativeUrl.startsWith('http')) {

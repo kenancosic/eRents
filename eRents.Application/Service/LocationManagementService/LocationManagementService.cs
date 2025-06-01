@@ -71,7 +71,13 @@ namespace eRents.Application.Service.LocationManagementService
         public async Task<AddressDetail> ProcessUserAddressAsync(int userId, AddressDetailDto addressDto)
         {
             // Validate user access (ensure current user can modify this user)
-            var currentUserId = int.Parse(_currentUserService.UserId);
+            var currentUserIdString = _currentUserService.UserId;
+            if (string.IsNullOrEmpty(currentUserIdString))
+                throw new UnauthorizedAccessException("User not authenticated");
+
+            if (!int.TryParse(currentUserIdString, out int currentUserId))
+                throw new UnauthorizedAccessException("Invalid user ID format");
+
             if (currentUserId != userId)
                 throw new UnauthorizedAccessException("Cannot modify address for another user");
 
@@ -96,7 +102,13 @@ namespace eRents.Application.Service.LocationManagementService
         public async Task<AddressDetail> ProcessPropertyAddressAsync(int propertyId, AddressDetailDto addressDto)
         {
             // Validate property access (ensure current user owns this property)
-            var currentUserId = int.Parse(_currentUserService.UserId);
+            var currentUserIdString = _currentUserService.UserId;
+            if (string.IsNullOrEmpty(currentUserIdString))
+                throw new UnauthorizedAccessException("User not authenticated");
+
+            if (!int.TryParse(currentUserIdString, out int currentUserId))
+                throw new UnauthorizedAccessException("Invalid user ID format");
+
             var property = await _propertyRepository.GetByIdAsync(propertyId);
             if (property == null || property.OwnerId != currentUserId)
                 throw new UnauthorizedAccessException("Cannot modify address for property you don't own");

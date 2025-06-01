@@ -76,6 +76,7 @@ namespace eRents.Domain.Repositories
 							.Include(p => p.Reviews)  // Include reviews for AverageRating calculation
 							.Include(p => p.AddressDetail)
 							    .ThenInclude(ad => ad.GeoRegion)
+							.Include(p => p.Amenities)  // Include amenities for property editing
 							.AsNoTracking()
 							.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 		}

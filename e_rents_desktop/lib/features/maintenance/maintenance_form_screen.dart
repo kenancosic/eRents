@@ -178,12 +178,18 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             ),
             const SizedBox(height: 16),
             ImagePickerInput(
-              initialImages: _images.map((img) => img.url!).toList(),
+              initialImages: _images,
               onChanged: (updatedImages) {
                 setState(() {
                   _images =
                       updatedImages
-                          .map((url) => erents.ImageInfo(id: 0, url: url))
+                          .map(
+                            (imgInfo) => erents.ImageInfo(
+                              id: imgInfo.id ?? 0,
+                              url: imgInfo.url,
+                              fileName: imgInfo.fileName,
+                            ),
+                          )
                           .toList();
                 });
               },

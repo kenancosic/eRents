@@ -2,6 +2,9 @@
 using eRents.Domain.Models;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
+using eRents.Application.Service.LocationManagementService;
+using eRents.Domain.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace eRents.Application.Shared
 {
@@ -22,7 +25,7 @@ namespace eRents.Application.Shared
 
 			// Image mappings - Only map non-matching properties
 			CreateMap<Image, ImageResponse>()
-				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => $"http://localhost:5000/Images/{src.ImageId}"))
+				.ForMember(dest => dest.Url, opt => opt.MapFrom(src => $"/Image/{src.ImageId}"))
 				.ForMember(dest => dest.FileName, opt => opt.MapFrom(src =>
 					string.IsNullOrWhiteSpace(src.FileName) ? $"Untitled ({src.ImageId})" : src.FileName))
 				.ForMember(dest => dest.DateUploaded, opt => opt.MapFrom(src =>
@@ -46,9 +49,12 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
 				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null))
 				.ForMember(dest => dest.GeoRegion, opt => opt.MapFrom(src => src.AddressDetail != null ? src.AddressDetail.GeoRegion : null))
-				.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images)); // This will use the Image -> ImageResponse mapping
+				.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images)) // This will use the Image -> ImageResponse mapping
+				.ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities)); // Map amenities using Amenity -> AmenityResponse mapping
 
 			CreateMap<Property, PropertySummaryDto>()
+				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId))
+				.ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
 				.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
 				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
 				.ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
@@ -62,23 +68,24 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.Rooms, opt => opt.MapFrom(src => src.Bedrooms))
 				.ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
-						? $"http://localhost:5000/Images/{src.Images.FirstOrDefault(i => i.IsCover).ImageId}"
-						: (src.Images.FirstOrDefault() != null ? $"http://localhost:5000/Images/{src.Images.FirstOrDefault().ImageId}" : null)))
+						? $"/Image/{src.Images.FirstOrDefault(i => i.IsCover).ImageId}"
+						: (src.Images.FirstOrDefault() != null ? $"/Image/{src.Images.FirstOrDefault().ImageId}" : null)))
 				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
 						? src.Images.FirstOrDefault(i => i.IsCover).ImageId 
 						: (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().ImageId : (int?)null)))
 				.ForMember(dest => dest.CoverImageData, opt => opt.Ignore()); // Don't include binary data
 
+			// SIMPLE APPROACH: Let AutoMapper handle simple fields, ignore complex ones
 			CreateMap<PropertyInsertRequest, Property>()
-				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
+				.ForMember(dest => dest.Amenities, opt => opt.Ignore()) // Handled in service layer
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
 
 			CreateMap<PropertyUpdateRequest, Property>()
-				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
+				.ForMember(dest => dest.Amenities, opt => opt.Ignore()) // Handled in service layer
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
 
 			// Address and GeoRegion mappings - AutoMapper can handle these automatically
 			CreateMap<AddressDetail, AddressDetailDto>().ReverseMap();
@@ -102,11 +109,11 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore()) // Set in service logic
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
 
 			CreateMap<UserUpdateRequest, User>()
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
 
 			// MaintenanceIssue mappings - Fix field name mismatches
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using eRents.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using eRents.Shared.Services;
+using eRents.Domain.Repositories;
 
 namespace eRents.WebApi.Controllers
 {
@@ -87,31 +88,39 @@ namespace eRents.WebApi.Controllers
 		[Authorize(Roles = "Landlord")]
 		public async Task<IActionResult> GetPropertyBookingStats(int propertyId)
 		{
-			// Validate that the landlord owns this property
-			var currentUserId = _currentUserService.UserId;
-			var currentUserRole = _currentUserService.UserRole;
-			
-			if (currentUserRole != "Landlord")
-				return Forbid("Only landlords can view property booking statistics");
-
-			var property = await _propertyService.GetByIdAsync(propertyId);
-			if (property == null)
-				return NotFound("Property not found");
-
-			// Additional ownership check would be implemented in the service
-			var bookingSearch = new BookingSearchObject { PropertyId = propertyId };
-			var bookings = await _bookingService.GetAsync(bookingSearch);
-			
-			var stats = new
+			try
 			{
-				totalBookings = bookings.Count(),
-				totalRevenue = bookings.Sum(b => (double)b.TotalPrice),
-				averageBookingValue = bookings.Any() ? bookings.Average(b => (double)b.TotalPrice) : 0.0,
-				currentOccupancy = bookings.Count(b => b.Status == "Active"),
-				occupancyRate = bookings.Any() ? (double)bookings.Count(b => b.Status == "Active") / bookings.Count() : 0.0
-			};
+				// Validate that the landlord owns this property
+				var currentUserId = _currentUserService.UserId;
+				var currentUserRole = _currentUserService.UserRole;
+				
+				if (currentUserRole != "Landlord")
+					return Forbid("Only landlords can view property booking statistics");
 
-			return Ok(stats);
+				var property = await _propertyService.GetByIdAsync(propertyId);
+				if (property == null)
+					return NotFound("Property not found");
+
+				// Get bookings for this property (the service will automatically filter by landlord)
+				var bookingSearch = new BookingSearchObject { PropertyId = propertyId };
+				var bookings = await _bookingService.GetAsync(bookingSearch);
+				
+				var stats = new
+				{
+					totalBookings = bookings.Count(),
+					totalRevenue = bookings.Sum(b => (double)b.TotalPrice),
+					averageBookingValue = bookings.Any() ? bookings.Average(b => (double)b.TotalPrice) : 0.0,
+					currentOccupancy = bookings.Count(b => b.Status == "Active"),
+					occupancyRate = bookings.Any() ? (double)bookings.Count(b => b.Status == "Active") / bookings.Count() : 0.0
+				};
+
+				return Ok(stats);
+			}
+			catch (Exception ex)
+			{
+				// Log the exception (should use proper logging in production)
+				return StatusCode(500, new { error = new[] { "Error on server" } });
+			}
 		}
 
 		[HttpGet("{propertyId}/review-stats")]

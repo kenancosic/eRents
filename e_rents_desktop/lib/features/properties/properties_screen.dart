@@ -218,42 +218,46 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
             onTap: () => _navigateToPropertyDetails(context, property),
             child: ListTile(
               contentPadding: const EdgeInsets.all(16),
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child:
-                    property.images.isNotEmpty
-                        ? ImageUtils.buildImage(
-                          property.images.first.url!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorWidget: Container(
-                            width: 80,
-                            height: 80,
+              leading: SizedBox(
+                width: 56,
+                height: 56,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child:
+                      property.images.isNotEmpty
+                          ? ImageUtils.buildImage(
+                            property.images.first.url!,
+                            width: 56,
+                            height: 56,
+                            fit: BoxFit.cover,
+                            errorWidget: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey[600],
+                                size: 24,
+                              ),
+                            ),
+                          )
+                          : Container(
+                            width: 56,
+                            height: 56,
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
-                              Icons.image_not_supported,
+                              Icons.apartment,
                               color: Colors.grey[600],
-                              size: 32,
+                              size: 24,
                             ),
                           ),
-                        )
-                        : Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.apartment,
-                            color: Colors.grey[600],
-                            size: 32,
-                          ),
-                        ),
+                ),
               ),
               title: Text(
                 property.title,

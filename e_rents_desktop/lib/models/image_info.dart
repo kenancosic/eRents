@@ -6,6 +6,7 @@ class ImageInfo {
   final int? height;
   final int? sizeBytes;
   final DateTime? uploadedAt;
+  final bool isCover;
 
   ImageInfo({
     required this.id,
@@ -15,6 +16,7 @@ class ImageInfo {
     this.height,
     this.sizeBytes,
     this.uploadedAt,
+    this.isCover = false,
   });
 
   factory ImageInfo.fromJson(Map<String, dynamic> json) => ImageInfo(
@@ -30,6 +32,7 @@ class ImageInfo {
             : json['uploadedAt'] != null
             ? DateTime.tryParse(json['uploadedAt'] as String)
             : null,
+    isCover: json['isCover'] as bool? ?? false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -40,5 +43,6 @@ class ImageInfo {
     if (height != null) 'height': height,
     if (sizeBytes != null) 'fileSizeBytes': sizeBytes,
     if (uploadedAt != null) 'dateUploaded': uploadedAt!.toIso8601String(),
+    'isCover': isCover,
   };
 }

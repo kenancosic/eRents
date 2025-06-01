@@ -44,35 +44,76 @@ namespace eRents.Application.Service.PropertyService
 		}
 
 		/// <summary>
-		/// Process address using LocationManagementService before property insertion
+		/// Process complex relationships after basic AutoMapper mapping
 		/// </summary>
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
-			// Process address using LocationManagementService if address data is provided
+			// Handle address processing
 			if (insert.AddressDetail != null)
 			{
 				var processedAddress = await _locationManagementService.ProcessAddressAsync(insert.AddressDetail);
 				entity.AddressDetailId = processedAddress.AddressDetailId;
-				// Remove the AddressDetail from the insert to prevent AutoMapper conflicts
-				insert.AddressDetail = null;
+			}
+
+			// Handle amenities processing - SIMPLIFIED: Only use IDs
+			if (insert.AmenityIds?.Any() == true)
+			{
+				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(insert.AmenityIds);
+				entity.Amenities.Clear();
+				foreach (var amenity in amenities)
+				{
+					entity.Amenities.Add(amenity);
+				}
 			}
 
 			await base.BeforeInsertAsync(insert, entity);
 		}
 
 		/// <summary>
-		/// Process address using LocationManagementService before property update
+		/// Process complex relationships after basic AutoMapper mapping
 		/// </summary>
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
-			// Process address using LocationManagementService if address data is provided
+			// Handle address processing
 			if (update.AddressDetail != null)
 			{
 				var processedAddress = await _locationManagementService.ProcessPropertyAddressAsync(entity.PropertyId, update.AddressDetail);
 				entity.AddressDetailId = processedAddress.AddressDetailId;
-				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
-				update.AddressDetail = null;
 			}
+
+			// Handle amenities processing - SIMPLIFIED: Only use IDs
+			if (update.AmenityIds?.Any() == true)
+			{
+				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(update.AmenityIds);
+				entity.Amenities.Clear();
+				foreach (var amenity in amenities)
+				{
+					entity.Amenities.Add(amenity);
+				}
+			}
+			else if (update.AmenityIds != null) // Empty list provided = clear all amenities
+			{
+				entity.Amenities.Clear();
+			}
+			// If AmenityIds is null, preserve existing amenities (no change)
+
+			// Handle images processing - Update image associations
+			if (update.ImageIds != null)
+			{
+				// Note: Image association management is typically handled at the controller/API level
+				// For now, we'll log the ImageIds that should be processed
+				// The actual image association logic would be implemented in a separate ImageService
+				// and called from the controller after the property update is complete
+				
+				// TODO: Implement proper image association management
+				// This should be handled by calling ImageService methods to:
+				// 1. Remove images not in the ImageIds list
+				// 2. Associate new images with this property
+				// 3. Update existing image metadata if needed
+				
+				System.Console.WriteLine($"Property {entity.PropertyId} should be associated with images: [{string.Join(", ", update.ImageIds)}]");
+			}
+			// If ImageIds is null, preserve existing images (no change)
 
 			await base.BeforeUpdateAsync(update, entity);
 		}
@@ -134,7 +175,7 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<IEnumerable<PropertyResponse>>(properties);
 		}
 
-		// Override InsertAsync to set OwnerId to current user
+		// Override InsertAsync to set OwnerId to current user - SIMPLIFIED APPROACH  
 		public override async Task<PropertyResponse> InsertAsync(PropertyInsertRequest insert)
 		{
 			var currentUserId = _currentUserService.UserId;
@@ -143,7 +184,7 @@ namespace eRents.Application.Service.PropertyService
 			if (string.IsNullOrEmpty(currentUserId) || currentUserRole != "Landlord")
 				throw new UnauthorizedAccessException("Only landlords can create properties");
 
-			// Map the request to entity
+			// Simple approach: Map the basic fields first
 			var entity = _mapper.Map<Property>(insert);
 
 			// Set the owner to the current user (never trust client data)
@@ -156,6 +197,7 @@ namespace eRents.Application.Service.PropertyService
 				throw new InvalidOperationException("Invalid user ID format");
 			}
 
+			// Then handle complex relationships in BeforeInsertAsync
 			await BeforeInsertAsync(insert, entity);
 
 			await _propertyRepository.AddAsync(entity);
@@ -163,7 +205,7 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<PropertyResponse>(entity);
 		}
 
-		// Override UpdateAsync to validate ownership
+		// Override UpdateAsync to validate ownership - SIMPLIFIED APPROACH
 		public override async Task<PropertyResponse> UpdateAsync(int id, PropertyUpdateRequest update)
 		{
 			var currentUserId = _currentUserService.UserId;
@@ -180,8 +222,10 @@ namespace eRents.Application.Service.PropertyService
 			if (entity == null)
 				throw new KeyNotFoundException("Property not found");
 
+			// Simple approach: Map the basic fields first
 			_mapper.Map(update, entity);
 
+			// Then handle complex relationships in BeforeUpdateAsync
 			await BeforeUpdateAsync(update, entity);
 
 			await _propertyRepository.UpdateAsync(entity);

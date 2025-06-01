@@ -31,25 +31,35 @@ class PropertyFormFields {
   static Widget buildNumberField({
     required TextEditingController controller,
     required String labelText,
-    String? suffixText,
     required String errorMessage,
-    int? flex,
+    int flex = 1,
+    String? suffixText,
+    int minValue = 1,
   }) {
-    return buildTextField(
-      controller: controller,
-      labelText: labelText,
-      suffixText: suffixText,
-      keyboardType: TextInputType.number,
+    return Expanded(
       flex: flex,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return errorMessage;
-        }
-        if (double.tryParse(value) == null) {
-          return 'Please enter a valid number';
-        }
-        return null;
-      },
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: labelText,
+          suffixText: suffixText,
+          border: const OutlineInputBorder(),
+        ),
+        keyboardType: TextInputType.number,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return errorMessage;
+          }
+          final number = int.tryParse(value);
+          if (number == null) {
+            return 'Please enter a valid number';
+          }
+          if (number < minValue) {
+            return 'Minimum value is $minValue';
+          }
+          return null;
+        },
+      ),
     );
   }
 

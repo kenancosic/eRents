@@ -22,6 +22,7 @@ class Property {
   final double area;
   final List<MaintenanceIssue> maintenanceIssues;
   final List<String>? amenities;
+  final List<int>? amenityIds;
   final String currency; // Added for standardization
   final double? dailyRate; // Added mobile-specific field
   final int? minimumStayDays; // Added mobile-specific field
@@ -44,6 +45,7 @@ class Property {
     required this.area,
     required this.maintenanceIssues,
     this.amenities,
+    this.amenityIds,
     this.currency = "BAM",
     this.dailyRate,
     this.minimumStayDays,
@@ -53,21 +55,28 @@ class Property {
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
+    print('Property.fromJson: Parsing property data: ${json.keys.toList()}');
+
     return Property(
+      // Handle both propertyId and id field names from backend
       id: json['propertyId'] as int? ?? json['id'] as int? ?? 0,
       ownerId: json['ownerId'] as int? ?? 0,
+      // Handle both name and title field names
       title: json['name'] as String? ?? json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      type: _parsePropertyType(json['type']),
+      type: _parsePropertyType(json['type'] ?? json['propertyType']),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      rentingType: _parseRentingType(json['rentingType']),
-      status: _parsePropertyStatus(json['status']),
+      rentingType: _parseRentingType(
+        json['rentingType'] ?? json['rentingTypeId'],
+      ),
+      status: _parsePropertyStatus(json['status'] ?? json['statusId']),
       images: _parseImages(json['images']),
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
       area: (json['area'] as num?)?.toDouble() ?? 0.0,
       maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
       amenities: _parseAmenities(json['amenities']),
+      amenityIds: _parseAmenityIds(json['amenities'] ?? json['amenityIds']),
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
@@ -200,6 +209,35 @@ class Property {
     }
   }
 
+  static List<int>? _parseAmenityIds(dynamic amenityIdsValue) {
+    if (amenityIdsValue == null) return null;
+
+    try {
+      if (amenityIdsValue is List) {
+        return amenityIdsValue
+            .map((amenity) {
+              if (amenity is int) {
+                return amenity;
+              } else if (amenity is Map<String, dynamic>) {
+                // Extract ID from AmenityResponse object
+                return amenity['amenityId'] as int? ??
+                    amenity['id'] as int? ??
+                    0;
+              } else {
+                return int.tryParse(amenity.toString()) ?? 0;
+              }
+            })
+            .where((id) => id > 0)
+            .toList()
+            .cast<int>();
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'propertyId': id,
@@ -220,6 +258,7 @@ class Property {
       'dateAdded': dateAdded.toIso8601String(),
       'addressDetail': addressDetail?.toJson(),
       'amenities': amenities,
+      'amenityIds': amenityIds,
     };
   }
 
@@ -238,6 +277,7 @@ class Property {
     double? area,
     List<MaintenanceIssue>? maintenanceIssues,
     List<String>? amenities,
+    List<int>? amenityIds,
     String? currency,
     double? dailyRate,
     int? minimumStayDays,
@@ -260,6 +300,7 @@ class Property {
       area: area ?? this.area,
       maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
       amenities: amenities ?? this.amenities,
+      amenityIds: amenityIds ?? this.amenityIds,
       currency: currency ?? this.currency,
       dailyRate: dailyRate ?? this.dailyRate,
       minimumStayDays: minimumStayDays ?? this.minimumStayDays,

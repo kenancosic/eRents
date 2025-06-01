@@ -17,6 +17,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/amenity_service.dart';
 import 'services/booking_service.dart';
 import 'services/review_service.dart';
+import 'services/image_service.dart';
 import 'base/navigation_provider.dart';
 import 'base/preference_provider.dart';
 import 'services/statistics_service.dart';
@@ -53,7 +54,7 @@ void main() async {
   final prefsService = UserPreferencesService();
   final secureStorageService = SecureStorageService();
   final authService = AuthService(baseUrl, secureStorageService);
-  final amenityService = AmenityService.create();
+  final amenityService = AmenityService(baseUrl, secureStorageService);
   final bookingService = BookingService(baseUrl, secureStorageService);
   final reviewService = ReviewService(baseUrl, secureStorageService);
   final chatService = ChatService(baseUrl, secureStorageService);
@@ -63,6 +64,7 @@ void main() async {
   final reportService = ReportService(baseUrl, secureStorageService);
   final statisticsService = StatisticsService(baseUrl, secureStorageService);
   final tenantService = TenantService(baseUrl, secureStorageService);
+  final imageService = ImageService(baseUrl, secureStorageService);
 
   runApp(
     MultiProvider(
@@ -83,6 +85,7 @@ void main() async {
         Provider.value(value: reportService),
         Provider.value(value: statisticsService),
         Provider.value(value: tenantService),
+        Provider.value(value: imageService),
 
         // Authentication related providers
         ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
