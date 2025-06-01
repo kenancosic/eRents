@@ -192,20 +192,71 @@ namespace eRents.Application.Service.StatisticsService
             decimal totalRent = 0;
             decimal totalMaintenance = 0;
 
+            // Set default date range if not provided
+            var startDate = request.StartDate ?? DateTime.MinValue;
+            var endDate = request.EndDate ?? DateTime.MaxValue;
+            
+            // Convert to DateOnly for booking comparisons
+            var startDateOnly = DateOnly.FromDateTime(startDate);
+            var endDateOnly = DateOnly.FromDateTime(endDate);
+
+            // Dictionary to track monthly data
+            var monthlyData = new Dictionary<(int Year, int Month), (decimal Revenue, decimal Maintenance)>();
+
             foreach (var property in landlordProperties)
             {
-                // Calculate revenue from bookings
+                // Calculate revenue from bookings within date range
                 if (property.Bookings != null)
                 {
-                    totalRent += property.Bookings.Sum(b => b.TotalPrice);
+                    var filteredBookings = property.Bookings
+                        .Where(b => b.StartDate >= startDateOnly && b.StartDate <= endDateOnly);
+                    
+                    foreach (var booking in filteredBookings)
+                    {
+                        totalRent += booking.TotalPrice;
+                        
+                        // Add to monthly breakdown
+                        var bookingDate = booking.StartDate.ToDateTime(TimeOnly.MinValue);
+                        var key = (bookingDate.Year, bookingDate.Month);
+                        if (!monthlyData.ContainsKey(key))
+                            monthlyData[key] = (0m, 0m);
+                        var currentData = monthlyData[key];
+                        monthlyData[key] = (currentData.Revenue + booking.TotalPrice, currentData.Maintenance);
+                    }
                 }
                 
-                // Calculate maintenance costs
+                // Calculate maintenance costs within date range
                 if (property.MaintenanceIssues != null)
                 {
-                    totalMaintenance += property.MaintenanceIssues.Where(m => m.Cost.HasValue).Sum(m => m.Cost.Value);
+                    var filteredMaintenance = property.MaintenanceIssues
+                        .Where(m => m.Cost.HasValue && m.CreatedAt >= startDate && m.CreatedAt <= endDate);
+                    
+                    foreach (var maintenance in filteredMaintenance)
+                    {
+                        totalMaintenance += maintenance.Cost.Value;
+                        
+                        // Add to monthly breakdown
+                        var key = (maintenance.CreatedAt.Year, maintenance.CreatedAt.Month);
+                        if (!monthlyData.ContainsKey(key))
+                            monthlyData[key] = (0m, 0m);
+                        var currentData = monthlyData[key];
+                        monthlyData[key] = (currentData.Revenue, currentData.Maintenance + maintenance.Cost.Value);
+                    }
                 }
             }
+
+            // Convert monthly data to DTOs and sort by year/month
+            var revenueHistory = monthlyData
+                .Select(kvp => new MonthlyRevenueDto
+                {
+                    Year = kvp.Key.Year,
+                    Month = kvp.Key.Month,
+                    Revenue = kvp.Value.Revenue,
+                    MaintenanceCosts = kvp.Value.Maintenance
+                })
+                .OrderBy(m => m.Year)
+                .ThenBy(m => m.Month)
+                .ToList();
 
             return new FinancialSummaryDto
             {
@@ -213,7 +264,8 @@ namespace eRents.Application.Service.StatisticsService
                 TotalMaintenanceCosts = totalMaintenance,
                 OtherIncome = 0,
                 OtherExpenses = 0,
-                NetTotal = totalRent - totalMaintenance
+                NetTotal = totalRent - totalMaintenance,
+                RevenueHistory = revenueHistory
             };
         }
     }

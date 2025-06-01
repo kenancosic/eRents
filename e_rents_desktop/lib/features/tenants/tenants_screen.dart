@@ -172,122 +172,186 @@ class _TenantsScreenState extends State<TenantsScreen>
   Widget build(BuildContext context) {
     return Consumer<TenantProvider>(
       builder: (context, provider, child) {
-        // Updated loading state check
-        if (provider.state == ViewState.Busy &&
-            provider.items.isEmpty &&
-            provider.searchingTenants.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+        // Show loading screen during initial data load
+        if (provider.isInitialLoading) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading tenant data...', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+          );
         }
 
-        // Added error handling
+        // Show error state with retry option
         if (provider.state == ViewState.Error) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                const SizedBox(height: 16),
                 Text(
-                  provider.errorMessage ?? 'Failed to load tenant data.',
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                  'Failed to load tenant data',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  provider.errorMessage ?? 'Unknown error occurred',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => provider.loadAllData(),
-                  child: const Text('Retry'),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => provider.refreshAllData(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      onPressed: () => context.go('/'),
+                      child: const Text('Go to Dashboard'),
+                    ),
+                  ],
                 ),
               ],
             ),
           );
         }
 
-        // Use provider.items for current tenants if TenantProvider maps _currentTenants to items_
-        final currentTenants = provider.items;
+        final currentTenants = provider.currentTenants;
         final searchingTenants = provider.searchingTenants;
 
-        if (currentTenants.isEmpty && searchingTenants.isEmpty) {
-          return const Center(
-            child: Text(
-              'No tenants data available.',
-              style: TextStyle(fontSize: 18),
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Current Tenants'),
-                Tab(text: 'Tenants Advertisements'),
-              ],
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Theme.of(context).colorScheme.primary,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    _searchLabelText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
+        // Always show the tables - even with 0 data
+        // Remove empty state check that was preventing tables from showing
+        return RefreshIndicator(
+          onRefresh: () => provider.refreshAllData(),
+          child: Column(
+            children: [
+              // Tab bar
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Current Tenants'),
+                        if (provider.isLoadingCurrentTenants) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildSearchBar(provider)),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  CurrentTenantsTableWidget(
-                    tenants: currentTenants, // Using updated variable
-                    searchTerm: _searchTerm,
-                    currentFilterField: _currentFilterField,
-                    onSendMessage:
-                        (tenant) => _sendMessage(
-                          context,
-                          tenant,
-                        ), // Pass context if needed by impl
-                    onShowProfile:
-                        (tenant, properties) => _showTenantProfile(
-                          context,
-                          tenant,
-                          properties,
-                        ), // Adjusted
-                    onNavigateToProperty:
-                        (property) => // Adjusted to take Property object
-                            _navigateToPropertyDetails(context, property),
-                  ),
-                  TenantsAdvertisementTableWidget(
-                    preferences: searchingTenants, // Using updated variable
-                    tenants:
-                        currentTenants, // Pass current tenants if needed for context
-                    searchTerm: _searchTerm,
-                    currentFilterField: _currentFilterField,
-                    onSendMessage:
-                        (pref) => _sendMessageToSearchingTenant(
-                          context,
-                          pref,
-                        ), // Pass context
-                    onShowDetails:
-                        (pref, tenant) => _showTenantPreferenceDetails(
-                          // Adjusted
-                          context,
-                          pref,
-                          tenant,
-                        ), // Pass context
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Tenants Advertisements'),
+                        if (provider.isLoadingSearchingTenants) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Theme.of(context).colorScheme.primary,
               ),
-            ),
-          ],
+
+              // Search bar with refresh button
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _searchLabelText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildSearchBar(provider)),
+                    const SizedBox(width: 12),
+                    // Tab-specific refresh button
+                    IconButton(
+                      onPressed: () {
+                        if (_tabController.index == 0) {
+                          provider.refreshCurrentTenants();
+                        } else {
+                          provider.refreshSearchingTenants();
+                        }
+                      },
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      tooltip: 'Refresh current tab',
+                    ),
+                  ],
+                ),
+              ),
+
+              // Tab views - always show tables
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    CurrentTenantsTableWidget(
+                      tenants: currentTenants,
+                      searchTerm: _searchTerm,
+                      currentFilterField: _currentFilterField,
+                      onSendMessage: (tenant) => _sendMessage(context, tenant),
+                      onShowProfile:
+                          (tenant, properties) =>
+                              _showTenantProfile(context, tenant, properties),
+                      onNavigateToProperty:
+                          (property) =>
+                              _navigateToPropertyDetails(context, property),
+                    ),
+                    TenantsAdvertisementTableWidget(
+                      preferences: searchingTenants,
+                      tenants: currentTenants,
+                      searchTerm: _searchTerm,
+                      currentFilterField: _currentFilterField,
+                      onSendMessage:
+                          (pref) =>
+                              _sendMessageToSearchingTenant(context, pref),
+                      onShowDetails:
+                          (pref, tenant) => _showTenantPreferenceDetails(
+                            context,
+                            pref,
+                            tenant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

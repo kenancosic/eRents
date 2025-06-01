@@ -88,21 +88,31 @@ class ReportsProvider extends BaseReportProvider<dynamic> {
       "ReportsProvider.setDateRange: Setting range from ${DateFormat('dd/MM/yyyy').format(startDate)} to ${DateFormat('dd/MM/yyyy').format(endDate)}",
     );
 
-    // Update our own date range without triggering parent's onDateRangeChanged
-    // because ReportsProvider is a coordinator, not a data fetcher
+    // Update our own date range
     _startDate = startDate;
     _endDate = endDate;
 
-    // Only update initialized providers - they will trigger their own data fetching
+    // Update ALL providers (both initialized and uninitialized ones)
+    // Force refresh on the current provider
+    final currentProvider = this.currentProvider;
+    debugPrint(
+      "ReportsProvider.setDateRange: Updating current provider ${_currentReportType}",
+    );
+    currentProvider.setDateRange(startDate, endDate);
+
+    // Also update other initialized providers so they're ready when switched to
     for (final entry in _providers.entries) {
       final provider = entry.value;
-      if (provider != null) {
+      if (provider != null && entry.key != _currentReportType) {
         debugPrint(
           "ReportsProvider.setDateRange: Updating ${entry.key} provider",
         );
         provider.setDateRange(startDate, endDate);
       }
     }
+
+    // Notify listeners about the date range change
+    notifyListeners();
   }
 
   // Date range getters

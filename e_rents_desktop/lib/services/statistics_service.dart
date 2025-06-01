@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/models/statistics/maintenance_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_summary_dto.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics_api.dart';
+import 'package:flutter/foundation.dart';
 
 class StatisticsService extends ApiService {
   StatisticsService(super.baseUrl, super.secureStorageService);
@@ -13,7 +14,7 @@ class StatisticsService extends ApiService {
   /// Returns overview of portfolio including occupancy, revenue, top properties, etc.
   Future<DashboardStatistics> getDashboardStatistics() async {
     try {
-      print('StatisticsService: Fetching dashboard statistics...');
+      debugPrint('StatisticsService: Fetching dashboard statistics...');
 
       final response = await get('/Statistics/dashboard', authenticated: true);
 
@@ -21,13 +22,13 @@ class StatisticsService extends ApiService {
         jsonDecode(response.body),
       );
 
-      print(
+      debugPrint(
         'StatisticsService: Successfully fetched dashboard statistics. Total Properties: ${statistics.totalProperties}',
       );
 
       return statistics;
     } catch (e) {
-      print('StatisticsService: Error fetching dashboard statistics: $e');
+      debugPrint('StatisticsService: Error fetching dashboard statistics: $e');
       rethrow;
     }
   }
@@ -36,7 +37,7 @@ class StatisticsService extends ApiService {
   /// Returns detailed statistics about property performance
   Future<PropertyStatistics> getPropertyStatistics() async {
     try {
-      print('StatisticsService: Fetching property statistics...');
+      debugPrint('StatisticsService: Fetching property statistics...');
 
       final response = await get('/Statistics/properties', authenticated: true);
 
@@ -44,11 +45,13 @@ class StatisticsService extends ApiService {
         jsonDecode(response.body),
       );
 
-      print('StatisticsService: Successfully fetched property statistics.');
+      debugPrint(
+        'StatisticsService: Successfully fetched property statistics.',
+      );
 
       return properties;
     } catch (e) {
-      print('StatisticsService: Error fetching property statistics: $e');
+      debugPrint('StatisticsService: Error fetching property statistics: $e');
       rethrow;
     }
   }
@@ -57,7 +60,7 @@ class StatisticsService extends ApiService {
   /// Returns summary of maintenance issues across all properties
   Future<MaintenanceStatistics> getMaintenanceStatistics() async {
     try {
-      print('StatisticsService: Fetching maintenance statistics...');
+      debugPrint('StatisticsService: Fetching maintenance statistics...');
 
       final response = await get(
         '/Statistics/maintenance',
@@ -67,11 +70,15 @@ class StatisticsService extends ApiService {
       final MaintenanceStatistics maintenanceStats =
           MaintenanceStatistics.fromJson(jsonDecode(response.body));
 
-      print('StatisticsService: Successfully fetched maintenance statistics.');
+      debugPrint(
+        'StatisticsService: Successfully fetched maintenance statistics.',
+      );
 
       return maintenanceStats;
     } catch (e) {
-      print('StatisticsService: Error fetching maintenance statistics: $e');
+      debugPrint(
+        'StatisticsService: Error fetching maintenance statistics: $e',
+      );
       rethrow;
     }
   }
@@ -83,14 +90,25 @@ class StatisticsService extends ApiService {
     DateTime? endDate,
   }) async {
     try {
-      print('StatisticsService: Fetching financial statistics...');
+      debugPrint(
+        'StatisticsService: Fetching financial statistics for range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}',
+      );
 
       // Prepare request body for POST /financial endpoint
-      final requestBody = {
-        'startDate': startDate?.toIso8601String(),
-        'endDate': endDate?.toIso8601String(),
+      // Ensure dates are properly formatted for backend
+      final requestBody = <String, dynamic>{
         'period': null, // Optional field in backend request
       };
+
+      // Only add dates if they're provided
+      if (startDate != null) {
+        requestBody['startDate'] = startDate.toIso8601String();
+      }
+      if (endDate != null) {
+        requestBody['endDate'] = endDate.toIso8601String();
+      }
+
+      debugPrint('StatisticsService: Request body: $requestBody');
 
       final response = await post(
         '/Statistics/financial',
@@ -98,19 +116,77 @@ class StatisticsService extends ApiService {
         authenticated: true,
       );
 
+      debugPrint('StatisticsService: Response status: ${response.statusCode}');
+      debugPrint('StatisticsService: Response body: ${response.body}');
+
       // Parse the FinancialSummaryDto from backend
       final summaryDto = FinancialSummaryDto.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
 
+      debugPrint(
+        'StatisticsService: Parsed FinancialSummaryDto with ${summaryDto.revenueHistory.length} monthly records',
+      );
+
       // Convert to FinancialStatisticsApi for UI compatibility
       final financialStats = FinancialStatisticsApi.fromSummaryDto(summaryDto);
 
-      print('StatisticsService: Successfully fetched financial statistics.');
+      debugPrint(
+        'StatisticsService: Successfully fetched financial statistics.',
+      );
 
       return financialStats;
     } catch (e) {
-      print('StatisticsService: Error fetching financial statistics: $e');
+      debugPrint('StatisticsService: Error fetching financial statistics: $e');
+      rethrow;
+    }
+  }
+
+  /// Get financial statistics as raw DTO
+  /// Returns detailed financial data including maintenance costs and monthly breakdown
+  Future<FinancialSummaryDto> getFinancialSummaryDto({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      debugPrint(
+        'StatisticsService: Fetching financial summary DTO for range: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}',
+      );
+
+      // Prepare request body for POST /financial endpoint
+      final requestBody = <String, dynamic>{'period': null};
+
+      // Only add dates if they're provided
+      if (startDate != null) {
+        requestBody['startDate'] = startDate.toIso8601String();
+      }
+      if (endDate != null) {
+        requestBody['endDate'] = endDate.toIso8601String();
+      }
+
+      debugPrint('StatisticsService: Request body: $requestBody');
+
+      final response = await post(
+        '/Statistics/financial',
+        requestBody,
+        authenticated: true,
+      );
+
+      debugPrint('StatisticsService: Response status: ${response.statusCode}');
+      debugPrint('StatisticsService: Response body: ${response.body}');
+
+      // Parse the FinancialSummaryDto from backend
+      final summaryDto = FinancialSummaryDto.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+
+      debugPrint(
+        'StatisticsService: Successfully fetched financial summary DTO with ${summaryDto.revenueHistory.length} monthly records',
+      );
+
+      return summaryDto;
+    } catch (e) {
+      debugPrint('StatisticsService: Error fetching financial summary DTO: $e');
       rethrow;
     }
   }

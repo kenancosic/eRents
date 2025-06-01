@@ -2,16 +2,20 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics_api.dart';
+import 'package:e_rents_desktop/models/statistics/financial_summary_dto.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 // import 'package:e_rents_desktop/services/mock_data_service.dart'; // To be removed
 import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
 
 class StatisticsProvider extends BaseProvider<FinancialStatistics> {
   final StatisticsService _statisticsService;
 
   DashboardStatistics? _dashboardStats;
   FinancialStatisticsApi? _apiFinancialStats;
+  FinancialSummaryDto?
+  _originalSummaryDto; // Store original data for total calculations
 
   FinancialStatistics? _statisticsUiModel;
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 30));
@@ -33,7 +37,11 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
 
   Future<void> loadDashboardStatistics() async {
     await execute(() async {
+      debugPrint('StatisticsProvider: Loading dashboard statistics...');
       _dashboardStats = await _statisticsService.getDashboardStatistics();
+      debugPrint(
+        'StatisticsProvider: Dashboard statistics loaded successfully',
+      );
     });
   }
 
@@ -44,13 +52,22 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
     final effectiveStartDate = startDate ?? _startDate;
     final effectiveEndDate = endDate ?? _endDate;
 
+    debugPrint(
+      'StatisticsProvider: Loading financial statistics for range: ${dateFormat.format(effectiveStartDate)} to ${dateFormat.format(effectiveEndDate)}',
+    );
+
     _startDate = effectiveStartDate;
     _endDate = effectiveEndDate;
 
     await execute(() async {
-      _apiFinancialStats = await _statisticsService.getFinancialStatistics(
+      // Get both the original DTO and converted API model
+      _originalSummaryDto = await _statisticsService.getFinancialSummaryDto(
         startDate: effectiveStartDate,
         endDate: effectiveEndDate,
+      );
+
+      _apiFinancialStats = FinancialStatisticsApi.fromSummaryDto(
+        _originalSummaryDto!,
       );
 
       _statisticsUiModel = _convertToUiModel(_apiFinancialStats);
@@ -59,11 +76,17 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
       } else {
         items_ = [];
       }
+
+      // Explicitly notify listeners after data update
+      notifyListeners();
+      debugPrint(
+        'StatisticsProvider: Financial statistics loaded successfully, notified listeners',
+      );
     });
   }
 
   FinancialStatistics? _convertToUiModel(FinancialStatisticsApi? apiStats) {
-    if (apiStats == null) {
+    if (apiStats == null || _originalSummaryDto == null) {
       return FinancialStatistics(
         totalRent: 0,
         totalMaintenanceCosts: 0,
@@ -74,8 +97,18 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
       );
     }
 
+    // Get maintenance costs from the original DTO
+    double totalMaintenanceCosts = _originalSummaryDto!.totalMaintenanceCosts;
+
     List<FinancialReportItem> monthlyBreakdownUi = [];
     if (apiStats.revenueHistory.isNotEmpty) {
+      // Create a map for quick lookup of maintenance costs by month
+      Map<String, double> monthlyMaintenanceMap = {};
+      for (var monthlyDto in _originalSummaryDto!.revenueHistory) {
+        String key = '${monthlyDto.year}-${monthlyDto.month}';
+        monthlyMaintenanceMap[key] = monthlyDto.maintenanceCosts;
+      }
+
       monthlyBreakdownUi =
           apiStats.revenueHistory.map((monthlyRevenue) {
             final monthDate = DateTime(
@@ -88,39 +121,52 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
               DateTime(monthlyRevenue.year, monthlyRevenue.month + 1, 0),
             );
 
+            // Get maintenance costs for this month
+            String monthKey = '${monthlyRevenue.year}-${monthlyRevenue.month}';
+            double monthlyMaintenance = monthlyMaintenanceMap[monthKey] ?? 0.0;
+
             return FinancialReportItem(
               dateFrom: firstDayOfMonth,
               dateTo: lastDayOfMonth,
               property: 'Monthly Total',
               totalRent: monthlyRevenue.revenue,
-              maintenanceCosts: 0,
-              total: monthlyRevenue.revenue,
+              maintenanceCosts: monthlyMaintenance,
+              total: monthlyRevenue.revenue - monthlyMaintenance,
             );
           }).toList();
     }
 
-    double calculatedTotalRent = apiStats.currentMonthRevenue;
-    if (apiStats.revenueHistory.isNotEmpty) {
-      calculatedTotalRent = apiStats.revenueHistory.fold(
-        0.0,
-        (sum, item) => sum + item.revenue,
-      );
-    }
+    // Use total rent from the original DTO for accuracy
+    double calculatedTotalRent = _originalSummaryDto!.totalRentIncome;
 
     return FinancialStatistics(
       totalRent: calculatedTotalRent,
-      totalMaintenanceCosts: 0,
-      netTotal: calculatedTotalRent,
+      totalMaintenanceCosts: totalMaintenanceCosts,
+      netTotal: _originalSummaryDto!.netTotal,
       startDate: _startDate,
       endDate: _endDate,
       monthlyBreakdown: monthlyBreakdownUi,
     );
   }
 
+  /// Set date range and immediately fetch fresh data
   Future<void> setDateRangeAndFetch(DateTime start, DateTime end) async {
+    debugPrint(
+      'StatisticsProvider: Date range changed from ${dateFormat.format(_startDate)}-${dateFormat.format(_endDate)} to ${dateFormat.format(start)}-${dateFormat.format(end)}',
+    );
+
+    // Always update dates and fetch fresh data
     _startDate = start;
     _endDate = end;
+
+    // Force fresh data fetch
     await loadFinancialStatistics(startDate: start, endDate: end);
+
+    // Explicitly notify listeners after date range change and data update
+    notifyListeners();
+    debugPrint(
+      'StatisticsProvider: Notified listeners after date range change and data fetch',
+    );
   }
 
   @override
@@ -138,7 +184,7 @@ class StatisticsProvider extends BaseProvider<FinancialStatistics> {
 
   @override
   List<FinancialStatistics> getMockItems() {
-    print(
+    debugPrint(
       'StatisticsProvider: getMockItems() called. Backend integration is primary. Returning empty list as placeholder.',
     );
     return [];

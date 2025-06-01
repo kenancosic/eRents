@@ -21,6 +21,12 @@ class TenantProvider extends BaseProvider<User> {
   final Map<int, Map<String, dynamic>> _tenantPropertyAssignments =
       {}; // Add property assignments
 
+  // Add loading state tracking for different operations
+  bool _isLoadingCurrentTenants = false;
+  bool _isLoadingSearchingTenants = false;
+  bool _isLoadingPropertyAssignments = false;
+  bool _hasInitialLoad = false;
+
   // Constructor updated
   TenantProvider(this._tenantService /*, this._authProvider */) : super() {
     // isMockDataEnabled is false by default in BaseProvider unless explicitly set.
@@ -31,6 +37,17 @@ class TenantProvider extends BaseProvider<User> {
   List<User> get currentTenants =>
       _currentTenants; // Could also use items directly from BaseProvider
   List<TenantPreference> get searchingTenants => _searchingTenants;
+  bool get isLoadingCurrentTenants => _isLoadingCurrentTenants;
+  bool get isLoadingSearchingTenants => _isLoadingSearchingTenants;
+  bool get isLoadingPropertyAssignments => _isLoadingPropertyAssignments;
+  bool get hasInitialLoad => _hasInitialLoad;
+
+  // Check if we're in the middle of initial data loading
+  bool get isInitialLoading => !_hasInitialLoad && state == ViewState.Busy;
+
+  // Check if any critical data is still loading
+  bool get isAnyDataLoading =>
+      _isLoadingCurrentTenants || _isLoadingSearchingTenants;
 
   List<Review> getTenantFeedbacks(int tenantId) {
     return _tenantFeedbacks[tenantId] ?? [];
@@ -71,27 +88,35 @@ class TenantProvider extends BaseProvider<User> {
   }
 
   Future<void> loadCurrentTenants({Map<String, String>? queryParams}) async {
-    // isMockDataEnabled check removed, always use service.
-    // TenantService will throw if backend integration is pending.
+    _isLoadingCurrentTenants = true;
+    notifyListeners();
+
     await execute(() async {
       _currentTenants = await _tenantService.getCurrentTenants(
         queryParams: queryParams,
       );
       items_ = _currentTenants;
     });
+
+    _isLoadingCurrentTenants = false;
+    notifyListeners();
   }
 
   Future<void> loadSearchingTenants({Map<String, String>? queryParams}) async {
-    // isMockDataEnabled check removed.
+    _isLoadingSearchingTenants = true;
+    notifyListeners();
+
     await execute(() async {
       _searchingTenants = await _tenantService.getProspectiveTenants(
         queryParams: queryParams,
       );
     });
+
+    _isLoadingSearchingTenants = false;
+    notifyListeners();
   }
 
   Future<void> loadTenantFeedbacks(int tenantId) async {
-    // isMockDataEnabled check removed.
     await execute(() async {
       _tenantFeedbacks[tenantId] = await _tenantService.getTenantFeedbacks(
         tenantId,
@@ -100,7 +125,6 @@ class TenantProvider extends BaseProvider<User> {
   }
 
   Future<void> addTenantFeedback(int tenantId, Review feedback) async {
-    // isMockDataEnabled check removed.
     await execute(() async {
       Review newFeedback = await _tenantService.addTenantFeedback(
         tenantId,
@@ -116,46 +140,49 @@ class TenantProvider extends BaseProvider<User> {
   Future<void> loadTenantPropertyAssignments(List<int> tenantIds) async {
     if (tenantIds.isEmpty) return;
 
-    await execute(() async {
-      try {
-        final assignments = await _tenantService.getTenantPropertyAssignments(
-          tenantIds,
-        );
+    _isLoadingPropertyAssignments = true;
+    notifyListeners();
 
-        // Clear existing assignments
-        _tenantPropertyAssignments.clear();
+    try {
+      final assignments = await _tenantService.getTenantPropertyAssignments(
+        tenantIds,
+      );
 
-        // Handle empty or null response
-        if (assignments.isEmpty) {
-          print(
-            'TenantProvider: No property assignments returned from backend',
-          );
-          return;
-        }
+      // Clear existing assignments
+      _tenantPropertyAssignments.clear();
 
-        // Convert string keys to int and store assignments
-        for (final entry in assignments.entries) {
-          final tenantId = int.tryParse(entry.key);
-          if (tenantId != null && entry.value != null) {
-            _tenantPropertyAssignments[tenantId] = entry.value;
-          }
-        }
-
-        print(
-          'TenantProvider: Loaded ${_tenantPropertyAssignments.length} tenant property assignments',
-        );
-      } catch (e) {
-        print('TenantProvider: Error loading tenant property assignments: $e');
-        // Don't rethrow - allow the rest of the app to continue working
-        // Just log the error and continue without property assignments
+      // Handle empty or null response
+      if (assignments.isEmpty) {
+        print('TenantProvider: No property assignments returned from backend');
+        return;
       }
-    });
+
+      // Convert string keys to int and store assignments
+      for (final entry in assignments.entries) {
+        final tenantId = int.tryParse(entry.key);
+        if (tenantId != null && entry.value != null) {
+          _tenantPropertyAssignments[tenantId] = entry.value;
+        }
+      }
+
+      print(
+        'TenantProvider: Loaded ${_tenantPropertyAssignments.length} tenant property assignments',
+      );
+    } catch (e) {
+      print('TenantProvider: Error loading tenant property assignments: $e');
+      // Don't rethrow - allow the rest of the app to continue working
+      // Just log the error and continue without property assignments
+    } finally {
+      _isLoadingPropertyAssignments = false;
+      notifyListeners();
+    }
   }
 
+  /// Load all tenant data with proper state management
   Future<void> loadAllData() async {
-    setState(ViewState.Busy);
-    try {
-      // Load tenants first
+    // Use execute() for proper state management instead of manual setState
+    await execute(() async {
+      // Load tenants first in parallel
       await Future.wait([loadCurrentTenants(), loadSearchingTenants()]);
 
       // Then load property assignments for current tenants
@@ -164,28 +191,44 @@ class TenantProvider extends BaseProvider<User> {
         await loadTenantPropertyAssignments(tenantIds);
       }
 
-      setState(ViewState.Idle);
-    } catch (e) {
-      print('TenantProvider: Error in loadAllData: $e');
-      setError(e.toString()); // setError will set ViewState.Error
+      // Mark that we've completed initial load
+      _hasInitialLoad = true;
+    });
+  }
+
+  /// Refresh all data (for pull-to-refresh or retry scenarios)
+  Future<void> refreshAllData() async {
+    // Clear the initial load flag to show loading during refresh
+    _hasInitialLoad = false;
+
+    // Clear existing data to ensure clean state
+    _currentTenants.clear();
+    _searchingTenants.clear();
+    _tenantPropertyAssignments.clear();
+    items_.clear();
+
+    await loadAllData();
+  }
+
+  /// Load current tenants only (for tab-specific loading)
+  Future<void> refreshCurrentTenants() async {
+    await loadCurrentTenants();
+
+    // Reload property assignments for current tenants
+    if (_currentTenants.isNotEmpty) {
+      final tenantIds = _currentTenants.map((t) => t.id).toList();
+      await loadTenantPropertyAssignments(tenantIds);
     }
   }
 
+  /// Load searching tenants only (for tab-specific loading)
+  Future<void> refreshSearchingTenants() async {
+    await loadSearchingTenants();
+  }
+
   Future<void> recordPropertyOffer(int tenantId, int propertyId) async {
-    // isMockDataEnabled check removed.
-    // This action directly interacts with the backend.
-    // Local cache (_tenantPropertyOffers) might be updated if desired after successful API call,
-    // or simply rely on next fetch for UI updates if offers are stored/retrieved via backend.
     await execute(() async {
       await _tenantService.recordPropertyOfferedToTenant(tenantId, propertyId);
-      // Example: Update local cache if needed
-      // if (!_tenantPropertyOffers.containsKey(tenantId)) {
-      //   _tenantPropertyOffers[tenantId] = [];
-      // }
-      // if (!_tenantPropertyOffers[tenantId]!.contains(propertyId)) {
-      //   _tenantPropertyOffers[tenantId]!.add(propertyId);
-      //   notifyListeners(); // If UI should react immediately to this local cache change
-      // }
       print(
         'TenantProvider: Property offer recorded via service for tenant $tenantId, property $propertyId.',
       );

@@ -42,12 +42,24 @@ class FinancialStatisticsApi {
 
   // Convert from FinancialSummaryDto to FinancialStatisticsApi for UI compatibility
   factory FinancialStatisticsApi.fromSummaryDto(FinancialSummaryDto dto) {
+    // Convert monthly revenue history from DTO format to UI format
+    List<MonthlyRevenue> revenueHistory =
+        dto.revenueHistory
+            .map(
+              (monthlyDto) => MonthlyRevenue(
+                year: monthlyDto.year,
+                month: monthlyDto.month,
+                revenue: monthlyDto.revenue,
+              ),
+            )
+            .toList();
+
     return FinancialStatisticsApi(
       currentMonthRevenue: dto.totalRentIncome,
       previousMonthRevenue: 0.0, // Not available in summary
       projectedRevenue: dto.netTotal,
-      revenueHistory: [], // Not available in simple summary
-      revenueByPropertyType: {}, // Not available in simple summary
+      revenueHistory: revenueHistory,
+      revenueByPropertyType: {}, // Not available in summary
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/services/report_service.dart';
+import 'package:flutter/foundation.dart';
 
 class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
   final ReportService? _reportService;
@@ -39,17 +40,19 @@ class TenantReportProvider extends BaseReportProvider<TenantReportItem> {
     }
 
     try {
-      print('TenantReportProvider: Fetching tenant report data...');
+      debugPrint(
+        'TenantReportProvider: Fetching tenant report data for range ${startDateFormatted} to ${endDateFormatted}...',
+      );
       final reportItems = await _reportService!.getTenantReport(
         startDate,
         endDate,
       );
-      print(
+      debugPrint(
         'TenantReportProvider: Successfully fetched ${reportItems.length} tenant report items.',
       );
       return reportItems;
     } catch (e) {
-      print('TenantReportProvider: Error fetching tenant report data: $e');
+      debugPrint('TenantReportProvider: Error fetching tenant report data: $e');
       throw Exception('Failed to fetch tenant report data: $e');
     }
   }

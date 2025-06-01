@@ -84,6 +84,8 @@ public partial class ERentsContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Configure database collation for Unicode support (supports Bosnian Latin characters)
+        modelBuilder.UseCollation("Croatian_CI_AS");
         modelBuilder.Entity<Amenity>(entity =>
         {
             entity.HasKey(e => e.AmenityId).HasName("PK__Amenitie__E908452DD87B33D9");
@@ -258,13 +260,14 @@ public partial class ERentsContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("date_added");
             entity.Property(e => e.Description)
-                .HasColumnType("text")
+                .HasColumnType("nvarchar(max)")
                 .HasColumnName("description");
             entity.Property(e => e.Facilities)
                 .IsUnicode(false)
                 .HasColumnName("facilities");
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
+                .IsUnicode(true)
                 .HasColumnName("name");
             entity.Property(e => e.OwnerId).HasColumnName("owner_id");
             entity.Property(e => e.Price)
@@ -339,7 +342,7 @@ public partial class ERentsContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnName("date_created");
             entity.Property(e => e.Description)
-                .HasColumnType("text")
+                .HasColumnType("nvarchar(max)")
                 .HasColumnName("description");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.RevieweeId).HasColumnName("reviewee_id");
@@ -421,9 +424,11 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("email");
             entity.Property(e => e.FirstName)
                 .HasMaxLength(100)
+                .IsUnicode(true)
                 .HasColumnName("first_name");
             entity.Property(e => e.LastName)
                 .HasMaxLength(100)
+                .IsUnicode(true)
                 .HasColumnName("last_name");
             entity.Property(e => e.PasswordHash).HasMaxLength(64);
             entity.Property(e => e.PasswordSalt).HasMaxLength(64);
@@ -491,9 +496,9 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.MaintenanceIssueId);
 
-            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Title).HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.Cost).HasColumnType("decimal(10, 2)");
-            entity.Property(e => e.Category).HasMaxLength(100);
+            entity.Property(e => e.Category).HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
 
             entity.HasOne(d => d.Property)
@@ -557,7 +562,7 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.TenantPreferenceId);
             
-            entity.Property(e => e.City).HasMaxLength(100);
+            entity.Property(e => e.City).HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.MinPrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.MaxPrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.IsActive)
@@ -593,9 +598,9 @@ public partial class ERentsContext : DbContext
         modelBuilder.Entity<GeoRegion>(entity =>
         {
             entity.HasKey(e => e.GeoRegionId);
-            entity.Property(e => e.City).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.State).HasMaxLength(100);
-            entity.Property(e => e.Country).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.City).IsRequired().HasMaxLength(100).IsUnicode(true);
+            entity.Property(e => e.State).HasMaxLength(100).IsUnicode(true);
+            entity.Property(e => e.Country).IsRequired().HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.PostalCode).HasMaxLength(20);
 
             entity.HasIndex(e => new { e.City, e.State, e.Country, e.PostalCode }).IsUnique();
@@ -604,8 +609,8 @@ public partial class ERentsContext : DbContext
         modelBuilder.Entity<AddressDetail>(entity =>
         {
             entity.HasKey(e => e.AddressDetailId);
-            entity.Property(e => e.StreetLine1).IsRequired().HasMaxLength(255);
-            entity.Property(e => e.StreetLine2).HasMaxLength(255);
+            entity.Property(e => e.StreetLine1).IsRequired().HasMaxLength(255).IsUnicode(true);
+            entity.Property(e => e.StreetLine2).HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.Latitude).HasColumnType("decimal(9, 6)");
             entity.Property(e => e.Longitude).HasColumnType("decimal(9, 6)");
 

@@ -86,15 +86,6 @@ class _TenantsAdvertisementTableWidgetState
           }
         }).toList();
 
-    if (filteredPreferences.isEmpty) {
-      return const Center(
-        child: Text(
-          'No tenant advertisements found matching your search',
-          style: TextStyle(fontSize: 18),
-        ),
-      );
-    }
-
     // Calculate match scores using the backend-provided values
     final matchScores = <int, int>{};
     for (var preference in filteredPreferences) {
@@ -102,6 +93,175 @@ class _TenantsAdvertisementTableWidgetState
       matchScores[preference.id] = (preference.matchScore * 100).round();
     }
 
+    return Consumer<TenantProvider>(
+      builder: (context, tenantProvider, child) {
+        return Column(
+          children: [
+            // Column visibility controls
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+              child: _buildColumnVisibilityControls(),
+            ),
+            // Table container
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // If data is loading and we have no preferences, show loading in table
+                  if (tenantProvider.isLoadingSearchingTenants &&
+                      filteredPreferences.isEmpty) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          // Table header
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                topRight: Radius.circular(8),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Tenant Advertisements',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Loading content
+                          Expanded(
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Loading tenant advertisements...',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // If no filtered preferences after loading, show empty state in table
+                  if (filteredPreferences.isEmpty) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          // Table header
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(8),
+                                topRight: Radius.circular(8),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Tenant Advertisements',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Empty state content
+                          Expanded(
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    widget.searchTerm.isNotEmpty
+                                        ? Icons.search_off
+                                        : Icons.campaign_outlined,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    widget.searchTerm.isNotEmpty
+                                        ? 'No advertisements found'
+                                        : 'No tenant advertisements',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    widget.searchTerm.isNotEmpty
+                                        ? 'Try adjusting your search criteria'
+                                        : 'Tenant advertisements will appear here when users are actively searching for properties',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Show actual table with data
+                  return _buildTableWithData(filteredPreferences, matchScores);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTableWithData(
+    List<TenantPreference> filteredPreferences,
+    Map<int, int> matchScores,
+  ) {
     // Create the list of columns based on visibility settings
     final List<DataColumn> columns = [];
     final Map<int, TableColumnWidth> columnWidths = {};
@@ -413,38 +573,22 @@ class _TenantsAdvertisementTableWidgetState
       }
     }
 
-    return Column(
-      children: [
-        // Column visibility controls
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-          child: _buildColumnVisibilityControls(),
-        ),
-        // Table container with fixed width
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return CustomTableWidget<TenantPreference>(
-                data: filteredPreferences,
-                dataRowHeight: 70,
-                columnWidths: columnWidths,
-                columns: columns,
-                cellsBuilder: (preference) {
-                  final cells = <DataCell>[];
-                  for (final colDef in _columnDefs) {
-                    if (_columnVisibility[colDef['name']] == true) {
-                      final cellBuilder = colDef['cell'] as Function;
-                      cells.add(cellBuilder(preference));
-                    }
-                  }
-                  return cells;
-                },
-                searchStringBuilder: (preference) => preference.city,
-              );
-            },
-          ),
-        ),
-      ],
+    return CustomTableWidget<TenantPreference>(
+      data: filteredPreferences,
+      dataRowHeight: 70,
+      columnWidths: columnWidths,
+      columns: columns,
+      cellsBuilder: (preference) {
+        final cells = <DataCell>[];
+        for (final colDef in _columnDefs) {
+          if (_columnVisibility[colDef['name']] == true) {
+            final cellBuilder = colDef['cell'] as Function;
+            cells.add(cellBuilder(preference));
+          }
+        }
+        return cells;
+      },
+      searchStringBuilder: (preference) => preference.city,
     );
   }
 

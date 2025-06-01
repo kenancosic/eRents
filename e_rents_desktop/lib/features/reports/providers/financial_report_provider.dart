@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/features/reports/providers/base_report_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/services/report_service.dart';
+import 'package:flutter/foundation.dart';
 
 class FinancialReportProvider extends BaseReportProvider<FinancialReportItem> {
   final ReportService? _reportService;
@@ -41,17 +42,19 @@ class FinancialReportProvider extends BaseReportProvider<FinancialReportItem> {
     }
 
     try {
-      print('FinancialReportProvider: Fetching financial report data...');
+      debugPrint(
+        'FinancialReportProvider: Fetching financial report data for range ${startDateFormatted} to ${endDateFormatted}...',
+      );
       final reportItems = await _reportService!.getFinancialReport(
         startDate,
         endDate,
       );
-      print(
+      debugPrint(
         'FinancialReportProvider: Successfully fetched ${reportItems.length} financial report items.',
       );
       return reportItems;
     } catch (e) {
-      print(
+      debugPrint(
         'FinancialReportProvider: Error fetching financial report data: $e',
       );
       throw Exception('Failed to fetch financial report data: $e');

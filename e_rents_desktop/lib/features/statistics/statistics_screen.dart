@@ -39,14 +39,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     DateTime start,
     DateTime end,
   ) {
+    debugPrint(
+      'StatisticsScreen: Date range changed to ${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}',
+    );
     final provider = Provider.of<StatisticsProvider>(context, listen: false);
     provider.setDateRangeAndFetch(start, end);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<StatisticsProvider, AuthProvider>(
-      builder: (context, statisticsProvider, authProvider, _) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
         // If not authenticated, show login prompt
         if (!authProvider.isAuthenticatedState) {
           return const Center(
@@ -61,23 +64,32 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           );
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            StatisticsFilters(
-              onDateRangeChanged:
-                  (start, end) => _handleDateRangeChanged(context, start, end),
-              onPropertyFilterChanged: (selectedProps) {
-                print(
-                  'Statistics Screen: Property filter changed (not used): $selectedProps',
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _buildStatisticsContent(context, statisticsProvider),
-            ),
-          ],
+        return Consumer<StatisticsProvider>(
+          builder: (context, statisticsProvider, child) {
+            debugPrint(
+              'StatisticsScreen: Consumer rebuild - provider state=${statisticsProvider.state}, hasData=${statisticsProvider.statisticsUiModel != null}',
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                StatisticsFilters(
+                  onDateRangeChanged:
+                      (start, end) =>
+                          _handleDateRangeChanged(context, start, end),
+                  onPropertyFilterChanged: (selectedProps) {
+                    debugPrint(
+                      'Statistics Screen: Property filter changed (not used): $selectedProps',
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _buildStatisticsContent(context, statisticsProvider),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -87,8 +99,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     BuildContext context,
     StatisticsProvider provider,
   ) {
+    debugPrint(
+      'StatisticsScreen._buildStatisticsContent: state=${provider.state}, hasModel=${provider.statisticsUiModel != null}',
+    );
+
     if (provider.state == ViewState.Busy &&
         provider.statisticsUiModel == null) {
+      debugPrint('StatisticsScreen: Showing loading indicator');
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -115,12 +132,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     }
 
     if (provider.statisticsUiModel == null) {
+      debugPrint('StatisticsScreen: No statistics data available');
       return const Center(
         child: Text('No statistics data available for the selected period.'),
       );
     }
 
     final stats = provider.statisticsUiModel!;
+    debugPrint(
+      'StatisticsScreen: Displaying statistics data - totalRent=${stats.totalRent}, monthlyBreakdown=${stats.monthlyBreakdown.length} items',
+    );
 
     // Sort monthly breakdown by date for consistent chart order
     stats.monthlyBreakdown.sort((a, b) {

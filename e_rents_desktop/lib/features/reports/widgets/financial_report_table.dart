@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/financial_report_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
@@ -10,7 +10,11 @@ class FinancialReportTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<FinancialReportProvider>(context);
+    final reportsProvider = Provider.of<ReportsProvider>(
+      context,
+      listen: false,
+    );
+    final provider = reportsProvider.financialProvider;
     final reportItems = provider.items;
 
     final List<DataColumn> columns = [

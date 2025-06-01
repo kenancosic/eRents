@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/reports/providers/tenant_report_provide
 import 'package:e_rents_desktop/features/reports/widgets/financial_report_table.dart';
 import 'package:e_rents_desktop/features/reports/widgets/tenant_report_table.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:flutter/foundation.dart';
 
 class ReportTable extends StatelessWidget {
   const ReportTable({super.key});
@@ -15,28 +16,50 @@ class ReportTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reportsProvider = Provider.of<ReportsProvider>(context);
-    final reportType = reportsProvider.currentReportType;
+    return Consumer<ReportsProvider>(
+      builder: (context, reportsProvider, child) {
+        final reportType = reportsProvider.currentReportType;
+        debugPrint('ReportTable.build: Current report type: $reportType');
 
-    // Return the appropriate table based on report type
-    switch (reportType) {
-      case ReportType.financial:
-        final provider = Provider.of<FinancialReportProvider>(context);
-        return _buildTableWithErrorHandling(
-          context: context,
-          provider: provider,
-          reportType: reportType,
-          child: const FinancialReportTable(),
-        );
-      case ReportType.tenant:
-        final provider = Provider.of<TenantReportProvider>(context);
-        return _buildTableWithErrorHandling(
-          context: context,
-          provider: provider,
-          reportType: reportType,
-          child: const TenantReportTable(),
-        );
-    }
+        // Return the appropriate table based on report type
+        switch (reportType) {
+          case ReportType.financial:
+            // Use the provider managed by ReportsProvider
+            final provider = reportsProvider.financialProvider;
+            return ListenableBuilder(
+              listenable: provider,
+              builder: (context, child) {
+                debugPrint(
+                  'ReportTable: Financial provider state=${provider.state}, itemCount=${provider.items.length}',
+                );
+                return _buildTableWithErrorHandling(
+                  context: context,
+                  provider: provider,
+                  reportType: reportType,
+                  child: const FinancialReportTable(),
+                );
+              },
+            );
+          case ReportType.tenant:
+            // Use the provider managed by ReportsProvider
+            final provider = reportsProvider.tenantProvider;
+            return ListenableBuilder(
+              listenable: provider,
+              builder: (context, child) {
+                debugPrint(
+                  'ReportTable: Tenant provider state=${provider.state}, itemCount=${provider.items.length}',
+                );
+                return _buildTableWithErrorHandling(
+                  context: context,
+                  provider: provider,
+                  reportType: reportType,
+                  child: const TenantReportTable(),
+                );
+              },
+            );
+        }
+      },
+    );
   }
 
   // Helper method to add error handling and retry functionality
@@ -54,6 +77,7 @@ class ReportTable extends StatelessWidget {
 
     // Check if provider is in error state
     if (provider.state == ViewState.Error) {
+      debugPrint('ReportTable: Showing error state for $reportType');
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -82,6 +106,7 @@ class ReportTable extends StatelessWidget {
 
     // Check if provider is in loading state
     if (provider.state == ViewState.Busy) {
+      debugPrint('ReportTable: Showing loading state for $reportType');
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -119,6 +144,7 @@ class ReportTable extends StatelessWidget {
 
     // If we've refreshed and still have no data, show empty state
     if (provider.items.isEmpty) {
+      debugPrint('ReportTable: Showing empty state for $reportType');
       switch (reportType) {
         case ReportType.financial:
           return const Center(
@@ -129,6 +155,10 @@ class ReportTable extends StatelessWidget {
       }
     }
 
+    // Show the actual table with data
+    debugPrint(
+      'ReportTable: Showing table with ${provider.items.length} items for $reportType',
+    );
     return child;
   }
 }
