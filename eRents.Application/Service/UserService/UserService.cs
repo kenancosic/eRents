@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using eRents.Application.Exceptions;
 using eRents.Application.Shared;
+using eRents.Application.Service.LocationManagementService;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.Services;
@@ -23,6 +24,7 @@ namespace eRents.Application.Service.UserService
 		private readonly IUserRepository _userRepository;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly IBaseRepository<UserType> _userTypeRepository;
+		private readonly ILocationManagementService _locationManagementService;
 		private readonly IConfiguration _configuration;
 
 		public UserService(
@@ -30,12 +32,14 @@ namespace eRents.Application.Service.UserService
 			IMapper mapper,
 			IRabbitMQService rabbitMqService,
 			IBaseRepository<UserType> userTypeRepository,
+			ILocationManagementService locationManagementService,
 			IConfiguration configuration)
 				: base(userRepository, mapper)
 		{
 			_userRepository = userRepository;
 			_rabbitMqService = rabbitMqService;
 			_userTypeRepository = userTypeRepository;
+			_locationManagementService = locationManagementService;
 			_configuration = configuration;
 		}
 
@@ -43,12 +47,32 @@ namespace eRents.Application.Service.UserService
 		{
 			entity.CreatedAt = DateTime.UtcNow;
 			entity.UpdatedAt = DateTime.UtcNow;
+			
+			// Process address using LocationManagementService if address data is provided
+			if (insert.AddressDetail != null)
+			{
+				var processedAddress = await _locationManagementService.ProcessAddressAsync(insert.AddressDetail);
+				entity.AddressDetailId = processedAddress.AddressDetailId;
+				// Remove the AddressDetail from the insert to prevent AutoMapper conflicts
+				insert.AddressDetail = null;
+			}
+			
 			await base.BeforeInsertAsync(insert, entity);
 		}
 
 		protected override async Task BeforeUpdateAsync(UserUpdateRequest update, User entity)
 		{
 			entity.UpdatedAt = DateTime.UtcNow;
+			
+			// Process address using LocationManagementService if address data is provided
+			if (update.AddressDetail != null)
+			{
+				var processedAddress = await _locationManagementService.ProcessUserAddressAsync(entity.UserId, update.AddressDetail);
+				entity.AddressDetailId = processedAddress.AddressDetailId;
+				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
+				update.AddressDetail = null;
+			}
+			
 			await base.BeforeUpdateAsync(update, entity);
 		}
 

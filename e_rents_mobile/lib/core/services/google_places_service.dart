@@ -73,6 +73,7 @@ class GooglePlacesService {
   }
 
   /// Fetches detailed information about a place from the Google Places API.
+  /// Enhanced for Bosnia and Herzegovina administrative areas.
   ///
   /// [placeId] The place_id of the place for which details are being requested.
   /// [sessionToken] A random string which identifies an autocomplete session for billing purposes.
@@ -81,13 +82,16 @@ class GooglePlacesService {
   Future<Map<String, dynamic>?> getPlaceDetails(
     String placeId,
     String sessionToken, {
-    String?
-        fields, // e.g., 'address_component,name,geometry,formatted_address,type'
+    String? fields,
     String? language,
   }) async {
+    // Enhanced fields to include all administrative levels for Bosnia and Herzegovina
+    final enhancedFields = fields ??
+        'address_component,name,geometry,formatted_address,type,place_id';
+
     String url =
         '$_detailsBaseUrl?place_id=$placeId&key=$_apiKey&sessiontoken=$sessionToken';
-    if (fields != null) url += '&fields=$fields';
+    url += '&fields=$enhancedFields';
     if (language != null) url += '&language=$language';
 
     try {
@@ -112,6 +116,35 @@ class GooglePlacesService {
       return null;
     }
   }
+
+  /// Helper method to determine Bosnia and Herzegovina entity from administrative area
+  static String? getBosnianEntityFromAdministrativeArea(String? adminArea) {
+    if (adminArea == null) return null;
+
+    final normalized = adminArea.toLowerCase().trim();
+
+    // Common variations of entity names in Google Places API
+    if (normalized.contains('federation') ||
+        normalized.contains('federacija') ||
+        normalized == 'fbih' ||
+        normalized == 'federation of bosnia and herzegovina') {
+      return 'Federation of Bosnia and Herzegovina';
+    }
+
+    if (normalized.contains('republika srpska') ||
+        normalized.contains('rs') ||
+        normalized == 'republika srpska') {
+      return 'Republika Srpska';
+    }
+
+    if (normalized.contains('brčko') ||
+        normalized.contains('brcko') ||
+        normalized.contains('brčko district')) {
+      return 'Brčko District';
+    }
+
+    return adminArea; // Return as-is if no match found
+  }
 }
 
 // Example of a simple Place Prediction model (you might want to make this more robust)
@@ -129,18 +162,18 @@ class PlacePrediction {
   }
 }
 
-// Example of a simple Place Details model (you might want to make this more robust)
-// This should be expanded based on the fields you request and need.
+// Enhanced Place Details model for Bosnia and Herzegovina administrative areas
 class PlaceDetails {
   final String formattedAddress;
   final List<AddressComponent> addressComponents;
   final Geometry geometry;
-  // Add other fields as needed based on your 'fields' parameter in getPlaceDetails
+  final String? placeId;
 
   PlaceDetails({
     required this.formattedAddress,
     required this.addressComponents,
     required this.geometry,
+    this.placeId,
   });
 
   factory PlaceDetails.fromJson(Map<String, dynamic> json) {
@@ -150,6 +183,7 @@ class PlaceDetails {
           .map((e) => AddressComponent.fromJson(e as Map<String, dynamic>))
           .toList(),
       geometry: Geometry.fromJson(json['geometry'] as Map<String, dynamic>),
+      placeId: json['place_id'] as String?,
     );
   }
 
@@ -163,6 +197,35 @@ class PlaceDetails {
       return null; // Component not found
     }
   }
+
+  // Enhanced helpers for Bosnia and Herzegovina
+  String? get city => getAddressComponent('locality');
+  String? get country => getAddressComponent('country');
+  String? get countryCode => addressComponents
+      .firstWhere((c) => c.types.contains('country'),
+          orElse: () =>
+              AddressComponent(longName: '', shortName: '', types: []))
+      .shortName;
+  String? get postalCode => getAddressComponent('postal_code');
+  String? get streetNumber => getAddressComponent('street_number');
+  String? get streetName => getAddressComponent('route');
+
+  // Administrative areas for Bosnia and Herzegovina entities
+  String? get administrativeAreaLevel1 =>
+      getAddressComponent('administrative_area_level_1');
+  String? get administrativeAreaLevel2 =>
+      getAddressComponent('administrative_area_level_2');
+
+  // Helper to get the best available city name
+  String? get bestCityName => city ?? getAddressComponent('sublocality');
+
+  // Helper to get Bosnia and Herzegovina entity
+  String? get bosnianEntity =>
+      GooglePlacesService.getBosnianEntityFromAdministrativeArea(
+          administrativeAreaLevel1);
+
+  // Helper to get sub-entity information
+  String? get bosnianSubEntity => administrativeAreaLevel2;
 }
 
 class AddressComponent {

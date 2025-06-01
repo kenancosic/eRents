@@ -15,20 +15,15 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen>
-    with SingleTickerProviderStateMixin {
+class _ProfileScreenState extends State<ProfileScreen> {
   final _personalInfoFormKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
   bool _isEditing = false;
   late ProfileProvider _profileProvider;
-  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    // Initialize the tab controller
-    _tabController = TabController(length: 3, vsync: this);
-
     // Initialize the provider
     _profileProvider = ProfileProvider(
       Provider.of<ProfileService>(context, listen: false),
@@ -38,12 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _profileProvider.fetchUserProfile();
     });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   void _toggleEditing() {
@@ -66,7 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _saveProfile() async {
     if (_personalInfoFormKey.currentState?.validate() == true) {
-      // Updated _saveProfile logic
       if (_profileProvider.currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -78,12 +66,15 @@ class _ProfileScreenState extends State<ProfileScreen>
         return;
       }
 
+      // Ensure all form changes are committed before saving
+      // This will update the provider with latest form data
+      _personalInfoFormKey.currentState?.save();
+
       final success = await _profileProvider.updateProfile(
         _profileProvider.currentUser!,
       );
 
       if (mounted) {
-        // Check if widget is still in the tree
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -93,7 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           );
           setState(() {
-            _isEditing = false; // Exit editing mode
+            _isEditing = false;
           });
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -129,8 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   const SizedBox(height: 16),
                   Text(
                     'Error loading profile: ${provider.errorMessage ?? 'Unknown error'}',
-                    textAlign:
-                        TextAlign.center, // Added for better text display
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 16),
@@ -143,92 +133,299 @@ class _ProfileScreenState extends State<ProfileScreen>
             );
           }
 
-          return Column(
-            children: [
-              ProfileHeaderWidget(
-                isEditing: _isEditing,
-                onEditPressed: _toggleEditing,
-                onCancelPressed: _isEditing ? _cancelEditing : null,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: const Color.fromRGBO(0, 0, 0, 0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+          return Scaffold(
+            body: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile Header Section
+                  ProfileHeaderWidget(
+                    isEditing: _isEditing,
+                    onEditPressed: _toggleEditing,
+                    onCancelPressed: _isEditing ? _cancelEditing : null,
                   ),
-                  child: TabBar(
-                    controller: _tabController,
-                    labelColor: Theme.of(context).colorScheme.primary,
-                    unselectedLabelColor:
-                        Theme.of(context).colorScheme.onSurface,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorColor: Theme.of(context).colorScheme.primary,
-                    tabs: const [
-                      Tab(icon: Icon(Icons.person), text: 'Personal Info'),
-                      Tab(icon: Icon(Icons.lock), text: 'Change Password'),
-                      Tab(icon: Icon(Icons.payment), text: 'Payments'),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      Column(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
+
+                  const SizedBox(height: 32),
+
+                  // Main Content in Cards
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      // Use column layout for smaller screens
+                      if (constraints.maxWidth < 800) {
+                        return Column(
+                          children: [
+                            // Personal Information Section
+                            _buildSectionCard(
+                              title: 'Personal Information',
+                              icon: Icons.person,
                               child: PersonalInfoFormWidget(
                                 isEditing: _isEditing,
                                 formKey: _personalInfoFormKey,
                               ),
                             ),
-                          ),
-                          if (_isEditing)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              child: ElevatedButton.icon(
-                                onPressed: _saveProfile,
-                                icon: const Icon(Icons.save),
-                                label: const Text('Save Personal Info'),
-                                style: ElevatedButton.styleFrom(
-                                  minimumSize: const Size(double.infinity, 48),
-                                ),
+
+                            const SizedBox(height: 24),
+
+                            // Security Section
+                            _buildSectionCard(
+                              title: 'Security & Password',
+                              icon: Icons.security,
+                              child: ChangePasswordWidget(
+                                isEditing: _isEditing,
+                                formKey: _passwordFormKey,
                               ),
                             ),
+
+                            const SizedBox(height: 24),
+
+                            // Payment Settings Section
+                            _buildSectionCard(
+                              title: 'Payment Settings',
+                              icon: Icons.payment,
+                              child: PaypalSettingsWidget(
+                                isEditing: _isEditing,
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Account Summary Section
+                            _buildSectionCard(
+                              title: 'Account Summary',
+                              icon: Icons.info_outline,
+                              child: _buildAccountSummary(provider.currentUser),
+                            ),
+                          ],
+                        );
+                      }
+
+                      // Row layout for larger screens
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              children: [
+                                // Personal Information Section
+                                _buildSectionCard(
+                                  title: 'Personal Information',
+                                  icon: Icons.person,
+                                  child: PersonalInfoFormWidget(
+                                    isEditing: _isEditing,
+                                    formKey: _personalInfoFormKey,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Security Section
+                                _buildSectionCard(
+                                  title: 'Security & Password',
+                                  icon: Icons.security,
+                                  child: ChangePasswordWidget(
+                                    isEditing: _isEditing,
+                                    formKey: _passwordFormKey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(width: 24),
+
+                          // Right Column
+                          Expanded(
+                            flex: 1,
+                            child: Column(
+                              children: [
+                                // Payment Settings Section
+                                _buildSectionCard(
+                                  title: 'Payment Settings',
+                                  icon: Icons.payment,
+                                  child: PaypalSettingsWidget(
+                                    isEditing: _isEditing,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Account Summary Section
+                                _buildSectionCard(
+                                  title: 'Account Summary',
+                                  icon: Icons.info_outline,
+                                  child: _buildAccountSummary(
+                                    provider.currentUser,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                      ),
-
-                      SingleChildScrollView(
-                        child: ChangePasswordWidget(
-                          isEditing: _isEditing,
-                          formKey: _passwordFormKey,
-                        ),
-                      ),
-
-                      PaypalSettingsWidget(isEditing: _isEditing),
-                    ],
+                      );
+                    },
                   ),
-                ),
+
+                  const SizedBox(height: 32),
+
+                  // Action Buttons
+                  if (_isEditing)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _saveProfile,
+                            icon: const Icon(Icons.save),
+                            label: const Text('Save All Changes'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _cancelEditing,
+                            icon: const Icon(Icons.cancel),
+                            label: const Text('Cancel Changes'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required Widget child,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountSummary(user) {
+    if (user == null) {
+      return const Text('No user data available');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSummaryItem(
+          'Account Type',
+          user.role.toString().split('.').last.toUpperCase(),
+          Icons.account_circle,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryItem(
+          'Member Since',
+          '${user.createdAt.day}/${user.createdAt.month}/${user.createdAt.year}',
+          Icons.calendar_today,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryItem(
+          'PayPal Status',
+          user.isPaypalLinked ? 'Linked' : 'Not Linked',
+          Icons.payment,
+          color: user.isPaypalLinked ? Colors.green : Colors.orange,
+        ),
+        const SizedBox(height: 12),
+        _buildSummaryItem(
+          'Profile Status',
+          'Active',
+          Icons.check_circle,
+          color: Colors.green,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryItem(
+    String label,
+    String value,
+    IconData icon, {
+    Color? color,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color:
+              color ?? Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

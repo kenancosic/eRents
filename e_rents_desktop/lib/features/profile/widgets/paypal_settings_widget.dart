@@ -39,137 +39,217 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
           // _paypalEmailController.text = paypalIdentifier; // Optionally prefill if needed for some UX
         }
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'PayPal Account',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        return Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Status Display
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color:
+                      isPaypalLinked
+                          ? Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withOpacity(0.3)
+                          : Theme.of(
+                            context,
+                          ).colorScheme.surfaceVariant.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color:
+                        isPaypalLinked
+                            ? Theme.of(
+                              context,
+                            ).colorScheme.primary.withOpacity(0.3)
+                            : Theme.of(
+                              context,
+                            ).colorScheme.outline.withOpacity(0.2),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                if (provider.state == ViewState.Busy &&
-                    (provider.items.isEmpty ||
-                        provider.items.first.id ==
-                            user?.id)) // Heuristic to check if this specific action is busy
-                  const Center(child: CircularProgressIndicator()),
-                if (provider.state != ViewState.Busy) ...[
-                  // Display PayPal Email Input if in edit mode and not linked
-                  if (widget.isEditing && !isPaypalLinked) ...[
-                    TextFormField(
-                      controller: _paypalEmailController,
-                      decoration: const InputDecoration(
-                        labelText: 'PayPal Email',
-                        hintText: 'Enter your PayPal email address',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your PayPal email';
-                        }
-                        if (!RegExp(
-                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                        ).hasMatch(value)) {
-                          return 'Please enter a valid email address';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Status and Action Button Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
+                child: Row(
+                  children: [
+                    Icon(
+                      isPaypalLinked
+                          ? Icons.check_circle
+                          : Icons.account_balance_wallet,
+                      color:
                           isPaypalLinked
-                              ? 'Status: Linked (${paypalIdentifier ?? 'N/A'})'
-                              : 'Status: Not Linked',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      if (widget.isEditing)
-                        ElevatedButton(
-                          onPressed: () {
-                            if (isPaypalLinked) {
-                              // Unlink action (dialog)
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext dialogContext) {
-                                  return AlertDialog(
-                                    title: const Text('Unlink PayPal Account?'),
-                                    content: const Text(
-                                      'Are you sure you want to unlink your PayPal account?',
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        child: const Text('Cancel'),
-                                        onPressed: () {
-                                          dialogContext.pop();
-                                        },
-                                      ),
-                                      TextButton(
-                                        child: const Text('Unlink'),
-                                        onPressed: () {
-                                          dialogContext.pop();
-                                          provider.unlinkPaypalAccount();
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            } else {
-                              // Link action
-                              if (_formKey.currentState!.validate()) {
-                                provider.linkPaypalAccount(
-                                  _paypalEmailController.text.trim(),
-                                );
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                isPaypalLinked
-                                    ? Theme.of(context).colorScheme.error
-                                    : Theme.of(context).colorScheme.primary,
-                          ),
-                          child: Text(
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.6),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
                             isPaypalLinked
-                                ? 'Unlink PayPal'
-                                : 'Link PayPal Account',
-                            style: TextStyle(
+                                ? 'PayPal Linked'
+                                : 'PayPal Not Linked',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
                               color:
                                   isPaypalLinked
-                                      ? Theme.of(context).colorScheme.onError
-                                      : Theme.of(context).colorScheme.onPrimary,
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  if (widget.isEditing) // Explanatory text based on link status
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: Text(
-                        isPaypalLinked
-                            ? 'Your PayPal account (${paypalIdentifier ?? '-'}) is linked.'
-                            : 'Link your PayPal account to easily handle transactions.',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                          if (isPaypalLinked && paypalIdentifier != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              paypalIdentifier,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                          if (!isPaypalLinked) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              'Link your PayPal account for secure transactions',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
+                  ],
+                ),
+              ),
+
+              if (provider.state == ViewState.Busy)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+
+              if (provider.state != ViewState.Busy && widget.isEditing) ...[
+                const SizedBox(height: 16),
+
+                // Email Input (only show if not linked)
+                if (!isPaypalLinked) ...[
+                  TextFormField(
+                    controller: _paypalEmailController,
+                    decoration: InputDecoration(
+                      labelText: 'PayPal Email',
+                      hintText: 'Enter your PayPal email address',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      prefixIcon: const Icon(Icons.email, size: 20),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your PayPal email';
+                      }
+                      if (!RegExp(
+                        r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                      ).hasMatch(value)) {
+                        return 'Please enter a valid email address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
                 ],
+
+                // Action Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (isPaypalLinked) {
+                        // Unlink action
+                        _showUnlinkDialog(context, provider);
+                      } else {
+                        // Link action
+                        _linkPaypalAccount(provider);
+                      }
+                    },
+                    icon: Icon(
+                      isPaypalLinked ? Icons.link_off : Icons.link,
+                      size: 18,
+                    ),
+                    label: Text(
+                      isPaypalLinked
+                          ? 'Unlink PayPal Account'
+                          : 'Link PayPal Account',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor:
+                          isPaypalLinked
+                              ? Theme.of(context).colorScheme.errorContainer
+                              : Theme.of(context).colorScheme.primary,
+                      foregroundColor:
+                          isPaypalLinked
+                              ? Theme.of(context).colorScheme.onErrorContainer
+                              : Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
+        );
+      },
+    );
+  }
+
+  void _linkPaypalAccount(ProfileProvider provider) {
+    if (_formKey.currentState!.validate()) {
+      provider.linkPaypalAccount(_paypalEmailController.text.trim());
+      _paypalEmailController.clear();
+    }
+  }
+
+  void _showUnlinkDialog(BuildContext context, ProfileProvider provider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Unlink PayPal Account'),
+          content: const Text(
+            'Are you sure you want to unlink your PayPal account? This will remove your payment method.',
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => dialogContext.pop(),
+            ),
+            TextButton(
+              onPressed: () {
+                dialogContext.pop();
+                provider.unlinkPaypalAccount();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('Unlink'),
+            ),
+          ],
         );
       },
     );

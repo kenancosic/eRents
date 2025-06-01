@@ -1,5 +1,6 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/models/address_detail.dart';
+import 'package:e_rents_desktop/models/geo_region.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/profile_service.dart';
 import 'dart:convert';
@@ -11,9 +12,7 @@ class ProfileProvider extends BaseProvider<User> {
   final ProfileService _profileService;
   User? _currentUser;
 
-  ProfileProvider(this._profileService) : super(_profileService) {
-    // enableMockData(); // Mock data control handled by BaseProvider or specific methods
-  }
+  ProfileProvider(this._profileService) : super(_profileService) {}
 
   User? get currentUser => _currentUser;
 
@@ -28,24 +27,15 @@ class ProfileProvider extends BaseProvider<User> {
 
   Future<void> fetchUserProfile() async {
     await execute(() async {
-      if (isMockDataEnabled) {
-        _currentUser = getMockItems().first;
-      } else {
-        _currentUser = await _profileService.getMyProfile();
-      }
+      _currentUser = await _profileService.getMyProfile();
     });
   }
 
   Future<bool> updateProfile(User user) async {
     bool success = false;
     await execute(() async {
-      if (isMockDataEnabled) {
-        _currentUser = user;
-        success = true;
-      } else {
-        _currentUser = await _profileService.updateMyProfile(user.toJson());
-        success = true;
-      }
+      _currentUser = await _profileService.updateMyProfile(user);
+      success = true;
     });
     return success;
   }
@@ -62,12 +52,8 @@ class ProfileProvider extends BaseProvider<User> {
       confirmPassword: confirmPassword,
     );
     await execute(() async {
-      if (isMockDataEnabled) {
-        success = true;
-      } else {
-        await _profileService.changePassword(request);
-        success = true;
-      }
+      await _profileService.changePassword(request);
+      success = true;
     });
     return success;
   }
@@ -75,18 +61,9 @@ class ProfileProvider extends BaseProvider<User> {
   Future<bool> updateProfileImage(String imagePath) async {
     bool success = false;
     await execute(() async {
-      if (isMockDataEnabled) {
-        if (_currentUser != null) {
-          _currentUser = _currentUser!.copyWith(
-            profileImage: erents.ImageInfo(id: 0, url: imagePath),
-          );
-        }
-        success = true;
-      } else {
-        final updatedUser = await _profileService.uploadProfileImage(imagePath);
-        _currentUser = updatedUser;
-        success = true;
-      }
+      final updatedUser = await _profileService.uploadProfileImage(imagePath);
+      _currentUser = updatedUser;
+      success = true;
     });
     return success;
   }
@@ -94,19 +71,9 @@ class ProfileProvider extends BaseProvider<User> {
   Future<bool> linkPaypalAccount(String paypalEmail) async {
     bool success = false;
     await execute(() async {
-      if (isMockDataEnabled) {
-        if (_currentUser != null) {
-          _currentUser = _currentUser!.copyWith(
-            isPaypalLinked: true,
-            paypalUserIdentifier: paypalEmail,
-          );
-        }
-        success = true;
-      } else {
-        final updatedUser = await _profileService.linkPaypal(paypalEmail);
-        _currentUser = updatedUser;
-        success = true;
-      }
+      final updatedUser = await _profileService.linkPaypal(paypalEmail);
+      _currentUser = updatedUser;
+      success = true;
     });
     return success;
   }
@@ -114,41 +81,83 @@ class ProfileProvider extends BaseProvider<User> {
   Future<bool> unlinkPaypalAccount() async {
     bool success = false;
     await execute(() async {
-      if (isMockDataEnabled) {
-        if (_currentUser != null) {
-          _currentUser = _currentUser!.copyWith(
-            isPaypalLinked: false,
-            paypalUserIdentifier: null,
-          );
-        }
-        success = true;
-      } else {
-        final updatedUser = await _profileService.unlinkPaypal();
-        _currentUser = updatedUser;
-        success = true;
-      }
+      final updatedUser = await _profileService.unlinkPaypal();
+      _currentUser = updatedUser;
+      success = true;
     });
     return success;
   }
 
   AddressDetail _convertToAddressDetail(AddressDetails details) {
-    const int defaultGeoRegionId = 1;
     String streetLine1 = '';
     if (details.streetNumber != null && details.streetName != null) {
       streetLine1 = '${details.streetNumber} ${details.streetName}';
     } else {
       streetLine1 = details.formattedAddress;
     }
+
+    // Use the best available city name
+    final cityName = details.bestCityName ?? details.city;
+
+    // Determine the state/entity for Bosnia and Herzegovina
+    String? state = details.bosnianEntity;
+
+    // If no entity found but we have administrative area, try to map it
+    if (state == null && details.administrativeAreaLevel1 != null) {
+      state = _mapAdministrativeAreaToEntity(details.administrativeAreaLevel1!);
+    }
+
     return AddressDetail(
       addressDetailId: _currentUser?.addressDetail?.addressDetailId ?? 0,
-      geoRegionId:
-          _currentUser?.addressDetail?.geoRegionId ?? defaultGeoRegionId,
+      geoRegionId: null, // Don't send GeoRegionId, let backend find/create it
       streetLine1: streetLine1,
       streetLine2:
-          details.city != null ? '${details.city}, ${details.country}' : null,
+          details.sublocality != null
+              ? '${details.sublocality}, ${details.country ?? 'Bosnia and Herzegovina'}'
+              : (cityName != null
+                  ? '${cityName}, ${details.country ?? 'Bosnia and Herzegovina'}'
+                  : null),
       latitude: details.latitude,
       longitude: details.longitude,
+      geoRegion:
+          cityName != null
+              ? GeoRegion(
+                city: cityName,
+                state: state,
+                country: details.country ?? 'Bosnia and Herzegovina',
+                postalCode: details.postalCode,
+              )
+              : null,
     );
+  }
+
+  /// Maps Google Places administrative_area_level_1 to Bosnia and Herzegovina entities
+  String? _mapAdministrativeAreaToEntity(String adminArea) {
+    final normalized = adminArea.toLowerCase().trim();
+
+    // Map common Google Places API responses to standard entity names
+    if (normalized.contains('federation') ||
+        normalized.contains('federacija') ||
+        normalized == 'fbih' ||
+        normalized.contains('federation of bosnia and herzegovina')) {
+      return 'Federation of Bosnia and Herzegovina';
+    }
+
+    if (normalized.contains('republika srpska') ||
+        normalized == 'rs' ||
+        normalized == 'republika srpska') {
+      return 'Republika Srpska';
+    }
+
+    if (normalized.contains('brčko') ||
+        normalized.contains('brcko') ||
+        normalized.contains('brčko district')) {
+      return 'Brčko District';
+    }
+
+    // If we can't map it, return the original value
+    print('Unknown administrative area for Bosnia and Herzegovina: $adminArea');
+    return adminArea;
   }
 
   void updateUserAddressDetails(AddressDetails? details) {
@@ -162,8 +171,205 @@ class ProfileProvider extends BaseProvider<User> {
     }
   }
 
+  void updateUserPersonalInfo(
+    String firstName,
+    String lastName,
+    String? phone,
+  ) {
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+      );
+      notifyListeners();
+    }
+  }
+
+  void updateUserAddressFromString(String addressString) {
+    if (_currentUser != null && addressString.isNotEmpty) {
+      print('Updating address from string: $addressString');
+
+      // Parse city, state, country from address string
+      final parsedLocation = _parseAddressString(addressString);
+
+      final addressDetail = AddressDetail(
+        addressDetailId: _currentUser?.addressDetail?.addressDetailId ?? 0,
+        geoRegionId: null, // Don't send GeoRegionId, let backend find/create it
+        streetLine1: addressString,
+        streetLine2:
+            parsedLocation['country'] != null
+                ? parsedLocation['country']
+                : null,
+        latitude: null,
+        longitude: null,
+        geoRegion:
+            parsedLocation['city'] != null
+                ? GeoRegion(
+                  city: parsedLocation['city']!,
+                  state: parsedLocation['state'],
+                  country:
+                      parsedLocation['country'] ?? 'Bosnia and Herzegovina',
+                  postalCode: null,
+                )
+                : null,
+      );
+      _currentUser = _currentUser!.copyWith(addressDetail: addressDetail);
+      print(
+        'Updated user address to: ${_currentUser!.addressDetail?.streetLine1} in city: ${parsedLocation['city']}',
+      );
+      notifyListeners();
+    }
+  }
+
+  /// Parse address string to extract city, state, and country
+  /// Enhanced for Bosnia and Herzegovina entity detection
+  Map<String, String?> _parseAddressString(String addressString) {
+    // Handle format: "Street, City, Country" or "Street, City, State, Country"
+    final parts = addressString.split(',').map((e) => e.trim()).toList();
+
+    String? city;
+    String? state;
+    String? country;
+
+    if (parts.length >= 3) {
+      // Last part is usually country
+      country = parts.last;
+
+      // Second to last is usually city (or state if 4+ parts)
+      if (parts.length == 3) {
+        // Format: Street, City, Country
+        city = parts[1];
+      } else if (parts.length >= 4) {
+        // Format: Street, City, State, Country or Street, City, Entity, Country
+        city = parts[1];
+        state = parts[2];
+
+        // If we have a potential entity name, try to map it
+        if (state != null &&
+            country?.toLowerCase().contains('bosnia') == true) {
+          state = _mapAdministrativeAreaToEntity(state);
+        }
+      }
+    } else if (parts.length == 2) {
+      // Format: Street, City
+      city = parts[1];
+      country = 'Bosnia and Herzegovina'; // Default for this region
+    }
+
+    // Try to detect entity from city name if we have a city but no state
+    if (city != null &&
+        state == null &&
+        country?.toLowerCase().contains('bosnia') == true) {
+      state = _detectEntityFromCity(city);
+    }
+
+    print('Parsed address - City: $city, State: $state, Country: $country');
+
+    return {'city': city, 'state': state, 'country': country};
+  }
+
+  /// Detect Bosnia and Herzegovina entity from city name
+  String? _detectEntityFromCity(String cityName) {
+    final normalized = cityName.toLowerCase().trim();
+
+    // Federation of Bosnia and Herzegovina cities (major ones)
+    const federationCities = {
+      'sarajevo',
+      'mostar',
+      'tuzla',
+      'zenica',
+      'lukavac',
+      'gradačac',
+      'gračanica',
+      'sanski most',
+      'cazin',
+      'bihać',
+      'livno',
+      'bugojno',
+      'travnik',
+      'jajce',
+      'konjic',
+      'goražde',
+      'fojnica',
+      'kiseljak',
+      'vitez',
+      'novi travnik',
+      'jablanica',
+      'neum',
+      'stolac',
+      'čapljina',
+    };
+
+    // Republika Srpska cities (major ones)
+    const republikaSrpskaCities = {
+      'banja luka',
+      'bijeljina',
+      'prijedor',
+      'doboj',
+      'gradiška',
+      'zvornik',
+      'trebinje',
+      'istočno sarajevo',
+      'pale',
+      'sokolac',
+      'rogatica',
+      'višegrad',
+      'nevesinje',
+      'gacko',
+      'laktaši',
+      'čelinac',
+      'prnjavor',
+      'derventa',
+      'modriča',
+      'ugljevik',
+      'srebrenica',
+      'bratunac',
+    };
+
+    // Brčko District
+    const brckoDistrict = {'brčko'};
+
+    if (federationCities.contains(normalized)) {
+      return 'Federation of Bosnia and Herzegovina';
+    } else if (republikaSrpskaCities.contains(normalized)) {
+      return 'Republika Srpska';
+    } else if (brckoDistrict.contains(normalized)) {
+      return 'Brčko District';
+    }
+
+    // Return null if city is not recognized - let backend handle it
+    return null;
+  }
+
   @override
   List<User> getMockItems() {
-    return [];
+    return [
+      User(
+        id: 1,
+        email: 'testLandlord@example.ba',
+        username: 'marko_vlajic',
+        firstName: 'Marko',
+        lastName: 'Vlajić',
+        phone: '38761821547',
+        role: UserType.landlord,
+        createdAt: DateTime.now().subtract(const Duration(days: 365)),
+        updatedAt: DateTime.now(),
+        isPaypalLinked: false,
+        paypalUserIdentifier: null,
+        profileImage: erents.ImageInfo(
+          id: 1,
+          url: 'assets/images/user-image.png',
+        ),
+        addressDetail: AddressDetail(
+          addressDetailId: 1,
+          geoRegionId: 1,
+          streetLine1: 'Lukavačkih brigada, Lukavac, Bosnia and Herzegovina',
+          streetLine2: null,
+          latitude: 44.5369,
+          longitude: 18.5281,
+        ),
+      ),
+    ];
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-import 'package:e_rents_desktop/features/profile/widgets/common_widgets.dart';
+
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -24,6 +24,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
 
   late String _googleApiKey = 'YOUR_API_KEY_NOT_FOUND';
 
@@ -32,6 +33,12 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     super.initState();
     _loadGoogleApiKey();
     _loadUserData();
+
+    // Add listeners to update user data when controllers change
+    _firstNameController.addListener(_updateUserData);
+    _lastNameController.addListener(_updateUserData);
+    _phoneController.addListener(_updateUserData);
+    _addressController.addListener(_updateUserData);
   }
 
   Future<void> _loadGoogleApiKey() async {
@@ -50,10 +57,17 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
 
   @override
   void dispose() {
+    // Remove listeners before disposing
+    _firstNameController.removeListener(_updateUserData);
+    _lastNameController.removeListener(_updateUserData);
+    _phoneController.removeListener(_updateUserData);
+    _addressController.removeListener(_updateUserData);
+
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -70,7 +84,30 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       _lastNameController.text = user.lastName;
       _emailController.text = user.email;
       _phoneController.text = user.phone ?? '';
+      _addressController.text = user.addressDetail?.streetLine1 ?? '';
     }
+  }
+
+  void _updateUserData() {
+    final profileProvider = Provider.of<ProfileProvider>(
+      context,
+      listen: false,
+    );
+    profileProvider.updateUserPersonalInfo(
+      _firstNameController.text,
+      _lastNameController.text,
+      _phoneController.text.isEmpty ? null : _phoneController.text,
+    );
+
+    // Update address if using fallback text field
+    if (_addressController.text.isNotEmpty) {
+      profileProvider.updateUserAddressFromString(_addressController.text);
+    }
+  }
+
+  // Method to manually trigger data update (useful for when saving)
+  void commitChanges() {
+    _updateUserData();
   }
 
   @override
@@ -82,144 +119,213 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     final currentUser = profileProvider.currentUser;
     final initialUserAddress = currentUser?.addressDetail?.streetLine1;
 
+    // Ensure address controller has the current address value
+    if (_addressController.text.isEmpty && initialUserAddress != null) {
+      _addressController.text = initialUserAddress;
+    }
+
     Widget addressDisplayWidget;
-    if (_googleApiKey == 'YOUR_API_KEY_NOT_FOUND') {
-      addressDisplayWidget = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-        child: Text(
-          'Address input is unavailable (API Key missing or incorrect configuration).',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.error,
-            fontSize: 14,
-          ),
-        ),
+    final bool apiKeyMissing = _googleApiKey == 'YOUR_API_KEY_NOT_FOUND';
+
+    if (apiKeyMissing && widget.isEditing) {
+      // Show a basic text field when API key is missing but in edit mode
+      addressDisplayWidget = _buildCompactTextField(
+        controller: _addressController,
+        label: 'Address (Limited - API Key Missing)',
+        enabled: true,
+        validator: null, // Make address optional when API is not available
+      );
+    } else if (apiKeyMissing && !widget.isEditing) {
+      // Show read-only field when API key is missing and not editing
+      addressDisplayWidget = _buildReadOnlyField(
+        label: 'Address',
+        value: initialUserAddress ?? 'Not set',
+        icon: Icons.location_on,
       );
     } else if (widget.isEditing) {
+      // Full Google Address Input when API key is available and editing
       addressDisplayWidget = GoogleAddressInput(
         googleApiKey: _googleApiKey,
         initialValue: initialUserAddress,
-        labelText: 'Full Address',
+        labelText: 'Address',
         hintText: 'Search for your address',
         onAddressSelected: (AddressDetails? details) {
           profileProvider.updateUserAddressDetails(details);
         },
         validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please select or enter an address.';
-          }
+          // Make address optional for now to avoid validation errors
           return null;
         },
       );
     } else {
-      addressDisplayWidget = buildStaticInfoField(
+      // Read-only view when not editing
+      addressDisplayWidget = _buildReadOnlyField(
         label: 'Address',
         value: initialUserAddress ?? 'Not set',
         icon: Icons.location_on,
       );
     }
 
-    return buildSection(
-      context: context,
-      title: 'Personal Information',
-      icon: Icons.person,
-      child: Form(
-        key: widget.formKey,
-        autovalidateMode:
-            widget.isEditing
-                ? AutovalidateMode.onUserInteraction
-                : AutovalidateMode.disabled,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: buildTextField(
-                    controller: _firstNameController,
-                    label: 'First Name',
-                    enabled: widget.isEditing,
-                    validator:
-                        (value) =>
-                            value == null || value.isEmpty
-                                ? 'First name cannot be empty'
-                                : null,
-                  ),
+    return Form(
+      key: widget.formKey,
+      autovalidateMode:
+          widget.isEditing
+              ? AutovalidateMode.onUserInteraction
+              : AutovalidateMode.disabled,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Name Fields
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactTextField(
+                  controller: _firstNameController,
+                  label: 'First Name',
+                  enabled: widget.isEditing,
+                  validator:
+                      (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: buildTextField(
-                    controller: _lastNameController,
-                    label: 'Last Name',
-                    enabled: widget.isEditing,
-                    validator:
-                        (value) =>
-                            value == null || value.isEmpty
-                                ? 'Last name cannot be empty'
-                                : null,
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCompactTextField(
+                  controller: _lastNameController,
+                  label: 'Last Name',
+                  enabled: widget.isEditing,
+                  validator:
+                      (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: buildTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    enabled: false,
-                  ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Contact Fields
+          Row(
+            children: [
+              Expanded(
+                child: _buildCompactTextField(
+                  controller: _emailController,
+                  label: 'Email',
+                  enabled: false,
+                  suffixIcon: const Icon(Icons.lock_outline, size: 16),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: buildTextField(
-                    controller: _phoneController,
-                    label: 'Phone Number',
-                    enabled: widget.isEditing,
-                    validator: (value) {
-                      if (value != null &&
-                          value.isNotEmpty &&
-                          !RegExp(
-                            r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$',
-                          ).hasMatch(value)) {
-                        return 'Enter a valid phone number';
-                      }
-                      return null;
-                    },
-                  ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCompactTextField(
+                  controller: _phoneController,
+                  label: 'Phone Number',
+                  enabled: widget.isEditing,
+                  validator: (value) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        !RegExp(
+                          r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$',
+                        ).hasMatch(value)) {
+                      return 'Invalid phone number';
+                    }
+                    return null;
+                  },
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            addressDisplayWidget,
-            const SizedBox(height: 16),
-          ],
-        ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Address Field
+          addressDisplayWidget,
+        ],
       ),
     );
   }
-}
 
-Widget buildStaticInfoField({
-  required String label,
-  required String value,
-  IconData? icon,
-}) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            if (icon != null) Icon(icon, color: Colors.grey[700], size: 18),
-            if (icon != null) const SizedBox(width: 8),
-            Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
-          ],
+  Widget _buildCompactTextField({
+    required TextEditingController controller,
+    required String label,
+    required bool enabled,
+    String? Function(String?)? validator,
+    Widget? suffixIcon,
+  }) {
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        filled: !enabled,
+        fillColor:
+            enabled
+                ? null
+                : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        suffixIcon: suffixIcon,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
         ),
-      ],
-    ),
-  );
+        labelStyle: TextStyle(
+          fontSize: 14,
+          color:
+              enabled
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        ),
+      ),
+      style: TextStyle(
+        fontSize: 14,
+        color:
+            enabled
+                ? Theme.of(context).colorScheme.onSurface
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+      ),
+      validator: validator,
+    );
+  }
+
+  Widget _buildReadOnlyField({
+    required String label,
+    required String value,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 18),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(value, style: Theme.of(context).textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

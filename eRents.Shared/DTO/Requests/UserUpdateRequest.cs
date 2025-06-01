@@ -7,6 +7,7 @@ namespace eRents.Shared.DTO.Requests
 	{
 		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
+		public string? PhoneNumber { get; set; }
 		public int? ProfileImageId { get; set; }
 		public AddressDetailDto? AddressDetail { get; set; }
 		public DateTime? UpdatedAt { get; set; }

@@ -51,7 +51,7 @@ class User {
       username: json['username'] as String? ?? '',
       firstName: json['firstName'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
-      phone: json['phone'] as String? ?? json['phoneNumber'] as String?,
+      phone: json['phoneNumber'] as String? ?? json['phone'] as String?,
       role: _parseUserType(json['role']),
       profileImage:
           json['profileImage'] != null
@@ -112,12 +112,12 @@ class User {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'userId': id,
       'email': email,
       'username': username,
       'firstName': firstName,
       'lastName': lastName,
-      'phone': phone,
+      'phoneNumber': phone,
       'role': role.toString().split('.').last,
       'profileImage': profileImage?.toJson(),
       'dateOfBirth': dateOfBirth?.toIso8601String(),
@@ -127,7 +127,7 @@ class User {
       'resetTokenExpiration': resetTokenExpiration?.toIso8601String(),
       'isPaypalLinked': isPaypalLinked,
       'paypalUserIdentifier': paypalUserIdentifier,
-      'addressDetailId': addressDetailId,
+      'addressDetail': addressDetail?.toJson(),
     };
   }
 

@@ -3,7 +3,7 @@ import 'package:google_places_flutter/model/prediction.dart';
 import 'package:http/http.dart' as http; // Import http to make direct API calls
 import 'dart:convert'; // For parsing JSON
 
-// Define a class to hold detailed address information
+// Enhanced class to hold detailed address information with administrative areas
 class AddressDetails {
   final String formattedAddress;
   final double latitude;
@@ -13,6 +13,13 @@ class AddressDetails {
   final String? city;
   final String? postalCode;
   final String? country;
+  final String? countryCode;
+  final String?
+  administrativeAreaLevel1; // State/Entity level (e.g., "Republika Srpska")
+  final String? administrativeAreaLevel2; // Sub-entity level
+  final String? locality; // City/Town level
+  final String? sublocality; // Neighborhood/District level
+  final String? placeId;
 
   AddressDetails({
     required this.formattedAddress,
@@ -23,7 +30,22 @@ class AddressDetails {
     this.city,
     this.postalCode,
     this.country,
+    this.countryCode,
+    this.administrativeAreaLevel1,
+    this.administrativeAreaLevel2,
+    this.locality,
+    this.sublocality,
+    this.placeId,
   });
+
+  /// Helper method to get the best available city name
+  String? get bestCityName => locality ?? city;
+
+  /// Helper method to get the state/entity for Bosnia and Herzegovina
+  String? get bosnianEntity => administrativeAreaLevel1;
+
+  /// Helper method to get sub-entity information
+  String? get bosnianSubEntity => administrativeAreaLevel2;
 }
 
 class GoogleAddressInput extends StatefulWidget {
@@ -194,13 +216,14 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
     }
   }
 
-  // New method to fetch place details
+  // Enhanced method to fetch place details with comprehensive address components
   Future<AddressDetails?> _getPlaceDetails(String placeId) async {
     final apiKey = widget.googleApiKey;
     final Uri uri =
         Uri.https('maps.googleapis.com', '/maps/api/place/details/json', {
           'place_id': placeId,
-          'fields': 'formatted_address,geometry/location,address_components',
+          'fields':
+              'formatted_address,geometry/location,address_components,place_id',
           'key': apiKey,
         });
 
@@ -214,15 +237,16 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
           final List<dynamic> addressComponents =
               result['address_components'] ?? [];
 
-          // Helper function to extract component
-          String? getComponent(String type) {
+          // Helper function to extract component by type
+          String? getComponent(String type, {bool useShortName = false}) {
             final component = addressComponents.firstWhere(
               (c) => (c['types'] as List).contains(type),
               orElse: () => null,
             );
-            return component?['long_name']; // Or short_name if preferred
+            return component?[useShortName ? 'short_name' : 'long_name'];
           }
 
+          // Enhanced extraction for Bosnia and Herzegovina
           return AddressDetails(
             formattedAddress: result['formatted_address'] ?? '',
             latitude: location['lat'] as double? ?? 0.0,
@@ -230,9 +254,20 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
             streetNumber: getComponent('street_number'),
             streetName: getComponent('route'),
             city: getComponent('locality'),
+            locality: getComponent('locality'),
+            sublocality:
+                getComponent('sublocality') ??
+                getComponent('sublocality_level_1'),
             postalCode: getComponent('postal_code'),
             country: getComponent('country'),
-            // Extract other components like administrative_area_level_1 (state) if needed
+            countryCode: getComponent('country', useShortName: true),
+            administrativeAreaLevel1: getComponent(
+              'administrative_area_level_1',
+            ), // Main entity (Republika Srpska, Federation of BiH, etc.)
+            administrativeAreaLevel2: getComponent(
+              'administrative_area_level_2',
+            ), // Sub-entity
+            placeId: result['place_id'],
           );
         } else {
           print(

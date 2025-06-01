@@ -10,6 +10,7 @@ using eRents.Application.Service.UserService;
 using eRents.Application.Service.StatisticsService;
 using eRents.Application.Service.TenantService;
 using eRents.Application.Service.ReportService;
+using eRents.Application.Service.LocationManagementService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
@@ -98,6 +99,8 @@ builder.Services.AddTransient<IMessageRepository, MessageRepository>();
 builder.Services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
 builder.Services.AddTransient<ITenantRepository, TenantRepository>();
 builder.Services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
+builder.Services.AddTransient<IGeoRegionRepository, GeoRegionRepository>();
+builder.Services.AddTransient<IAddressDetailRepository, AddressDetailRepository>();
 
 // Register UserTypeRepository or BaseRepository<UserType>
 // If you have a specific UserTypeRepository:
@@ -116,6 +119,7 @@ builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
 builder.Services.AddTransient<IStatisticsService, StatisticsService>();
 builder.Services.AddTransient<ITenantService, TenantService>();
 builder.Services.AddTransient<IReportService, ReportService>();
+builder.Services.AddTransient<ILocationManagementService, LocationManagementService>();
 // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
 
 // Register HttpClient
@@ -164,8 +168,8 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 	try
 	{
 		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-		var logger = scope.ServiceProvider.GetService<ILogger<SetupService>>();
-		var setupService = new SetupService(logger);
+		var logger = scope.ServiceProvider.GetService<ILogger<SetupServiceNew>>();
+		var setupService = new SetupServiceNew(logger);
 
 		await setupService.InitAsync(context);
 
