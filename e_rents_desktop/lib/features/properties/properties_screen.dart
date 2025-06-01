@@ -364,7 +364,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
           properties.map((property) {
             final statusProps = _getStatusDisplayProperties(property.status);
             return SizedBox(
-              key: ValueKey(property.id),
+              key: ValueKey(property.id.toString()),
               width: 300,
               height: 320,
               child: Card(

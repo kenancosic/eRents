@@ -57,7 +57,11 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       if (provider.properties.isEmpty) {
         await provider.fetchProperties();
       }
-      _initialProperty = provider.getPropertyById(widget.propertyId!);
+      final propertyId = int.tryParse(widget.propertyId!);
+      if (propertyId == null) {
+        throw Exception('Invalid property ID: ${widget.propertyId}');
+      }
+      _initialProperty = provider.getPropertyById(propertyId);
 
       if (_initialProperty != null) {
         _formState.populateFromProperty(_initialProperty!);

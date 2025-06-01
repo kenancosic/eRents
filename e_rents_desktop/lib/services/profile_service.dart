@@ -10,24 +10,18 @@ class ProfileService extends ApiService {
 
   /// Get current user's profile
   Future<User> getMyProfile() async {
-    print('ProfileService: Fetching user profile...');
     try {
       final response = await get('/profile/me', authenticated: true);
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final user = User.fromJson(jsonResponse);
-      print(
-        'ProfileService: Successfully fetched user profile for ${user.username}',
-      );
       return user;
     } catch (e) {
-      print('ProfileService: Error fetching user profile: $e');
       throw Exception('Failed to fetch user profile: $e');
     }
   }
 
   /// Update current user's profile
   Future<User> updateMyProfile(User user) async {
-    print('ProfileService: Updating user profile...');
     try {
       // Create UserUpdateRequest format expected by backend
       final updateData = {
@@ -45,35 +39,27 @@ class ProfileService extends ApiService {
       );
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final updatedUser = User.fromJson(jsonResponse);
-      print(
-        'ProfileService: Successfully updated user profile for ${updatedUser.username}',
-      );
       return updatedUser;
     } catch (e) {
-      print('ProfileService: Error updating user profile: $e');
       throw Exception('Failed to update user profile: $e');
     }
   }
 
   /// Change current user's password
   Future<void> changePassword(ChangePasswordRequestModel request) async {
-    print('ProfileService: Changing password...');
     try {
       await post(
         '/profile/change-password',
         request.toJson(),
         authenticated: true,
       );
-      print('ProfileService: Password changed successfully');
     } catch (e) {
-      print('ProfileService: Error changing password: $e');
       throw Exception('Failed to change password: $e');
     }
   }
 
   /// Upload profile image (multipart file upload)
   Future<User> uploadProfileImage(String imagePath) async {
-    print('ProfileService: Uploading profile image...');
     try {
       final uri = Uri.parse('$baseUrl/profile/upload-profile-image');
       final request = http.MultipartRequest('POST', uri);
@@ -97,9 +83,6 @@ class ProfileService extends ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
         final user = User.fromJson(jsonResponse);
-        print(
-          'ProfileService: Profile image uploaded successfully for ${user.username}',
-        );
         return user;
       } else {
         throw Exception(
@@ -107,14 +90,12 @@ class ProfileService extends ApiService {
         );
       }
     } catch (e) {
-      print('ProfileService: Error uploading profile image: $e');
       throw Exception('Failed to upload profile image: $e');
     }
   }
 
   /// Link PayPal account
   Future<User> linkPaypal(String paypalEmail) async {
-    print('ProfileService: Linking PayPal account...');
     try {
       final response = await post('/profile/link-paypal', {
         'email': paypalEmail,
@@ -122,19 +103,14 @@ class ProfileService extends ApiService {
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final user = User.fromJson(jsonResponse);
-      print(
-        'ProfileService: PayPal account linked successfully for ${user.username}',
-      );
       return user;
     } catch (e) {
-      print('ProfileService: Error linking PayPal account: $e');
       throw Exception('Failed to link PayPal account: $e');
     }
   }
 
   /// Unlink PayPal account
   Future<User> unlinkPaypal() async {
-    print('ProfileService: Unlinking PayPal account...');
     try {
       final response = await post(
         '/profile/unlink-paypal',
@@ -144,12 +120,8 @@ class ProfileService extends ApiService {
 
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final user = User.fromJson(jsonResponse);
-      print(
-        'ProfileService: PayPal account unlinked successfully for ${user.username}',
-      );
       return user;
     } catch (e) {
-      print('ProfileService: Error unlinking PayPal account: $e');
       throw Exception('Failed to unlink PayPal account: $e');
     }
   }

@@ -95,12 +95,9 @@ class PropertyProvider extends BaseProvider<Property> {
         .toList();
   }
 
-  Property? getPropertyById(String id) {
+  Property? getPropertyById(int id) {
     try {
-      final intId = int.tryParse(id);
-      if (intId == null)
-        return null; // Handle cases where ID is not a valid integer
-      return items.firstWhere((property) => property.id == intId);
+      return items.firstWhere((property) => property.id == id);
     } catch (e) {
       return null;
     }

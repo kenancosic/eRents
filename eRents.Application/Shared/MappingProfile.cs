@@ -72,11 +72,13 @@ namespace eRents.Application.Shared
 
 			CreateMap<PropertyInsertRequest, Property>()
 				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
-				.ForMember(dest => dest.Images, opt => opt.Ignore());
+				.ForMember(dest => dest.Images, opt => opt.Ignore())
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
 
 			CreateMap<PropertyUpdateRequest, Property>()
 				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
-				.ForMember(dest => dest.Images, opt => opt.Ignore());
+				.ForMember(dest => dest.Images, opt => opt.Ignore())
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
 
 			// Address and GeoRegion mappings - AutoMapper can handle these automatically
 			CreateMap<AddressDetail, AddressDetailDto>().ReverseMap();
@@ -91,6 +93,7 @@ namespace eRents.Application.Shared
 			CreateMap<User, UserResponse>()
 				.ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
 				.ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserTypeNavigation != null ? src.UserTypeNavigation.TypeName : null))
+				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail)) 
 				.ForMember(dest => dest.GeoRegion, opt => opt.MapFrom(src => src.AddressDetail != null ? src.AddressDetail.GeoRegion : null));
 
 			CreateMap<UserInsertRequest, User>()
@@ -98,10 +101,12 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.PasswordHash, opt => opt.Ignore()) // Set in service logic  
 				.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore()) // Set in service logic
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow));
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
 
 			CreateMap<UserUpdateRequest, User>()
-				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow));
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // AddressDetail handled by LocationManagementService
 
 			// MaintenanceIssue mappings - Fix field name mismatches
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()

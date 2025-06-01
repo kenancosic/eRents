@@ -71,7 +71,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           propertyProvider.properties.map((p) => p.id).toList();
       print('PropertyDetailsScreen: Available property IDs: $availableIds');
 
-      _property = propertyProvider.getPropertyById(widget.propertyId);
+      final propertyId = int.tryParse(widget.propertyId);
+      if (propertyId == null) {
+        throw Exception('Invalid property ID: ${widget.propertyId}');
+      }
+      _property = propertyProvider.getPropertyById(propertyId);
       print(
         'PropertyDetailsScreen: Found property: ${_property?.title ?? 'null'}',
       );
@@ -83,7 +87,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       }
 
       // Load detailed property statistics and data
-      await detailsProvider.loadPropertyDetails(widget.propertyId);
+      await detailsProvider.loadPropertyDetails(propertyId.toString());
     } catch (e) {
       _error = "Failed to fetch property details: ${e.toString()}";
       print('PropertyDetailsScreen: Exception - $_error');
@@ -303,7 +307,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     TextButton.icon(
                       onPressed: () {
                         context.push(
-                          '/maintenance/new?propertyId=${property.id}',
+                          '/maintenance/new?propertyId=${property.id.toString()}',
                         );
                       },
                       icon: const Icon(Icons.add, size: 18),
@@ -311,7 +315,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                     TextButton.icon(
                       onPressed: () {
-                        context.push('/maintenance?propertyId=${property.id}');
+                        context.push(
+                          '/maintenance?propertyId=${property.id.toString()}',
+                        );
                       },
                       icon: const Icon(Icons.list, size: 18),
                       label: const Text('View All'),
@@ -406,6 +412,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   void _navigateToEditScreen(BuildContext context, int propertyId) {
-    context.push('/properties/${propertyId}/edit');
+    context.push('/properties/${propertyId.toString()}/edit');
   }
 }

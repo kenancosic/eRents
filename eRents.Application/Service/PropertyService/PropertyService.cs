@@ -1,5 +1,6 @@
 using AutoMapper;
 using eRents.Application.Shared;
+using eRents.Application.Service.LocationManagementService;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Domain.Shared;
@@ -23,17 +24,57 @@ namespace eRents.Application.Service.PropertyService
 	{
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ICurrentUserService _currentUserService;
+		private readonly ILocationManagementService _locationManagementService;
 		private readonly IMapper _mapper;
 		private static MLContext _mlContext = null;
 		private static ITransformer _model = null;
 		private static object _lock = new object();
 
-		public PropertyService(IPropertyRepository propertyRepository, ICurrentUserService currentUserService, IMapper mapper)
+		public PropertyService(
+			IPropertyRepository propertyRepository, 
+			ICurrentUserService currentUserService, 
+			ILocationManagementService locationManagementService,
+			IMapper mapper)
 				: base(propertyRepository, mapper)
 		{
 			_propertyRepository = propertyRepository;
 			_currentUserService = currentUserService;
+			_locationManagementService = locationManagementService;
 			_mapper = mapper;
+		}
+
+		/// <summary>
+		/// Process address using LocationManagementService before property insertion
+		/// </summary>
+		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
+		{
+			// Process address using LocationManagementService if address data is provided
+			if (insert.AddressDetail != null)
+			{
+				var processedAddress = await _locationManagementService.ProcessAddressAsync(insert.AddressDetail);
+				entity.AddressDetailId = processedAddress.AddressDetailId;
+				// Remove the AddressDetail from the insert to prevent AutoMapper conflicts
+				insert.AddressDetail = null;
+			}
+
+			await base.BeforeInsertAsync(insert, entity);
+		}
+
+		/// <summary>
+		/// Process address using LocationManagementService before property update
+		/// </summary>
+		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
+		{
+			// Process address using LocationManagementService if address data is provided
+			if (update.AddressDetail != null)
+			{
+				var processedAddress = await _locationManagementService.ProcessPropertyAddressAsync(entity.PropertyId, update.AddressDetail);
+				entity.AddressDetailId = processedAddress.AddressDetailId;
+				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
+				update.AddressDetail = null;
+			}
+
+			await base.BeforeUpdateAsync(update, entity);
 		}
 
 		// Override GetByIdAsync to implement user-scoped access

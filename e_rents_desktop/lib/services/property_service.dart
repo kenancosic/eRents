@@ -17,7 +17,7 @@ class PropertyService extends ApiService {
     return jsonResponse.map((json) => Property.fromJson(json)).toList();
   }
 
-  Future<Property> getPropertyById(String propertyId) async {
+  Future<Property> getPropertyById(int propertyId) async {
     final response = await get('/properties/$propertyId', authenticated: true);
     final Map<String, dynamic> jsonResponse = json.decode(response.body);
     return Property.fromJson(jsonResponse);

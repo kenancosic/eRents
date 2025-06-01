@@ -34,6 +34,7 @@ class ProfileProvider extends BaseProvider<User> {
   Future<bool> updateProfile(User user) async {
     bool success = false;
     await execute(() async {
+      // Send the update request
       _currentUser = await _profileService.updateMyProfile(user);
       success = true;
     });
@@ -156,7 +157,6 @@ class ProfileProvider extends BaseProvider<User> {
     }
 
     // If we can't map it, return the original value
-    print('Unknown administrative area for Bosnia and Herzegovina: $adminArea');
     return adminArea;
   }
 
@@ -188,36 +188,36 @@ class ProfileProvider extends BaseProvider<User> {
 
   void updateUserAddressFromString(String addressString) {
     if (_currentUser != null && addressString.isNotEmpty) {
-      print('Updating address from string: $addressString');
-
       // Parse city, state, country from address string
       final parsedLocation = _parseAddressString(addressString);
+
+      // Ensure we have at least a city to create a proper GeoRegion
+      if (parsedLocation['city'] == null || parsedLocation['city']!.isEmpty) {
+        // If no city parsed, try to extract it differently
+        final parts = addressString.split(',').map((e) => e.trim()).toList();
+        if (parts.length >= 2) {
+          parsedLocation['city'] = parts[1]; // Use second part as city
+        } else {
+          parsedLocation['city'] = 'Unknown'; // Fallback
+        }
+      }
 
       final addressDetail = AddressDetail(
         addressDetailId: _currentUser?.addressDetail?.addressDetailId ?? 0,
         geoRegionId: null, // Don't send GeoRegionId, let backend find/create it
         streetLine1: addressString,
-        streetLine2:
-            parsedLocation['country'] != null
-                ? parsedLocation['country']
-                : null,
+        streetLine2: null, // Don't duplicate country in streetLine2
         latitude: null,
         longitude: null,
-        geoRegion:
-            parsedLocation['city'] != null
-                ? GeoRegion(
-                  city: parsedLocation['city']!,
-                  state: parsedLocation['state'],
-                  country:
-                      parsedLocation['country'] ?? 'Bosnia and Herzegovina',
-                  postalCode: null,
-                )
-                : null,
+        geoRegion: GeoRegion(
+          city: parsedLocation['city']!,
+          state: parsedLocation['state'],
+          country: parsedLocation['country'] ?? 'Bosnia and Herzegovina',
+          postalCode: null,
+        ),
       );
+
       _currentUser = _currentUser!.copyWith(addressDetail: addressDetail);
-      print(
-        'Updated user address to: ${_currentUser!.addressDetail?.streetLine1} in city: ${parsedLocation['city']}',
-      );
       notifyListeners();
     }
   }
@@ -232,29 +232,25 @@ class ProfileProvider extends BaseProvider<User> {
     String? state;
     String? country;
 
-    if (parts.length >= 3) {
-      // Last part is usually country
-      country = parts.last;
-
-      // Second to last is usually city (or state if 4+ parts)
+    if (parts.length >= 2) {
       if (parts.length == 3) {
-        // Format: Street, City, Country
+        // Format: "Street, City, Country"
         city = parts[1];
+        country = parts[2];
       } else if (parts.length >= 4) {
-        // Format: Street, City, State, Country or Street, City, Entity, Country
+        // Format: "Street, City, State, Country"
         city = parts[1];
         state = parts[2];
-
-        // If we have a potential entity name, try to map it
-        if (state != null &&
-            country?.toLowerCase().contains('bosnia') == true) {
-          state = _mapAdministrativeAreaToEntity(state);
-        }
+        country = parts[3];
+      } else {
+        // Format: "Street, City"
+        city = parts[1];
+        country = 'Bosnia and Herzegovina'; // Default for this region
       }
-    } else if (parts.length == 2) {
-      // Format: Street, City
-      city = parts[1];
-      country = 'Bosnia and Herzegovina'; // Default for this region
+    } else {
+      // Single part - treat whole string as street, no city extracted
+      city = null;
+      country = 'Bosnia and Herzegovina';
     }
 
     // Try to detect entity from city name if we have a city but no state
@@ -264,7 +260,13 @@ class ProfileProvider extends BaseProvider<User> {
       state = _detectEntityFromCity(city);
     }
 
-    print('Parsed address - City: $city, State: $state, Country: $country');
+    // If we have a potential entity name in state, try to map it
+    if (state != null && country?.toLowerCase().contains('bosnia') == true) {
+      final mappedState = _mapAdministrativeAreaToEntity(state);
+      if (mappedState != state) {
+        state = mappedState;
+      }
+    }
 
     return {'city': city, 'state': state, 'country': country};
   }

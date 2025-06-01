@@ -68,12 +68,33 @@ namespace eRents.Application.Service.UserService
 			if (update.AddressDetail != null)
 			{
 				var processedAddress = await _locationManagementService.ProcessUserAddressAsync(entity.UserId, update.AddressDetail);
+				
+				// Update the AddressDetailId
 				entity.AddressDetailId = processedAddress.AddressDetailId;
+				
+				// CRITICAL FIX: Update the navigation property with the new address data
+				// This ensures AutoMapper uses the new address data instead of the old cached data
+				entity.AddressDetail = processedAddress;
+				
 				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
 				update.AddressDetail = null;
 			}
 			
 			await base.BeforeUpdateAsync(update, entity);
+		}
+
+		public override async Task<UserResponse> UpdateAsync(int id, UserUpdateRequest update)
+		{
+			var entity = await _userRepository.GetByIdAsync(id);
+			if (entity == null) return null;
+
+			_mapper.Map(update, entity);
+			await BeforeUpdateAsync(update, entity);
+
+			await _userRepository.UpdateAsync(entity);
+
+			// Return the mapped response - BeforeUpdateAsync ensures navigation properties are correct
+			return _mapper.Map<UserResponse>(entity);
 		}
 
 		protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
