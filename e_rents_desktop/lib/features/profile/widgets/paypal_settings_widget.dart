@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-import 'package:e_rents_desktop/base/base_provider.dart'; // For ViewState
-import 'package:go_router/go_router.dart'; // Import GoRouter
+import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:go_router/go_router.dart';
 
 class PaypalSettingsWidget extends StatefulWidget {
   final bool isEditing; // To control button visibility/activity
@@ -25,7 +24,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ProfileProvider>(
+    return Consumer<ProfileStateProvider>(
       builder: (context, provider, child) {
         final user = provider.currentUser;
         final bool isPaypalLinked = user?.isPaypalLinked ?? false;
@@ -134,13 +133,15 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                 ),
               ),
 
-              if (provider.state == ViewState.Busy)
+              if (provider.isLinkingPayPal || provider.isUnlinkingPayPal)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Center(child: CircularProgressIndicator()),
                 ),
 
-              if (provider.state != ViewState.Busy && widget.isEditing) ...[
+              if (!provider.isLinkingPayPal &&
+                  !provider.isUnlinkingPayPal &&
+                  widget.isEditing) ...[
                 const SizedBox(height: 16),
 
                 // Email Input (only show if not linked)
@@ -218,14 +219,14 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
     );
   }
 
-  void _linkPaypalAccount(ProfileProvider provider) {
+  void _linkPaypalAccount(ProfileStateProvider provider) {
     if (_formKey.currentState!.validate()) {
-      provider.linkPaypalAccount(_paypalEmailController.text.trim());
+      provider.linkPayPalAccount(_paypalEmailController.text.trim());
       _paypalEmailController.clear();
     }
   }
 
-  void _showUnlinkDialog(BuildContext context, ProfileProvider provider) {
+  void _showUnlinkDialog(BuildContext context, ProfileStateProvider provider) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -242,7 +243,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
             TextButton(
               onPressed: () {
                 dialogContext.pop();
-                provider.unlinkPaypalAccount();
+                provider.unlinkPayPalAccount();
               },
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,

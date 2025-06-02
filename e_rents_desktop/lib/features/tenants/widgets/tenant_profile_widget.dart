@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,11 +25,7 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
   @override
   void initState() {
     super.initState();
-    // Load tenant feedbacks after the widget is initialized
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<TenantProvider>(context, listen: false);
-      provider.loadTenantFeedbacks(widget.tenant.id);
-    });
+    // Note: Feedback functionality temporarily disabled during provider migration
   }
 
   @override
@@ -118,45 +114,17 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
   }
 
   Widget _buildFeedbackSection() {
-    return Consumer<TenantProvider>(
-      builder: (context, provider, child) {
-        final feedbacks = provider.getTenantFeedbacks(widget.tenant.id);
-        if (feedbacks.isEmpty) {
-          return const Text('No feedback available');
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Previous Landlord Feedback',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ...feedbacks.map(
-              (feedback) => ListTile(
-                title: Row(
-                  children: List.generate(
-                    5,
-                    (index) => Icon(
-                      Icons.star,
-                      size: 18,
-                      color:
-                          index < feedback.starRating!.toInt()
-                              ? Colors.amber
-                              : Colors.grey[300],
-                    ),
-                  ),
-                ),
-                subtitle: Text(feedback.description),
-                trailing: Text(
-                  '${feedback.dateCreated.year}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    // Temporarily disabled during provider migration
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Previous Landlord Feedback',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Text('Feedback functionality temporarily unavailable'),
+      ],
     );
   }
 }

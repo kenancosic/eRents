@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
-import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/services.dart';
 
@@ -22,7 +22,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isAuthenticatedState) {
-        final reportsProvider = Provider.of<ReportsProvider>(
+        final reportsProvider = Provider.of<ReportsStateProvider>(
           context,
           listen: false,
         );
@@ -33,7 +33,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ReportsProvider, AuthProvider>(
+    return Consumer2<ReportsStateProvider, AuthProvider>(
       builder: (context, reportsProvider, authProvider, _) {
         // If not authenticated, show login prompt
         if (!authProvider.isAuthenticatedState) {
@@ -56,7 +56,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  final ReportsProvider reportsProvider;
+  final ReportsStateProvider reportsProvider;
 
   const _ReportsScreenContent({required this.reportsProvider});
 
@@ -126,11 +126,15 @@ class _ReportsScreenContent extends StatelessWidget {
       final filePath = await reportsProvider.exportToPDF();
       if (!context.mounted) return;
 
-      _showExportResult(
-        context,
-        filePath,
-        'PDF file exported and opened with system viewer',
-      );
+      if (filePath != null) {
+        _showExportResult(
+          context,
+          filePath,
+          'PDF file exported and opened with system viewer',
+        );
+      } else {
+        _showError(context, 'Export failed - no file generated');
+      }
     } catch (e) {
       if (!context.mounted) return;
       _showError(context, e.toString());
@@ -142,11 +146,15 @@ class _ReportsScreenContent extends StatelessWidget {
       final filePath = await reportsProvider.exportToExcel();
       if (!context.mounted) return;
 
-      _showExportResult(
-        context,
-        filePath,
-        'Excel file exported and opened with system viewer',
-      );
+      if (filePath != null) {
+        _showExportResult(
+          context,
+          filePath,
+          'Excel file exported and opened with system viewer',
+        );
+      } else {
+        _showError(context, 'Export failed - no file generated');
+      }
     } catch (e) {
       if (!context.mounted) return;
       _showError(context, e.toString());
@@ -158,11 +166,15 @@ class _ReportsScreenContent extends StatelessWidget {
       final filePath = await reportsProvider.exportToCSV();
       if (!context.mounted) return;
 
-      _showExportResult(
-        context,
-        filePath,
-        'CSV file exported and opened with system viewer',
-      );
+      if (filePath != null) {
+        _showExportResult(
+          context,
+          filePath,
+          'CSV file exported and opened with system viewer',
+        );
+      } else {
+        _showError(context, 'Export failed - no file generated');
+      }
     } catch (e) {
       if (!context.mounted) return;
       _showError(context, e.toString());
@@ -217,7 +229,10 @@ class _ReportsScreenContent extends StatelessWidget {
                       vertical: 8,
                     ),
                   ),
-                  value: reportsProvider.getReportTypeString(),
+                  value:
+                      reportsProvider.currentReportType == ReportType.financial
+                          ? "Financial Report"
+                          : "Tenant Report",
                   items:
                       reportTypes.map((String type) {
                         return DropdownMenuItem<String>(
@@ -227,8 +242,11 @@ class _ReportsScreenContent extends StatelessWidget {
                       }).toList(),
                   onChanged: (String? newValue) {
                     if (newValue != null) {
-                      reportsProvider.setReportTypeFromString(newValue);
-                      reportsProvider.loadCurrentReportData();
+                      final reportType =
+                          newValue == "Financial Report"
+                              ? ReportType.financial
+                              : ReportType.tenant;
+                      reportsProvider.setReportType(reportType);
                     }
                   },
                 ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/services/amenity_service.dart';
-import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/repositories/amenity_repository.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 /// A modern, reusable amenity widget that can work in both view and edit modes.
 /// Uses the new AmenityService to fetch amenities from the AmenitiesController backend.
@@ -75,9 +75,14 @@ class _AmenityManagerState extends State<AmenityManager> {
     });
 
     try {
-      final propertyProvider = context.read<PropertyProvider>();
-      _availableAmenities = await propertyProvider.getAmenities();
-      _amenityMap = await propertyProvider.getAmenityMap();
+      final amenityRepository = getService<AmenityRepository>();
+      _availableAmenities = await amenityRepository.getAll();
+
+      // Create amenity map from the list
+      _amenityMap = {};
+      for (final amenity in _availableAmenities) {
+        _amenityMap[amenity.id] = amenity;
+      }
 
       print(
         'AmenityManager: Loaded ${_availableAmenities.length} amenities from backend',

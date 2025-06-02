@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
@@ -52,15 +53,14 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _formState.setFetchingState(true);
 
     try {
-      final provider = context.read<PropertyProvider>();
-      if (provider.properties.isEmpty) {
-        await provider.fetchProperties();
-      }
+      final detailProvider = context.read<PropertyDetailProvider>();
       final propertyId = int.tryParse(widget.propertyId!);
       if (propertyId == null) {
         throw Exception('Invalid property ID: ${widget.propertyId}');
       }
-      _initialProperty = provider.getPropertyById(propertyId);
+
+      // PropertyDetailProvider should already have loaded the property via router factory
+      _initialProperty = detailProvider.property;
 
       if (_initialProperty != null) {
         _formState.populateFromProperty(_initialProperty!);
@@ -116,10 +116,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       );
 
       if (!mounted) return;
-      final provider = context.read<PropertyProvider>();
+      final collectionProvider = context.read<PropertyCollectionProvider>();
 
       if (_isEditMode) {
-        await provider.updateProperty(propertyToSave);
+        await collectionProvider.updateItem(
+          propertyToSave.id.toString(),
+          propertyToSave,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -130,7 +133,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           ),
         );
       } else {
-        await provider.addProperty(propertyToSave);
+        await collectionProvider.addItem(propertyToSave);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

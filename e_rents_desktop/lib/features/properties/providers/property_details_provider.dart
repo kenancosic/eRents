@@ -47,6 +47,21 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
   bool get isLoadingDetails => _isLoadingDetails;
   String? get detailsError => _detailsError;
 
+  // Method to manually control loading and error states from outside if needed
+  void setLoadingState(bool isLoading, [String? error]) {
+    _isLoadingDetails = isLoading;
+    _detailsError = error;
+    if (isLoading) {
+      // Optionally, could map this to BaseProvider's ViewState if desired
+      // setState(ViewState.Busy); // If using BaseProvider's state directly
+    } else if (error != null) {
+      // setState(ViewState.Error); // If using BaseProvider's state directly
+    } else {
+      // setState(ViewState.Idle); // If using BaseProvider's state directly
+    }
+    notifyListeners();
+  }
+
   // Convenience getters for UI
   int get totalBookings => _bookingStats?.totalBookings ?? 0;
   double get totalRevenue => _bookingStats?.totalRevenue ?? 0.0;
@@ -164,16 +179,17 @@ class PropertyDetailsProvider extends BaseProvider<Property> {
       print(
         'PropertyDetailsProvider: Loading maintenance issues for property $propertyId',
       );
-      // Convert propertyId to int and filter by property
       final propertyIdInt = int.tryParse(propertyId);
       if (propertyIdInt != null) {
         print(
-          'PropertyDetailsProvider: Calling maintenance service with PropertyId: $propertyIdInt',
+          'PropertyDetailsProvider: Calling maintenance service with PropertyId: $propertyIdInt and Status: Pending,InProgress',
         );
         _maintenanceIssues = await _maintenanceService.getIssues(
-          queryParams: {'PropertyId': propertyIdInt.toString()},
+          queryParams: {
+            'PropertyId': propertyIdInt.toString(),
+            'Status': 'Pending,InProgress',
+          },
         );
-        // Sort by creation date, most recent first
         _maintenanceIssues.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         print(
           'PropertyDetailsProvider: Successfully loaded ${_maintenanceIssues.length} maintenance issues for property $propertyId',

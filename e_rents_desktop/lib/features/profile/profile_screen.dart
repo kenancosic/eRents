@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
-import 'package:e_rents_desktop/services/profile_service.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,21 +17,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _personalInfoFormKey = GlobalKey<FormState>();
   final _passwordFormKey = GlobalKey<FormState>();
   bool _isEditing = false;
-  late ProfileProvider _profileProvider;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize the provider
-    _profileProvider = ProfileProvider(
-      Provider.of<ProfileService>(context, listen: false),
-    );
-
-    // Load user data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _profileProvider.fetchUserProfile();
-    });
-  }
 
   void _toggleEditing() {
     setState(() {
@@ -50,12 +33,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isEditing = false;
     });
     // Refresh data from provider to discard changes
-    _profileProvider.fetchUserProfile();
+    final profileProvider = Provider.of<ProfileStateProvider>(
+      context,
+      listen: false,
+    );
+    profileProvider.refreshProfile();
   }
 
   Future<void> _saveProfile() async {
     if (_personalInfoFormKey.currentState?.validate() == true) {
-      if (_profileProvider.currentUser == null) {
+      final profileProvider = Provider.of<ProfileStateProvider>(
+        context,
+        listen: false,
+      );
+
+      if (profileProvider.currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Error: User data is not available.'),
@@ -70,8 +62,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // This will update the provider with latest form data
       _personalInfoFormKey.currentState?.save();
 
-      final success = await _profileProvider.updateProfile(
-        _profileProvider.currentUser!,
+      final success = await profileProvider.updateUserProfile(
+        profileProvider.currentUser!,
       );
 
       if (mounted) {
@@ -90,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Failed to update profile: ${_profileProvider.errorMessage ?? 'Unknown error'}',
+                'Failed to update profile: ${profileProvider.error?.message ?? 'Unknown error'}',
               ),
               behavior: SnackBarBehavior.floating,
               backgroundColor: Colors.red,
@@ -103,210 +95,220 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _profileProvider,
-      child: Consumer<ProfileProvider>(
-        builder: (context, provider, child) {
-          if (provider.state == ViewState.Busy) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer<ProfileStateProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading && provider.currentUser == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (provider.state == ViewState.Error) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading profile: ${provider.errorMessage ?? 'Unknown error'}',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchUserProfile(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+        if (provider.error != null && provider.currentUser == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading profile: ${provider.error?.message ?? 'Unknown error'}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => provider.loadUserProfile(forceRefresh: true),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
 
-          return Scaffold(
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Profile Header Section
-                  ProfileHeaderWidget(
-                    isEditing: _isEditing,
-                    onEditPressed: _toggleEditing,
-                    onCancelPressed: _isEditing ? _cancelEditing : null,
-                  ),
+        return Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Profile Header Section
+                ProfileHeaderWidget(
+                  isEditing: _isEditing,
+                  onEditPressed: _toggleEditing,
+                  onCancelPressed: _isEditing ? _cancelEditing : null,
+                ),
 
-                  const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-                  // Main Content in Cards
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      // Use column layout for smaller screens
-                      if (constraints.maxWidth < 800) {
-                        return Column(
-                          children: [
-                            // Personal Information Section
-                            _buildSectionCard(
-                              title: 'Personal Information',
-                              icon: Icons.person,
-                              child: PersonalInfoFormWidget(
-                                isEditing: _isEditing,
-                                formKey: _personalInfoFormKey,
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Security Section
-                            _buildSectionCard(
-                              title: 'Security & Password',
-                              icon: Icons.security,
-                              child: ChangePasswordWidget(
-                                isEditing: _isEditing,
-                                formKey: _passwordFormKey,
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Payment Settings Section
-                            _buildSectionCard(
-                              title: 'Payment Settings',
-                              icon: Icons.payment,
-                              child: PaypalSettingsWidget(
-                                isEditing: _isEditing,
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Account Summary Section
-                            _buildSectionCard(
-                              title: 'Account Summary',
-                              icon: Icons.info_outline,
-                              child: _buildAccountSummary(provider.currentUser),
-                            ),
-                          ],
-                        );
-                      }
-
-                      // Row layout for larger screens
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Main Content in Cards
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Use column layout for smaller screens
+                    if (constraints.maxWidth < 800) {
+                      return Column(
                         children: [
-                          // Left Column
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                // Personal Information Section
-                                _buildSectionCard(
-                                  title: 'Personal Information',
-                                  icon: Icons.person,
-                                  child: PersonalInfoFormWidget(
-                                    isEditing: _isEditing,
-                                    formKey: _personalInfoFormKey,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                // Security Section
-                                _buildSectionCard(
-                                  title: 'Security & Password',
-                                  icon: Icons.security,
-                                  child: ChangePasswordWidget(
-                                    isEditing: _isEditing,
-                                    formKey: _passwordFormKey,
-                                  ),
-                                ),
-                              ],
+                          // Personal Information Section
+                          _buildSectionCard(
+                            title: 'Personal Information',
+                            icon: Icons.person,
+                            child: PersonalInfoFormWidget(
+                              isEditing: _isEditing,
+                              formKey: _personalInfoFormKey,
                             ),
                           ),
 
-                          const SizedBox(width: 24),
+                          const SizedBox(height: 24),
 
-                          // Right Column
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              children: [
-                                // Payment Settings Section
-                                _buildSectionCard(
-                                  title: 'Payment Settings',
-                                  icon: Icons.payment,
-                                  child: PaypalSettingsWidget(
-                                    isEditing: _isEditing,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                // Account Summary Section
-                                _buildSectionCard(
-                                  title: 'Account Summary',
-                                  icon: Icons.info_outline,
-                                  child: _buildAccountSummary(
-                                    provider.currentUser,
-                                  ),
-                                ),
-                              ],
+                          // Security Section
+                          _buildSectionCard(
+                            title: 'Security & Password',
+                            icon: Icons.security,
+                            child: ChangePasswordWidget(
+                              isEditing: _isEditing,
+                              formKey: _passwordFormKey,
                             ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Payment Settings Section
+                          _buildSectionCard(
+                            title: 'Payment Settings',
+                            icon: Icons.payment,
+                            child: PaypalSettingsWidget(isEditing: _isEditing),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Account Summary Section
+                          _buildSectionCard(
+                            title: 'Account Summary',
+                            icon: Icons.info_outline,
+                            child: _buildAccountSummary(provider.currentUser),
                           ),
                         ],
                       );
-                    },
-                  ),
+                    }
 
-                  const SizedBox(height: 32),
-
-                  // Action Buttons
-                  if (_isEditing)
-                    Row(
+                    // Row layout for larger screens
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Left Column
                         Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _saveProfile,
-                            icon: const Icon(Icons.save),
-                            label: const Text('Save All Changes'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.onPrimary,
-                            ),
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              // Personal Information Section
+                              _buildSectionCard(
+                                title: 'Personal Information',
+                                icon: Icons.person,
+                                child: PersonalInfoFormWidget(
+                                  isEditing: _isEditing,
+                                  formKey: _personalInfoFormKey,
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Security Section
+                              _buildSectionCard(
+                                title: 'Security & Password',
+                                icon: Icons.security,
+                                child: ChangePasswordWidget(
+                                  isEditing: _isEditing,
+                                  formKey: _passwordFormKey,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 16),
+
+                        const SizedBox(width: 24),
+
+                        // Right Column
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _cancelEditing,
-                            icon: const Icon(Icons.cancel),
-                            label: const Text('Cancel Changes'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                            ),
+                          flex: 1,
+                          child: Column(
+                            children: [
+                              // Payment Settings Section
+                              _buildSectionCard(
+                                title: 'Payment Settings',
+                                icon: Icons.payment,
+                                child: PaypalSettingsWidget(
+                                  isEditing: _isEditing,
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // Account Summary Section
+                              _buildSectionCard(
+                                title: 'Account Summary',
+                                icon: Icons.info_outline,
+                                child: _buildAccountSummary(
+                                  provider.currentUser,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
-                ],
-              ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Action Buttons
+                if (_isEditing)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              provider.isUpdatingProfile ? null : _saveProfile,
+                          icon:
+                              provider.isUpdatingProfile
+                                  ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                  : const Icon(Icons.save),
+                          label: Text(
+                            provider.isUpdatingProfile
+                                ? 'Saving...'
+                                : 'Save Changes',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              provider.isUpdatingProfile
+                                  ? null
+                                  : _cancelEditing,
+                          icon: const Icon(Icons.cancel),
+                          label: const Text('Cancel'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade200,
+                            foregroundColor: Colors.grey.shade700,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -317,31 +319,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        width: double.infinity,
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  icon,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
+                Icon(icon, color: Theme.of(context).primaryColor),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             child,
           ],
         ),
@@ -351,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAccountSummary(user) {
     if (user == null) {
-      return const Text('No user data available');
+      return const Center(child: Text('Profile information not available'));
     }
 
     return Column(
@@ -396,23 +391,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Icon(
           icon,
-          size: 16,
-          color:
-              color ?? Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          size: 20,
+          color: color ?? Theme.of(context).textTheme.bodyMedium?.color,
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.6),
-                ),
-                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
               ),
               Text(
                 value,
@@ -420,7 +411,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontWeight: FontWeight.w500,
                   color: color,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

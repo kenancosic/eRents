@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
+import 'package:e_rents_desktop/features/home/providers/home_state_provider.dart';
 import 'package:e_rents_desktop/features/home/widgets/financial_summary_card.dart';
 import 'package:e_rents_desktop/features/home/widgets/kpi_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/constants.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,18 +20,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load dashboard data when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticatedState) {
-        Provider.of<HomeProvider>(context, listen: false).loadDashboardData();
-      }
-    });
+    // Dashboard data is loaded automatically by the factory method in router
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<HomeProvider, AuthProvider>(
+    return Consumer2<HomeStateProvider, AuthProvider>(
       builder: (context, homeProvider, authProvider, _) {
         final user = authProvider.currentUser;
         final theme = Theme.of(context);
@@ -99,8 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
 
         return LoadingOrErrorWidget(
-          isLoading: homeProvider.state == ViewState.Busy,
-          error: homeProvider.errorMessage,
+          isLoading: homeProvider.isLoading,
+          error: homeProvider.error?.message,
           onRetry: () {
             if (authProvider.isAuthenticatedState) {
               homeProvider.refreshDashboard();
@@ -112,7 +105,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildKPISection(BuildContext context, HomeProvider homeProvider) {
+  Widget _buildKPISection(
+    BuildContext context,
+    HomeStateProvider homeProvider,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount =
@@ -179,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDashboardContent(
     BuildContext context,
-    HomeProvider homeProvider,
+    HomeStateProvider homeProvider,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -233,7 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPortfolioOverviewCard(
     BuildContext context,
-    HomeProvider homeProvider,
+    HomeStateProvider homeProvider,
   ) {
     final theme = Theme.of(context);
 
@@ -310,7 +306,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopPropertiesCard(
     BuildContext context,
-    HomeProvider homeProvider,
+    HomeStateProvider homeProvider,
   ) {
     final theme = Theme.of(context);
     final topProperties = homeProvider.topProperties;
@@ -373,7 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFinancialSummaryCard(
     BuildContext context,
-    HomeProvider homeProvider,
+    HomeStateProvider homeProvider,
   ) {
     return Card(
       elevation: 2,

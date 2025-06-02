@@ -1,16 +1,13 @@
-import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_collection_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -29,12 +26,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<MaintenanceProvider>().fetchIssues();
-        context.read<PropertyProvider>().fetchProperties();
-      }
-    });
+    // No need for manual data fetching - providers auto-load data on creation
     _searchController.addListener(() => setState(() {}));
   }
 
@@ -46,25 +38,24 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<MaintenanceProvider, PropertyProvider>(
-      builder: (context, maintenanceProvider, propertyProvider, child) {
-        if (maintenanceProvider.state == ViewState.Busy ||
-            propertyProvider.state == ViewState.Busy) {
+    return Consumer<MaintenanceCollectionProvider>(
+      builder: (context, maintenanceProvider, child) {
+        if (maintenanceProvider.state == ProviderState.loading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (maintenanceProvider.errorMessage != null) {
+        if (maintenanceProvider.error != null) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  maintenanceProvider.errorMessage!,
+                  maintenanceProvider.error!.message,
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => maintenanceProvider.fetchIssues(),
+                  onPressed: () => maintenanceProvider.fetchItems(),
                   child: const Text('Retry'),
                 ),
               ],
@@ -72,9 +63,18 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
           );
         }
 
-        final filteredIssues = _filterIssues(
-          maintenanceProvider.issues,
-          propertyProvider.properties,
+        final filteredIssues = maintenanceProvider.filterIssues(
+          status: _selectedStatus,
+          priority: _selectedPriority,
+          propertyId:
+              _selectedProperty != null
+                  ? int.tryParse(_selectedProperty!)
+                  : null,
+          isTenantComplaint: _showOnlyComplaints,
+          searchQuery:
+              _searchController.text.trim().isEmpty
+                  ? null
+                  : _searchController.text.trim(),
         );
 
         return Column(
@@ -85,16 +85,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               child: CustomTableWidget<MaintenanceIssue>(
                 data: filteredIssues,
                 columns: _getTableColumns(),
-                cellsBuilder:
-                    (issue) => _buildTableCells(issue, propertyProvider),
+                cellsBuilder: (issue) => _buildTableCells(issue),
                 searchStringBuilder:
                     (issue) =>
-                        '${issue.title} ${issue.description} ${_getPropertyTitle(issue.propertyId, propertyProvider)}',
+                        '${issue.title} ${issue.description} ${issue.propertyId}',
                 emptyStateWidget: _buildEmptyState(context),
                 defaultRowsPerPage: 10,
                 onRowTap: (issue) {
-                  // Single click highlights row
-                  print('Selected maintenance issue: ${issue.title}');
+                  // Single click highlights row - issue selected
                 },
                 onRowDoubleTap: (issue) {
                   context.push('/maintenance/${issue.id}');
@@ -107,7 +105,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, MaintenanceProvider provider) {
+  Widget _buildHeader(
+    BuildContext context,
+    MaintenanceCollectionProvider provider,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -123,7 +124,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${provider.issues.length} total issues • ${provider.getIssuesByStatus(IssueStatus.pending).length} pending • ${provider.getIssuesByStatus(IssueStatus.inProgress).length} in progress',
+                    '${provider.items.length} total issues • ${provider.pendingIssues.length} pending • ${provider.getIssuesByStatus(IssueStatus.inProgress).length} in progress',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -195,14 +196,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     ];
   }
 
-  List<DataCell> _buildTableCells(
-    MaintenanceIssue issue,
-    PropertyProvider propertyProvider,
-  ) {
-    final property = propertyProvider.properties.firstWhere(
-      (p) => p.id == issue.propertyId,
-      orElse: () => Property.empty(),
-    );
+  List<DataCell> _buildTableCells(MaintenanceIssue issue) {
     final statusIcon = _getIconForMaintenanceStatus(issue.status);
 
     return [
@@ -227,60 +221,31 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       DataCell(
         InkWell(
           onTap: () {
-            if (property.id != 0) {
-              context.push('/properties/${property.id}');
-            }
+            context.push('/properties/${issue.propertyId}');
           },
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Row(
               children: [
-                if (property.images.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ClipRRect(
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(4),
-                      child: ImageUtils.buildImage(
-                        property.images.first.url!,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        errorWidget: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Icon(
-                            Icons.apartment,
-                            size: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
                     ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Icon(
-                        Icons.apartment,
-                        size: 18,
-                        color: Colors.grey[600],
-                      ),
+                    child: Icon(
+                      Icons.apartment,
+                      size: 18,
+                      color: Colors.grey[600],
                     ),
                   ),
+                ),
                 Expanded(
                   child: Text(
-                    property.title,
+                    'Property ${issue.propertyId}',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 14, color: Colors.blue),
                   ),
@@ -317,21 +282,14 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     ];
   }
 
-  String _getPropertyTitle(int propertyId, PropertyProvider propertyProvider) {
-    return propertyProvider.properties
-        .firstWhere((p) => p.id == propertyId, orElse: () => Property.empty())
-        .title;
-  }
+  // Property title lookup removed - using MaintenanceCollectionProvider only
 
   String _formatDate(DateTime date) {
     return DateFormat.yMd().add_jm().format(date);
   }
 
   void _showFilterOptions(BuildContext context) {
-    final propertyProvider = Provider.of<PropertyProvider>(
-      context,
-      listen: false,
-    );
+    // Note: Property filtering will be by ID since we're not using PropertyProvider
 
     showModalBottomSheet(
       context: context,
@@ -351,7 +309,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   _buildPriorityFilterOptions(setSheetState),
                   const Divider(),
                   _buildFilterSectionTitle(context, "Property"),
-                  _buildPropertyFilterOptions(propertyProvider, setSheetState),
+                  _buildPropertyFilterOptions(setSheetState),
                   const Divider(),
                   _buildFilterSectionTitle(context, "Other"),
                   _buildComplaintFilterOption(setSheetState),
@@ -432,18 +390,13 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     );
   }
 
-  Widget _buildPropertyFilterOptions(
-    PropertyProvider propertyProvider,
-    StateSetter setSheetState,
-  ) {
-    var propertiesToShow = propertyProvider.properties.take(10).toList();
-    bool limited = propertiesToShow.length < propertyProvider.properties.length;
-
+  Widget _buildPropertyFilterOptions(StateSetter setSheetState) {
+    // Simplified property filter by ID for now since we don't have PropertyProvider
     return Wrap(
       spacing: 8.0,
       children: [
         _buildFilterChip<String?>(
-          label: 'All',
+          label: 'All Properties',
           value: null,
           groupValue: _selectedProperty,
           onSelected: (value) {
@@ -451,18 +404,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
             setSheetState(() {});
           },
         ),
-        ...propertiesToShow.map(
-          (property) => _buildFilterChip<String?>(
-            label: property.title,
-            value: property.title,
-            groupValue: _selectedProperty,
-            onSelected: (value) {
-              setState(() => _selectedProperty = value);
-              setSheetState(() {});
-            },
-          ),
-        ),
-        if (limited) const Chip(label: Text('...')),
+        // Can add specific property ID filters here if needed
       ],
     );
   }
@@ -495,44 +437,12 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
       },
       selectedColor:
           Theme.of(context).chipTheme.selectedColor ??
-          Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
       checkmarkColor: Colors.white,
     );
   }
 
-  List<MaintenanceIssue> _filterIssues(
-    List<MaintenanceIssue> allIssues,
-    List<Property> allProperties,
-  ) {
-    final searchTermLower = _searchController.text.toLowerCase();
-
-    return allIssues.where((issue) {
-      final property = allProperties.firstWhere(
-        (p) => p.id == issue.propertyId,
-        orElse: () => Property.empty(),
-      );
-
-      final matchesSearch =
-          searchTermLower.isEmpty ||
-          issue.title.toLowerCase().contains(searchTermLower) ||
-          issue.description.toLowerCase().contains(searchTermLower) ||
-          property.title.toLowerCase().contains(searchTermLower);
-
-      final matchesStatus =
-          _selectedStatus == null || issue.status == _selectedStatus;
-      final matchesPriority =
-          _selectedPriority == null || issue.priority == _selectedPriority;
-      final matchesProperty =
-          _selectedProperty == null || property.title == _selectedProperty;
-      final matchesComplaint = !_showOnlyComplaints || issue.isTenantComplaint;
-
-      return matchesSearch &&
-          matchesStatus &&
-          matchesPriority &&
-          matchesProperty &&
-          matchesComplaint;
-    }).toList();
-  }
+  // _filterIssues method removed - using MaintenanceCollectionProvider.filterIssues()
 
   IconData _getIconForMaintenanceStatus(IssueStatus status) {
     switch (status) {

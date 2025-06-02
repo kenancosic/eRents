@@ -7,10 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/send_property_offer_dialog.dart';
-import 'package:e_rents_desktop/base/base_provider.dart'; // For ViewState
-import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
-import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});
@@ -54,8 +52,11 @@ class _TenantsScreenState extends State<TenantsScreen>
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<TenantProvider>(context, listen: false);
-      // loadAllData already handles setting state to Busy/Idle/Error
+      final provider = Provider.of<TenantCollectionProvider>(
+        context,
+        listen: false,
+      );
+      // loadAllData already handles setting state management
       provider.loadAllData();
     });
   }
@@ -94,9 +95,12 @@ class _TenantsScreenState extends State<TenantsScreen>
     print("Attempting to send message to tenant: ${tenant.fullName}");
     // Example: context.go('/chat/${tenant.id}');
     // Or show a dialog to compose a message, then use ChatProvider.
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    final chatProvider = Provider.of<ChatCollectionProvider>(
+      context,
+      listen: false,
+    );
     chatProvider.selectContact(tenant.id);
-    context.go('/chat/${tenant.id.toString()}');
+    context.go('/chat');
   }
 
   void _sendMessageToSearchingTenant(
@@ -170,10 +174,10 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TenantProvider>(
+    return Consumer<TenantCollectionProvider>(
       builder: (context, provider, child) {
         // Show loading screen during initial data load
-        if (provider.isInitialLoading) {
+        if (provider.isLoading) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -187,7 +191,7 @@ class _TenantsScreenState extends State<TenantsScreen>
         }
 
         // Show error state with retry option
-        if (provider.state == ViewState.Error) {
+        if (provider.hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -204,7 +208,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  provider.errorMessage ?? 'Unknown error occurred',
+                  provider.error?.message ?? 'Unknown error occurred',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
@@ -230,7 +234,7 @@ class _TenantsScreenState extends State<TenantsScreen>
         }
 
         final currentTenants = provider.currentTenants;
-        final searchingTenants = provider.searchingTenants;
+        final searchingTenants = provider.prospectiveTenants;
 
         // Always show the tables - even with 0 data
         // Remove empty state check that was preventing tables from showing
@@ -247,7 +251,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('Current Tenants'),
-                        if (provider.isLoadingCurrentTenants) ...[
+                        if (provider.isLoading) ...[
                           const SizedBox(width: 8),
                           const SizedBox(
                             width: 12,
@@ -263,7 +267,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text('Tenants Advertisements'),
-                        if (provider.isLoadingSearchingTenants) ...[
+                        if (provider.isLoadingProspective) ...[
                           const SizedBox(width: 8),
                           const SizedBox(
                             width: 12,
@@ -302,7 +306,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                         if (_tabController.index == 0) {
                           provider.refreshCurrentTenants();
                         } else {
-                          provider.refreshSearchingTenants();
+                          provider.refreshProspectiveTenants();
                         }
                       },
                       icon: Icon(
@@ -357,7 +361,7 @@ class _TenantsScreenState extends State<TenantsScreen>
     );
   }
 
-  Widget _buildSearchBar(TenantProvider provider) {
+  Widget _buildSearchBar(TenantCollectionProvider provider) {
     final List<String> filterFields =
         _tabController.index == 0
             ? _currentTenantFilterFields

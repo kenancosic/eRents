@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
@@ -43,11 +43,11 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
         if (!mounted) return;
 
         // Update profile image in provider
-        final profileProvider = Provider.of<ProfileProvider>(
+        final profileProvider = Provider.of<ProfileStateProvider>(
           context,
           listen: false,
         );
-        await profileProvider.updateProfileImage(pickedFile.path);
+        await profileProvider.uploadProfileImage(pickedFile.path);
       }
     } catch (e) {
       if (!mounted) return;
@@ -60,7 +60,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final profileProvider = Provider.of<ProfileProvider>(context);
+    final profileProvider = Provider.of<ProfileStateProvider>(context);
     final user = profileProvider.currentUser;
 
     // Determine which image to show

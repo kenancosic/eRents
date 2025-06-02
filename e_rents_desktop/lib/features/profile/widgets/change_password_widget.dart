@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 
 class ChangePasswordWidget extends StatefulWidget {
   final bool isEditing;
@@ -33,15 +33,15 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
 
   Future<void> _updatePassword() async {
     if (widget.formKey.currentState!.validate()) {
-      final profileProvider = Provider.of<ProfileProvider>(
+      final profileProvider = Provider.of<ProfileStateProvider>(
         context,
         listen: false,
       );
 
       final success = await profileProvider.changePassword(
-        _currentPasswordController.text,
-        _newPasswordController.text,
-        _confirmPasswordController.text,
+        currentPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
+        confirmPassword: _confirmPasswordController.text,
       );
 
       if (mounted) {
@@ -61,7 +61,7 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                profileProvider.errorMessage ?? 'Failed to update password',
+                profileProvider.error?.message ?? 'Failed to update password',
               ),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,

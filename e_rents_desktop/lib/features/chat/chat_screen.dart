@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_message.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_contact.dart';
-import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_detail_provider.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -18,6 +18,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   int? _currentUserId;
 
   @override
@@ -40,14 +41,14 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         return;
       }
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      chatProvider.loadContacts();
+      // Load contacts via the new collection provider - already done in router factory
     });
   }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -61,25 +62,39 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final selectedContact = chatProvider.selectedContact;
+
+    final chatCollectionProvider = Provider.of<ChatCollectionProvider>(
+      context,
+      listen: false,
+    );
+    final chatDetailProvider = Provider.of<ChatDetailProvider>(
+      context,
+      listen: false,
+    );
+    final selectedContact = chatCollectionProvider.selectedContact;
 
     if (_messageController.text.trim().isEmpty || selectedContact == null) {
       return;
     }
 
-    final newMessage = Message(
-      id: DateTime.now().millisecondsSinceEpoch,
-      senderId: _currentUserId!,
-      receiverId: selectedContact.id,
-      messageText: _messageController.text.trim(),
-      dateSent: DateTime.now(),
-    );
-
+    final messageText = _messageController.text.trim();
     _messageController.clear();
 
-    // Send message to backend via provider
-    chatProvider.sendMessage(newMessage);
+    // Send message via detail provider
+    chatDetailProvider
+        .sendMessage(selectedContact.id, messageText)
+        .then((sentMessage) {
+          // Update activity in collection provider
+          chatCollectionProvider.updateLastActivity(
+            selectedContact.id,
+            sentMessage.dateSent,
+          );
+        })
+        .catchError((error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to send message: $error")),
+          );
+        });
   }
 
   void _deleteMessage(BuildContext context, Message message) {
@@ -98,11 +113,28 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  final chatProvider = Provider.of<ChatProvider>(
+                  final chatDetailProvider = Provider.of<ChatDetailProvider>(
                     context,
                     listen: false,
                   );
-                  chatProvider.deleteMessage(message.id);
+                  chatDetailProvider
+                      .deleteMessage(message.id)
+                      .then((_) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Message deleted")),
+                          );
+                        }
+                      })
+                      .catchError((error) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Failed to delete message: $error"),
+                            ),
+                          );
+                        }
+                      });
                   context.pop();
                 },
                 child: const Text('Delete'),
@@ -112,42 +144,63 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _selectContact(BuildContext context, int contactId) {
+    final chatCollectionProvider = Provider.of<ChatCollectionProvider>(
+      context,
+      listen: false,
+    );
+    final chatDetailProvider = Provider.of<ChatDetailProvider>(
+      context,
+      listen: false,
+    );
+
+    // Select contact in collection provider
+    chatCollectionProvider.selectContact(contactId);
+
+    // Load messages for this contact in detail provider
+    chatDetailProvider.loadMessages(contactId);
+  }
+
+  List<dynamic> _getFilteredContacts(ChatCollectionProvider chatProvider) {
+    final searchQuery = _searchController.text.trim();
+    if (searchQuery.isEmpty) {
+      return chatProvider
+          .getContactsByActivity(); // Sort by activity by default
+    }
+    return chatProvider.searchContacts(searchQuery);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<ChatProvider>(
-      builder: (context, chatProvider, _) {
-        final contacts = chatProvider.contacts;
-        final messages = chatProvider.messages;
-        final selectedContact = chatProvider.selectedContact;
-        final bool isLoading = chatProvider.state == ViewState.Busy;
-        final String? error = chatProvider.errorMessage;
+    return Consumer2<ChatCollectionProvider, ChatDetailProvider>(
+      builder: (context, chatCollectionProvider, chatDetailProvider, _) {
+        final contacts = _getFilteredContacts(chatCollectionProvider);
+        final messages = chatDetailProvider.messages;
+        final selectedContact = chatCollectionProvider.selectedContact;
+        final isLoadingContacts = chatCollectionProvider.isLoadingContacts;
+        final isLoadingMessages = chatDetailProvider.isLoadingMessages;
 
-        if (error != null) {
+        // Error handling
+        final collectionError = chatCollectionProvider.error;
+        final detailError = chatDetailProvider.error;
+        final hasError = collectionError != null || detailError != null;
+        final errorMessage = collectionError?.message ?? detailError?.message;
+
+        if (hasError && contacts.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Error loading chat: $error",
+                  "Error loading chat: $errorMessage",
                   style: const TextStyle(color: Colors.red),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    if (chatProvider.selectedContact != null &&
-                        chatProvider.contacts.isNotEmpty) {
-                      final authProvider = Provider.of<AuthProvider>(
-                        context,
-                        listen: false,
-                      );
-                      if (authProvider.currentUser?.id != null) {
-                        chatProvider.loadMessages(
-                          chatProvider.selectedContact!.id,
-                          authProvider.currentUser!.id,
-                        );
-                      }
-                    } else {
-                      chatProvider.loadContacts();
+                    if (selectedContact != null) {
+                      chatDetailProvider.refreshMessages();
                     }
+                    chatCollectionProvider.refreshContacts();
                   },
                   child: const Text("Retry"),
                 ),
@@ -171,6 +224,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: TextField(
+                      controller: _searchController,
+                      onChanged:
+                          (_) =>
+                              setState(() {}), // Trigger rebuild for filtering
                       decoration: InputDecoration(
                         hintText: 'Search contacts...',
                         prefixIcon: const Icon(Icons.search),
@@ -190,25 +247,34 @@ class _ChatScreenState extends State<ChatScreen> {
                   // Contacts list
                   Expanded(
                     child:
-                        isLoading && contacts.isEmpty
+                        isLoadingContacts && contacts.isEmpty
                             ? const Center(child: CircularProgressIndicator())
                             : ListView.builder(
                               itemCount: contacts.length,
                               itemBuilder: (context, index) {
                                 final contact = contacts[index];
+                                final unreadCount = chatCollectionProvider
+                                    .getUnreadCount(contact.id);
+                                final lastActivity = chatCollectionProvider
+                                    .getLastActivity(contact.id);
+                                final lastMessage = chatCollectionProvider
+                                    .getLastMessage(contact.id);
+
                                 return ChatContact(
                                   name: contact.fullName,
                                   lastMessage:
-                                      'Tap to view conversation', // This would come from actual messages
-                                  lastMessageTime: DateTime.now().subtract(
-                                    Duration(minutes: index * 30),
-                                  ),
-                                  isOnline: index % 2 == 0,
-                                  hasUnread: index % 3 == 0,
-                                  unreadCount: index % 3 == 0 ? index + 1 : 0,
-                                  onTap: () {
-                                    chatProvider.selectContact(contact.id);
-                                  },
+                                      lastMessage?.messageText ??
+                                      'Tap to view conversation',
+                                  lastMessageTime:
+                                      lastActivity ??
+                                      DateTime.now().subtract(
+                                        Duration(minutes: index * 30),
+                                      ),
+                                  isOnline: index % 2 == 0, // Mock data for now
+                                  hasUnread: unreadCount > 0,
+                                  unreadCount: unreadCount,
+                                  onTap:
+                                      () => _selectContact(context, contact.id),
                                 );
                               },
                             ),
@@ -285,16 +351,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                 style: TextStyle(color: Colors.grey[600]),
                               ),
                             )
-                            : isLoading && messages.isEmpty
+                            : isLoadingMessages && messages.isEmpty
                             ? const Center(child: CircularProgressIndicator())
                             : ListView.builder(
                               padding: const EdgeInsets.all(16),
                               itemCount: messages.length,
                               itemBuilder: (context, index) {
                                 final message = messages[index];
-                                final isMe =
-                                    message.senderId ==
-                                    _currentUserId.toString();
+                                final isMe = message.senderId == _currentUserId;
                                 return ChatMessageBubble(
                                   message: message,
                                   isMe: isMe,

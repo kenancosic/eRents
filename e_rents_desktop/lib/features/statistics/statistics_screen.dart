@@ -2,8 +2,8 @@ import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
+import 'package:e_rents_desktop/base/base.dart';
+import 'package:e_rents_desktop/features/statistics/providers/statistics_state_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
@@ -25,7 +25,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isAuthenticatedState) {
-        final statisticsProvider = Provider.of<StatisticsProvider>(
+        final statisticsProvider = Provider.of<StatisticsStateProvider>(
           context,
           listen: false,
         );
@@ -42,7 +42,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     debugPrint(
       'StatisticsScreen: Date range changed to ${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}',
     );
-    final provider = Provider.of<StatisticsProvider>(context, listen: false);
+    final provider = Provider.of<StatisticsStateProvider>(
+      context,
+      listen: false,
+    );
     provider.setDateRangeAndFetch(start, end);
   }
 
@@ -64,7 +67,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           );
         }
 
-        return Consumer<StatisticsProvider>(
+        return Consumer<StatisticsStateProvider>(
           builder: (context, statisticsProvider, child) {
             debugPrint(
               'StatisticsScreen: Consumer rebuild - provider state=${statisticsProvider.state}, hasData=${statisticsProvider.statisticsUiModel != null}',
@@ -97,19 +100,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildStatisticsContent(
     BuildContext context,
-    StatisticsProvider provider,
+    StatisticsStateProvider provider,
   ) {
     debugPrint(
       'StatisticsScreen._buildStatisticsContent: state=${provider.state}, hasModel=${provider.statisticsUiModel != null}',
     );
 
-    if (provider.state == ViewState.Busy &&
-        provider.statisticsUiModel == null) {
+    if (provider.isLoading && provider.statisticsUiModel == null) {
       debugPrint('StatisticsScreen: Showing loading indicator');
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.state == ViewState.Error) {
+    if (provider.error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -117,7 +119,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const Icon(Icons.error_outline, color: Colors.red, size: 48),
             const SizedBox(height: 16),
             Text(
-              'Error loading statistics: ${provider.errorMessage ?? "Unknown error"}',
+              'Error loading statistics: ${provider.error?.message ?? "Unknown error"}',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

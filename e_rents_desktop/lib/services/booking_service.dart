@@ -13,7 +13,7 @@ class BookingService extends ApiService {
     );
     try {
       final response = await get(
-        '/Bookings?PropertyId=$propertyId',
+        '/Bookings?PropertyId=$propertyId&Status=Confirmed,Completed',
         authenticated: true,
       );
       final List<dynamic> data = json.decode(response.body);
@@ -50,7 +50,7 @@ class BookingService extends ApiService {
     );
     try {
       final response = await get(
-        '/Bookings/current?PropertyId=$propertyId',
+        '/Bookings/current?PropertyId=$propertyId&Status=Active',
         authenticated: true,
       );
       final List<dynamic> data = json.decode(response.body);
@@ -87,7 +87,7 @@ class BookingService extends ApiService {
     );
     try {
       final response = await get(
-        '/Bookings/upcoming?PropertyId=$propertyId',
+        '/Bookings/upcoming?PropertyId=$propertyId&Status=Upcoming',
         authenticated: true,
       );
       final List<dynamic> data = json.decode(response.body);

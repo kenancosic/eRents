@@ -1,212 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
-import 'dart:convert';
 
-enum ViewState { Idle, Busy, Error }
+/// View state enum for backward compatibility
+enum ViewState { idle, busy, error }
 
+/// Temporary base provider for backward compatibility
+/// This will be replaced in Phase 2 with the new provider architecture
 abstract class BaseProvider<T> extends ChangeNotifier {
-  final ApiService? apiService;
-  List<T> items_ = []; // Protected field
-  ViewState _state = ViewState.Idle;
+  ViewState _state = ViewState.idle;
   String? _errorMessage;
-  bool _useMockData = false; // Default to false for production
-  bool _isDisposed = false;
+  List<T> _items = [];
+  T? _selectedItem;
 
-  BaseProvider([this.apiService]);
-
-  // State management
+  // State getters
   ViewState get state => _state;
   String? get errorMessage => _errorMessage;
-  List<T> get items => items_;
-  bool get isMockDataEnabled => _useMockData;
+  List<T> get items => _items;
+  T? get selectedItem => _selectedItem;
+  bool get isBusy => _state == ViewState.busy;
+  bool get isIdle => _state == ViewState.idle;
+  bool get hasError => _state == ViewState.error;
 
-  // Dispose override to track disposal state
-  @override
-  void dispose() {
-    _isDisposed = true;
-    super.dispose();
-  }
-
-  // Enable/disable mock data
-  void enableMockData() {
-    _useMockData = true;
+  // State setters
+  void setState(ViewState newState) {
+    _state = newState;
     notifyListeners();
   }
 
-  void disableMockData() {
-    _useMockData = false;
-    notifyListeners();
-  }
-
-  void setState(ViewState viewState) {
-    if (_isDisposed) return;
-    _state = viewState;
-    notifyListeners();
-  }
-
-  void setError(String? message) {
-    if (_isDisposed) return;
+  void setError(String message) {
     _errorMessage = message;
-    setState(ViewState.Error);
+    _state = ViewState.error;
+    notifyListeners();
   }
 
   void clearError() {
-    if (_isDisposed) return;
     _errorMessage = null;
+    if (_state == ViewState.error) {
+      _state = ViewState.idle;
+    }
     notifyListeners();
   }
 
-  // CRUD operations (if API service is provided)
-  Future<void> execute(Function action) async {
-    if (_isDisposed) return;
+  void setItems(List<T> newItems) {
+    _items = newItems;
+    notifyListeners();
+  }
 
-    try {
-      setState(ViewState.Busy);
-      clearError();
-      await action();
+  void setSelectedItem(T? item) {
+    _selectedItem = item;
+    notifyListeners();
+  }
 
-      // Check again after the async operation
-      if (_isDisposed) return;
-      setState(ViewState.Idle);
-    } catch (e) {
-      if (_isDisposed) return;
-      setError(e.toString());
+  // Abstract methods for backward compatibility
+  Future<void> fetchItems([Map<String, dynamic>? params]) async {}
+  Future<void> fetchItemById(String id) async {}
+  Future<void> createItem(T item) async {}
+  Future<void> updateItem(String id, T item) async {}
+  Future<void> deleteItem(String id) async {}
+  Future<void> refreshItems() async {}
+
+  // Utility methods
+  void addItem(T item) {
+    _items.add(item);
+    notifyListeners();
+  }
+
+  void removeItem(T item) {
+    _items.remove(item);
+    notifyListeners();
+  }
+
+  void updateItemInList(T oldItem, T newItem) {
+    final index = _items.indexOf(oldItem);
+    if (index != -1) {
+      _items[index] = newItem;
+      notifyListeners();
     }
-  }
-
-  // Abstract methods to be implemented by child classes
-  T fromJson(Map<String, dynamic> json);
-  Map<String, dynamic> toJson(T item);
-  String get endpoint;
-  List<T> getMockItems();
-
-  // Common CRUD operations
-  Future<void> fetchItems() async {
-    debugPrint(
-      'BaseProvider.fetchItems: starting fetch, useMockData=$_useMockData',
-    );
-
-    // Even without an API service, we should still provide mock data in mock mode
-    await execute(() async {
-      if (_isDisposed) {
-        debugPrint('BaseProvider.fetchItems: provider is disposed, aborting');
-        return;
-      } // Extra check before async operations
-
-      if (_useMockData) {
-        debugPrint('BaseProvider.fetchItems: Getting mock data');
-        await Future.delayed(const Duration(seconds: 1));
-        if (_isDisposed) {
-          debugPrint(
-            'BaseProvider.fetchItems: provider is disposed after delay, aborting',
-          );
-          return;
-        } // Check again after delay
-
-        final mockItems = getMockItems();
-        debugPrint(
-          'BaseProvider.fetchItems: Got ${mockItems.length} mock items',
-        );
-        items_ = mockItems;
-      } else if (apiService != null) {
-        debugPrint(
-          'BaseProvider.fetchItems: Fetching from API endpoint $endpoint',
-        );
-        final response = await apiService!.get(endpoint);
-
-        if (_isDisposed) {
-          debugPrint(
-            'BaseProvider.fetchItems: provider is disposed after API call, aborting',
-          );
-          return;
-        } // Check again after API call
-
-        final decodedItems =
-            (json.decode(response.body) as List)
-                .map((json) => fromJson(json))
-                .toList();
-        debugPrint(
-          'BaseProvider.fetchItems: Got ${decodedItems.length} items from API',
-        );
-        items_ = decodedItems;
-      } else {
-        // If we have no API service and not in mock mode, still provide mock data
-        // This prevents the UI from being stuck in a loading state
-        debugPrint(
-          'BaseProvider.fetchItems: No API service available, defaulting to mock data',
-        );
-        if (_isDisposed) return;
-        final mockItems = getMockItems();
-        debugPrint(
-          'BaseProvider.fetchItems: Got ${mockItems.length} mock items (fallback)',
-        );
-        items_ = mockItems;
-      }
-    });
-
-    debugPrint(
-      'BaseProvider.fetchItems: completed with ${items_.length} items',
-    );
-  }
-
-  Future<void> addItem(T item) async {
-    if (apiService == null) return;
-
-    await execute(() async {
-      if (_useMockData) {
-        await Future.delayed(const Duration(seconds: 1));
-        items_.add(item);
-      } else {
-        final response = await apiService!.post(endpoint, toJson(item));
-        items_.add(fromJson(json.decode(response.body)));
-      }
-    });
-  }
-
-  Future<void> updateItem(T item) async {
-    if (apiService == null) return;
-
-    await execute(() async {
-      if (_useMockData) {
-        await Future.delayed(const Duration(seconds: 1));
-        final index = items_.indexWhere(
-          (i) => _getItemId(i) == _getItemId(item),
-        );
-        if (index != -1) {
-          items_[index] = item;
-        }
-      } else {
-        await apiService!.put('$endpoint/${_getItemId(item)}', toJson(item));
-        final index = items_.indexWhere(
-          (i) => _getItemId(i) == _getItemId(item),
-        );
-        if (index != -1) {
-          items_[index] = item;
-        }
-      }
-    });
-  }
-
-  Future<void> deleteItem(String id) async {
-    if (apiService == null) return;
-
-    await execute(() async {
-      if (_useMockData) {
-        await Future.delayed(const Duration(seconds: 1));
-        items_.removeWhere((item) => _getItemId(item) == id);
-      } else {
-        await apiService!.delete('$endpoint/$id');
-        items_.removeWhere((item) => _getItemId(item) == id);
-      }
-    });
-  }
-
-  // Helper method to get item ID
-  String _getItemId(T item) {
-    final dynamic dynamicItem = item;
-    if (dynamicItem.id != null) {
-      return dynamicItem.id.toString();
-    }
-    throw Exception('Item must have an id property');
   }
 }

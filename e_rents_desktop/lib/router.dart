@@ -2,27 +2,47 @@ import 'package:e_rents_desktop/features/auth/login_screen.dart';
 import 'package:e_rents_desktop/features/auth/signup_screen.dart';
 import 'package:e_rents_desktop/features/auth/forgot_password_screen.dart';
 import 'package:e_rents_desktop/features/home/home_screen.dart';
-import 'package:e_rents_desktop/features/chat/chat_screen.dart';
+import 'package:e_rents_desktop/features/home/providers/home_state_provider.dart';
+import 'package:e_rents_desktop/repositories/home_repository.dart';
+
 import 'package:e_rents_desktop/features/maintenance/maintenance_screen.dart';
 import 'package:e_rents_desktop/features/maintenance/maintenance_issue_details_screen.dart';
 import 'package:e_rents_desktop/features/maintenance/maintenance_form_screen.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_collection_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_detail_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_detail_provider.dart';
+import 'package:e_rents_desktop/features/chat/chat_screen.dart';
+import 'package:e_rents_desktop/repositories/repositories.dart';
+import 'package:e_rents_desktop/repositories/tenant_repository.dart';
+import 'package:e_rents_desktop/repositories/chat_repository.dart';
 import 'package:e_rents_desktop/features/properties/properties_screen.dart';
 import 'package:e_rents_desktop/features/properties/property_details_screen.dart';
 import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
 import 'package:e_rents_desktop/features/statistics/statistics_screen.dart';
+import 'package:e_rents_desktop/features/statistics/providers/statistics_state_provider.dart';
+import 'package:e_rents_desktop/repositories/statistics_repository.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
+import 'package:e_rents_desktop/repositories/reports_repository.dart';
 import 'package:e_rents_desktop/features/reports/reports_screen.dart';
 import 'package:e_rents_desktop/features/profile/profile_screen.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
-import 'package:e_rents_desktop/services/auth_service.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
+
+// ✅ NEW: Import base infrastructure and new providers
+import 'features/properties/providers/property_detail_provider.dart';
+import 'features/properties/providers/property_stats_provider.dart';
+import 'features/properties/providers/property_collection_provider.dart';
+import 'main.dart' show getService;
 
 // Shell layout that includes the persistent navigation bar
 class AppShell extends StatelessWidget {
@@ -76,7 +96,7 @@ class ContentWrapper extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 10,
                     spreadRadius: 5,
                   ),
@@ -98,17 +118,15 @@ class AppRouter {
   final GoRouter router = GoRouter(
     initialLocation: '/',
     redirect: (context, state) async {
-      // Check authentication status using auth provider
+      // ✅ SIMPLIFIED: Cleaner auth check
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final isAuthenticated = authProvider.isAuthenticatedState;
 
       // Development mode check
       final bool isDevelopmentMode =
-          // Check some environment variable, or you can hardcode for development
           !bool.fromEnvironment('dart.vm.product') ||
           Platform.environment.containsKey('FLUTTER_DEV_MODE');
 
-      // If we're in development mode and authenticated, allow navigation
       if (isDevelopmentMode && isAuthenticated) {
         if (state.uri.path == '/login' ||
             state.uri.path == '/signup' ||
@@ -118,7 +136,6 @@ class AppRouter {
         return null;
       }
 
-      // If not authenticated and not on auth routes, redirect to login
       final isAuthRoute =
           state.uri.path == '/login' ||
           state.uri.path == '/signup' ||
@@ -150,25 +167,25 @@ class AppRouter {
           GoRoute(
             path: '/',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Landlord Dashboard',
-                  child: HomeScreen(),
+                  child: _createHomeScreen(),
                 ),
           ),
           GoRoute(
             path: '/properties',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'My Properties',
-                  child: PropertiesScreen(),
+                  child: _createPropertiesScreen(),
                 ),
             routes: [
               GoRoute(
                 path: 'add',
                 builder:
-                    (context, state) => const ContentWrapper(
+                    (context, state) => ContentWrapper(
                       title: 'Add Property',
-                      child: PropertyFormScreen(propertyId: null),
+                      child: _createPropertyFormScreen(null),
                     ),
               ),
               GoRoute(
@@ -183,7 +200,8 @@ class AppRouter {
                   }
                   return ContentWrapper(
                     title: 'Property Details',
-                    child: PropertyDetailsScreen(propertyId: propertyId),
+                    // ✅ CLEAN: Create providers on-demand using factory methods
+                    child: _createPropertyDetailsScreen(propertyId),
                   );
                 },
                 routes: [
@@ -201,7 +219,7 @@ class AppRouter {
                       }
                       return ContentWrapper(
                         title: 'Edit Property',
-                        child: PropertyFormScreen(propertyId: propertyId),
+                        child: _createPropertyFormScreen(propertyId),
                       );
                     },
                   ),
@@ -212,119 +230,242 @@ class AppRouter {
           GoRoute(
             path: '/maintenance',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Maintenance Dashboard',
-                  child: MaintenanceScreen(),
+                  child: _createMaintenanceScreen(),
                 ),
           ),
           GoRoute(
             path: '/maintenance/new',
             builder: (context, state) {
               final propertyIdString = state.uri.queryParameters['propertyId'];
-              final int? propertyId =
-                  propertyIdString == null
-                      ? null
-                      : int.tryParse(propertyIdString);
               return ContentWrapper(
                 title: 'New Maintenance Issue',
-                child: MaintenanceFormScreen(propertyId: propertyId),
+                child: _createMaintenanceFormScreen(propertyIdString),
               );
             },
           ),
           GoRoute(
             path: '/maintenance/:id',
             builder: (context, state) {
-              final maintenanceProvider = context.read<MaintenanceProvider>();
-              final propertyProvider = context.read<PropertyProvider>();
               final issueIdString = state.pathParameters['id']!;
-              final issueId = int.tryParse(issueIdString);
 
-              // Instead of fetching immediately, schedule it for after the build
-              Future.microtask(() {
-                if (maintenanceProvider.issues.isEmpty) {
-                  maintenanceProvider.fetchIssues();
-                }
-                if (propertyProvider.properties.isEmpty) {
-                  propertyProvider.fetchProperties();
-                }
-              });
-
-              // Try to find the issue if it already exists
-              MaintenanceIssue? issue;
-              try {
-                if (issueId != null) {
-                  issue = maintenanceProvider.issues.firstWhere(
-                    (i) => i.id == issueId,
-                  );
-                }
-              } catch (_) {
-                // Issue will be loaded after fetchIssues completes
-              }
-
-              // Return the screen even if the issue isn't loaded yet
-              // The screen should handle the loading state
+              // ✅ CLEAN: No more Future.microtask anti-patterns
               return ContentWrapper(
                 title: 'Maintenance Issue',
-                child: MaintenanceIssueDetailsScreen(
-                  issueId: issueIdString,
-                  issue: issue,
-                ),
+                child: _createMaintenanceDetailsScreen(issueIdString),
               );
             },
           ),
           GoRoute(
             path: '/chat',
             builder:
-                (context, state) => const Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Chat feature is temporarily disabled for system maintenance',
-                    ),
-                  ),
+                (context, state) => ContentWrapper(
+                  title: 'Messages',
+                  child: _createChatScreen(),
                 ),
           ),
           GoRoute(
             path: '/revenue',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Revenue & Analytics',
-                  child: StatisticsScreen(),
+                  child: _createStatisticsScreen(),
                 ),
           ),
           GoRoute(
             path: '/statistics',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Revenue & Analytics',
-                  child: StatisticsScreen(),
+                  child: _createStatisticsScreen(),
                 ),
           ),
           GoRoute(
             path: '/reports',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Business Reports',
-                  child: ReportsScreen(),
+                  child: _createReportsScreen(),
                 ),
           ),
           GoRoute(
             path: '/profile',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Profile',
-                  child: ProfileScreen(),
+                  child: _createProfileScreen(),
                 ),
           ),
           GoRoute(
             path: '/tenants',
             builder:
-                (context, state) => const ContentWrapper(
+                (context, state) => ContentWrapper(
                   title: 'Tenant Management',
-                  child: TenantsScreen(),
+                  child: _createTenantsScreen(),
                 ),
           ),
         ],
       ),
     ],
   );
+
+  // ✅ NEW: Factory methods for creating screens with providers
+  static Widget _createHomeScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              HomeStateProvider(getService<HomeRepository>())
+                ..loadDashboardData(),
+      child: const HomeScreen(),
+    );
+  }
+
+  static Widget _createPropertyDetailsScreen(String propertyId) {
+    return MultiProvider(
+      providers: [
+        // Create providers on-demand using ServiceLocator
+        ChangeNotifierProvider(
+          create:
+              (_) =>
+                  PropertyDetailProvider(getService())
+                    ..loadPropertyById(int.parse(propertyId)),
+        ),
+        ChangeNotifierProvider(
+          create:
+              (_) => PropertyStatsProvider(
+                getService(), // StatisticsService
+                getService(), // BookingService
+              )..loadPropertyStats(propertyId),
+        ),
+      ],
+      child: PropertyDetailsScreen(propertyId: propertyId),
+    );
+  }
+
+  static Widget _createPropertiesScreen() {
+    return ChangeNotifierProvider(
+      create: (_) => PropertyCollectionProvider(getService())..fetchItems(),
+      child: const PropertiesScreen(),
+    );
+  }
+
+  static Widget _createMaintenanceDetailsScreen(String issueId) {
+    // Create MaintenanceDetailProvider on-demand with automatic data loading
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              MaintenanceDetailProvider(getService<MaintenanceRepository>())
+                ..loadMaintenanceIssueById(int.parse(issueId)),
+      child: MaintenanceIssueDetailsScreen(
+        issueId: issueId,
+        issue: null, // Will be loaded by provider
+      ),
+    );
+  }
+
+  static Widget _createPropertyFormScreen(String? propertyId) {
+    if (propertyId == null) {
+      // Add mode - only need PropertyCollectionProvider
+      return ChangeNotifierProvider(
+        create: (_) => PropertyCollectionProvider(getService()),
+        child: const PropertyFormScreen(propertyId: null),
+      );
+    } else {
+      // Edit mode - need both PropertyDetailProvider and PropertyCollectionProvider
+      return MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create:
+                (_) =>
+                    PropertyDetailProvider(getService())
+                      ..loadPropertyById(int.parse(propertyId)),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => PropertyCollectionProvider(getService()),
+          ),
+        ],
+        child: PropertyFormScreen(propertyId: propertyId),
+      );
+    }
+  }
+
+  static Widget _createMaintenanceScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              MaintenanceCollectionProvider(getService<MaintenanceRepository>())
+                ..fetchItems(),
+      child: const MaintenanceScreen(),
+    );
+  }
+
+  static Widget _createMaintenanceFormScreen(String? propertyId) {
+    return ChangeNotifierProvider(
+      create:
+          (_) => MaintenanceCollectionProvider(
+            getService<MaintenanceRepository>(),
+          ),
+      child: MaintenanceFormScreen(
+        propertyId: propertyId != null ? int.parse(propertyId) : null,
+      ),
+    );
+  }
+
+  static Widget _createTenantsScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              TenantCollectionProvider(getService<TenantRepository>())
+                ..loadAllData(),
+      child: const TenantsScreen(),
+    );
+  }
+
+  static Widget _createChatScreen() {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create:
+              (_) =>
+                  ChatCollectionProvider(getService<ChatRepository>())
+                    ..loadAllData(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ChatDetailProvider(getService<ChatRepository>()),
+        ),
+      ],
+      child: const ChatScreen(),
+    );
+  }
+
+  static Widget _createStatisticsScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              StatisticsStateProvider(getService<StatisticsRepository>())
+                ..loadFinancialStatistics(),
+      child: const StatisticsScreen(),
+    );
+  }
+
+  static Widget _createReportsScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              ReportsStateProvider(getService<ReportsRepository>())
+                ..loadCurrentReportData(),
+      child: const ReportsScreen(),
+    );
+  }
+
+  static Widget _createProfileScreen() {
+    return ChangeNotifierProvider(
+      create:
+          (_) =>
+              ProfileStateProvider(getService<ProfileRepository>())
+                ..loadUserProfile(),
+      child: const ProfileScreen(),
+    );
+  }
 }

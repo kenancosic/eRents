@@ -24,6 +24,11 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       path: '/properties',
     ),
     NavigationItem(
+      label: 'Bookings',
+      icon: Icons.event_seat_rounded,
+      path: '/bookings',
+    ),
+    NavigationItem(
       label: 'Maintenance',
       icon: Icons.build_rounded,
       path: '/maintenance',

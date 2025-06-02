@@ -1,163 +1,204 @@
 import 'package:e_rents_desktop/router.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/services/auth_service.dart';
-import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_details_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
-import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
-import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/services/user_preferences_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+// New imports from Phase 1
+import 'base/base.dart'; // Barrel file for all base imports
+import 'widgets/global_error_dialog.dart';
+import 'repositories/tenant_repository.dart';
+import 'repositories/chat_repository.dart';
+import 'repositories/statistics_repository.dart';
+import 'repositories/reports_repository.dart';
+import 'repositories/profile_repository.dart';
+import 'repositories/home_repository.dart';
+
+// Service imports
+import 'services/auth_service.dart';
+import 'services/secure_storage_service.dart';
+import 'services/user_preferences_service.dart';
+import 'services/property_service.dart';
 import 'services/amenity_service.dart';
 import 'services/booking_service.dart';
 import 'services/review_service.dart';
-import 'services/image_service.dart';
-import 'base/navigation_provider.dart';
-import 'base/preference_provider.dart';
+import 'services/maintenance_service.dart';
+import 'services/tenant_service.dart';
 import 'services/statistics_service.dart';
 import 'services/chat_service.dart';
-import 'services/maintenance_service.dart';
-import 'services/property_service.dart';
-import 'services/profile_service.dart';
 import 'services/report_service.dart';
-import 'features/reports/providers/reports_provider.dart';
-import 'features/reports/providers/financial_report_provider.dart';
-import 'features/reports/providers/tenant_report_provider.dart';
-import 'services/tenant_service.dart';
-import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
-import 'base/error_provider.dart';
-import 'widgets/global_error_dialog.dart';
+import 'services/profile_service.dart';
+import 'services/image_service.dart';
+
+// Provider imports (only what we need immediately)
+import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Try to load .env file, but don't crash if it doesn't exist
+  // Load environment
   try {
     await dotenv.load(fileName: "lib/.env");
   } catch (e) {
-    print('Warning: .env file not found. Some features may be limited: $e');
-    // Initialize with empty values if .env doesn't exist
+    // Warning: .env file not found - disabled print for production
     dotenv.env.clear();
   }
 
-  // Get base URL from environment
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
-  print('Using API Base URL: $baseUrl');
+  // Using API Base URL: $baseUrl - disabled print for production
 
-  // Initialize services
-  final prefsService = UserPreferencesService();
+  // Initialize ServiceLocator and register services
+  await _setupServices(baseUrl);
+
+  runApp(const ERentsApp());
+}
+
+/// Setup all services using ServiceLocator
+Future<void> _setupServices(String baseUrl) async {
+  final locator = ServiceLocator();
+  locator.initialize();
+
+  // Core services
   final secureStorageService = SecureStorageService();
-  final authService = AuthService(baseUrl, secureStorageService);
-  final amenityService = AmenityService(baseUrl, secureStorageService);
-  final bookingService = BookingService(baseUrl, secureStorageService);
-  final reviewService = ReviewService(baseUrl, secureStorageService);
-  final chatService = ChatService(baseUrl, secureStorageService);
-  final maintenanceService = MaintenanceService(baseUrl, secureStorageService);
-  final propertyService = PropertyService(baseUrl, secureStorageService);
-  final profileService = ProfileService(baseUrl, secureStorageService);
-  final reportService = ReportService(baseUrl, secureStorageService);
-  final statisticsService = StatisticsService(baseUrl, secureStorageService);
-  final tenantService = TenantService(baseUrl, secureStorageService);
-  final imageService = ImageService(baseUrl, secureStorageService);
+  final prefsService = UserPreferencesService();
 
-  runApp(
-    MultiProvider(
+  locator.registerSingleton<SecureStorageService>(secureStorageService);
+  locator.registerSingleton<UserPreferencesService>(prefsService);
+
+  // API services
+  locator.registerSingleton<AuthService>(
+    AuthService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<PropertyService>(
+    PropertyService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<AmenityService>(
+    AmenityService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<BookingService>(
+    BookingService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<ReviewService>(
+    ReviewService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<MaintenanceService>(
+    MaintenanceService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<TenantService>(
+    TenantService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<StatisticsService>(
+    StatisticsService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<ChatService>(
+    ChatService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<ReportService>(
+    ReportService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<ProfileService>(
+    ProfileService(baseUrl, secureStorageService),
+  );
+  locator.registerSingleton<ImageService>(
+    ImageService(baseUrl, secureStorageService),
+  );
+
+  // Cache Manager
+  locator.registerSingleton<CacheManager>(CacheManager());
+
+  // Repositories (lazy singletons)
+  locator.registerLazySingleton<PropertyRepository>(
+    () => PropertyRepository(
+      service: locator.get<PropertyService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<AmenityRepository>(
+    () => AmenityRepository(
+      service: locator.get<AmenityService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<MaintenanceRepository>(
+    () => MaintenanceRepository(
+      service: locator.get<MaintenanceService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<TenantRepository>(
+    () => TenantRepository(
+      service: locator.get<TenantService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<ChatRepository>(
+    () => ChatRepository(
+      service: locator.get<ChatService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<StatisticsRepository>(
+    () => StatisticsRepository(
+      service: locator.get<StatisticsService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<ReportsRepository>(
+    () => ReportsRepository(
+      service: locator.get<ReportService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepository(
+      service: locator.get<ProfileService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  locator.registerLazySingleton<HomeRepository>(
+    () => HomeRepository(
+      service: locator.get<StatisticsService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
+  // Add other repositories as needed...
+}
+
+class ERentsApp extends StatelessWidget {
+  const ERentsApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ErrorProvider()),
-
-        // Core Services (must be first so other providers can access them)
-        Provider.value(value: secureStorageService),
-        Provider.value(value: prefsService),
-        Provider.value(value: authService),
-        Provider.value(value: amenityService),
-        Provider.value(value: bookingService),
-        Provider.value(value: reviewService),
-        Provider.value(value: chatService),
-        Provider.value(value: maintenanceService),
-        Provider.value(value: propertyService),
-        Provider.value(value: profileService),
-        Provider.value(value: reportService),
-        Provider.value(value: statisticsService),
-        Provider.value(value: tenantService),
-        Provider.value(value: imageService),
-
-        // Authentication related providers
-        ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
-
-        // App State/Navigation providers
-        ChangeNotifierProvider(create: (_) => NavigationProvider()),
+        // ✅ SIMPLIFIED: Only core providers needed at app level
         ChangeNotifierProvider(
-          create: (_) => PreferencesProvider(preferencesService: prefsService),
+          create: (_) => AppErrorProvider(), // Global error handling
         ),
-
-        // Feature specific providers (these can now access services via context.read)
         ChangeNotifierProvider(
-          create:
-              (context) => PropertyProvider(
-                context.read<PropertyService>(),
-                context.read<AmenityService>(),
-              ),
+          create: (_) => NavigationStateProvider(), // Using new StateProvider
         ),
         ChangeNotifierProvider(
           create:
-              (context) => PropertyDetailsProvider(
-                context.read<BookingService>(),
-                context.read<ReviewService>(),
-                context.read<StatisticsService>(),
-                context.read<MaintenanceService>(),
+              (_) => PreferencesStateProvider(
+                getService<UserPreferencesService>(),
               ),
         ),
-        ChangeNotifierProvider<MaintenanceProvider>(
-          create:
-              (context) =>
-                  MaintenanceProvider(context.read<MaintenanceService>()),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(getService<AuthService>()),
         ),
-        ChangeNotifierProvider<TenantProvider>(
-          create: (context) => TenantProvider(context.read<TenantService>()),
-        ),
-        ChangeNotifierProvider<StatisticsProvider>(
-          create:
-              (context) =>
-                  StatisticsProvider(context.read<StatisticsService>()),
-        ),
-        ChangeNotifierProvider<ChatProvider>(
-          create:
-              (context) => ChatProvider(
-                context.read<ChatService>(),
-                context.read<AuthProvider>(),
-              ),
-        ),
-        ChangeNotifierProvider<ReportsProvider>(
-          create:
-              (context) =>
-                  ReportsProvider(reportService: context.read<ReportService>()),
-        ),
-        ChangeNotifierProvider<HomeProvider>(
-          create: (context) => HomeProvider(context.read<StatisticsService>()),
-        ),
-        ChangeNotifierProvider<FinancialReportProvider>(
-          create:
-              (context) =>
-                  FinancialReportProvider(context.read<ReportService>()),
-        ),
-        ChangeNotifierProvider<TenantReportProvider>(
-          create:
-              (context) => TenantReportProvider(context.read<ReportService>()),
-        ),
-        // MockDataService temporarily disabled due to type mismatches
-        // Provider<MockDataService>(
-        //   create: (context) => MockDataService(),
-        // ),
-        // ReviewService temporarily disabled due to model mismatch
-        // Provider<ReviewService>(
-        //   create: (context) => ReviewService(context.read<ApiService>()),
-        // ),
+
+        // ✅ Feature providers are created on-demand in routes
+        // No need to create all 20+ providers at startup
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
@@ -168,6 +209,9 @@ void main() async {
             (context, child) =>
                 Stack(children: [child!, const GlobalErrorDialog()]),
       ),
-    ),
-  );
+    );
+  }
 }
+
+/// Convenience function to get services from ServiceLocator
+T getService<T>() => ServiceLocator().get<T>();

@@ -150,10 +150,14 @@ class PropertyReviewsSection extends StatelessWidget {
             Row(
               children: [
                 _buildStars(review.starRating ?? 0.0),
-                const Spacer(),
-                Text(
-                  DateFormat.yMMMd().format(review.dateCreated),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    DateFormat.yMMMd().format(review.dateCreated),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

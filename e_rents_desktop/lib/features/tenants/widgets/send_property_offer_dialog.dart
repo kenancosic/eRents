@@ -1,12 +1,13 @@
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
-import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
+import 'package:e_rents_desktop/repositories/property_repository.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
+import 'package:e_rents_desktop/base/provider_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 
 class SendPropertyOfferDialog extends StatefulWidget {
   final TenantPreference tenantPreference;
@@ -19,26 +20,42 @@ class SendPropertyOfferDialog extends StatefulWidget {
 }
 
 class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
+  List<Property> _availableProperties = [];
+  bool _isLoading = true;
+  String? _error;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Fetch available properties when the dialog is shown
-      Provider.of<PropertyProvider>(context, listen: false).fetchItems();
-    });
+    _loadAvailableProperties();
+  }
+
+  Future<void> _loadAvailableProperties() async {
+    try {
+      final propertyRepository = getService<PropertyRepository>();
+      final properties = await propertyRepository.getAvailableProperties();
+      setState(() {
+        _availableProperties = properties;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final propertyProvider = Provider.of<PropertyProvider>(context);
-    final tenantProvider = Provider.of<TenantProvider>(context, listen: false);
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-
-    // Filter for available properties
-    final availableProperties =
-        propertyProvider.items
-            .where((property) => property.status == PropertyStatus.available)
-            .toList();
+    final tenantProvider = Provider.of<TenantCollectionProvider>(
+      context,
+      listen: false,
+    );
+    final chatProvider = Provider.of<ChatCollectionProvider>(
+      context,
+      listen: false,
+    );
 
     return AlertDialog(
       title: Text(
@@ -48,14 +65,16 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
         width: double.maxFinite,
         height: 300, // Adjust as needed
         child:
-            propertyProvider.state == ViewState.Busy
+            _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : availableProperties.isEmpty
+                : _error != null
+                ? Center(child: Text('Error: $_error'))
+                : _availableProperties.isEmpty
                 ? const Center(child: Text('No available properties to offer.'))
                 : ListView.builder(
-                  itemCount: availableProperties.length,
+                  itemCount: _availableProperties.length,
                   itemBuilder: (context, index) {
-                    final property = availableProperties[index];
+                    final property = _availableProperties[index];
                     return ListTile(
                       leading:
                           property.images.isNotEmpty
@@ -89,7 +108,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                             property.id,
                           );
 
-                          // Step 2: Send the actual message via ChatProvider
+                          // Step 2: Send the actual message via ChatCollectionProvider
                           await chatProvider.sendPropertyOfferMessage(
                             widget.tenantPreference.userId,
                             property.id,

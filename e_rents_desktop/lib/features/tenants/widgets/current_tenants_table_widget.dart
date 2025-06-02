@@ -3,7 +3,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -83,13 +83,13 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TenantProvider>(
+    return Consumer<TenantCollectionProvider>(
       builder: (context, tenantProvider, child) {
         // Remove redundant error check - let parent handle errors
         // Always show table structure, even with 0 data
 
         // Get property assignments from provider with debug info
-        final propertyAssignments = tenantProvider.tenantPropertyAssignments;
+        final propertyAssignments = tenantProvider.propertyAssignments;
         print(
           'TenantTableWidget: Building with ${widget.tenants.length} tenants, ${propertyAssignments.length} property assignments',
         );
@@ -161,7 +161,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
             ),
 
             // Loading overlay for property assignments
-            if (tenantProvider.isLoadingPropertyAssignments)
+            if (tenantProvider.isLoadingAssignments)
               Positioned(
                 top: 0,
                 left: 0,
@@ -200,7 +200,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
   Widget _buildTableContent(
     List<User> filteredTenants,
     Map<int, Map<String, dynamic>> propertyAssignments,
-    TenantProvider tenantProvider,
+    TenantCollectionProvider tenantProvider,
   ) {
     _columnDefs = [
       {
@@ -560,8 +560,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
               final availableWidth = constraints.maxWidth;
 
               // If data is loading and we have no tenants, show loading in table
-              if (tenantProvider.isLoadingCurrentTenants &&
-                  filteredTenants.isEmpty) {
+              if (tenantProvider.isLoading && filteredTenants.isEmpty) {
                 return Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),

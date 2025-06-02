@@ -1,26 +1,27 @@
-import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/models/auth/login_request_model.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
+import 'package:e_rents_desktop/base/app_error.dart';
 
-class AuthProvider extends BaseProvider<User> {
-  AuthService _authService;
+class AuthProvider extends ChangeNotifier {
+  final AuthService _authService;
   User? _currentUser;
   bool _isAuthenticated = false;
+  AppError? _error;
+  bool _isLoading = false;
 
-  AuthProvider(ApiService apiService)
-    : _authService = AuthService(
-        apiService.baseUrl,
-        apiService.secureStorageService,
-      ),
-      super(apiService) {
+  AuthProvider(this._authService) {
     _initializeAuth();
   }
 
   void _initializeAuth() async {
-    await execute(() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
       _isAuthenticated = await _authService.isAuthenticated();
       if (_isAuthenticated) {
         await _fetchCurrentUserDetails();
@@ -28,52 +29,61 @@ class AuthProvider extends BaseProvider<User> {
           _isAuthenticated = false;
         }
       }
-    });
+    } catch (e) {
+      _error = AppError.fromException(e);
+      _isAuthenticated = false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  set authService(AuthService service) {
-    _authService = service;
+  // Getters
+  User? get currentUser => _currentUser;
+  bool get isAuthenticatedState => _isAuthenticated;
+  AppError? get error => _error;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _error?.message;
+
+  // Helper methods
+  void _setError(String message) {
+    _error = AppError(type: ErrorType.authentication, message: message);
     notifyListeners();
   }
 
-  @override
-  String get endpoint => '/users'; // General endpoint for user data if BaseProvider CRUD is used
-
-  @override
-  User fromJson(Map<String, dynamic> json) => User.fromJson(json);
-
-  @override
-  Map<String, dynamic> toJson(User item) => item.toJson();
-
-  @override
-  List<User> getMockItems() => []; // No mock users for auth provider specifically
-
-  User? get currentUser => _currentUser;
-  bool get isAuthenticatedState => _isAuthenticated;
+  void _clearError() {
+    _error = null;
+    notifyListeners();
+  }
 
   Future<void> _fetchCurrentUserDetails() async {
     if (_isAuthenticated) {
       try {
         final userResponse = await _authService.getMe();
-        if (userResponse != null && userResponse['user'] != null) {
+        if (userResponse.containsKey('user')) {
           _currentUser = User.fromJson(userResponse['user']);
         } else {
           _currentUser = null;
           _isAuthenticated = false;
-          setError('Failed to load user profile. Please try logging in again.');
+          _setError(
+            'Failed to load user profile. Please try logging in again.',
+          );
         }
       } catch (e) {
-        print('Error fetching user details: $e');
+        debugPrint('Error fetching user details: $e');
         _currentUser = null;
         _isAuthenticated = false;
-        setError('Failed to load user profile. Please try logging in again.');
+        _setError('Failed to load user profile. Please try logging in again.');
       }
     }
   }
 
   Future<bool> login(LoginRequestModel request) async {
-    bool success = false;
-    await execute(() async {
+    _isLoading = true;
+    _clearError();
+    notifyListeners();
+
+    try {
       await _authService.login(request);
       _isAuthenticated = true;
       await _fetchCurrentUserDetails();
@@ -88,37 +98,51 @@ class AuthProvider extends BaseProvider<User> {
         );
       }
 
-      success = true;
-    });
-
-    if (!success) {
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
       _isAuthenticated = false;
       _currentUser = null;
+      _error = AppError.fromException(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
-    notifyListeners();
-    return success;
   }
 
   Future<User?> register(RegisterRequestModel request) async {
     // Registration is not supported in desktop app as it's landlord-only
     // Landlord accounts should be created through proper business processes
-    setError(
+    _setError(
       'Account registration is not available in the desktop application. Please contact support for landlord account setup.',
     );
     return null;
   }
 
   Future<void> logout() async {
-    await execute(() async {
+    _isLoading = true;
+    _clearError();
+    notifyListeners();
+
+    try {
       await _authService.logout();
       _currentUser = null;
       _isAuthenticated = false;
-    });
-    notifyListeners();
+    } catch (e) {
+      _error = AppError.fromException(e);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> checkAndUpdateAuthStatus() async {
-    await execute(() async {
+    _isLoading = true;
+    _clearError();
+    notifyListeners();
+
+    try {
       _isAuthenticated = await _authService.isAuthenticated();
       if (_isAuthenticated) {
         await _fetchCurrentUserDetails();
@@ -128,8 +152,15 @@ class AuthProvider extends BaseProvider<User> {
       } else {
         _currentUser = null;
       }
-    });
-    notifyListeners();
-    return _isAuthenticated;
+      _isLoading = false;
+      notifyListeners();
+      return _isAuthenticated;
+    } catch (e) {
+      _error = AppError.fromException(e);
+      _isAuthenticated = false;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 }

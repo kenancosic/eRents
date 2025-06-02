@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_detail_provider.dart';
+import 'package:e_rents_desktop/base/base.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 
 class MaintenanceIssueDetailsScreen extends StatefulWidget {
   final MaintenanceIssue? issue;
@@ -53,32 +53,27 @@ class _MaintenanceIssueDetailsScreenState
   }
 
   Widget _buildContent(BuildContext context) {
-    // If issue was passed directly, show it
-    if (_issue != null) {
-      return _buildIssueContent(context, _issue!);
-    }
-
-    // Otherwise, use Consumer to listen for changes in the provider
-    return Consumer<MaintenanceProvider>(
+    // Use Consumer to get issue from DetailProvider (loaded by router factory method)
+    return Consumer<MaintenanceDetailProvider>(
       builder: (context, provider, child) {
         // Show loading state if provider is loading
-        if (provider.state == ViewState.Busy) {
+        if (provider.state == ProviderState.loading) {
           return const Center(child: CircularProgressIndicator());
         }
 
         // Show error state if there's an error
-        if (provider.errorMessage != null) {
+        if (provider.error != null) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  provider.errorMessage!,
+                  provider.error!.message,
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => provider.fetchIssues(),
+                  onPressed: () => provider.loadItem(_issueId),
                   child: const Text('Retry'),
                 ),
               ],
@@ -86,19 +81,12 @@ class _MaintenanceIssueDetailsScreenState
           );
         }
 
-        // Try to find issue in provider
-        try {
-          final issueIdInt = int.tryParse(_issueId);
-          if (issueIdInt != null) {
-            final foundIssue = provider.issues.firstWhere(
-              (i) => i.id == issueIdInt,
-            );
-            return _buildIssueContent(context, foundIssue);
-          } else {
-            throw Exception('Invalid issue ID format');
-          }
-        } catch (_) {
-          // If issue not found and provider is not loading, show not found error
+        // Get issue from provider
+        final issue = provider.item;
+        if (issue != null) {
+          return _buildIssueContent(context, issue);
+        } else {
+          // If issue not found, show not found error
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -274,7 +262,10 @@ class _MaintenanceIssueDetailsScreenState
   }
 
   Widget _buildActions(BuildContext context, MaintenanceIssue issue) {
-    final provider = Provider.of<MaintenanceProvider>(context, listen: false);
+    final provider = Provider.of<MaintenanceDetailProvider>(
+      context,
+      listen: false,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,26 +450,12 @@ class _MaintenanceIssueDetailsScreenState
     });
   }
 
-  void _saveChanges(MaintenanceProvider provider, MaintenanceIssue issue) {
+  void _saveChanges(
+    MaintenanceDetailProvider provider,
+    MaintenanceIssue issue,
+  ) {
     // Validate that we have a valid issue ID
     if (issue.id == 0) {
-      // Try to find the issue in the provider by title and property ID
-      // (for cases where issue was just created but UI hasn't refreshed)
-      try {
-        final foundIssue = provider.issues.firstWhere(
-          (i) =>
-              i.title == issue.title &&
-              i.propertyId == issue.propertyId &&
-              i.id != 0,
-        );
-
-        // Use the found issue with proper ID
-        _saveChangesForIssue(provider, foundIssue);
-        return;
-      } catch (e) {
-        // Issue not found in provider, show error
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -494,7 +471,7 @@ class _MaintenanceIssueDetailsScreenState
   }
 
   void _saveChangesForIssue(
-    MaintenanceProvider provider,
+    MaintenanceDetailProvider provider,
     MaintenanceIssue issue,
   ) {
     final cost =
@@ -508,10 +485,9 @@ class _MaintenanceIssueDetailsScreenState
             : null;
 
     provider.updateIssueStatus(
-      issue.id.toString(),
       _selectedStatus,
-      cost: cost,
       resolutionNotes: notes,
+      cost: cost,
     );
 
     setState(() {

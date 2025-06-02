@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_collection_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -25,8 +25,6 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
   late IssuePriority _priority;
   late bool _isTenantComplaint;
   List<erents.ImageInfo> _images = [];
-  bool _isLoading = false;
-  String? _errorMessage;
   int _currentUserId = 0;
 
   @override
@@ -213,13 +211,14 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
                       final issue = _createIssue();
-                      final provider = context.read<MaintenanceProvider>();
+                      final provider =
+                          context.read<MaintenanceCollectionProvider>();
                       try {
-                        setState(() => _isLoading = true);
+                        // Loading state will be managed by provider
                         if (widget.issue == null) {
                           await provider.addItem(issue);
                           final newIssues =
-                              provider.issues
+                              provider.items
                                   .where(
                                     (i) =>
                                         i.title == issue.title &&
@@ -234,7 +233,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                             return;
                           }
                         } else {
-                          await provider.updateItem(issue);
+                          await provider.updateItem(issue.id.toString(), issue);
                         }
                         if (mounted) {
                           if (widget.propertyId != null) {
@@ -254,9 +253,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                           );
                         }
                       } finally {
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                        }
+                        // Loading state managed by provider
                       }
                     }
                   },
