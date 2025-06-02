@@ -7,7 +7,7 @@ import '../../../models/renting_type.dart';
 /// Replaces the old PropertyProvider with a cleaner, more focused implementation
 /// that separates concerns and uses the repository pattern for data access.
 class PropertyCollectionProvider extends CollectionProvider<Property> {
-  PropertyCollectionProvider(PropertyRepository repository) : super(repository);
+  PropertyCollectionProvider(PropertyRepository super.repository);
 
   /// Get the property repository with proper typing
   PropertyRepository get propertyRepository => repository as PropertyRepository;
@@ -98,8 +98,9 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
       if (type != null && property.type != type) return false;
 
       // Renting type filter
-      if (rentingType != null && property.rentingType != rentingType)
+      if (rentingType != null && property.rentingType != rentingType) {
         return false;
+      }
 
       // Price range filter
       if (minPrice != null && property.price < minPrice) return false;

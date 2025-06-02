@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:e_rents_desktop/models/booking_summary.dart';
-import 'package:e_rents_desktop/services/booking_service.dart';
 
 class PropertyFinancialSummary extends StatelessWidget {
   final PropertyBookingStats? bookingStats;

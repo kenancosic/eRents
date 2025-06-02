@@ -7,10 +7,10 @@ class ChangePasswordWidget extends StatefulWidget {
   final GlobalKey<FormState> formKey;
 
   const ChangePasswordWidget({
-    Key? key,
+    super.key,
     required this.isEditing,
     required this.formKey,
-  }) : super(key: key);
+  });
 
   @override
   State<ChangePasswordWidget> createState() => _ChangePasswordWidgetState();
@@ -85,7 +85,7 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline.withOpacity(0.2),

@@ -50,7 +50,7 @@ class DateRangeFilter extends StatefulWidget {
 class _DateRangeFilterState extends State<DateRangeFilter> {
   late DateTime _startDate;
   late DateTime _endDate;
-  List<String> _selectedProperties = [];
+  final List<String> _selectedProperties = [];
 
   // Date formatters and controllers
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');

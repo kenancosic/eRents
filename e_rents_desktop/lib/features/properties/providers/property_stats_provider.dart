@@ -210,7 +210,7 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
   String getStatsSummary() {
     if (!hasStats) return 'No statistics available';
 
-    return '${totalBookings} bookings, ${getFormattedRevenue()}, ${getFormattedOccupancyRate()} occupancy';
+    return '$totalBookings bookings, ${getFormattedRevenue()}, ${getFormattedOccupancyRate()} occupancy';
   }
 
   // Performance metrics

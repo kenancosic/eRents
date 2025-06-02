@@ -64,7 +64,7 @@ class ChatDetailProvider extends DetailProvider<Message> {
       }
 
       await _updateItem(_contactId.toString());
-    } catch (e, stackTrace) {
+    } catch (e) {
       // Handle error for message loading - don't use base provider error handling
       // as this is a custom loading operation
       rethrow;

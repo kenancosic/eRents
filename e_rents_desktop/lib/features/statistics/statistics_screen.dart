@@ -2,7 +2,6 @@ import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/features/statistics/providers/statistics_state_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';

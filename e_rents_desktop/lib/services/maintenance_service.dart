@@ -16,7 +16,7 @@ class MaintenanceService extends ApiService {
     }
     String endpoint = '/Maintenance';
     if (queryParams != null && queryParams.isNotEmpty) {
-      endpoint += '?' + Uri(queryParameters: queryParams).query;
+      endpoint += '?${Uri(queryParameters: queryParams).query}';
     }
     print('MaintenanceService: Calling endpoint: $endpoint');
     try {

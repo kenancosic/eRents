@@ -52,9 +52,10 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                           ? Theme.of(
                             context,
                           ).colorScheme.primaryContainer.withOpacity(0.3)
-                          : Theme.of(
-                            context,
-                          ).colorScheme.surfaceVariant.withOpacity(0.3),
+                          : Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color:

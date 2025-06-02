@@ -268,7 +268,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                   'TenantTable: propertyData is null: ${propertyData == null}',
                 );
                 print(
-                  'TenantTable: propertyData keys: ${propertyData?.keys.toList()}',
+                  'TenantTable: propertyData keys: ${propertyData.keys.toList()}',
                 );
 
                 // Create a property object from the data to navigate

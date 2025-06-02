@@ -15,16 +15,12 @@ import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider
 import 'package:e_rents_desktop/features/chat/providers/chat_detail_provider.dart';
 import 'package:e_rents_desktop/features/chat/chat_screen.dart';
 import 'package:e_rents_desktop/repositories/repositories.dart';
-import 'package:e_rents_desktop/repositories/tenant_repository.dart';
-import 'package:e_rents_desktop/repositories/chat_repository.dart';
 import 'package:e_rents_desktop/features/properties/properties_screen.dart';
 import 'package:e_rents_desktop/features/properties/property_details_screen.dart';
 import 'package:e_rents_desktop/features/properties/property_form_screen.dart';
 import 'package:e_rents_desktop/features/statistics/statistics_screen.dart';
 import 'package:e_rents_desktop/features/statistics/providers/statistics_state_provider.dart';
-import 'package:e_rents_desktop/repositories/statistics_repository.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
-import 'package:e_rents_desktop/repositories/reports_repository.dart';
 import 'package:e_rents_desktop/features/reports/reports_screen.dart';
 import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';

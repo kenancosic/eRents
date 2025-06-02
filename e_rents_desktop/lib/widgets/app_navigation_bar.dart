@@ -69,7 +69,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       final item = navigationItems[i];
       if (widget.currentPath == item.path ||
           (item.path != '/' &&
-              widget.currentPath.startsWith(item.path + '/'))) {
+              widget.currentPath.startsWith('${item.path}/'))) {
         setState(() {
           _selectedIndex = i;
         });
@@ -84,7 +84,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       return true;
     }
 
-    if (item.path != '/' && widget.currentPath.startsWith(item.path + '/')) {
+    if (item.path != '/' && widget.currentPath.startsWith('${item.path}/')) {
       return true;
     }
 

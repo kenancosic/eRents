@@ -2,8 +2,7 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
 class ImageService extends ApiService {
-  ImageService(String baseUrl, SecureStorageService secureStorageService)
-    : super(baseUrl, secureStorageService);
+  ImageService(super.baseUrl, super.secureStorageService);
 
   /// Convert relative image URLs to absolute URLs
   String getImageUrl(String? relativeUrl) {

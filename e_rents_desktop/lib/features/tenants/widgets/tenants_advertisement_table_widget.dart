@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
-import 'package:e_rents_desktop/features/tenants/widgets/tenant_preference_details_dialog.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';

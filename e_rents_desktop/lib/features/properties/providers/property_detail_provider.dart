@@ -9,7 +9,7 @@ import '../../../repositories/property_repository.dart';
 /// focused only on property detail management. Related data (bookings, reviews, etc.)
 /// are handled by separate specialized providers.
 class PropertyDetailProvider extends DetailProvider<Property> {
-  PropertyDetailProvider(PropertyRepository repository) : super(repository);
+  PropertyDetailProvider(PropertyRepository super.repository);
 
   /// Get the property repository with proper typing
   PropertyRepository get propertyRepository => repository as PropertyRepository;

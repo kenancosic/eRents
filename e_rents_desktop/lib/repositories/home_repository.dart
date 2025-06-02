@@ -10,10 +10,7 @@ class HomeRepository
     extends BaseRepository<DashboardStatistics, StatisticsService> {
   static const String _cacheKey = 'dashboard_statistics';
 
-  HomeRepository({
-    required StatisticsService service,
-    required CacheManager cacheManager,
-  }) : super(service: service, cacheManager: cacheManager);
+  HomeRepository({required super.service, required super.cacheManager});
 
   @override
   String get resourceName => 'dashboard';

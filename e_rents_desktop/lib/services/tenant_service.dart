@@ -10,8 +10,7 @@ import 'package:e_rents_desktop/services/secure_storage_service.dart';
 /// Security: User-scoped access control with ownership validation
 /// Pattern: Business Logic Controller (Non-CRUD) following established patterns
 class TenantService extends ApiService {
-  TenantService(String baseUrl, SecureStorageService secureStorageService)
-    : super(baseUrl, secureStorageService);
+  TenantService(super.baseUrl, super.secureStorageService);
 
   /// Get current tenants for the authenticated landlord
   /// Backend: GET /Tenant/current

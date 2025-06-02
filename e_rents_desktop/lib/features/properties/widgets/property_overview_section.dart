@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 class PropertyOverviewSection extends StatelessWidget {

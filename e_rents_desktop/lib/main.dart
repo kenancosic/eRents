@@ -7,10 +7,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // New imports from Phase 1
 import 'base/base.dart'; // Barrel file for all base imports
 import 'widgets/global_error_dialog.dart';
-import 'repositories/tenant_repository.dart';
-import 'repositories/chat_repository.dart';
-import 'repositories/statistics_repository.dart';
-import 'repositories/reports_repository.dart';
 import 'repositories/profile_repository.dart';
 import 'repositories/home_repository.dart';
 

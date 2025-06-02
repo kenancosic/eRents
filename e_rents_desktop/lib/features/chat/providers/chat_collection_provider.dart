@@ -17,8 +17,8 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
   User? _selectedContact;
 
   // Real-time updates
-  Map<int, DateTime> _lastActivityMap = {};
-  Map<int, int> _unreadCountMap = {};
+  final Map<int, DateTime> _lastActivityMap = {};
+  final Map<int, int> _unreadCountMap = {};
 
   ChatCollectionProvider(this._chatRepository) : super(_chatRepository);
 

@@ -20,10 +20,7 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
     minutes: 5,
   ); // Messages need more frequent updates
 
-  ChatRepository({
-    required ChatService service,
-    required CacheManager cacheManager,
-  }) : super(service: service, cacheManager: cacheManager);
+  ChatRepository({required super.service, required super.cacheManager});
 
   @override
   String get resourceName => 'chat';
@@ -181,8 +178,9 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
   /// Get last message for a contact
   Message? getLastMessage(int contactId) {
     if (!_messagesCache.containsKey(contactId) ||
-        _messagesCache[contactId]!.isEmpty)
+        _messagesCache[contactId]!.isEmpty) {
       return null;
+    }
 
     final messages = _messagesCache[contactId]!;
     return messages.isNotEmpty ? messages.last : null;

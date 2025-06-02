@@ -4,7 +4,6 @@ import 'package:e_rents_desktop/repositories/property_repository.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
 import 'package:e_rents_desktop/base/service_locator.dart';
-import 'package:e_rents_desktop/base/provider_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';

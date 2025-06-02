@@ -1,5 +1,3 @@
-import 'package:e_rents_desktop/models/statistics/monthly_revenue.dart';
-
 class FinancialSummaryDto {
   final double totalRentIncome;
   final double totalMaintenanceCosts;

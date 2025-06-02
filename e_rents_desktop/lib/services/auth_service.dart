@@ -6,9 +6,7 @@ import 'package:e_rents_desktop/models/auth/login_request_model.dart';
 import 'package:e_rents_desktop/models/auth/login_response_model.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/auth/reset_password_request_model.dart';
-import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
 // TODO: Full backend integration for all auth features is pending.
 // Ensure all endpoints are functional and error handling is robust.

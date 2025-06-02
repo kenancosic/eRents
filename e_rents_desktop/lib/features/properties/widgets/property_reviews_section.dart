@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/booking_summary.dart';
-import 'package:e_rents_desktop/services/review_service.dart';
 import 'package:intl/intl.dart';
 
 class PropertyReviewsSection extends StatelessWidget {

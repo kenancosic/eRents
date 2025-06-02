@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/utils/theme.dart';
 
 class ElevatedTextButton extends StatelessWidget {
   final String text;

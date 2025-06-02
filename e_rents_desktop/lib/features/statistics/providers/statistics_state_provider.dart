@@ -4,7 +4,6 @@ import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics_api.dart';
 import 'package:e_rents_desktop/models/statistics/financial_summary_dto.dart';
-import 'package:e_rents_desktop/repositories/statistics_repository.dart';
 import 'package:intl/intl.dart';
 
 /// Provider for managing statistics state

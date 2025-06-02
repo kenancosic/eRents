@@ -13,7 +13,6 @@ import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:typed_data';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});

@@ -32,7 +32,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
   bool _isExtending = false;
   bool _isSubmittingExtension = false;
   String? _errorMessage;
-  Set<DateTime> _selectedExtensionDates = {};
+  final Set<DateTime> _selectedExtensionDates = {};
   double _extensionPrice = 0.0;
   DateTime _currentDisplayMonth = DateTime.now();
 
@@ -511,11 +511,9 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         }).where((row) {
           // Only show rows that have at least one valid day
           final children = row.children as List;
-          return children.any((child) =>
-              child is Expanded &&
-              child.child != null &&
-              child.child is! SizedBox);
-        }).toList(),
+          return children
+              .any((child) => child is Expanded && child.child is! SizedBox);
+        }),
       ],
     );
   }

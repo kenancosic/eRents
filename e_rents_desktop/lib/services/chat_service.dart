@@ -41,7 +41,7 @@ class ChatService extends ApiService {
     if (pageSize != null) queryParams['pageSize'] = pageSize.toString();
 
     if (queryParams.isNotEmpty) {
-      endpoint += '?' + Uri(queryParameters: queryParams).query;
+      endpoint += '?${Uri(queryParameters: queryParams).query}';
     }
 
     try {

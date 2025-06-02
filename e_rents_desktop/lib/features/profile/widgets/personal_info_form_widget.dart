@@ -10,10 +10,10 @@ class PersonalInfoFormWidget extends StatefulWidget {
   final GlobalKey<FormState> formKey;
 
   const PersonalInfoFormWidget({
-    Key? key,
+    super.key,
     required this.isEditing,
     required this.formKey,
-  }) : super(key: key);
+  });
 
   @override
   State<PersonalInfoFormWidget> createState() => _PersonalInfoFormWidgetState();
@@ -296,7 +296,9 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
         fillColor:
             enabled
                 ? null
-                : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                : Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
         suffixIcon: suffixIcon,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
@@ -329,7 +331,9 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withOpacity(0.2),

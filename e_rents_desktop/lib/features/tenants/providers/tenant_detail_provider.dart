@@ -1,7 +1,6 @@
 import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/review.dart';
-import 'package:e_rents_desktop/repositories/tenant_repository.dart';
 
 /// Detail provider for individual tenant management
 /// Handles single tenant details, feedbacks, and review operations

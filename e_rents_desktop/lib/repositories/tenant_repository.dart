@@ -8,10 +8,7 @@ import 'package:e_rents_desktop/services/tenant_service.dart';
 /// Repository for tenant data management with intelligent caching
 /// Handles both current tenants and prospective tenants (searching)
 class TenantRepository extends BaseRepository<User, TenantService> {
-  TenantRepository({
-    required TenantService service,
-    required CacheManager cacheManager,
-  }) : super(service: service, cacheManager: cacheManager);
+  TenantRepository({required super.service, required super.cacheManager});
 
   @override
   String get resourceName => 'tenants';
@@ -177,13 +174,13 @@ class TenantRepository extends BaseRepository<User, TenantService> {
           searchQuery == null ||
           searchQuery.isEmpty ||
           tenant.fullName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          (tenant.email?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+          (tenant.email.toLowerCase().contains(searchQuery.toLowerCase()) ??
               false);
 
       bool matchesCity =
           city == null ||
           city.isEmpty ||
-          (tenant.addressDetail?.geoRegion?.city?.toLowerCase().contains(
+          (tenant.addressDetail?.geoRegion?.city.toLowerCase().contains(
                 city.toLowerCase(),
               ) ??
               false);

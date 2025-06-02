@@ -9,8 +9,7 @@ import 'package:flutter/foundation.dart';
 // TODO: Full backend integration for all report features is pending.
 // Ensure all endpoints are functional and error handling is robust.
 class ReportService extends ApiService {
-  ReportService(String baseUrl, SecureStorageService secureStorageService)
-    : super(baseUrl, secureStorageService);
+  ReportService(super.baseUrl, super.secureStorageService);
 
   Future<List<FinancialReportItem>> getFinancialReport(
     DateTime startDate,

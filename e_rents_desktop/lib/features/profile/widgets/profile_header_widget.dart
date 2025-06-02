@@ -64,9 +64,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
     final user = profileProvider.currentUser;
 
     // Determine which image to show
-    if (_tempProfileImage == null) {
-      _tempProfileImage = user?.profileImage;
-    }
+    _tempProfileImage ??= user?.profileImage;
 
     return Container(
       padding: const EdgeInsets.all(24),

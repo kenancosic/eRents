@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class TenantProfileWidget extends StatefulWidget {

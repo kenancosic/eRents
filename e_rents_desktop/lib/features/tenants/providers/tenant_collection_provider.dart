@@ -9,8 +9,8 @@ class TenantCollectionProvider extends CollectionProvider<User> {
   final TenantRepository _repository;
 
   // Separate data for prospective tenants
-  List<TenantPreference> _prospectiveTenants = [];
-  Map<int, Map<String, dynamic>> _propertyAssignments = {};
+  final List<TenantPreference> _prospectiveTenants = [];
+  final Map<int, Map<String, dynamic>> _propertyAssignments = {};
 
   // Loading states for different operations
   bool _isLoadingProspective = false;

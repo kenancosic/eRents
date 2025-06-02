@@ -642,11 +642,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     final hasManualEntry =
                         value?.trim().isNotEmpty == true ||
                         formState.cityController.text.trim().isNotEmpty;
-                    if (!hasGoogleAddress && !hasManualEntry)
+                    if (!hasGoogleAddress && !hasManualEntry) {
                       return 'Enter street or use Google Address';
+                    }
                   } else {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter street name';
+                    }
                   }
                   return null;
                 },
@@ -683,11 +685,13 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                     final hasManualEntry =
                         value?.trim().isNotEmpty == true ||
                         formState.streetNameController.text.trim().isNotEmpty;
-                    if (!hasGoogleAddress && !hasManualEntry)
+                    if (!hasGoogleAddress && !hasManualEntry) {
                       return 'Enter city or use Google Address';
+                    }
                   } else {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Please enter city';
+                    }
                   }
                   return null;
                 },
@@ -833,8 +837,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
               if (value != null && value.isNotEmpty) {
                 final days = int.tryParse(value);
                 if (days == null) return 'Enter a valid number of days';
-                if (days < 1 && formState.rentingType == RentingType.daily)
+                if (days < 1 && formState.rentingType == RentingType.daily) {
                   return 'Minimum stay must be at least 1 day';
+                }
               }
               return null;
             },
@@ -854,7 +859,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           children: [
             TextButton(
               onPressed: () => context.pop(),
-              child: const Text('Cancel'),
               style: TextButton.styleFrom(
                 foregroundColor: theme.textTheme.bodyLarge?.color,
                 padding: const EdgeInsets.symmetric(
@@ -862,6 +866,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                   vertical: 12,
                 ),
               ),
+              child: const Text('Cancel'),
             ),
             const SizedBox(width: 12),
             ElevatedButton.icon(

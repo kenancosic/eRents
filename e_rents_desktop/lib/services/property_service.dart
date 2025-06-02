@@ -13,7 +13,7 @@ class PropertyService extends ApiService {
   }) async {
     String endpoint = '/properties';
     if (queryParams != null && queryParams.isNotEmpty) {
-      endpoint += '?' + Uri(queryParameters: queryParams).query;
+      endpoint += '?${Uri(queryParameters: queryParams).query}';
     }
     final response = await get(endpoint, authenticated: true);
     final List<dynamic> jsonResponse = json.decode(response.body);

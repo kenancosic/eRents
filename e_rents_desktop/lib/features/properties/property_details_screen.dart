@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_stats_provider.dart';
+import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/models/booking_summary.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_header.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_overview_section.dart';
@@ -7,14 +14,6 @@ import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_reviews_section.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_financial_summary.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_bookings_section.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_details_provider.dart';
-import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:intl/intl.dart'; // Ensure DateFormat is imported
-import 'package:e_rents_desktop/base/base_provider.dart'; // Added for ViewState
 
 class PropertyDetailsScreen extends StatefulWidget {
   final String propertyId;
@@ -26,123 +25,49 @@ class PropertyDetailsScreen extends StatefulWidget {
 }
 
 class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
-  Property? _property;
-  // bool _isLoading = true; // Managed by PropertyDetailsProvider now
-  // String? _error; // Managed by PropertyDetailsProvider now
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchPropertyDetails();
-    });
   }
 
-  Future<void> _fetchPropertyDetails() async {
-    if (!mounted) return;
-    // setState(() { // Managed by provider
-    //   _isLoading = true;
-    //   _error = null;
-    // });
-
-    final detailsProvider = context.read<PropertyDetailsProvider>();
-    // detailsProvider.setLoading(true); // Use provider's loading state - replaced by setLoadingState
-    detailsProvider.setLoadingState(true);
-
-    try {
-      print(
-        'PropertyDetailsScreen: Fetching details for property ID: ${widget.propertyId}',
-      );
-
-      final propertyCollectionProvider =
-          context.read<PropertyCollectionProvider>();
-
-      final propertyIdInt = int.tryParse(widget.propertyId);
-      if (propertyIdInt == null) {
-        throw Exception('Invalid property ID format: ${widget.propertyId}');
-      }
-
-      // Get property using the new provider architecture
-      _property = await propertyCollectionProvider.getPropertyById(
-        propertyIdInt,
-      );
-
-      print(
-        'PropertyDetailsScreen: Found property from collection provider: ${_property?.title ?? 'null'}',
-      );
-
-      if (_property == null) {
-        detailsProvider.setLoadingState(
-          false,
-          'Property with ID ${widget.propertyId} not found.',
-        );
-        print(
-          'PropertyDetailsScreen: Error - Property with ID ${widget.propertyId} not found after getItemById.',
-        );
-        // No need for setState here as provider notifies
-        return;
-      }
-
-      if (mounted) {
-        setState(() {}); // Update local _property
-      }
-
-      await detailsProvider.loadPropertyDetails(propertyIdInt.toString());
-      // detailsProvider.setLoading(false); // loadPropertyDetails should handle its own final state
-    } catch (e) {
-      print('PropertyDetailsScreen: Exception - ${e.toString()}');
-      final detailsProvider =
-          context.read<PropertyDetailsProvider>(); // ensure it's in scope
-      detailsProvider.setLoadingState(
-        false,
-        "Failed to fetch property details: ${e.toString()}",
-      );
-      // No need for setState here as provider notifies
-    }
-    // finally { // Managed by provider
-    //   if (mounted) {
-    //     setState(() {
-    //       _isLoading = false;
-    //     });
-    //   }
-    // }
+  void _navigateToEditScreen(BuildContext context, int propertyId) {
+    context.push('/properties/${propertyId.toString()}/edit');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PropertyDetailsProvider>(
-      builder: (context, detailsProvider, child) {
+    return Consumer2<PropertyDetailProvider, PropertyStatsProvider>(
+      builder: (context, detailProvider, statsProvider, child) {
+        final property = detailProvider.property;
+        final stats = statsProvider.stats;
+
         return Scaffold(
           appBar: AppBar(
-            title: Text(_property?.title ?? 'Property Details'),
+            title: Text(property?.title ?? 'Property Details'),
             elevation: 1,
             actions: [
-              if (_property != null)
+              if (property != null)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Edit Property',
-                  onPressed:
-                      () => _navigateToEditScreen(context, _property!.id),
+                  onPressed: () => _navigateToEditScreen(context, property.id),
                 ),
             ],
           ),
           body: LoadingOrErrorWidget(
-            isLoading:
-                detailsProvider.isLoadingDetails ||
-                (_property == null && detailsProvider.errorMessage == null),
-            error: detailsProvider.detailsError ?? detailsProvider.errorMessage,
-            onRetry: _fetchPropertyDetails,
+            isLoading: detailProvider.isLoading,
+            error: detailProvider.error?.message,
+            onRetry: () {
+              detailProvider.loadPropertyById(int.parse(widget.propertyId));
+              statsProvider.loadPropertyStats(widget.propertyId);
+            },
             errorTitle: 'Failed to Load Property',
             child:
-                _property == null
+                property == null
                     ? const Center(
                       child: Text('Property data is not available.'),
                     )
-                    : _buildPropertyContent(
-                      context,
-                      detailsProvider,
-                      _property!,
-                    ),
+                    : _buildPropertyContent(context, property, stats),
           ),
         );
       },
@@ -151,18 +76,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   Widget _buildPropertyContent(
     BuildContext context,
-    PropertyDetailsProvider detailsProvider,
     Property property,
+    PropertyStatsData? stats,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isWideScreen =
-            constraints.maxWidth > 800; // Define breakpoint
+        final bool isWideScreen = constraints.maxWidth > 800;
 
         if (isWideScreen) {
-          return _buildTwoColumnLayout(context, detailsProvider, property);
+          return _buildTwoColumnLayout(context, property, stats);
         } else {
-          return _buildSingleColumnLayout(context, detailsProvider, property);
+          return _buildSingleColumnLayout(context, property, stats);
         }
       },
     );
@@ -170,11 +94,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   Widget _buildSingleColumnLayout(
     BuildContext context,
-    PropertyDetailsProvider detailsProvider,
     Property property,
+    PropertyStatsData? stats,
   ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16), // Consistent padding
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -194,36 +118,35 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             title: 'Current Tenant',
             child: TenantInfo(
               property: property,
-              currentTenant: detailsProvider.currentTenant,
+              currentTenant: _getCurrentTenant(stats),
             ),
           ),
           const SizedBox(height: 16),
           _buildSectionCard(
             title: 'Property Statistics',
-            child: _PropertyStatsCard(detailsProvider: detailsProvider),
+            child: _PropertyStatsCard(stats: stats),
           ),
           const SizedBox(height: 16),
           _buildSectionCard(
             title: 'Financial Summary',
-            child: PropertyFinancialSummary(
-              bookingStats: detailsProvider.bookingStats,
-            ),
+            child: PropertyFinancialSummary(bookingStats: stats?.bookingStats),
           ),
           const SizedBox(height: 16),
           _buildSectionCard(
             title: 'Bookings',
             child: PropertyBookingsSection(
-              currentBookings: detailsProvider.currentBookings,
-              upcomingBookings: detailsProvider.upcomingBookings,
-              recentBookings: detailsProvider.recentBookings,
+              currentBookings: _getBookingsByStatus('active', stats),
+              upcomingBookings: _getBookingsByStatus('upcoming', stats),
+              recentBookings: _getBookingsByStatus('completed', stats),
             ),
           ),
           const SizedBox(height: 16),
           _buildSectionCard(
             title: 'Reviews',
             child: PropertyReviewsSection(
-              reviewStats: detailsProvider.reviewStats,
-              reviews: detailsProvider.reviews,
+              reviewStats: stats?.reviewStats,
+              reviews:
+                  [], // Empty for now - can be enhanced to convert Map to Review objects
             ),
           ),
           const SizedBox(height: 16),
@@ -231,7 +154,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             title: 'Maintenance',
             child: _MaintenanceCard(
               property: property,
-              issues: detailsProvider.fetchedMaintenanceIssues,
+              issues:
+                  [], // Will be loaded from maintenance repository if needed
             ),
           ),
         ],
@@ -241,8 +165,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   Widget _buildTwoColumnLayout(
     BuildContext context,
-    PropertyDetailsProvider detailsProvider,
     Property property,
+    PropertyStatsData? stats,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -251,7 +175,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         children: [
           // Left Column
           Expanded(
-            flex: 3, // Give more space to primary info
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -270,25 +194,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 _buildSectionCard(
                   title: 'Bookings',
                   child: PropertyBookingsSection(
-                    currentBookings: detailsProvider.currentBookings,
-                    upcomingBookings: detailsProvider.upcomingBookings,
-                    recentBookings: detailsProvider.recentBookings,
+                    currentBookings: _getBookingsByStatus('active', stats),
+                    upcomingBookings: _getBookingsByStatus('upcoming', stats),
+                    recentBookings: _getBookingsByStatus('completed', stats),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionCard(
                   title: 'Financial Summary',
                   child: PropertyFinancialSummary(
-                    bookingStats: detailsProvider.bookingStats,
+                    bookingStats: stats?.bookingStats,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 24), // Spacing between columns
+          const SizedBox(width: 24),
           // Right Column
           Expanded(
-            flex: 2, // Less space for secondary info
+            flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -296,20 +220,21 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   title: 'Current Tenant',
                   child: TenantInfo(
                     property: property,
-                    currentTenant: detailsProvider.currentTenant,
+                    currentTenant: _getCurrentTenant(stats),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionCard(
                   title: 'Property Statistics',
-                  child: _PropertyStatsCard(detailsProvider: detailsProvider),
+                  child: _PropertyStatsCard(stats: stats),
                 ),
                 const SizedBox(height: 16),
                 _buildSectionCard(
                   title: 'Reviews',
                   child: PropertyReviewsSection(
-                    reviewStats: detailsProvider.reviewStats,
-                    reviews: detailsProvider.reviews,
+                    reviewStats: stats?.reviewStats,
+                    reviews:
+                        [], // Empty for now - can be enhanced to convert Map to Review objects
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -317,7 +242,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   title: 'Maintenance',
                   child: _MaintenanceCard(
                     property: property,
-                    issues: detailsProvider.fetchedMaintenanceIssues,
+                    issues:
+                        [], // Will be loaded from maintenance repository if needed
                   ),
                 ),
               ],
@@ -368,50 +294,35 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  // Extracted widgets for stats and maintenance for clarity
-  Widget _buildRealStatistics(PropertyDetailsProvider detailsProvider) {
-    // This is now _PropertyStatsCard
-    return _PropertyStatsCard(detailsProvider: detailsProvider);
+  // Helper methods to extract data from stats
+  BookingSummary? _getCurrentTenant(PropertyStatsData? stats) {
+    // For now, return null as we don't have current tenant in stats
+    // This could be enhanced to fetch from TenantRepository if needed
+    return null;
   }
 
-  Widget _buildStatistic(String label, String value, {IconData? icon}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null)
-          Icon(icon, size: 24, color: Theme.of(context).colorScheme.primary),
-        if (icon != null) const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-      ],
-    );
-  }
-
-  Widget _buildMaintenanceIssues(
-    BuildContext context,
-    Property property,
-    List<MaintenanceIssue> issues,
+  List<BookingSummary> _getBookingsByStatus(
+    String status,
+    PropertyStatsData? stats,
   ) {
-    // This is now _MaintenanceCard
-    return _MaintenanceCard(property: property, issues: issues);
-  }
-
-  void _navigateToEditScreen(BuildContext context, int propertyId) {
-    context.push('/properties/${propertyId.toString()}/edit');
+    // For now, return empty list as we don't have booking details in stats
+    // This could be enhanced to fetch from BookingRepository if needed
+    return [];
   }
 }
 
-// New private widget for Property Statistics - THIS MUST BE TOP-LEVEL
+// Property Statistics Card Widget
 class _PropertyStatsCard extends StatelessWidget {
-  final PropertyDetailsProvider detailsProvider;
-  const _PropertyStatsCard({required this.detailsProvider});
+  final PropertyStatsData? stats;
+
+  const _PropertyStatsCard({this.stats});
 
   @override
   Widget build(BuildContext context) {
+    if (stats == null) {
+      return const Center(child: Text('Statistics not available'));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -421,21 +332,22 @@ class _PropertyStatsCard extends StatelessWidget {
             _buildStatisticItem(
               context,
               'Bookings',
-              '${detailsProvider.totalBookings}',
+              '${stats!.bookingStats?.totalBookings ?? 0}',
               icon: Icons.event_note_outlined,
             ),
             _buildStatisticItem(
               context,
               'Rating',
-              detailsProvider.averageRating > 0
-                  ? '${detailsProvider.averageRating.toStringAsFixed(1)}★'
+              stats!.reviewStats != null &&
+                      (stats!.reviewStats!.totalReviews > 0)
+                  ? '${stats!.reviewStats!.averageRating.toStringAsFixed(1)}★'
                   : 'N/A',
               icon: Icons.star_border_outlined,
             ),
             _buildStatisticItem(
               context,
               'Occupancy',
-              '${(detailsProvider.occupancyRate * 100).toStringAsFixed(0)}%',
+              '${((stats!.bookingStats?.occupancyRate ?? 0) * 100).toStringAsFixed(0)}%',
               icon: Icons.pie_chart_outline_outlined,
             ),
           ],
@@ -473,7 +385,7 @@ class _PropertyStatsCard extends StatelessWidget {
   }
 }
 
-// New private widget for Maintenance Issues - THIS MUST BE TOP-LEVEL
+// Maintenance Card Widget
 class _MaintenanceCard extends StatelessWidget {
   final Property property;
   final List<MaintenanceIssue> issues;
@@ -616,7 +528,7 @@ class _MaintenanceCard extends StatelessWidget {
   }
 }
 
-// Add extension for IssueStatus display name - THIS MUST BE TOP-LEVEL
+// Extension for IssueStatus display name
 extension IssueStatusExtension on IssueStatus {
   String get displayName {
     switch (this) {

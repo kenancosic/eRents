@@ -397,7 +397,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
       children: [
         // Images grid
         if (_images.isNotEmpty || _images.length < widget.maxImages)
-          Container(
+          SizedBox(
             height: 140,
             child:
                 widget.allowReordering
