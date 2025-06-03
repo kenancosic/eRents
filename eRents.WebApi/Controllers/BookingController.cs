@@ -28,7 +28,7 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet("current")]
-		public async Task<ActionResult<List<BookingSummaryDto>>> GetCurrentStays([FromQuery] int? propertyId = null)
+		public async Task<ActionResult<List<BookingSummaryResponse>>> GetCurrentStays([FromQuery] int? propertyId = null)
 		{
 			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))
@@ -46,7 +46,7 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet("upcoming")]
-		public async Task<ActionResult<List<BookingSummaryDto>>> GetUpcomingStays([FromQuery] int? propertyId = null)
+		public async Task<ActionResult<List<BookingSummaryResponse>>> GetUpcomingStays([FromQuery] int? propertyId = null)
 		{
 			var userId = _currentUserService.UserId;
 			if (string.IsNullOrEmpty(userId))

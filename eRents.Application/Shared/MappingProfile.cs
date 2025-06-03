@@ -40,80 +40,89 @@ namespace eRents.Application.Shared
 			CreateMap<Payment, PaymentResponse>();
 			CreateMap<PaymentRequest, Payment>();
 
-			// Property mappings - Only map properties with different names or complex logic
+			// ✅ SIMPLIFIED: PropertyResponse mapping with base class inheritance
 			CreateMap<Property, PropertyResponse>()
-				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId))
-				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : null))
-				.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
-				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
-				.ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
-				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null))
-				.ForMember(dest => dest.GeoRegion, opt => opt.MapFrom(src => src.AddressDetail != null ? src.AddressDetail.GeoRegion : null))
-				.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images)) // This will use the Image -> ImageResponse mapping
-				.ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities)); // Map amenities using Amenity -> AmenityResponse mapping
+				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.PropertyId))  // Base class field
+				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))  // Base class field
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))  // Base class field
+				.ForMember(dest => dest.PropertyTypeId, opt => opt.MapFrom(src => src.PropertyTypeId ?? 0))
+				.ForMember(dest => dest.StatusId, opt => opt.MapFrom(src => GetStatusId(src.Status)))
+				.ForMember(dest => dest.RentingTypeId, opt => opt.MapFrom(src => src.RentingTypeId ?? 0))
+				.ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.OwnerId))
+				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
+				.ForMember(dest => dest.AmenityIds, opt => opt.MapFrom(src => src.Amenities.Select(a => a.AmenityId).ToList()))
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
 
-			CreateMap<Property, PropertySummaryDto>()
-				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId))
-				.ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
-				.ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
-				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
-				.ForMember(dest => dest.RentingType, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName : null))
+			// ✅ NEW: PropertyDetailResponse for detailed views
+			CreateMap<Property, PropertyDetailResponse>()
+				.IncludeBase<Property, PropertyResponse>()  // Inherit base mapping
+				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
+				.ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status))
+				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : null))
+				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null))
+				.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
+				.ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities));
+
+			// ✅ NEW: PropertySummaryResponse for list views
+			CreateMap<Property, PropertySummaryResponse>()
+				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.PropertyId))
+				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))
 				.ForMember(dest => dest.LocationString, opt => opt.MapFrom(src => 
 					src.AddressDetail != null && src.AddressDetail.GeoRegion != null 
 						? $"{src.AddressDetail.GeoRegion.City}, {src.AddressDetail.GeoRegion.Country}"
 						: "Unknown Location"))
-				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => 
-					src.Reviews != null && src.Reviews.Any() ? (double?)src.Reviews.Average(r => r.StarRating) : null))
-				.ForMember(dest => dest.ReviewCount, opt => opt.MapFrom(src => src.Reviews != null ? src.Reviews.Count : 0))
-				.ForMember(dest => dest.Rooms, opt => opt.MapFrom(src => src.Bedrooms))
-				.ForMember(dest => dest.ThumbnailUrl, opt => opt.MapFrom(src => 
-					src.Images.FirstOrDefault(i => i.IsCover) != null 
-						? $"/Image/{src.Images.FirstOrDefault(i => i.IsCover).ImageId}"
-						: (src.Images.FirstOrDefault() != null ? $"/Image/{src.Images.FirstOrDefault().ImageId}" : null)))
 				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
 						? src.Images.FirstOrDefault(i => i.IsCover).ImageId 
-						: (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().ImageId : (int?)null)))
-				.ForMember(dest => dest.CoverImageData, opt => opt.Ignore()); // Don't include binary data
+						: (src.Images.FirstOrDefault() != null ? src.Images.FirstOrDefault().ImageId : 0)))
+				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => 
+					src.Reviews != null && src.Reviews.Any() ? (double?)src.Reviews.Average(r => r.StarRating) : null));
 
-			// SIMPLE APPROACH: Let AutoMapper handle simple fields, ignore complex ones
+			// ✅ REFACTORED: Property request mappings with base inheritance
 			CreateMap<PropertyInsertRequest, Property>()
-				.ForMember(dest => dest.Amenities, opt => opt.Ignore()) // Handled in service layer
+				.ForMember(dest => dest.PropertyId, opt => opt.Ignore())
+				.ForMember(dest => dest.DateAdded, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
+				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
 
 			CreateMap<PropertyUpdateRequest, Property>()
-				.ForMember(dest => dest.Amenities, opt => opt.Ignore()) // Handled in service layer
+				.ForMember(dest => dest.DateAdded, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
+				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
 
 			// Address and GeoRegion mappings - AutoMapper can handle these automatically
-			CreateMap<AddressDetail, AddressDetailDto>().ReverseMap();
-			CreateMap<GeoRegion, GeoRegionDto>().ReverseMap();
+			CreateMap<AddressDetail, AddressDetailResponse>().ReverseMap();
+			CreateMap<GeoRegion, GeoRegionResponse>().ReverseMap();
 
 			// Review mappings - AutoMapper can handle most of this automatically
 			CreateMap<Review, ReviewResponse>();
 			CreateMap<ReviewInsertRequest, Review>();
 			CreateMap<ReviewUpdateRequest, Review>();
 
-			// User mappings - FIXED: Remove incorrect src.Name mappings, add only necessary transformations
+			// ✅ SIMPLIFIED: User mappings with base class inheritance
 			CreateMap<User, UserResponse>()
+				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.UserId))
+				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
 				.ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
 				.ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserTypeNavigation != null ? src.UserTypeNavigation.TypeName : null))
-				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail)) 
-				.ForMember(dest => dest.GeoRegion, opt => opt.MapFrom(src => src.AddressDetail != null ? src.AddressDetail.GeoRegion : null));
+				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail));
 
 			CreateMap<UserInsertRequest, User>()
-				.ForMember(dest => dest.UserTypeId, opt => opt.Ignore()) // Set in service logic
-				.ForMember(dest => dest.PasswordHash, opt => opt.Ignore()) // Set in service logic  
-				.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore()) // Set in service logic
+				.ForMember(dest => dest.UserId, opt => opt.Ignore())
+				.ForMember(dest => dest.UserTypeId, opt => opt.Ignore())
+				.ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+				.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore())
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
 
 			CreateMap<UserUpdateRequest, User>()
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore()); // Handled in service layer
+				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
 
 			// MaintenanceIssue mappings - Fix field name mismatches
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
@@ -125,6 +134,19 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.DateResolved, opt => opt.MapFrom(src => src.ResolvedAt));
 			CreateMap<MaintenanceIssueRequest, MaintenanceIssue>()
 				.ForMember(dest => dest.Images, opt => opt.Ignore());
+		}
+
+		// ✅ HELPER: Status string to ID mapping
+		private static int GetStatusId(string status)
+		{
+			return status?.ToLower() switch
+			{
+				"available" => 1,
+				"rented" => 2,
+				"undermaintenance" => 3,
+				"unavailable" => 4,
+				_ => 1 // Default to Available
+			};
 		}
 	}
 }

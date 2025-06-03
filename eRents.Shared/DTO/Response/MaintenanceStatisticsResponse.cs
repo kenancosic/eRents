@@ -1,6 +1,6 @@
 namespace eRents.Shared.DTO.Response
 {
-    public class MaintenanceStatisticsDto
+    public class MaintenanceStatisticsResponse
     {
         public int OpenIssuesCount { get; set; }
         public int PendingIssuesCount { get; set; }

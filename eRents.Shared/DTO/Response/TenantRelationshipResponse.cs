@@ -1,6 +1,9 @@
+using System;
+using eRents.Shared.DTO.Base;
+
 namespace eRents.Shared.DTO.Response
 {
-	public class TenantRelationshipDto
+	public class TenantRelationshipResponse : BaseResponse
 	{
 		public int TenantId { get; set; }
 		public int UserId { get; set; }

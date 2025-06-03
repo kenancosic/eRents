@@ -1,19 +1,17 @@
-﻿using eRents.Domain.Models;
+using eRents.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Data;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace eRents.WebApi
 {
-	public class SetupService
+	public class SetupServiceNew
 	{
-		private readonly ILogger<SetupService>? _logger;
+		private readonly ILogger<SetupServiceNew>? _logger;
 		private readonly Random _random = new();
 
-		public SetupService(ILogger<SetupService>? logger = null)
+		public SetupServiceNew(ILogger<SetupServiceNew>? logger = null)
 		{
 			_logger = logger;
 		}
@@ -31,7 +29,6 @@ namespace eRents.WebApi
 			using var transaction = await context.Database.BeginTransactionAsync();
 			try
 			{
-				// Only seed if empty or forced
 				bool isEmpty = !await context.GeoRegions.AnyAsync();
 				if (!isEmpty && !forceSeed)
 				{
@@ -40,7 +37,7 @@ namespace eRents.WebApi
 				}
 
 				await ClearExistingDataAsync(context);
-				
+
 				// Seed in dependency order
 				await SeedLookupDataAsync(context);
 				await SeedGeoDataAsync(context);
@@ -53,7 +50,6 @@ namespace eRents.WebApi
 				await SeedPaymentsAsync(context);
 				await SeedImagesAsync(context);
 				await SeedNotificationsAsync(context);
-				await SeedAdditionalDataAsync(context);
 
 				await transaction.CommitAsync();
 				_logger?.LogInformation("Database seeding completed.");
@@ -78,7 +74,17 @@ namespace eRents.WebApi
 				new UserType { UserTypeId = 2, TypeName = "Landlord" },
 				new UserType { UserTypeId = 3, TypeName = "Admin" }
 			};
-			await UpsertLookupData(context, userTypes, ut => ut.UserTypeId);
+			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes ON");
+			foreach (var ut in userTypes)
+			{
+				var existing = await context.UserTypes.FindAsync(ut.UserTypeId);
+				if (existing == null)
+					context.UserTypes.Add(ut);
+				else if (existing.TypeName != ut.TypeName)
+					existing.TypeName = ut.TypeName;
+			}
+			await context.SaveChangesAsync();
+			await context.Database.ExecuteSqlRawAsync("SET IDENTITY_INSERT UserTypes OFF");
 
 			// PropertyTypes
 			var propertyTypes = new[]
@@ -90,7 +96,7 @@ namespace eRents.WebApi
 				new PropertyType { TypeName = "Studio" },
 				new PropertyType { TypeName = "Townhouse" }
 			};
-			await UpsertLookupData(context, propertyTypes, pt => pt.TypeName);
+			await UpsertByName(context, propertyTypes, pt => pt.TypeName);
 
 			// RentingTypes
 			var rentingTypes = new[]
@@ -102,7 +108,7 @@ namespace eRents.WebApi
 				new RentingType { TypeName = "Monthly" },
 				new RentingType { TypeName = "Both" }
 			};
-			await UpsertLookupData(context, rentingTypes, rt => rt.TypeName);
+			await UpsertByName(context, rentingTypes, rt => rt.TypeName);
 
 			// BookingStatuses
 			var bookingStatuses = new[]
@@ -115,7 +121,7 @@ namespace eRents.WebApi
 				new BookingStatus { StatusName = "Upcoming" },
 				new BookingStatus { StatusName = "Active" }
 			};
-			await UpsertLookupData(context, bookingStatuses, bs => bs.StatusName);
+			await UpsertByName(context, bookingStatuses, bs => bs.StatusName);
 
 			// IssuePriorities
 			var issuePriorities = new[]
@@ -125,7 +131,7 @@ namespace eRents.WebApi
 				new IssuePriority { PriorityName = "High" },
 				new IssuePriority { PriorityName = "Emergency" }
 			};
-			await UpsertLookupData(context, issuePriorities, ip => ip.PriorityName);
+			await UpsertByName(context, issuePriorities, ip => ip.PriorityName);
 
 			// IssueStatuses
 			var issueStatuses = new[]
@@ -135,7 +141,7 @@ namespace eRents.WebApi
 				new IssueStatus { StatusName = "completed" },
 				new IssueStatus { StatusName = "cancelled" }
 			};
-			await UpsertLookupData(context, issueStatuses, isv => isv.StatusName);
+			await UpsertByName(context, issueStatuses, isv => isv.StatusName);
 
 			// PropertyStatuses
 			var propertyStatuses = new[]
@@ -145,7 +151,7 @@ namespace eRents.WebApi
 				new PropertyStatus { StatusName = "Under Maintenance" },
 				new PropertyStatus { StatusName = "Unavailable" }
 			};
-			await UpsertLookupData(context, propertyStatuses, ps => ps.StatusName);
+			await UpsertByName(context, propertyStatuses, ps => ps.StatusName);
 
 			// Amenities
 			var amenities = new[]
@@ -161,21 +167,24 @@ namespace eRents.WebApi
 				new Amenity { AmenityName = "Laundry" },
 				new Amenity { AmenityName = "Pet Friendly" }
 			};
-			await UpsertLookupData(context, amenities, am => am.AmenityName);
+			await UpsertByName(context, amenities, am => am.AmenityName);
 
 			await context.SaveChangesAsync();
 		}
 
-		private async Task<T> UpsertLookupData<T, TKey>(ERentsContext context, T[] items, Func<T, TKey> keySelector) 
+		private async Task UpsertByName<T>(ERentsContext context, T[] items, Func<T, string> nameSelector)
 			where T : class
 		{
+			// Load all existing items to memory for comparison (efficient for small lookup tables)
+			var existingItems = await context.Set<T>().ToListAsync();
+
 			foreach (var item in items)
 			{
-				var existing = await context.Set<T>().FirstOrDefaultAsync(x => keySelector(x).Equals(keySelector(item)));
+				var name = nameSelector(item);
+				var existing = existingItems.FirstOrDefault(x => nameSelector(x) == name);
 				if (existing == null)
 					context.Set<T>().Add(item);
 			}
-			return items.First();
 		}
 		#endregion
 
@@ -191,15 +200,13 @@ namespace eRents.WebApi
 				new GeoRegion { City = "Mostar", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "88000" },
 				new GeoRegion { City = "Tuzla", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "75000" },
 				new GeoRegion { City = "Zenica", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "72000" },
-				new GeoRegion { City = "Bijeljina", State = "Republika Srpska", Country = "Bosnia and Herzegovina", PostalCode = "76300" },
-				new GeoRegion { City = "Prijedor", State = "Republika Srpska", Country = "Bosnia and Herzegovina", PostalCode = "79101" },
-				new GeoRegion { City = "Brčko", State = "Brčko District", Country = "Bosnia and Herzegovina", PostalCode = "76100" }
+				new GeoRegion { City = "Bijeljina", State = "Republika Srpska", Country = "Bosnia and Herzegovina", PostalCode = "76300" }
 			};
 
 			foreach (var gr in geoRegions)
 			{
-				var existing = await context.GeoRegions.FirstOrDefaultAsync(x => 
-					x.City == gr.City && x.State == gr.State && x.Country == gr.Country && x.PostalCode == gr.PostalCode);
+				var existing = await context.GeoRegions.FirstOrDefaultAsync(x =>
+					x.City == gr.City && x.State == gr.State && x.Country == gr.Country);
 				if (existing == null)
 					context.GeoRegions.Add(gr);
 			}
@@ -224,23 +231,31 @@ namespace eRents.WebApi
 			var streets = new[]
 			{
 				"Maršala Tita 15", "Vidikovac 3", "Kujundžiluk 5", "Hasana Kikića 10",
-				"Trg Alije Izetbegovića 1", "Svetog Save 25", "Ul. Jovana Ducića 12", "Bulevar Mira 45"
+				"Trg Alije Izetbegovića 1", "Svetog Save 25"
 			};
 			return streets[index % streets.Length];
 		}
 
 		private decimal GetLatitudeForCity(string city) => city switch
 		{
-			"Sarajevo" => 43.8563m, "Banja Luka" => 44.7722m, "Mostar" => 43.3438m,
-			"Tuzla" => 44.5384m, "Zenica" => 44.2039m, "Bijeljina" => 44.7594m,
-			"Prijedor" => 44.9778m, "Brčko" => 44.8694m, _ => 44.0000m
+			"Sarajevo" => 43.8563m,
+			"Banja Luka" => 44.7722m,
+			"Mostar" => 43.3438m,
+			"Tuzla" => 44.5384m,
+			"Zenica" => 44.2039m,
+			"Bijeljina" => 44.7594m,
+			_ => 44.0000m
 		};
 
 		private decimal GetLongitudeForCity(string city) => city switch
 		{
-			"Sarajevo" => 18.4131m, "Banja Luka" => 17.1910m, "Mostar" => 17.8078m,
-			"Tuzla" => 18.6739m, "Zenica" => 17.9077m, "Bijeljina" => 19.2094m,
-			"Prijedor" => 16.1583m, "Brčko" => 18.8111m, _ => 18.0000m
+			"Sarajevo" => 18.4131m,
+			"Banja Luka" => 17.1910m,
+			"Mostar" => 17.8078m,
+			"Tuzla" => 18.6739m,
+			"Zenica" => 17.9077m,
+			"Bijeljina" => 19.2094m,
+			_ => 18.0000m
 		};
 		#endregion
 
@@ -253,8 +268,9 @@ namespace eRents.WebApi
 			var addresses = await context.AddressDetails.ToListAsync();
 
 			// Generate common password for all test users (Test123!)
-			var commonSalt = Convert.FromHexString("4823C4041A2FD159B9E4F69D05495995");
-			var commonHash = Convert.FromHexString("8D30241BCAC15B66F0AD1978AB51BE9442B64919C8CBD249AEA932BCD7FE2497");
+			var commonPassword = "Test123!";
+			var commonSalt = GenerateSalt();
+			var commonHash = GenerateHash(commonSalt, commonPassword);
 
 			var users = new List<User>();
 
@@ -262,8 +278,8 @@ namespace eRents.WebApi
 			users.Add(CreateUser("admin", "admin@erents.com", "Admin", "User", userTypes, addresses, 3, commonHash, commonSalt));
 
 			// Create landlords
-			var landlordNames = new[] 
-			{ 
+			var landlordNames = new[]
+			{
 				("testLandlord", "testLandlord@example.ba", "Marko", "Vlajić"),
 				("lejlazukic", "lejla.zukic@example.ba", "Lejla", "Zukić"),
 				("ivanabL", "ivana.bl@example.ba", "Ivana", "Babić"),
@@ -294,7 +310,7 @@ namespace eRents.WebApi
 			await context.SaveChangesAsync();
 		}
 
-		private User CreateUser(string username, string email, string firstName, string lastName, 
+		private User CreateUser(string username, string email, string firstName, string lastName,
 			List<UserType> userTypes, List<AddressDetail> addresses, int userTypeId, byte[] hash, byte[] salt)
 		{
 			return new User
@@ -336,7 +352,7 @@ namespace eRents.WebApi
 			// Create realistic properties for each landlord
 			foreach (var landlord in landlords)
 			{
-				var propertyCount = _random.Next(2, 6); // 2-5 properties per landlord
+				var propertyCount = _random.Next(2, 4); // 2-3 properties per landlord
 				for (int i = 0; i < propertyCount; i++)
 				{
 					var property = CreateRealisticProperty(landlord, propertyTypes, rentingTypes, addresses);
@@ -351,7 +367,7 @@ namespace eRents.WebApi
 			await AddPropertyAmenities(context, properties, amenities);
 		}
 
-		private Property CreateRealisticProperty(User landlord, List<PropertyType> propertyTypes, 
+		private Property CreateRealisticProperty(User landlord, List<PropertyType> propertyTypes,
 			List<RentingType> rentingTypes, List<AddressDetail> addresses)
 		{
 			var propertyType = propertyTypes[_random.Next(propertyTypes.Count)];
@@ -359,7 +375,7 @@ namespace eRents.WebApi
 			var address = addresses[_random.Next(addresses.Count)];
 
 			var (bedrooms, bathrooms, area, basePrice) = GetPropertySpecs(propertyType.TypeName);
-			
+
 			return new Property
 			{
 				Name = GeneratePropertyName(propertyType.TypeName, address),
@@ -393,9 +409,8 @@ namespace eRents.WebApi
 
 		private string GeneratePropertyName(string propertyType, AddressDetail address)
 		{
-			var cityName = address.GeoRegion?.City ?? "Unknown";
 			var adjectives = new[] { "Moderni", "Luksuzni", "Prostrani", "Udoban", "Prekrasan", "Centralni" };
-			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType} {cityName}";
+			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType}";
 		}
 
 		private string GeneratePropertyDescription(string propertyType) =>
@@ -446,7 +461,7 @@ namespace eRents.WebApi
 			// Generate realistic booking history
 			foreach (var tenant in tenants)
 			{
-				var bookingCount = _random.Next(2, 8); // 2-7 bookings per tenant
+				var bookingCount = _random.Next(2, 5); // 2-4 bookings per tenant
 				for (int i = 0; i < bookingCount; i++)
 				{
 					var property = properties[_random.Next(properties.Count)];
@@ -482,11 +497,11 @@ namespace eRents.WebApi
 		private BookingStatus GetBookingStatusForDate(DateOnly startDate, DateOnly endDate, List<BookingStatus> statuses)
 		{
 			var today = DateOnly.FromDateTime(DateTime.Now);
-			
+
 			if (endDate < today) return statuses.First(s => s.StatusName == "Completed");
 			if (startDate <= today && endDate >= today) return statuses.First(s => s.StatusName == "Active");
 			if (startDate > today) return statuses.First(s => s.StatusName == "Confirmed");
-			
+
 			return statuses.First(s => s.StatusName == "Pending");
 		}
 
@@ -531,7 +546,7 @@ namespace eRents.WebApi
 
 			foreach (var property in properties)
 			{
-				var issueCount = _random.Next(0, 4); // 0-3 issues per property
+				var issueCount = _random.Next(0, 3); // 0-2 issues per property
 				for (int i = 0; i < issueCount; i++)
 				{
 					var issue = CreateMaintenanceIssue(property, priorities, statuses, tenants);
@@ -543,7 +558,7 @@ namespace eRents.WebApi
 			await context.SaveChangesAsync();
 		}
 
-		private MaintenanceIssue CreateMaintenanceIssue(Property property, List<IssuePriority> priorities, 
+		private MaintenanceIssue CreateMaintenanceIssue(Property property, List<IssuePriority> priorities,
 			List<IssueStatus> statuses, List<Tenant> tenants)
 		{
 			var issueTemplates = new[]
@@ -679,17 +694,19 @@ namespace eRents.WebApi
 
 			var properties = await context.Properties.ToListAsync();
 			var maintenanceIssues = await context.MaintenanceIssues.Take(5).ToListAsync();
+			var users = await context.Users.ToListAsync();
 
 			var images = new List<Image>();
 
 			// Add images to properties
 			foreach (var property in properties)
 			{
-				var imageCount = _random.Next(1, 4); // 1-3 images per property
+				var imageCount = _random.Next(1, 3); // 1-2 images per property
 				for (int i = 0; i < imageCount; i++)
 				{
-					var image = CreatePropertyImage(property, i == 0); // First image is cover
-					images.Add(image);
+					var image = await CreatePropertyImageAsync(property, i == 0); // First image is cover
+					if (image != null)
+						images.Add(image);
 				}
 			}
 
@@ -698,16 +715,223 @@ namespace eRents.WebApi
 			{
 				if (_random.Next(2) == 0) // 50% chance
 				{
-					var image = CreateMaintenanceImage(issue);
-					images.Add(image);
+					var image = await CreateMaintenanceImageAsync(issue);
+					if (image != null)
+						images.Add(image);
 				}
 			}
 
-			context.Images.AddRange(images);
-			await context.SaveChangesAsync();
+					// Save property and maintenance images first
+		context.Images.AddRange(images);
+		await context.SaveChangesAsync();
+
+		// Handle user profile images separately to avoid FK constraint issues
+		var usersToUpdate = new List<User>();
+		foreach (var user in users)
+		{
+			if (_random.Next(3) == 0) // 33% chance of having a profile image
+			{
+				var profileImage = await CreateUserProfileImageAsync(user);
+				if (profileImage != null)
+				{
+					// Add and save the profile image first
+					context.Images.Add(profileImage);
+					await context.SaveChangesAsync();
+
+					// Now that the image has an ID, link it to the user
+					user.ProfileImageId = profileImage.ImageId;
+					usersToUpdate.Add(user);
+				}
+			}
 		}
 
-		private Image CreatePropertyImage(Property property, bool isCover)
+		// Update users with their profile image references
+		if (usersToUpdate.Any())
+		{
+			context.Users.UpdateRange(usersToUpdate);
+			await context.SaveChangesAsync();
+		}
+		}
+
+		private async Task<Image?> CreatePropertyImageAsync(Property property, bool isCover)
+		{
+			try
+			{
+				var propertyImageFiles = GetPropertyImageFiles();
+				if (!propertyImageFiles.Any())
+				{
+					_logger?.LogWarning("No property images found in SeedImages/Properties directory");
+					return CreateFallbackPropertyImage(property, isCover);
+				}
+
+				var selectedFile = propertyImageFiles[_random.Next(propertyImageFiles.Count)];
+				var imageData = await File.ReadAllBytesAsync(selectedFile);
+				var thumbnailData = await CreateThumbnailAsync(imageData);
+				var (width, height) = GetImageDimensions(imageData);
+
+				return new Image
+				{
+					PropertyId = property.PropertyId,
+					ImageData = imageData,
+					FileName = Path.GetFileName(selectedFile),
+					IsCover = isCover,
+					ContentType = GetContentType(selectedFile),
+					DateUploaded = DateTime.Now.AddDays(-_random.Next(1, 30)),
+					Width = width,
+					Height = height,
+					FileSizeBytes = imageData.Length,
+					ThumbnailData = thumbnailData
+				};
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError(ex, "Error creating property image, falling back to placeholder");
+				return CreateFallbackPropertyImage(property, isCover);
+			}
+		}
+
+		private async Task<Image?> CreateMaintenanceImageAsync(MaintenanceIssue issue)
+		{
+			try
+			{
+				var maintenanceImageFiles = GetMaintenanceImageFiles();
+				if (!maintenanceImageFiles.Any())
+				{
+					_logger?.LogWarning("No maintenance images found in SeedImages/Maintenance directory");
+					return CreateFallbackMaintenanceImage(issue);
+				}
+
+				var selectedFile = maintenanceImageFiles[_random.Next(maintenanceImageFiles.Count)];
+				var imageData = await File.ReadAllBytesAsync(selectedFile);
+				var thumbnailData = await CreateThumbnailAsync(imageData);
+				var (width, height) = GetImageDimensions(imageData);
+
+				return new Image
+				{
+					MaintenanceIssueId = issue.MaintenanceIssueId,
+					ImageData = imageData,
+					FileName = Path.GetFileName(selectedFile),
+					IsCover = false,
+					ContentType = GetContentType(selectedFile),
+					DateUploaded = DateTime.Now.AddDays(-_random.Next(1, 7)),
+					Width = width,
+					Height = height,
+					FileSizeBytes = imageData.Length,
+					ThumbnailData = thumbnailData
+				};
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError(ex, "Error creating maintenance image, falling back to placeholder");
+				return CreateFallbackMaintenanceImage(issue);
+			}
+		}
+
+		private async Task<Image?> CreateUserProfileImageAsync(User user)
+		{
+			try
+			{
+				var userImageFiles = GetUserImageFiles();
+				if (!userImageFiles.Any())
+				{
+					_logger?.LogWarning("No user images found in SeedImages/Users directory");
+					return null;
+				}
+
+				var selectedFile = userImageFiles[_random.Next(userImageFiles.Count)];
+				var imageData = await File.ReadAllBytesAsync(selectedFile);
+				var thumbnailData = await CreateThumbnailAsync(imageData);
+				var (width, height) = GetImageDimensions(imageData);
+
+				return new Image
+				{
+					ImageData = imageData,
+					FileName = Path.GetFileName(selectedFile),
+					IsCover = false,
+					ContentType = GetContentType(selectedFile),
+					DateUploaded = DateTime.Now.AddDays(-_random.Next(1, 90)),
+					Width = width,
+					Height = height,
+					FileSizeBytes = imageData.Length,
+					ThumbnailData = thumbnailData
+				};
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError(ex, "Error creating user profile image");
+				return null;
+			}
+		}
+
+		private List<string> GetPropertyImageFiles()
+		{
+			var propertyImagesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SeedImages", "Properties");
+			if (!Directory.Exists(propertyImagesPath))
+				return new List<string>();
+
+			return Directory.GetFiles(propertyImagesPath, "*.*")
+				.Where(file => IsImageFile(file))
+				.ToList();
+		}
+
+		private List<string> GetMaintenanceImageFiles()
+		{
+			var maintenanceImagesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SeedImages", "Maintenance");
+			if (!Directory.Exists(maintenanceImagesPath))
+				return new List<string>();
+
+			return Directory.GetFiles(maintenanceImagesPath, "*.*")
+				.Where(file => IsImageFile(file))
+				.ToList();
+		}
+
+		private List<string> GetUserImageFiles()
+		{
+			var userImagesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SeedImages", "Users");
+			if (!Directory.Exists(userImagesPath))
+				return new List<string>();
+
+			return Directory.GetFiles(userImagesPath, "*.*")
+				.Where(file => IsImageFile(file))
+				.ToList();
+		}
+
+		private bool IsImageFile(string filePath)
+		{
+			var extension = Path.GetExtension(filePath).ToLowerInvariant();
+			return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".gif" || extension == ".bmp";
+		}
+
+		private string GetContentType(string filePath)
+		{
+			var extension = Path.GetExtension(filePath).ToLowerInvariant();
+			return extension switch
+			{
+				".jpg" or ".jpeg" => "image/jpeg",
+				".png" => "image/png",
+				".gif" => "image/gif",
+				".bmp" => "image/bmp",
+				_ => "image/jpeg"
+			};
+		}
+
+		private (int width, int height) GetImageDimensions(byte[] imageData)
+		{
+			// For seeding purposes, return default dimensions
+			// In production, you might want to use a library like ImageSharp to get actual dimensions
+			return (800, 600);
+		}
+
+		private async Task<byte[]> CreateThumbnailAsync(byte[] originalImageData)
+		{
+			// For seeding purposes, return the original image as thumbnail
+			// In production, you would resize the image to create an actual thumbnail
+			// You could use libraries like ImageSharp, SkiaSharp, or System.Drawing
+			return originalImageData;
+		}
+
+		// Fallback methods for when actual image files are not available
+		private Image CreateFallbackPropertyImage(Property property, bool isCover)
 		{
 			var placeholderData = GeneratePlaceholderImageData();
 			return new Image
@@ -721,11 +945,11 @@ namespace eRents.WebApi
 				Width = 800,
 				Height = 600,
 				FileSizeBytes = placeholderData.Length,
-				ThumbnailData = placeholderData // Simplified for seeding
+				ThumbnailData = placeholderData
 			};
 		}
 
-		private Image CreateMaintenanceImage(MaintenanceIssue issue)
+		private Image CreateFallbackMaintenanceImage(MaintenanceIssue issue)
 		{
 			var placeholderData = GeneratePlaceholderImageData();
 			return new Image
@@ -750,7 +974,7 @@ namespace eRents.WebApi
 		}
 		#endregion
 
-		#region 11. Notifications & Additional Data
+		#region 11. Notifications
 		private async Task SeedNotificationsAsync(ERentsContext context)
 		{
 			_logger?.LogInformation("Seeding notifications...");
@@ -760,7 +984,7 @@ namespace eRents.WebApi
 
 			foreach (var user in users)
 			{
-				var notificationCount = _random.Next(1, 5); // 1-4 notifications per user
+				var notificationCount = _random.Next(1, 4); // 1-3 notifications per user
 				for (int i = 0; i < notificationCount; i++)
 				{
 					var notification = CreateNotification(user);
@@ -817,6 +1041,22 @@ namespace eRents.WebApi
 		#endregion
 
 		#region Helper Methods
+		// Password hashing utilities matching UserService implementation
+		private static byte[] GenerateSalt()
+		{
+			using var rng = RandomNumberGenerator.Create();
+			var salt = new byte[16];
+			rng.GetBytes(salt);
+			return salt;
+		}
+
+		private static byte[] GenerateHash(byte[] salt, string password)
+		{
+			using var sha256 = SHA256.Create();
+			var combinedBytes = salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
+			return sha256.ComputeHash(combinedBytes);
+		}
+
 		private async Task ClearExistingDataAsync(ERentsContext context)
 		{
 			// Remove in reverse dependency order
@@ -848,22 +1088,6 @@ namespace eRents.WebApi
 			context.RentingTypes.RemoveRange(context.RentingTypes);
 			context.UserTypes.RemoveRange(context.UserTypes);
 			await context.SaveChangesAsync();
-		}
-
-		// Password hashing utilities matching UserService implementation
-		private static byte[] GenerateSalt()
-		{
-			using var rng = RandomNumberGenerator.Create();
-			var salt = new byte[16];
-			rng.GetBytes(salt);
-			return salt;
-		}
-
-		private static byte[] GenerateHash(byte[] salt, string password)
-		{
-			using var sha256 = SHA256.Create();
-			var combinedBytes = salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
-			return sha256.ComputeHash(combinedBytes);
 		}
 		#endregion
 	}

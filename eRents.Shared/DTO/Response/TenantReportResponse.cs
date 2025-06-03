@@ -1,8 +1,9 @@
 using System;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Response
 {
-    public class TenantReportDto
+    public class TenantReportResponse : BaseResponse
     {
         public string LeaseStart { get; set; } = string.Empty;
         public string LeaseEnd { get; set; } = string.Empty;

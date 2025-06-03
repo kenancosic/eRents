@@ -1,8 +1,11 @@
+using System;
+using System.Collections.Generic;
+using eRents.Shared.DTO.Base;
+
 namespace eRents.Shared.DTO.Response
 {
-    public class TenantPreferenceResponseDto
+    public class TenantPreferenceResponse : BaseResponse
     {
-        public int Id { get; set; }
         public int UserId { get; set; }
         public DateTime SearchStartDate { get; set; }
         public DateTime? SearchEndDate { get; set; }

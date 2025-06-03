@@ -256,7 +256,7 @@ namespace eRents.Application.Service.PropertyService
 			return true;
 		}
 
-		public async Task<PagedList<PropertySummaryDto>> SearchPropertiesAsync(PropertySearchObject searchRequest)
+		public async Task<PagedList<PropertySummaryResponse>> SearchPropertiesAsync(PropertySearchObject searchRequest)
 		{
 			// For search, we allow both Tenants and Regular Users to see available properties
 			// Landlords searching should see available properties too (not their own) as they might be looking for competitors
@@ -335,12 +335,12 @@ namespace eRents.Application.Service.PropertyService
 			var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
 			// Use AutoMapper instead of manual mapping
-			var summaryItems = _mapper.Map<List<PropertySummaryDto>>(items);
+			var summaryItems = _mapper.Map<List<PropertySummaryResponse>>(items);
 
-			return new PagedList<PropertySummaryDto>(summaryItems, page, pageSize, totalCount);
+			return new PagedList<PropertySummaryResponse>(summaryItems, page, pageSize, totalCount);
 		}
 
-		public async Task<List<PropertySummaryDto>> GetPopularPropertiesAsync()
+		public async Task<List<PropertySummaryResponse>> GetPopularPropertiesAsync()
 		{
 			var popularPropsQuery = _propertyRepository.GetQueryable()
 																	.Include(p => p.AddressDetail).ThenInclude(ad => ad.GeoRegion)
@@ -353,7 +353,7 @@ namespace eRents.Application.Service.PropertyService
 			var popularProps = await popularPropsQuery.ToListAsync();
 
 			// Use AutoMapper instead of manual mapping
-			return _mapper.Map<List<PropertySummaryDto>>(popularProps);
+			return _mapper.Map<List<PropertySummaryResponse>>(popularProps);
 		}
 
 		public async Task<bool> SavePropertyAsync(int propertyId, int userId)
@@ -444,7 +444,7 @@ namespace eRents.Application.Service.PropertyService
 			throw new NotImplementedException("Image upload functionality needs to be implemented");
 		}
 
-		public async Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end)
+		public async Task<PropertyAvailabilityResponse> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end)
 		{
 			var currentUserId = _currentUserService.UserId;
 			var currentUserRole = _currentUserService.UserRole;
@@ -461,7 +461,7 @@ namespace eRents.Application.Service.PropertyService
 			// This would check bookings against the property for the date range
 
 			// For now, return a basic availability structure
-			return new PropertyAvailabilityDto
+			return new PropertyAvailabilityResponse
 			{
 				Availability = new Dictionary<DateTime, bool>() // Empty for now
 			};

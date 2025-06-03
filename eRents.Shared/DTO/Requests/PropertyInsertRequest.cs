@@ -1,10 +1,11 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Requests
 {
-	public class PropertyInsertRequest
+	public class PropertyInsertRequest : BaseInsertRequest
 	{
 		public string? Name { get; set; }
 		public int? PropertyTypeId { get; set; }
@@ -23,9 +24,9 @@ namespace eRents.Shared.DTO.Requests
 		public decimal? Area { get; set; }
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
-		public int OwnerId { get; set; }
-		public AddressDetailDto? AddressDetail { get; set; }
-		public List<int>? AmenityIds { get; set; }
+			public int OwnerId { get; set; }
+	public AddressDetailResponse? AddressDetail { get; set; }
+	public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; } // IDs of uploaded images
 	}
 }

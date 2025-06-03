@@ -2,14 +2,14 @@ using System.Collections.Generic;
 
 namespace eRents.Shared.DTO.Response
 {
-    public class DashboardStatisticsDto
+    public class DashboardStatisticsResponse
     {
         // Property statistics
         public int TotalProperties { get; set; }
         public int OccupiedProperties { get; set; }
         public double OccupancyRate { get; set; }
         public double AverageRating { get; set; }
-        public List<PopularPropertyDto> TopProperties { get; set; } = new List<PopularPropertyDto>();
+        public List<PopularPropertyResponse> TopProperties { get; set; } = new List<PopularPropertyResponse>();
         
         // Maintenance statistics
         public int PendingMaintenanceIssues { get; set; }
@@ -22,7 +22,7 @@ namespace eRents.Shared.DTO.Response
         public double NetTotal { get; set; }
     }
 
-    public class PopularPropertyDto
+    public class PopularPropertyResponse
     {
         public int PropertyId { get; set; }
         public string Name { get; set; } = string.Empty;

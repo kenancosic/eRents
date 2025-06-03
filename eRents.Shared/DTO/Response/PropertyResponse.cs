@@ -1,34 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Response
 {
-	public class PropertyResponse
+	public class PropertyResponse : BaseResponse
 	{
-		// Corresponds to the Property entity
-		public int PropertyId { get; set; }
+		// Core property data
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public decimal Price { get; set; }
 		public string Currency { get; set; } = "BAM";
-		public int? PropertyTypeId { get; set; }
-		public string? Type { get; set; }
-		public int? StatusId { get; set; }
-		public string? Status { get; set; }
-		public int? RentingTypeId { get; set; }
-		public string? RentingType { get; set; }
-		public int? OwnerId { get; set; }
-		public string? OwnerName { get; set; }
-		public AddressDetailDto? AddressDetail { get; set; }
-		public GeoRegionDto? GeoRegion { get; set; }
-		public List<AmenityResponse>? Amenities { get; set; }
-		public double? AverageRating { get; set; }
-		public List<ImageResponse> Images { get; set; }  // List of images related to the property
+		
+		// Foreign key references only (not redundant display names)
+		public int PropertyTypeId { get; set; }
+		public int StatusId { get; set; }
+		public int RentingTypeId { get; set; }
+		public int OwnerId { get; set; }
+		
+		// Physical details
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
-		public DateTime? DateAdded { get; set; }
+		
+		// Relationships (simplified - just IDs for base response)
+		public AddressDetailResponse? AddressDetail { get; set; }
+		public List<int> AmenityIds { get; set; } = new List<int>();
+		public List<int> ImageIds { get; set; } = new List<int>();
 	}
 }

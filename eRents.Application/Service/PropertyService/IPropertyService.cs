@@ -10,8 +10,8 @@ namespace eRents.Application.Service.PropertyService
 {
 	public interface IPropertyService : ICRUDService<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
-		Task<PagedList<PropertySummaryDto>> SearchPropertiesAsync(PropertySearchObject searchRequest);
-		Task<List<PropertySummaryDto>> GetPopularPropertiesAsync();
+		Task<PagedList<PropertySummaryResponse>> SearchPropertiesAsync(PropertySearchObject searchRequest);
+		Task<List<PropertySummaryResponse>> GetPopularPropertiesAsync();
 
 		// Additional custom methods
 		Task<bool> SavePropertyAsync(int propertyId, int userId);
@@ -25,7 +25,7 @@ namespace eRents.Application.Service.PropertyService
 		// Task<PropertyResponse> DeleteAsync(string id);
 		Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request);
 		Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum);
-		Task<PropertyAvailabilityDto> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
+		Task<PropertyAvailabilityResponse> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
 		Task<List<AmenityResponse>> GetAmenitiesAsync();
 		Task<AmenityResponse> AddAmenityAsync(string amenityName);
 		Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName);

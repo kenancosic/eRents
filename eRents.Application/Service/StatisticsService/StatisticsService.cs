@@ -1,7 +1,7 @@
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using System.Threading.Tasks;
-using System.Collections.Generic; // For List in PropertyStatisticsDto placeholder
+using System.Collections.Generic; // For List in PropertyStatisticsResponse placeholder
 using eRents.Domain.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -25,7 +25,7 @@ namespace eRents.Application.Service.StatisticsService
             _maintenanceRepository = maintenanceRepository;
         }
 
-        public async Task<DashboardStatisticsDto> GetDashboardStatisticsAsync(int userId)
+        public async Task<DashboardStatisticsResponse> GetDashboardStatisticsAsync(int userId)
         {
             var propertyStats = await GetPropertyStatisticsAsync(userId);
             var maintenanceStats = await GetMaintenanceStatisticsAsync(userId);
@@ -35,7 +35,7 @@ namespace eRents.Application.Service.StatisticsService
             var yearlyRevenue = await GetYearlyRevenueAsync(userId);
             var averageRating = await GetAveragePropertyRatingAsync(userId);
 
-            return new DashboardStatisticsDto
+            return new DashboardStatisticsResponse
             {
                 TotalProperties = propertyStats.TotalProperties,
                 OccupiedProperties = propertyStats.RentedUnits,
@@ -51,7 +51,7 @@ namespace eRents.Application.Service.StatisticsService
             };
         }
 
-        private async Task<List<PopularPropertyDto>> GetTopPropertiesAsync(int userId)
+        private async Task<List<PopularPropertyResponse>> GetTopPropertiesAsync(int userId)
         {
             var properties = await _propertyRepository.GetQueryable()
                 .Where(p => p.OwnerId == userId)
@@ -61,7 +61,7 @@ namespace eRents.Application.Service.StatisticsService
                 .Take(5)
                 .ToListAsync();
 
-            return properties.Select(p => new PopularPropertyDto
+            return properties.Select(p => new PopularPropertyResponse
             {
                 PropertyId = p.PropertyId,
                 Name = p.Name,
@@ -126,7 +126,7 @@ namespace eRents.Application.Service.StatisticsService
             return property.Bookings?.Sum(b => (double)b.TotalPrice) ?? 0.0;
         }
 
-        public async Task<PropertyStatisticsDto> GetPropertyStatisticsAsync(int userId)
+        public async Task<PropertyStatisticsResponse> GetPropertyStatisticsAsync(int userId)
         {
             var allProperties = await _propertyRepository.GetQueryable()
                 .Where(p => p.OwnerId == userId)
@@ -140,7 +140,7 @@ namespace eRents.Application.Service.StatisticsService
             var vacantPreview = allProperties
                 .Where(p => p.Status == "AVAILABLE")
                 .Take(5)
-                .Select(p => new PropertyMiniSummaryDto
+                .Select(p => new PropertyMiniSummaryResponse
                 {
                     PropertyId = p.PropertyId.ToString(),
                     Title = p.Name,
@@ -148,7 +148,7 @@ namespace eRents.Application.Service.StatisticsService
                 })
                 .ToList();
                 
-            return new PropertyStatisticsDto
+            return new PropertyStatisticsResponse
             {
                 TotalProperties = total,
                 AvailableUnits = available,
@@ -158,7 +158,7 @@ namespace eRents.Application.Service.StatisticsService
             };
         }
 
-        public async Task<MaintenanceStatisticsDto> GetMaintenanceStatisticsAsync(int userId)
+        public async Task<MaintenanceStatisticsResponse> GetMaintenanceStatisticsAsync(int userId)
         {
             // Get property IDs for the landlord
             var propertyIds = await _propertyRepository.GetQueryable()
@@ -171,7 +171,7 @@ namespace eRents.Application.Service.StatisticsService
             var highPriority = await _maintenanceRepository.GetHighPriorityIssuesCountAsync(propertyIds);
             var tenantComplaints = await _maintenanceRepository.GetTenantComplaintsCountAsync(propertyIds);
             
-            return new MaintenanceStatisticsDto
+            return new MaintenanceStatisticsResponse
             {
                 OpenIssuesCount = open,
                 PendingIssuesCount = pending,
@@ -180,7 +180,7 @@ namespace eRents.Application.Service.StatisticsService
             };
         }
 
-        public async Task<FinancialSummaryDto> GetFinancialSummaryAsync(int userId, FinancialStatisticsRequest request)
+        public async Task<FinancialSummaryResponse> GetFinancialSummaryAsync(int userId, FinancialStatisticsRequest request)
         {
             // Get properties owned by the landlord
             var landlordProperties = await _propertyRepository.GetQueryable()
@@ -247,7 +247,7 @@ namespace eRents.Application.Service.StatisticsService
 
             // Convert monthly data to DTOs and sort by year/month
             var revenueHistory = monthlyData
-                .Select(kvp => new MonthlyRevenueDto
+                .Select(kvp => new MonthlyRevenueResponse
                 {
                     Year = kvp.Key.Year,
                     Month = kvp.Key.Month,
@@ -258,7 +258,7 @@ namespace eRents.Application.Service.StatisticsService
                 .ThenBy(m => m.Month)
                 .ToList();
 
-            return new FinancialSummaryDto
+            return new FinancialSummaryResponse
             {
                 TotalRentIncome = totalRent,
                 TotalMaintenanceCosts = totalMaintenance,

@@ -23,30 +23,33 @@ namespace eRents.WebApi.Controllers
 		private readonly IReviewService _reviewService;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IConfiguration _configuration;
+		private readonly IPropertyRepository _propertyRepository;
 
 		public PropertiesController(
 			IPropertyService service, 
 			IBookingService bookingService,
 			IReviewService reviewService,
 			ICurrentUserService currentUserService, 
-			IConfiguration configuration) : base(service)
+			IConfiguration configuration,
+			IPropertyRepository propertyRepository) : base(service)
 		{
 			_propertyService = service;
 			_bookingService = bookingService;
 			_reviewService = reviewService;
 			_currentUserService = currentUserService;
 			_configuration = configuration;
+			_propertyRepository = propertyRepository;
 		}
 
 		[HttpGet("search")]
-		public async Task<ActionResult<PagedList<PropertySummaryDto>>> SearchProperties([FromQuery] PropertySearchObject searchRequest)
+		public async Task<ActionResult<PagedList<PropertySummaryResponse>>> SearchProperties([FromQuery] PropertySearchObject searchRequest)
 		{
 			var result = await _propertyService.SearchPropertiesAsync(searchRequest);
 			return Ok(result);
 		}
 
 		[HttpGet("popular")]
-		public async Task<ActionResult<List<PropertySummaryDto>>> GetPopularProperties()
+		public async Task<ActionResult<List<PropertySummaryResponse>>> GetPopularProperties()
 		{
 			var result = await _propertyService.GetPopularPropertiesAsync();
 			return Ok(result);

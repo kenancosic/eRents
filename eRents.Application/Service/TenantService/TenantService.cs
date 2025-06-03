@@ -33,12 +33,12 @@ namespace eRents.Application.Service.TenantService
 			_currentUserService = currentUserService;
 		}
 
-		public async Task<List<UserResponseDto>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null)
+		public async Task<List<UserResponse>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null)
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 			var tenants = await _tenantRepository.GetCurrentTenantsForLandlordAsync(currentUserId, queryParams);
 
-			var tenantDtos = new List<UserResponseDto>();
+			var tenantDtos = new List<UserResponse>();
 			foreach (var tenant in tenants)
 			{
 				tenantDtos.Add(MapUserToResponseDto(tenant));
@@ -47,7 +47,7 @@ namespace eRents.Application.Service.TenantService
 			return tenantDtos;
 		}
 
-		public async Task<UserResponseDto> GetTenantByIdAsync(int tenantId)
+		public async Task<UserResponse> GetTenantByIdAsync(int tenantId)
 		{
 			var tenant = await _userRepository.GetByIdAsync(tenantId);
 			if (tenant == null)
@@ -63,13 +63,13 @@ namespace eRents.Application.Service.TenantService
 			return MapUserToResponseDto(tenant);
 		}
 
-		public async Task<List<TenantPreferenceResponseDto>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null)
+		public async Task<List<TenantPreferenceResponse>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null)
 		{
 			var preferences = await _tenantPreferenceRepository.GetPreferencesWithUserDetailsAsync(queryParams);
 			var currentUserId = int.Parse(_currentUserService.UserId);
 
 			// Convert to DTOs with placeholder match scores
-			var preferenceDtos = new List<TenantPreferenceResponseDto>();
+			var preferenceDtos = new List<TenantPreferenceResponse>();
 			foreach (var preference in preferences)
 			{
 				var dto = await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
@@ -81,7 +81,7 @@ namespace eRents.Application.Service.TenantService
 			return preferenceDtos;
 		}
 
-		public async Task<TenantPreferenceResponseDto> GetTenantPreferencesAsync(int tenantId)
+		public async Task<TenantPreferenceResponse> GetTenantPreferencesAsync(int tenantId)
 		{
 			var preference = await _tenantPreferenceRepository.GetByUserIdAsync(tenantId);
 			if (preference == null)
@@ -91,7 +91,7 @@ namespace eRents.Application.Service.TenantService
 			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
-		public async Task<TenantPreferenceResponseDto> UpdateTenantPreferencesAsync(int tenantId, UpdateTenantPreferenceRequestDto request)
+		public async Task<TenantPreferenceResponse> UpdateTenantPreferencesAsync(int tenantId, TenantPreferenceUpdateRequest request)
 		{
 			var preference = await _tenantPreferenceRepository.GetByUserIdAsync(tenantId);
 			if (preference == null)
@@ -115,14 +115,14 @@ namespace eRents.Application.Service.TenantService
 			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
-		public async Task<List<ReviewResponseDto>> GetTenantFeedbacksAsync(int tenantId)
+		public async Task<List<ReviewResponse>> GetTenantFeedbacksAsync(int tenantId)
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 
 			// Get reviews where current landlord reviewed this tenant
 			var reviews = await _reviewRepository.GetTenantReviewsByLandlordAsync(currentUserId, tenantId);
 
-			var reviewDtos = new List<ReviewResponseDto>();
+			var reviewDtos = new List<ReviewResponse>();
 			foreach (var review in reviews)
 			{
 				reviewDtos.Add(MapReviewToResponseDto(review));
@@ -131,7 +131,7 @@ namespace eRents.Application.Service.TenantService
 			return reviewDtos;
 		}
 
-		public async Task<ReviewResponseDto> AddTenantFeedbackAsync(int tenantId, CreateReviewRequestDto request)
+		public async Task<ReviewResponse> AddTenantFeedbackAsync(int tenantId, ReviewInsertRequest request)
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 
@@ -170,29 +170,29 @@ namespace eRents.Application.Service.TenantService
 			// For now, this is a placeholder
 		}
 
-		public async Task<List<PropertyOfferResponseDto>> GetPropertyOffersForTenantAsync(int tenantId)
+		public async Task<List<PropertyOfferResponse>> GetPropertyOffersForTenantAsync(int tenantId)
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 
 			// Get all offers made by current landlord to this tenant
 			// Implementation depends on your PropertyOffer domain model
 			// For now, returning empty list as placeholder
-			return new List<PropertyOfferResponseDto>();
+			return new List<PropertyOfferResponse>();
 		}
 
-		public async Task<List<TenantRelationshipDto>> GetTenantRelationshipsForLandlordAsync()
+		public async Task<List<TenantRelationshipResponse>> GetTenantRelationshipsForLandlordAsync()
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 			var relationships = await _tenantRepository.GetTenantRelationshipsForLandlordAsync(currentUserId);
 
-			var relationshipDtos = new List<TenantRelationshipDto>();
+			var relationshipDtos = new List<TenantRelationshipResponse>();
 			foreach (var tenant in relationships)
 			{
 				// Calculate performance metrics
 				var totalBookings = await _tenantRepository.GetTotalBookingsForTenantAsync(tenant.UserId, currentUserId);
 				var totalRevenue = await _tenantRepository.GetTotalRevenueFromTenantAsync(tenant.UserId, currentUserId);
 
-				var dto = new TenantRelationshipDto
+				var dto = new TenantRelationshipResponse
 				{
 					TenantId = tenant.TenantId,
 					UserId = tenant.UserId,
@@ -227,12 +227,12 @@ namespace eRents.Application.Service.TenantService
 			return relationshipDtos;
 		}
 
-		public async Task<Dictionary<int, PropertyResponseDto>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds)
+		public async Task<Dictionary<int, PropertyResponse>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds)
 		{
 			var currentUserId = int.Parse(_currentUserService.UserId);
 			var assignments = await _tenantRepository.GetTenantPropertyAssignmentsAsync(tenantIds, currentUserId);
 
-			var assignmentDtos = new Dictionary<int, PropertyResponseDto>();
+			var assignmentDtos = new Dictionary<int, PropertyResponse>();
 			foreach (var kvp in assignments)
 			{
 				if (kvp.Value != null)
@@ -245,9 +245,9 @@ namespace eRents.Application.Service.TenantService
 		}
 
 		// Private mapping methods
-		private UserResponseDto MapUserToResponseDto(User user)
+		private UserResponse MapUserToResponseDto(User user)
 		{
-			return new UserResponseDto
+			return new UserResponse
 			{
 				Id = user.UserId,
 				Username = user.Username,
@@ -255,25 +255,33 @@ namespace eRents.Application.Service.TenantService
 				FirstName = user.FirstName,
 				LastName = user.LastName,
 				PhoneNumber = user.PhoneNumber,
+				Role = user.UserTypeNavigation?.TypeName ?? "User",
 				CreatedAt = user.CreatedAt,
 				UpdatedAt = user.UpdatedAt,
 				IsPaypalLinked = user.IsPaypalLinked,
 				PaypalUserIdentifier = user.PaypalUserIdentifier,
 
 				// Profile image
-				ProfileImageUrl = user.ProfileImage != null ? $"/Image/{user.ProfileImage.ImageId}" : null,
+				ProfileImage = user.ProfileImage != null ? new ImageResponse
+				{
+					ImageId = user.ProfileImage.ImageId,
+					FileName = user.ProfileImage.FileName,
+					DateUploaded = user.ProfileImage.DateUploaded ?? DateTime.UtcNow,
+					Url = $"/Image/{user.ProfileImage.ImageId}"
+				} : null,
 
 				// Address details if available
-				AddressDetail = user.AddressDetail != null ? new AddressDetailResponseDto
+				AddressDetail = user.AddressDetail != null ? new AddressDetailResponse
 				{
-					AddressDetailId = user.AddressDetail.AddressDetailId,
+					Id = user.AddressDetail.AddressDetailId,
 					StreetLine1 = user.AddressDetail.StreetLine1,
 					StreetLine2 = user.AddressDetail.StreetLine2,
 					Latitude = user.AddressDetail.Latitude,
 					Longitude = user.AddressDetail.Longitude,
-					GeoRegion = user.AddressDetail.GeoRegion != null ? new GeoRegionResponseDto
+					GeoRegionId = user.AddressDetail.GeoRegionId,
+					GeoRegion = user.AddressDetail.GeoRegion != null ? new GeoRegionResponse
 					{
-						GeoRegionId = user.AddressDetail.GeoRegion.GeoRegionId,
+						Id = user.AddressDetail.GeoRegion.GeoRegionId,
 						City = user.AddressDetail.GeoRegion.City,
 						State = user.AddressDetail.GeoRegion.State,
 						Country = user.AddressDetail.GeoRegion.Country,
@@ -283,14 +291,14 @@ namespace eRents.Application.Service.TenantService
 			};
 		}
 
-		private async Task<TenantPreferenceResponseDto> MapTenantPreferenceToResponseDtoAsync(TenantPreference preference, int landlordId)
+		private async Task<TenantPreferenceResponse> MapTenantPreferenceToResponseDtoAsync(TenantPreference preference, int landlordId)
 		{
 			// TODO: Future Enhancement - Implement ML-based matching algorithm
 			// For now, return a placeholder match score and basic reasons
 			var placeholderMatchScore = 0.75; // 75% - neutral positive score
 			var placeholderReasons = new List<string> { "Basic compatibility assessment", "Available for matching" };
 
-			return new TenantPreferenceResponseDto
+			return new TenantPreferenceResponse
 			{
 				Id = preference.TenantPreferenceId,
 				UserId = preference.UserId,
@@ -316,11 +324,11 @@ namespace eRents.Application.Service.TenantService
 			};
 		}
 
-		private ReviewResponseDto MapReviewToResponseDto(Review review)
+		private ReviewResponse MapReviewToResponseDto(Review review)
 		{
-			return new ReviewResponseDto
+			return new ReviewResponse
 			{
-				Id = review.ReviewId,
+				ReviewId = review.ReviewId,
 				ReviewType = review.ReviewType.ToString(),
 				PropertyId = review.PropertyId,
 				RevieweeId = review.RevieweeId,
@@ -329,13 +337,14 @@ namespace eRents.Application.Service.TenantService
 				StarRating = review.StarRating,
 				Description = review.Description ?? string.Empty,
 				DateCreated = review.DateCreated,
-				ParentReviewId = review.ParentReviewId
+				ParentReviewId = review.ParentReviewId,
+				ReviewerName = review.Reviewer?.FirstName + " " + review.Reviewer?.LastName ?? "Unknown"
 			};
 		}
 
-		private PropertyResponseDto MapPropertyToResponseDto(Property property)
+		private PropertyResponse MapPropertyToResponseDto(Property property)
 		{
-			return new PropertyResponseDto
+			return new PropertyResponse
 			{
 				Id = property.PropertyId,
 				OwnerId = property.OwnerId,
@@ -343,35 +352,32 @@ namespace eRents.Application.Service.TenantService
 				Description = property.Description,
 				Price = property.Price,
 				Currency = property.Currency,
-				Status = property.Status.ToString(),
+				StatusId = GetStatusId(property.Status.ToString()),
+				PropertyTypeId = property.PropertyTypeId ?? 0,
+				RentingTypeId = property.RentingTypeId ?? 0,
 				Bedrooms = property.Bedrooms,
 				Bathrooms = property.Bathrooms,
 				Area = property.Area,
 				DailyRate = property.DailyRate,
 				MinimumStayDays = property.MinimumStayDays,
-				DateAdded = property.DateAdded ?? DateTime.UtcNow,
+				CreatedAt = property.DateAdded ?? DateTime.UtcNow,
+				UpdatedAt = property.DateAdded ?? DateTime.UtcNow,
 
-				// Images
-				Images = property.Images?.Select(img => new ImageResponseDto
-				{
-					ImageId = img.ImageId,
-					FileName = img.FileName,
-					DateUploaded = img.DateUploaded,
-									Url = $"/Image/{img.ImageId}",
-				ThumbnailUrl = img.ThumbnailData != null ? $"/Image/{img.ImageId}/thumbnail" : null
-				}).ToList() ?? new List<ImageResponseDto>(),
+				// Image IDs only (simplified)
+				ImageIds = property.Images?.Select(img => img.ImageId).ToList() ?? new List<int>(),
 
 				// Address details
-				AddressDetail = property.AddressDetail != null ? new AddressDetailResponseDto
+				AddressDetail = property.AddressDetail != null ? new AddressDetailResponse
 				{
-					AddressDetailId = property.AddressDetail.AddressDetailId,
+					Id = property.AddressDetail.AddressDetailId,
 					StreetLine1 = property.AddressDetail.StreetLine1,
 					StreetLine2 = property.AddressDetail.StreetLine2,
 					Latitude = property.AddressDetail.Latitude,
 					Longitude = property.AddressDetail.Longitude,
-					GeoRegion = property.AddressDetail.GeoRegion != null ? new GeoRegionResponseDto
+					GeoRegionId = property.AddressDetail.GeoRegionId,
+					GeoRegion = property.AddressDetail.GeoRegion != null ? new GeoRegionResponse
 					{
-						GeoRegionId = property.AddressDetail.GeoRegion.GeoRegionId,
+						Id = property.AddressDetail.GeoRegion.GeoRegionId,
 						City = property.AddressDetail.GeoRegion.City,
 						State = property.AddressDetail.GeoRegion.State,
 						Country = property.AddressDetail.GeoRegion.Country,
@@ -379,8 +385,20 @@ namespace eRents.Application.Service.TenantService
 					} : null
 				} : null,
 
-				// Amenities
-				Amenities = property.Amenities?.Select(a => a.AmenityName).ToList() ?? new List<string>()
+				// Amenity IDs only (simplified)
+				AmenityIds = property.Amenities?.Select(a => a.AmenityId).ToList() ?? new List<int>()
+			};
+		}
+
+		private int GetStatusId(string status)
+		{
+			return status?.ToLower() switch
+			{
+				"available" => 1,
+				"rented" => 2,
+				"maintenance" => 3,
+				"draft" => 4,
+				_ => 1 // Default to available
 			};
 		}
 	}

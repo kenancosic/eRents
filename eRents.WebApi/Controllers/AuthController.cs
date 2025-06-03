@@ -62,8 +62,8 @@ namespace eRents.WebApi.Controllers
 				var claims = new List<Claim>
 				{
 					new Claim(ClaimTypes.Name, userResponse.Username),
-					new Claim(ClaimTypes.NameIdentifier, userResponse.UserId.ToString()),
-					new Claim("UserId", userResponse.UserId.ToString()),
+					new Claim(ClaimTypes.NameIdentifier, userResponse.Id.ToString()),
+					new Claim("UserId", userResponse.Id.ToString()),
 					new Claim("ClientType", clientType) // Store platform context for backend filtering
 				};
 

@@ -28,7 +28,7 @@ namespace eRents.Application.Service.ReportService
             _userRepository = userRepository;
         }
 
-        public async Task<List<FinancialReportDto>> GetFinancialReportAsync(int userId, DateTime startDate, DateTime endDate)
+        public async Task<List<FinancialReportResponse>> GetFinancialReportAsync(int userId, DateTime startDate, DateTime endDate)
         {
             // Convert DateTime to DateOnly for comparison
             var startDateOnly = DateOnly.FromDateTime(startDate);
@@ -41,7 +41,7 @@ namespace eRents.Application.Service.ReportService
                 .Include(p => p.MaintenanceIssues)
                 .ToListAsync();
 
-            var financialReports = new List<FinancialReportDto>();
+            var financialReports = new List<FinancialReportResponse>();
 
             foreach (var property in landlordProperties)
             {
@@ -62,7 +62,7 @@ namespace eRents.Application.Service.ReportService
                 // Only include properties that had activity in the period
                 if (totalRent > 0 || maintenanceCosts > 0)
                 {
-                    financialReports.Add(new FinancialReportDto
+                    financialReports.Add(new FinancialReportResponse
                     {
                         DateFrom = startDate.ToString("dd/MM/yyyy"),
                         DateTo = endDate.ToString("dd/MM/yyyy"),
@@ -77,7 +77,7 @@ namespace eRents.Application.Service.ReportService
             return financialReports.OrderBy(r => r.Property).ToList();
         }
 
-        public async Task<List<TenantReportDto>> GetTenantReportAsync(int userId, DateTime startDate, DateTime endDate)
+        public async Task<List<TenantReportResponse>> GetTenantReportAsync(int userId, DateTime startDate, DateTime endDate)
         {
             // Convert DateTime to DateOnly for comparison
             var startDateOnly = DateOnly.FromDateTime(startDate);
@@ -89,7 +89,7 @@ namespace eRents.Application.Service.ReportService
                 .Include(b => b.User)
                 .Where(b => b.Property!.OwnerId == userId &&
                            b.StartDate >= startDateOnly && b.StartDate <= endDateOnly)
-                .Select(b => new TenantReportDto
+                .Select(b => new TenantReportResponse
                 {
                     LeaseStart = b.StartDate.ToString("dd/MM/yyyy"),
                     LeaseEnd = b.EndDate.HasValue ? b.EndDate.Value.ToString("dd/MM/yyyy") : "Ongoing",

@@ -7,7 +7,7 @@ namespace eRents.Application.Service.ReportService
 {
     public interface IReportService
     {
-        Task<List<FinancialReportDto>> GetFinancialReportAsync(int userId, DateTime startDate, DateTime endDate);
-        Task<List<TenantReportDto>> GetTenantReportAsync(int userId, DateTime startDate, DateTime endDate);
+        Task<List<FinancialReportResponse>> GetFinancialReportAsync(int userId, DateTime startDate, DateTime endDate);
+        Task<List<TenantReportResponse>> GetTenantReportAsync(int userId, DateTime startDate, DateTime endDate);
     }
 } 

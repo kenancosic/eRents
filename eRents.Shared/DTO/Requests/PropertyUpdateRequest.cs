@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Requests
 {
-	public class PropertyUpdateRequest
+	public class PropertyUpdateRequest : BaseUpdateRequest
 	{
 		public string? Name { get; set; }
 		public int? PropertyTypeId { get; set; }
@@ -23,7 +24,7 @@ namespace eRents.Shared.DTO.Requests
 		public decimal? Area { get; set; }
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
-		public AddressDetailDto? AddressDetail { get; set; }
+		public AddressDetailResponse? AddressDetail { get; set; }
 		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; }
 	}

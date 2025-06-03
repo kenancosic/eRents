@@ -36,7 +36,7 @@ namespace eRents.Application.Service.LocationManagementService
         /// Process and store address data, reusing existing records when possible
         /// This is the main method for address management
         /// </summary>
-        public async Task<AddressDetail> ProcessAddressAsync(AddressDetailDto addressDto)
+        public async Task<AddressDetail> ProcessAddressAsync(AddressDetailResponse addressDto)
         {
             if (addressDto?.GeoRegion == null)
                 throw new ArgumentException("Address must include geographic region information");
@@ -68,7 +68,7 @@ namespace eRents.Application.Service.LocationManagementService
         /// <summary>
         /// Process address data for a specific user, handling existing user addresses
         /// </summary>
-        public async Task<AddressDetail> ProcessUserAddressAsync(int userId, AddressDetailDto addressDto)
+        public async Task<AddressDetail> ProcessUserAddressAsync(int userId, AddressDetailResponse addressDto)
         {
             // Validate user access (ensure current user can modify this user)
             var currentUserIdString = _currentUserService.UserId;
@@ -99,7 +99,7 @@ namespace eRents.Application.Service.LocationManagementService
         /// <summary>
         /// Process address data for a specific property, handling existing property addresses
         /// </summary>
-        public async Task<AddressDetail> ProcessPropertyAddressAsync(int propertyId, AddressDetailDto addressDto)
+        public async Task<AddressDetail> ProcessPropertyAddressAsync(int propertyId, AddressDetailResponse addressDto)
         {
             // Validate property access (ensure current user owns this property)
             var currentUserIdString = _currentUserService.UserId;

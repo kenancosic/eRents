@@ -1,8 +1,9 @@
 using System;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Response
 {
-    public class FinancialReportDto
+    public class FinancialReportResponse : BaseResponse
     {
         public string DateFrom { get; set; } = string.Empty;
         public string DateTo { get; set; } = string.Empty;

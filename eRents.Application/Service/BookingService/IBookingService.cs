@@ -9,7 +9,7 @@ namespace eRents.Application.Service.BookingService
 {
     public interface IBookingService : ICRUDService<BookingResponse, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>
     {
-        Task<List<BookingSummaryDto>> GetCurrentStaysAsync(string userId);
-        Task<List<BookingSummaryDto>> GetUpcomingStaysAsync(string userId);
+        Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId);
+        Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId);
     }
 }

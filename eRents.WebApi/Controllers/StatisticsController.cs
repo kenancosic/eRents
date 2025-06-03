@@ -23,7 +23,7 @@ namespace eRents.WebApi.Controllers
 		/// Get comprehensive dashboard statistics for desktop users
 		/// </summary>
 		[HttpGet("dashboard")]
-		public async Task<ActionResult<DashboardStatisticsDto>> GetDashboardStatistics()
+		public async Task<ActionResult<DashboardStatisticsResponse>> GetDashboardStatistics()
 		{
 			try
 			{
@@ -53,7 +53,7 @@ namespace eRents.WebApi.Controllers
 		/// Get property statistics for desktop users
 		/// </summary>
 		[HttpGet("properties")]
-		public async Task<ActionResult<PropertyStatisticsDto>> GetPropertyStatistics()
+		public async Task<ActionResult<PropertyStatisticsResponse>> GetPropertyStatistics()
 		{
 			try
 			{
@@ -83,7 +83,7 @@ namespace eRents.WebApi.Controllers
 		/// Get maintenance statistics for desktop users
 		/// </summary>
 		[HttpGet("maintenance")]
-		public async Task<ActionResult<MaintenanceStatisticsDto>> GetMaintenanceStatistics()
+		public async Task<ActionResult<MaintenanceStatisticsResponse>> GetMaintenanceStatistics()
 		{
 			try
 			{
@@ -113,7 +113,7 @@ namespace eRents.WebApi.Controllers
 		/// Get financial summary for desktop users
 		/// </summary>
 		[HttpPost("financial")]
-		public async Task<ActionResult<FinancialSummaryDto>> GetFinancialSummary([FromBody] FinancialStatisticsRequest request)
+		public async Task<ActionResult<FinancialSummaryResponse>> GetFinancialSummary([FromBody] FinancialStatisticsRequest request)
 		{
 			try
 			{

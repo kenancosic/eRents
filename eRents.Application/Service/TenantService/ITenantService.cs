@@ -6,24 +6,24 @@ namespace eRents.Application.Service.TenantService
     public interface ITenantService
     {
         // Current Tenants Management
-        Task<List<UserResponseDto>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null);
-        Task<UserResponseDto> GetTenantByIdAsync(int tenantId);
+        Task<List<UserResponse>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null);
+        Task<UserResponse> GetTenantByIdAsync(int tenantId);
         
         // Prospective Tenant Discovery
-        Task<List<TenantPreferenceResponseDto>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null);
-        Task<TenantPreferenceResponseDto> GetTenantPreferencesAsync(int tenantId);
-        Task<TenantPreferenceResponseDto> UpdateTenantPreferencesAsync(int tenantId, UpdateTenantPreferenceRequestDto request);
+        Task<List<TenantPreferenceResponse>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null);
+        Task<TenantPreferenceResponse> GetTenantPreferencesAsync(int tenantId);
+        Task<TenantPreferenceResponse> UpdateTenantPreferencesAsync(int tenantId, TenantPreferenceUpdateRequest request);
         
         // Tenant Feedback Management
-        Task<List<ReviewResponseDto>> GetTenantFeedbacksAsync(int tenantId);
-        Task<ReviewResponseDto> AddTenantFeedbackAsync(int tenantId, CreateReviewRequestDto request);
+        Task<List<ReviewResponse>> GetTenantFeedbacksAsync(int tenantId);
+        Task<ReviewResponse> AddTenantFeedbackAsync(int tenantId, ReviewInsertRequest request);
         
         // Property Offers to Tenants
         Task RecordPropertyOfferedToTenantAsync(int tenantId, int propertyId);
-        Task<List<PropertyOfferResponseDto>> GetPropertyOffersForTenantAsync(int tenantId);
+        Task<List<PropertyOfferResponse>> GetPropertyOffersForTenantAsync(int tenantId);
         
         // Tenant Relationships
-        Task<List<TenantRelationshipDto>> GetTenantRelationshipsForLandlordAsync();
-        Task<Dictionary<int, PropertyResponseDto>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds);
+        Task<List<TenantRelationshipResponse>> GetTenantRelationshipsForLandlordAsync();
+        Task<Dictionary<int, PropertyResponse>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds);
     }
 } 

@@ -35,7 +35,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of current tenants with user details</returns>
         [HttpGet("current")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<UserResponseDto>>> GetCurrentTenants([FromQuery] Dictionary<string, string>? queryParams = null)
+        public async Task<ActionResult<List<UserResponse>>> GetCurrentTenants([FromQuery] Dictionary<string, string>? queryParams = null)
         {
             try
             {
@@ -60,7 +60,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>Detailed tenant information</returns>
         [HttpGet("current/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<UserResponseDto>> GetTenantById(int tenantId)
+        public async Task<ActionResult<UserResponse>> GetTenantById(int tenantId)
         {
             try
             {
@@ -88,7 +88,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of tenant preferences for prospective tenant discovery</returns>
         [HttpGet("prospective")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<TenantPreferenceResponseDto>>> GetProspectiveTenants([FromQuery] Dictionary<string, string>? queryParams = null)
+        public async Task<ActionResult<List<TenantPreferenceResponse>>> GetProspectiveTenants([FromQuery] Dictionary<string, string>? queryParams = null)
         {
             try
             {
@@ -109,7 +109,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>Tenant preference details</returns>
         [HttpGet("preferences/{tenantId}")]
         [Authorize]
-        public async Task<ActionResult<TenantPreferenceResponseDto>> GetTenantPreferences(int tenantId)
+        public async Task<ActionResult<TenantPreferenceResponse>> GetTenantPreferences(int tenantId)
         {
             try
             {
@@ -135,7 +135,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>Updated tenant preference information</returns>
         [HttpPut("preferences/{tenantId}")]
         [Authorize]
-        public async Task<ActionResult<TenantPreferenceResponseDto>> UpdateTenantPreferences(int tenantId, [FromBody] UpdateTenantPreferenceRequestDto request)
+        public async Task<ActionResult<TenantPreferenceResponse>> UpdateTenantPreferences(int tenantId, [FromBody] TenantPreferenceUpdateRequest request)
         {
             try
             {
@@ -160,7 +160,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of reviews for the tenant</returns>
         [HttpGet("feedback/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<ReviewResponseDto>>> GetTenantFeedbacks(int tenantId)
+        public async Task<ActionResult<List<ReviewResponse>>> GetTenantFeedbacks(int tenantId)
         {
             try
             {
@@ -186,7 +186,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>Created review information</returns>
         [HttpPost("feedback/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<ReviewResponseDto>> AddTenantFeedback(int tenantId, [FromBody] CreateReviewRequestDto request)
+        public async Task<ActionResult<ReviewResponse>> AddTenantFeedback(int tenantId, [FromBody] ReviewInsertRequest request)
         {
             try
             {
@@ -240,7 +240,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of tenant relationships with performance metrics</returns>
         [HttpGet("relationships")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<TenantRelationshipDto>>> GetTenantRelationships()
+        public async Task<ActionResult<List<TenantRelationshipResponse>>> GetTenantRelationships()
         {
             try
             {
@@ -261,7 +261,7 @@ namespace eRents.WebApi.Controllers
         /// <returns>Dictionary mapping tenant IDs to property information</returns>
         [HttpGet("assignments")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<Dictionary<int, PropertyResponseDto>>> GetTenantPropertyAssignments([FromQuery] List<int> tenantIds)
+        public async Task<ActionResult<Dictionary<int, PropertyResponse>>> GetTenantPropertyAssignments([FromQuery] List<int> tenantIds)
         {
             try
             {

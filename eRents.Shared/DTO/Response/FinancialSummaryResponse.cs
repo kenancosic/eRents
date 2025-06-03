@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace eRents.Shared.DTO.Response
 {
-    public class FinancialSummaryDto
+    public class FinancialSummaryResponse
     {
         public decimal TotalRentIncome { get; set; }
         public decimal TotalMaintenanceCosts { get; set; }
@@ -12,10 +12,10 @@ namespace eRents.Shared.DTO.Response
         public decimal NetTotal { get; set; }
         
         // Enhanced for monthly breakdown
-        public List<MonthlyRevenueDto> RevenueHistory { get; set; } = new List<MonthlyRevenueDto>();
+        public List<MonthlyRevenueResponse> RevenueHistory { get; set; } = new List<MonthlyRevenueResponse>();
     }
 
-    public class MonthlyRevenueDto
+    public class MonthlyRevenueResponse
     {
         public int Year { get; set; }
         public int Month { get; set; }

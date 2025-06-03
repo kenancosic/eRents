@@ -1,6 +1,6 @@
 namespace eRents.Shared.DTO.Requests
 {
-    public class UpdateTenantPreferenceRequestDto
+    public class TenantPreferenceUpdateRequest
     {
         public DateTime SearchStartDate { get; set; }
         public DateTime? SearchEndDate { get; set; }

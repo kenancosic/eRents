@@ -1,8 +1,9 @@
 using System;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Response
 {
-	public class BookingSummaryDto
+	public class BookingSummaryResponse : BaseResponse
 	{
 		public int BookingId { get; set; }
 		public int PropertyId { get; set; }

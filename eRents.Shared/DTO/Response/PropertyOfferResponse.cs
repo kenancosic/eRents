@@ -1,6 +1,9 @@
+using System;
+using eRents.Shared.DTO.Base;
+
 namespace eRents.Shared.DTO.Response
 {
-    public class PropertyOfferResponseDto
+    public class PropertyOfferResponse : BaseResponse
     {
         public int OfferId { get; set; }
         public int TenantId { get; set; }

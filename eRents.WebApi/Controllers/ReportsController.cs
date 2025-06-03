@@ -22,7 +22,7 @@ namespace eRents.WebApi.Controllers
         /// Get financial report for desktop users
         /// </summary>
         [HttpGet("financial")]
-        public async Task<ActionResult<List<FinancialReportDto>>> GetFinancialReport([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        public async Task<ActionResult<List<FinancialReportResponse>>> GetFinancialReport([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
             try
             {
@@ -52,7 +52,7 @@ namespace eRents.WebApi.Controllers
         /// Get tenant report for desktop users
         /// </summary>
         [HttpGet("tenant")]
-        public async Task<ActionResult<List<TenantReportDto>>> GetTenantReport([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        public async Task<ActionResult<List<TenantReportResponse>>> GetTenantReport([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
             try
             {

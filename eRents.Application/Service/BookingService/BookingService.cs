@@ -221,7 +221,7 @@ namespace eRents.Application.Service.BookingService
 			return true;
 		}
 
-		public async Task<List<BookingSummaryDto>> GetCurrentStaysAsync(string userId)
+		        public async Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
 			var currentUserId = _currentUserService.UserId;
@@ -252,8 +252,8 @@ namespace eRents.Application.Service.BookingService
 				(b.EndDate == null || b.EndDate >= DateOnly.FromDateTime(today))
 			).ToList();
 
-			// Map to BookingSummaryDto
-			var summaryItems = currentBookings.Select(b => new BookingSummaryDto
+			// Map to BookingSummaryResponse
+			var summaryItems = currentBookings.Select(b => new BookingSummaryResponse
 			{
 				BookingId = b.BookingId,
 				PropertyId = b.PropertyId ?? 0,
@@ -272,7 +272,7 @@ namespace eRents.Application.Service.BookingService
 			return summaryItems;
 		}
 
-		public async Task<List<BookingSummaryDto>> GetUpcomingStaysAsync(string userId)
+		        public async Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
 			var currentUserId = _currentUserService.UserId;
@@ -302,8 +302,8 @@ namespace eRents.Application.Service.BookingService
 				b.StartDate > DateOnly.FromDateTime(today)
 			).ToList();
 
-			// Map to BookingSummaryDto
-			var summaryItems = upcomingBookings.Select(b => new BookingSummaryDto
+			// Map to BookingSummaryResponse
+			var summaryItems = upcomingBookings.Select(b => new BookingSummaryResponse
 			{
 				BookingId = b.BookingId,
 				PropertyId = b.PropertyId ?? 0,
