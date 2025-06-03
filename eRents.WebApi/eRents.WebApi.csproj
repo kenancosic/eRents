@@ -34,4 +34,9 @@
 		<ProjectReference Include="..\eRents.RabbitMQMicroservice\eRents.RabbitMQMicroservice.csproj" />
 		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>
+	<ItemGroup>
+		<Content Include="SeedImages\**\*.*">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

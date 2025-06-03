@@ -150,30 +150,32 @@ namespace eRents.WebApi.Controllers
 
 		[HttpPost]
 		[Authorize(Roles = "Landlord")]
-		public virtual async Task<IActionResult> InsertProperty([FromBody] PropertyInsertRequest insert)
+		public override async Task<PropertyResponse> Insert([FromBody] PropertyInsertRequest insert)
 		{
 			try
 			{
 				// Platform validation - property creation only available on desktop
 				if (!ValidatePlatform("desktop", out var platformError))
-					return platformError!;
+					throw new UnauthorizedAccessException("Property creation is only available on desktop platform");
 
 				var result = await base.Insert(insert);
 
 				_logger.LogInformation("Property created successfully: {PropertyId} by user {UserId}", 
 					result.Id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, "Property creation");
+				_logger.LogError(ex, "Property creation failed by user {UserId}", 
+					_currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Landlord")]
-		public virtual async Task<IActionResult> UpdateProperty(int id, [FromBody] PropertyUpdateRequest update)
+		public override async Task<PropertyResponse> Update(int id, [FromBody] PropertyUpdateRequest update)
 		{
 			try
 			{
@@ -182,17 +184,19 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("Property updated successfully: {PropertyId} by user {UserId}", 
 					id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Property update (ID: {id})");
+				_logger.LogError(ex, "Property update failed for ID {PropertyId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpDelete("{id}")]
 		[Authorize(Roles = "Landlord")]
-		public virtual async Task<IActionResult> DeleteProperty(int id)
+		public override async Task<IActionResult> Delete(int id)
 		{
 			try
 			{
@@ -205,7 +209,9 @@ namespace eRents.WebApi.Controllers
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Property deletion (ID: {id})");
+				_logger.LogError(ex, "Property deletion failed for ID {PropertyId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 

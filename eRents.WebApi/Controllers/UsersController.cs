@@ -25,6 +25,16 @@ namespace eRents.Controllers
 		}
 
 		/// <summary>
+		/// Override base Get method to restrict access - users should use specific endpoints
+		/// </summary>
+		[HttpGet]
+		public override async Task<IEnumerable<UserResponse>> Get([FromQuery] UserSearchObject search)
+		{
+			// Redirect users to use specific secure endpoints instead of general user listing
+			throw new UnauthorizedAccessException("Direct user listing not allowed. Use /Users/all (Admin), /Users/tenants (Landlord), or /Users/by-role/{role} instead.");
+		}
+
+		/// <summary>
 		/// Admin only - Get all users with advanced filtering
 		/// </summary>
 		[HttpGet("all")]
@@ -48,30 +58,32 @@ namespace eRents.Controllers
 
 		[HttpPost]
 		[Authorize(Roles = "Admin")]
-		public virtual async Task<IActionResult> InsertUser([FromBody] UserInsertRequest insert)
+		public override async Task<UserResponse> Insert([FromBody] UserInsertRequest insert)
 		{
 			try
 			{
 				// Platform validation - user creation only available on desktop
 				if (!ValidatePlatform("desktop", out var platformError))
-					return platformError!;
+					throw new UnauthorizedAccessException("User creation is only available on desktop platform");
 
 				var result = await base.Insert(insert);
 
 				_logger.LogInformation("User created successfully: {UserId} by admin {AdminId}", 
 					result.Id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, "User creation");
+				_logger.LogError(ex, "User creation failed by admin {AdminId}", 
+					_currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpPut("{id}")]
 		[Authorize]
-		public virtual async Task<IActionResult> UpdateUser(int id, [FromBody] UserUpdateRequest update)
+		public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest update)
 		{
 			try
 			{
@@ -80,11 +92,13 @@ namespace eRents.Controllers
 				_logger.LogInformation("User updated successfully: {UserId} by user {UpdaterId}", 
 					id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"User update (ID: {id})");
+				_logger.LogError(ex, "User update failed for ID {UserId} by user {UpdaterId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 

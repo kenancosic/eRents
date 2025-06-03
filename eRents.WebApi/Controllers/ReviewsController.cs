@@ -25,7 +25,7 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet]
-		public virtual async Task<IActionResult> GetReviews([FromQuery] ReviewSearchObject search)
+		public override async Task<IEnumerable<ReviewResponse>> Get([FromQuery] ReviewSearchObject search)
 		{
 			try
 			{
@@ -34,16 +34,18 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("User {UserId} retrieved {ReviewCount} reviews with search filters", 
 					_currentUserService.UserId ?? "unknown", result.Count());
 					
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, "Review retrieval");
+				_logger.LogError(ex, "Review retrieval failed for user {UserId}", 
+					_currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpGet("{id}")]
-		public virtual async Task<IActionResult> GetReviewById(int id)
+		public override async Task<ReviewResponse> GetById(int id)
 		{
 			try
 			{
@@ -52,17 +54,19 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("User {UserId} retrieved review {ReviewId}", 
 					_currentUserService.UserId ?? "unknown", id);
 					
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Review retrieval (ID: {id})");
+				_logger.LogError(ex, "Review retrieval failed for ID {ReviewId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpPost]
 		[Authorize(Roles = "Tenant")]
-		public virtual async Task<IActionResult> CreateReview([FromBody] ReviewInsertRequest request)
+		public override async Task<ReviewResponse> Insert([FromBody] ReviewInsertRequest request)
 		{
 			try
 			{
@@ -71,17 +75,19 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("Review created successfully: {ReviewId} by user {UserId} for property {PropertyId}", 
 					result.ReviewId, _currentUserService.UserId ?? "unknown", request.PropertyId);
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Review creation for property {request.PropertyId}");
+				_logger.LogError(ex, "Review creation failed for property {PropertyId} by user {UserId}", 
+					request.PropertyId, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Tenant")]
-		public virtual async Task<IActionResult> UpdateReview(int id, [FromBody] ReviewUpdateRequest request)
+		public override async Task<ReviewResponse> Update(int id, [FromBody] ReviewUpdateRequest request)
 		{
 			try
 			{
@@ -90,17 +96,19 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("Review updated successfully: {ReviewId} by user {UserId}", 
 					id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Review update (ID: {id})");
+				_logger.LogError(ex, "Review update failed for ID {ReviewId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpDelete("{id}")]
 		[Authorize(Roles = "Tenant")]
-		public virtual async Task<IActionResult> DeleteReview(int id)
+		public override async Task<IActionResult> Delete(int id)
 		{
 			try
 			{
@@ -113,7 +121,9 @@ namespace eRents.WebApi.Controllers
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Review deletion (ID: {id})");
+				_logger.LogError(ex, "Review deletion failed for ID {ReviewId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 

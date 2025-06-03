@@ -18,6 +18,8 @@
     string domainSharedNamespace = "eRents.Domain.Shared"; // For IBaseRepository
     string dtoRequestsNamespace = "eRents.Shared.DTO.Requests";
     string dtoResponseNamespace = "eRents.Shared.DTO.Response";
+    string searchObjectsNamespace = "eRents.Shared.SearchObjects";
+    string servicesNamespace = "eRents.Shared.Services";
     // Assuming EntityFrameworkCore for DbContext operations like ToListAsync, Include, etc.
     string efCoreNamespace = "Microsoft.EntityFrameworkCore"; 
 
@@ -33,91 +35,205 @@ using <#= domainModelsNamespace #>;
 using <#= domainSharedNamespace #>;
 using <#= dtoRequestsNamespace #>;
 using <#= dtoResponseNamespace #>;
+using <#= searchObjectsNamespace #>;
+using <#= servicesNamespace #>;
 using <#= efCoreNamespace #>;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic; // Required for IEnumerable<T>
 
 namespace <#= serviceNamespace #>
 {
+    /// <summary>
+    /// Service implementation for <#= entityName #> entity operations
+    /// </summary>
     public class <#= entityName #>Service : BaseCRUDService<<#= entityName #>Response, <#= entityName #>, <#= entityName #>SearchObject, <#= entityName #>InsertRequest, <#= entityName #>UpdateRequest>, <#= interfaceName #>
     {
         private readonly IMapper _mapper;
         private readonly IBaseRepository<<#= entityName #>> _repository;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<<#= entityName #>Service> _logger;
 
-        public <#= entityName #>Service(IMapper mapper, IBaseRepository<<#= entityName #>> repository)
+        public <#= entityName #>Service(
+            IMapper mapper, 
+            IBaseRepository<<#= entityName #>> repository,
+            ICurrentUserService currentUserService,
+            ILogger<<#= entityName #>Service> logger)
             : base(mapper, repository)
         {
             _mapper = mapper;
             _repository = repository;
+            _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         public override async Task<IEnumerable<<#= entityName #>Response>> GetAsync(<#= entityName #>SearchObject? search = null)
         {
-            var query = _repository.GetQueryable();
-
-            query = AddFilter(query, search);
-            query = AddInclude(query, search);
-            
-            if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+            try
             {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
-            }
+                var query = _repository.GetQueryable();
 
-            var list = await query.ToListAsync();
-            return _mapper.Map<IEnumerable<<#= entityName #>Response>>(list);
+                query = AddFilter(query, search);
+                query = AddInclude(query, search);
+                
+                if (search?.Page.HasValue == true && search?.PageSize.HasValue == true)
+                {
+                    query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
+                }
+
+                var list = await query.ToListAsync();
+                
+                _logger.LogInformation("<#= entityName #> search executed for user {UserId}, returned {Count} items", 
+                    _currentUserService.UserId ?? "unknown", list.Count);
+                
+                return _mapper.Map<IEnumerable<<#= entityName #>Response>>(list);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "<#= entityName #> search failed for user {UserId}", 
+                    _currentUserService.UserId ?? "unknown");
+                throw;
+            }
         }
 
+        /// <summary>
+        /// Add related entity includes to the query
+        /// </summary>
         protected virtual IQueryable<<#= entityName #>> AddInclude(IQueryable<<#= entityName #>> query, <#= entityName #>SearchObject? search = null)
         {
-            // Example: If your entity has a related entity you often want to load:
-            // if (search?.IncludeRelatedEntity == true) // Assuming IncludeRelatedEntity is a bool in SearchObject
+            // TODO: Add entity-specific includes here
+            // Examples:
+            // query = query.Include(x => x.Category);
+            // query = query.Include(x => x.CreatedBy);
+            // 
+            // if (search?.IncludeRelatedEntity == true)
             // {
             //     query = query.Include(x => x.RelatedEntity);
             // }
-            return query; // Base implementation does no includes
+            
+            return query;
         }
 
+        /// <summary>
+        /// Apply search filters to the query
+        /// </summary>
         protected virtual IQueryable<<#= entityName #>> AddFilter(IQueryable<<#= entityName #>> query, <#= entityName #>SearchObject? search = null)
         {
             if (search != null)
             {
-                if (search.Id.HasValue)
+                // Filter by entity ID
+                if (search.<#= entityName #>Id.HasValue)
                 {
-                    query = query.Where(x => x.Id == search.Id.Value);
+                    query = query.Where(x => x.Id == search.<#= entityName #>Id.Value);
                 }
 
-                // Generic NameFTS filter - assumes your entity has a 'Name' property (string).
-                // This is a common convention. If not, this part needs adjustment or removal.
-                // For more complex FTS, consider specific implementations or a search service.
+                // Generic NameFTS filter
                 if (!string.IsNullOrEmpty(search.NameFTS))
                 {
-                    // This is a simple Contains search. For real FTS, you'd use DB-specific functions.
-                    // Also, this assumes the DB entity has a property named "Name". 
-                    // This might throw a runtime error if <EntityName> does not have a string property 'Name'.
-                    // Consider making this part more robust or removing if too problematic for a generic template.
                     try 
                     {
+                        // Note: This assumes the entity has a 'Name' property
+                        // Adjust this based on your entity's searchable fields
                         query = query.Where(x => EF.Property<string>(x, "Name").Contains(search.NameFTS));
                     }
-                    catch (System.Exception ex) 
+                    catch (Exception ex) 
                     {
-                        // Log this issue, or handle it if Name property doesn't exist for all entities
-                        System.Console.WriteLine($"Warning: Could not apply NameFTS filter for {entityName}. Entity might not have a 'Name' property or it's not a string. Error: {ex.Message}");
+                        _logger.LogWarning(ex, "Could not apply NameFTS filter for {EntityName}. Entity might not have a 'Name' property", 
+                            typeof(<#= entityName #>).Name);
                     }
                 }
 
-                // Add more generic filters based on BaseSearchObject properties if needed (e.g., Date ranges if you add them)
+                // TODO: Add entity-specific filters here
+                // Examples:
+                // if (search.CreatedAfter.HasValue)
+                // {
+                //     query = query.Where(x => x.DateAdded >= search.CreatedAfter.Value);
+                // }
+                // 
+                // if (search.IsActive.HasValue)
+                // {
+                //     query = query.Where(x => x.IsActive == search.IsActive.Value);
+                // }
+                // 
+                // if (search.CategoryId.HasValue)
+                // {
+                //     query = query.Where(x => x.CategoryId == search.CategoryId.Value);
+                // }
             }
+            
             return query;
         }
 
-        // Optional: Override BeforeInsertAsync, AfterInsertAsync, etc. if you have common logic
-        // protected override async Task BeforeInsertAsync(<#= entityName #>InsertRequest insert, <#= entityName #> entity)
-        // {
-        //     // Example: Set a default value
-        //     // entity.DateAdded = DateTime.UtcNow;
-        //     await base.BeforeInsertAsync(insert, entity);
-        // }
+        /// <summary>
+        /// Pre-insert hook for validation and business logic
+        /// </summary>
+        protected override async Task BeforeInsertAsync(<#= entityName #>InsertRequest insert, <#= entityName #> entity)
+        {
+            // TODO: Add entity-specific validation and business logic
+            // Examples:
+            // entity.DateAdded = DateTime.UtcNow;
+            // entity.CreatedBy = _currentUserService.UserId;
+            // 
+            // Validate business rules:
+            // if (string.IsNullOrEmpty(entity.Name))
+            // {
+            //     throw new ValidationException("Name is required");
+            // }
+            
+            _logger.LogInformation("Preparing to insert new <#= entityName.ToLower() #> for user {UserId}", 
+                _currentUserService.UserId ?? "unknown");
+            
+            await base.BeforeInsertAsync(insert, entity);
+        }
+
+        /// <summary>
+        /// Pre-update hook for validation and business logic
+        /// </summary>
+        protected override async Task BeforeUpdateAsync(int id, <#= entityName #>UpdateRequest update, <#= entityName #> entity)
+        {
+            // TODO: Add entity-specific validation and business logic
+            // Examples:
+            // entity.LastModified = DateTime.UtcNow;
+            // entity.ModifiedBy = _currentUserService.UserId;
+            // 
+            // Validate ownership or permissions:
+            // if (entity.CreatedBy != _currentUserService.UserId && !_currentUserService.IsInRole("Admin"))
+            // {
+            //     throw new UnauthorizedAccessException("You can only update your own records");
+            // }
+            
+            _logger.LogInformation("Preparing to update <#= entityName.ToLower() #> {Id} for user {UserId}", 
+                id, _currentUserService.UserId ?? "unknown");
+            
+            await base.BeforeUpdateAsync(id, update, entity);
+        }
+
+        /// <summary>
+        /// Pre-delete hook for validation and business logic
+        /// </summary>
+        protected override async Task BeforeDeleteAsync(int id, <#= entityName #> entity)
+        {
+            // TODO: Add entity-specific validation and business logic
+            // Examples:
+            // Validate ownership or permissions:
+            // if (entity.CreatedBy != _currentUserService.UserId && !_currentUserService.IsInRole("Admin"))
+            // {
+            //     throw new UnauthorizedAccessException("You can only delete your own records");
+            // }
+            // 
+            // Check for dependencies:
+            // var hasRelatedRecords = await _repository.GetQueryable()
+            //     .AnyAsync(x => x.RelatedEntityId == id);
+            // if (hasRelatedRecords)
+            // {
+            //     throw new ValidationException("Cannot delete entity with related records");
+            // }
+            
+            _logger.LogInformation("Preparing to delete <#= entityName.ToLower() #> {Id} for user {UserId}", 
+                id, _currentUserService.UserId ?? "unknown");
+            
+            await base.BeforeDeleteAsync(id, entity);
+        }
     }
 } 

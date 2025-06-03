@@ -31,7 +31,7 @@ namespace eRents.WebApi.Controllers
 
 		[HttpPost]
 		[Authorize(Roles = "Tenant,Landlord")]
-		public virtual async Task<IActionResult> InsertMaintenanceIssue([FromBody] MaintenanceIssueRequest insert)
+		public override async Task<MaintenanceIssueResponse> Insert([FromBody] MaintenanceIssueRequest insert)
 		{
 			try
 			{
@@ -40,17 +40,19 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("Maintenance issue created: {IssueId} by user {UserId} for property {PropertyId}", 
 					result.IssueId, _currentUserService.UserId ?? "unknown", insert.PropertyId);
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Maintenance issue creation for property {insert.PropertyId}");
+				_logger.LogError(ex, "Maintenance issue creation failed for property {PropertyId} by user {UserId}", 
+					insert.PropertyId, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Tenant,Landlord")]
-		public virtual async Task<IActionResult> UpdateMaintenanceIssue(int id, [FromBody] MaintenanceIssueRequest update)
+		public override async Task<MaintenanceIssueResponse> Update(int id, [FromBody] MaintenanceIssueRequest update)
 		{
 			try
 			{
@@ -59,11 +61,13 @@ namespace eRents.WebApi.Controllers
 				_logger.LogInformation("Maintenance issue updated: {IssueId} by user {UserId}", 
 					id, _currentUserService.UserId ?? "unknown");
 
-				return Ok(result);
+				return result;
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Maintenance issue update (ID: {id})");
+				_logger.LogError(ex, "Maintenance issue update failed for ID {IssueId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				throw; // Let the base controller handle the error response
 			}
 		}
 
