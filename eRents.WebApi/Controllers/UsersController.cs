@@ -2,7 +2,8 @@
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
-using eRents.WebApi.Shared;
+using eRents.WebApi.Controllers.Base;
+using eRents.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,11 +12,14 @@ namespace eRents.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
-	public class UsersController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
+	public class UsersController : EnhancedBaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
 		private readonly IUserService _userService;
 
-		public UsersController(IUserService service) : base(service)
+		public UsersController(
+			IUserService service,
+			ILogger<UsersController> logger,
+			ICurrentUserService currentUserService) : base(service, logger, currentUserService)
 		{
 			_userService = service;
 		}
@@ -25,22 +29,63 @@ namespace eRents.Controllers
 		/// </summary>
 		[HttpGet("all")]
 		[Authorize(Roles = "Admin")]
-		public async Task<ActionResult<IEnumerable<UserResponse>>> GetAllUsers([FromQuery] UserSearchObject searchObject)
+		public async Task<IActionResult> GetAllUsers([FromQuery] UserSearchObject searchObject)
 		{
-			var users = await _userService.GetAllUsersAsync(searchObject);
-			return Ok(users);
+			try
+			{
+				var users = await _userService.GetAllUsersAsync(searchObject);
+				
+				_logger.LogInformation("Admin {AdminId} retrieved {UserCount} users with filters", 
+					_currentUserService.UserId ?? "unknown", users.Count());
+					
+				return Ok(users);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Admin user retrieval");
+			}
 		}
 
 		[HttpPost]
-		public override async Task<UserResponse> Insert([FromBody] UserInsertRequest insert)
+		[Authorize(Roles = "Admin")]
+		public virtual async Task<IActionResult> InsertUser([FromBody] UserInsertRequest insert)
 		{
-			return await base.Insert(insert);
+			try
+			{
+				// Platform validation - user creation only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
+
+				var result = await base.Insert(insert);
+
+				_logger.LogInformation("User created successfully: {UserId} by admin {AdminId}", 
+					result.Id, _currentUserService.UserId ?? "unknown");
+
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "User creation");
+			}
 		}
 
 		[HttpPut("{id}")]
-		public override async Task<UserResponse> Update(int id, [FromBody] UserUpdateRequest update)
+		[Authorize]
+		public virtual async Task<IActionResult> UpdateUser(int id, [FromBody] UserUpdateRequest update)
 		{
-			return await base.Update(id, update);
+			try
+			{
+				var result = await base.Update(id, update);
+
+				_logger.LogInformation("User updated successfully: {UserId} by user {UpdaterId}", 
+					id, _currentUserService.UserId ?? "unknown");
+
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"User update (ID: {id})");
+			}
 		}
 
 		/// <summary>
@@ -48,16 +93,28 @@ namespace eRents.Controllers
 		/// </summary>
 		[HttpGet("tenants")]
 		[Authorize(Roles = "Landlord")]
-		public async Task<ActionResult<IEnumerable<UserResponse>>> GetTenants()
+		public async Task<IActionResult> GetTenants()
 		{
-			var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-			if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
+			try
 			{
-				return Unauthorized("User ID claim is missing or invalid.");
-			}
+				var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
+				{
+					_logger.LogWarning("Tenant retrieval failed - Invalid user ID claim for landlord");
+					return Unauthorized("User ID claim is missing or invalid.");
+				}
 
-			var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
-			return Ok(tenants);
+				var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
+				
+				_logger.LogInformation("Landlord {LandlordId} retrieved {TenantCount} tenants", 
+					landlordId, tenants.Count());
+					
+				return Ok(tenants);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Tenant retrieval for landlord");
+			}
 		}
 
 		/// <summary>
@@ -65,32 +122,50 @@ namespace eRents.Controllers
 		/// </summary>
 		[HttpGet("by-role/{role}")]
 		[Authorize]
-		public async Task<ActionResult<IEnumerable<UserResponse>>> GetUsersByRole(string role, [FromQuery] UserSearchObject searchObject)
+		public async Task<IActionResult> GetUsersByRole(string role, [FromQuery] UserSearchObject searchObject)
 		{
-			var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-			
-			// Security checks based on role
-			if (userRole == "Admin")
+			try
 			{
-				// Admins can see all roles
-				var users = await _userService.GetUsersByRoleAsync(role, searchObject);
-				return Ok(users);
-			}
-			else if (userRole == "Landlord" && role.Equals("TENANT", StringComparison.OrdinalIgnoreCase))
-			{
-				// Landlords can only see tenants, and only their own tenants
-				var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
+				var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+				
+				// Security checks based on role
+				if (userRole == "Admin")
 				{
-					return Unauthorized("User ID claim is missing or invalid.");
+					// Admins can see all roles
+					var users = await _userService.GetUsersByRoleAsync(role, searchObject);
+					
+					_logger.LogInformation("Admin {AdminId} retrieved {UserCount} users with role {Role}", 
+						_currentUserService.UserId ?? "unknown", users.Count(), role);
+						
+					return Ok(users);
 				}
+				else if (userRole == "Landlord" && role.Equals("TENANT", StringComparison.OrdinalIgnoreCase))
+				{
+					// Landlords can only see tenants, and only their own tenants
+					var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+					if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
+					{
+						_logger.LogWarning("Role-based user retrieval failed - Invalid user ID claim for landlord");
+						return Unauthorized("User ID claim is missing or invalid.");
+					}
 
-				var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
-				return Ok(tenants);
+					var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
+					
+					_logger.LogInformation("Landlord {LandlordId} retrieved {TenantCount} tenants by role", 
+						landlordId, tenants.Count());
+						
+					return Ok(tenants);
+				}
+				else
+				{
+					_logger.LogWarning("Unauthorized role-based user access attempt by user {UserId} for role {Role}", 
+						_currentUserService.UserId ?? "unknown", role);
+					return Forbid("You do not have permission to access users of this role.");
+				}
 			}
-			else
+			catch (Exception ex)
 			{
-				return Forbid("You do not have permission to access users of this role.");
+				return HandleStandardError(ex, $"Role-based user retrieval (role: {role})");
 			}
 		}
 	}

@@ -1,22 +1,8 @@
-using eRents.Application.Service;
-using eRents.Application.Service.BookingService;
-using eRents.Application.Service.ImageService;
-using eRents.Application.Service.MaintenanceService;
-using eRents.Application.Service.MessagingService;
-using eRents.Application.Service.PaymentService;
-using eRents.Application.Service.PropertyService;
-using eRents.Application.Service.ReviewService;
-using eRents.Application.Service.UserService;
-using eRents.Application.Service.StatisticsService;
-using eRents.Application.Service.TenantService;
-using eRents.Application.Service.ReportService;
-using eRents.Application.Service.LocationManagementService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
-using eRents.Domain.Repositories;
-using eRents.Shared.Services;
 using eRents.Domain.Shared;
 using eRents.WebApi;
+using eRents.WebApi.Extensions;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -89,59 +75,13 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// Register the repositories
-builder.Services.AddTransient<IUserRepository, UserRepository>();
-builder.Services.AddTransient<IPropertyRepository, PropertyRepository>();
-builder.Services.AddTransient<IBookingRepository, BookingRepository>();
-builder.Services.AddTransient<IReviewRepository, ReviewRepository>();
-builder.Services.AddTransient<IImageRepository, ImageRepository>();
-builder.Services.AddTransient<IMessageRepository, MessageRepository>();
-builder.Services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
-builder.Services.AddTransient<ITenantRepository, TenantRepository>();
-builder.Services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
-builder.Services.AddTransient<IGeoRegionRepository, GeoRegionRepository>();
-builder.Services.AddTransient<IAddressDetailRepository, AddressDetailRepository>();
-
-// Register UserTypeRepository or BaseRepository<UserType>
-// If you have a specific UserTypeRepository:
-// builder.Services.AddTransient<IUserTypeRepository, UserTypeRepository>(); 
-// If using the generic BaseRepository for UserType:
-builder.Services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();
-
-// Register the services
-builder.Services.AddTransient<IUserService, UserService>();
-builder.Services.AddTransient<IPropertyService, PropertyService>();
-builder.Services.AddTransient<IMaintenanceService, MaintenanceService>();
-builder.Services.AddTransient<IBookingService, BookingService>();
-builder.Services.AddTransient<IReviewService, ReviewService>();
-builder.Services.AddTransient<IImageService, ImageService>();
-builder.Services.AddTransient<IMessageHandlerService, MessageHandlerService>();
-builder.Services.AddTransient<IStatisticsService, StatisticsService>();
-builder.Services.AddTransient<ITenantService, TenantService>();
-builder.Services.AddTransient<IReportService, ReportService>();
-builder.Services.AddTransient<ILocationManagementService, LocationManagementService>();
-// TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
-
-// Register HttpClient
-builder.Services.AddSingleton<HttpClient>();
-
-// Configure and register PayPalService
-// var clientId = builder.Configuration["PayPal:ClientId"]; // No longer needed here
-// var clientSecret = builder.Configuration["PayPal:ClientSecret"]; // No longer needed here
-builder.Services.AddSingleton<IPaymentService>(sp =>
-		new PayPalService(
-				sp.GetRequiredService<HttpClient>(),
-				builder.Configuration
-		)
-);
-
-builder.Services.AddSingleton<IRabbitMQService, RabbitMQService>();
+// ✅ PHASE 2 ENHANCEMENT: Clean, organized service registration
+builder.Services
+    .AddERentsRepositories()
+    .AddERentsBusinessServices()
+    .AddERentsInfrastructure(builder.Configuration);
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
-
-// Register IHttpContextAccessor and CurrentUserService for user context access
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<eRents.Shared.Services.ICurrentUserService, eRents.WebApi.Shared.CurrentUserService>();
 
 Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("eRentsConnection")}");
 

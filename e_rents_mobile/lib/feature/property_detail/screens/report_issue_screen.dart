@@ -32,7 +32,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
   final ImagePicker _picker = ImagePicker();
 
   MaintenanceIssuePriority _selectedPriority = MaintenanceIssuePriority.medium;
-  List<File> _selectedImages = [];
+  final List<File> _selectedImages = [];
   bool _isSubmitting = false;
 
   @override

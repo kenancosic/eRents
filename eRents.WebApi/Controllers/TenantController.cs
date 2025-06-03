@@ -1,7 +1,10 @@
 using eRents.Application.Service.TenantService;
+using eRents.Application.Service.UserService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.Services;
+using eRents.WebApi.Controllers.Base;
+using eRents.Shared.SearchObjects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -16,15 +19,17 @@ namespace eRents.WebApi.Controllers
     [ApiController]
     [Route("[controller]")]
     [Authorize] // All endpoints require authentication
-    public class TenantController : ControllerBase
+    public class TenantController : EnhancedBaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
     {
         private readonly ITenantService _tenantService;
-        private readonly ICurrentUserService _currentUserService;
 
-        public TenantController(ITenantService tenantService, ICurrentUserService currentUserService)
+        public TenantController(
+            ITenantService tenantService, 
+            ICurrentUserService currentUserService,
+            ILogger<TenantController> logger,
+            IUserService userService) : base(userService, logger, currentUserService)
         {
             _tenantService = tenantService;
-            _currentUserService = currentUserService;
         }
 
         /// <summary>
@@ -35,20 +40,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of current tenants with user details</returns>
         [HttpGet("current")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<UserResponse>>> GetCurrentTenants([FromQuery] Dictionary<string, string>? queryParams = null)
+        public async Task<IActionResult> GetCurrentTenants([FromQuery] Dictionary<string, string>? queryParams = null)
         {
             try
             {
                 var tenants = await _tenantService.GetCurrentTenantsAsync(queryParams);
+                
+                _logger.LogInformation("Landlord {UserId} retrieved {TenantCount} current tenants", 
+                    _currentUserService.UserId ?? "unknown", tenants.Count);
+                    
                 return Ok(tenants);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only access tenants in your properties");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving current tenants: {ex.Message}");
+                return HandleStandardError(ex, "Current tenants retrieval");
             }
         }
 
@@ -60,23 +65,26 @@ namespace eRents.WebApi.Controllers
         /// <returns>Detailed tenant information</returns>
         [HttpGet("current/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<UserResponse>> GetTenantById(int tenantId)
+        public async Task<IActionResult> GetTenantById(int tenantId)
         {
             try
             {
                 var tenant = await _tenantService.GetTenantByIdAsync(tenantId);
                 if (tenant == null)
+                {
+                    _logger.LogWarning("Tenant {TenantId} not found for landlord {LandlordId}", 
+                        tenantId, _currentUserService.UserId ?? "unknown");
                     return NotFound("Tenant not found");
+                }
 
+                _logger.LogInformation("Landlord {LandlordId} retrieved tenant details for {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", tenantId);
+                    
                 return Ok(tenant);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only access tenants in your properties");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving tenant details: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant details retrieval (ID: {tenantId})");
             }
         }
 
@@ -88,16 +96,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of tenant preferences for prospective tenant discovery</returns>
         [HttpGet("prospective")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<TenantPreferenceResponse>>> GetProspectiveTenants([FromQuery] Dictionary<string, string>? queryParams = null)
+        public async Task<IActionResult> GetProspectiveTenants([FromQuery] Dictionary<string, string>? queryParams = null)
         {
             try
             {
                 var prospects = await _tenantService.GetProspectiveTenantsAsync(queryParams);
+                
+                _logger.LogInformation("Landlord {LandlordId} retrieved {ProspectCount} prospective tenants", 
+                    _currentUserService.UserId ?? "unknown", prospects.Count);
+                    
                 return Ok(prospects);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving prospective tenants: {ex.Message}");
+                return HandleStandardError(ex, "Prospective tenants retrieval");
             }
         }
 
@@ -109,20 +121,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>Tenant preference details</returns>
         [HttpGet("preferences/{tenantId}")]
         [Authorize]
-        public async Task<ActionResult<TenantPreferenceResponse>> GetTenantPreferences(int tenantId)
+        public async Task<IActionResult> GetTenantPreferences(int tenantId)
         {
             try
             {
                 var preferences = await _tenantService.GetTenantPreferencesAsync(tenantId);
+                
+                _logger.LogInformation("User {UserId} retrieved preferences for tenant {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", tenantId);
+                    
                 return Ok(preferences);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You don't have permission to access these tenant preferences");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving tenant preferences: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant preferences retrieval (ID: {tenantId})");
             }
         }
 
@@ -135,20 +147,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>Updated tenant preference information</returns>
         [HttpPut("preferences/{tenantId}")]
         [Authorize]
-        public async Task<ActionResult<TenantPreferenceResponse>> UpdateTenantPreferences(int tenantId, [FromBody] TenantPreferenceUpdateRequest request)
+        public async Task<IActionResult> UpdateTenantPreferences(int tenantId, [FromBody] TenantPreferenceUpdateRequest request)
         {
             try
             {
                 var updatedPreferences = await _tenantService.UpdateTenantPreferencesAsync(tenantId, request);
+                
+                _logger.LogInformation("User {UserId} updated preferences for tenant {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", tenantId);
+                    
                 return Ok(updatedPreferences);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only update your own tenant preferences");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error updating tenant preferences: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant preferences update (ID: {tenantId})");
             }
         }
 
@@ -160,20 +172,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of reviews for the tenant</returns>
         [HttpGet("feedback/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<ReviewResponse>>> GetTenantFeedbacks(int tenantId)
+        public async Task<IActionResult> GetTenantFeedbacks(int tenantId)
         {
             try
             {
                 var feedbacks = await _tenantService.GetTenantFeedbacksAsync(tenantId);
+                
+                _logger.LogInformation("Landlord {LandlordId} retrieved {FeedbackCount} feedbacks for tenant {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", feedbacks.Count, tenantId);
+                    
                 return Ok(feedbacks);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only view feedback for tenants you have worked with");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving tenant feedback: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant feedbacks retrieval (ID: {tenantId})");
             }
         }
 
@@ -186,24 +198,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>Created review information</returns>
         [HttpPost("feedback/{tenantId}")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<ReviewResponse>> AddTenantFeedback(int tenantId, [FromBody] ReviewInsertRequest request)
+        public async Task<IActionResult> AddTenantFeedback(int tenantId, [FromBody] ReviewInsertRequest request)
         {
             try
             {
                 var feedback = await _tenantService.AddTenantFeedbackAsync(tenantId, request);
+                
+                _logger.LogInformation("Landlord {LandlordId} added feedback for tenant {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", tenantId);
+                    
                 return Ok(feedback);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only review tenants you have had business relationships with");
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest($"Invalid review data: {ex.Message}");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error adding tenant feedback: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant feedback creation (ID: {tenantId})");
             }
         }
 
@@ -221,15 +229,15 @@ namespace eRents.WebApi.Controllers
             try
             {
                 await _tenantService.RecordPropertyOfferedToTenantAsync(tenantId, propertyId);
+                
+                _logger.LogInformation("Landlord {LandlordId} offered property {PropertyId} to tenant {TenantId}", 
+                    _currentUserService.UserId ?? "unknown", propertyId, tenantId);
+                    
                 return Ok(new { message = "Property offer recorded successfully" });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid("You can only offer your own properties");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error recording property offer: {ex.Message}");
+                return HandleStandardError(ex, $"Property offer recording (TenantID: {tenantId}, PropertyID: {propertyId})");
             }
         }
 
@@ -240,16 +248,20 @@ namespace eRents.WebApi.Controllers
         /// <returns>List of tenant relationships with performance metrics</returns>
         [HttpGet("relationships")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<List<TenantRelationshipResponse>>> GetTenantRelationships()
+        public async Task<IActionResult> GetTenantRelationships()
         {
             try
             {
                 var relationships = await _tenantService.GetTenantRelationshipsForLandlordAsync();
+                
+                _logger.LogInformation("Landlord {LandlordId} retrieved {RelationshipCount} tenant relationships", 
+                    _currentUserService.UserId ?? "unknown", relationships.Count);
+                    
                 return Ok(relationships);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving tenant relationships: {ex.Message}");
+                return HandleStandardError(ex, "Tenant relationships retrieval");
             }
         }
 
@@ -261,19 +273,27 @@ namespace eRents.WebApi.Controllers
         /// <returns>Dictionary mapping tenant IDs to property information</returns>
         [HttpGet("assignments")]
         [Authorize(Roles = "Landlord")]
-        public async Task<ActionResult<Dictionary<int, PropertyResponse>>> GetTenantPropertyAssignments([FromQuery] List<int> tenantIds)
+        public async Task<IActionResult> GetTenantPropertyAssignments([FromQuery] List<int> tenantIds)
         {
             try
             {
                 if (tenantIds == null || !tenantIds.Any())
+                {
+                    _logger.LogWarning("Tenant property assignments request failed - No tenant IDs provided by landlord {LandlordId}", 
+                        _currentUserService.UserId ?? "unknown");
                     return BadRequest("At least one tenant ID must be provided");
+                }
 
                 var assignments = await _tenantService.GetTenantPropertyAssignmentsAsync(tenantIds);
+                
+                _logger.LogInformation("Landlord {LandlordId} retrieved property assignments for {TenantCount} tenants", 
+                    _currentUserService.UserId ?? "unknown", tenantIds.Count);
+                    
                 return Ok(assignments);
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error retrieving tenant property assignments: {ex.Message}");
+                return HandleStandardError(ex, $"Tenant property assignments retrieval ({tenantIds?.Count ?? 0} tenants)");
             }
         }
     }

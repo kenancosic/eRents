@@ -1,6 +1,10 @@
 using eRents.Application.Service.StatisticsService;
+using eRents.Application.Service.UserService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
+using eRents.Shared.Services;
+using eRents.WebApi.Controllers.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -14,38 +18,94 @@ namespace eRents.WebApi.Controllers
 	{
 		private readonly IStatisticsService _statisticsService;
 
-		public StatisticsController(IStatisticsService statisticsService)
+		private readonly ILogger<StatisticsController> _logger;
+		private readonly ICurrentUserService _currentUserService;
+
+		public StatisticsController(
+			IStatisticsService statisticsService,
+			ILogger<StatisticsController> logger,
+			ICurrentUserService currentUserService)
 		{
 			_statisticsService = statisticsService;
+			_logger = logger;
+			_currentUserService = currentUserService;
+		}
+
+		/// <summary>
+		/// Validates that the request is coming from the allowed platform (desktop vs mobile)
+		/// </summary>
+		protected bool ValidatePlatform(string allowedPlatform, out IActionResult? errorResult)
+		{
+			var clientType = Request.Headers["Client-Type"].FirstOrDefault()?.ToLower();
+			
+			if (clientType != allowedPlatform.ToLower())
+			{
+				_logger.LogWarning("Operation attempted from unauthorized platform: {ClientType}, expected: {AllowedPlatform}", 
+					clientType, allowedPlatform);
+					
+				errorResult = BadRequest(new { 
+					Type = "Platform",
+					Message = $"This operation is only available on {allowedPlatform} platform",
+					Timestamp = DateTime.UtcNow,
+					TraceId = HttpContext.TraceIdentifier,
+					Path = Request.Path.Value
+				});
+				return false;
+			}
+			
+			errorResult = null;
+			return true;
+		}
+
+		/// <summary>
+		/// Handles all types of exceptions with appropriate HTTP status codes and standardized error responses
+		/// </summary>
+		protected IActionResult HandleStandardError(Exception ex, string operation)
+		{
+			var requestId = HttpContext.TraceIdentifier;
+			var path = Request.Path.Value;
+			var userId = _currentUserService.UserId ?? "unknown";
+			
+			_logger.LogError(ex, "{Operation} failed - Error for user {UserId} on {Path}", 
+				operation, userId, path);
+				
+			return StatusCode(500, new { 
+				Type = "Internal",
+				Message = "An unexpected error occurred while processing your request",
+				Timestamp = DateTime.UtcNow,
+				TraceId = requestId,
+				Path = path
+			});
 		}
 
 		/// <summary>
 		/// Get comprehensive dashboard statistics for desktop users
 		/// </summary>
 		[HttpGet("dashboard")]
-		public async Task<ActionResult<DashboardStatisticsResponse>> GetDashboardStatistics()
+		public async Task<IActionResult> GetDashboardStatistics()
 		{
 			try
 			{
-				// Check platform context from JWT - only desktop users get analytics
-				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
-				if (clientType != "desktop")
-				{
-					return BadRequest("Analytics are only available on desktop platform");
-				}
+				// Platform validation - analytics only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
 
-				var userIdClaim = User.FindFirst("UserId")?.Value;
-				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				var userIdString = _currentUserService.UserId;
+				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
 				{
+					_logger.LogWarning("Dashboard statistics request failed - Invalid user ID for user {UserId}", userIdString);
 					return Unauthorized("Invalid user ID in token");
 				}
 
 				var statistics = await _statisticsService.GetDashboardStatisticsAsync(userId);
+				
+				_logger.LogInformation("User {UserId} retrieved dashboard statistics on desktop platform", userId);
+				
 				return Ok(statistics);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving dashboard statistics: {ex.Message}");
+				return HandleStandardError(ex, "Dashboard statistics retrieval");
 			}
 		}
 
@@ -53,29 +113,30 @@ namespace eRents.WebApi.Controllers
 		/// Get property statistics for desktop users
 		/// </summary>
 		[HttpGet("properties")]
-		public async Task<ActionResult<PropertyStatisticsResponse>> GetPropertyStatistics()
+		public async Task<IActionResult> GetPropertyStatistics()
 		{
 			try
 			{
-				// Check platform context from JWT - only desktop users get analytics
-				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
-				if (clientType != "desktop")
-				{
-					return BadRequest("Analytics are only available on desktop platform");
-				}
+				// Platform validation - analytics only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
 
-				var userIdClaim = User.FindFirst("UserId")?.Value;
-				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				var userIdString = _currentUserService.UserId;
+				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
 				{
+					_logger.LogWarning("Property statistics request failed - Invalid user ID for user {UserId}", userIdString);
 					return Unauthorized("Invalid user ID in token");
 				}
 
 				var statistics = await _statisticsService.GetPropertyStatisticsAsync(userId);
+				
+				_logger.LogInformation("User {UserId} retrieved property statistics on desktop platform", userId);
+				
 				return Ok(statistics);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving property statistics: {ex.Message}");
+				return HandleStandardError(ex, "Property statistics retrieval");
 			}
 		}
 
@@ -83,29 +144,30 @@ namespace eRents.WebApi.Controllers
 		/// Get maintenance statistics for desktop users
 		/// </summary>
 		[HttpGet("maintenance")]
-		public async Task<ActionResult<MaintenanceStatisticsResponse>> GetMaintenanceStatistics()
+		public async Task<IActionResult> GetMaintenanceStatistics()
 		{
 			try
 			{
-				// Check platform context from JWT - only desktop users get analytics
-				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
-				if (clientType != "desktop")
-				{
-					return BadRequest("Analytics are only available on desktop platform");
-				}
+				// Platform validation - analytics only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
 
-				var userIdClaim = User.FindFirst("UserId")?.Value;
-				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				var userIdString = _currentUserService.UserId;
+				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
 				{
+					_logger.LogWarning("Maintenance statistics request failed - Invalid user ID for user {UserId}", userIdString);
 					return Unauthorized("Invalid user ID in token");
 				}
 
 				var statistics = await _statisticsService.GetMaintenanceStatisticsAsync(userId);
+				
+				_logger.LogInformation("User {UserId} retrieved maintenance statistics on desktop platform", userId);
+				
 				return Ok(statistics);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving maintenance statistics: {ex.Message}");
+				return HandleStandardError(ex, "Maintenance statistics retrieval");
 			}
 		}
 
@@ -113,29 +175,31 @@ namespace eRents.WebApi.Controllers
 		/// Get financial summary for desktop users
 		/// </summary>
 		[HttpPost("financial")]
-		public async Task<ActionResult<FinancialSummaryResponse>> GetFinancialSummary([FromBody] FinancialStatisticsRequest request)
+		public async Task<IActionResult> GetFinancialSummary([FromBody] FinancialStatisticsRequest request)
 		{
 			try
 			{
-				// Check platform context from JWT - only desktop users get analytics
-				var clientType = User.FindFirst("ClientType")?.Value?.ToLower();
-				if (clientType != "desktop")
-				{
-					return BadRequest("Financial analytics are only available on desktop platform");
-				}
+				// Platform validation - financial analytics only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
 
-				var userIdClaim = User.FindFirst("UserId")?.Value;
-				if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+				var userIdString = _currentUserService.UserId;
+				if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
 				{
+					_logger.LogWarning("Financial summary request failed - Invalid user ID for user {UserId}", userIdString);
 					return Unauthorized("Invalid user ID in token");
 				}
 
 				var statistics = await _statisticsService.GetFinancialSummaryAsync(userId, request);
+				
+				_logger.LogInformation("User {UserId} retrieved financial summary for period {StartDate} to {EndDate} on desktop platform", 
+					userId, request.StartDate, request.EndDate);
+				
 				return Ok(statistics);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving financial summary: {ex.Message}");
+				return HandleStandardError(ex, $"Financial summary retrieval (Period: {request?.StartDate} to {request?.EndDate})");
 			}
 		}
 	}

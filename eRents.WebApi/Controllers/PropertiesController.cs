@@ -4,6 +4,7 @@ using eRents.Application.Service.ReviewService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
+using eRents.WebApi.Controllers.Base;
 using eRents.WebApi.Shared;
 using Microsoft.AspNetCore.Mvc;
 using eRents.Shared.Enums;
@@ -16,12 +17,11 @@ namespace eRents.WebApi.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize] // All endpoints require authentication
-	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
+	public class PropertiesController : EnhancedBaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
 		private readonly IBookingService _bookingService;
 		private readonly IReviewService _reviewService;
-		private readonly ICurrentUserService _currentUserService;
 		private readonly IConfiguration _configuration;
 		private readonly IPropertyRepository _propertyRepository;
 
@@ -31,12 +31,12 @@ namespace eRents.WebApi.Controllers
 			IReviewService reviewService,
 			ICurrentUserService currentUserService, 
 			IConfiguration configuration,
-			IPropertyRepository propertyRepository) : base(service)
+			IPropertyRepository propertyRepository,
+			ILogger<PropertiesController> logger) : base(service, logger, currentUserService)
 		{
 			_propertyService = service;
 			_bookingService = bookingService;
 			_reviewService = reviewService;
-			_currentUserService = currentUserService;
 			_configuration = configuration;
 			_propertyRepository = propertyRepository;
 		}
@@ -93,17 +93,6 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				// Validate that the landlord owns this property
-				var currentUserId = _currentUserService.UserId;
-				var currentUserRole = _currentUserService.UserRole;
-				
-				if (currentUserRole != "Landlord")
-					return Forbid("Only landlords can view property booking statistics");
-
-				var property = await _propertyService.GetByIdAsync(propertyId);
-				if (property == null)
-					return NotFound("Property not found");
-
 				// Get bookings for this property (the service will automatically filter by landlord)
 				var bookingSearch = new BookingSearchObject { PropertyId = propertyId };
 				var bookings = await _bookingService.GetAsync(bookingSearch);
@@ -117,12 +106,14 @@ namespace eRents.WebApi.Controllers
 					occupancyRate = bookings.Any() ? (double)bookings.Count(b => b.Status == "Active") / bookings.Count() : 0.0
 				};
 
+				_logger.LogInformation("Property booking stats retrieved for property {PropertyId} by user {UserId}", 
+					propertyId, _currentUserService.UserId ?? "unknown");
+
 				return Ok(stats);
 			}
 			catch (Exception ex)
 			{
-				// Log the exception (should use proper logging in production)
-				return StatusCode(500, new { error = new[] { "Error on server" } });
+				return HandleStandardError(ex, $"Property booking stats retrieval (PropertyID: {propertyId})");
 			}
 		}
 
@@ -159,24 +150,63 @@ namespace eRents.WebApi.Controllers
 
 		[HttpPost]
 		[Authorize(Roles = "Landlord")]
-		public override async Task<PropertyResponse> Insert([FromBody] PropertyInsertRequest insert)
+		public virtual async Task<IActionResult> InsertProperty([FromBody] PropertyInsertRequest insert)
 		{
-			return await base.Insert(insert);
+			try
+			{
+				// Platform validation - property creation only available on desktop
+				if (!ValidatePlatform("desktop", out var platformError))
+					return platformError!;
+
+				var result = await base.Insert(insert);
+
+				_logger.LogInformation("Property created successfully: {PropertyId} by user {UserId}", 
+					result.Id, _currentUserService.UserId ?? "unknown");
+
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Property creation");
+			}
 		}
 
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Landlord")]
-		public override async Task<PropertyResponse> Update(int id, [FromBody] PropertyUpdateRequest update)
+		public virtual async Task<IActionResult> UpdateProperty(int id, [FromBody] PropertyUpdateRequest update)
 		{
-			return await base.Update(id, update);
+			try
+			{
+				var result = await base.Update(id, update);
+
+				_logger.LogInformation("Property updated successfully: {PropertyId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Property update (ID: {id})");
+			}
 		}
 
 		[HttpDelete("{id}")]
 		[Authorize(Roles = "Landlord")]
-		public override async Task<IActionResult> Delete(int id)
+		public virtual async Task<IActionResult> DeleteProperty(int id)
 		{
-			var result = await base.Delete(id);
-			return result;
+			try
+			{
+				var result = await base.Delete(id);
+				
+				_logger.LogInformation("Property deleted successfully: {PropertyId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+				
+				return result;
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Property deletion (ID: {id})");
+			}
 		}
 
 		// Additional endpoints related to properties can be added here

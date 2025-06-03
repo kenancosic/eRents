@@ -2,6 +2,10 @@
 using eRents.Shared.DTO.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using eRents.Shared.Services;
+using eRents.Shared.DTO.Response;
+using eRents.Application.Exceptions;
+using ValidationException = eRents.Application.Exceptions.ValidationException;
 
 namespace eRents.WebApi.Controllers
 {
@@ -11,10 +15,102 @@ namespace eRents.WebApi.Controllers
 	public class ImageController : ControllerBase
 	{
 		private readonly IImageService _imageService;
+		private readonly ILogger<ImageController> _logger;
+		private readonly ICurrentUserService _currentUserService;
 
-		public ImageController(IImageService imageService)
+		public ImageController(
+			IImageService imageService,
+			ILogger<ImageController> logger,
+			ICurrentUserService currentUserService)
 		{
 			_imageService = imageService;
+			_logger = logger;
+			_currentUserService = currentUserService;
+		}
+
+		/// <summary>
+		/// Handles all types of exceptions with appropriate HTTP status codes and standardized error responses
+		/// </summary>
+		private IActionResult HandleStandardError(Exception ex, string operation)
+		{
+			var requestId = HttpContext.TraceIdentifier;
+			var path = Request.Path.Value;
+			var userId = _currentUserService.UserId ?? "unknown";
+			
+			return ex switch
+			{
+				UnauthorizedAccessException unauthorizedException => HandleUnauthorizedError(unauthorizedException, operation, requestId, path, userId),
+				ValidationException validationException => HandleValidationError(validationException, operation, requestId, path, userId),
+				KeyNotFoundException notFoundException => HandleNotFoundError(notFoundException, operation, requestId, path, userId),
+				_ => HandleGenericError(ex, operation, requestId, path, userId)
+			};
+		}
+		
+		private IActionResult HandleUnauthorizedError(UnauthorizedAccessException ex, string operation, string requestId, string? path, string userId)
+		{
+			_logger.LogWarning(ex, "{Operation} failed - Unauthorized access by user {UserId} on {Path}", 
+				operation, userId, path);
+				
+			return StatusCode(403, new StandardErrorResponse
+			{
+				Type = "Authorization",
+				Message = "You don't have permission to perform this operation",
+				Timestamp = DateTime.UtcNow,
+				TraceId = requestId,
+				Path = path
+			});
+		}
+		
+		private IActionResult HandleValidationError(ValidationException ex, string operation, string requestId, string? path, string userId)
+		{
+			_logger.LogWarning(ex, "{Operation} failed - Validation errors for user {UserId} on {Path}", 
+				operation, userId, path);
+				
+			var validationErrors = new Dictionary<string, string[]>();
+			if (!string.IsNullOrEmpty(ex.Message))
+			{
+				validationErrors["general"] = new[] { ex.Message };
+			}
+				
+			return BadRequest(new StandardErrorResponse
+			{
+				Type = "Validation",
+				Message = "One or more validation errors occurred",
+				ValidationErrors = validationErrors,
+				Timestamp = DateTime.UtcNow,
+				TraceId = requestId,
+				Path = path
+			});
+		}
+		
+		private IActionResult HandleNotFoundError(KeyNotFoundException ex, string operation, string requestId, string? path, string userId)
+		{
+			_logger.LogWarning(ex, "{Operation} failed - Resource not found for user {UserId} on {Path}", 
+				operation, userId, path);
+				
+			return NotFound(new StandardErrorResponse
+			{
+				Type = "NotFound",
+				Message = "The requested resource was not found",
+				Timestamp = DateTime.UtcNow,
+				TraceId = requestId,
+				Path = path
+			});
+		}
+		
+		private IActionResult HandleGenericError(Exception ex, string operation, string requestId, string? path, string userId)
+		{
+			_logger.LogError(ex, "{Operation} failed - Unexpected error for user {UserId} on {Path}", 
+				operation, userId, path);
+				
+			return StatusCode(500, new StandardErrorResponse
+			{
+				Type = "Internal",
+				Message = "An unexpected error occurred while processing your request",
+				Timestamp = DateTime.UtcNow,
+				TraceId = requestId,
+				Path = path
+			});
 		}
 
 		/// <summary>
@@ -26,16 +122,18 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
+				_logger.LogInformation("Image upload attempt by user {UserId} for property/entity", 
+					_currentUserService.UserId ?? "unknown");
+
 				var response = await _imageService.UploadImageAsync(request);
+				
+				_logger.LogInformation("Image uploaded successfully: {ImageId} by user {UserId}", 
+					response.ImageId, _currentUserService.UserId ?? "unknown");
 				return Ok(response);
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Forbid(ex.Message);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Image upload failed: {ex.Message}");
+				return HandleStandardError(ex, "Image upload");
 			}
 		}
 
@@ -47,16 +145,18 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
+				_logger.LogInformation("Get property images request for property {PropertyId} by user {UserId}", 
+					propertyId, _currentUserService.UserId ?? "unknown");
+
 				var images = await _imageService.GetImagesByPropertyIdAsync(propertyId);
+				
+				_logger.LogInformation("Retrieved {ImageCount} images for property {PropertyId}", 
+					images.Count(), propertyId);
 				return Ok(images);
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Forbid(ex.Message);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving property images: {ex.Message}");
+				return HandleStandardError(ex, $"Get images for property {propertyId}");
 			}
 		}
 
@@ -71,17 +171,37 @@ namespace eRents.WebApi.Controllers
 			{
 				var image = await _imageService.GetImageByIdAsync(id);
 				if (image == null)
-					return NotFound("Image not found");
+				{
+					_logger.LogWarning("Image {ImageId} not found", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image not found",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
 				if (image.ImageData == null || image.ImageData.Length == 0)
-					return NotFound("Image data not available");
+				{
+					_logger.LogWarning("Image {ImageId} has no data available", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image data not available",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
 				var contentType = image.ContentType ?? "image/jpeg";
 				return File(image.ImageData, contentType, image.FileName);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving image: {ex.Message}");
+				return HandleStandardError(ex, $"Get image {id}");
 			}
 		}
 
@@ -96,19 +216,39 @@ namespace eRents.WebApi.Controllers
 			{
 				var image = await _imageService.GetImageByIdAsync(id);
 				if (image == null)
-					return NotFound("Image not found");
+				{
+					_logger.LogWarning("Thumbnail for image {ImageId} not found", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image not found",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
 				// Use thumbnail if available, otherwise fall back to original
 				var imageData = image.ThumbnailData ?? image.ImageData;
 				if (imageData == null || imageData.Length == 0)
-					return NotFound("Image data not available");
+				{
+					_logger.LogWarning("Thumbnail for image {ImageId} has no data available", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image data not available",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
 				var contentType = image.ContentType ?? "image/jpeg";
 				return File(imageData, contentType, $"thumb_{image.FileName}");
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving thumbnail: {ex.Message}");
+				return HandleStandardError(ex, $"Get thumbnail for image {id}");
 			}
 		}
 
@@ -120,9 +260,22 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
+				_logger.LogInformation("Get image info request for image {ImageId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+
 				var image = await _imageService.GetImageByIdAsync(id);
 				if (image == null)
-					return NotFound("Image not found");
+				{
+					_logger.LogWarning("Image info for image {ImageId} not found", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image not found",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
 				var imageInfo = new
 				{
@@ -143,7 +296,7 @@ namespace eRents.WebApi.Controllers
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error retrieving image info: {ex.Message}");
+				return HandleStandardError(ex, $"Get image info for image {id}");
 			}
 		}
 
@@ -156,19 +309,30 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
+				_logger.LogInformation("Delete image request for image {ImageId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+
 				var success = await _imageService.DeleteImageAsync(id);
 				if (!success)
-					return NotFound("Image not found");
+				{
+					_logger.LogWarning("Delete image failed - Image {ImageId} not found", id);
+					return NotFound(new StandardErrorResponse
+					{
+						Type = "NotFound",
+						Message = "Image not found",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
 
+				_logger.LogInformation("Image {ImageId} deleted successfully by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
 				return Ok(new { message = "Image deleted successfully" });
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Forbid(ex.Message);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error deleting image: {ex.Message}");
+				return HandleStandardError(ex, $"Delete image {id}");
 			}
 		}
 
@@ -181,25 +345,22 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
+				_logger.LogInformation("Update image metadata request for image {ImageId} by user {UserId}", 
+					id, _currentUserService.UserId ?? "unknown");
+
 				var updatedImage = await _imageService.UpdateImageMetadataAsync(id, request.IsCover, request.Description);
+				
+				_logger.LogInformation("Image metadata updated successfully for image {ImageId}", id);
 				return Ok(updatedImage);
-			}
-			catch (KeyNotFoundException ex)
-			{
-				return NotFound(ex.Message);
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Forbid(ex.Message);
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error updating image: {ex.Message}");
+				return HandleStandardError(ex, $"Update image metadata for image {id}");
 			}
 		}
 
 		/// <summary>
-		/// Set an image as the cover image for a property
+		/// Set property cover image
 		/// </summary>
 		[HttpPost("property/{propertyId}/cover/{imageId}")]
 		[Authorize(Roles = "Landlord")]
@@ -207,19 +368,19 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				var success = await _imageService.SetCoverImageAsync(propertyId, imageId);
-				if (!success)
-					return BadRequest("Failed to set cover image");
+				_logger.LogInformation("Set cover image request: property {PropertyId}, image {ImageId} by user {UserId}", 
+					propertyId, imageId, _currentUserService.UserId ?? "unknown");
 
-				return Ok(new { message = "Cover image set successfully" });
-			}
-			catch (UnauthorizedAccessException ex)
-			{
-				return Forbid(ex.Message);
+				// For now, use the update metadata method with IsCover = true
+				var updatedImage = await _imageService.UpdateImageMetadataAsync(imageId, true, null);
+				
+				_logger.LogInformation("Cover image set successfully for property {PropertyId}, image {ImageId}", 
+					propertyId, imageId);
+				return Ok(new { message = "Cover image set successfully", image = updatedImage });
 			}
 			catch (Exception ex)
 			{
-				return BadRequest($"Error setting cover image: {ex.Message}");
+				return HandleStandardError(ex, $"Set cover image for property {propertyId}");
 			}
 		}
 	}
