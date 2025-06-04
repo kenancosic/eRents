@@ -26,7 +26,7 @@ import 'services/report_service.dart';
 import 'services/profile_service.dart';
 import 'services/image_service.dart';
 
-// Provider imports (only what we need immediately)
+// Provider imports (only essential ones loaded at startup)
 import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
@@ -176,13 +176,9 @@ class ERentsApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ✅ SIMPLIFIED: Only core providers needed at app level
-        ChangeNotifierProvider(
-          create: (_) => AppErrorProvider(), // Global error handling
-        ),
-        ChangeNotifierProvider(
-          create: (_) => NavigationStateProvider(), // Using new StateProvider
-        ),
+        // ✅ Core providers needed at app level
+        ChangeNotifierProvider(create: (_) => AppErrorProvider()),
+        ChangeNotifierProvider(create: (_) => NavigationStateProvider()),
         ChangeNotifierProvider(
           create:
               (_) => PreferencesStateProvider(
@@ -193,8 +189,8 @@ class ERentsApp extends StatelessWidget {
           create: (_) => AuthProvider(getService<AuthService>()),
         ),
 
-        // ✅ Feature providers are created on-demand in routes
-        // No need to create all 20+ providers at startup
+        // ✅ Feature providers are created lazily in routes using ProviderRegistry
+        // This maintains lazy loading while providing persistence across navigation
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
@@ -208,6 +204,3 @@ class ERentsApp extends StatelessWidget {
     );
   }
 }
-
-/// Convenience function to get services from ServiceLocator
-T getService<T>() => ServiceLocator().get<T>();

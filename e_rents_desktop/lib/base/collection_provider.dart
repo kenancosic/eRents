@@ -23,6 +23,9 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
   /// Whether data is being refreshed (for pull-to-refresh)
   bool _isRefreshing = false;
 
+  /// Whether this provider has been disposed
+  bool _disposed = false;
+
   /// Current filter parameters
   Map<String, dynamic>? _currentParams;
 
@@ -133,8 +136,9 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
       if (index != -1) {
         _items[index] = updatedItem;
       } else {
-        // Item not in current list, add it
-        _items.add(updatedItem);
+        debugPrint(
+          'CollectionProvider: Item with id $id updated in repository but not found in local list. Local list not modified.',
+        );
       }
     });
   }
@@ -172,7 +176,9 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
   Future<void> loadCount([Map<String, dynamic>? params]) async {
     try {
       _totalCount = await repository.count(params ?? _currentParams);
-      notifyListeners();
+      if (!_disposed) {
+        notifyListeners();
+      }
     } catch (e) {
       // Count is optional, don't fail the whole operation
       debugPrint('Failed to load count: $e');
@@ -222,7 +228,27 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
     return result;
   }
 
-  // Protected/Private methods
+  /// Ensures the provider is initialized and fetches items if needed.
+  /// Call this after creating the provider.
+  Future<void> initializeAndFetchIfNeeded([
+    Map<String, dynamic>? params,
+  ]) async {
+    // Only attempt to initialize and fetch if truly idle and never initialized OR explicitly empty.
+    // The _initialized flag (set within fetchItems) helps prevent re-fetching
+    // if the provider is reused and already loaded data previously.
+    if (!_initialized || (_state == ProviderState.idle && _items.isEmpty)) {
+      // fetchItems is now safe to call directly as its internal notifyListeners calls are deferred.
+      fetchItems(params ?? _currentParams); // Use provided or existing params
+    }
+  }
+
+  // Protected getters and methods
+
+  /// Check if this provider has been disposed (for use in subclasses)
+  @protected
+  bool get disposed => _disposed;
+
+  // Private methods
 
   /// Execute an operation with proper state management
   Future<void> _execute(Future<void> Function() action) async {
@@ -242,7 +268,14 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
   void _setState(ProviderState newState) {
     if (_state != newState) {
       _state = newState;
-      notifyListeners();
+      if (!_disposed) {
+        // Schedule notification to avoid issues if called during build phase
+        Future.microtask(() {
+          if (!_disposed) {
+            notifyListeners();
+          }
+        });
+      }
     }
   }
 
@@ -250,14 +283,28 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
   void _setError(AppError error) {
     _error = error;
     _state = ProviderState.error;
-    notifyListeners();
+    if (!_disposed) {
+      // Schedule notification
+      Future.microtask(() {
+        if (!_disposed) {
+          notifyListeners();
+        }
+      });
+    }
   }
 
   /// Clear the current error
   void _clearError() {
     if (_error != null) {
       _error = null;
-      notifyListeners();
+      if (!_disposed) {
+        // Schedule notification
+        Future.microtask(() {
+          if (!_disposed) {
+            notifyListeners();
+          }
+        });
+      }
     }
   }
 
@@ -278,6 +325,7 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _items.clear();
     super.dispose();
   }

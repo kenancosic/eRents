@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/base/app_error.dart';
+import 'package:e_rents_desktop/utils/provider_registry.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
@@ -129,6 +130,10 @@ class AuthProvider extends ChangeNotifier {
       await _authService.logout();
       _currentUser = null;
       _isAuthenticated = false;
+
+      // Clear all cached providers on logout to free memory and ensure fresh data on next login
+      final registry = ProviderRegistry();
+      registry.clear();
     } catch (e) {
       _error = AppError.fromException(e);
     } finally {

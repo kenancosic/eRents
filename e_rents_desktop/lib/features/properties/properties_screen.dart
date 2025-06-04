@@ -11,6 +11,7 @@ import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/base/base.dart';
+import 'package:e_rents_desktop/base/provider_state.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/utils/image_utils.dart';
 
@@ -39,6 +40,11 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       setState(() {
         _filteredProperties = provider.properties;
       });
+
+      // If provider is idle and has no data, trigger initial load
+      if (provider.state == ProviderState.idle && provider.properties.isEmpty) {
+        provider.fetchItems();
+      }
     });
   }
 

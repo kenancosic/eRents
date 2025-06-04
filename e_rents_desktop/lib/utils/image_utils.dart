@@ -27,7 +27,11 @@ class ImageUtils {
 
     // If it's a relative API URL (starts with /), make it absolute
     if (url.startsWith('/')) {
-      return '$_baseApiUrl$url';
+      final absoluteUrl = '$_baseApiUrl$url';
+      debugPrint(
+        'ImageUtils: Converting relative URL "$url" to absolute: "$absoluteUrl"',
+      );
+      return absoluteUrl;
     }
 
     return url;
@@ -44,12 +48,14 @@ class ImageUtils {
   }) {
     // Handle null or empty URLs with fallback
     if (imageUrl == null || imageUrl.isEmpty) {
+      debugPrint('ImageUtils: Empty or null image URL provided');
       return errorWidget ??
           Icon(Icons.image, size: width ?? height ?? 64, color: Colors.grey);
     }
 
     // Convert relative URLs to absolute URLs using existing logic
     final fullUrl = makeAbsoluteUrl(imageUrl);
+    debugPrint('ImageUtils: Loading image from: "$fullUrl"');
 
     if (isAssetPath(imageUrl)) {
       return Image.asset(
@@ -58,6 +64,7 @@ class ImageUtils {
         width: width,
         height: height,
         errorBuilder: (context, error, stackTrace) {
+          debugPrint('ImageUtils: Asset image failed to load: $error');
           return errorWidget ??
               Icon(
                 Icons.broken_image,
@@ -91,6 +98,10 @@ class ImageUtils {
           );
         },
         errorBuilder: (context, error, stackTrace) {
+          debugPrint(
+            'ImageUtils: Network image failed to load from "$fullUrl": $error',
+          );
+          debugPrint('ImageUtils: Stack trace: $stackTrace');
           return errorWidget ??
               Icon(
                 Icons.broken_image,
@@ -106,6 +117,7 @@ class ImageUtils {
   /// Following frontend development rules for proper URL handling
   static ImageProvider buildImageProvider(String? imageUrl) {
     if (imageUrl == null || imageUrl.isEmpty) {
+      debugPrint('ImageUtils: Empty or null image URL for provider');
       // Return a placeholder provider - you might want to add a default asset
       return const NetworkImage(
         'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
@@ -119,6 +131,24 @@ class ImageUtils {
       return AssetImage(imageUrl);
     } else {
       return NetworkImage(fullUrl);
+    }
+  }
+
+  /// Test image URL availability (for debugging)
+  static Future<bool> testImageUrl(String? imageUrl) async {
+    if (imageUrl == null || imageUrl.isEmpty) return false;
+
+    final fullUrl = makeAbsoluteUrl(imageUrl);
+    debugPrint('ImageUtils: Testing image URL: "$fullUrl"');
+
+    try {
+      final image = NetworkImage(fullUrl);
+      final completer = await image.resolve(const ImageConfiguration());
+      debugPrint('ImageUtils: Image URL test successful: "$fullUrl"');
+      return true;
+    } catch (e) {
+      debugPrint('ImageUtils: Image URL test failed: "$fullUrl" - Error: $e');
+      return false;
     }
   }
 }

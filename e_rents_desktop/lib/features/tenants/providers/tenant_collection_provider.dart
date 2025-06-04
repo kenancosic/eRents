@@ -62,26 +62,26 @@ class TenantCollectionProvider extends CollectionProvider<User> {
     Map<String, String>? queryParams,
   }) async {
     _isLoadingProspective = true;
-    notifyListeners();
+    if (!disposed) notifyListeners();
 
     try {
       await _loadProspectiveTenantsInternal(queryParams: queryParams);
     } finally {
       _isLoadingProspective = false;
-      notifyListeners();
+      if (!disposed) notifyListeners();
     }
   }
 
   /// Load property assignments for given tenant IDs
   Future<void> loadPropertyAssignments(List<int> tenantIds) async {
     _isLoadingAssignments = true;
-    notifyListeners();
+    if (!disposed) notifyListeners();
 
     try {
       await _loadPropertyAssignmentsInternal(tenantIds);
     } finally {
       _isLoadingAssignments = false;
-      notifyListeners();
+      if (!disposed) notifyListeners();
     }
   }
 
@@ -189,13 +189,13 @@ class TenantCollectionProvider extends CollectionProvider<User> {
   /// Refresh prospective tenants only
   Future<void> refreshProspectiveTenants() async {
     _isLoadingProspective = true;
-    notifyListeners();
+    if (!disposed) notifyListeners();
 
     try {
       await _loadProspectiveTenantsInternal();
     } finally {
       _isLoadingProspective = false;
-      notifyListeners();
+      if (!disposed) notifyListeners();
     }
   }
 
@@ -209,7 +209,7 @@ class TenantCollectionProvider extends CollectionProvider<User> {
     );
     _prospectiveTenants.clear();
     _prospectiveTenants.addAll(preferences);
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   Future<void> _loadPropertyAssignmentsInternal(List<int> tenantIds) async {
@@ -220,7 +220,7 @@ class TenantCollectionProvider extends CollectionProvider<User> {
     );
     _propertyAssignments.clear();
     _propertyAssignments.addAll(assignments);
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   // Override unsupported operations for tenants

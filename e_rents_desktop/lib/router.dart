@@ -38,7 +38,9 @@ import 'dart:io';
 import 'features/properties/providers/property_detail_provider.dart';
 import 'features/properties/providers/property_stats_provider.dart';
 import 'features/properties/providers/property_collection_provider.dart';
-import 'main.dart' show getService;
+import 'base/provider_state.dart';
+import 'utils/provider_registry.dart';
+import 'base/service_locator.dart' show getService;
 
 // Shell layout that includes the persistent navigation bar
 class AppShell extends StatelessWidget {
@@ -306,7 +308,7 @@ class AppRouter {
     ],
   );
 
-  // ✅ NEW: Factory methods for creating screens with providers
+  // ✅ NEW: Factory methods for creating screens with lazy persistent providers
   static Widget _createHomeScreen() {
     return ChangeNotifierProvider(
       create:
@@ -318,68 +320,91 @@ class AppRouter {
   }
 
   static Widget _createPropertyDetailsScreen(String propertyId) {
+    final registry = ProviderRegistry();
+
+    final propertyDetailProvider = registry.getOrCreate<PropertyDetailProvider>(
+      () => PropertyDetailProvider(getService()),
+    );
+    propertyDetailProvider.loadPropertyById(int.parse(propertyId));
+
+    final propertyStatsProvider = registry.getOrCreate<PropertyStatsProvider>(
+      () => PropertyStatsProvider(
+        getService(), // StatisticsService
+        getService(), // BookingService
+      ),
+    );
+    propertyStatsProvider.loadPropertyStats(propertyId);
+
     return MultiProvider(
       providers: [
-        // Create providers on-demand using ServiceLocator
-        ChangeNotifierProvider(
-          create:
-              (_) =>
-                  PropertyDetailProvider(getService())
-                    ..loadPropertyById(int.parse(propertyId)),
-        ),
-        ChangeNotifierProvider(
-          create:
-              (_) => PropertyStatsProvider(
-                getService(), // StatisticsService
-                getService(), // BookingService
-              )..loadPropertyStats(propertyId),
-        ),
+        ChangeNotifierProvider.value(value: propertyDetailProvider),
+        ChangeNotifierProvider.value(value: propertyStatsProvider),
       ],
       child: PropertyDetailsScreen(propertyId: propertyId),
     );
   }
 
   static Widget _createPropertiesScreen() {
-    return ChangeNotifierProvider(
-      create: (_) => PropertyCollectionProvider(getService())..fetchItems(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<PropertyCollectionProvider>(
+      () => PropertyCollectionProvider(getService()),
+    );
+    provider.initializeAndFetchIfNeeded();
+
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const PropertiesScreen(),
     );
   }
 
   static Widget _createMaintenanceDetailsScreen(String issueId) {
-    // Create MaintenanceDetailProvider on-demand with automatic data loading
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              MaintenanceDetailProvider(getService<MaintenanceRepository>())
-                ..loadMaintenanceIssueById(int.parse(issueId)),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<MaintenanceDetailProvider>(
+      () => MaintenanceDetailProvider(getService<MaintenanceRepository>()),
+    );
+    provider.loadMaintenanceIssueById(int.parse(issueId));
+
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: MaintenanceIssueDetailsScreen(
         issueId: issueId,
-        issue: null, // Will be loaded by provider
+        issue: null, // Will be loaded/retrieved by provider
       ),
     );
   }
 
   static Widget _createPropertyFormScreen(String? propertyId) {
+    final registry = ProviderRegistry();
+
     if (propertyId == null) {
-      // Add mode - only need PropertyCollectionProvider
-      return ChangeNotifierProvider(
-        create: (_) => PropertyCollectionProvider(getService()),
+      // Add mode
+      final collectionProvider = registry
+          .getOrCreate<PropertyCollectionProvider>(
+            () => PropertyCollectionProvider(getService()),
+          );
+      // No explicit fetch needed here for collection on 'add' form, form handles its own logic.
+      // initializeAndFetchIfNeeded could be called if the form needed initial data from it.
+      return ChangeNotifierProvider.value(
+        value: collectionProvider,
         child: const PropertyFormScreen(propertyId: null),
       );
     } else {
-      // Edit mode - need both PropertyDetailProvider and PropertyCollectionProvider
+      // Edit mode
+      final detailProvider = registry.getOrCreate<PropertyDetailProvider>(
+        () => PropertyDetailProvider(getService()),
+      );
+      detailProvider.loadPropertyById(int.parse(propertyId)); // Safe call
+
+      final collectionProvider = registry
+          .getOrCreate<PropertyCollectionProvider>(
+            () => PropertyCollectionProvider(getService()),
+          );
+      // Collection provider typically doesn't need init for the 'edit' form screen itself.
+
       return MultiProvider(
         providers: [
-          ChangeNotifierProvider(
-            create:
-                (_) =>
-                    PropertyDetailProvider(getService())
-                      ..loadPropertyById(int.parse(propertyId)),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => PropertyCollectionProvider(getService()),
-          ),
+          ChangeNotifierProvider.value(value: detailProvider),
+          ChangeNotifierProvider.value(value: collectionProvider),
         ],
         child: PropertyFormScreen(propertyId: propertyId),
       );
@@ -387,21 +412,25 @@ class AppRouter {
   }
 
   static Widget _createMaintenanceScreen() {
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              MaintenanceCollectionProvider(getService<MaintenanceRepository>())
-                ..fetchItems(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<MaintenanceCollectionProvider>(
+      () => MaintenanceCollectionProvider(getService<MaintenanceRepository>()),
+    );
+    provider.initializeAndFetchIfNeeded(); // Safe call
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const MaintenanceScreen(),
     );
   }
 
   static Widget _createMaintenanceFormScreen(String? propertyId) {
-    return ChangeNotifierProvider(
-      create:
-          (_) => MaintenanceCollectionProvider(
-            getService<MaintenanceRepository>(),
-          ),
+    final registry = ProviderRegistry();
+    final collectionProvider = registry.getOrCreate<
+      MaintenanceCollectionProvider
+    >(() => MaintenanceCollectionProvider(getService<MaintenanceRepository>()));
+    // No explicit fetch needed for collection on 'maintenance add' form.
+    return ChangeNotifierProvider.value(
+      value: collectionProvider,
       child: MaintenanceFormScreen(
         propertyId: propertyId != null ? int.parse(propertyId) : null,
       ),
@@ -409,58 +438,72 @@ class AppRouter {
   }
 
   static Widget _createTenantsScreen() {
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              TenantCollectionProvider(getService<TenantRepository>())
-                ..loadAllData(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<TenantCollectionProvider>(
+      () => TenantCollectionProvider(getService<TenantRepository>()),
+    );
+    provider
+        .initializeAndFetchIfNeeded(); // Safe call (assuming TenantCollectionProvider uses the base CollectionProvider's method)
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const TenantsScreen(),
     );
   }
 
   static Widget _createChatScreen() {
+    final registry = ProviderRegistry();
+    final chatCollectionProvider = registry.getOrCreate<ChatCollectionProvider>(
+      () => ChatCollectionProvider(getService<ChatRepository>()),
+    );
+    chatCollectionProvider.initializeAndFetchIfNeeded(); // Safe call
+
+    // ChatDetailProvider is screen-specific, created new each time, handles its own loading if any.
+    final chatDetailProvider = ChatDetailProvider(getService<ChatRepository>());
+
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create:
-              (_) =>
-                  ChatCollectionProvider(getService<ChatRepository>())
-                    ..loadAllData(),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ChatDetailProvider(getService<ChatRepository>()),
-        ),
+        ChangeNotifierProvider.value(value: chatCollectionProvider),
+        ChangeNotifierProvider.value(value: chatDetailProvider),
       ],
       child: const ChatScreen(),
     );
   }
 
   static Widget _createStatisticsScreen() {
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              StatisticsStateProvider(getService<StatisticsRepository>())
-                ..loadFinancialStatistics(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<StatisticsStateProvider>(
+      () => StatisticsStateProvider(getService<StatisticsRepository>()),
+    );
+    // Assuming StatisticsStateProvider's loadFinancialStatistics is safe or self-deferring
+    provider.loadFinancialStatistics();
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const StatisticsScreen(),
     );
   }
 
   static Widget _createReportsScreen() {
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              ReportsStateProvider(getService<ReportsRepository>())
-                ..loadCurrentReportData(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<ReportsStateProvider>(
+      () => ReportsStateProvider(getService<ReportsRepository>()),
+    );
+    // Assuming ReportsStateProvider's loadCurrentReportData is safe or self-deferring
+    provider.loadCurrentReportData();
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const ReportsScreen(),
     );
   }
 
   static Widget _createProfileScreen() {
-    return ChangeNotifierProvider(
-      create:
-          (_) =>
-              ProfileStateProvider(getService<ProfileRepository>())
-                ..loadUserProfile(),
+    final registry = ProviderRegistry();
+    final provider = registry.getOrCreate<ProfileStateProvider>(
+      () => ProfileStateProvider(getService<ProfileRepository>()),
+    );
+    // Assuming ProfileStateProvider's loadUserProfile is safe or self-deferring
+    provider.loadUserProfile();
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: const ProfileScreen(),
     );
   }

@@ -49,7 +49,7 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
     if (_isLoadingContacts) return;
 
     _isLoadingContacts = true;
-    notifyListeners();
+    if (!disposed) notifyListeners();
 
     try {
       final contacts = await _chatRepository.getContacts(
@@ -66,7 +66,7 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
       throw AppError.fromException(e, stackTrace);
     } finally {
       _isLoadingContacts = false;
-      notifyListeners();
+      if (!disposed) notifyListeners();
     }
   }
 
@@ -92,14 +92,14 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
             updatedAt: DateTime.now(),
           ),
     );
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Clear contact selection
   void clearSelection() {
     _selectedContactId = null;
     _selectedContact = null;
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Get unread message count for a specific contact
@@ -120,19 +120,19 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
   /// Update unread count for a contact
   void updateUnreadCount(int contactId, int count) {
     _unreadCountMap[contactId] = count;
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Mark all messages as read for a contact
   Future<void> markContactAsRead(int contactId) async {
     _unreadCountMap[contactId] = 0;
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Update last activity for a contact
   void updateLastActivity(int contactId, DateTime timestamp) {
     _lastActivityMap[contactId] = timestamp;
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Search contacts by name or email
@@ -224,7 +224,7 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
       }
     }
 
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Clear specific contact cache
@@ -232,7 +232,7 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
     _chatRepository.clearContactCache(contactId);
     _unreadCountMap.remove(contactId);
     _lastActivityMap.remove(contactId);
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Clear all chat caches
@@ -242,7 +242,7 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
     _lastActivityMap.clear();
     _contacts.clear();
     clearSelection();
-    notifyListeners();
+    if (!disposed) notifyListeners();
   }
 
   /// Refresh all data

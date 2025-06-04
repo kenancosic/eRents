@@ -12,6 +12,11 @@ namespace eRents.Application.Shared
 	{
 		public MappingProfile()
 		{
+			// Add DateOnly to DateTime converter
+			CreateMap<DateOnly, DateTime>().ConvertUsing(dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue));
+			CreateMap<DateOnly?, DateTime>().ConvertUsing(dateOnly => dateOnly.HasValue ? dateOnly.Value.ToDateTime(TimeOnly.MinValue) : DateTime.MinValue);
+			CreateMap<DateOnly?, DateTime?>().ConvertUsing(dateOnly => dateOnly.HasValue ? dateOnly.Value.ToDateTime(TimeOnly.MinValue) : null);
+
 			// Amenity mappings - AutoMapper can handle this automatically
 			CreateMap<Amenity, AmenityResponse>().ReverseMap();
 
@@ -19,7 +24,11 @@ namespace eRents.Application.Shared
 			CreateMap<Booking, BookingResponse>()
 				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name))
 				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName))
-				.ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Property.Currency));
+				.ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Property.Currency))
+				.ForMember(dest => dest.DateBooked, opt => opt.MapFrom(src => src.BookingDate))
+				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0))
+				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0))
+				.ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate ?? DateOnly.MinValue));
 			CreateMap<BookingInsertRequest, Booking>();
 			CreateMap<BookingUpdateRequest, Booking>();
 

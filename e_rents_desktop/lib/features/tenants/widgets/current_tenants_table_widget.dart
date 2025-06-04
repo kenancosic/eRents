@@ -4,7 +4,6 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/widgets/custom_table_widget.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
-import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 

@@ -26,6 +26,9 @@ abstract class DetailProvider<T> extends ChangeNotifier {
   /// Current item ID being loaded/displayed
   String? _currentId;
 
+  /// Whether this provider has been disposed
+  bool _disposed = false;
+
   DetailProvider(this.repository);
 
   // Public getters
@@ -202,7 +205,12 @@ abstract class DetailProvider<T> extends ChangeNotifier {
   void _setState(ProviderState newState) {
     if (_state != newState) {
       _state = newState;
-      notifyListeners();
+      // Schedule notification
+      Future.microtask(() {
+        if (!_disposed) {
+          notifyListeners();
+        }
+      });
     }
   }
 
@@ -210,19 +218,30 @@ abstract class DetailProvider<T> extends ChangeNotifier {
   void _setError(AppError error) {
     _error = error;
     _state = ProviderState.error;
-    notifyListeners();
+    // Schedule notification
+    Future.microtask(() {
+      if (!_disposed) {
+        notifyListeners();
+      }
+    });
   }
 
   /// Clear the current error
   void _clearError() {
     if (_error != null) {
       _error = null;
-      notifyListeners();
+      // Schedule notification
+      Future.microtask(() {
+        if (!_disposed) {
+          notifyListeners();
+        }
+      });
     }
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _item = null;
     super.dispose();
   }

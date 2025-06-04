@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:e_rents_desktop/utils/error_handler.dart';
+import 'package:e_rents_desktop/base/app_error.dart';
+import 'package:e_rents_desktop/providers/app_state_providers.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -74,10 +75,16 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = authProvider.errorMessage;
         });
       }
-    } catch (e) {
+    } catch (e, s) {
+      final appError = AppError.fromException(e, s);
+
       setState(() {
-        _errorMessage = ErrorHandler.getErrorMessage(e);
+        _errorMessage = appError.userMessage;
       });
+
+      if (mounted) {
+        context.read<AppErrorProvider>().setError(appError);
+      }
     } finally {
       if (mounted) {
         setState(() {
