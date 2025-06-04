@@ -1,4 +1,3 @@
-import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
@@ -24,18 +23,8 @@ class PropertyService {
         description:
             'A beautiful cottage with a great view, perfect for a relaxing getaway. Displayed from a slider.',
         averageRating: 4.8,
-        images: [
-          ImageModel(
-              imageId: 6,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-          ImageModel(
-              imageId: 7,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [6, 7],
+        amenityIds: [1, 2, 3],
         addressDetail: AddressDetail(
           addressDetailId: 5,
           geoRegionId: 5,
@@ -58,18 +47,8 @@ class PropertyService {
         description:
             'A lovely apartment in the heart of the city, ideal for long-term residence. Fetched via PropertyService.',
         averageRating: 4.7,
-        images: [
-          ImageModel(
-              imageId: 1,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-          ImageModel(
-              imageId: 2,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [1, 2],
+        amenityIds: [1, 4, 5],
         addressDetail: AddressDetail(
           addressDetailId: 1,
           geoRegionId: 1,
@@ -91,13 +70,8 @@ class PropertyService {
         description:
             'Enjoy the sun and waves in this beautiful condo. Fetched via PropertyService.',
         averageRating: 4.9,
-        images: [
-          ImageModel(
-              imageId: 3,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [3],
+        amenityIds: [2, 6, 7],
         addressDetail: AddressDetail(
           addressDetailId: 2,
           geoRegionId: 2,
@@ -117,13 +91,8 @@ class PropertyService {
         description:
             'Escape to this peaceful cabin with stunning mountain views. Fetched via PropertyService.',
         averageRating: 4.6,
-        images: [
-          ImageModel(
-              imageId: 4,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [4],
+        amenityIds: [8, 9, 10],
         addressDetail: AddressDetail(
           addressDetailId: 3,
           geoRegionId: 3,
@@ -143,13 +112,8 @@ class PropertyService {
         description:
             'Charming studio in a historic building, close to everything. Fetched via PropertyService.',
         averageRating: 4.3,
-        images: [
-          ImageModel(
-              imageId: 5,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [5],
+        amenityIds: [11, 12, 13],
         addressDetail: AddressDetail(
           addressDetailId: 4,
           geoRegionId: 4,
@@ -169,13 +133,8 @@ class PropertyService {
         description:
             'A stunning villa right by the beach, perfect for your vacation. Mock data from PropertyService.',
         averageRating: 4.9,
-        images: [
-          ImageModel(
-              imageId: 1021,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [1021],
+        amenityIds: [14, 15, 16],
         addressDetail: AddressDetail(
           addressDetailId: 102,
           geoRegionId: 102,
@@ -198,13 +157,8 @@ class PropertyService {
         description:
             'Cozy cabin with breathtaking mountain views. Mock data from PropertyService.',
         averageRating: 4.7,
-        images: [
-          ImageModel(
-              imageId: 1031,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [1031],
+        amenityIds: [17, 18, 19],
         addressDetail: AddressDetail(
           addressDetailId: 103,
           geoRegionId: 103,
@@ -213,10 +167,10 @@ class PropertyService {
               geoRegionId: 103,
               city: 'Peak Valley',
               country: 'USA',
-              state: 'CO'),
+              state: 'MT'),
         ),
-        facilities: "Fireplace, Hot Tub, Ski-in/Ski-out",
-        status: PropertyStatus.available,
+        facilities: "Wood Stove, Mountain Hiking, Stargazing Deck",
+        status: PropertyStatus.rented,
         dateAdded: DateTime.now().subtract(const Duration(days: 60)),
       ),
       108: Property(
@@ -227,13 +181,8 @@ class PropertyService {
         description:
             'Modern and convenient pad in the city, available from today! Mock data from PropertyService.',
         averageRating: 4.5,
-        images: [
-          ImageModel(
-              imageId: 1081,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [1081],
+        amenityIds: [20, 21, 22],
         addressDetail: AddressDetail(
           addressDetailId: 108,
           geoRegionId: 108,
@@ -253,18 +202,8 @@ class PropertyService {
         description:
             'Professional downtown apartment perfect for long-term residents. Features modern amenities, secure building, and convenient location. Ideal for professionals and students.',
         averageRating: 4.6,
-        images: [
-          ImageModel(
-              imageId: 3001,
-              fileName: 'assets/images/appartment.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-          ImageModel(
-              imageId: 3002,
-              fileName: 'assets/images/house.jpg',
-              imageData: Uint8List(0),
-              dateUploaded: DateTime.now()),
-        ],
+        imageIds: [3001, 3002],
+        amenityIds: [23, 24, 25],
         addressDetail: AddressDetail(
           addressDetailId: 300,
           geoRegionId: 300,

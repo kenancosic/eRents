@@ -2,6 +2,60 @@
 
 This document defines the architectural principles and coding standards that must be followed when constructing backend components for the eRents project.
 
+## 0. eRents Ecosystem Architecture
+
+### Application Distribution
+- **`e_rents_mobile`**: Consumer-facing mobile app for Users and Tenants
+  - Property browsing and search
+  - Booking management  
+  - Tenant services
+  - Review system (creating property reviews)
+- **`e_rents_desktop`**: Business management desktop app for Landlords ONLY
+  - Property portfolio management
+  - Tenant management
+  - Financial reporting
+  - Maintenance oversight
+  - Review management (replying to tenant reviews)
+
+### Shared Backend Services
+Both applications share the same backend API with role-based data filtering. The backend must support both application types while ensuring proper data access control.
+
+### Authentication Strategy by Application
+
+#### Desktop Application (Landlords Only)
+```csharp
+// Desktop authentication should validate landlord role
+[HttpPost("login/desktop")]
+public async Task<LoginResponseDto> DesktopLoginAsync(LoginRequestDto request)
+{
+    var user = await _userService.AuthenticateAsync(request.UsernameOrEmail, request.Password);
+    
+    // Desktop app restriction: Only landlords can access
+    if (user.Role != UserType.Landlord)
+        throw new UnauthorizedAccessException("Desktop application is for landlords only. Please use the mobile app.");
+    
+    var token = _tokenService.GenerateToken(user);
+    return new LoginResponseDto { Token = token, User = user };
+}
+```
+
+#### Mobile Application (Users & Tenants)
+```csharp
+// Mobile authentication supports Users and Tenants
+[HttpPost("login/mobile")]
+public async Task<LoginResponseDto> MobileLoginAsync(LoginRequestDto request)
+{
+    var user = await _userService.AuthenticateAsync(request.UsernameOrEmail, request.Password);
+    
+    // Mobile app supports Users and Tenants
+    if (user.Role == UserType.Landlord)
+        throw new UnauthorizedAccessException("Landlord accounts should use the desktop application for property management.");
+    
+    var token = _tokenService.GenerateToken(user);
+    return new LoginResponseDto { Token = token, User = user };
+}
+```
+
 ## 1. Project Structure & Clean Architecture
 
 ### Layer Organization
@@ -370,6 +424,365 @@ Before submitting code, verify:
 - Implement proper indexes for performance
 - Use appropriate data types
 - Consider data integrity constraints
+
+## 19. Review System Architecture (Social Media Style Conversations)
+
+### Review Types and Business Logic
+The eRents system supports a conversational review system with two distinct types of reviews:
+
+#### Property Reviews with Threaded Conversations
+- **Purpose**: Allow tenants to review properties after their stay, with landlord replies
+- **Reviewer**: Tenant (user who booked and stayed at the property)
+- **Subject**: Property (identified by `PropertyId`)
+- **Timing**: Can only be created after booking has ended
+- **Visibility**: Public to all users browsing properties
+- **Conversations**: Landlords can reply to reviews, creating social media-style threads
+
+#### Tenant Reviews  
+- **Purpose**: Allow landlords to review tenants after booking completion
+- **Reviewer**: Landlord (property owner)
+- **Subject**: Tenant (user who booked the property, identified by `RevieweeId`)
+- **Timing**: Can only be created after booking has ended
+- **Visibility**: Only visible when tenant marks their profile as public
+
+### Review Model Structure (Updated)
+```csharp
+public partial class Review
+{
+    public int ReviewId { get; set; }
+    public ReviewType ReviewType { get; set; } // PropertyReview or TenantReview
+    public int? PropertyId { get; set; } // Required for Property Reviews
+    public int? RevieweeId { get; set; } // Required for Tenant Reviews
+    public int? ReviewerId { get; set; } // Set automatically from current user
+    public int? BookingId { get; set; } // Required for original reviews, optional for replies
+    public decimal? StarRating { get; set; } // 1-5 stars, optional (null for replies)
+    public string? Description { get; set; }
+    public DateTime DateCreated { get; set; }
+    
+    // Threading system for conversations
+    public int? ParentReviewId { get; set; } // null for original reviews, points to parent for replies
+    
+    // Navigation properties
+    public virtual Review? ParentReview { get; set; }
+    public virtual ICollection<Review> Replies { get; set; } = new List<Review>();
+    public virtual ICollection<Image> Images { get; set; } = new List<Image>();
+    public virtual Property? Property { get; set; }
+    public virtual Booking? Booking { get; set; }
+    public virtual User? Reviewer { get; set; }
+    public virtual User? Reviewee { get; set; }
+}
+
+public enum ReviewType
+{
+    PropertyReview,  // Tenant reviewing a property after stay
+    TenantReview     // Landlord reviewing a tenant after booking ends
+}
+```
+
+### Security Implementation Patterns (Updated)
+
+#### Review Creation Validation
+```csharp
+public async Task<ReviewResponse> CreateReviewAsync(ReviewInsertRequest request)
+{
+    var currentUserId = _currentUserService.UserId;
+    var currentUserRole = _currentUserService.UserRole;
+    
+    // Handle replies vs original reviews
+    if (request.ParentReviewId.HasValue)
+    {
+        return await CreateReplyAsync(request, currentUserId, currentUserRole);
+    }
+    else
+    {
+        return await CreateOriginalReviewAsync(request, currentUserId, currentUserRole);
+    }
+}
+
+private async Task<ReviewResponse> CreateOriginalReviewAsync(ReviewInsertRequest request, int currentUserId, string currentUserRole)
+{
+    // Original reviews require booking validation
+    var booking = await _bookingRepository.GetByIdAsync(request.BookingId.Value);
+    if (booking == null || booking.Status != "Completed")
+        throw new BusinessException("Reviews can only be created for completed bookings");
+    
+    // StarRating is required for original reviews
+    if (!request.StarRating.HasValue)
+        throw new BusinessException("Star rating is required for original reviews");
+    
+    // Validate review type and user context
+    if (request.ReviewType == "PropertyReview")
+    {
+        if (currentUserRole != "Tenant" || booking.UserId != currentUserId)
+            throw new ForbiddenException("Only tenants can review properties they've stayed at");
+            
+        if (request.PropertyId != booking.PropertyId)
+            throw new BusinessException("Property ID must match booking property");
+    }
+    else if (request.ReviewType == "TenantReview")
+    {
+        if (currentUserRole != "Landlord")
+            throw new ForbiddenException("Only landlords can review tenants");
+            
+        var property = await _propertyRepository.GetByIdAsync(booking.PropertyId);
+        if (property?.OwnerId != currentUserId)
+            throw new ForbiddenException("You can only review tenants who stayed at your properties");
+    }
+    
+    // Set reviewer automatically
+    request.ReviewerId = currentUserId;
+    
+    var review = _mapper.Map<Review>(request);
+    await _reviewRepository.CreateAsync(review);
+    return _mapper.Map<ReviewResponse>(review);
+}
+
+private async Task<ReviewResponse> CreateReplyAsync(ReviewInsertRequest request, int currentUserId, string currentUserRole)
+{
+    // Validate parent review exists
+    var parentReview = await _reviewRepository.GetByIdAsync(request.ParentReviewId.Value);
+    if (parentReview == null)
+        throw new NotFoundException("Parent review not found");
+    
+    // Validate reply permissions
+    if (parentReview.ReviewType == ReviewType.PropertyReview)
+    {
+        // Only property owners can reply to property reviews about their properties
+        var property = await _propertyRepository.GetByIdAsync(parentReview.PropertyId.Value);
+        if (property?.OwnerId != currentUserId)
+            throw new ForbiddenException("You can only reply to reviews about your properties");
+    }
+    else if (parentReview.ReviewType == ReviewType.TenantReview)
+    {
+        // Users can reply to tenant reviews about themselves
+        if (parentReview.RevieweeId != currentUserId)
+            throw new ForbiddenException("You can only reply to reviews about yourself");
+    }
+    
+    // Set properties for reply
+    request.ReviewerId = currentUserId;
+    request.ReviewType = parentReview.ReviewType.ToString();
+    request.PropertyId = parentReview.PropertyId;
+    request.RevieweeId = parentReview.RevieweeId;
+    // BookingId and StarRating are optional for replies (can be null)
+    
+    var reply = _mapper.Map<Review>(request);
+    await _reviewRepository.CreateAsync(reply);
+    return _mapper.Map<ReviewResponse>(reply);
+}
+```
+
+#### Review Access Validation (Updated)
+```csharp
+public async Task<List<ReviewResponse>> GetReviewsAsync(ReviewSearchObject search)
+{
+    var currentUserId = _currentUserService.UserId;
+    var currentUserRole = _currentUserService.UserRole;
+    
+    var query = _reviewRepository.GetQueryable()
+        .Include(r => r.Replies) // Include reply threads
+        .ThenInclude(reply => reply.Reviewer)
+        .Include(r => r.Reviewer)
+        .Include(r => r.Property)
+        .Include(r => r.Reviewee);
+    
+    // Filter for original reviews only (not replies)
+    if (!search?.IncludeReplies == true)
+    {
+        query = query.Where(r => r.ParentReviewId == null);
+    }
+    
+    // Apply user context filtering
+    if (currentUserRole == "Landlord")
+    {
+        // Landlords see: Property reviews for their properties + Tenant reviews they wrote
+        query = query.Where(r => 
+            (r.ReviewType == ReviewType.PropertyReview && r.Property.OwnerId == currentUserId) ||
+            (r.ReviewType == ReviewType.TenantReview && r.ReviewerId == currentUserId));
+    }
+    else if (currentUserRole == "Tenant")
+    {
+        // Tenants see: Property reviews they wrote + Tenant reviews about them (if profile public)
+        query = query.Where(r => 
+            (r.ReviewType == ReviewType.PropertyReview && r.ReviewerId == currentUserId) ||
+            (r.ReviewType == ReviewType.TenantReview && r.RevieweeId == currentUserId && r.Reviewee.IsPublic));
+    }
+    else if (currentUserRole == "User")
+    {
+        // Regular users see: Property reviews for available properties
+        query = query.Where(r => 
+            r.ReviewType == ReviewType.PropertyReview && 
+            r.Property.Status == "Available");
+    }
+    
+    // Apply additional filters
+    if (search?.PropertyId.HasValue == true)
+    {
+        query = query.Where(r => r.PropertyId == search.PropertyId);
+    }
+    
+    var reviews = await query
+        .OrderByDescending(r => r.DateCreated)
+        .ToListAsync();
+        
+    return _mapper.Map<List<ReviewResponse>>(reviews);
+}
+```
+
+### Repository Implementation Patterns (Updated)
+
+#### Review Repository Interface
+```csharp
+public interface IReviewRepository : IBaseRepository<Review>
+{
+    Task<List<Review>> GetPropertyReviewsWithRepliesAsync(int propertyId);
+    Task<List<Review>> GetTenantReviewsAsync(int tenantId, bool publicProfileOnly = true);
+    Task<decimal> GetAverageRatingAsync(int propertyId); // Only considers original reviews with ratings
+    Task<bool> HasUserReviewedPropertyAsync(int userId, int propertyId, int bookingId);
+    Task<Review> GetReviewWithRepliesAsync(int reviewId);
+    Task<List<Review>> GetRepliesAsync(int parentReviewId);
+}
+```
+
+#### Review Repository Implementation
+```csharp
+public class ReviewRepository : BaseRepository<Review>, IReviewRepository
+{
+    public async Task<List<Review>> GetPropertyReviewsWithRepliesAsync(int propertyId)
+    {
+        return await _context.Reviews
+            .Where(r => r.ReviewType == ReviewType.PropertyReview && 
+                       r.PropertyId == propertyId &&
+                       r.ParentReviewId == null) // Only original reviews
+            .Include(r => r.Replies)
+                .ThenInclude(reply => reply.Reviewer)
+            .Include(r => r.Reviewer)
+            .OrderByDescending(r => r.DateCreated)
+            .ToListAsync();
+    }
+    
+    public async Task<decimal> GetAverageRatingAsync(int propertyId)
+    {
+        var ratings = await _context.Reviews
+            .Where(r => r.ReviewType == ReviewType.PropertyReview && 
+                       r.PropertyId == propertyId && 
+                       r.ParentReviewId == null && // Only original reviews
+                       r.StarRating.HasValue)
+            .Select(r => r.StarRating.Value)
+            .ToListAsync();
+            
+        return ratings.Any() ? ratings.Average() : 0;
+    }
+    
+    public async Task<Review> GetReviewWithRepliesAsync(int reviewId)
+    {
+        return await _context.Reviews
+            .Include(r => r.Replies)
+                .ThenInclude(reply => reply.Reviewer)
+            .Include(r => r.Reviewer)
+            .Include(r => r.Property)
+            .Include(r => r.Reviewee)
+            .FirstOrDefaultAsync(r => r.ReviewId == reviewId);
+    }
+}
+```
+
+### Controller Implementation Patterns (Updated)
+
+#### Review Controller Structure
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class ReviewsController : BaseCRUDController<ReviewResponse, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>
+{
+    private readonly IReviewService _reviewService;
+    
+    public ReviewsController(IReviewService reviewService) : base(reviewService)
+    {
+        _reviewService = reviewService;
+    }
+    
+    [HttpGet("properties/{propertyId}")]
+    public async Task<ActionResult<List<ReviewResponse>>> GetPropertyReviewsWithReplies(int propertyId)
+    {
+        var reviews = await _reviewService.GetPropertyReviewsWithRepliesAsync(propertyId);
+        return Ok(reviews);
+    }
+    
+    [HttpGet("{reviewId}/thread")]
+    public async Task<ActionResult<ReviewResponse>> GetReviewThread(int reviewId)
+    {
+        var review = await _reviewService.GetReviewWithRepliesAsync(reviewId);
+        return Ok(review);
+    }
+    
+    [HttpPost("{reviewId}/reply")]
+    public async Task<ActionResult<ReviewResponse>> ReplyToReview(int reviewId, [FromBody] string replyText)
+    {
+        var request = new ReviewInsertRequest
+        {
+            ParentReviewId = reviewId,
+            Description = replyText,
+            StarRating = null, // Replies don't require ratings
+            BookingId = null   // Replies don't require booking reference
+        };
+        
+        var reply = await _reviewService.CreateReviewAsync(request);
+        return Ok(reply);
+    }
+}
+```
+
+### Migration Considerations (Updated)
+
+#### Review Model Migration Pattern
+```csharp
+public partial class AddReviewThreadingSystem : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        // Remove Status field (no more moderation)
+        migrationBuilder.DropColumn("status", "Reviews");
+        
+        // Add threading support
+        migrationBuilder.AddColumn<int?>("parent_review_id", "Reviews", nullable: true);
+        
+        // Make StarRating nullable for replies
+        migrationBuilder.AlterColumn<decimal?>("star_rating", "Reviews", nullable: true);
+        
+        // Make BookingId nullable for replies
+        migrationBuilder.AlterColumn<int?>("booking_id", "Reviews", nullable: true);
+        
+        // Add self-referencing foreign key
+        migrationBuilder.CreateIndex("IX_Reviews_parent_review_id", "Reviews", "parent_review_id");
+        migrationBuilder.AddForeignKey("FK__Review__parent_review_id", "Reviews", "parent_review_id", "Reviews", principalColumn: "review_id");
+    }
+}
+```
+
+### Review System Checklist (Updated)
+
+When implementing review functionality, verify:
+- [ ] Threading system supports nested conversations
+- [ ] Original reviews require StarRating and BookingId validation
+- [ ] Replies can have null StarRating and BookingId
+- [ ] ParentReviewId validation prevents orphaned replies
+- [ ] Self-referencing foreign key is properly configured
+- [ ] User permissions for replies are validated (property owners, reviewees)
+- [ ] Average rating calculations exclude replies (only count original reviews)
+- [ ] Frontend displays threaded conversation structure
+- [ ] Real-time notifications for new replies (via SignalR)
+- [ ] Performance indexes on ParentReviewId for reply lookups
+
+### Performance Considerations (Updated)
+
+- **Threading Indexes**: Ensure indexes on `ParentReviewId` for efficient reply queries
+- **Nested Loading**: Use `Include()` with `ThenInclude()` for reply threads
+- **Rating Calculations**: Filter out replies when calculating property averages
+- [ ] Pagination: Implement pagination for original reviews, load replies on demand
+- [ ] Caching: Cache review threads for popular properties
+- [ ] Real-time Updates: Use SignalR for live reply notifications
 
 ## Remember: Always Examine Existing Code First!
 

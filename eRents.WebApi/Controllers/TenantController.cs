@@ -19,7 +19,7 @@ namespace eRents.WebApi.Controllers
     [ApiController]
     [Route("[controller]")]
     [Authorize] // All endpoints require authentication
-    public class TenantController : EnhancedBaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
+    public class TenantController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
     {
         private readonly ITenantService _tenantService;
 

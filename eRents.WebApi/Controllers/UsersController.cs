@@ -12,7 +12,7 @@ namespace eRents.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
-	public class UsersController : EnhancedBaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
+	public class UsersController : BaseCRUDController<UserResponse, UserSearchObject, UserInsertRequest, UserUpdateRequest>
 	{
 		private readonly IUserService _userService;
 

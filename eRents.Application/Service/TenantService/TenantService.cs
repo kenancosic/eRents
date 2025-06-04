@@ -204,16 +204,9 @@ namespace eRents.Application.Service.TenantService
 					// User details
 					UserFullName = tenant.User != null ? $"{tenant.User.FirstName} {tenant.User.LastName}" : "Unknown User",
 					UserEmail = tenant.User?.Email ?? "No email",
-					UserPhone = tenant.User?.PhoneNumber,
-					UserCity = tenant.User?.AddressDetail?.GeoRegion?.City,
-					ProfileImageUrl = tenant.User?.ProfileImage != null ? $"/Image/{tenant.User.ProfileImage.ImageId}" : null,
 
 					// Property details
 					PropertyTitle = tenant.Property?.Name,
-					PropertyAddress = tenant.Property?.AddressDetail?.StreetLine1,
-					PropertyPrice = tenant.Property?.Price,
-					PropertyImageUrl = tenant.Property?.Images?.FirstOrDefault() != null ?
-						$"/Image/{tenant.Property.Images.First().ImageId}" : null,
 
 					// Performance metrics
 					TotalBookings = totalBookings,
@@ -261,14 +254,8 @@ namespace eRents.Application.Service.TenantService
 				IsPaypalLinked = user.IsPaypalLinked,
 				PaypalUserIdentifier = user.PaypalUserIdentifier,
 
-				// Profile image
-				ProfileImage = user.ProfileImage != null ? new ImageResponse
-				{
-					ImageId = user.ProfileImage.ImageId,
-					FileName = user.ProfileImage.FileName,
-					DateUploaded = user.ProfileImage.DateUploaded ?? DateTime.UtcNow,
-					Url = $"/Image/{user.ProfileImage.ImageId}"
-				} : null,
+				// Profile image ID only (following optimized DTO pattern)
+				ProfileImageId = user.ProfileImageId,
 
 				// Address details if available
 				AddressDetail = user.AddressDetail != null ? new AddressDetailResponse

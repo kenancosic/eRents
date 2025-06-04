@@ -248,7 +248,7 @@ class ProfileStateProvider extends StateProvider<User?> {
 
   /// Check if user has profile image
   bool get hasProfileImage {
-    return currentUser?.profileImage != null;
+    return currentUser?.profileImageId != null;
   }
 
   /// Check if PayPal is linked
@@ -268,7 +268,7 @@ class ProfileStateProvider extends StateProvider<User?> {
     if (user.lastName.isNotEmpty) completedFields++;
     if (user.email.isNotEmpty) completedFields++;
     if (user.phone != null && user.phone!.isNotEmpty) completedFields++;
-    if (user.profileImage != null) completedFields++;
+    if (user.profileImageId != null) completedFields++;
     if (user.addressDetail != null) completedFields++;
 
     return ((completedFields / totalFields) * 100).round();

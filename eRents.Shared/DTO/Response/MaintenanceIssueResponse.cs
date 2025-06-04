@@ -14,7 +14,7 @@ namespace eRents.Shared.DTO.Response
 		public string Status { get; set; }
 		public DateTime DateReported { get; set; }
 		public DateTime? DateResolved { get; set; }
-		public List<ImageResponse> Images { get; set; }
+		public List<int> ImageIds { get; set; } = new List<int>();
 		public string? LandlordResponse { get; set; }
 		public DateTime? LandlordResponseDate { get; set; }
 		public string? Category { get; set; }
@@ -22,9 +22,5 @@ namespace eRents.Shared.DTO.Response
 		public bool IsTenantComplaint { get; set; }
 		public decimal? Cost { get; set; }
 		public string? ResolutionNotes { get; set; }
-		public MaintenanceIssueResponse()
-		{
-			Images = new List<ImageResponse>();
-		}
 	}
 } 

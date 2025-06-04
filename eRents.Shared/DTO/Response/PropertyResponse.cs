@@ -12,7 +12,7 @@ namespace eRents.Shared.DTO.Response
 		public decimal Price { get; set; }
 		public string Currency { get; set; } = "BAM";
 		
-		// Foreign key references only (not redundant display names)
+		// Foreign key references
 		public int PropertyTypeId { get; set; }
 		public int StatusId { get; set; }
 		public int RentingTypeId { get; set; }
@@ -25,9 +25,17 @@ namespace eRents.Shared.DTO.Response
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
 		
-		// Relationships (simplified - just IDs for base response)
+		// Location
 		public AddressDetailResponse? AddressDetail { get; set; }
+		
+		// Related data - IDs only (frontend utilities will fetch full objects when needed)
 		public List<int> AmenityIds { get; set; } = new List<int>();
 		public List<int> ImageIds { get; set; } = new List<int>();
+		
+		// Optional display names - populated for detail views
+		public string? PropertyTypeName { get; set; }
+		public string? StatusName { get; set; }
+		public string? OwnerName { get; set; }
+		public double? AverageRating { get; set; }
 	}
 }

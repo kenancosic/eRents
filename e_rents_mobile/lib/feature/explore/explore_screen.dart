@@ -49,14 +49,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.8,
-        images: [
-          ImageModel(
-            imageId: 1,
-            fileName: 'assets/images/house.jpg',
-            imageData: null,
-            dateUploaded: DateTime.now(),
-          ),
-        ],
+        imageIds: [1],
+        amenityIds: [1, 2, 3],
         addressDetailId: 1,
         addressDetail: AddressDetail(
           addressDetailId: 1,
@@ -83,14 +77,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.9,
-        images: [
-          ImageModel(
-            imageId: 2,
-            fileName: 'assets/images/house.jpg',
-            imageData: null,
-            dateUploaded: DateTime.now(),
-          ),
-        ],
+        imageIds: [2],
+        amenityIds: [1, 3, 4, 5],
         addressDetailId: 2,
         addressDetail: AddressDetail(
           addressDetailId: 2,
@@ -118,14 +106,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         status: PropertyStatus.available,
         dateAdded: DateTime.now(),
         averageRating: 4.8,
-        images: [
-          ImageModel(
-            imageId: 3,
-            fileName: 'assets/images/house.jpg',
-            imageData: null,
-            dateUploaded: DateTime.now(),
-          ),
-        ],
+        imageIds: [3],
+        amenityIds: [2, 4, 5, 6],
         addressDetailId: 3,
         addressDetail: AddressDetail(
           addressDetailId: 3,

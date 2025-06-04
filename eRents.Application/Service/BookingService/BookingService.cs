@@ -221,7 +221,7 @@ namespace eRents.Application.Service.BookingService
 			return true;
 		}
 
-		        public async Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId)
+		public async Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
 			var currentUserId = _currentUserService.UserId;
@@ -259,7 +259,6 @@ namespace eRents.Application.Service.BookingService
 				PropertyId = b.PropertyId ?? 0,
 				PropertyName = b.Property?.Name ?? "Unknown Property",
 				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
-				PropertyImageData = b.Property?.Images?.FirstOrDefault()?.ImageData,
 				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
 				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,
@@ -272,7 +271,7 @@ namespace eRents.Application.Service.BookingService
 			return summaryItems;
 		}
 
-		        public async Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId)
+		public async Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
 			var currentUserId = _currentUserService.UserId;
@@ -309,7 +308,6 @@ namespace eRents.Application.Service.BookingService
 				PropertyId = b.PropertyId ?? 0,
 				PropertyName = b.Property?.Name ?? "Unknown Property",
 				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
-				PropertyImageData = b.Property?.Images?.FirstOrDefault()?.ImageData,
 				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
 				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
 				TotalPrice = b.TotalPrice,

@@ -1,4 +1,3 @@
-import 'package:e_rents_mobile/core/models/image_model.dart';
 import './address_detail.dart';
 
 enum PropertyRentalType {
@@ -16,22 +15,23 @@ class Property {
   final int ownerId;
   final String? description;
   final double price;
-  final String currency; // Added for standardization
+  final String currency;
   final String? facilities;
-  final PropertyStatus status; // Changed from String to enum
+  final PropertyStatus status;
   final DateTime? dateAdded;
   final String name;
   final double? averageRating;
-  final List<ImageModel> images;
+  final List<int> imageIds;
+  final List<int> amenityIds;
   final int? addressDetailId;
   final AddressDetail? addressDetail;
   final PropertyRentalType rentalType;
-  final PropertyType? propertyType; // Added missing field
-  final int? bedrooms; // Added missing field
-  final int? bathrooms; // Added missing field
-  final double? area; // Added missing field
-  final double? dailyRate; // For daily rentals
-  final int? minimumStayDays; // Minimum stay requirement
+  final PropertyType? propertyType;
+  final int? bedrooms;
+  final int? bathrooms;
+  final double? area;
+  final double? dailyRate;
+  final int? minimumStayDays;
 
   Property({
     required this.propertyId,
@@ -44,7 +44,8 @@ class Property {
     this.dateAdded,
     required this.name,
     this.averageRating,
-    required this.images,
+    required this.imageIds,
+    required this.amenityIds,
     this.addressDetailId,
     this.addressDetail,
     this.rentalType = PropertyRentalType.monthly,
@@ -58,10 +59,10 @@ class Property {
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      propertyId: json['propertyId'],
-      ownerId: json['ownerId'],
+      propertyId: json['propertyId'] ?? json['id'] ?? 0,
+      ownerId: json['ownerId'] ?? 0,
       description: json['description'],
-      price: json['price'].toDouble(),
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] ?? "BAM",
       facilities: json['facilities'],
       status: json['status'] != null
@@ -72,11 +73,10 @@ class Property {
           : PropertyStatus.available,
       dateAdded:
           json['dateAdded'] != null ? DateTime.parse(json['dateAdded']) : null,
-      name: json['name'],
-      averageRating: json['averageRating']?.toDouble(),
-      images: (json['images'] as List)
-          .map((i) => ImageModel.fromJson(i as Map<String, dynamic>))
-          .toList(),
+      name: json['name'] ?? '',
+      averageRating: (json['averageRating'] as num?)?.toDouble(),
+      imageIds: _parseImageIds(json['imageIds']),
+      amenityIds: _parseAmenityIds(json['amenityIds']),
       addressDetailId: json['addressDetailId'] as int?,
       addressDetail: json['addressDetail'] != null
           ? AddressDetail.fromJson(
@@ -96,10 +96,44 @@ class Property {
           : null,
       bedrooms: json['bedrooms'] as int?,
       bathrooms: json['bathrooms'] as int?,
-      area: json['area']?.toDouble(),
-      dailyRate: json['dailyRate']?.toDouble(),
+      area: (json['area'] as num?)?.toDouble(),
+      dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
     );
+  }
+
+  static List<int> _parseImageIds(dynamic imageIdsValue) {
+    if (imageIdsValue == null) return [];
+
+    try {
+      if (imageIdsValue is List) {
+        return imageIdsValue
+            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
+            .where((id) => id > 0)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error parsing imageIds: $e');
+      return [];
+    }
+  }
+
+  static List<int> _parseAmenityIds(dynamic amenityIdsValue) {
+    if (amenityIdsValue == null) return [];
+
+    try {
+      if (amenityIdsValue is List) {
+        return amenityIdsValue
+            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
+            .where((id) => id > 0)
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error parsing amenityIds: $e');
+      return [];
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -114,7 +148,8 @@ class Property {
       'dateAdded': dateAdded?.toIso8601String(),
       'name': name,
       'averageRating': averageRating,
-      'images': images.map((i) => i.toJson()).toList(),
+      'imageIds': imageIds,
+      'amenityIds': amenityIds,
       'addressDetailId': addressDetailId,
       'addressDetail': addressDetail?.toJson(),
       'rentalType': rentalType.toString().split('.').last,

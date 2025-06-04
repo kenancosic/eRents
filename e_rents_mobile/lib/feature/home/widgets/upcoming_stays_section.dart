@@ -2,7 +2,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart'; // Using Booking
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address_detail.dart';
 import 'package:e_rents_mobile/core/models/geo_region.dart';
-import 'package:e_rents_mobile/core/models/image_model.dart';
+
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart'; // Added import
@@ -26,14 +26,10 @@ class UpcomingStaysSection extends StatelessWidget {
       description:
           'Your upcoming booking from ${DateFormat.yMMMd().format(booking.startDate)}${booking.endDate != null ? ' to ${DateFormat.yMMMd().format(booking.endDate!)}' : ''}',
       averageRating: 4.8, // Mock rating since it's not in booking
-      images: [
-        ImageModel(
-          imageId: booking.propertyId,
-          fileName: booking.propertyImageUrl ?? 'assets/images/house.jpg',
-          imageData: Uint8List(0),
-          dateUploaded: DateTime.now(),
-        ),
-      ],
+      imageIds: [
+        booking.propertyId
+      ], // Use booking propertyId as imageId placeholder
+      amenityIds: [1, 2, 3], // Default amenities for booking card
       addressDetail: AddressDetail(
         addressDetailId: booking.propertyId,
         geoRegionId: 1,

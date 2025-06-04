@@ -60,10 +60,10 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   double get area => property?.area ?? 0.0;
 
   /// Get property images safely
-  List<dynamic> get images => property?.images ?? [];
+  List<int> get images => property?.imageIds ?? [];
 
   /// Get property amenities safely
-  List<String> get amenities => property?.amenities ?? [];
+  List<int> get amenities => property?.amenityIds ?? [];
 
   /// Get property amenity IDs safely
   List<int> get amenityIds => property?.amenityIds ?? [];

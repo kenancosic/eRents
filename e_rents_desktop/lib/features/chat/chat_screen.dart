@@ -301,17 +301,13 @@ class _ChatScreenState extends State<ChatScreen> {
                           CircleAvatar(
                             radius: 20,
                             backgroundImage:
-                                selectedContact.profileImage != null &&
-                                        selectedContact.profileImage!.url !=
-                                            null
+                                selectedContact.profileImageId != null
                                     ? NetworkImage(
-                                      selectedContact.profileImage!.url!,
+                                      '/Image/${selectedContact.profileImageId}',
                                     )
                                     : null,
                             child:
-                                (selectedContact.profileImage == null ||
-                                        selectedContact.profileImage!.url ==
-                                            null)
+                                (selectedContact.profileImageId == null)
                                     ? Text(
                                       selectedContact.firstName[0] +
                                           selectedContact.lastName[0],

@@ -1,5 +1,4 @@
 import './address_detail.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 enum UserType { admin, landlord, tenant }
 
@@ -11,7 +10,7 @@ class User {
   final String lastName;
   final String? phone;
   final UserType role;
-  final erents.ImageInfo? profileImage;
+  final int? profileImageId;
   final DateTime? dateOfBirth;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -32,7 +31,7 @@ class User {
     required this.lastName,
     this.phone,
     required this.role,
-    this.profileImage,
+    this.profileImageId,
     this.dateOfBirth,
     required this.createdAt,
     required this.updatedAt,
@@ -53,12 +52,7 @@ class User {
       lastName: json['lastName'] as String? ?? '',
       phone: json['phoneNumber'] as String? ?? json['phone'] as String?,
       role: _parseUserType(json['role']),
-      profileImage:
-          json['profileImage'] != null
-              ? erents.ImageInfo.fromJson(
-                json['profileImage'] as Map<String, dynamic>,
-              )
-              : null,
+      profileImageId: json['profileImageId'] as int?,
       dateOfBirth:
           json['dateOfBirth'] != null
               ? DateTime.tryParse(json['dateOfBirth'] as String)
@@ -119,7 +113,7 @@ class User {
       'lastName': lastName,
       'phoneNumber': phone,
       'role': role.toString().split('.').last,
-      'profileImage': profileImage?.toJson(),
+      'profileImageId': profileImageId,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -141,7 +135,7 @@ class User {
     String? lastName,
     String? phone,
     UserType? role,
-    erents.ImageInfo? profileImage,
+    int? profileImageId,
     DateTime? dateOfBirth,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -160,7 +154,7 @@ class User {
       lastName: lastName ?? this.lastName,
       phone: phone ?? this.phone,
       role: role ?? this.role,
-      profileImage: profileImage ?? this.profileImage,
+      profileImageId: profileImageId ?? this.profileImageId,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

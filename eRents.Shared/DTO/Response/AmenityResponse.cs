@@ -2,8 +2,7 @@
 {
 	public class AmenityResponse
 	{
-		public int AmenityId { get; set; }
-		public string AmenityName { get; set; } = null!;
-
+		public int Id { get; set; } // Consistent with other DTOs
+		public string Name { get; set; } = null!; // Simplified naming
 	}
 }

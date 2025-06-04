@@ -79,12 +79,7 @@ class PropertyService extends ApiService {
       // IMPROVED: Send amenityIds for better performance and type safety
       'amenityIds': property.amenityIds ?? [],
       // Extract image IDs from the images list
-      'imageIds':
-          property.images
-              .map((img) => img.id)
-              .where((id) => id != null)
-              .cast<int>()
-              .toList(),
+      'imageIds': property.imageIds,
     };
 
     // Only add address if it has meaningful data
@@ -117,12 +112,7 @@ class PropertyService extends ApiService {
       // IMPROVED: Send amenityIds for better performance and type safety
       'amenityIds': property.amenityIds ?? [],
       // Extract image IDs from the images list
-      'imageIds':
-          property.images
-              .map((img) => img.id)
-              .where((id) => id != null)
-              .cast<int>()
-              .toList(),
+      'imageIds': property.imageIds,
     };
 
     // Only add address if it has meaningful data

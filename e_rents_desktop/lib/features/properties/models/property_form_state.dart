@@ -172,21 +172,8 @@ class PropertyFormState extends ChangeNotifier {
       _selectedFormattedAddress = address.streetLine2;
     }
 
-    _selectedAmenities = property.amenities ?? [];
-    _selectedAmenityIds = property.amenityIds ?? [];
-    _images =
-        property.images
-            .where((img) => img.url?.isNotEmpty == true)
-            .map(
-              (img) => picker.ImageInfo(
-                id: img.id,
-                fileName: img.fileName,
-                url: img.url,
-                isCover: img.isCover,
-                isNew: false,
-              ),
-            )
-            .toList();
+    _selectedAmenityIds = property.amenityIds;
+    // Note: property.images no longer exists, images are fetched via imageIds from ImageController
 
     notifyListeners();
   }
@@ -230,24 +217,14 @@ class PropertyFormState extends ChangeNotifier {
       price: double.parse(priceController.text),
       rentingType: _rentingType,
       status: _status,
-      images:
-          _images
-              .map(
-                (img) => erents.ImageInfo(
-                  id: img.id ?? 0,
-                  url: img.url,
-                  fileName: img.fileName,
-                  isCover: img.isCover,
-                ),
-              )
-              .toList(),
+      imageIds:
+          _images.map((img) => img.id ?? 0).where((id) => id > 0).toList(),
       addressDetail: _createAddressDetail(initialProperty),
       bedrooms: bedrooms > 0 ? bedrooms : 1, // Ensure minimum 1 bedroom
       bathrooms: bathrooms > 0 ? bathrooms : 1, // Ensure minimum 1 bathroom
       area: double.parse(areaController.text),
       maintenanceIssues: initialProperty?.maintenanceIssues ?? [],
-      amenities: _selectedAmenities, // Keep for backward compatibility
-      amenityIds: _selectedAmenityIds, // NEW: Efficient backend communication
+      amenityIds: _selectedAmenityIds,
       currency: _sanitizeCurrency(currencyController.text),
       dailyRate:
           dailyRateController.text.isNotEmpty

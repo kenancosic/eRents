@@ -32,16 +32,8 @@ class HomeScreen extends StatelessWidget {
           rentalType == PropertyRentalType.daily ? (dailyRate ?? 75.0) : null,
       description: 'A beautiful property with great amenities',
       averageRating: 4.8,
-      images: [
-        ImageModel(
-          imageId: id,
-          fileName: id.isEven
-              ? 'assets/images/house.jpg'
-              : 'assets/images/appartment.jpg',
-          imageData: Uint8List(0),
-          dateUploaded: DateTime.now(),
-        ),
-      ],
+      imageIds: [id],
+      amenityIds: [1, 2, 3, 4],
       addressDetail: AddressDetail(
         addressDetailId: id,
         geoRegionId: id,

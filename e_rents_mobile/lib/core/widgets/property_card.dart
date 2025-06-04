@@ -184,8 +184,10 @@ class PropertyCard extends StatelessWidget {
   }
 
   String _getImageUrl() {
-    if (property.images.isNotEmpty) {
-      return property.images.first.fileName;
+    if (property.imageIds.isNotEmpty) {
+      // In production, this would fetch from ImageController: '/Image/${property.imageIds.first}'
+      // For now, using fallback image since we don't have full image service integration
+      return 'assets/images/house.jpg';
     }
     // Fallback image
     return 'assets/images/house.jpg';

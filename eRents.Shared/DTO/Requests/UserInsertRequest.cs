@@ -1,10 +1,10 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using eRents.Shared.DTO.Response;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Requests
 {
-	public class UserInsertRequest
+	public class UserInsertRequest : BaseInsertRequest
 	{
 		[Required]
 		public string? Username { get; set; }
@@ -21,7 +21,7 @@ namespace eRents.Shared.DTO.Requests
 		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
 		public int? ProfileImageId { get; set; }
-		public AddressDetailResponse? AddressDetail { get; set; }
+		public AddressDetailRequest? AddressDetail { get; set; }
 		public DateTime? CreatedAt { get; set; }
 		public DateTime? UpdatedAt { get; set; }
 		public bool? IsPaypalLinked { get; set; }

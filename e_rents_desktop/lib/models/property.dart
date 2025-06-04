@@ -1,7 +1,6 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import './address_detail.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 enum PropertyStatus { available, rented, maintenance, unavailable }
 
@@ -16,16 +15,15 @@ class Property {
   final double price;
   final RentingType rentingType;
   final PropertyStatus status;
-  final List<erents.ImageInfo> images;
+  final List<int> imageIds;
   final int bedrooms;
   final int bathrooms;
   final double area;
   final List<MaintenanceIssue> maintenanceIssues;
-  final List<String>? amenities;
-  final List<int>? amenityIds;
-  final String currency; // Added for standardization
-  final double? dailyRate; // Added mobile-specific field
-  final int? minimumStayDays; // Added mobile-specific field
+  final List<int> amenityIds;
+  final String currency;
+  final double? dailyRate;
+  final int? minimumStayDays;
   final DateTime dateAdded;
   final int? addressDetailId;
   final AddressDetail? addressDetail;
@@ -39,13 +37,12 @@ class Property {
     required this.price,
     required this.rentingType,
     required this.status,
-    required this.images,
+    required this.imageIds,
     required this.bedrooms,
     required this.bathrooms,
     required this.area,
     required this.maintenanceIssues,
-    this.amenities,
-    this.amenityIds,
+    required this.amenityIds,
     this.currency = "BAM",
     this.dailyRate,
     this.minimumStayDays,
@@ -70,13 +67,12 @@ class Property {
         json['rentingType'] ?? json['rentingTypeId'],
       ),
       status: _parsePropertyStatus(json['status'] ?? json['statusId']),
-      images: _parseImages(json['images']),
+      imageIds: _parseImageIds(json['imageIds']),
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
       area: (json['area'] as num?)?.toDouble() ?? 0.0,
       maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
-      amenities: _parseAmenities(json['amenities']),
-      amenityIds: _parseAmenityIds(json['amenities'] ?? json['amenityIds']),
+      amenityIds: _parseAmenityIds(json['amenityIds']),
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
@@ -146,21 +142,19 @@ class Property {
     }
   }
 
-  static List<erents.ImageInfo> _parseImages(dynamic imagesValue) {
-    if (imagesValue == null) return [];
+  static List<int> _parseImageIds(dynamic imageIdsValue) {
+    if (imageIdsValue == null) return [];
 
     try {
-      final List<dynamic> imagesList = imagesValue as List;
-      return imagesList.map((e) {
-        if (e is String) {
-          return erents.ImageInfo(id: int.parse(e), url: e);
-        } else if (e is Map<String, dynamic>) {
-          return erents.ImageInfo.fromJson(e);
-        } else {
-          return erents.ImageInfo(id: 0, url: '');
-        }
-      }).toList();
+      if (imageIdsValue is List) {
+        return imageIdsValue
+            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
+            .where((id) => id > 0)
+            .toList();
+      }
+      return [];
     } catch (e) {
+      print('Error parsing imageIds: $e');
       return [];
     }
   }
@@ -180,61 +174,20 @@ class Property {
     }
   }
 
-  static List<String>? _parseAmenities(dynamic amenitiesValue) {
-    if (amenitiesValue == null) return null;
-
-    try {
-      if (amenitiesValue is List) {
-        // Handle list of amenity objects or strings
-        return amenitiesValue
-            .map((amenity) {
-              if (amenity is String) {
-                return amenity;
-              } else if (amenity is Map<String, dynamic>) {
-                return amenity['name']?.toString() ??
-                    amenity['amenityName']?.toString() ??
-                    '';
-              } else {
-                return amenity.toString();
-              }
-            })
-            .where((name) => name.isNotEmpty)
-            .toList()
-            .cast<String>();
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
-    }
-  }
-
-  static List<int>? _parseAmenityIds(dynamic amenityIdsValue) {
-    if (amenityIdsValue == null) return null;
+  static List<int> _parseAmenityIds(dynamic amenityIdsValue) {
+    if (amenityIdsValue == null) return [];
 
     try {
       if (amenityIdsValue is List) {
         return amenityIdsValue
-            .map((amenity) {
-              if (amenity is int) {
-                return amenity;
-              } else if (amenity is Map<String, dynamic>) {
-                // Extract ID from AmenityResponse object
-                return amenity['amenityId'] as int? ??
-                    amenity['id'] as int? ??
-                    0;
-              } else {
-                return int.tryParse(amenity.toString()) ?? 0;
-              }
-            })
+            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
             .where((id) => id > 0)
-            .toList()
-            .cast<int>();
-      } else {
-        return null;
+            .toList();
       }
+      return [];
     } catch (e) {
-      return null;
+      print('Error parsing amenityIds: $e');
+      return [];
     }
   }
 
@@ -248,7 +201,7 @@ class Property {
       'price': price,
       'rentingType': rentingType.name,
       'status': status.toString().split('.').last,
-      'images': images.map((e) => e.toJson()).toList(),
+      'imageIds': imageIds,
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'area': area,
@@ -257,7 +210,6 @@ class Property {
       'minimumStayDays': minimumStayDays,
       'dateAdded': dateAdded.toIso8601String(),
       'addressDetail': addressDetail?.toJson(),
-      'amenities': amenities,
       'amenityIds': amenityIds,
     };
   }
@@ -271,12 +223,11 @@ class Property {
     double? price,
     RentingType? rentingType,
     PropertyStatus? status,
-    List<erents.ImageInfo>? images,
+    List<int>? imageIds,
     int? bedrooms,
     int? bathrooms,
     double? area,
     List<MaintenanceIssue>? maintenanceIssues,
-    List<String>? amenities,
     List<int>? amenityIds,
     String? currency,
     double? dailyRate,
@@ -294,12 +245,11 @@ class Property {
       price: price ?? this.price,
       rentingType: rentingType ?? this.rentingType,
       status: status ?? this.status,
-      images: images ?? this.images,
+      imageIds: imageIds ?? this.imageIds,
       bedrooms: bedrooms ?? this.bedrooms,
       bathrooms: bathrooms ?? this.bathrooms,
       area: area ?? this.area,
       maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
-      amenities: amenities ?? this.amenities,
       amenityIds: amenityIds ?? this.amenityIds,
       currency: currency ?? this.currency,
       dailyRate: dailyRate ?? this.dailyRate,
@@ -319,11 +269,12 @@ class Property {
     price: 0.0,
     rentingType: RentingType.monthly,
     status: PropertyStatus.available,
-    images: [],
+    imageIds: [],
     bedrooms: 0,
     bathrooms: 0,
     area: 0.0,
     maintenanceIssues: [],
+    amenityIds: [],
     dateAdded: DateTime.now(),
     addressDetailId: null,
     addressDetail: null,

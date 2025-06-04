@@ -396,11 +396,9 @@ class _PropertyListItem extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child:
-                  property.images.isNotEmpty &&
-                          property.images.first.url != null &&
-                          property.images.first.url!.isNotEmpty
+                  property.imageIds.isNotEmpty
                       ? ImageUtils.buildImage(
-                        property.images.first.url!,
+                        '/Image/${property.imageIds.first}',
                         width: 56,
                         height: 56,
                         fit: BoxFit.cover,
@@ -569,11 +567,9 @@ class _PropertyGridItem extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    property.images.isNotEmpty &&
-                            property.images.first.url != null &&
-                            property.images.first.url!.isNotEmpty
+                    property.imageIds.isNotEmpty
                         ? ImageUtils.buildImage(
-                          property.images.first.url!,
+                          '/Image/${property.imageIds.first}',
                           fit: BoxFit.cover,
                           errorWidget: Container(
                             // Consistent error widget

@@ -64,7 +64,10 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
     final user = profileProvider.currentUser;
 
     // Determine which image to show
-    _tempProfileImage ??= user?.profileImage;
+    String? imageUrl;
+    if (user?.profileImageId != null) {
+      imageUrl = '/Image/${user!.profileImageId}';
+    }
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -85,8 +88,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           Stack(
             children: [
               CustomAvatar(
-                imageUrl:
-                    _tempProfileImage?.url ?? 'assets/images/user-image.png',
+                imageUrl: imageUrl ?? 'assets/images/user-image.png',
                 size: 80,
                 borderWidth: 3,
               ),

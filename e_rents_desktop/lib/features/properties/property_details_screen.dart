@@ -104,7 +104,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         children: [
           PropertyHeader(property: property),
           const SizedBox(height: 16),
-          PropertyImagesGrid(images: property.images),
+          PropertyImagesGrid(images: property.imageIds),
           const SizedBox(height: 16),
           _buildSectionCard(
             title: 'Overview',
@@ -181,7 +181,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               children: [
                 PropertyHeader(property: property),
                 const SizedBox(height: 24),
-                PropertyImagesGrid(images: property.images),
+                PropertyImagesGrid(images: property.imageIds),
                 const SizedBox(height: 24),
                 _buildSectionCard(
                   title: 'Overview',

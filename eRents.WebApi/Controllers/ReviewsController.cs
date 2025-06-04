@@ -12,7 +12,7 @@ namespace eRents.WebApi.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
-	public class ReviewsController : EnhancedBaseCRUDController<ReviewResponse, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>
+	public class ReviewsController : BaseCRUDController<ReviewResponse, ReviewSearchObject, ReviewInsertRequest, ReviewUpdateRequest>
 	{
 		private readonly IReviewService _reviewService;
 

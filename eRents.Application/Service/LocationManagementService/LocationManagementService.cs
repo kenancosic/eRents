@@ -2,6 +2,7 @@ using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.DTO.Requests;
 using eRents.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,8 +34,7 @@ namespace eRents.Application.Service.LocationManagementService
         }
 
         /// <summary>
-        /// Process and store address data, reusing existing records when possible
-        /// This is the main method for address management
+        /// Process and store address data from Response DTO, reusing existing records when possible
         /// </summary>
         public async Task<AddressDetail> ProcessAddressAsync(AddressDetailResponse addressDto)
         {
@@ -66,9 +66,41 @@ namespace eRents.Application.Service.LocationManagementService
         }
 
         /// <summary>
+        /// Process and store address data from Request DTO, reusing existing records when possible
+        /// </summary>
+        public async Task<AddressDetail> ProcessAddressAsync(AddressDetailRequest addressDto)
+        {
+            if (addressDto?.GeoRegion == null)
+                throw new ArgumentException("Address must include geographic region information");
+
+            // Step 1: Process GeoRegion (find or create)
+            var geoRegion = await ProcessGeoRegionAsync(
+                addressDto.GeoRegion.City,
+                addressDto.GeoRegion.State,
+                addressDto.GeoRegion.Country,
+                addressDto.GeoRegion.PostalCode);
+
+            // Step 2: Process AddressDetail (find or create)
+            var addressDetail = await _addressDetailRepository.FindOrCreateAddressAsync(
+                geoRegion.GeoRegionId,
+                addressDto.StreetLine1,
+                addressDto.StreetLine2,
+                addressDto.Latitude,
+                addressDto.Longitude);
+
+            // Ensure the returned address has the GeoRegion loaded
+            if (addressDetail.GeoRegion == null)
+            {
+                addressDetail.GeoRegion = geoRegion;
+            }
+
+            return addressDetail;
+        }
+
+        /// <summary>
         /// Process address data for a specific user, handling existing user addresses
         /// </summary>
-        public async Task<AddressDetail> ProcessUserAddressAsync(int userId, AddressDetailResponse addressDto)
+        public async Task<AddressDetail> ProcessUserAddressAsync(int userId, AddressDetailRequest addressDto)
         {
             // Validate user access (ensure current user can modify this user)
             var currentUserIdString = _currentUserService.UserId;
@@ -99,7 +131,7 @@ namespace eRents.Application.Service.LocationManagementService
         /// <summary>
         /// Process address data for a specific property, handling existing property addresses
         /// </summary>
-        public async Task<AddressDetail> ProcessPropertyAddressAsync(int propertyId, AddressDetailResponse addressDto)
+        public async Task<AddressDetail> ProcessPropertyAddressAsync(int propertyId, AddressDetailRequest addressDto)
         {
             // Validate property access (ensure current user owns this property)
             var currentUserIdString = _currentUserService.UserId;

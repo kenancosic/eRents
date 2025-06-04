@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using eRents.Shared.DTO.Response;
 using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Requests
@@ -24,9 +23,9 @@ namespace eRents.Shared.DTO.Requests
 		public decimal? Area { get; set; }
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
-			public int OwnerId { get; set; }
-	public AddressDetailResponse? AddressDetail { get; set; }
-	public List<int>? AmenityIds { get; set; }
+		public int OwnerId { get; set; }
+		public AddressDetailRequest? AddressDetail { get; set; }
+		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; } // IDs of uploaded images
 	}
 }

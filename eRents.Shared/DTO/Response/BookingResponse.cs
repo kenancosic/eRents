@@ -12,7 +12,7 @@ namespace eRents.Shared.DTO.Response
 		public decimal TotalPrice { get; set; }
 		public string Status { get; set; }
 		public DateTime DateBooked { get; set; }
-		public string PropertyName { get; set; }
+		public string PropertyName { get; set; } // Could be fetched from PropertiesController using PropertyId
 		public string Currency { get; set; }
 	}
 }

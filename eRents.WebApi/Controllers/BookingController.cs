@@ -16,7 +16,7 @@ namespace eRents.WebApi.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
-	public class BookingsController : EnhancedBaseCRUDController<BookingResponse, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>
+	public class BookingsController : BaseCRUDController<BookingResponse, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>
 	{
 		private readonly IBookingService _bookingService;
 

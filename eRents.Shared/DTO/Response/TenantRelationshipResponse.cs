@@ -6,33 +6,25 @@ namespace eRents.Shared.DTO.Response
 	public class TenantRelationshipResponse : BaseResponse
 	{
 		public int TenantId { get; set; }
-		public int UserId { get; set; }
-		public int? PropertyId { get; set; }
+		public int UserId { get; set; } // Use UserController to fetch user details
+		public int? PropertyId { get; set; } // Use PropertiesController to fetch property details
 		public DateTime? LeaseStartDate { get; set; }
 		public DateTime? LeaseEndDate { get; set; }
 		public string? TenantStatus { get; set; } // Active, Completed, Cancelled
 
-		// User details
-		public string UserFullName { get; set; } = null!;
-		public string UserEmail { get; set; } = null!;
-		public string? UserPhone { get; set; }
-		public string? UserCity { get; set; }
-		public string? ProfileImageUrl { get; set; }
+		// Essential display fields (small data)
+		public string UserFullName { get; set; } = null!; // Keep for list display
+		public string UserEmail { get; set; } = null!; // Keep for contact
+		public string? PropertyTitle { get; set; } // Keep for list display
 
-		// Property details
-		public string? PropertyTitle { get; set; }
-		public string? PropertyAddress { get; set; }
-		public decimal? PropertyPrice { get; set; }
-		public string? PropertyImageUrl { get; set; }
-
-		// Booking details
+		// Booking details - could be optimized further by using BookingId only
 		public int? CurrentBookingId { get; set; }
 		public DateTime? BookingStartDate { get; set; }
 		public DateTime? BookingEndDate { get; set; }
 		public string? BookingStatus { get; set; }
 		public decimal? TotalPaid { get; set; }
 
-		// Performance metrics
+		// Performance metrics (computed server-side for efficiency)
 		public int TotalBookings { get; set; }
 		public decimal TotalRevenue { get; set; }
 		public double? AverageRating { get; set; }

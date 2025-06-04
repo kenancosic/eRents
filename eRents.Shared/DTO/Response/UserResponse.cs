@@ -10,11 +10,11 @@ namespace eRents.Shared.DTO.Response
 		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
 		public string? FullName { get; set; }
-		public ImageResponse? ProfileImage { get; set; }
+		public int? ProfileImageId { get; set; }
 		public string? PhoneNumber { get; set; }
-			public string Role { get; set; }
-	public AddressDetailResponse? AddressDetail { get; set; }
-	public bool IsPaypalLinked { get; set; }
+		public string Role { get; set; }
+		public AddressDetailResponse? AddressDetail { get; set; }
+		public bool IsPaypalLinked { get; set; }
 		public string? PaypalUserIdentifier { get; set; }
 	}
 }

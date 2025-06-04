@@ -31,8 +31,8 @@ namespace eRents.Application.Service.PropertyService
 		private static object _lock = new object();
 
 		public PropertyService(
-			IPropertyRepository propertyRepository, 
-			ICurrentUserService currentUserService, 
+			IPropertyRepository propertyRepository,
+			ICurrentUserService currentUserService,
 			ILocationManagementService locationManagementService,
 			IMapper mapper)
 				: base(propertyRepository, mapper)
@@ -104,13 +104,13 @@ namespace eRents.Application.Service.PropertyService
 				// For now, we'll log the ImageIds that should be processed
 				// The actual image association logic would be implemented in a separate ImageService
 				// and called from the controller after the property update is complete
-				
+
 				// TODO: Implement proper image association management
 				// This should be handled by calling ImageService methods to:
 				// 1. Remove images not in the ImageIds list
 				// 2. Associate new images with this property
 				// 3. Update existing image metadata if needed
-				
+
 				System.Console.WriteLine($"Property {entity.PropertyId} should be associated with images: [{string.Join(", ", update.ImageIds)}]");
 			}
 			// If ImageIds is null, preserve existing images (no change)
@@ -504,8 +504,8 @@ namespace eRents.Application.Service.PropertyService
 
 			return amenities.Select(a => new AmenityResponse
 			{
-				AmenityId = a.AmenityId,
-				AmenityName = a.AmenityName
+				Id = a.AmenityId,
+				Name = a.AmenityName
 			}).ToList();
 		}
 

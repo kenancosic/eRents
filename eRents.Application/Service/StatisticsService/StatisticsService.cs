@@ -41,7 +41,7 @@ namespace eRents.Application.Service.StatisticsService
                 OccupiedProperties = propertyStats.RentedUnits,
                 OccupancyRate = propertyStats.OccupancyRate,
                 AverageRating = averageRating,
-                TopProperties = topProperties,
+                TopPropertyIds = topProperties.Select(p => p.PropertyId).ToList(),
                 PendingMaintenanceIssues = maintenanceStats.PendingIssuesCount,
                 MonthlyRevenue = monthlyRevenue,
                 YearlyRevenue = yearlyRevenue,

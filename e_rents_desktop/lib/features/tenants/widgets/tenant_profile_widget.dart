@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
@@ -34,13 +35,11 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
           CircleAvatar(
             radius: 20,
             backgroundImage:
-                (widget.tenant.profileImage != null &&
-                        widget.tenant.profileImage!.url != null &&
-                        widget.tenant.profileImage!.url!.isNotEmpty)
-                    ? NetworkImage(widget.tenant.profileImage!.url!)
+                widget.tenant.profileImageId != null
+                    ? NetworkImage('/Image/${widget.tenant.profileImageId}')
                     : const AssetImage('assets/images/user-image.png'),
             child:
-                widget.tenant.profileImage == null
+                widget.tenant.profileImageId == null
                     ? Text(
                       '${widget.tenant.firstName[0]}${widget.tenant.lastName[0]}',
                     )

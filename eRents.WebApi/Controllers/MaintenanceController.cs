@@ -13,7 +13,7 @@ namespace eRents.WebApi.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
-	public class MaintenanceController : EnhancedBaseCRUDController<MaintenanceIssueResponse, MaintenanceIssueSearchObject, MaintenanceIssueRequest, MaintenanceIssueRequest>
+	public class MaintenanceController : BaseCRUDController<MaintenanceIssueResponse, MaintenanceIssueSearchObject, MaintenanceIssueRequest, MaintenanceIssueRequest>
 	{
 		private readonly IMaintenanceService _maintenanceService;
 		private readonly IImageService _imageService;

@@ -212,13 +212,11 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
               CircleAvatar(
                 radius: 16,
                 backgroundImage:
-                    (tenant.profileImage != null &&
-                            tenant.profileImage!.url != null &&
-                            tenant.profileImage!.url!.isNotEmpty)
-                        ? NetworkImage(tenant.profileImage!.url!)
+                    tenant.profileImageId != null
+                        ? NetworkImage('/Image/${tenant.profileImageId}')
                         : const AssetImage('assets/images/user-image.png'),
                 child:
-                    tenant.profileImage == null
+                    tenant.profileImageId == null
                         ? Text(
                           '${tenant.firstName[0]}${tenant.lastName[0]}',
                           style: const TextStyle(fontSize: 12),
@@ -301,7 +299,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                             : 0.0),
                     rentingType: RentingType.monthly, // Default
                     status: PropertyStatus.available, // Default
-                    images: [], // Will be populated if needed
+                    imageIds: [], // Images fetched via ImageController
                     bedrooms:
                         int.tryParse(
                           propertyData['bedrooms']?.toString() ?? '0',
@@ -320,7 +318,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                                 0.0
                             : 0.0),
                     maintenanceIssues: [], // Add required field
-                    amenities: [],
+                    amenityIds: [], // Amenities fetched via AmenitiesController
                     dateAdded: DateTime.now(),
                     addressDetail: null,
                   );
@@ -489,7 +487,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                                   : 0.0),
                           rentingType: RentingType.monthly, // Default
                           status: PropertyStatus.available, // Default
-                          images: [], // Will be populated if needed
+                          imageIds: [], // Images fetched via ImageController
                           bedrooms:
                               int.tryParse(
                                 propertyData['bedrooms']?.toString() ?? '0',
@@ -508,7 +506,8 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                                       0.0
                                   : 0.0),
                           maintenanceIssues: [], // Add required field
-                          amenities: [],
+                          amenityIds:
+                              [], // Amenities fetched via AmenitiesController
                           dateAdded: DateTime.now(),
                           addressDetail: null,
                         );

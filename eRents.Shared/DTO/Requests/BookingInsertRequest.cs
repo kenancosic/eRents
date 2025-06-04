@@ -1,8 +1,9 @@
 ﻿using System;
+using eRents.Shared.DTO.Base;
 
 namespace eRents.Shared.DTO.Requests
 {
-	public class BookingInsertRequest
+	public class BookingInsertRequest : BaseInsertRequest
 	{
 		public int PropertyId { get; set; }
 		public int UserId { get; set; }

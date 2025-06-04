@@ -1,7 +1,9 @@
 ﻿using eRents.Application.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using eRents.Shared.Services;
 
-namespace eRents.WebApi.Shared
+namespace eRents.WebApi.Controllers.Base
 {
 	public class BaseCRUDController<T, TSearch, TInsert, TUpdate> : BaseController<T, TSearch>
 			where T : class
@@ -9,28 +11,31 @@ namespace eRents.WebApi.Shared
 			where TInsert : class
 			where TUpdate : class
 	{
-		public BaseCRUDController(ICRUDService<T, TSearch, TInsert, TUpdate> service) : base(service)
+		public BaseCRUDController(
+			ICRUDService<T, TSearch, TInsert, TUpdate> service, 
+			ILogger logger, 
+			ICurrentUserService currentUserService) : base(service, logger, currentUserService)
 		{
 		}
 
 		[HttpPost]
 		public virtual async Task<T> Insert([FromBody] TInsert insert)
 		{
-			var result = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)this.Service).InsertAsync(insert);
+			var result = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)Service).InsertAsync(insert);
 			return result;
 		}
 
 		[HttpPut("{id}")]
 		public virtual async Task<T> Update(int id, [FromBody] TUpdate update)
 		{
-			var result = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)this.Service).UpdateAsync(id, update);
+			var result = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)Service).UpdateAsync(id, update);
 			return result;
 		}
 
 		[HttpDelete("{id}")]
 		public virtual async Task<IActionResult> Delete(int id)
 		{
-			var success = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)this.Service).DeleteAsync(id);
+			var success = await ((ICRUDService<T, TSearch, TInsert, TUpdate>)Service).DeleteAsync(id);
 			if (success)
 				return NoContent();
 

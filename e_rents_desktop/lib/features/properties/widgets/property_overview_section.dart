@@ -114,7 +114,6 @@ class PropertyOverviewSection extends StatelessWidget {
             child: AmenityManager(
               mode: AmenityManagerMode.view,
               initialAmenityIds: property.amenityIds,
-              initialAmenityNames: property.amenities,
               showTitle: false,
             ),
           ),

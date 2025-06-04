@@ -49,7 +49,7 @@ namespace eRents.Application.Shared
 			CreateMap<Payment, PaymentResponse>();
 			CreateMap<PaymentRequest, Payment>();
 
-			// ✅ SIMPLIFIED: PropertyResponse mapping with base class inheritance
+			// ✅ OPTIMIZED: PropertyResponse mapping with IDs only (frontend fetches full objects separately)
 			CreateMap<Property, PropertyResponse>()
 				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.PropertyId))  // Base class field
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))  // Base class field
@@ -60,17 +60,12 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.OwnerId))
 				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
 				.ForMember(dest => dest.AmenityIds, opt => opt.MapFrom(src => src.Amenities.Select(a => a.AmenityId).ToList()))
-				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
-
-			// ✅ NEW: PropertyDetailResponse for detailed views
-			CreateMap<Property, PropertyDetailResponse>()
-				.IncludeBase<Property, PropertyResponse>()  // Inherit base mapping
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()))
+				// Optional detailed properties - populated when needed
 				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName : null))
 				.ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status))
 				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : null))
-				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null))
-				.ForMember(dest => dest.Images, opt => opt.MapFrom(src => src.Images))
-				.ForMember(dest => dest.Amenities, opt => opt.MapFrom(src => src.Amenities));
+				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.Reviews.Count > 0 ? (double?)src.Reviews.Average(r => r.StarRating) : null));
 
 			// ✅ NEW: PropertySummaryResponse for list views
 			CreateMap<Property, PropertySummaryResponse>()
@@ -105,19 +100,25 @@ namespace eRents.Application.Shared
 			// Address and GeoRegion mappings - AutoMapper can handle these automatically
 			CreateMap<AddressDetail, AddressDetailResponse>().ReverseMap();
 			CreateMap<GeoRegion, GeoRegionResponse>().ReverseMap();
+			
+			// ✅ NEW: Request DTO mappings for LocationManagementService
+			CreateMap<AddressDetailRequest, AddressDetailResponse>().ReverseMap();
+			CreateMap<GeoRegionRequest, GeoRegionResponse>().ReverseMap();
 
-			// Review mappings - AutoMapper can handle most of this automatically
-			CreateMap<Review, ReviewResponse>();
+			// ✅ OPTIMIZED: Review mappings with ImageIds only
+			CreateMap<Review, ReviewResponse>()
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
 			CreateMap<ReviewInsertRequest, Review>();
 			CreateMap<ReviewUpdateRequest, Review>();
 
-			// ✅ SIMPLIFIED: User mappings with base class inheritance
+			// ✅ OPTIMIZED: User mappings with ProfileImageId only
 			CreateMap<User, UserResponse>()
 				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.UserId))
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
 				.ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
 				.ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserTypeNavigation != null ? src.UserTypeNavigation.TypeName : null))
+				.ForMember(dest => dest.ProfileImageId, opt => opt.MapFrom(src => src.ProfileImageId))
 				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail));
 
 			CreateMap<UserInsertRequest, User>()
@@ -133,14 +134,15 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
 
-			// MaintenanceIssue mappings - Fix field name mismatches
+			// ✅ OPTIMIZED: MaintenanceIssue mappings with ImageIds only
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
 				.ForMember(dest => dest.IssueId, opt => opt.MapFrom(src => src.MaintenanceIssueId))
 				.ForMember(dest => dest.TenantId, opt => opt.MapFrom(src => src.ReportedByUserId))
 				.ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority != null ? src.Priority.PriorityName : null))
 				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status != null ? src.Status.StatusName : null))
 				.ForMember(dest => dest.DateReported, opt => opt.MapFrom(src => src.CreatedAt))
-				.ForMember(dest => dest.DateResolved, opt => opt.MapFrom(src => src.ResolvedAt));
+				.ForMember(dest => dest.DateResolved, opt => opt.MapFrom(src => src.ResolvedAt))
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
 			CreateMap<MaintenanceIssueRequest, MaintenanceIssue>()
 				.ForMember(dest => dest.Images, opt => opt.Ignore());
 		}

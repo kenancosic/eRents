@@ -17,7 +17,7 @@ namespace eRents.WebApi.Controllers
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize] // All endpoints require authentication
-	public class PropertiesController : EnhancedBaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
+	public class PropertiesController : BaseCRUDController<PropertyResponse, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>
 	{
 		private readonly IPropertyService _propertyService;
 		private readonly IBookingService _bookingService;

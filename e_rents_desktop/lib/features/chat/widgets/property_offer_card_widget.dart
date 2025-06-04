@@ -1,5 +1,6 @@
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
+import 'package:e_rents_desktop/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -58,20 +59,23 @@ class PropertyOfferCardWidget extends StatelessWidget {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              property.images.isNotEmpty
-                  ? (property.images.first.url!.startsWith('http')
-                      ? Image.network(
-                        property.images.first.url!,
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
-                      )
-                      : Image.asset(
-                        property.images.first.url!,
-                        width: 70,
-                        height: 70,
-                        fit: BoxFit.cover,
-                      ))
+              property.imageIds.isNotEmpty
+                  ? ImageUtils.buildImage(
+                    '/Image/${property.imageIds.first}',
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorWidget: Container(
+                      width: 70,
+                      height: 70,
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.house_outlined,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
                   : Container(
                     width: 70,
                     height: 70,

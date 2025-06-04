@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/utils/image_utils.dart';
 
 class PropertyImageSlider extends StatelessWidget {
   final Property property;
@@ -18,12 +19,22 @@ class PropertyImageSlider extends StatelessWidget {
     return Stack(
       children: [
         CustomSlider(
-          items: property.images
-              .map((image) => Image.asset(
-                    image.fileName,
+          items: property.imageIds
+              .map((imageId) => ImageUtils.buildImage(
+                    '/Image/$imageId',
                     width: double.infinity,
                     height: 350,
                     fit: BoxFit.cover,
+                    errorWidget: Container(
+                      width: double.infinity,
+                      height: 350,
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.image,
+                        size: 64,
+                        color: Colors.white,
+                      ),
+                    ),
                   ))
               .toList(),
           onPageChanged: onPageChanged,

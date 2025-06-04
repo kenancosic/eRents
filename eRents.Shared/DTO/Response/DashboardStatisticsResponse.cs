@@ -9,7 +9,7 @@ namespace eRents.Shared.DTO.Response
         public int OccupiedProperties { get; set; }
         public double OccupancyRate { get; set; }
         public double AverageRating { get; set; }
-        public List<PopularPropertyResponse> TopProperties { get; set; } = new List<PopularPropertyResponse>();
+        public List<int> TopPropertyIds { get; set; } = new List<int>(); // Use PropertiesController to fetch details
         
         // Maintenance statistics
         public int PendingMaintenanceIssues { get; set; }
@@ -22,6 +22,7 @@ namespace eRents.Shared.DTO.Response
         public double NetTotal { get; set; }
     }
 
+    // Keep this for when you need the full data (separate endpoint)
     public class PopularPropertyResponse
     {
         public int PropertyId { get; set; }

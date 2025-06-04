@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/models/image_info.dart' as erents;
 import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
-  final List<erents.ImageInfo> images;
+  final List<int> images;
 
   const PropertyImagesGrid({super.key, required this.images});
 
@@ -38,7 +38,7 @@ class PropertyImagesGrid extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     ImageUtils.buildImage(
-                      image.url!,
+                      '/Image/$image',
                       fit: BoxFit.cover,
                       errorWidget: Container(
                         decoration: BoxDecoration(
@@ -85,7 +85,7 @@ class PropertyImagesGrid extends StatelessWidget {
     );
   }
 
-  void _showImageDialog(BuildContext context, erents.ImageInfo image) {
+  void _showImageDialog(BuildContext context, int image) {
     showDialog(
       context: context,
       builder:
@@ -93,7 +93,7 @@ class PropertyImagesGrid extends StatelessWidget {
             child: Stack(
               children: [
                 ImageUtils.buildImage(
-                  image.url!,
+                  '/Image/$image',
                   fit: BoxFit.contain,
                   errorWidget: Container(
                     decoration: BoxDecoration(
