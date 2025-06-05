@@ -83,7 +83,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       _phoneController.text = user.phone ?? '';
 
       // Update address controller with latest data
-      final currentAddress = user.addressDetail?.streetLine1 ?? '';
+      final currentAddress = user.address?.streetLine1 ?? '';
       if (_addressController.text != currentAddress) {
         _addressController.text = currentAddress;
       }
@@ -103,7 +103,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     // Only update address if using fallback text field and address has actually changed
     if (_addressController.text.isNotEmpty &&
         _addressController.text !=
-            profileProvider.currentUser?.addressDetail?.streetLine1) {
+            profileProvider.currentUser?.address?.streetLine1) {
       // Note: updateUserAddressFromString not available in ProfileStateProvider
       // Address updates should be handled through the main form save process
     }
@@ -142,14 +142,14 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
           }
 
           // Update address controller with latest data from backend
-          final latestAddress = currentUser.addressDetail?.streetLine1 ?? '';
+          final latestAddress = currentUser.address?.streetLine1 ?? '';
           if (_addressController.text != latestAddress &&
               latestAddress.isNotEmpty) {
             _addressController.text = latestAddress;
           }
         }
 
-        final initialUserAddress = currentUser?.addressDetail?.streetLine1;
+        final initialUserAddress = currentUser?.address?.streetLine1;
 
         Widget addressDisplayWidget;
         final bool apiKeyMissing = _googleApiKey == 'YOUR_API_KEY_NOT_FOUND';

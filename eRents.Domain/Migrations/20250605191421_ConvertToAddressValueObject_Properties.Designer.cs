@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eRents.Domain.Models;
 
@@ -11,9 +12,11 @@ using eRents.Domain.Models;
 namespace eRents.Domain.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    partial class ERentsContextModelSnapshot : ModelSnapshot
+    [Migration("20250605191421_ConvertToAddressValueObject_Properties")]
+    partial class ConvertToAddressValueObject_Properties
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -983,7 +986,8 @@ namespace eRents.Domain.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
                     b.Property<int?>("AddressDetailId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("address_detail_id");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
@@ -1548,9 +1552,10 @@ namespace eRents.Domain.Migrations
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
                 {
-                    b.HasOne("eRents.Domain.Models.AddressDetail", null)
+                    b.HasOne("eRents.Domain.Models.AddressDetail", "AddressDetail")
                         .WithMany("Users")
-                        .HasForeignKey("AddressDetailId");
+                        .HasForeignKey("AddressDetailId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("eRents.Domain.Models.Image", "ProfileImage")
                         .WithMany()
@@ -1561,58 +1566,7 @@ namespace eRents.Domain.Migrations
                         .WithMany("Users")
                         .HasForeignKey("UserTypeId");
 
-                    b.OwnsOne("eRents.Domain.Models.Address", "Address", b1 =>
-                        {
-                            b1.Property<int>("UserId")
-                                .HasColumnType("int");
-
-                            b1.Property<string>("City")
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_City");
-
-                            b1.Property<string>("Country")
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_Country");
-
-                            b1.Property<decimal?>("Latitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Latitude");
-
-                            b1.Property<decimal?>("Longitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Longitude");
-
-                            b1.Property<string>("PostalCode")
-                                .HasMaxLength(20)
-                                .HasColumnType("nvarchar(20)")
-                                .HasColumnName("Address_PostalCode");
-
-                            b1.Property<string>("State")
-                                .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_State");
-
-                            b1.Property<string>("StreetLine1")
-                                .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine1");
-
-                            b1.Property<string>("StreetLine2")
-                                .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine2");
-
-                            b1.HasKey("UserId");
-
-                            b1.ToTable("Users");
-
-                            b1.WithOwner()
-                                .HasForeignKey("UserId");
-                        });
-
-                    b.Navigation("Address");
+                    b.Navigation("AddressDetail");
 
                     b.Navigation("ProfileImage");
 

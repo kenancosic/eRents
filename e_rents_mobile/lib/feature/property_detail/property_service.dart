@@ -1,6 +1,5 @@
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/models/address_detail.dart';
-import 'package:e_rents_mobile/core/models/geo_region.dart';
+import 'package:e_rents_mobile/core/models/address.dart';
 // Removed deprecated image_response import - using unified ImageModel
 import 'dart:typed_data'; // For Uint8List
 // import 'package:http/http.dart' as http; // Commenting out for mock implementation
@@ -25,12 +24,11 @@ class PropertyService {
         averageRating: 4.8,
         imageIds: [6, 7],
         amenityIds: [1, 2, 3],
-        addressDetail: AddressDetail(
-          addressDetailId: 5,
-          geoRegionId: 5,
+        address: Address(
           streetLine1: '100 Slider Lane',
-          geoRegion: GeoRegion(
-              geoRegionId: 5, city: 'Viewpoint', country: 'USA', state: 'NV'),
+          city: 'Viewpoint',
+          state: 'NV',
+          country: 'USA',
         ),
         facilities: "Garden, Patio, BBQ",
         status: PropertyStatus.available,
@@ -49,15 +47,12 @@ class PropertyService {
         averageRating: 4.7,
         imageIds: [1, 2],
         amenityIds: [1, 4, 5],
-        addressDetail: AddressDetail(
-          addressDetailId: 1,
-          geoRegionId: 1,
+        address: Address(
           streetLine1: '123 Main St',
-          geoRegion: GeoRegion(
-              geoRegionId: 1, city: 'Metropolis', country: 'USA', state: 'NY'),
+          city: 'Metropolis',
+          state: 'NY',
+          country: 'USA',
         ),
-        // Ensure other potentially required fields are present for the Property model
-        // Example: facilities, status, dateAdded, etc., if they are not nullable
         facilities: "Wi-Fi, Kitchen, Air Conditioning",
         status: PropertyStatus.available,
         dateAdded: DateTime.now().subtract(const Duration(days: 100)),
@@ -72,12 +67,11 @@ class PropertyService {
         averageRating: 4.9,
         imageIds: [3],
         amenityIds: [2, 6, 7],
-        addressDetail: AddressDetail(
-          addressDetailId: 2,
-          geoRegionId: 2,
+        address: Address(
           streetLine1: '456 Ocean Drive',
-          geoRegion: GeoRegion(
-              geoRegionId: 2, city: 'Sunnyvale', country: 'USA', state: 'CA'),
+          city: 'Sunnyvale',
+          state: 'CA',
+          country: 'USA',
         ),
         facilities: "Pool, Beach Access, Balcony",
         status: PropertyStatus.rented,
@@ -93,12 +87,11 @@ class PropertyService {
         averageRating: 4.6,
         imageIds: [4],
         amenityIds: [8, 9, 10],
-        addressDetail: AddressDetail(
-          addressDetailId: 3,
-          geoRegionId: 3,
+        address: Address(
           streetLine1: '789 Pine Trail',
-          geoRegion: GeoRegion(
-              geoRegionId: 3, city: 'Evergreen', country: 'USA', state: 'CO'),
+          city: 'Evergreen',
+          state: 'CO',
+          country: 'USA',
         ),
         facilities: "Fireplace, Hiking Trails, Hot Tub",
         status: PropertyStatus.available,
@@ -114,12 +107,11 @@ class PropertyService {
         averageRating: 4.3,
         imageIds: [5],
         amenityIds: [11, 12, 13],
-        addressDetail: AddressDetail(
-          addressDetailId: 4,
-          geoRegionId: 4,
+        address: Address(
           streetLine1: '10 Park Avenue',
-          geoRegion: GeoRegion(
-              geoRegionId: 4, city: 'Oldtown', country: 'USA', state: 'MA'),
+          city: 'Oldtown',
+          state: 'MA',
+          country: 'USA',
         ),
         facilities: "Exposed Brick, High Ceilings, Walkable",
         status: PropertyStatus.maintenance,
@@ -135,15 +127,11 @@ class PropertyService {
         averageRating: 4.9,
         imageIds: [1021],
         amenityIds: [14, 15, 16],
-        addressDetail: AddressDetail(
-          addressDetailId: 102,
-          geoRegionId: 102,
+        address: Address(
           streetLine1: '1 Beach Rd',
-          geoRegion: GeoRegion(
-              geoRegionId: 102,
-              city: 'Paradise City',
-              country: 'USA',
-              state: 'FL'),
+          city: 'Paradise City',
+          state: 'FL',
+          country: 'USA',
         ),
         facilities: "Private Pool, Direct Beach Access, Ocean View",
         status: PropertyStatus.available,
@@ -159,15 +147,11 @@ class PropertyService {
         averageRating: 4.7,
         imageIds: [1031],
         amenityIds: [17, 18, 19],
-        addressDetail: AddressDetail(
-          addressDetailId: 103,
-          geoRegionId: 103,
+        address: Address(
           streetLine1: '5 Mountain Pass',
-          geoRegion: GeoRegion(
-              geoRegionId: 103,
-              city: 'Peak Valley',
-              country: 'USA',
-              state: 'MT'),
+          city: 'Peak Valley',
+          state: 'MT',
+          country: 'USA',
         ),
         facilities: "Wood Stove, Mountain Hiking, Stargazing Deck",
         status: PropertyStatus.rented,
@@ -183,12 +167,11 @@ class PropertyService {
         averageRating: 4.5,
         imageIds: [1081],
         amenityIds: [20, 21, 22],
-        addressDetail: AddressDetail(
-          addressDetailId: 108,
-          geoRegionId: 108,
+        address: Address(
           streetLine1: '200 Central Ave',
-          geoRegion: GeoRegion(
-              geoRegionId: 108, city: 'Downtown', country: 'USA', state: 'TX'),
+          city: 'Downtown',
+          state: 'TX',
+          country: 'USA',
         ),
         facilities: "Gym, Rooftop Terrace, Concierge",
         status: PropertyStatus.available,
@@ -204,12 +187,11 @@ class PropertyService {
         averageRating: 4.6,
         imageIds: [3001, 3002],
         amenityIds: [23, 24, 25],
-        addressDetail: AddressDetail(
-          addressDetailId: 300,
-          geoRegionId: 300,
+        address: Address(
           streetLine1: '500 Main Street',
-          geoRegion: GeoRegion(
-              geoRegionId: 300, city: 'Downtown', country: 'USA', state: 'NY'),
+          city: 'Downtown',
+          state: 'NY',
+          country: 'USA',
         ),
         facilities: "In-unit Laundry, Dishwasher, AC/Heat, Parking, Elevator",
         status: PropertyStatus.available,
@@ -219,13 +201,27 @@ class PropertyService {
       ),
     };
 
-    if (mockProperties.containsKey(id)) {
-      return mockProperties[id]!;
-    } else {
-      // Fallback for any other ID, or throw an error
-      // For now, let's throw an exception for unmocked IDs
-      throw Exception('Property with ID $id not found in mock service.');
-    }
+    // Return the property if found, otherwise null
+    return mockProperties[id] ??
+        Property(
+          propertyId: 404,
+          ownerId: 0,
+          name: 'Property Not Found',
+          price: 0.00,
+          description: 'The requested property could not be found.',
+          averageRating: 0.0,
+          imageIds: [],
+          amenityIds: [],
+          address: Address(
+            streetLine1: 'Unknown Address',
+            city: 'Unknown',
+            state: 'Unknown',
+            country: 'Unknown',
+          ),
+          facilities: "",
+          status: PropertyStatus.unavailable,
+          dateAdded: DateTime.now(),
+        );
     /* Original HTTP call:
     final response = await http.get(Uri.parse('$_baseUrl/properties/$id'));
     if (response.statusCode == 200) {

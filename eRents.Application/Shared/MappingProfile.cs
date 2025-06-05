@@ -2,7 +2,6 @@
 using eRents.Domain.Models;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
-using eRents.Application.Service.LocationManagementService;
 using eRents.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -58,7 +57,7 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.StatusId, opt => opt.MapFrom(src => GetStatusId(src.Status)))
 				.ForMember(dest => dest.RentingTypeId, opt => opt.MapFrom(src => src.RentingTypeId ?? 0))
 				.ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.OwnerId))
-				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail))
+				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => MapAddressToAddressDetailResponse(src.Address)))
 				.ForMember(dest => dest.AmenityIds, opt => opt.MapFrom(src => src.Amenities.Select(a => a.AmenityId).ToList()))
 				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()))
 				// Optional detailed properties - populated when needed
@@ -73,8 +72,8 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.DateAdded ?? DateTime.UtcNow))
 				.ForMember(dest => dest.LocationString, opt => opt.MapFrom(src => 
-					src.AddressDetail != null && src.AddressDetail.GeoRegion != null 
-						? $"{src.AddressDetail.GeoRegion.City}, {src.AddressDetail.GeoRegion.Country}"
+					src.Address != null && !string.IsNullOrEmpty(src.Address.City) && !string.IsNullOrEmpty(src.Address.Country)
+						? $"{src.Address.City}, {src.Address.Country}"
 						: "Unknown Location"))
 				.ForMember(dest => dest.CoverImageId, opt => opt.MapFrom(src => 
 					src.Images.FirstOrDefault(i => i.IsCover) != null 
@@ -89,19 +88,18 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.DateAdded, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
+				.ForMember(dest => dest.Address, opt => opt.Ignore());
 
 			CreateMap<PropertyUpdateRequest, Property>()
 				.ForMember(dest => dest.DateAdded, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.Amenities, opt => opt.Ignore())
 				.ForMember(dest => dest.Images, opt => opt.Ignore())
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
+				.ForMember(dest => dest.Address, opt => opt.Ignore());
 
-			// Address and GeoRegion mappings - AutoMapper can handle these automatically
-			CreateMap<AddressDetail, AddressDetailResponse>().ReverseMap();
-			CreateMap<GeoRegion, GeoRegionResponse>().ReverseMap();
+			// Legacy Address and GeoRegion mappings removed as part of Address refactoring
+			// These mappings are no longer needed since we use Address value object directly
 			
-			// ✅ NEW: Request DTO mappings for LocationManagementService
+			// DTO mappings still needed for backward compatibility in API responses
 			CreateMap<AddressDetailRequest, AddressDetailResponse>().ReverseMap();
 			CreateMap<GeoRegionRequest, GeoRegionResponse>().ReverseMap();
 
@@ -119,7 +117,7 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
 				.ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.UserTypeNavigation != null ? src.UserTypeNavigation.TypeName : null))
 				.ForMember(dest => dest.ProfileImageId, opt => opt.MapFrom(src => src.ProfileImageId))
-				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => src.AddressDetail));
+				.ForMember(dest => dest.AddressDetail, opt => opt.MapFrom(src => MapAddressToAddressDetailResponse(src.Address)));
 
 			CreateMap<UserInsertRequest, User>()
 				.ForMember(dest => dest.UserId, opt => opt.Ignore())
@@ -128,11 +126,11 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.PasswordSalt, opt => opt.Ignore())
 				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.UtcNow))
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
+				.ForMember(dest => dest.Address, opt => opt.Ignore());
 
 			CreateMap<UserUpdateRequest, User>()
 				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt ?? DateTime.UtcNow))
-				.ForMember(dest => dest.AddressDetail, opt => opt.Ignore());
+				.ForMember(dest => dest.Address, opt => opt.Ignore());
 
 			// ✅ OPTIMIZED: MaintenanceIssue mappings with ImageIds only
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
@@ -157,6 +155,28 @@ namespace eRents.Application.Shared
 				"undermaintenance" => 3,
 				"unavailable" => 4,
 				_ => 1 // Default to Available
+			};
+		}
+
+		// ✅ HELPER: Map Address value object to AddressDetailResponse DTO
+		private static AddressDetailResponse MapAddressToAddressDetailResponse(Address address)
+		{
+			if (address == null)
+				return null;
+
+			return new AddressDetailResponse
+			{
+				StreetLine1 = address.StreetLine1,
+				StreetLine2 = address.StreetLine2,
+				Latitude = address.Latitude,
+				Longitude = address.Longitude,
+				GeoRegion = new GeoRegionResponse
+				{
+					City = address.City,
+					State = address.State,
+					Country = address.Country,
+					PostalCode = address.PostalCode
+				}
 			};
 		}
 	}

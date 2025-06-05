@@ -1,6 +1,5 @@
 using AutoMapper;
 using eRents.Application.Shared;
-using eRents.Application.Service.LocationManagementService;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Domain.Shared;
@@ -24,7 +23,6 @@ namespace eRents.Application.Service.PropertyService
 	{
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly ILocationManagementService _locationManagementService;
 		private readonly IMapper _mapper;
 		private static MLContext _mlContext = null;
 		private static ITransformer _model = null;
@@ -33,13 +31,11 @@ namespace eRents.Application.Service.PropertyService
 		public PropertyService(
 			IPropertyRepository propertyRepository,
 			ICurrentUserService currentUserService,
-			ILocationManagementService locationManagementService,
 			IMapper mapper)
 				: base(propertyRepository, mapper)
 		{
 			_propertyRepository = propertyRepository;
 			_currentUserService = currentUserService;
-			_locationManagementService = locationManagementService;
 			_mapper = mapper;
 		}
 
@@ -48,11 +44,18 @@ namespace eRents.Application.Service.PropertyService
 		/// </summary>
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
-			// Handle address processing
+			// Handle address processing - Direct assignment to Address value object
 			if (insert.AddressDetail != null)
 			{
-				var processedAddress = await _locationManagementService.ProcessAddressAsync(insert.AddressDetail);
-				entity.AddressDetailId = processedAddress.AddressDetailId;
+				entity.Address = Address.Create(
+					streetLine1: insert.AddressDetail.StreetLine1,
+					streetLine2: insert.AddressDetail.StreetLine2,
+					city: insert.AddressDetail.GeoRegion?.City,
+					state: insert.AddressDetail.GeoRegion?.State,
+					country: insert.AddressDetail.GeoRegion?.Country,
+					postalCode: insert.AddressDetail.GeoRegion?.PostalCode,
+					latitude: insert.AddressDetail.Latitude,
+					longitude: insert.AddressDetail.Longitude);
 			}
 
 			// Handle amenities processing - SIMPLIFIED: Only use IDs
@@ -74,11 +77,18 @@ namespace eRents.Application.Service.PropertyService
 		/// </summary>
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
-			// Handle address processing
+			// Handle address processing - Direct assignment to Address value object
 			if (update.AddressDetail != null)
 			{
-				var processedAddress = await _locationManagementService.ProcessPropertyAddressAsync(entity.PropertyId, update.AddressDetail);
-				entity.AddressDetailId = processedAddress.AddressDetailId;
+				entity.Address = Address.Create(
+					streetLine1: update.AddressDetail.StreetLine1,
+					streetLine2: update.AddressDetail.StreetLine2,
+					city: update.AddressDetail.GeoRegion?.City,
+					state: update.AddressDetail.GeoRegion?.State,
+					country: update.AddressDetail.GeoRegion?.Country,
+					postalCode: update.AddressDetail.GeoRegion?.PostalCode,
+					latitude: update.AddressDetail.Latitude,
+					longitude: update.AddressDetail.Longitude);
 			}
 
 			// Handle amenities processing - SIMPLIFIED: Only use IDs
@@ -277,7 +287,7 @@ namespace eRents.Application.Service.PropertyService
 			// Filtering logic
 			if (!string.IsNullOrWhiteSpace(searchRequest.CityName))
 			{
-				query = query.Where(p => p.AddressDetail.GeoRegion.City.ToLower().Contains(searchRequest.CityName.ToLower()));
+				query = query.Where(p => p.Address != null && p.Address.City != null && p.Address.City.ToLower().Contains(searchRequest.CityName.ToLower()));
 			}
 			if (searchRequest.MinPrice.HasValue)
 			{
@@ -296,9 +306,9 @@ namespace eRents.Application.Service.PropertyService
 				decimal degPerKm = 1 / 111.0m; // Approximate degrees per km
 				decimal radiusDeg = radiusKm * degPerKm;
 
-				query = query.Where(p => p.AddressDetail.Latitude.HasValue && p.AddressDetail.Longitude.HasValue &&
-														 Math.Abs(p.AddressDetail.Latitude.Value - lat) <= radiusDeg &&
-														 Math.Abs(p.AddressDetail.Longitude.Value - lon) <= radiusDeg);
+				query = query.Where(p => p.Address != null && p.Address.Latitude.HasValue && p.Address.Longitude.HasValue &&
+														 Math.Abs(p.Address.Latitude.Value - lat) <= radiusDeg &&
+														 Math.Abs(p.Address.Longitude.Value - lon) <= radiusDeg);
 			}
 
 			// Sorting logic
@@ -324,8 +334,7 @@ namespace eRents.Application.Service.PropertyService
 			}
 
 			// Include necessary related data
-			query = query.Include(p => p.AddressDetail).ThenInclude(ad => ad.GeoRegion)
-									 .Include(p => p.Images);
+			query = query.Include(p => p.Images);
 
 			// Get total count and apply paging
 			var page = searchRequest.Page ?? 1;
@@ -343,7 +352,6 @@ namespace eRents.Application.Service.PropertyService
 		public async Task<List<PropertySummaryResponse>> GetPopularPropertiesAsync()
 		{
 			var popularPropsQuery = _propertyRepository.GetQueryable()
-																	.Include(p => p.AddressDetail).ThenInclude(ad => ad.GeoRegion)
 																	.Include(p => p.Images)
 																	.Include(p => p.Reviews)
 																	.Include(p => p.Bookings)
@@ -388,7 +396,6 @@ namespace eRents.Application.Service.PropertyService
 
 			// Recommendation logic - show available properties for all user types
 			var properties = await _propertyRepository.GetQueryable()
-					.Include(p => p.AddressDetail)
 					.Include(p => p.Owner)
 					.Include(p => p.Amenities)
 					.Include(p => p.Reviews)
@@ -417,7 +424,6 @@ namespace eRents.Application.Service.PropertyService
 		protected override IQueryable<Property> AddInclude(IQueryable<Property> query, PropertySearchObject search = null)
 		{
 			return query.Include(p => p.Images)
-									.Include(p => p.AddressDetail).ThenInclude(ad => ad.GeoRegion)
 									.Include(p => p.Owner)
 									.Include(p => p.Amenities);
 		}

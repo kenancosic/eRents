@@ -175,17 +175,12 @@ class ProfileRepository {
         ['PayPal Email', user.paypalUserIdentifier!],
       ['Member Since', user.createdAt.toString().split(' ')[0]],
       ['Last Updated', user.updatedAt.toString().split(' ')[0]],
-      if (user.addressDetail != null) ...[
-        ['Address', user.addressDetail!.streetLine1 ?? 'Not provided'],
-        if (user.addressDetail!.geoRegion != null) ...[
-          ['City', user.addressDetail!.geoRegion!.city ?? 'Not provided'],
-          ['State', user.addressDetail!.geoRegion!.state ?? 'Not provided'],
-          ['Country', user.addressDetail!.geoRegion!.country ?? 'Not provided'],
-          [
-            'Postal Code',
-            user.addressDetail!.geoRegion!.postalCode ?? 'Not provided',
-          ],
-        ],
+      if (user.address != null) ...[
+        ['Address', user.address!.streetLine1 ?? 'Not provided'],
+        ['City', user.address!.city ?? 'Not provided'],
+        ['State', user.address!.state ?? 'Not provided'],
+        ['Country', user.address!.country ?? 'Not provided'],
+        ['Postal Code', user.address!.postalCode ?? 'Not provided'],
       ],
     ];
 

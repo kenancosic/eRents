@@ -180,9 +180,7 @@ class TenantRepository extends BaseRepository<User, TenantService> {
       bool matchesCity =
           city == null ||
           city.isEmpty ||
-          (tenant.addressDetail?.geoRegion?.city.toLowerCase().contains(
-                city.toLowerCase(),
-              ) ??
+          (tenant.address?.city?.toLowerCase().contains(city.toLowerCase()) ??
               false);
 
       bool matchesStatus = status == null || status.isEmpty || status == 'all';

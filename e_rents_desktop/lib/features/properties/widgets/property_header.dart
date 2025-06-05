@@ -28,7 +28,7 @@ class PropertyHeader extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    property.addressDetail?.streetLine1 ?? '',
+                    property.address?.getStreetAddress() ?? '',
                     style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 16),

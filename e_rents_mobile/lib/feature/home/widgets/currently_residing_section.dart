@@ -1,6 +1,5 @@
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/models/address_detail.dart';
-import 'package:e_rents_mobile/core/models/geo_region.dart';
+import 'package:e_rents_mobile/core/models/address.dart';
 
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
@@ -50,12 +49,11 @@ class CurrentlyResidingSection extends StatelessWidget {
                   30.0), // Approximate monthly price if possible
           imageIds: activeBooking.propertyImageUrl != null ? [1] : [],
           amenityIds: [1, 2, 3], // Default amenities for booking card
-          addressDetail: AddressDetail(
-            // Mock address detail as it's not in booking model
-            addressDetailId: 1,
-            geoRegionId: 1,
+          address: Address(
+            // Mock address as it's not in booking model
             streetLine1: 'Tap to view details',
-            geoRegion: GeoRegion(geoRegionId: 1, city: '', country: ''),
+            city: '',
+            country: '',
           ),
           averageRating:
               null, // Not directly in booking model, could be fetched separately
