@@ -329,7 +329,6 @@ class AppRouter {
 
     final propertyStatsProvider = registry.getOrCreate<PropertyStatsProvider>(
       () => PropertyStatsProvider(
-        getService(), // StatisticsService
         getService(), // BookingService
         getService(), // ReviewService
         getService(), // MaintenanceService

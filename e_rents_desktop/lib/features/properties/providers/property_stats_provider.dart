@@ -1,5 +1,4 @@
 import '../../../base/base.dart';
-import '../../../services/statistics_service.dart';
 import '../../../services/booking_service.dart';
 import '../../../services/review_service.dart';
 import '../../../services/maintenance_service.dart';
@@ -11,13 +10,11 @@ import '../../../models/maintenance_issue.dart';
 /// Handles property-specific statistics like booking stats, review stats,
 /// and occupancy metrics. Uses StateProvider for simple state management.
 class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
-  final StatisticsService _statisticsService;
   final BookingService _bookingService;
   final ReviewService _reviewService;
   final MaintenanceService _maintenanceService;
 
   PropertyStatsProvider(
-    this._statisticsService,
     this._bookingService,
     this._reviewService,
     this._maintenanceService,
