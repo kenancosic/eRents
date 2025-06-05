@@ -7,6 +7,7 @@ using eRents.Shared.Services;
 using eRents.Shared.DTO.Response;
 using eRents.Application.Exceptions;
 using ValidationException = eRents.Application.Exceptions.ValidationException;
+using eRents.Domain.Repositories;
 
 namespace eRents.WebApi.Controllers
 {
@@ -17,13 +18,16 @@ namespace eRents.WebApi.Controllers
 		private readonly IPropertyService _propertyService;
 		private readonly ILogger<AmenitiesController> _logger;
 		private readonly ICurrentUserService _currentUserService;
+		private readonly IPropertyRepository _propertyRepository;
 
 		public AmenitiesController(
 			IPropertyService propertyService,
+			IPropertyRepository propertyRepository,
 			ILogger<AmenitiesController> logger,
 			ICurrentUserService currentUserService)
 		{
 			_propertyService = propertyService;
+			_propertyRepository = propertyRepository;
 			_logger = logger;
 			_currentUserService = currentUserService;
 		}
@@ -36,7 +40,7 @@ namespace eRents.WebApi.Controllers
 			var requestId = HttpContext.TraceIdentifier;
 			var path = Request.Path.Value;
 			var userId = _currentUserService.UserId ?? "unknown";
-			
+
 			return ex switch
 			{
 				UnauthorizedAccessException unauthorizedException => HandleUnauthorizedError(unauthorizedException, operation, requestId, path, userId),
@@ -45,12 +49,12 @@ namespace eRents.WebApi.Controllers
 				_ => HandleGenericError(ex, operation, requestId, path, userId)
 			};
 		}
-		
+
 		private IActionResult HandleUnauthorizedError(UnauthorizedAccessException ex, string operation, string requestId, string? path, string userId)
 		{
-			_logger.LogWarning(ex, "{Operation} failed - Unauthorized access by user {UserId} on {Path}", 
+			_logger.LogWarning(ex, "{Operation} failed - Unauthorized access by user {UserId} on {Path}",
 				operation, userId, path);
-				
+
 			return StatusCode(403, new StandardErrorResponse
 			{
 				Type = "Authorization",
@@ -60,18 +64,18 @@ namespace eRents.WebApi.Controllers
 				Path = path
 			});
 		}
-		
+
 		private IActionResult HandleValidationError(ValidationException ex, string operation, string requestId, string? path, string userId)
 		{
-			_logger.LogWarning(ex, "{Operation} failed - Validation errors for user {UserId} on {Path}", 
+			_logger.LogWarning(ex, "{Operation} failed - Validation errors for user {UserId} on {Path}",
 				operation, userId, path);
-				
+
 			var validationErrors = new Dictionary<string, string[]>();
 			if (!string.IsNullOrEmpty(ex.Message))
 			{
 				validationErrors["general"] = new[] { ex.Message };
 			}
-				
+
 			return BadRequest(new StandardErrorResponse
 			{
 				Type = "Validation",
@@ -82,12 +86,12 @@ namespace eRents.WebApi.Controllers
 				Path = path
 			});
 		}
-		
+
 		private IActionResult HandleNotFoundError(KeyNotFoundException ex, string operation, string requestId, string? path, string userId)
 		{
-			_logger.LogWarning(ex, "{Operation} failed - Resource not found for user {UserId} on {Path}", 
+			_logger.LogWarning(ex, "{Operation} failed - Resource not found for user {UserId} on {Path}",
 				operation, userId, path);
-				
+
 			return NotFound(new StandardErrorResponse
 			{
 				Type = "NotFound",
@@ -97,12 +101,12 @@ namespace eRents.WebApi.Controllers
 				Path = path
 			});
 		}
-		
+
 		private IActionResult HandleGenericError(Exception ex, string operation, string requestId, string? path, string userId)
 		{
-			_logger.LogError(ex, "{Operation} failed - Unexpected error for user {UserId} on {Path}", 
+			_logger.LogError(ex, "{Operation} failed - Unexpected error for user {UserId} on {Path}",
 				operation, userId, path);
-				
+
 			return StatusCode(500, new StandardErrorResponse
 			{
 				Type = "Internal",
@@ -119,19 +123,62 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				_logger.LogInformation("Get amenities request by user {UserId}", 
+				_logger.LogInformation("Get amenities request by user {UserId}",
 					_currentUserService.UserId ?? "unknown");
 
 				var amenities = await _propertyService.GetAmenitiesAsync();
-				
-				_logger.LogInformation("Retrieved {AmenityCount} amenities for user {UserId}", 
+
+				_logger.LogInformation("Retrieved {AmenityCount} amenities for user {UserId}",
 					amenities.Count(), _currentUserService.UserId ?? "unknown");
-				
+
 				return Ok(amenities);
 			}
 			catch (Exception ex)
 			{
 				return HandleStandardError(ex, "Get amenities");
+			}
+		}
+
+		[HttpGet("by-ids")]
+		[Authorize]
+		public async Task<IActionResult> GetAmenitiesByIds([FromQuery] int[] ids)
+		{
+			try
+			{
+				_logger.LogInformation("Get amenities by IDs request: {AmenityIds} by user {UserId}",
+					string.Join(",", ids), _currentUserService.UserId ?? "unknown");
+
+				if (ids == null || !ids.Any())
+				{
+					_logger.LogWarning("Get amenities by IDs failed - No IDs provided by user {UserId}",
+						_currentUserService.UserId ?? "unknown");
+					return BadRequest(new StandardErrorResponse
+					{
+						Type = "Validation",
+						Message = "At least one amenity ID is required",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(ids);
+
+				// Map domain models to response DTOs
+				var amenityResponses = amenities.Select(a => new AmenityResponse
+				{
+					Id = a.AmenityId,
+					Name = a.AmenityName
+				}).ToList();
+
+				_logger.LogInformation("Retrieved {AmenityCount} amenities by IDs for user {UserId}",
+					amenityResponses.Count, _currentUserService.UserId ?? "unknown");
+
+				return Ok(amenityResponses);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Get amenities by IDs");
 			}
 		}
 
@@ -141,12 +188,12 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				_logger.LogInformation("Add amenity request: {AmenityName} by user {UserId}", 
+				_logger.LogInformation("Add amenity request: {AmenityName} by user {UserId}",
 					amenityName, _currentUserService.UserId ?? "unknown");
 
 				if (string.IsNullOrWhiteSpace(amenityName))
 				{
-					_logger.LogWarning("Add amenity failed - Empty amenity name by user {UserId}", 
+					_logger.LogWarning("Add amenity failed - Empty amenity name by user {UserId}",
 						_currentUserService.UserId ?? "unknown");
 					return BadRequest(new StandardErrorResponse
 					{
@@ -159,10 +206,10 @@ namespace eRents.WebApi.Controllers
 				}
 
 				var amenity = await _propertyService.AddAmenityAsync(amenityName);
-				
-				_logger.LogInformation("Amenity added successfully: {AmenityName} by user {UserId}", 
+
+				_logger.LogInformation("Amenity added successfully: {AmenityName} by user {UserId}",
 					amenityName, _currentUserService.UserId ?? "unknown");
-				
+
 				return Ok(amenity);
 			}
 			catch (Exception ex)
@@ -177,12 +224,12 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				_logger.LogInformation("Update amenity request: ID {AmenityId} to {AmenityName} by user {UserId}", 
+				_logger.LogInformation("Update amenity request: ID {AmenityId} to {AmenityName} by user {UserId}",
 					id, amenityName, _currentUserService.UserId ?? "unknown");
 
 				if (id <= 0)
 				{
-					_logger.LogWarning("Update amenity failed - Invalid amenity ID {AmenityId} by user {UserId}", 
+					_logger.LogWarning("Update amenity failed - Invalid amenity ID {AmenityId} by user {UserId}",
 						id, _currentUserService.UserId ?? "unknown");
 					return BadRequest(new StandardErrorResponse
 					{
@@ -196,7 +243,7 @@ namespace eRents.WebApi.Controllers
 
 				if (string.IsNullOrWhiteSpace(amenityName))
 				{
-					_logger.LogWarning("Update amenity failed - Empty amenity name for ID {AmenityId} by user {UserId}", 
+					_logger.LogWarning("Update amenity failed - Empty amenity name for ID {AmenityId} by user {UserId}",
 						id, _currentUserService.UserId ?? "unknown");
 					return BadRequest(new StandardErrorResponse
 					{
@@ -209,10 +256,10 @@ namespace eRents.WebApi.Controllers
 				}
 
 				var amenity = await _propertyService.UpdateAmenityAsync(id, amenityName);
-				
-				_logger.LogInformation("Amenity updated successfully: ID {AmenityId} to {AmenityName} by user {UserId}", 
+
+				_logger.LogInformation("Amenity updated successfully: ID {AmenityId} to {AmenityName} by user {UserId}",
 					id, amenityName, _currentUserService.UserId ?? "unknown");
-				
+
 				return Ok(amenity);
 			}
 			catch (Exception ex)
@@ -227,12 +274,12 @@ namespace eRents.WebApi.Controllers
 		{
 			try
 			{
-				_logger.LogInformation("Delete amenity request: ID {AmenityId} by user {UserId}", 
+				_logger.LogInformation("Delete amenity request: ID {AmenityId} by user {UserId}",
 					id, _currentUserService.UserId ?? "unknown");
 
 				if (id <= 0)
 				{
-					_logger.LogWarning("Delete amenity failed - Invalid amenity ID {AmenityId} by user {UserId}", 
+					_logger.LogWarning("Delete amenity failed - Invalid amenity ID {AmenityId} by user {UserId}",
 						id, _currentUserService.UserId ?? "unknown");
 					return BadRequest(new StandardErrorResponse
 					{
@@ -245,10 +292,10 @@ namespace eRents.WebApi.Controllers
 				}
 
 				await _propertyService.DeleteAmenityAsync(id);
-				
-				_logger.LogInformation("Amenity deleted successfully: ID {AmenityId} by user {UserId}", 
+
+				_logger.LogInformation("Amenity deleted successfully: ID {AmenityId} by user {UserId}",
 					id, _currentUserService.UserId ?? "unknown");
-				
+
 				return NoContent();
 			}
 			catch (Exception ex)
@@ -257,4 +304,4 @@ namespace eRents.WebApi.Controllers
 			}
 		}
 	}
-} 
+}

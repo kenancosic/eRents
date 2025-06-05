@@ -76,17 +76,29 @@ class _AmenityManagerState extends State<AmenityManager> {
 
     try {
       final amenityRepository = getService<AmenityRepository>();
-      _availableAmenities = await amenityRepository.getAll();
+
+      if (widget.mode == AmenityManagerMode.view &&
+          _selectedAmenityIds.isNotEmpty) {
+        // For view mode with specific amenity IDs, fetch only those amenities
+        _availableAmenities = await amenityRepository.getAmenitiesByIds(
+          _selectedAmenityIds,
+        );
+        print(
+          'AmenityManager: Loaded ${_availableAmenities.length} specific amenities for view mode',
+        );
+      } else {
+        // For edit mode or view mode without specific IDs, load all amenities
+        _availableAmenities = await amenityRepository.getAll();
+        print(
+          'AmenityManager: Loaded ${_availableAmenities.length} amenities from backend',
+        );
+      }
 
       // Create amenity map from the list
       _amenityMap = {};
       for (final amenity in _availableAmenities) {
         _amenityMap[amenity.id] = amenity;
       }
-
-      print(
-        'AmenityManager: Loaded ${_availableAmenities.length} amenities from backend',
-      );
     } catch (e) {
       print('AmenityManager: Error loading amenities: $e');
       setState(() {
@@ -296,7 +308,7 @@ class _AmenityManagerState extends State<AmenityManager> {
       runSpacing: 8.0,
       children:
           selectedAmenities.map((amenity) {
-            final icon = _getFlutterIcon(amenity.icon);
+            final icon = _getFlutterIconFromName(amenity.name);
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -352,7 +364,7 @@ class _AmenityManagerState extends State<AmenityManager> {
       children:
           filtered.map((amenity) {
             final isSelected = _selectedAmenityIds.contains(amenity.id);
-            final icon = _getFlutterIcon(amenity.icon);
+            final icon = _getFlutterIconFromName(amenity.name);
 
             return FilterChip(
               selected: isSelected,
@@ -374,39 +386,45 @@ class _AmenityManagerState extends State<AmenityManager> {
     );
   }
 
-  IconData _getFlutterIcon(String iconName) {
-    // Convert icon name string to Flutter IconData (same logic as PropertyProvider)
-    switch (iconName) {
+  IconData _getFlutterIconFromName(String amenityName) {
+    // Map amenity names to appropriate Flutter icon names
+    // This ensures icons are determined by name rather than backend icon field
+    // This approach is more robust when amenity IDs are inconsistent
+    switch (amenityName.toLowerCase()) {
+      case 'wi-fi':
       case 'wifi':
         return Icons.wifi;
-      case 'ac_unit':
+      case 'air conditioning':
+      case 'ac':
         return Icons.ac_unit;
-      case 'local_parking':
+      case 'parking':
         return Icons.local_parking;
-      case 'thermostat':
+      case 'heating':
         return Icons.thermostat;
       case 'balcony':
         return Icons.balcony;
       case 'pool':
         return Icons.pool;
-      case 'fitness_center':
+      case 'gym':
+      case 'fitness':
         return Icons.fitness_center;
       case 'kitchen':
         return Icons.kitchen;
-      case 'local_laundry_service':
+      case 'laundry':
         return Icons.local_laundry_service;
+      case 'pet friendly':
       case 'pets':
         return Icons.pets;
       case 'elevator':
         return Icons.elevator;
       case 'security':
         return Icons.security;
-      case 'eco':
+      case 'garden':
         return Icons.eco;
-      case 'chair':
+      case 'furnished':
         return Icons.chair;
       default:
-        return Icons.check_circle;
+        return Icons.check_circle; // Default icon
     }
   }
 }

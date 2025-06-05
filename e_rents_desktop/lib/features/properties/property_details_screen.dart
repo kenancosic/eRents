@@ -154,8 +154,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             title: 'Maintenance',
             child: _MaintenanceCard(
               property: property,
-              issues:
-                  [], // Will be loaded from maintenance repository if needed
+              issues: stats?.maintenanceIssues ?? [],
             ),
           ),
         ],
@@ -242,8 +241,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   title: 'Maintenance',
                   child: _MaintenanceCard(
                     property: property,
-                    issues:
-                        [], // Will be loaded from maintenance repository if needed
+                    issues: stats?.maintenanceIssues ?? [],
                   ),
                 ),
               ],
@@ -296,18 +294,32 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   // Helper methods to extract data from stats
   BookingSummary? _getCurrentTenant(PropertyStatsData? stats) {
-    // For now, return null as we don't have current tenant in stats
-    // This could be enhanced to fetch from TenantRepository if needed
-    return null;
+    // Get current tenant from current bookings
+    return stats?.currentBookings.isNotEmpty == true
+        ? stats!.currentBookings.first
+        : null;
   }
 
   List<BookingSummary> _getBookingsByStatus(
     String status,
     PropertyStatsData? stats,
   ) {
-    // For now, return empty list as we don't have booking details in stats
-    // This could be enhanced to fetch from BookingRepository if needed
-    return [];
+    if (stats == null) return [];
+
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'current':
+        return stats.currentBookings;
+      case 'upcoming':
+        return stats.upcomingBookings;
+      case 'completed':
+      case 'recent':
+        // For completed bookings, we'd need a separate endpoint
+        // For now, return empty as the backend doesn't provide this in the current implementation
+        return [];
+      default:
+        return [];
+    }
   }
 }
 

@@ -57,8 +57,18 @@ class AmenityRepository
   }
 
   /// Get amenities by IDs (batch fetch)
+  /// Uses the backend's specific endpoint for better performance
   Future<List<AmenityItem>> getAmenitiesByIds(List<int> ids) async {
-    final amenities = await getAll();
-    return amenities.where((a) => ids.contains(a.id)).toList();
+    if (ids.isEmpty) return [];
+
+    try {
+      // Try to fetch specific amenities from backend
+      return await service.getAmenitiesByIds(ids);
+    } catch (e) {
+      // Fallback to fetching all and filtering if specific endpoint fails
+      print('AmenityRepository: Fallback to local filtering for IDs: $ids');
+      final amenities = await getAll();
+      return amenities.where((a) => ids.contains(a.id)).toList();
+    }
   }
 }

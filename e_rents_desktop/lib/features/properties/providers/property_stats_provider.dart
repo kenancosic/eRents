@@ -1,7 +1,10 @@
 import '../../../base/base.dart';
 import '../../../services/statistics_service.dart';
 import '../../../services/booking_service.dart';
+import '../../../services/review_service.dart';
+import '../../../services/maintenance_service.dart';
 import '../../../models/booking_summary.dart';
+import '../../../models/maintenance_issue.dart';
 
 /// Statistics provider for property analytics
 ///
@@ -10,9 +13,15 @@ import '../../../models/booking_summary.dart';
 class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
   final StatisticsService _statisticsService;
   final BookingService _bookingService;
+  final ReviewService _reviewService;
+  final MaintenanceService _maintenanceService;
 
-  PropertyStatsProvider(this._statisticsService, this._bookingService)
-    : super(null);
+  PropertyStatsProvider(
+    this._statisticsService,
+    this._bookingService,
+    this._reviewService,
+    this._maintenanceService,
+  ) : super(null);
 
   /// Current property ID being tracked
   String? _currentPropertyId;
@@ -42,12 +51,18 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
         _loadReviewStats(propertyId),
         _loadFinancialStats(propertyId),
         _loadOccupancyStats(propertyId),
+        _loadCurrentBookings(propertyId),
+        _loadUpcomingBookings(propertyId),
+        _loadMaintenanceIssues(propertyId),
       ]);
 
       final bookingStats = futures[0] as PropertyBookingStats?;
       final reviewStats = futures[1] as PropertyReviewStats?;
       final financialStats = futures[2] as PropertyFinancialStats?;
       final occupancyStats = futures[3] as PropertyOccupancyStats?;
+      final currentBookings = futures[4] as List<BookingSummary>;
+      final upcomingBookings = futures[5] as List<BookingSummary>;
+      final maintenanceIssues = futures[6] as List<MaintenanceIssue>;
 
       final statsData = PropertyStatsData(
         propertyId: propertyId,
@@ -55,6 +70,9 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
         reviewStats: reviewStats,
         financialStats: financialStats,
         occupancyStats: occupancyStats,
+        currentBookings: currentBookings,
+        upcomingBookings: upcomingBookings,
+        maintenanceIssues: maintenanceIssues,
         lastUpdated: DateTime.now(),
       );
 
@@ -100,14 +118,11 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
 
   Future<PropertyReviewStats?> _loadReviewStats(String propertyId) async {
     try {
-      // Note: This method might not exist in StatisticsService yet
-      // We'll need to add it or use a different service
-      return PropertyReviewStats(
-        averageRating: 0.0,
-        totalReviews: 0,
-        ratingDistribution: {},
-        recentReviews: [],
+      // Use the ReviewService to call the actual backend endpoint
+      final reviewStats = await _reviewService.getPropertyReviewStats(
+        propertyId,
       );
+      return reviewStats;
     } catch (e) {
       print('Error loading review stats: $e');
       return PropertyReviewStats(
@@ -121,7 +136,23 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
 
   Future<PropertyFinancialStats?> _loadFinancialStats(String propertyId) async {
     try {
-      // Calculate financial metrics from existing data
+      // For now, calculate from booking stats if available
+      // This could be enhanced with a dedicated financial stats endpoint
+      final bookingStats = await _bookingService.getPropertyBookingStats(
+        propertyId,
+      );
+
+      return PropertyFinancialStats(
+        monthlyRevenue:
+            bookingStats.totalRevenue / 12, // Rough monthly estimate
+        yearlyRevenue: bookingStats.totalRevenue,
+        averageNightlyRate: bookingStats.averageBookingValue,
+        profitMargin: 0.0, // Would need cost data
+        lastMonthRevenue: 0.0, // Would need historical data
+        revenueGrowth: 0.0, // Would need historical data
+      );
+    } catch (e) {
+      print('Error loading financial stats: $e');
       return PropertyFinancialStats(
         monthlyRevenue: 0.0,
         yearlyRevenue: 0.0,
@@ -130,15 +161,26 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
         lastMonthRevenue: 0.0,
         revenueGrowth: 0.0,
       );
-    } catch (e) {
-      print('Error loading financial stats: $e');
-      return null;
     }
   }
 
   Future<PropertyOccupancyStats?> _loadOccupancyStats(String propertyId) async {
     try {
-      // Calculate occupancy metrics
+      // Calculate from booking stats if available
+      final bookingStats = await _bookingService.getPropertyBookingStats(
+        propertyId,
+      );
+
+      return PropertyOccupancyStats(
+        currentOccupancyRate: bookingStats.occupancyRate,
+        monthlyOccupancyRate: bookingStats.occupancyRate,
+        yearlyOccupancyRate: bookingStats.occupancyRate,
+        averageStayDuration: 0.0, // Would need booking duration data
+        totalNightsBooked: 0, // Would need detailed booking data
+        totalNightsAvailable: 0, // Would need calendar data
+      );
+    } catch (e) {
+      print('Error loading occupancy stats: $e');
       return PropertyOccupancyStats(
         currentOccupancyRate: 0.0,
         monthlyOccupancyRate: 0.0,
@@ -147,9 +189,37 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
         totalNightsBooked: 0,
         totalNightsAvailable: 0,
       );
+    }
+  }
+
+  Future<List<BookingSummary>> _loadCurrentBookings(String propertyId) async {
+    try {
+      return await _bookingService.getCurrentBookings(propertyId);
     } catch (e) {
-      print('Error loading occupancy stats: $e');
-      return null;
+      print('Error loading current bookings: $e');
+      return [];
+    }
+  }
+
+  Future<List<BookingSummary>> _loadUpcomingBookings(String propertyId) async {
+    try {
+      return await _bookingService.getUpcomingBookings(propertyId);
+    } catch (e) {
+      print('Error loading upcoming bookings: $e');
+      return [];
+    }
+  }
+
+  Future<List<MaintenanceIssue>> _loadMaintenanceIssues(
+    String propertyId,
+  ) async {
+    try {
+      return await _maintenanceService.getIssues(
+        queryParams: {'propertyId': propertyId},
+      );
+    } catch (e) {
+      print('Error loading maintenance issues: $e');
+      return [];
     }
   }
 
@@ -187,6 +257,20 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
   /// Get average stay duration safely
   double get averageStayDuration =>
       stats?.occupancyStats?.averageStayDuration ?? 0.0;
+
+  /// Get current bookings safely
+  List<BookingSummary> get currentBookings => stats?.currentBookings ?? [];
+
+  /// Get upcoming bookings safely
+  List<BookingSummary> get upcomingBookings => stats?.upcomingBookings ?? [];
+
+  /// Get maintenance issues safely
+  List<MaintenanceIssue> get maintenanceIssues =>
+      stats?.maintenanceIssues ?? [];
+
+  /// Get current tenant from current bookings
+  BookingSummary? get currentTenant =>
+      currentBookings.isNotEmpty ? currentBookings.first : null;
 
   // Formatted getters for UI display
 
@@ -238,6 +322,9 @@ class PropertyStatsData {
   final PropertyReviewStats? reviewStats;
   final PropertyFinancialStats? financialStats;
   final PropertyOccupancyStats? occupancyStats;
+  final List<BookingSummary> currentBookings;
+  final List<BookingSummary> upcomingBookings;
+  final List<MaintenanceIssue> maintenanceIssues;
   final DateTime lastUpdated;
 
   PropertyStatsData({
@@ -246,6 +333,9 @@ class PropertyStatsData {
     this.reviewStats,
     this.financialStats,
     this.occupancyStats,
+    this.currentBookings = const [],
+    this.upcomingBookings = const [],
+    this.maintenanceIssues = const [],
     required this.lastUpdated,
   });
 

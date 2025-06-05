@@ -34,6 +34,34 @@ class AmenityService extends ApiService {
     }
   }
 
+  Future<List<AmenityItem>> getAmenitiesByIds(List<int> amenityIds) async {
+    if (amenityIds.isEmpty) {
+      return [];
+    }
+
+    try {
+      // Build query string with amenity IDs
+      final idsQuery = amenityIds.map((id) => 'ids=$id').join('&');
+      final response = await get(
+        '/amenities/by-ids?$idsQuery',
+        authenticated: true,
+      );
+      final List<dynamic> jsonResponse = json.decode(response.body);
+
+      final amenities =
+          jsonResponse.map((json) => AmenityItem.fromJson(json)).toList();
+
+      print(
+        'AmenityService: Fetched ${amenities.length} specific amenities by IDs: $amenityIds',
+      );
+      return amenities;
+    } catch (e) {
+      print('AmenityService: Error fetching amenities by IDs: $e');
+      // Return empty list if we can't fetch specific amenities
+      return [];
+    }
+  }
+
   // Clear cache to force refresh from backend
   void clearCache() {
     _cachedAmenities = null;
@@ -64,16 +92,25 @@ class AmenityItem {
   AmenityItem({required this.id, required this.name, required this.icon});
 
   factory AmenityItem.fromJson(Map<String, dynamic> json) {
-    final amenityName = json['amenityName'] as String;
+    // Handle both possible formats for backward compatibility
+    final amenityName = (json['name'] ?? json['amenityName']) as String;
+    final amenityId = (json['id'] ?? json['amenityId']) as int;
+
     return AmenityItem(
-      id: json['amenityId'] as int,
+      id: amenityId,
       name: amenityName,
       icon: _getIconForAmenity(amenityName),
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'amenityId': id, 'amenityName': name};
+    return {
+      'id': id,
+      'name': name,
+      // Keep old format for backward compatibility
+      'amenityId': id,
+      'amenityName': name,
+    };
   }
 
   // Map amenity names to appropriate Flutter icon names

@@ -331,6 +331,8 @@ class AppRouter {
       () => PropertyStatsProvider(
         getService(), // StatisticsService
         getService(), // BookingService
+        getService(), // ReviewService
+        getService(), // MaintenanceService
       ),
     );
     propertyStatsProvider.loadPropertyStats(propertyId);
