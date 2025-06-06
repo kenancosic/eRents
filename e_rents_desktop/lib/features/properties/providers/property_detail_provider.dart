@@ -16,7 +16,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
 
   // Implementation required by DetailProvider
   @override
-  String _getItemId(Property item) => item.id.toString();
+  String _getItemId(Property item) => item.propertyId.toString();
 
   // Property-specific convenience getters
 
@@ -33,7 +33,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   bool get inMaintenance => property?.status == PropertyStatus.maintenance;
 
   /// Get property title safely
-  String get title => property?.title ?? 'Unknown Property';
+  String get title => property?.name ?? 'Unknown Property';
 
   /// Get property description safely
   String get description => property?.description ?? '';
@@ -176,7 +176,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   /// Refresh property data from server
   Future<void> refreshProperty() async {
     if (property != null) {
-      await loadPropertyById(property!.id);
+      await loadPropertyById(property!.propertyId);
     }
   }
 
@@ -184,7 +184,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   Future<void> forceReloadProperty() async {
     if (property != null) {
       await propertyRepository.clearCache();
-      await loadPropertyById(property!.id);
+      await loadPropertyById(property!.propertyId);
     }
   }
 

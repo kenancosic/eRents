@@ -20,7 +20,7 @@ class PropertyOfferCardWidget extends StatelessWidget {
     try {
       final propertyIdInt = int.tryParse(propertyId) ?? 0;
       property = propertyProvider.items.firstWhere(
-        (p) => p.id == propertyIdInt,
+        (p) => p.propertyId == propertyIdInt,
       );
     } catch (e) {
       property = null; // Property not found
@@ -53,7 +53,7 @@ class PropertyOfferCardWidget extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // Navigate using the non-null property object
-          context.push('/properties/${property!.id}', extra: property);
+          context.push('/properties/${property!.propertyId}', extra: property);
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -100,7 +100,7 @@ class PropertyOfferCardWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      property.title,
+                      property.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,

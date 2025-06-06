@@ -100,7 +100,7 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
         const SizedBox(height: 8),
         ...widget.properties!.map(
           (property) => ListTile(
-            title: Text(property.title),
+            title: Text(property.name),
             subtitle: Text(property.address?.getStreetAddress() ?? ''),
             trailing: Text('\$${property.price}/month'),
           ),

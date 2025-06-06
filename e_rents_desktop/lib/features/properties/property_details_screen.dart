@@ -43,14 +43,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(property?.title ?? 'Property Details'),
+            title: Text(property?.name ?? 'Property Details'),
             elevation: 1,
             actions: [
               if (property != null)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Edit Property',
-                  onPressed: () => _navigateToEditScreen(context, property.id),
+                  onPressed:
+                      () => _navigateToEditScreen(context, property.propertyId),
                 ),
             ],
           ),
@@ -110,7 +111,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             title: 'Overview',
             child: PropertyOverviewSection(
               property: property,
-              onEdit: () => _navigateToEditScreen(context, property.id),
+              onEdit: () => _navigateToEditScreen(context, property.propertyId),
             ),
           ),
           const SizedBox(height: 16),
@@ -186,7 +187,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   title: 'Overview',
                   child: PropertyOverviewSection(
                     property: property,
-                    onEdit: () => _navigateToEditScreen(context, property.id),
+                    onEdit:
+                        () =>
+                            _navigateToEditScreen(context, property.propertyId),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -433,7 +436,7 @@ class _MaintenanceCard extends StatelessWidget {
             TextButton.icon(
               onPressed: () {
                 context.push(
-                  '/maintenance/new?propertyId=${property.id.toString()}',
+                  '/maintenance/new?propertyId=${property.propertyId.toString()}',
                 );
               },
               icon: const Icon(Icons.add_circle_outline, size: 18),
@@ -442,7 +445,7 @@ class _MaintenanceCard extends StatelessWidget {
             TextButton.icon(
               onPressed: () {
                 context.push(
-                  '/maintenance?propertyId=${property.id.toString()}',
+                  '/maintenance?propertyId=${property.propertyId.toString()}',
                 );
               },
               icon: const Icon(Icons.list_alt_outlined, size: 18),
@@ -518,7 +521,7 @@ class _MaintenanceCard extends StatelessWidget {
                   ),
                 ),
                 onTap: () {
-                  context.push('/maintenance/${issue.id}');
+                  context.push('/maintenance/${issue.maintenanceIssueId}');
                 },
               );
             },
@@ -529,7 +532,7 @@ class _MaintenanceCard extends StatelessWidget {
             child: TextButton(
               onPressed: () {
                 context.push(
-                  '/maintenance?propertyId=${property.id.toString()}',
+                  '/maintenance?propertyId=${property.propertyId.toString()}',
                 );
               },
               child: Text('View All ${issues.length} Issues'),

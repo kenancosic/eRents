@@ -258,7 +258,17 @@ namespace eRents.Application.Service.TenantService
 				ProfileImageId = user.ProfileImageId,
 
 							// Address details - User now uses Address value object (Phase B migration complete)
-			AddressDetail = user.Address != null ? MapAddressToAddressDetailResponse(user.Address) : null
+			Address = user.Address != null ? new AddressResponse
+			{
+				StreetLine1 = user.Address.StreetLine1,
+				StreetLine2 = user.Address.StreetLine2,
+				City = user.Address.City,
+				State = user.Address.State,
+				Country = user.Address.Country,
+				PostalCode = user.Address.PostalCode,
+				Latitude = user.Address.Latitude,
+				Longitude = user.Address.Longitude
+			} : null
 			};
 		}
 
@@ -323,7 +333,7 @@ namespace eRents.Application.Service.TenantService
 				Description = property.Description,
 				Price = property.Price,
 				Currency = property.Currency,
-				StatusId = GetStatusId(property.Status.ToString()),
+				Status = property.Status,
 				PropertyTypeId = property.PropertyTypeId ?? 0,
 				RentingTypeId = property.RentingTypeId ?? 0,
 				Bedrooms = property.Bedrooms,
@@ -338,46 +348,25 @@ namespace eRents.Application.Service.TenantService
 				ImageIds = property.Images?.Select(img => img.ImageId).ToList() ?? new List<int>(),
 
 				// Address details - using Address value object (Property already migrated)
-				AddressDetail = property.Address != null ? 
-					MapAddressToAddressDetailResponse(property.Address) : null,
+				Address = property.Address != null ? new AddressResponse
+				{
+					StreetLine1 = property.Address.StreetLine1,
+					StreetLine2 = property.Address.StreetLine2,
+					City = property.Address.City,
+					State = property.Address.State,
+					Country = property.Address.Country,
+					PostalCode = property.Address.PostalCode,
+					Latitude = property.Address.Latitude,
+					Longitude = property.Address.Longitude
+				} : null,
 
 				// Amenity IDs only (simplified)
 				AmenityIds = property.Amenities?.Select(a => a.AmenityId).ToList() ?? new List<int>()
 			};
 		}
 
-		private int GetStatusId(string status)
-		{
-			return status?.ToLower() switch
-			{
-				"available" => 1,
-				"rented" => 2,
-				"maintenance" => 3,
-				"draft" => 4,
-				_ => 1 // Default to available
-			};
-		}
 
-		// ✅ HELPER: Map Address value object to AddressDetailResponse DTO
-		private static AddressDetailResponse MapAddressToAddressDetailResponse(Address address)
-		{
-			if (address == null)
-				return null;
 
-			return new AddressDetailResponse
-			{
-				StreetLine1 = address.StreetLine1,
-				StreetLine2 = address.StreetLine2,
-				Latitude = address.Latitude,
-				Longitude = address.Longitude,
-				GeoRegion = new GeoRegionResponse
-				{
-					City = address.City,
-					State = address.State,
-					Country = address.Country,
-					PostalCode = address.PostalCode
-				}
-			};
-		}
+
 	}
 }

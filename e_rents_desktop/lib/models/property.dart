@@ -7,9 +7,9 @@ enum PropertyStatus { available, rented, maintenance, unavailable }
 enum PropertyType { apartment, house, condo, townhouse, studio }
 
 class Property {
-  final int id;
+  final int propertyId;
   final int ownerId;
-  final String title;
+  final String name;
   final String description;
   final PropertyType type;
   final double price;
@@ -28,9 +28,9 @@ class Property {
   final Address? address;
 
   Property({
-    required this.id,
+    required this.propertyId,
     required this.ownerId,
-    required this.title,
+    required this.name,
     required this.description,
     required this.type,
     required this.price,
@@ -54,17 +54,24 @@ class Property {
 
     return Property(
       // Handle both propertyId and id field names from backend
-      id: json['propertyId'] as int? ?? json['id'] as int? ?? 0,
+      propertyId: json['propertyId'] as int? ?? json['id'] as int? ?? 0,
       ownerId: json['ownerId'] as int? ?? 0,
       // Handle both name and title field names
-      title: json['name'] as String? ?? json['title'] as String? ?? '',
+      name: json['name'] as String? ?? json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      type: _parsePropertyType(json['type'] ?? json['propertyType']),
+      // Prefer display names, fallback to ID conversion
+      type: _parsePropertyType(
+        json['propertyTypeName'] ??
+            json['type'] ??
+            json['propertyType'] ??
+            json['propertyTypeId'],
+      ),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rentingType: _parseRentingType(
-        json['rentingType'] ?? json['rentingTypeId'],
+        json['rentingTypeName'] ?? json['rentingType'] ?? json['rentingTypeId'],
       ),
-      status: _parsePropertyStatus(json['status'] ?? json['statusId']),
+      // ✅ DOMAIN-ALIGNED: Backend now sends string status directly
+      status: _parsePropertyStatus(json['status']),
       imageIds: _parseImageIds(json['imageIds']),
       bedrooms: json['bedrooms'] as int? ?? 0,
       bathrooms: json['bathrooms'] as int? ?? 0,
@@ -74,10 +81,13 @@ class Property {
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
+      // Handle date field name differences
       dateAdded:
           json['dateAdded'] != null
               ? DateTime.parse(json['dateAdded'] as String)
-              : DateTime.now(),
+              : (json['createdAt'] != null
+                  ? DateTime.parse(json['createdAt'] as String)
+                  : DateTime.now()),
       address:
           json['addressDetail'] != null
               ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
@@ -88,6 +98,25 @@ class Property {
   static PropertyType _parsePropertyType(dynamic typeValue) {
     if (typeValue == null) return PropertyType.apartment;
 
+    // Handle numeric IDs from backend
+    if (typeValue is int) {
+      switch (typeValue) {
+        case 1:
+          return PropertyType.apartment;
+        case 2:
+          return PropertyType.house;
+        case 3:
+          return PropertyType.condo;
+        case 4:
+          return PropertyType.townhouse;
+        case 5:
+          return PropertyType.studio;
+        default:
+          return PropertyType.apartment;
+      }
+    }
+
+    // Handle string values
     String typeString = typeValue.toString().toLowerCase();
     switch (typeString) {
       case 'apartment':
@@ -108,6 +137,19 @@ class Property {
   static RentingType _parseRentingType(dynamic rentingTypeValue) {
     if (rentingTypeValue == null) return RentingType.monthly;
 
+    // Handle numeric IDs from backend
+    if (rentingTypeValue is int) {
+      switch (rentingTypeValue) {
+        case 1:
+          return RentingType.monthly;
+        case 2:
+          return RentingType.daily;
+        default:
+          return RentingType.monthly;
+      }
+    }
+
+    // Handle string values
     String rentingTypeString = rentingTypeValue.toString().toLowerCase();
     switch (rentingTypeString) {
       case 'daily':
@@ -122,6 +164,23 @@ class Property {
   static PropertyStatus _parsePropertyStatus(dynamic statusValue) {
     if (statusValue == null) return PropertyStatus.available;
 
+    // Handle numeric IDs from backend
+    if (statusValue is int) {
+      switch (statusValue) {
+        case 1:
+          return PropertyStatus.available;
+        case 2:
+          return PropertyStatus.rented;
+        case 3:
+          return PropertyStatus.maintenance;
+        case 4:
+          return PropertyStatus.unavailable;
+        default:
+          return PropertyStatus.available;
+      }
+    }
+
+    // Handle string values
     String statusString = statusValue.toString().toLowerCase();
     switch (statusString) {
       case 'available':
@@ -129,6 +188,7 @@ class Property {
       case 'rented':
         return PropertyStatus.rented;
       case 'maintenance':
+      case 'undermaintenance':
         return PropertyStatus.maintenance;
       case 'unavailable':
         return PropertyStatus.unavailable;
@@ -188,9 +248,9 @@ class Property {
 
   Map<String, dynamic> toJson() {
     return {
-      'propertyId': id,
+      'propertyId': propertyId,
       'ownerId': ownerId,
-      'name': title,
+      'name': name,
       'description': description,
       'type': type.toString().split('.').last,
       'price': price,
@@ -210,9 +270,9 @@ class Property {
   }
 
   Property copyWith({
-    int? id,
+    int? propertyId,
     int? ownerId,
-    String? title,
+    String? name,
     String? description,
     PropertyType? type,
     double? price,
@@ -231,9 +291,9 @@ class Property {
     Address? address,
   }) {
     return Property(
-      id: id ?? this.id,
+      propertyId: propertyId ?? this.propertyId,
       ownerId: ownerId ?? this.ownerId,
-      title: title ?? this.title,
+      name: name ?? this.name,
       description: description ?? this.description,
       type: type ?? this.type,
       price: price ?? this.price,
@@ -254,9 +314,9 @@ class Property {
   }
 
   factory Property.empty() => Property(
-    id: 0,
+    propertyId: 0,
     ownerId: 0,
-    title: 'N/A',
+    name: 'N/A',
     description: '',
     type: PropertyType.apartment,
     price: 0.0,

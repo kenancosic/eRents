@@ -54,7 +54,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
 
   MaintenanceIssue _createIssue() {
     return MaintenanceIssue(
-      id: widget.issue?.id ?? 0,
+      maintenanceIssueId: widget.issue?.maintenanceIssueId ?? 0,
       propertyId: widget.propertyId ?? widget.issue?.propertyId ?? 0,
       title: _titleController.text,
       description: _descriptionController.text,
@@ -223,17 +223,22 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                                     (i) =>
                                         i.title == issue.title &&
                                         i.propertyId == issue.propertyId &&
-                                        i.id != 0,
+                                        i.maintenanceIssueId != 0,
                                   )
                                   .toList();
 
                           if (mounted && newIssues.isNotEmpty) {
                             final newIssue = newIssues.last;
-                            context.go('/maintenance/${newIssue.id}');
+                            context.go(
+                              '/maintenance/${newIssue.maintenanceIssueId}',
+                            );
                             return;
                           }
                         } else {
-                          await provider.updateItem(issue.id.toString(), issue);
+                          await provider.updateItem(
+                            issue.maintenanceIssueId.toString(),
+                            issue,
+                          );
                         }
                         if (mounted) {
                           if (widget.propertyId != null) {

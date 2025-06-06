@@ -6,7 +6,7 @@ enum IssuePriority { low, medium, high, emergency }
 enum IssueStatus { pending, inProgress, completed, cancelled }
 
 class MaintenanceIssue {
-  final int id;
+  final int maintenanceIssueId;
   final int propertyId;
   final String title;
   final String description;
@@ -24,7 +24,7 @@ class MaintenanceIssue {
   final bool isTenantComplaint;
 
   MaintenanceIssue({
-    required this.id,
+    required this.maintenanceIssueId,
     required this.propertyId,
     required this.title,
     required this.description,
@@ -44,10 +44,10 @@ class MaintenanceIssue {
 
   factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
     return MaintenanceIssue(
-      id:
+      maintenanceIssueId:
+          json['maintenanceIssueId'] as int? ??
           json['IssueId'] as int? ??
           json['issueId'] as int? ??
-          json['maintenanceIssueId'] as int? ??
           json['id'] as int? ??
           0,
       propertyId: json['propertyId'] as int? ?? 0,
@@ -136,7 +136,7 @@ class MaintenanceIssue {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'maintenanceIssueId': maintenanceIssueId,
       'propertyId': propertyId,
       'title': title,
       'description': description,
@@ -156,7 +156,7 @@ class MaintenanceIssue {
   }
 
   MaintenanceIssue copyWith({
-    int? id,
+    int? maintenanceIssueId,
     int? propertyId,
     String? title,
     String? description,
@@ -174,7 +174,7 @@ class MaintenanceIssue {
     bool? isTenantComplaint,
   }) {
     return MaintenanceIssue(
-      id: id ?? this.id,
+      maintenanceIssueId: maintenanceIssueId ?? this.maintenanceIssueId,
       propertyId: propertyId ?? this.propertyId,
       title: title ?? this.title,
       description: description ?? this.description,

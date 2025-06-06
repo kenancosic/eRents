@@ -85,7 +85,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                                 fit: BoxFit.cover,
                               )
                               : const Icon(Icons.house, size: 40),
-                      title: Text(property.title),
+                      title: Text(property.name),
                       subtitle: Text(
                         '${property.price.toStringAsFixed(0)} KM/month - ${property.type.name}',
                       ),
@@ -95,13 +95,13 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                           // Step 1: Record the offer (optional, if you need to track it outside of chat)
                           await tenantProvider.recordPropertyOffer(
                             widget.tenantPreference.userId,
-                            property.id,
+                            property.propertyId,
                           );
 
                           // Step 2: Send the actual message via ChatCollectionProvider
                           await chatProvider.sendPropertyOfferMessage(
                             widget.tenantPreference.userId,
-                            property.id,
+                            property.propertyId,
                           );
 
                           if (!mounted) return;
@@ -109,7 +109,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Property offer sent for ${property.title}',
+                                'Property offer sent for ${property.name}',
                               ),
                             ),
                           );

@@ -14,7 +14,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
 
   // Implementation required by CollectionProvider
   @override
-  String _getItemId(Property item) => item.id.toString();
+  String _getItemId(Property item) => item.propertyId.toString();
 
   // Property-specific convenience getters
 
@@ -113,7 +113,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
       // Search query filter (title and description)
       if (searchQuery != null && searchQuery.isNotEmpty) {
         final query = searchQuery.toLowerCase();
-        final matchesTitle = property.title.toLowerCase().contains(query);
+        final matchesTitle = property.name.toLowerCase().contains(query);
         final matchesDescription = property.description.toLowerCase().contains(
           query,
         );
@@ -190,7 +190,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
 
   /// Update an existing property
   Future<void> updateProperty(Property property) async {
-    await updateItem(property.id.toString(), property);
+    await updateItem(property.propertyId.toString(), property);
   }
 
   /// Delete a property
@@ -217,7 +217,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
 
   /// Sort properties by title alphabetically
   List<Property> sortByTitle() {
-    return sortItems((a, b) => a.title.compareTo(b.title));
+    return sortItems((a, b) => a.name.compareTo(b.name));
   }
 
   /// Sort properties by area (largest first)

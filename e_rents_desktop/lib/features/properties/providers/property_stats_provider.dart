@@ -211,7 +211,7 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
     String propertyId,
   ) async {
     try {
-      return await _maintenanceService.getIssues(
+      return await _maintenanceService.getMaintenanceIssues(
         queryParams: {'propertyId': propertyId},
       );
     } catch (e) {

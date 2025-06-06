@@ -64,7 +64,7 @@ class PropertyRepository extends BaseRepository<Property, PropertyService> {
   }
 
   @override
-  String? extractIdFromItem(Property item) => item.id.toString();
+  String? extractIdFromItem(Property item) => item.propertyId.toString();
 
   // Property-specific methods
 

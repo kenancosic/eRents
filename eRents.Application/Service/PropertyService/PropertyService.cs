@@ -45,17 +45,17 @@ namespace eRents.Application.Service.PropertyService
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
 			// Handle address processing - Direct assignment to Address value object
-			if (insert.AddressDetail != null)
+			if (insert.Address != null)
 			{
 				entity.Address = Address.Create(
-					streetLine1: insert.AddressDetail.StreetLine1,
-					streetLine2: insert.AddressDetail.StreetLine2,
-					city: insert.AddressDetail.GeoRegion?.City,
-					state: insert.AddressDetail.GeoRegion?.State,
-					country: insert.AddressDetail.GeoRegion?.Country,
-					postalCode: insert.AddressDetail.GeoRegion?.PostalCode,
-					latitude: insert.AddressDetail.Latitude,
-					longitude: insert.AddressDetail.Longitude);
+					insert.Address.StreetLine1,
+					insert.Address.StreetLine2,
+					insert.Address.City,
+					insert.Address.State,
+					insert.Address.Country,
+					insert.Address.PostalCode,
+					insert.Address.Latitude,
+					insert.Address.Longitude);
 			}
 
 			// Handle amenities processing - SIMPLIFIED: Only use IDs
@@ -78,17 +78,17 @@ namespace eRents.Application.Service.PropertyService
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
 			// Handle address processing - Direct assignment to Address value object
-			if (update.AddressDetail != null)
+			if (update.Address != null)
 			{
 				entity.Address = Address.Create(
-					streetLine1: update.AddressDetail.StreetLine1,
-					streetLine2: update.AddressDetail.StreetLine2,
-					city: update.AddressDetail.GeoRegion?.City,
-					state: update.AddressDetail.GeoRegion?.State,
-					country: update.AddressDetail.GeoRegion?.Country,
-					postalCode: update.AddressDetail.GeoRegion?.PostalCode,
-					latitude: update.AddressDetail.Latitude,
-					longitude: update.AddressDetail.Longitude);
+					update.Address.StreetLine1,
+					update.Address.StreetLine2,
+					update.Address.City,
+					update.Address.State,
+					update.Address.Country,
+					update.Address.PostalCode,
+					update.Address.Latitude,
+					update.Address.Longitude);
 			}
 
 			// Handle amenities processing - SIMPLIFIED: Only use IDs

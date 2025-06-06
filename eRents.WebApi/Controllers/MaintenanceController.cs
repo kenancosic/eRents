@@ -38,7 +38,7 @@ namespace eRents.WebApi.Controllers
 				var result = await base.Insert(insert);
 
 				_logger.LogInformation("Maintenance issue created: {IssueId} by user {UserId} for property {PropertyId}", 
-					result.IssueId, _currentUserService.UserId ?? "unknown", insert.PropertyId);
+					result.MaintenanceIssueId, _currentUserService.UserId ?? "unknown", insert.PropertyId);
 
 				return result;
 			}

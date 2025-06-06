@@ -118,14 +118,14 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
       if (_isEditMode) {
         await collectionProvider.updateItem(
-          propertyToSave.id.toString(),
+          propertyToSave.propertyId.toString(),
           propertyToSave,
         );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Property "${propertyToSave.title}" updated successfully!',
+              'Property "${propertyToSave.name}" updated successfully!',
             ),
             backgroundColor: Colors.green,
           ),
@@ -136,7 +136,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Property "${propertyToSave.title}" created successfully!',
+              'Property "${propertyToSave.name}" created successfully!',
             ),
             backgroundColor: Colors.green,
           ),

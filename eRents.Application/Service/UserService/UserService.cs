@@ -45,20 +45,20 @@ namespace eRents.Application.Service.UserService
 			entity.UpdatedAt = DateTime.UtcNow;
 			
 			// Create Address value object if address data is provided
-			if (insert.AddressDetail != null)
+			if (insert.Address != null)
 			{
 				entity.Address = Address.Create(
-					insert.AddressDetail.StreetLine1,
-					insert.AddressDetail.StreetLine2,
-					insert.AddressDetail.GeoRegion?.City,
-					insert.AddressDetail.GeoRegion?.State,
-					insert.AddressDetail.GeoRegion?.Country ?? "Bosnia and Herzegovina",
-					insert.AddressDetail.GeoRegion?.PostalCode,
-					insert.AddressDetail.Latitude,
-					insert.AddressDetail.Longitude
+					insert.Address.StreetLine1,
+					insert.Address.StreetLine2,
+					insert.Address.City,
+					insert.Address.State,
+					insert.Address.Country ?? "Bosnia and Herzegovina",
+					insert.Address.PostalCode,
+					insert.Address.Latitude,
+					insert.Address.Longitude
 				);
-				// Remove the AddressDetail from the insert to prevent AutoMapper conflicts
-				insert.AddressDetail = null;
+				// Remove the Address from the insert to prevent AutoMapper conflicts
+				insert.Address = null;
 			}
 			
 			await base.BeforeInsertAsync(insert, entity);
@@ -69,21 +69,21 @@ namespace eRents.Application.Service.UserService
 			entity.UpdatedAt = DateTime.UtcNow;
 			
 			// Create Address value object if address data is provided
-			if (update.AddressDetail != null)
+			if (update.Address != null)
 			{
 				entity.Address = Address.Create(
-					update.AddressDetail.StreetLine1,
-					update.AddressDetail.StreetLine2,
-					update.AddressDetail.GeoRegion?.City,
-					update.AddressDetail.GeoRegion?.State,
-					update.AddressDetail.GeoRegion?.Country ?? "Bosnia and Herzegovina",
-					update.AddressDetail.GeoRegion?.PostalCode,
-					update.AddressDetail.Latitude,
-					update.AddressDetail.Longitude
+					update.Address.StreetLine1,
+					update.Address.StreetLine2,
+					update.Address.City,
+					update.Address.State,
+					update.Address.Country ?? "Bosnia and Herzegovina",
+					update.Address.PostalCode,
+					update.Address.Latitude,
+					update.Address.Longitude
 				);
 				
-				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
-				update.AddressDetail = null;
+				// Remove the Address from the update to prevent AutoMapper conflicts
+				update.Address = null;
 			}
 			
 			await base.BeforeUpdateAsync(update, entity);

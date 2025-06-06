@@ -6,9 +6,10 @@ class User {
   final String email;
   final String? phoneNumber;
   final DateTime? dateOfBirth;
-  final String? userType;
-  final String? name;
+  final String? role;
+  final String? firstName;
   final String? lastName;
+  final int? profileImageId;
   final String? password;
   final String? token;
   final bool? isPublic;
@@ -20,9 +21,10 @@ class User {
     required this.email,
     this.phoneNumber,
     this.dateOfBirth,
-    this.userType,
-    this.name,
+    this.role,
+    this.firstName,
     this.lastName,
+    this.profileImageId,
     this.password,
     this.token,
     this.isPublic,
@@ -38,9 +40,10 @@ class User {
       dateOfBirth: json['dateOfBirth'] != null
           ? DateTime.parse(json['dateOfBirth'] as String)
           : null,
-      userType: json['userType'] as String?,
-      name: json['name'] as String?,
+      role: json['role'] ?? json['userType'],
+      firstName: json['firstName'] ?? json['name'],
       lastName: json['lastName'] as String?,
+      profileImageId: json['profileImageId'] as int?,
       password: json['password'] as String?,
       token: json['resetToken'] as String?,
       isPublic: json['isPublic'] as bool?,
@@ -57,9 +60,10 @@ class User {
       'email': email,
       'phoneNumber': phoneNumber,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
-      'userType': userType,
-      'name': name,
+      'role': role,
+      'firstName': firstName,
       'lastName': lastName,
+      'profileImageId': profileImageId,
       'password': password,
       'resetToken': token,
       'isPublic': isPublic,
@@ -73,9 +77,10 @@ class User {
     String? email,
     String? phoneNumber,
     DateTime? dateOfBirth,
-    String? userType,
-    String? name,
+    String? role,
+    String? firstName,
     String? lastName,
+    int? profileImageId,
     String? password,
     String? token,
     bool? isPublic,
@@ -87,13 +92,18 @@ class User {
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
-      userType: userType ?? this.userType,
-      name: name ?? this.name,
+      role: role ?? this.role,
+      firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
+      profileImageId: profileImageId ?? this.profileImageId,
       password: password ?? this.password,
       token: token ?? this.token,
       isPublic: isPublic ?? this.isPublic,
       address: address ?? this.address,
     );
   }
+
+  String? get name => firstName;
+  String? get userType => role;
+  String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
 }

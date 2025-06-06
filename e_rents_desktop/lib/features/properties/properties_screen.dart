@@ -64,7 +64,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     } else {
       newlyFiltered =
           provider.properties.where((property) {
-            return property.title.toLowerCase().contains(lowerCaseQuery);
+            return property.name.toLowerCase().contains(lowerCaseQuery);
           }).toList();
     }
 
@@ -228,7 +228,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
           property: property,
           statusDisplayProperties: _getStatusDisplayProperties(property.status),
           onTap: () => _navigateToPropertyDetails(context, property),
-          onEdit: () => context.push('/properties/${property.id}/edit'),
+          onEdit: () => context.push('/properties/${property.propertyId}/edit'),
           onDelete: () => _showDeleteDialog(context, property),
         );
       },
@@ -254,14 +254,15 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
           properties.map((property) {
             return _PropertyGridItem(
               key: ValueKey(
-                property.id.toString(),
+                property.propertyId.toString(),
               ), // Use stable key for each item
               property: property,
               statusDisplayProperties: _getStatusDisplayProperties(
                 property.status,
               ),
               onTap: () => _navigateToPropertyDetails(context, property),
-              onEdit: () => context.push('/properties/${property.id}/edit'),
+              onEdit:
+                  () => context.push('/properties/${property.propertyId}/edit'),
               onDelete: () => _showDeleteDialog(context, property),
             );
           }).toList(),
@@ -336,7 +337,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       context: context,
       title: 'Delete Property',
       content: Text(
-        'Are you sure you want to delete "${property.title}"? This action cannot be undone.',
+        'Are you sure you want to delete "${property.name}"? This action cannot be undone.',
       ),
       confirmActionText: 'Delete',
       isDestructiveAction: true,
@@ -345,7 +346,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     if (confirmed == true) {
       try {
         await context.read<PropertyCollectionProvider>().removeItem(
-          property.id.toString(),
+          property.propertyId.toString(),
         );
       } catch (e) {
         if (mounted) {
@@ -362,7 +363,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   void _navigateToPropertyDetails(BuildContext context, Property property) {
-    context.push('/properties/${property.id}');
+    context.push('/properties/${property.propertyId}');
   }
 }
 
@@ -432,7 +433,7 @@ class _PropertyListItem extends StatelessWidget {
             ),
           ),
           title: Text(
-            property.title,
+            property.name,
             style: Theme.of(context).textTheme.titleMedium,
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
@@ -614,7 +615,7 @@ class _PropertyGridItem extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            property.title,
+                            property.name,
                             style: Theme.of(context).textTheme.titleMedium,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

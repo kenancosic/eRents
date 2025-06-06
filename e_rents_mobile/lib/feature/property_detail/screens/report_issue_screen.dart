@@ -10,6 +10,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/feature/profile/user_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final int propertyId;
@@ -114,9 +115,25 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     });
 
     try {
+      // Get current user from provider
+      final userProvider = context.read<UserProvider>();
+      final currentUser = userProvider.user;
+
+      if (currentUser == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User not found. Please login again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       final issue = MaintenanceIssue(
         propertyId: widget.propertyId,
-        tenantId: 1, // TODO: Get from user provider
+        tenantId: currentUser.userId!,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priority: _selectedPriority,
@@ -390,7 +407,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         return Colors.orange;
       case MaintenanceIssuePriority.high:
         return Colors.red;
-      case MaintenanceIssuePriority.urgent:
+      case MaintenanceIssuePriority.emergency:
         return Colors.purple;
     }
   }
@@ -403,8 +420,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         return 'Medium Priority';
       case MaintenanceIssuePriority.high:
         return 'High Priority';
-      case MaintenanceIssuePriority.urgent:
-        return 'Urgent';
+      case MaintenanceIssuePriority.emergency:
+        return 'Emergency';
     }
   }
 }

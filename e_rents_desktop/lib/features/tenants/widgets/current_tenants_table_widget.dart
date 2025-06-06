@@ -280,8 +280,8 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                   print('TenantTable: Parsed property ID: $propertyIdInt');
 
                   final property = Property(
-                    id: propertyIdInt,
-                    title: propertyTitle,
+                    propertyId: propertyIdInt,
+                    name: propertyTitle,
                     // Add other required fields with safe defaults
                     ownerId:
                         int.tryParse(
@@ -324,7 +324,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                   );
 
                   print(
-                    'TenantTable: Created property object with ID: ${property.id}, title: ${property.title}',
+                    'TenantTable: Created property object with ID: ${property.propertyId}, title: ${property.name}',
                   );
                   widget.onNavigateToProperty(property);
                 } else {
@@ -466,8 +466,9 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                         );
 
                         final property = Property(
-                          id: int.tryParse(propertyData['id'].toString()) ?? 0,
-                          title:
+                          propertyId:
+                              int.tryParse(propertyData['id'].toString()) ?? 0,
+                          name:
                               propertyData['title']?.toString() ??
                               'Unknown Property',
                           ownerId:

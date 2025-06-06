@@ -7,7 +7,7 @@ import 'package:e_rents_desktop/services/api_service.dart';
 class MaintenanceService extends ApiService {
   MaintenanceService(super.baseUrl, super.storageService);
 
-  Future<List<MaintenanceIssue>> getIssues({
+  Future<List<MaintenanceIssue>> getMaintenanceIssues({
     Map<String, String>? queryParams,
   }) async {
     print('MaintenanceService: Attempting to fetch maintenance issues...');
@@ -37,18 +37,18 @@ class MaintenanceService extends ApiService {
       }
 
       // Add individual item parsing try-catch if needed, similar to other services
-      final issues =
+      final maintenanceIssues =
           jsonResponse
               .map((json) {
                 try {
                   print(
                     'MaintenanceService: Parsing item with keys: ${json.keys.toList()}',
                   );
-                  final issue = MaintenanceIssue.fromJson(json);
+                  final maintenanceIssue = MaintenanceIssue.fromJson(json);
                   print(
-                    'MaintenanceService: Successfully parsed issue with ID: ${issue.id}',
+                    'MaintenanceService: Successfully parsed issue with ID: ${maintenanceIssue.maintenanceIssueId}',
                   );
-                  return issue;
+                  return maintenanceIssue;
                 } catch (e) {
                   print(
                     'MaintenanceService: Error parsing a maintenance issue: $e. Item data: $json',
@@ -56,13 +56,13 @@ class MaintenanceService extends ApiService {
                   return null; // Or handle more gracefully depending on UI needs
                 }
               })
-              .where((issue) => issue != null)
+              .where((maintenanceIssue) => maintenanceIssue != null)
               .cast<MaintenanceIssue>()
               .toList();
       print(
-        'MaintenanceService: Successfully fetched ${issues.length} maintenance issues.',
+        'MaintenanceService: Successfully fetched ${maintenanceIssues.length} maintenance issues.',
       );
-      return issues;
+      return maintenanceIssues;
     } catch (e) {
       print(
         'MaintenanceService: Error fetching maintenance issues: $e. Backend integration might be pending or endpoint unavailable.',
@@ -73,29 +73,36 @@ class MaintenanceService extends ApiService {
     }
   }
 
-  Future<MaintenanceIssue> getIssueById(String issueId) async {
+  Future<MaintenanceIssue> getMaintenanceIssueById(
+    String maintenanceIssueId,
+  ) async {
     print(
-      'MaintenanceService: Attempting to fetch maintenance issue $issueId...',
+      'MaintenanceService: Attempting to fetch maintenance issue $maintenanceIssueId...',
     );
     try {
-      final response = await get('/Maintenance/$issueId', authenticated: true);
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      final issue = MaintenanceIssue.fromJson(jsonResponse);
-      print(
-        'MaintenanceService: Successfully fetched maintenance issue $issueId.',
+      final response = await get(
+        '/Maintenance/$maintenanceIssueId',
+        authenticated: true,
       );
-      return issue;
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      final maintenanceIssue = MaintenanceIssue.fromJson(jsonResponse);
+      print(
+        'MaintenanceService: Successfully fetched maintenance issue $maintenanceIssueId.',
+      );
+      return maintenanceIssue;
     } catch (e) {
       print(
-        'MaintenanceService: Error fetching maintenance issue $issueId: $e. Backend integration might be pending or endpoint unavailable.',
+        'MaintenanceService: Error fetching maintenance issue $maintenanceIssueId: $e. Backend integration might be pending or endpoint unavailable.',
       );
       throw Exception(
-        'Failed to fetch maintenance issue $issueId. Backend integration pending or endpoint unavailable. Cause: $e',
+        'Failed to fetch maintenance issue $maintenanceIssueId. Backend integration pending or endpoint unavailable. Cause: $e',
       );
     }
   }
 
-  Future<MaintenanceIssue> createIssue(MaintenanceIssue issue) async {
+  Future<MaintenanceIssue> createMaintenanceIssue(
+    MaintenanceIssue issue,
+  ) async {
     print('MaintenanceService: Attempting to create maintenance issue...');
     try {
       final response = await post(
@@ -104,11 +111,11 @@ class MaintenanceService extends ApiService {
         authenticated: true,
       );
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      final createdIssue = MaintenanceIssue.fromJson(jsonResponse);
+      final createdMaintenanceIssue = MaintenanceIssue.fromJson(jsonResponse);
       print(
-        'MaintenanceService: Successfully created maintenance issue ${createdIssue.id}.',
+        'MaintenanceService: Successfully created maintenance issue ${createdMaintenanceIssue.maintenanceIssueId}.',
       );
-      return createdIssue;
+      return createdMaintenanceIssue;
     } catch (e) {
       print(
         'MaintenanceService: Error creating maintenance issue: $e. Backend integration might be pending or endpoint unavailable.',
@@ -119,62 +126,62 @@ class MaintenanceService extends ApiService {
     }
   }
 
-  Future<MaintenanceIssue> updateIssue(
-    String issueId,
-    MaintenanceIssue issueData,
+  Future<MaintenanceIssue> updateMaintenanceIssue(
+    String maintenanceIssueId,
+    MaintenanceIssue maintenanceIssueData,
   ) async {
     print(
-      'MaintenanceService: Attempting to update maintenance issue $issueId...',
+      'MaintenanceService: Attempting to update maintenance issue $maintenanceIssueId...',
     );
     try {
       final response = await put(
-        '/Maintenance/$issueId',
-        issueData.toJson(),
+        '/Maintenance/$maintenanceIssueId',
+        maintenanceIssueData.toJson(),
         authenticated: true,
       );
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
-      final updatedIssue = MaintenanceIssue.fromJson(jsonResponse);
+      final updatedMaintenanceIssue = MaintenanceIssue.fromJson(jsonResponse);
       print(
-        'MaintenanceService: Successfully updated maintenance issue $issueId.',
+        'MaintenanceService: Successfully updated maintenance issue $maintenanceIssueId.',
       );
-      return updatedIssue;
+      return updatedMaintenanceIssue;
     } catch (e) {
       print(
-        'MaintenanceService: Error updating maintenance issue $issueId: $e. Backend integration might be pending or endpoint unavailable.',
+        'MaintenanceService: Error updating maintenance issue $maintenanceIssueId: $e. Backend integration might be pending or endpoint unavailable.',
       );
       throw Exception(
-        'Failed to update maintenance issue $issueId. Backend integration pending or endpoint unavailable. Cause: $e',
+        'Failed to update maintenance issue $maintenanceIssueId. Backend integration pending or endpoint unavailable. Cause: $e',
       );
     }
   }
 
-  Future<void> deleteIssue(String issueId) async {
+  Future<void> deleteMaintenanceIssue(String maintenanceIssueId) async {
     print(
-      'MaintenanceService: Attempting to delete maintenance issue $issueId...',
+      'MaintenanceService: Attempting to delete maintenance issue $maintenanceIssueId...',
     );
     try {
-      await delete('/Maintenance/$issueId', authenticated: true);
+      await delete('/Maintenance/$maintenanceIssueId', authenticated: true);
       print(
-        'MaintenanceService: Successfully deleted maintenance issue $issueId.',
+        'MaintenanceService: Successfully deleted maintenance issue $maintenanceIssueId.',
       );
     } catch (e) {
       print(
-        'MaintenanceService: Error deleting maintenance issue $issueId: $e. Backend integration might be pending or endpoint unavailable.',
+        'MaintenanceService: Error deleting maintenance issue $maintenanceIssueId: $e. Backend integration might be pending or endpoint unavailable.',
       );
       throw Exception(
-        'Failed to delete maintenance issue $issueId. Backend integration pending or endpoint unavailable. Cause: $e',
+        'Failed to delete maintenance issue $maintenanceIssueId. Backend integration pending or endpoint unavailable. Cause: $e',
       );
     }
   }
 
-  Future<MaintenanceIssue> updateIssueStatus(
-    String issueId,
+  Future<MaintenanceIssue> updateMaintenanceIssueStatus(
+    String maintenanceIssueId,
     IssueStatus newStatus, {
     String? resolutionNotes,
     double? cost,
   }) async {
     print(
-      'MaintenanceService: Attempting to update status for maintenance issue $issueId...',
+      'MaintenanceService: Attempting to update status for maintenance issue $maintenanceIssueId...',
     );
     print('MaintenanceService: New status: $newStatus');
     print('MaintenanceService: Resolution notes: $resolutionNotes');
@@ -197,7 +204,7 @@ class MaintenanceService extends ApiService {
 
     print('MaintenanceService: Request payload: ${jsonEncode(payload)}');
     print(
-      'MaintenanceService: Request URL: $baseUrl/Maintenance/$issueId/status',
+      'MaintenanceService: Request URL: $baseUrl/Maintenance/$maintenanceIssueId/status',
     );
 
     // Add platform header to ensure backend recognizes this as desktop request
@@ -205,7 +212,7 @@ class MaintenanceService extends ApiService {
 
     try {
       final response = await put(
-        '/Maintenance/$issueId/status',
+        '/Maintenance/$maintenanceIssueId/status',
         payload,
         authenticated: true,
         customHeaders: customHeaders,
@@ -216,17 +223,17 @@ class MaintenanceService extends ApiService {
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
       final updatedIssue = MaintenanceIssue.fromJson(jsonResponse);
       print(
-        'MaintenanceService: Successfully updated status for maintenance issue $issueId.',
+        'MaintenanceService: Successfully updated status for maintenance issue $maintenanceIssueId.',
       );
       return updatedIssue;
     } catch (e) {
       print(
-        'MaintenanceService: Error updating status for maintenance issue $issueId: $e. Backend integration might be pending or endpoint unavailable.',
+        'MaintenanceService: Error updating status for maintenance issue $maintenanceIssueId: $e. Backend integration might be pending or endpoint unavailable.',
       );
       print('MaintenanceService: Error type: ${e.runtimeType}');
       print('MaintenanceService: Full error details: $e');
       throw Exception(
-        'Failed to update status for maintenance issue $issueId. Backend integration pending or endpoint unavailable. Cause: $e',
+        'Failed to update status for maintenance issue $maintenanceIssueId. Backend integration pending or endpoint unavailable. Cause: $e',
       );
     }
   }

@@ -24,7 +24,7 @@ namespace eRents.Shared.DTO.Requests
 		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
 		public int OwnerId { get; set; }
-		public AddressDetailRequest? AddressDetail { get; set; }
+		public AddressRequest? Address { get; set; }
 		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; } // IDs of uploaded images
 	}

@@ -149,11 +149,11 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   void _navigateToPropertyDetails(BuildContext context, Property property) {
     print(
-      'TenantsScreen: Navigating to property details for property ID: ${property.id}',
+      'TenantsScreen: Navigating to property details for property ID: ${property.propertyId}',
     );
-    print('TenantsScreen: Property title: ${property.title}');
+    print('TenantsScreen: Property title: ${property.name}');
     print('TenantsScreen: Full property data: ${property.toString()}');
-    context.push('/properties/${property.id}');
+    context.push('/properties/${property.propertyId}');
   }
 
   void _showTenantPreferenceDetails(

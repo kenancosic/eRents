@@ -1,21 +1,21 @@
 import 'package:e_rents_mobile/core/models/image_model.dart';
 
 enum MaintenanceIssueStatus {
-  reported,
+  pending,
   inProgress,
-  resolved,
-  closed,
+  completed,
+  cancelled,
 }
 
 enum MaintenanceIssuePriority {
   low,
   medium,
   high,
-  urgent,
+  emergency,
 }
 
 class MaintenanceIssue {
-  final int? issueId;
+  final int? maintenanceIssueId;
   final int propertyId;
   final int tenantId;
   final String title;
@@ -29,13 +29,13 @@ class MaintenanceIssue {
   final DateTime? landlordResponseDate;
 
   MaintenanceIssue({
-    this.issueId,
+    this.maintenanceIssueId,
     required this.propertyId,
     required this.tenantId,
     required this.title,
     required this.description,
     required this.priority,
-    this.status = MaintenanceIssueStatus.reported,
+    this.status = MaintenanceIssueStatus.pending,
     required this.dateReported,
     this.dateResolved,
     this.images,
@@ -45,7 +45,7 @@ class MaintenanceIssue {
 
   factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
     return MaintenanceIssue(
-      issueId: json['issueId'],
+      maintenanceIssueId: json['maintenanceIssueId'] ?? json['issueId'],
       propertyId: json['propertyId'],
       tenantId: json['tenantId'],
       title: json['title'],
@@ -56,7 +56,7 @@ class MaintenanceIssue {
       ),
       status: MaintenanceIssueStatus.values.firstWhere(
         (e) => e.toString().split('.').last == json['status'],
-        orElse: () => MaintenanceIssueStatus.reported,
+        orElse: () => MaintenanceIssueStatus.pending,
       ),
       dateReported: DateTime.parse(json['dateReported']),
       dateResolved: json['dateResolved'] != null
@@ -76,7 +76,7 @@ class MaintenanceIssue {
 
   Map<String, dynamic> toJson() {
     return {
-      'issueId': issueId,
+      'maintenanceIssueId': maintenanceIssueId,
       'propertyId': propertyId,
       'tenantId': tenantId,
       'title': title,
@@ -92,7 +92,7 @@ class MaintenanceIssue {
   }
 
   MaintenanceIssue copyWith({
-    int? issueId,
+    int? maintenanceIssueId,
     int? propertyId,
     int? tenantId,
     String? title,
@@ -106,7 +106,7 @@ class MaintenanceIssue {
     DateTime? landlordResponseDate,
   }) {
     return MaintenanceIssue(
-      issueId: issueId ?? this.issueId,
+      maintenanceIssueId: maintenanceIssueId ?? this.maintenanceIssueId,
       propertyId: propertyId ?? this.propertyId,
       tenantId: tenantId ?? this.tenantId,
       title: title ?? this.title,

@@ -21,7 +21,7 @@ namespace eRents.Shared.DTO.Response
 		public int? CurrentBookingId { get; set; }
 		public DateTime? BookingStartDate { get; set; }
 		public DateTime? BookingEndDate { get; set; }
-		public string? BookingStatus { get; set; }
+		public string? Status { get; set; }
 		public decimal? TotalPaid { get; set; }
 
 		// Performance metrics (computed server-side for efficiency)

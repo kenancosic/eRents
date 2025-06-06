@@ -24,17 +24,17 @@ class MaintenanceRepository
     if (params != null) {
       queryParams = params.map((key, value) => MapEntry(key, value.toString()));
     }
-    return await service.getIssues(queryParams: queryParams);
+    return await service.getMaintenanceIssues(queryParams: queryParams);
   }
 
   @override
   Future<MaintenanceIssue> fetchByIdFromService(String id) async {
-    return await service.getIssueById(id);
+    return await service.getMaintenanceIssueById(id);
   }
 
   @override
   Future<MaintenanceIssue> createInService(MaintenanceIssue item) async {
-    return await service.createIssue(item);
+    return await service.createMaintenanceIssue(item);
   }
 
   @override
@@ -42,18 +42,18 @@ class MaintenanceRepository
     String id,
     MaintenanceIssue item,
   ) async {
-    return await service.updateIssue(id, item);
+    return await service.updateMaintenanceIssue(id, item);
   }
 
   @override
   Future<void> deleteInService(String id) async {
-    await service.deleteIssue(id);
+    await service.deleteMaintenanceIssue(id);
   }
 
   @override
   Future<bool> existsInService(String id) async {
     try {
-      await service.getIssueById(id);
+      await service.getMaintenanceIssueById(id);
       return true;
     } catch (e) {
       return false;
@@ -67,7 +67,8 @@ class MaintenanceRepository
   }
 
   @override
-  String? extractIdFromItem(MaintenanceIssue item) => item.id.toString();
+  String? extractIdFromItem(MaintenanceIssue item) =>
+      item.maintenanceIssueId.toString();
 
   // Business Logic Methods
 
@@ -119,7 +120,7 @@ class MaintenanceRepository
     double? cost,
   }) async {
     try {
-      final updatedIssue = await service.updateIssueStatus(
+      final updatedIssue = await service.updateMaintenanceIssueStatus(
         issueId,
         newStatus,
         resolutionNotes: resolutionNotes,

@@ -189,7 +189,7 @@ class MaintenanceDetailProvider extends DetailProvider<MaintenanceIssue> {
 
     // Use repository method for status update
     final updatedIssue = await maintenanceRepository.updateIssueStatus(
-      issue!.id.toString(),
+      issue!.maintenanceIssueId.toString(),
       newStatus,
       resolutionNotes: resolutionNotes,
       cost: cost,
@@ -203,7 +203,7 @@ class MaintenanceDetailProvider extends DetailProvider<MaintenanceIssue> {
   Future<void> forceReloadIssue() async {
     if (issue != null) {
       await maintenanceRepository.clearCache();
-      await loadMaintenanceIssueById(issue!.id);
+      await loadMaintenanceIssueById(issue!.maintenanceIssueId);
     }
   }
 

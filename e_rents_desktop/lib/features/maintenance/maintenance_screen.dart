@@ -95,7 +95,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                   // Single click highlights row - issue selected
                 },
                 onRowDoubleTap: (issue) {
-                  context.push('/maintenance/${issue.id}');
+                  context.push('/maintenance/${issue.maintenanceIssueId}');
                 },
               ),
             ),
@@ -274,7 +274,8 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
               constraints: const BoxConstraints(),
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
-              onPressed: () => context.go('/maintenance/${issue.id}'),
+              onPressed:
+                  () => context.go('/maintenance/${issue.maintenanceIssueId}'),
             ),
           ],
         ),

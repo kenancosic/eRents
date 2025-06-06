@@ -62,7 +62,7 @@ class PropertyService extends ApiService {
   // Helper method to convert Property to PropertyInsertRequest DTO
   Map<String, dynamic> _propertyToInsertRequest(Property property) {
     final request = {
-      'name': property.title,
+      'name': property.name,
       'description': property.description,
       'price': property.price,
       'currency': property.currency,
@@ -95,7 +95,7 @@ class PropertyService extends ApiService {
   // Helper method to convert Property to PropertyUpdateRequest DTO
   Map<String, dynamic> _propertyToUpdateRequest(Property property) {
     final request = {
-      'name': property.title,
+      'name': property.name,
       'description': property.description,
       'price': property.price,
       'currency': property.currency,

@@ -21,7 +21,7 @@ namespace eRents.Shared.DTO.Requests
 		public string? FirstName { get; set; }
 		public string? LastName { get; set; }
 		public int? ProfileImageId { get; set; }
-		public AddressDetailRequest? AddressDetail { get; set; }
+		public AddressRequest? Address { get; set; }
 		public DateTime? CreatedAt { get; set; }
 		public DateTime? UpdatedAt { get; set; }
 		public bool? IsPaypalLinked { get; set; }

@@ -120,7 +120,7 @@ class PropertyFormState extends ChangeNotifier {
   }
 
   void populateFromProperty(Property property) {
-    titleController.text = property.title;
+    titleController.text = property.name;
     descriptionController.text = property.description;
     priceController.text = property.price.toString();
     currencyController.text = _sanitizeCurrency(property.currency);
@@ -206,9 +206,9 @@ class PropertyFormState extends ChangeNotifier {
     final bathrooms = int.tryParse(bathroomsController.text) ?? 0;
 
     return Property(
-      id: initialProperty?.id ?? 0,
+      propertyId: initialProperty?.propertyId ?? 0,
       ownerId: initialProperty?.ownerId ?? currentUserId,
-      title: titleController.text,
+      name: titleController.text,
       description: descriptionController.text,
       type: _type,
       price: double.parse(priceController.text),

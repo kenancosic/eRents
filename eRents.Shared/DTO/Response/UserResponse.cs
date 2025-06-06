@@ -13,7 +13,7 @@ namespace eRents.Shared.DTO.Response
 		public int? ProfileImageId { get; set; }
 		public string? PhoneNumber { get; set; }
 		public string Role { get; set; }
-		public AddressDetailResponse? AddressDetail { get; set; }
+		public AddressResponse? Address { get; set; }
 		public bool IsPaypalLinked { get; set; }
 		public string? PaypalUserIdentifier { get; set; }
 	}

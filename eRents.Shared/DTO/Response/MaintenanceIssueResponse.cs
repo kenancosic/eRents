@@ -5,7 +5,7 @@ namespace eRents.Shared.DTO.Response
 {
 	public class MaintenanceIssueResponse
 	{
-		public int IssueId { get; set; }
+		public int MaintenanceIssueId { get; set; }
 		public int PropertyId { get; set; }
 		public int TenantId { get; set; }
 		public string Title { get; set; }

@@ -325,7 +325,7 @@ class _MaintenanceIssueDetailsScreenState
                       ),
                   ],
                 ),
-                if (issue.id == 0 && _hasChanges()) ...[
+                if (issue.maintenanceIssueId == 0 && _hasChanges()) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Note: Status changes can only be saved for existing issues.',
@@ -439,7 +439,7 @@ class _MaintenanceIssueDetailsScreenState
   }
 
   bool _canSaveChanges(MaintenanceIssue issue) {
-    return _hasChanges() && issue.id != 0;
+    return _hasChanges() && issue.maintenanceIssueId != 0;
   }
 
   void _resetChanges() {
@@ -455,7 +455,7 @@ class _MaintenanceIssueDetailsScreenState
     MaintenanceIssue issue,
   ) {
     // Validate that we have a valid issue ID
-    if (issue.id == 0) {
+    if (issue.maintenanceIssueId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
