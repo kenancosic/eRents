@@ -1,159 +1,34 @@
 ﻿using eRents.RabbitMQMicroservice.Processors;
 using eRents.RabbitMQMicroservice.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System.Text;
-using RabbitMQ.Client.Events;
-using Newtonsoft.Json;
-using eRents.Shared.Messaging;
 
 namespace eRents.RabbitMQMicroservice
 {
 	class Program
 	{
-		static async Task Main(string[] args)
+		static void Main(string[] args)
 		{
-			// Build configuration
-			var configuration = new ConfigurationBuilder()
-				.SetBasePath(Directory.GetCurrentDirectory())
-				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-				.AddEnvironmentVariables()
-				.Build();
+			var serviceProvider = new ServiceCollection()
+					.AddTransient<IMessageService, UserMessageService>() // Microservice-specific message handling
+					.AddTransient<ChatMessageProcessor>()
+					.BuildServiceProvider();
 
-			// Create host
-			var host = Host.CreateDefaultBuilder(args)
-				.ConfigureServices((hostContext, services) =>
-				{
-					// Configure services
-					services.AddSingleton<IConfiguration>(configuration);
-					services.AddLogging(builder =>
-					{
-						builder.AddConsole();
-						builder.SetMinimumLevel(LogLevel.Information);
-					});
+			var rabbitMqService = new RabbitMQConsumerService();
 
-					// Register email service
-					services.AddTransient<IEmailService, SmtpEmailService>();
-
-					// Register message service
-					services.AddTransient<IMessageService, UserMessageService>();
-
-					// Register SignalR notification service
-					services.AddHttpClient<ISignalRNotificationService, SignalRNotificationService>();
-
-					// Register processors
-					services.AddTransient<ChatMessageProcessor>();
-					services.AddTransient<EmailProcessor>();
-					services.AddTransient<BookingNotificationProcessor>();
-					services.AddTransient<ReviewNotificationProcessor>();
-
-					// Register RabbitMQ consumer service
-					services.AddSingleton<RabbitMQConsumerService>(provider =>
-					{
-						var config = provider.GetRequiredService<IConfiguration>();
-						var hostname = config["RabbitMQ:HostName"] ?? "localhost";
-						var port = int.Parse(config["RabbitMQ:Port"] ?? "5672");
-						var username = config["RabbitMQ:UserName"] ?? "guest";
-						var password = config["RabbitMQ:Password"] ?? "guest";
-
-						return new RabbitMQConsumerService(hostname, port, username, password);
-					});
-				})
-				.Build();
-
-			// Get services
-			var serviceProvider = host.Services;
-			var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-			var rabbitMqService = serviceProvider.GetRequiredService<RabbitMQConsumerService>();
-
-			// Get processors
 			var chatMessageProcessor = serviceProvider.GetRequiredService<ChatMessageProcessor>();
-			var emailProcessor = serviceProvider.GetRequiredService<EmailProcessor>();
-			var bookingProcessor = serviceProvider.GetRequiredService<BookingNotificationProcessor>();
-			var reviewProcessor = serviceProvider.GetRequiredService<ReviewNotificationProcessor>();
 
-			try
+			//Consume chat messages
+			rabbitMqService.ConsumeMessages("messageQueue", (model, ea) =>
 			{
-				logger.LogInformation("Starting RabbitMQ Microservice...");
+				chatMessageProcessor.Process(model, ea);
+			});
 
-				// Set up consumers for each queue
-				// 1. Chat messages
-				rabbitMqService.ConsumeMessages("messageQueue", (model, ea) =>
-				{
-					try
-					{
-						chatMessageProcessor.Process(model, ea);
-					}
-					catch (Exception ex)
-					{
-						logger.LogError(ex, "Error processing chat message");
-					}
-				});
-				logger.LogInformation("Started consuming from messageQueue");
+			Console.WriteLine(" [*] Waiting for messages.");
+			Console.ReadLine();
 
-				// 2. Email notifications
-				rabbitMqService.ConsumeMessages("emailQueue", (model, ea) =>
-				{
-					try
-					{
-						var body = ea.Body.ToArray();
-						var message = Encoding.UTF8.GetString(body);
-						emailProcessor.Process(message);
-					}
-					catch (Exception ex)
-					{
-						logger.LogError(ex, "Error processing email notification");
-					}
-				});
-				logger.LogInformation("Started consuming from emailQueue");
-
-				// 3. Booking notifications
-				rabbitMqService.ConsumeMessages("bookingQueue", async (model, ea) =>
-				{
-					try
-					{
-						var body = ea.Body.ToArray();
-						var message = Encoding.UTF8.GetString(body);
-						await bookingProcessor.Process(message);
-					}
-					catch (Exception ex)
-					{
-						logger.LogError(ex, "Error processing booking notification");
-					}
-				});
-				logger.LogInformation("Started consuming from bookingQueue");
-
-				// 4. Review notifications
-				rabbitMqService.ConsumeMessages("reviewQueue", (model, ea) =>
-				{
-					try
-					{
-						reviewProcessor.Process(model, ea);
-					}
-					catch (Exception ex)
-					{
-						logger.LogError(ex, "Error processing review notification");
-					}
-				});
-				logger.LogInformation("Started consuming from reviewQueue");
-
-				logger.LogInformation("RabbitMQ Microservice is running. Press Ctrl+C to exit.");
-				
-				// Keep the service running
-				await host.RunAsync();
-			}
-			catch (Exception ex)
-			{
-				logger.LogError(ex, "Fatal error in RabbitMQ Microservice");
-				throw;
-			}
-			finally
-			{
-				// Clean up
-				rabbitMqService?.Dispose();
-			}
+			// Clean up
+			rabbitMqService.Dispose();
 		}
 	}
 }

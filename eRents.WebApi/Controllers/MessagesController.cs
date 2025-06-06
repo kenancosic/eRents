@@ -17,18 +17,15 @@ namespace eRents.WebApi.Controllers
 		private readonly IMessageHandlerService _messageHandlerService;
 		private readonly ILogger<MessagesController> _logger;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IRealTimeMessagingService _realTimeMessagingService;
 
 		public MessagesController(
 			IMessageHandlerService messageHandlerService,
 			ILogger<MessagesController> logger,
-			ICurrentUserService currentUserService,
-			IRealTimeMessagingService realTimeMessagingService)
+			ICurrentUserService currentUserService)
 		{
 			_messageHandlerService = messageHandlerService;
 			_logger = logger;
 			_currentUserService = currentUserService;
-			_realTimeMessagingService = realTimeMessagingService;
 		}
 
 		/// <summary>
@@ -138,39 +135,10 @@ namespace eRents.WebApi.Controllers
 					});
 				}
 
-				// Get sender ID
-				var senderId = _currentUserService.UserId ?? 0;
-				if (senderId <= 0)
-				{
-					return Unauthorized(new StandardErrorResponse
-					{
-						Type = "Authorization",
-						Message = "User not authenticated",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				// Get receiver ID
-				var receiverId = await _messageHandlerService.GetUserIdByUsernameAsync(userMessage.RecipientUsername);
-				if (receiverId <= 0)
-				{
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Invalid recipient username",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				// Send message using real-time messaging service
-				await _realTimeMessagingService.SendMessageAsync(senderId, receiverId, userMessage.Body);
+				await _messageHandlerService.SendMessageAsync(userMessage);
 				
 				_logger.LogInformation("Message sent successfully from user {UserId} to recipient {RecipientUsername}", 
-					senderId, userMessage.RecipientUsername);
+					_currentUserService.UserId ?? "unknown", userMessage.RecipientUsername ?? "unknown");
 				
 				return Ok(new { message = "Message sent successfully" });
 			}

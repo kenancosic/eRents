@@ -8,7 +8,5 @@ namespace eRents.Application.Service.MessagingService
 		Task SendMessageAsync(UserMessage userMessage);
 		Task<IEnumerable<UserMessage>> GetMessagesAsync(int senderId, int receiverId);
 		Task MarkMessageAsReadAsync(int messageId);
-		Task<int> GetUserIdByUsernameAsync(string username);
-		Task<string> GetUsernameByUserIdAsync(int userId);
 	}
 }
