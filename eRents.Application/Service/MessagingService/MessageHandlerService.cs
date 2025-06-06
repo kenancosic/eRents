@@ -24,7 +24,7 @@ namespace eRents.Application.Service.MessagingService
 			var sender = await _userRepository.GetByUsernameAsync(message.SenderUsername);
 			var recipient = await _userRepository.GetByUsernameAsync(message.RecipientUsername);
 
-			if (sender == null || sender == null)
+			if (sender == null || recipient == null)
 			{
 				throw new ArgumentException("Sender or Recipient username is invalid.");
 			}
@@ -32,7 +32,7 @@ namespace eRents.Application.Service.MessagingService
 			var messageEntity = new Message
 			{
 				SenderId = sender.UserId,
-				ReceiverId = sender.UserId,
+				ReceiverId = recipient.UserId,
 				MessageText = message.Body,
 				DateSent = DateTime.UtcNow,
 				IsRead = false
@@ -55,6 +55,24 @@ namespace eRents.Application.Service.MessagingService
 		public async Task MarkMessageAsReadAsync(int messageId)
 		{
 			await _messageRepository.MarkMessageAsReadAsync(messageId);
+		}
+
+		public async Task<int> GetUserIdByUsernameAsync(string username)
+		{
+			// Handle the special case where username is in format "user_{id}"
+			if (username.StartsWith("user_") && int.TryParse(username.Substring(5), out var userId))
+			{
+				return userId;
+			}
+
+			var user = await _userRepository.GetByUsernameAsync(username);
+			return user?.UserId ?? 0;
+		}
+
+		public async Task<string> GetUsernameByUserIdAsync(int userId)
+		{
+			var user = await _userRepository.GetByIdAsync(userId);
+			return user?.Username ?? $"user_{userId}";
 		}
 	}
 }
