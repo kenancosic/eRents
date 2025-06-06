@@ -33,30 +33,31 @@ namespace eRents.WebApi.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            var userId = _currentUserService.UserId ?? 0;
-            if (userId > 0)
+            if (!int.TryParse(_currentUserService.UserId, out var userId) || userId <= 0)
             {
-                // Add connection to tracking
-                _connections.TryAdd(Context.ConnectionId, userId);
-                
-                // Add to user connections
-                _userConnections.AddOrUpdate(userId, 
-                    new List<string> { Context.ConnectionId },
-                    (key, list) => 
-                    {
-                        list.Add(Context.ConnectionId);
-                        return list;
-                    });
-
-                _logger.LogInformation("User {UserId} connected with ConnectionId {ConnectionId}", 
-                    userId, Context.ConnectionId);
-
-                // Join a group for this user
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
-
-                // Notify the user they're connected
-                await Clients.Caller.SendAsync("Connected", new { userId, connectionId = Context.ConnectionId });
+                _logger.LogWarning("User connection rejected - invalid UserId: {UserId}", _currentUserService.UserId);
+                return;
             }
+            // Add connection to tracking
+            _connections.TryAdd(Context.ConnectionId, userId);
+            
+            // Add to user connections
+            _userConnections.AddOrUpdate(userId, 
+                new List<string> { Context.ConnectionId },
+                (key, list) => 
+                {
+                    list.Add(Context.ConnectionId);
+                    return list;
+                });
+
+            _logger.LogInformation("User {UserId} connected with ConnectionId {ConnectionId}", 
+                userId, Context.ConnectionId);
+
+            // Join a group for this user
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+
+            // Notify the user they're connected
+            await Clients.Caller.SendAsync("Connected", new { userId, connectionId = Context.ConnectionId });
 
             await base.OnConnectedAsync();
         }
@@ -92,8 +93,7 @@ namespace eRents.WebApi.Hubs
         {
             try
             {
-                var senderId = _currentUserService.UserId ?? 0;
-                if (senderId <= 0)
+                if (!int.TryParse(_currentUserService.UserId, out var senderId) || senderId <= 0)
                 {
                     await Clients.Caller.SendAsync("Error", "User not authenticated");
                     return;
@@ -105,7 +105,7 @@ namespace eRents.WebApi.Hubs
                 // Create user message
                 var userMessage = new UserMessage
                 {
-                    SenderUsername = _currentUserService.Username ?? "",
+                    SenderUsername = _currentUserService.UserName ?? "",
                     RecipientUsername = $"user_{receiverId}", // This will be resolved in the service
                     Subject = "Chat Message",
                     Body = messageText
@@ -118,7 +118,7 @@ namespace eRents.WebApi.Hubs
                 var messageData = new
                 {
                     senderId,
-                    senderName = _currentUserService.Username,
+                    senderName = _currentUserService.UserName,
                     receiverId,
                     messageText,
                     dateSent = DateTime.UtcNow,
@@ -166,13 +166,12 @@ namespace eRents.WebApi.Hubs
         /// </summary>
         public async Task UserTyping(int receiverId)
         {
-            var senderId = _currentUserService.UserId ?? 0;
-            if (senderId > 0)
+            if (int.TryParse(_currentUserService.UserId, out var senderId) && senderId > 0)
             {
                 await Clients.Group($"user-{receiverId}").SendAsync("UserTyping", new 
                 { 
                     userId = senderId,
-                    username = _currentUserService.Username 
+                    username = _currentUserService.UserName 
                 });
             }
         }
@@ -182,8 +181,7 @@ namespace eRents.WebApi.Hubs
         /// </summary>
         public async Task UserStoppedTyping(int receiverId)
         {
-            var senderId = _currentUserService.UserId ?? 0;
-            if (senderId > 0)
+            if (int.TryParse(_currentUserService.UserId, out var senderId) && senderId > 0)
             {
                 await Clients.Group($"user-{receiverId}").SendAsync("UserStoppedTyping", new 
                 { 

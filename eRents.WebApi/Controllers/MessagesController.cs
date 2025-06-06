@@ -139,8 +139,7 @@ namespace eRents.WebApi.Controllers
 				}
 
 				// Get sender ID
-				var senderId = _currentUserService.UserId ?? 0;
-				if (senderId <= 0)
+				if (!int.TryParse(_currentUserService.UserId, out var senderId) || senderId <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
 					{

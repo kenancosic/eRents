@@ -27,7 +27,7 @@ class ProfileService extends ApiService {
         'firstName': user.firstName,
         'lastName': user.lastName,
         'phoneNumber': user.phone,
-        'addressDetail': user.address?.toAddressDetailJson(),
+        'address': user.address?.toJson(),
         'updatedAt': DateTime.now().toIso8601String(),
       };
 

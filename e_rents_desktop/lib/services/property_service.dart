@@ -85,7 +85,7 @@ class PropertyService extends ApiService {
     if (property.address != null) {
       final addressJson = _transformAddressForBackend(property.address!);
       if (addressJson != null) {
-        request['addressDetail'] = addressJson;
+        request['address'] = addressJson;
       }
     }
 
@@ -118,7 +118,7 @@ class PropertyService extends ApiService {
     if (property.address != null) {
       final addressJson = _transformAddressForBackend(property.address!);
       if (addressJson != null) {
-        request['addressDetail'] = addressJson;
+        request['address'] = addressJson;
       }
     }
 
@@ -127,40 +127,13 @@ class PropertyService extends ApiService {
 
   // Transform address to match backend DTO structure
   Map<String, dynamic>? _transformAddressForBackend(Address address) {
-    final streetLine1 = address.streetLine1?.trim() ?? '';
-
-    if (streetLine1.isEmpty) {
-      return null; // No meaningful address data
+    // Check if address has meaningful data
+    if (address.isEmpty) {
+      return null;
     }
 
-    final addressJson = <String, dynamic>{
-      'streetLine1': streetLine1, // Backend converts to camelCase automatically
-      'latitude': address.latitude,
-      'longitude': address.longitude,
-    };
-
-    // Add optional fields if they exist
-    if (address.streetLine2?.isNotEmpty == true) {
-      addressJson['streetLine2'] = address.streetLine2;
-    }
-
-    // Add geo region using flattened address structure
-    if (address.city?.isNotEmpty == true) {
-      addressJson['geoRegion'] = {
-        'city': address.city,
-        'country': address.country ?? 'Bosnia and Herzegovina',
-      };
-
-      // Add optional geo region fields
-      if (address.state?.isNotEmpty == true) {
-        (addressJson['geoRegion'] as Map<String, dynamic>)['state'] =
-            address.state;
-      }
-      if (address.postalCode?.isNotEmpty == true) {
-        (addressJson['geoRegion'] as Map<String, dynamic>)['postalCode'] =
-            address.postalCode;
-      }
-    }
+    // Use the unified Address structure that aligns with backend AddressRequest
+    final addressJson = address.toJson();
 
     print(
       'PropertyService: Transformed address for backend: ${json.encode(addressJson)}',

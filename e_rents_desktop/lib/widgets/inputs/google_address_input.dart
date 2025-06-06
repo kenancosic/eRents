@@ -2,55 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_places_flutter/model/prediction.dart';
 import 'package:http/http.dart' as http; // Import http to make direct API calls
 import 'dart:convert'; // For parsing JSON
-
-// Enhanced class to hold detailed address information with administrative areas
-class AddressDetails {
-  final String formattedAddress;
-  final double latitude;
-  final double longitude;
-  final String? streetNumber;
-  final String? streetName;
-  final String? city;
-  final String? postalCode;
-  final String? country;
-  final String? countryCode;
-  final String?
-  administrativeAreaLevel1; // State/Entity level (e.g., "Republika Srpska")
-  final String? administrativeAreaLevel2; // Sub-entity level
-  final String? locality; // City/Town level
-  final String? sublocality; // Neighborhood/District level
-  final String? placeId;
-
-  AddressDetails({
-    required this.formattedAddress,
-    required this.latitude,
-    required this.longitude,
-    this.streetNumber,
-    this.streetName,
-    this.city,
-    this.postalCode,
-    this.country,
-    this.countryCode,
-    this.administrativeAreaLevel1,
-    this.administrativeAreaLevel2,
-    this.locality,
-    this.sublocality,
-    this.placeId,
-  });
-
-  /// Helper method to get the best available city name
-  String? get bestCityName => locality ?? city;
-
-  /// Helper method to get the state/entity for Bosnia and Herzegovina
-  String? get bosnianEntity => administrativeAreaLevel1;
-
-  /// Helper method to get sub-entity information
-  String? get bosnianSubEntity => administrativeAreaLevel2;
-}
+import 'package:e_rents_desktop/models/address.dart'; // Use the unified Address model
 
 class GoogleAddressInput extends StatefulWidget {
   final String googleApiKey;
-  final ValueChanged<AddressDetails?> onAddressSelected;
+  final ValueChanged<Address?> onAddressSelected;
   final String? initialValue;
   final String labelText;
   final String hintText;
@@ -216,8 +172,8 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
     }
   }
 
-  // Enhanced method to fetch place details with comprehensive address components
-  Future<AddressDetails?> _getPlaceDetails(String placeId) async {
+  // Enhanced method to fetch place details and convert to Address model
+  Future<Address?> _getPlaceDetails(String placeId) async {
     final apiKey = widget.googleApiKey;
     final Uri uri =
         Uri.https('maps.googleapis.com', '/maps/api/place/details/json', {
@@ -246,28 +202,31 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
             return component?[useShortName ? 'short_name' : 'long_name'];
           }
 
-          // Enhanced extraction for Bosnia and Herzegovina
-          return AddressDetails(
-            formattedAddress: result['formatted_address'] ?? '',
-            latitude: location['lat'] as double? ?? 0.0,
-            longitude: location['lng'] as double? ?? 0.0,
-            streetNumber: getComponent('street_number'),
-            streetName: getComponent('route'),
-            city: getComponent('locality'),
-            locality: getComponent('locality'),
-            sublocality:
-                getComponent('sublocality') ??
-                getComponent('sublocality_level_1'),
-            postalCode: getComponent('postal_code'),
+          // Extract street information
+          final streetNumber = getComponent('street_number');
+          final streetName = getComponent('route');
+          String? streetLine1;
+
+          if (streetNumber != null && streetName != null) {
+            streetLine1 = '$streetNumber $streetName';
+          } else if (streetName != null) {
+            streetLine1 = streetName;
+          } else if (streetNumber != null) {
+            streetLine1 = streetNumber;
+          }
+
+          // Create Address using the unified model
+          return Address(
+            streetLine1: streetLine1,
+            streetLine2: null, // Can be set by user if needed
+            city:
+                getComponent('locality') ??
+                getComponent('administrative_area_level_2'),
+            state: getComponent('administrative_area_level_1'),
             country: getComponent('country'),
-            countryCode: getComponent('country', useShortName: true),
-            administrativeAreaLevel1: getComponent(
-              'administrative_area_level_1',
-            ), // Main entity (Republika Srpska, Federation of BiH, etc.)
-            administrativeAreaLevel2: getComponent(
-              'administrative_area_level_2',
-            ), // Sub-entity
-            placeId: result['place_id'],
+            postalCode: getComponent('postal_code'),
+            latitude: (location['lat'] as num?)?.toDouble(),
+            longitude: (location['lng'] as num?)?.toDouble(),
           );
         } else {
           print(
@@ -284,39 +243,31 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
   }
 
   void _selectPrediction(Prediction prediction) async {
-    // Make async
     if (prediction.placeId == null || prediction.description == null) {
       print("Prediction missing placeId or description");
       return;
     }
 
-    // Show loading/indicator while fetching details if needed
-    // setState(() { _isFetchingDetails = true; });
+    final address = await _getPlaceDetails(prediction.placeId!);
 
-    final details = await _getPlaceDetails(prediction.placeId!);
-
-    // setState(() { _isFetchingDetails = false; });
-
-    if (details != null) {
+    if (address != null) {
       setState(() {
-        _selectedAddress = details.formattedAddress; // Use detailed address
-        _textController.text = details.formattedAddress;
+        _selectedAddress = address.getFullAddress();
+        _textController.text = address.getFullAddress();
         _predictions = [];
       });
 
-      widget.onAddressSelected(details); // Pass details object
+      widget.onAddressSelected(address);
       _hideOverlay();
       _focusNode.unfocus();
     } else {
-      // Handle error - maybe show a snackbar?
-      print("Failed to get address details.");
-      // Optionally, still set the text field with the description as fallback
+      // Handle error - fallback to description
       setState(() {
         _selectedAddress = prediction.description;
         _textController.text = prediction.description ?? '';
         _predictions = [];
       });
-      widget.onAddressSelected(null); // Indicate failure
+      widget.onAddressSelected(null);
       _hideOverlay();
       _focusNode.unfocus();
     }

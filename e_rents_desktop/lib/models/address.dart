@@ -20,33 +20,16 @@ class Address {
   });
 
   factory Address.fromJson(Map<String, dynamic> json) {
-    // Handle both new Address format and legacy AddressDetail format for backward compatibility
-    if (json.containsKey('geoRegion')) {
-      // Legacy AddressDetail format - transform to new structure
-      final geoRegion = json['geoRegion'] as Map<String, dynamic>?;
-      return Address(
-        streetLine1: json['streetLine1'] as String?,
-        streetLine2: json['streetLine2'] as String?,
-        city: geoRegion?['city'] as String?,
-        state: geoRegion?['state'] as String?,
-        country: geoRegion?['country'] as String?,
-        postalCode: geoRegion?['postalCode'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
-      );
-    } else {
-      // New flat Address format
-      return Address(
-        streetLine1: json['streetLine1'] as String?,
-        streetLine2: json['streetLine2'] as String?,
-        city: json['city'] as String?,
-        state: json['state'] as String?,
-        country: json['country'] as String?,
-        postalCode: json['postalCode'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
-      );
-    }
+    return Address(
+      streetLine1: json['streetLine1'] as String?,
+      streetLine2: json['streetLine2'] as String?,
+      city: json['city'] as String?,
+      state: json['state'] as String?,
+      country: json['country'] as String?,
+      postalCode: json['postalCode'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -59,22 +42,6 @@ class Address {
       'postalCode': postalCode,
       'latitude': latitude,
       'longitude': longitude,
-    };
-  }
-
-  // Transform to backend-compatible AddressDetail format for API calls
-  Map<String, dynamic> toAddressDetailJson() {
-    return {
-      'streetLine1': streetLine1,
-      'streetLine2': streetLine2,
-      'latitude': latitude,
-      'longitude': longitude,
-      'geoRegion': {
-        'city': city,
-        'state': state,
-        'country': country,
-        'postalCode': postalCode,
-      },
     };
   }
 

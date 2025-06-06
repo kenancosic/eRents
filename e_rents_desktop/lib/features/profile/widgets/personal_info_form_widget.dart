@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
-
+import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -176,7 +176,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
             initialValue: initialUserAddress,
             labelText: 'Address',
             hintText: 'Search for your address',
-            onAddressSelected: (AddressDetails? details) {
+            onAddressSelected: (Address? address) {
               // Note: Address updates will be handled through the main form save process
               // as ProfileStateProvider uses a different architecture pattern
             },

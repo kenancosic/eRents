@@ -89,8 +89,8 @@ class Property {
                   ? DateTime.parse(json['createdAt'] as String)
                   : DateTime.now()),
       address:
-          json['addressDetail'] != null
-              ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
+          json['address'] != null
+              ? Address.fromJson(json['address'] as Map<String, dynamic>)
               : null,
     );
   }
@@ -264,7 +264,7 @@ class Property {
       'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
       'dateAdded': dateAdded.toIso8601String(),
-      'addressDetail': address?.toAddressDetailJson(),
+      'address': address?.toJson(),
       'amenityIds': amenityIds,
     };
   }

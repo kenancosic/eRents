@@ -20,7 +20,7 @@ class PropertyFormState extends ChangeNotifier {
     text: 'BAM',
   );
 
-  // Address controllers
+  // Address controllers for manual entry
   final TextEditingController streetNameController = TextEditingController();
   final TextEditingController streetNumberController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
@@ -35,11 +35,9 @@ class PropertyFormState extends ChangeNotifier {
   List<String> _selectedAmenities = [];
   List<int> _selectedAmenityIds = [];
 
-  // Address state
-  String? _selectedFormattedAddress;
+  // Unified address state - stores the complete address from Google or manual entry
+  Address? _selectedAddress;
   String? _initialAddressString;
-  double? _latitude;
-  double? _longitude;
 
   // Loading and error state
   bool _isFetchingData = false;
@@ -52,10 +50,11 @@ class PropertyFormState extends ChangeNotifier {
   List<picker.ImageInfo> get images => _images;
   List<String> get selectedAmenities => _selectedAmenities;
   List<int> get selectedAmenityIds => _selectedAmenityIds;
-  String? get selectedFormattedAddress => _selectedFormattedAddress;
+  Address? get selectedAddress => _selectedAddress;
+  String? get selectedFormattedAddress => _selectedAddress?.getFullAddress();
   String? get initialAddressString => _initialAddressString;
-  double? get latitude => _latitude;
-  double? get longitude => _longitude;
+  double? get latitude => _selectedAddress?.latitude;
+  double? get longitude => _selectedAddress?.longitude;
   bool get isFetchingData => _isFetchingData;
   String? get fetchError => _fetchError;
 
@@ -90,6 +89,19 @@ class PropertyFormState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update address from Google Places API selection
+  void updateAddressFromGoogle(Address? address) {
+    _selectedAddress = address;
+
+    if (address != null) {
+      // Populate manual fields with Google data for editing
+      _populateManualFieldsFromAddress(address);
+    }
+
+    notifyListeners();
+  }
+
+  /// Update address data from manual input or legacy method
   void updateAddressData({
     String? formattedAddress,
     double? lat,
@@ -100,16 +112,86 @@ class PropertyFormState extends ChangeNotifier {
     String? postalCode,
     String? country,
   }) {
-    _selectedFormattedAddress = formattedAddress;
-    _latitude = lat;
-    _longitude = lng;
-
+    // Update manual fields
     if (streetNumber != null) streetNumberController.text = streetNumber;
     if (streetName != null) streetNameController.text = streetName;
     if (city != null) cityController.text = city;
     if (postalCode != null) postalCodeController.text = postalCode;
     if (country != null) countryController.text = country;
 
+    // Create unified address from the data
+    _selectedAddress = _createAddressFromManualFields();
+
+    notifyListeners();
+  }
+
+  /// Populate manual address fields from Address object
+  void _populateManualFieldsFromAddress(Address address) {
+    // Parse street line 1 to extract number and name
+    if (address.streetLine1?.isNotEmpty == true) {
+      final streetParts = address.streetLine1!.split(' ');
+      if (streetParts.length > 1) {
+        // Try to parse first part as number
+        final firstPart = streetParts.first;
+        if (int.tryParse(firstPart) != null) {
+          streetNumberController.text = firstPart;
+          streetNameController.text = streetParts.skip(1).join(' ');
+        } else {
+          streetNameController.text = address.streetLine1!;
+          streetNumberController.text = '';
+        }
+      } else {
+        streetNameController.text = address.streetLine1!;
+        streetNumberController.text = '';
+      }
+    }
+
+    cityController.text = address.city ?? '';
+    countryController.text = address.country ?? 'Bosnia and Herzegovina';
+    postalCodeController.text = address.postalCode ?? '';
+  }
+
+  /// Create Address object from manual field inputs
+  Address? _createAddressFromManualFields() {
+    final streetName = streetNameController.text.trim();
+    final streetNumber = streetNumberController.text.trim();
+    final city = cityController.text.trim();
+
+    if (streetName.isEmpty && city.isEmpty) {
+      return null; // No meaningful address data
+    }
+
+    // Combine street number and name properly
+    String? streetLine1;
+    if (streetNumber.isNotEmpty && streetName.isNotEmpty) {
+      streetLine1 = '$streetNumber $streetName';
+    } else if (streetName.isNotEmpty) {
+      streetLine1 = streetName;
+    } else if (streetNumber.isNotEmpty) {
+      streetLine1 = streetNumber;
+    }
+
+    return Address(
+      streetLine1: streetLine1,
+      streetLine2: null,
+      city: city.isNotEmpty ? city : null,
+      state: null, // Can be added later if needed
+      country:
+          countryController.text.trim().isNotEmpty
+              ? countryController.text.trim()
+              : 'Bosnia and Herzegovina',
+      postalCode:
+          postalCodeController.text.trim().isNotEmpty
+              ? postalCodeController.text.trim()
+              : null,
+      latitude: _selectedAddress?.latitude,
+      longitude: _selectedAddress?.longitude,
+    );
+  }
+
+  /// Update address from manual field changes
+  void updateAddressFromManualFields() {
+    _selectedAddress = _createAddressFromManualFields();
     notifyListeners();
   }
 
@@ -139,34 +221,11 @@ class PropertyFormState extends ChangeNotifier {
     _rentingType = property.rentingType;
     _status = property.status;
 
-    // Populate address fields if available
+    // Populate address
     if (property.address != null) {
-      final address = property.address!;
-
-      // Parse street line 1 to extract number and name
-      if (address.streetLine1?.isNotEmpty == true) {
-        final streetParts = address.streetLine1!.split(' ');
-        if (streetParts.length > 1) {
-          // Try to parse first part as number
-          final firstPart = streetParts.first;
-          if (int.tryParse(firstPart) != null) {
-            streetNumberController.text = firstPart;
-            streetNameController.text = streetParts.skip(1).join(' ');
-          } else {
-            streetNameController.text = address.streetLine1!;
-          }
-        } else {
-          streetNameController.text = address.streetLine1!;
-        }
-      }
-
-      cityController.text = address.city ?? '';
-      countryController.text = address.country ?? 'Bosnia and Herzegovina';
-      postalCodeController.text = address.postalCode ?? '';
-
-      _latitude = address.latitude;
-      _longitude = address.longitude;
-      _selectedFormattedAddress = address.streetLine2;
+      _selectedAddress = property.address;
+      _initialAddressString = property.address!.getFullAddress();
+      _populateManualFieldsFromAddress(property.address!);
     }
 
     _selectedAmenityIds = property.amenityIds;
@@ -205,6 +264,11 @@ class PropertyFormState extends ChangeNotifier {
     final bedrooms = int.tryParse(bedroomsController.text) ?? 0;
     final bathrooms = int.tryParse(bathroomsController.text) ?? 0;
 
+    // Ensure we have the latest address data from manual fields
+    if (_selectedAddress == null) {
+      _selectedAddress = _createAddressFromManualFields();
+    }
+
     return Property(
       propertyId: initialProperty?.propertyId ?? 0,
       ownerId: initialProperty?.ownerId ?? currentUserId,
@@ -216,7 +280,7 @@ class PropertyFormState extends ChangeNotifier {
       status: _status,
       imageIds:
           _images.map((img) => img.id ?? 0).where((id) => id > 0).toList(),
-      address: _createAddress(),
+      address: _selectedAddress,
       bedrooms: bedrooms > 0 ? bedrooms : 1, // Ensure minimum 1 bedroom
       bathrooms: bathrooms > 0 ? bathrooms : 1, // Ensure minimum 1 bathroom
       area: double.parse(areaController.text),
@@ -232,49 +296,6 @@ class PropertyFormState extends ChangeNotifier {
               ? int.tryParse(minimumStayDaysController.text)
               : null,
       dateAdded: initialProperty?.dateAdded ?? DateTime.now(),
-    );
-  }
-
-  Address? _createAddress() {
-    // Only create address if we have meaningful data
-    final streetName = streetNameController.text.trim();
-    final streetNumber = streetNumberController.text.trim();
-    final city = cityController.text.trim();
-
-    if (streetName.isEmpty && city.isEmpty) {
-      return null; // No meaningful address data
-    }
-
-    // Combine street number and name properly
-    String streetLine1;
-    if (streetNumber.isNotEmpty && streetName.isNotEmpty) {
-      streetLine1 = '$streetNumber $streetName';
-    } else if (streetName.isNotEmpty) {
-      streetLine1 = streetName;
-    } else if (streetNumber.isNotEmpty) {
-      streetLine1 = streetNumber;
-    } else {
-      streetLine1 = city; // Fallback to city if no street info
-    }
-
-    return Address(
-      streetLine1: streetLine1,
-      streetLine2:
-          _selectedFormattedAddress?.isNotEmpty == true
-              ? _selectedFormattedAddress
-              : null,
-      city: city.isNotEmpty ? city : null,
-      state: null, // Can be added later if needed
-      country:
-          countryController.text.trim().isNotEmpty
-              ? countryController.text.trim()
-              : 'Bosnia and Herzegovina',
-      postalCode:
-          postalCodeController.text.trim().isNotEmpty
-              ? postalCodeController.text.trim()
-              : null,
-      latitude: _latitude,
-      longitude: _longitude,
     );
   }
 

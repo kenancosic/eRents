@@ -65,8 +65,8 @@ class User {
       isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
       paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
       address:
-          json['addressDetail'] != null
-              ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
+          json['address'] != null
+              ? Address.fromJson(json['address'] as Map<String, dynamic>)
               : null,
     );
   }
@@ -116,7 +116,7 @@ class User {
       'resetTokenExpiration': resetTokenExpiration?.toIso8601String(),
       'isPaypalLinked': isPaypalLinked,
       'paypalUserIdentifier': paypalUserIdentifier,
-      'addressDetail': address?.toAddressDetailJson(),
+      'address': address?.toJson(),
     };
   }
 

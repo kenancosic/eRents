@@ -331,6 +331,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     FormFieldValidator<String>? validator,
     bool isRequired = true,
     IconData? leadingIcon,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
@@ -350,6 +351,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       ),
       maxLines: maxLines,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       validator:
           validator ??
           (value) {
@@ -553,17 +555,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
             googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
             initialValue: formState.initialAddressString,
             countries: const ["BA"],
-            onAddressSelected: (selectedDetails) {
-              formState.updateAddressData(
-                formattedAddress: selectedDetails?.formattedAddress,
-                lat: selectedDetails?.latitude,
-                lng: selectedDetails?.longitude,
-                streetNumber: selectedDetails?.streetNumber,
-                streetName: selectedDetails?.streetName,
-                city: selectedDetails?.city,
-                postalCode: selectedDetails?.postalCode,
-                country: selectedDetails?.country,
-              );
+            onAddressSelected: (selectedAddress) {
+              formState.updateAddressFromGoogle(selectedAddress);
             },
             validator: (value) {
               final hasManualAddress =
@@ -633,6 +626,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 theme: theme,
                 isRequired: !hasGoogleApi,
                 leadingIcon: Icons.maps_home_work_outlined,
+                onChanged: (value) => formState.updateAddressFromManualFields(),
                 validator: (value) {
                   if (hasGoogleApi) {
                     final hasGoogleAddress =
@@ -661,6 +655,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 theme: theme,
                 isRequired: false,
                 leadingIcon: Icons.format_list_numbered,
+                onChanged: (value) => formState.updateAddressFromManualFields(),
               ),
             ),
           ],
@@ -676,6 +671,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 theme: theme,
                 isRequired: !hasGoogleApi,
                 leadingIcon: Icons.location_city,
+                onChanged: (value) => formState.updateAddressFromManualFields(),
                 validator: (value) {
                   if (hasGoogleApi) {
                     final hasGoogleAddress =
@@ -703,6 +699,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 theme: theme,
                 isRequired: false,
                 leadingIcon: Icons.local_post_office_outlined,
+                onChanged: (value) => formState.updateAddressFromManualFields(),
               ),
             ),
             const SizedBox(width: 16),
@@ -713,6 +710,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 theme: theme,
                 isRequired: false,
                 leadingIcon: Icons.public_outlined,
+                onChanged: (value) => formState.updateAddressFromManualFields(),
                 validator: (value) {
                   if (!hasGoogleApi &&
                       (value == null || value.isEmpty) &&
