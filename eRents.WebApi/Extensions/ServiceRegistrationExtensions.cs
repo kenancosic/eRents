@@ -16,6 +16,12 @@ using eRents.RabbitMQMicroservice.Services;
 using eRents.Shared.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using eRents.WebApi.Extensions;
+using eRents.WebAPI.Filters;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Logging;
+using eRents.WebApi.Hubs;
 
 namespace eRents.WebApi.Extensions
 {
@@ -70,6 +76,9 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IMessageHandlerService, MessageHandlerService>();
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
+            
+            // Real-time messaging service
+            services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
             
             // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
             
