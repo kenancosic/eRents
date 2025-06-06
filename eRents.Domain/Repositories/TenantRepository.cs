@@ -12,8 +12,6 @@ namespace eRents.Domain.Repositories
         {
             var query = _context.Users
                 .Include(u => u.ProfileImage)
-                .Include(u => u.AddressDetail)
-                    .ThenInclude(ad => ad.GeoRegion)
                 .Where(u => u.Bookings.Any(b => 
                     b.Property.OwnerId == landlordId &&
                     b.StartDate <= DateOnly.FromDateTime(DateTime.UtcNow) &&
@@ -34,7 +32,7 @@ namespace eRents.Domain.Repositories
 
                 if (filters.ContainsKey("city") && !string.IsNullOrEmpty(filters["city"]))
                 {
-                    query = query.Where(u => u.AddressDetail.GeoRegion.City.ToLower().Contains(filters["city"].ToLower()));
+                    query = query.Where(u => u.Address != null && u.Address.City.ToLower().Contains(filters["city"].ToLower()));
                 }
 
                 if (filters.ContainsKey("status") && !string.IsNullOrEmpty(filters["status"]))
@@ -60,9 +58,6 @@ namespace eRents.Domain.Repositories
             return await _context.Tenants
                 .Include(t => t.User)
                     .ThenInclude(u => u.ProfileImage)
-                .Include(t => t.User)
-                    .ThenInclude(u => u.AddressDetail)
-                        .ThenInclude(ad => ad.GeoRegion)
                 .Include(t => t.Property)
                     .ThenInclude(p => p.Images)
                 .Where(t => t.Property.OwnerId == landlordId)
@@ -108,8 +103,6 @@ namespace eRents.Domain.Repositories
         {
             return await _context.Users
                 .Include(u => u.ProfileImage)
-                .Include(u => u.AddressDetail)
-                    .ThenInclude(ad => ad.GeoRegion)
                 .Where(u => u.Bookings.Any(b => b.Property.OwnerId == landlordId))
                 .AsNoTracking()
                 .ToListAsync();
@@ -141,8 +134,6 @@ namespace eRents.Domain.Repositories
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             return await _context.Users
                 .Include(u => u.ProfileImage)
-                .Include(u => u.AddressDetail)
-                    .ThenInclude(ad => ad.GeoRegion)
                 .Where(u => u.Bookings.Any(b => 
                     b.Property.OwnerId == landlordId &&
                     b.StartDate <= today &&

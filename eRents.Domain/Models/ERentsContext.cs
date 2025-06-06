@@ -27,10 +27,6 @@ public partial class ERentsContext : DbContext
 
     public virtual DbSet<IssueStatus> IssueStatuses { get; set; }
 
-    public virtual DbSet<GeoRegion> GeoRegions { get; set; }
-
-    public virtual DbSet<AddressDetail> AddressDetails { get; set; }
-
     public virtual DbSet<MaintenanceIssue> MaintenanceIssues { get; set; }
 
     public virtual DbSet<Message> Messages { get; set; }
@@ -292,10 +288,18 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("daily_rate");
             entity.Property(e => e.MinimumStayDays).HasColumnName("minimum_stay_days");
 
-            entity.HasOne(d => d.AddressDetail)
-                .WithMany(p => p.Properties)
-                .HasForeignKey(d => d.AddressDetailId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // Configure Address as owned entity (value object)
+            entity.OwnsOne(p => p.Address, address =>
+            {
+                address.Property(a => a.StreetLine1).HasColumnName("Address_StreetLine1");
+                address.Property(a => a.StreetLine2).HasColumnName("Address_StreetLine2");
+                address.Property(a => a.City).HasColumnName("Address_City");
+                address.Property(a => a.State).HasColumnName("Address_State");
+                address.Property(a => a.Country).HasColumnName("Address_Country");
+                address.Property(a => a.PostalCode).HasColumnName("Address_PostalCode");
+                address.Property(a => a.Latitude).HasColumnName("Address_Latitude");
+                address.Property(a => a.Longitude).HasColumnName("Address_Longitude");
+            });
 
             entity.HasOne(d => d.Owner).WithMany(p => p.Properties)
                 .HasForeignKey(d => d.OwnerId)
@@ -452,17 +456,24 @@ public partial class ERentsContext : DbContext
                 .IsUnicode(false)
                 .HasColumnName("username");
             entity.Property(e => e.IsPublic).HasColumnName("is_public");
-            entity.Property(e => e.AddressDetailId).HasColumnName("address_detail_id");
+
             entity.Property(e => e.UserTypeId).HasColumnName("user_type_id");
             entity.Property(e => e.DateOfBirth)
                 .HasColumnType("date")
                 .HasColumnName("date_of_birth");
 
-            entity.HasOne(d => d.AddressDetail)
-                .WithMany(p => p.Users)
-                .HasForeignKey(d => d.AddressDetailId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict);
+            // Configure Address value object for User
+            entity.OwnsOne(u => u.Address, address =>
+            {
+                address.Property(a => a.StreetLine1).HasColumnName("Address_StreetLine1").HasMaxLength(255);
+                address.Property(a => a.StreetLine2).HasColumnName("Address_StreetLine2").HasMaxLength(255);
+                address.Property(a => a.City).HasColumnName("Address_City").HasMaxLength(100);
+                address.Property(a => a.State).HasColumnName("Address_State").HasMaxLength(100);
+                address.Property(a => a.Country).HasColumnName("Address_Country").HasMaxLength(100);
+                address.Property(a => a.PostalCode).HasColumnName("Address_PostalCode").HasMaxLength(20);
+                address.Property(a => a.Latitude).HasColumnName("Address_Latitude").HasColumnType("decimal(9, 6)");
+                address.Property(a => a.Longitude).HasColumnName("Address_Longitude").HasColumnType("decimal(9, 6)");
+            });
 
             entity.HasOne(d => d.UserTypeNavigation)
                 .WithMany(p => p.Users)
@@ -595,30 +606,7 @@ public partial class ERentsContext : DbContext
                 j => j.HasOne(tpa => tpa.TenantPreference).WithMany().HasForeignKey(tpa => tpa.TenantPreferenceId)
             );
 
-        modelBuilder.Entity<GeoRegion>(entity =>
-        {
-            entity.HasKey(e => e.GeoRegionId);
-            entity.Property(e => e.City).IsRequired().HasMaxLength(100).IsUnicode(true);
-            entity.Property(e => e.State).HasMaxLength(100).IsUnicode(true);
-            entity.Property(e => e.Country).IsRequired().HasMaxLength(100).IsUnicode(true);
-            entity.Property(e => e.PostalCode).HasMaxLength(20);
-
-            entity.HasIndex(e => new { e.City, e.State, e.Country, e.PostalCode }).IsUnique();
-        });
-
-        modelBuilder.Entity<AddressDetail>(entity =>
-        {
-            entity.HasKey(e => e.AddressDetailId);
-            entity.Property(e => e.StreetLine1).IsRequired().HasMaxLength(255).IsUnicode(true);
-            entity.Property(e => e.StreetLine2).HasMaxLength(255).IsUnicode(true);
-            entity.Property(e => e.Latitude).HasColumnType("decimal(9, 6)");
-            entity.Property(e => e.Longitude).HasColumnType("decimal(9, 6)");
-
-            entity.HasOne(d => d.GeoRegion)
-                .WithMany(p => p.AddressDetails)
-                .HasForeignKey(d => d.GeoRegionId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
+        // Legacy entities GeoRegion and AddressDetail removed as part of Address refactoring
 
         modelBuilder.Entity<LeaseExtensionRequest>(entity =>
         {

@@ -31,8 +31,6 @@ namespace eRents.Domain.Repositories
 
 			return await _context.Bookings
 				.Include(b => b.Property)
-					.ThenInclude(p => p.AddressDetail)
-						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
 				.Include(b => b.BookingStatus)
@@ -48,8 +46,6 @@ namespace eRents.Domain.Repositories
 
 			return await _context.Bookings
 				.Include(b => b.Property)
-					.ThenInclude(p => p.AddressDetail)
-						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
 				.Include(b => b.BookingStatus)
@@ -100,8 +96,6 @@ namespace eRents.Domain.Repositories
 		{
 			var booking = await _context.Bookings
 				.Include(b => b.Property)
-					.ThenInclude(p => p.AddressDetail)
-						.ThenInclude(ad => ad.GeoRegion)
 				.Include(b => b.Property.Images)
 				.Include(b => b.User)
 				.Include(b => b.BookingStatus)

@@ -1,4 +1,4 @@
-import './address_detail.dart';
+import './address.dart';
 
 class User {
   final int? userId;
@@ -12,8 +12,7 @@ class User {
   final String? password;
   final String? token;
   final bool? isPublic;
-  final int? addressDetailId;
-  final AddressDetail? addressDetail;
+  final Address? address;
 
   User({
     this.userId,
@@ -27,8 +26,7 @@ class User {
     this.password,
     this.token,
     this.isPublic,
-    this.addressDetailId,
-    this.addressDetail,
+    this.address,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -46,10 +44,8 @@ class User {
       password: json['password'] as String?,
       token: json['resetToken'] as String?,
       isPublic: json['isPublic'] as bool?,
-      addressDetailId: json['addressDetailId'] as int?,
-      addressDetail: json['addressDetail'] != null
-          ? AddressDetail.fromJson(
-              json['addressDetail'] as Map<String, dynamic>)
+      address: json['addressDetail'] != null
+          ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -67,7 +63,7 @@ class User {
       'password': password,
       'resetToken': token,
       'isPublic': isPublic,
-      'addressDetailId': addressDetailId,
+      'addressDetail': address?.toAddressDetailJson(),
     };
   }
 
@@ -83,8 +79,7 @@ class User {
     String? password,
     String? token,
     bool? isPublic,
-    int? addressDetailId,
-    AddressDetail? addressDetail,
+    Address? address,
   }) {
     return User(
       userId: userId ?? this.userId,
@@ -98,8 +93,7 @@ class User {
       password: password ?? this.password,
       token: token ?? this.token,
       isPublic: isPublic ?? this.isPublic,
-      addressDetailId: addressDetailId ?? this.addressDetailId,
-      addressDetail: addressDetail ?? this.addressDetail,
+      address: address ?? this.address,
     );
   }
 }

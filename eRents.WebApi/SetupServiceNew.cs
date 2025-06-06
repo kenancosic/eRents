@@ -29,7 +29,8 @@ namespace eRents.WebApi
 			using var transaction = await context.Database.BeginTransactionAsync();
 			try
 			{
-				bool isEmpty = !await context.GeoRegions.AnyAsync();
+				// Check UserTypes table instead of legacy GeoRegions
+				bool isEmpty = !await context.UserTypes.AnyAsync();
 				if (!isEmpty && !forceSeed)
 				{
 					_logger?.LogInformation("Database is not empty. Skipping seeding.");
@@ -191,39 +192,10 @@ namespace eRents.WebApi
 		#region 2. Geographic Data
 		private async Task SeedGeoDataAsync(ERentsContext context)
 		{
-			_logger?.LogInformation("Seeding geographic data...");
-
-			var geoRegions = new[]
-			{
-				new GeoRegion { City = "Sarajevo", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "71000" },
-				new GeoRegion { City = "Banja Luka", State = "Republika Srpska", Country = "Bosnia and Herzegovina", PostalCode = "78000" },
-				new GeoRegion { City = "Mostar", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "88000" },
-				new GeoRegion { City = "Tuzla", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "75000" },
-				new GeoRegion { City = "Zenica", State = "Federation of Bosnia and Herzegovina", Country = "Bosnia and Herzegovina", PostalCode = "72000" },
-				new GeoRegion { City = "Bijeljina", State = "Republika Srpska", Country = "Bosnia and Herzegovina", PostalCode = "76300" }
-			};
-
-			foreach (var gr in geoRegions)
-			{
-				var existing = await context.GeoRegions.FirstOrDefaultAsync(x =>
-					x.City == gr.City && x.State == gr.State && x.Country == gr.Country);
-				if (existing == null)
-					context.GeoRegions.Add(gr);
-			}
-			await context.SaveChangesAsync();
-
-			// AddressDetails
-			var dbGeoRegions = await context.GeoRegions.ToListAsync();
-			var addressDetails = dbGeoRegions.Select((gr, index) => new AddressDetail
-			{
-				GeoRegionId = gr.GeoRegionId,
-				StreetLine1 = GetBosnianStreetName(index),
-				Latitude = GetLatitudeForCity(gr.City),
-				Longitude = GetLongitudeForCity(gr.City)
-			}).ToArray();
-
-			context.AddressDetails.AddRange(addressDetails);
-			await context.SaveChangesAsync();
+			_logger?.LogInformation("Legacy geo data seeding skipped - using Address value objects directly");
+			// Legacy GeoRegion and AddressDetail seeding removed as part of Address refactoring
+			// Address data is now embedded directly in Properties and Users using Address value object
+			await Task.CompletedTask;
 		}
 
 		private string GetBosnianStreetName(int index)
@@ -265,8 +237,6 @@ namespace eRents.WebApi
 			_logger?.LogInformation("Seeding users...");
 
 			var userTypes = await context.UserTypes.ToListAsync();
-			var addresses = await context.AddressDetails.ToListAsync();
-
 			// Generate common password for all test users (Test123!)
 			var commonPassword = "Test123!";
 			var commonSalt = GenerateSalt();
@@ -275,7 +245,7 @@ namespace eRents.WebApi
 			var users = new List<User>();
 
 			// Create admin user
-			users.Add(CreateUser("admin", "admin@erents.com", "Admin", "User", userTypes, addresses, 3, commonHash, commonSalt));
+			users.Add(CreateUser("admin", "admin@erents.com", "Admin", "User", userTypes, 3, commonHash, commonSalt));
 
 			// Create landlords
 			var landlordNames = new[]
@@ -288,7 +258,7 @@ namespace eRents.WebApi
 
 			foreach (var (username, email, firstName, lastName) in landlordNames)
 			{
-				users.Add(CreateUser(username, email, firstName, lastName, userTypes, addresses, 2, commonHash, commonSalt));
+				users.Add(CreateUser(username, email, firstName, lastName, userTypes, 2, commonHash, commonSalt));
 			}
 
 			// Create tenants
@@ -303,15 +273,15 @@ namespace eRents.WebApi
 
 			foreach (var (username, email, firstName, lastName) in tenantNames)
 			{
-				users.Add(CreateUser(username, email, firstName, lastName, userTypes, addresses, 1, commonHash, commonSalt));
+				users.Add(CreateUser(username, email, firstName, lastName, userTypes, 1, commonHash, commonSalt));
 			}
 
 			context.Users.AddRange(users);
 			await context.SaveChangesAsync();
 		}
 
-		private User CreateUser(string username, string email, string firstName, string lastName,
-			List<UserType> userTypes, List<AddressDetail> addresses, int userTypeId, byte[] hash, byte[] salt)
+				private User CreateUser(string username, string email, string firstName, string lastName, 
+			List<UserType> userTypes, int userTypeId, byte[] hash, byte[] salt)
 		{
 			return new User
 			{
@@ -327,12 +297,26 @@ namespace eRents.WebApi
 				CreatedAt = DateTime.Now.AddDays(-_random.Next(1, 365)),
 				UpdatedAt = DateTime.Now,
 				IsPublic = true,
-				AddressDetailId = addresses[_random.Next(addresses.Count)].AddressDetailId
+				Address = Address.Create(
+				streetLine1: GetBosnianStreetName(_random.Next(8)),
+				streetLine2: null,
+				city: GetRandomBosnianCity(),
+				state: null,
+				country: "Bosnia and Herzegovina",
+				postalCode: $"71{_random.Next(100, 999)}",
+				latitude: GetLatitudeForCity(GetRandomBosnianCity()),
+				longitude: GetLongitudeForCity(GetRandomBosnianCity()))
 			};
 		}
 
 		private string GenerateBosnianPhoneNumber() => $"38761{_random.Next(100000, 999999)}";
 		private DateOnly GenerateRandomDateOfBirth() => new(1980 + _random.Next(30), _random.Next(1, 13), _random.Next(1, 29));
+		
+		private string GetRandomBosnianCity()
+		{
+			var cities = new[] { "Sarajevo", "Banja Luka", "Mostar", "Tuzla", "Zenica", "Bijeljina", "Prijedor", "Brčko" };
+			return cities[_random.Next(cities.Length)];
+		}
 		#endregion
 
 		#region 4. Properties
@@ -344,7 +328,6 @@ namespace eRents.WebApi
 				.Where(u => u.UserTypeNavigation.TypeName == "Landlord").ToListAsync();
 			var propertyTypes = await context.PropertyTypes.ToListAsync();
 			var rentingTypes = await context.RentingTypes.ToListAsync();
-			var addresses = await context.AddressDetails.ToListAsync();
 			var amenities = await context.Amenities.ToListAsync();
 
 			var properties = new List<Property>();
@@ -355,7 +338,7 @@ namespace eRents.WebApi
 				var propertyCount = _random.Next(2, 4); // 2-3 properties per landlord
 				for (int i = 0; i < propertyCount; i++)
 				{
-					var property = CreateRealisticProperty(landlord, propertyTypes, rentingTypes, addresses);
+					var property = CreateRealisticProperty(landlord, propertyTypes, rentingTypes);
 					properties.Add(property);
 				}
 			}
@@ -368,17 +351,17 @@ namespace eRents.WebApi
 		}
 
 		private Property CreateRealisticProperty(User landlord, List<PropertyType> propertyTypes,
-			List<RentingType> rentingTypes, List<AddressDetail> addresses)
+			List<RentingType> rentingTypes)
 		{
 			var propertyType = propertyTypes[_random.Next(propertyTypes.Count)];
 			var rentingType = rentingTypes[_random.Next(rentingTypes.Count)];
-			var address = addresses[_random.Next(addresses.Count)];
+			var city = GetRandomBosnianCity();
 
 			var (bedrooms, bathrooms, area, basePrice) = GetPropertySpecs(propertyType.TypeName);
 
 			return new Property
 			{
-				Name = GeneratePropertyName(propertyType.TypeName, address),
+				Name = GeneratePropertyName(propertyType.TypeName, city),
 				Description = GeneratePropertyDescription(propertyType.TypeName),
 				Price = basePrice + _random.Next(-200, 500),
 				DailyRate = Math.Round(basePrice / 20, 2),
@@ -388,7 +371,15 @@ namespace eRents.WebApi
 				OwnerId = landlord.UserId,
 				PropertyTypeId = propertyType.TypeId,
 				RentingTypeId = rentingType.RentingTypeId,
-				AddressDetailId = address.AddressDetailId,
+				Address = Address.Create(
+					streetLine1: GetBosnianStreetName(_random.Next(8)),
+					streetLine2: null,
+					city: city,
+					state: null,
+					country: "Bosnia and Herzegovina",
+					postalCode: $"71{_random.Next(100, 999)}",
+					latitude: GetLatitudeForCity(city),
+					longitude: GetLongitudeForCity(city)),
 				Bedrooms = bedrooms + _random.Next(-1, 2),
 				Bathrooms = bathrooms,
 				Area = area + _random.Next(-20, 50),
@@ -407,10 +398,10 @@ namespace eRents.WebApi
 			_ => (2, 1, 75m, 750m)
 		};
 
-		private string GeneratePropertyName(string propertyType, AddressDetail address)
+		private string GeneratePropertyName(string propertyType, string cityName)
 		{
 			var adjectives = new[] { "Moderni", "Luksuzni", "Prostrani", "Udoban", "Prekrasan", "Centralni" };
-			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType}";
+			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType} {cityName}";
 		}
 
 		private string GeneratePropertyDescription(string propertyType) =>
@@ -1077,8 +1068,7 @@ namespace eRents.WebApi
 			context.Tenants.RemoveRange(context.Tenants);
 			context.Properties.RemoveRange(context.Properties);
 			context.Users.RemoveRange(context.Users);
-			context.AddressDetails.RemoveRange(context.AddressDetails);
-			context.GeoRegions.RemoveRange(context.GeoRegions);
+			// Legacy entities removed: AddressDetails, GeoRegions (replaced by Address value object)
 			context.Amenities.RemoveRange(context.Amenities);
 			context.BookingStatuses.RemoveRange(context.BookingStatuses);
 			context.IssuePriorities.RemoveRange(context.IssuePriorities);

@@ -70,7 +70,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
 
   /// Get property address safely
   String get address =>
-      property?.addressDetail?.toString() ?? 'Address not available';
+      property?.address?.getFullAddress() ?? 'Address not available';
 
   /// Get property owner ID safely
   int get ownerId => property?.ownerId ?? 0;
@@ -87,7 +87,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   bool get hasAmenities => amenities.isNotEmpty;
 
   /// Check if property has address details
-  bool get hasAddress => property?.addressDetail != null;
+  bool get hasAddress => property?.address != null;
 
   /// Check if property has daily rate
   bool get hasDailyRate => property?.dailyRate != null;

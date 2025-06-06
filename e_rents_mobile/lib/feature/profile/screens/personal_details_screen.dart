@@ -35,11 +35,10 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
     _emailController = TextEditingController(text: user?.email ?? '');
     _phoneController = TextEditingController(text: user?.phoneNumber ?? '');
     _addressController =
-        TextEditingController(text: user?.addressDetail?.streetLine1 ?? '');
-    _cityController =
-        TextEditingController(text: user?.addressDetail?.geoRegion?.city ?? '');
-    _zipCodeController = TextEditingController(
-        text: user?.addressDetail?.geoRegion?.postalCode ?? '');
+        TextEditingController(text: user?.address?.streetLine1 ?? '');
+    _cityController = TextEditingController(text: user?.address?.city ?? '');
+    _zipCodeController =
+        TextEditingController(text: user?.address?.postalCode ?? '');
   }
 
   @override
@@ -67,7 +66,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
           name: _nameController.text,
           lastName: _lastNameController.text,
           phoneNumber: _phoneController.text,
-          addressDetailId: currentUser.addressDetailId,
+          address: currentUser.address,
           dateOfBirth: currentUser.dateOfBirth,
           userType: currentUser.userType,
           token: currentUser.token,

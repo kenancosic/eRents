@@ -163,8 +163,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           PropertyDetails(
                             averageRating: property.averageRating,
                             numberOfReviews: 12,
-                            city: property.addressDetail?.geoRegion?.city,
-                            address: property.addressDetail?.streetLine1,
+                            city: property.address?.city,
+                            address: property.address?.streetLine1,
                             rooms: '2 rooms',
                             area: '874 m²',
                           ),

@@ -1,4 +1,4 @@
-import './address_detail.dart';
+import './address.dart';
 
 enum PropertyRentalType {
   daily, // Short-term daily rentals (hotels, vacation rentals)
@@ -23,8 +23,7 @@ class Property {
   final double? averageRating;
   final List<int> imageIds;
   final List<int> amenityIds;
-  final int? addressDetailId;
-  final AddressDetail? addressDetail;
+  final Address? address;
   final PropertyRentalType rentalType;
   final PropertyType? propertyType;
   final int? bedrooms;
@@ -46,8 +45,7 @@ class Property {
     this.averageRating,
     required this.imageIds,
     required this.amenityIds,
-    this.addressDetailId,
-    this.addressDetail,
+    this.address,
     this.rentalType = PropertyRentalType.monthly,
     this.propertyType,
     this.bedrooms,
@@ -77,10 +75,8 @@ class Property {
       averageRating: (json['averageRating'] as num?)?.toDouble(),
       imageIds: _parseImageIds(json['imageIds']),
       amenityIds: _parseAmenityIds(json['amenityIds']),
-      addressDetailId: json['addressDetailId'] as int?,
-      addressDetail: json['addressDetail'] != null
-          ? AddressDetail.fromJson(
-              json['addressDetail'] as Map<String, dynamic>)
+      address: json['addressDetail'] != null
+          ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
           : null,
       rentalType: json['rentalType'] != null
           ? PropertyRentalType.values.firstWhere(
@@ -150,8 +146,7 @@ class Property {
       'averageRating': averageRating,
       'imageIds': imageIds,
       'amenityIds': amenityIds,
-      'addressDetailId': addressDetailId,
-      'addressDetail': addressDetail?.toJson(),
+      'addressDetail': address?.toAddressDetailJson(),
       'rentalType': rentalType.toString().split('.').last,
       'propertyType': propertyType?.toString().split('.').last,
       'bedrooms': bedrooms,

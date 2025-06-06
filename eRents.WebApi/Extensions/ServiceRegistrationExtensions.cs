@@ -1,6 +1,5 @@
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
-using eRents.Application.Service.LocationManagementService;
 using eRents.Application.Service.MaintenanceService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
@@ -43,8 +42,7 @@ namespace eRents.WebApi.Extensions
             
             // Lookup and reference repositories
             services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
-            services.AddTransient<IGeoRegionRepository, GeoRegionRepository>();
-            services.AddTransient<IAddressDetailRepository, AddressDetailRepository>();
+            // Legacy repositories removed as part of Address refactoring: IGeoRegionRepository, IAddressDetailRepository
             services.AddTransient<IMessageRepository, MessageRepository>();
             
             // Generic base repository for UserType (existing pattern)
@@ -69,7 +67,6 @@ namespace eRents.WebApi.Extensions
             
             // Specialized services
             services.AddTransient<IImageService, ImageService>();
-            services.AddTransient<ILocationManagementService, LocationManagementService>();
             services.AddTransient<IMessageHandlerService, MessageHandlerService>();
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
