@@ -72,9 +72,20 @@ class UpcomingBookingSection extends StatelessWidget {
                 _buildInfoRow('Stay Type', 'Open-ended lease'),
               _buildInfoRow(
                   'Total Price', '\$${booking.totalPrice.toStringAsFixed(2)}'),
+              _buildInfoRow('Guests', booking.guestCountDisplay),
               if (booking.minimumStayEndDate != null)
                 _buildInfoRow('Minimum Stay Until',
                     DateFormat.yMMMd().format(booking.minimumStayEndDate!)),
+
+              // Payment status section
+              const SizedBox(height: 8),
+              _buildPaymentStatusRow(),
+
+              // Special requests if available
+              if (booking.hasSpecialRequests) ...[
+                const SizedBox(height: 8),
+                _buildSpecialRequestsSection(),
+              ],
             ],
           ),
         ),
@@ -163,6 +174,98 @@ class UpcomingBookingSection extends StatelessWidget {
           // Navigate back to home or bookings screen
           context.go('/home');
         },
+      ),
+    );
+  }
+
+  Widget _buildPaymentStatusRow() {
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (booking.isPaymentCompleted) {
+      statusColor = Colors.green;
+      statusIcon = Icons.check_circle;
+      statusText = 'Payment Completed';
+    } else if (booking.isPaymentPending) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.schedule;
+      statusText = 'Payment Pending';
+    } else if (booking.isPaymentFailed) {
+      statusColor = Colors.red;
+      statusIcon = Icons.error;
+      statusText = 'Payment Failed';
+    } else {
+      statusColor = Colors.grey;
+      statusIcon = Icons.help_outline;
+      statusText = 'Payment Status Unknown';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+          if (booking.paymentReference?.isNotEmpty == true) ...[
+            const Spacer(),
+            Text(
+              '${booking.paymentMethod}',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecialRequestsSection() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.note, color: Colors.grey[600], size: 16),
+              const SizedBox(width: 6),
+              Text(
+                'Special Requests',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[700],
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            booking.specialRequests!,
+            style: const TextStyle(fontSize: 13),
+          ),
+        ],
       ),
     );
   }

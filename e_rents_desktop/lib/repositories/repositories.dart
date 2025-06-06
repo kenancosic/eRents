@@ -5,7 +5,6 @@
 library;
 
 export 'property_repository.dart';
-export 'amenity_repository.dart';
 export 'maintenance_repository.dart';
 export 'tenant_repository.dart';
 export 'chat_repository.dart';

@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
@@ -25,30 +27,42 @@ class PropertyFormScreen extends StatefulWidget {
 
 class _PropertyFormScreenState extends State<PropertyFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final PropertyFormState _formState;
+  PropertyFormState? _formState;
   Property? _initialProperty;
   bool _isEditMode = false;
+  bool _formInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _isEditMode = widget.propertyId != null;
-    _formState = PropertyFormState();
+  }
 
-    if (_isEditMode) {
-      _fetchPropertyData();
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Initialize form state with lookup provider once it's available
+    if (!_formInitialized && mounted) {
+      final lookupProvider = context.read<LookupProvider>();
+      _formState = PropertyFormState(lookupProvider: lookupProvider);
+      _formInitialized = true;
+
+      if (_isEditMode) {
+        _fetchPropertyData();
+      }
     }
   }
 
   @override
   void dispose() {
-    _formState.dispose();
+    _formState?.dispose();
     super.dispose();
   }
 
   Future<void> _fetchPropertyData() async {
-    if (!mounted) return;
-    _formState.setFetchingState(true);
+    if (!mounted || _formState == null) return;
+    _formState!.setFetchingState(true);
 
     try {
       final detailProvider = context.read<PropertyDetailProvider>();
@@ -61,21 +75,21 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       _initialProperty = detailProvider.property;
 
       if (_initialProperty != null) {
-        _formState.populateFromProperty(_initialProperty!);
+        _formState!.populateFromProperty(_initialProperty!);
       } else {
-        _formState.setFetchingState(
+        _formState!.setFetchingState(
           false,
           'Property with ID ${widget.propertyId} not found.',
         );
       }
     } catch (e) {
-      _formState.setFetchingState(
+      _formState!.setFetchingState(
         false,
         "Failed to fetch property data: ${e.toString()}",
       );
     } finally {
       if (mounted) {
-        _formState.setFetchingState(false);
+        _formState!.setFetchingState(false);
       }
     }
   }
@@ -108,7 +122,11 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     }
 
     try {
-      final propertyToSave = _formState.createProperty(
+      if (_formState == null) {
+        throw Exception('Form not initialized');
+      }
+
+      final propertyToSave = _formState!.createProperty(
         currentUserId,
         _initialProperty,
       );
@@ -178,8 +196,28 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Show loading while form is being initialized
+    if (_formState == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(_isEditMode ? 'Edit Property' : 'Add New Property'),
+          elevation: 1,
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Initializing form...'),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ChangeNotifierProvider.value(
-      value: _formState,
+      value: _formState!,
       child: Consumer<PropertyFormState>(
         builder: (context, formState, child) {
           return LoadingOrErrorWidget(
@@ -456,45 +494,99 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   }
 
   Widget _buildSelectionSections(PropertyFormState formState, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildDropdownSection<RentingType>(
-          title: 'Renting Type *',
-          value: formState.rentingType,
-          items: RentingType.values,
-          onChanged: (type) => formState.rentingType = type!,
-          itemToString: (type) => type.displayName,
-          theme: theme,
-        ),
-        const SizedBox(height: 16),
-        _buildDropdownSection<PropertyType>(
-          title: 'Property Type *',
-          value: formState.type,
-          items: PropertyType.values,
-          onChanged: (type) => formState.type = type!,
-          itemToString: (type) => type.displayName,
-          theme: theme,
-        ),
-        const SizedBox(height: 16),
-        _buildDropdownSection<PropertyStatus>(
-          title: 'Status *',
-          value: formState.status,
-          items: PropertyStatus.values,
-          onChanged: (status) => formState.status = status!,
-          itemToString: (status) => status.displayName,
-          theme: theme,
-        ),
-      ],
+    return Consumer<LookupProvider>(
+      builder: (context, lookupProvider, child) {
+        // Show loading while lookup data is being fetched
+        if (lookupProvider.isLoading && !lookupProvider.hasData) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Column(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading form options...'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Show error if lookup data failed to load and no cached data
+        if (lookupProvider.error != null && !lookupProvider.hasData) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              border: Border.all(color: Colors.orange.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.warning_amber, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Failed to load form options. Using cached data.',
+                        style: TextStyle(color: Colors.orange.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  onPressed: () => lookupProvider.refreshLookupData(),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLookupDropdownSection<int>(
+              title: 'Renting Type *',
+              value: formState.rentingTypeId,
+              items: lookupProvider.rentingTypes,
+              onChanged: (id) => formState.rentingTypeId = id,
+              itemToString: (item) => item.name,
+              theme: theme,
+            ),
+            const SizedBox(height: 16),
+            _buildLookupDropdownSection<int>(
+              title: 'Property Type *',
+              value: formState.propertyTypeId,
+              items: lookupProvider.propertyTypes,
+              onChanged: (id) => formState.propertyTypeId = id,
+              itemToString: (item) => item.name,
+              theme: theme,
+            ),
+            const SizedBox(height: 16),
+            _buildLookupDropdownSection<int>(
+              title: 'Status *',
+              value: formState.propertyStatusId,
+              items: lookupProvider.propertyStatuses,
+              onChanged: (id) => formState.propertyStatusId = id,
+              itemToString: (item) => item.name,
+              theme: theme,
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildDropdownSection<T>({
+  Widget _buildLookupDropdownSection<T>({
     required String title,
-    required T value,
-    required List<T> items,
+    required T? value,
+    required List<LookupItem> items,
     required ValueChanged<T?> onChanged,
-    required String Function(T) itemToString,
+    required String Function(LookupItem) itemToString,
     required ThemeData theme,
   }) {
     return Column(
@@ -512,7 +604,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           items:
               items.map((item) {
                 return DropdownMenuItem<T>(
-                  value: item,
+                  value: item.id as T,
                   child: Text(
                     itemToString(item),
                     style: theme.textTheme.bodyLarge,
@@ -531,6 +623,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           ),
           validator: (val) => val == null ? 'Please select an option' : null,
           style: theme.textTheme.bodyLarge,
+          hint: items.isEmpty ? Text('No options available') : null,
         ),
       ],
     );
@@ -888,38 +981,4 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   }
 }
 
-extension PropertyTypeExtension on PropertyType {
-  String get displayName {
-    switch (this) {
-      case PropertyType.apartment:
-        return 'Apartment';
-      case PropertyType.house:
-        return 'House';
-      case PropertyType.condo:
-        return 'Condo';
-      case PropertyType.townhouse:
-        return 'Townhouse';
-      case PropertyType.studio:
-        return 'Studio';
-      default:
-        return toString().split('.').last.toUpperCase();
-    }
-  }
-}
-
-extension PropertyStatusExtension on PropertyStatus {
-  String get displayName {
-    switch (this) {
-      case PropertyStatus.available:
-        return 'Available';
-      case PropertyStatus.rented:
-        return 'Rented';
-      case PropertyStatus.maintenance:
-        return 'Maintenance';
-      case PropertyStatus.unavailable:
-        return 'Unavailable';
-      default:
-        return toString().split('.').last.toUpperCase();
-    }
-  }
-}
+// Extensions removed - now using API-driven lookup data instead of hardcoded enum mappings

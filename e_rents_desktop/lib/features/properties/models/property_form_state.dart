@@ -4,8 +4,11 @@ import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart'
     as picker;
+import 'package:e_rents_desktop/providers/lookup_provider.dart';
 
 class PropertyFormState extends ChangeNotifier {
+  final LookupProvider? lookupProvider;
+
   // Text controllers
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -27,10 +30,10 @@ class PropertyFormState extends ChangeNotifier {
   final TextEditingController postalCodeController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
 
-  // Form state
-  PropertyType _type = PropertyType.apartment;
-  PropertyStatus _status = PropertyStatus.available;
-  RentingType _rentingType = RentingType.monthly;
+  // Form state - now using database IDs instead of enums
+  int? _propertyTypeId;
+  int? _propertyStatusId;
+  int? _rentingTypeId;
   List<picker.ImageInfo> _images = [];
   List<String> _selectedAmenities = [];
   List<int> _selectedAmenityIds = [];
@@ -43,10 +46,41 @@ class PropertyFormState extends ChangeNotifier {
   bool _isFetchingData = false;
   String? _fetchError;
 
-  // Getters
-  PropertyType get type => _type;
-  PropertyStatus get status => _status;
-  RentingType get rentingType => _rentingType;
+  PropertyFormState({this.lookupProvider}) {
+    // Initialize with default values if lookup data is available
+    _initializeWithDefaults();
+  }
+
+  void _initializeWithDefaults() {
+    if (lookupProvider?.hasData == true) {
+      // Set defaults using the first available options
+      final propertyTypes = lookupProvider!.propertyTypes;
+      final rentingTypes = lookupProvider!.rentingTypes;
+      final propertyStatuses = lookupProvider!.propertyStatuses;
+
+      if (propertyTypes.isNotEmpty) {
+        _propertyTypeId = propertyTypes.first.id;
+      }
+      if (rentingTypes.isNotEmpty) {
+        _rentingTypeId = rentingTypes.first.id;
+      }
+      if (propertyStatuses.isNotEmpty) {
+        _propertyStatusId = propertyStatuses.first.id;
+      }
+    }
+  }
+
+  // Getters for database IDs
+  int? get propertyTypeId => _propertyTypeId;
+  int? get propertyStatusId => _propertyStatusId;
+  int? get rentingTypeId => _rentingTypeId;
+
+  // Legacy getters for backward compatibility with enums
+  PropertyType get type => _getPropertyTypeEnum();
+  PropertyStatus get status => _getPropertyStatusEnum();
+  RentingType get rentingType => _getRentingTypeEnum();
+
+  // Other getters
   List<picker.ImageInfo> get images => _images;
   List<String> get selectedAmenities => _selectedAmenities;
   List<int> get selectedAmenityIds => _selectedAmenityIds;
@@ -58,19 +92,35 @@ class PropertyFormState extends ChangeNotifier {
   bool get isFetchingData => _isFetchingData;
   String? get fetchError => _fetchError;
 
-  // Setters
+  // Setters for database IDs
+  set propertyTypeId(int? value) {
+    _propertyTypeId = value;
+    notifyListeners();
+  }
+
+  set propertyStatusId(int? value) {
+    _propertyStatusId = value;
+    notifyListeners();
+  }
+
+  set rentingTypeId(int? value) {
+    _rentingTypeId = value;
+    notifyListeners();
+  }
+
+  // Legacy setters for backward compatibility with enums
   set type(PropertyType value) {
-    _type = value;
+    _propertyTypeId = _getPropertyTypeIdFromEnum(value);
     notifyListeners();
   }
 
   set status(PropertyStatus value) {
-    _status = value;
+    _propertyStatusId = _getPropertyStatusIdFromEnum(value);
     notifyListeners();
   }
 
   set rentingType(RentingType value) {
-    _rentingType = value;
+    _rentingTypeId = _getRentingTypeIdFromEnum(value);
     notifyListeners();
   }
 
@@ -217,9 +267,10 @@ class PropertyFormState extends ChangeNotifier {
     dailyRateController.text = property.dailyRate?.toString() ?? '';
     minimumStayDaysController.text = property.minimumStayDays?.toString() ?? '';
 
-    _type = property.type;
-    _rentingType = property.rentingType;
-    _status = property.status;
+    // Set IDs based on property enums
+    _propertyTypeId = _getPropertyTypeIdFromEnum(property.type);
+    _rentingTypeId = _getRentingTypeIdFromEnum(property.rentingType);
+    _propertyStatusId = _getPropertyStatusIdFromEnum(property.status);
 
     // Populate address
     if (property.address != null) {
@@ -274,10 +325,11 @@ class PropertyFormState extends ChangeNotifier {
       ownerId: initialProperty?.ownerId ?? currentUserId,
       name: titleController.text,
       description: descriptionController.text,
-      type: _type,
+      type: type, // This will use the enum getter that converts from ID
       price: double.parse(priceController.text),
-      rentingType: _rentingType,
-      status: _status,
+      rentingType:
+          rentingType, // This will use the enum getter that converts from ID
+      status: status, // This will use the enum getter that converts from ID
       imageIds:
           _images.map((img) => img.id ?? 0).where((id) => id > 0).toList(),
       address: _selectedAddress,
@@ -297,6 +349,101 @@ class PropertyFormState extends ChangeNotifier {
               : null,
       dateAdded: initialProperty?.dateAdded ?? DateTime.now(),
     );
+  }
+
+  // Helper methods for enum conversions
+  PropertyType _getPropertyTypeEnum() {
+    if (_propertyTypeId == null || lookupProvider == null) {
+      return PropertyType.apartment; // Default fallback
+    }
+
+    final item = lookupProvider!.lookupData?.getPropertyTypeById(
+      _propertyTypeId!,
+    );
+    if (item == null) return PropertyType.apartment;
+
+    return switch (item.name.toLowerCase()) {
+      'apartment' => PropertyType.apartment,
+      'house' => PropertyType.house,
+      'condo' => PropertyType.condo,
+      'townhouse' => PropertyType.townhouse,
+      'studio' => PropertyType.studio,
+      _ => PropertyType.apartment,
+    };
+  }
+
+  PropertyStatus _getPropertyStatusEnum() {
+    if (_propertyStatusId == null || lookupProvider == null) {
+      return PropertyStatus.available; // Default fallback
+    }
+
+    final item = lookupProvider!.lookupData?.getPropertyStatusById(
+      _propertyStatusId!,
+    );
+    if (item == null) return PropertyStatus.available;
+
+    return switch (item.name.toLowerCase()) {
+      'available' => PropertyStatus.available,
+      'rented' => PropertyStatus.rented,
+      'maintenance' => PropertyStatus.maintenance,
+      'unavailable' => PropertyStatus.unavailable,
+      _ => PropertyStatus.available,
+    };
+  }
+
+  RentingType _getRentingTypeEnum() {
+    if (_rentingTypeId == null || lookupProvider == null) {
+      return RentingType.monthly; // Default fallback
+    }
+
+    final item = lookupProvider!.lookupData?.getRentingTypeById(
+      _rentingTypeId!,
+    );
+    if (item == null) return RentingType.monthly;
+
+    return switch (item.name.toLowerCase()) {
+      'daily' => RentingType.daily,
+      'monthly' => RentingType.monthly,
+      _ => RentingType.monthly,
+    };
+  }
+
+  int? _getPropertyTypeIdFromEnum(PropertyType type) {
+    if (lookupProvider == null) return null;
+
+    final typeName = switch (type) {
+      PropertyType.apartment => 'Apartment',
+      PropertyType.house => 'House',
+      PropertyType.condo => 'Condo',
+      PropertyType.townhouse => 'Townhouse',
+      PropertyType.studio => 'Studio',
+    };
+
+    return lookupProvider!.lookupData?.getPropertyTypeIdByName(typeName);
+  }
+
+  int? _getPropertyStatusIdFromEnum(PropertyStatus status) {
+    if (lookupProvider == null) return null;
+
+    final statusName = switch (status) {
+      PropertyStatus.available => 'Available',
+      PropertyStatus.rented => 'Rented',
+      PropertyStatus.maintenance => 'Maintenance',
+      PropertyStatus.unavailable => 'Unavailable',
+    };
+
+    return lookupProvider!.lookupData?.getPropertyStatusIdByName(statusName);
+  }
+
+  int? _getRentingTypeIdFromEnum(RentingType type) {
+    if (lookupProvider == null) return null;
+
+    final typeName = switch (type) {
+      RentingType.daily => 'Daily',
+      RentingType.monthly => 'Monthly',
+    };
+
+    return lookupProvider!.lookupData?.getRentingTypeIdByName(typeName);
   }
 
   @override

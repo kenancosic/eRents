@@ -22,6 +22,9 @@ namespace eRents.WebApi
 				throw new InvalidOperationException("The database connection string is not configured properly.");
 			context.Database.SetCommandTimeout(300);
 			await context.Database.EnsureCreatedAsync();
+			
+			// Apply performance indexes after database creation
+			await ApplyPerformanceIndexesAsync(context);
 		}
 
 		public async Task InsertDataAsync(ERentsContext context, bool forceSeed = false)
@@ -157,16 +160,16 @@ namespace eRents.WebApi
 			// Amenities
 			var amenities = new[]
 			{
-				new Amenity { AmenityName = "Wi-Fi" },
-				new Amenity { AmenityName = "Air Conditioning" },
-				new Amenity { AmenityName = "Parking" },
-				new Amenity { AmenityName = "Heating" },
-				new Amenity { AmenityName = "Balcony" },
-				new Amenity { AmenityName = "Pool" },
-				new Amenity { AmenityName = "Gym" },
-				new Amenity { AmenityName = "Kitchen" },
-				new Amenity { AmenityName = "Laundry" },
-				new Amenity { AmenityName = "Pet Friendly" }
+				new Amenity { AmenityName = "Wi-Fi", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Air Conditioning", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Parking", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Heating", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Balcony", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Pool", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Gym", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Kitchen", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Laundry", CreatedBy = "system", ModifiedBy = "system" },
+				new Amenity { AmenityName = "Pet Friendly", CreatedBy = "system", ModifiedBy = "system" }
 			};
 			await UpsertByName(context, amenities, am => am.AmenityName);
 
@@ -296,6 +299,8 @@ namespace eRents.WebApi
 				UserTypeId = userTypeId,
 				CreatedAt = DateTime.Now.AddDays(-_random.Next(1, 365)),
 				UpdatedAt = DateTime.Now,
+				CreatedBy = "system",
+				ModifiedBy = "system",
 				IsPublic = true,
 				Address = Address.Create(
 				streetLine1: GetBosnianStreetName(_random.Next(8)),
@@ -371,6 +376,8 @@ namespace eRents.WebApi
 				OwnerId = landlord.UserId,
 				PropertyTypeId = propertyType.TypeId,
 				RentingTypeId = rentingType.RentingTypeId,
+				CreatedBy = "system",
+				ModifiedBy = "system",
 				Address = Address.Create(
 					streetLine1: GetBosnianStreetName(_random.Next(8)),
 					streetLine2: null,
@@ -481,7 +488,9 @@ namespace eRents.WebApi
 				MinimumStayEndDate = endDate.AddDays(property.MinimumStayDays ?? 1),
 				TotalPrice = CalculateBookingPrice(property, duration),
 				BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-_random.Next(1, 400))),
-				BookingStatusId = status.BookingStatusId
+				BookingStatusId = status.BookingStatusId,
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			};
 		}
 
@@ -515,7 +524,9 @@ namespace eRents.WebApi
 				UserId = booking.UserId ?? 0,
 				PropertyId = booking.PropertyId,
 				LeaseStartDate = booking.StartDate,
-				TenantStatus = "Active"
+				TenantStatus = "Active",
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			}).ToList();
 
 			context.Tenants.AddRange(tenants);
@@ -581,7 +592,9 @@ namespace eRents.WebApi
 				RequiresInspection = _random.Next(2) == 0,
 				IsTenantComplaint = propertyTenant != null && _random.Next(3) == 0,
 				Cost = status.StatusName == "completed" ? _random.Next(50, 500) : null,
-				ResolvedAt = status.StatusName == "completed" ? DateTime.Now.AddDays(-_random.Next(1, 30)) : null
+				ResolvedAt = status.StatusName == "completed" ? DateTime.Now.AddDays(-_random.Next(1, 30)) : null,
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			};
 		}
 		#endregion
@@ -630,7 +643,9 @@ namespace eRents.WebApi
 				ReviewerId = booking.UserId ?? 0,
 				Description = reviewTexts[_random.Next(reviewTexts.Length)],
 				StarRating = Math.Round((decimal)(_random.NextDouble() * 2 + 3), 1), // 3.0-5.0 stars
-				DateCreated = DateTime.Now.AddDays(-_random.Next(1, 60))
+				DateCreated = DateTime.Now.AddDays(-_random.Next(1, 60)),
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			};
 		}
 		#endregion
@@ -661,7 +676,9 @@ namespace eRents.WebApi
 						DatePaid = paymentDate,
 						PaymentMethod = GetRandomPaymentMethod(),
 						PaymentStatus = "Completed",
-						PaymentReference = $"RENT-{tenant.PropertyId}-{paymentDate:yyyy-MM}"
+						PaymentReference = $"RENT-{tenant.PropertyId}-{paymentDate:yyyy-MM}",
+						CreatedBy = "system",
+						ModifiedBy = "system"
 					};
 					payments.Add(payment);
 				}
@@ -771,7 +788,9 @@ namespace eRents.WebApi
 					Width = width,
 					Height = height,
 					FileSizeBytes = imageData.Length,
-					ThumbnailData = thumbnailData
+					ThumbnailData = thumbnailData,
+					CreatedBy = "system",
+					ModifiedBy = "system"
 				};
 			}
 			catch (Exception ex)
@@ -808,7 +827,9 @@ namespace eRents.WebApi
 					Width = width,
 					Height = height,
 					FileSizeBytes = imageData.Length,
-					ThumbnailData = thumbnailData
+					ThumbnailData = thumbnailData,
+					CreatedBy = "system",
+					ModifiedBy = "system"
 				};
 			}
 			catch (Exception ex)
@@ -844,7 +865,9 @@ namespace eRents.WebApi
 					Width = width,
 					Height = height,
 					FileSizeBytes = imageData.Length,
-					ThumbnailData = thumbnailData
+					ThumbnailData = thumbnailData,
+					CreatedBy = "system",
+					ModifiedBy = "system"
 				};
 			}
 			catch (Exception ex)
@@ -936,7 +959,9 @@ namespace eRents.WebApi
 				Width = 800,
 				Height = 600,
 				FileSizeBytes = placeholderData.Length,
-				ThumbnailData = placeholderData
+				ThumbnailData = placeholderData,
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			};
 		}
 
@@ -954,7 +979,9 @@ namespace eRents.WebApi
 				Width = 640,
 				Height = 480,
 				FileSizeBytes = placeholderData.Length,
-				ThumbnailData = placeholderData
+				ThumbnailData = placeholderData,
+				CreatedBy = "system",
+				ModifiedBy = "system"
 			};
 		}
 
@@ -1078,6 +1105,98 @@ namespace eRents.WebApi
 			context.RentingTypes.RemoveRange(context.RentingTypes);
 			context.UserTypes.RemoveRange(context.UserTypes);
 			await context.SaveChangesAsync();
+		}
+		#endregion
+
+		#region Database Performance Optimization
+		private async Task ApplyPerformanceIndexesAsync(ERentsContext context)
+		{
+			_logger?.LogInformation("Applying performance indexes...");
+
+			try
+			{
+				// Check if indexes already exist to avoid errors
+				var indexQueries = new[]
+				{
+					// Booking Performance Indexes
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_DateRange_Status')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_Property_DateRange_Status
+						ON Bookings(PropertyId, StartDate, EndDate, BookingStatusId)
+						INCLUDE (BookingId, UserId, TotalPrice)
+						WHERE BookingStatusId != 4
+					END",
+
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_User_Status_Dates')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_User_Status_Dates
+						ON Bookings(UserId, BookingStatusId, StartDate, EndDate)
+						INCLUDE (PropertyId, TotalPrice, BookingDate)
+					END",
+
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_Status_Dates')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_Property_Status_Dates
+						ON Bookings(PropertyId, BookingStatusId, StartDate)
+						INCLUDE (BookingId, UserId, EndDate, TotalPrice, BookingDate)
+					END",
+
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Status_DateRange')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_Status_DateRange
+						ON Bookings(BookingStatusId, BookingDate, StartDate)
+						INCLUDE (PropertyId, UserId, TotalPrice, EndDate)
+					END",
+
+					// Property Search Optimization
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Property_Status_Type_Price')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Property_Status_Type_Price
+						ON Properties(Status, PropertyTypeId, Price)
+						INCLUDE (PropertyId, Name, DailyRate, MinimumStayDays, OwnerId)
+						WHERE Status = 'Available'
+					END",
+
+					// Revenue Analytics Optimization
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Revenue_Analytics')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_Revenue_Analytics
+						ON Bookings(BookingDate, BookingStatusId)
+						INCLUDE (PropertyId, UserId, TotalPrice, StartDate, EndDate)
+						WHERE BookingStatusId IN (2, 3)
+					END",
+
+					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_Performance')
+					BEGIN
+						CREATE NONCLUSTERED INDEX IX_Booking_Property_Performance
+						ON Bookings(PropertyId, BookingStatusId, StartDate, EndDate)
+						INCLUDE (BookingId, TotalPrice, BookingDate)
+						WHERE BookingStatusId IN (2, 3)
+					END"
+				};
+
+				foreach (var query in indexQueries)
+				{
+					try
+					{
+						await context.Database.ExecuteSqlRawAsync(query);
+					}
+					catch (Exception ex)
+					{
+						_logger?.LogWarning(ex, "Index creation warning - continuing with setup");
+					}
+				}
+
+				// Update statistics
+				await context.Database.ExecuteSqlRawAsync("UPDATE STATISTICS Bookings");
+				await context.Database.ExecuteSqlRawAsync("UPDATE STATISTICS Properties");
+
+				_logger?.LogInformation("Performance indexes applied successfully");
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogError(ex, "Error applying performance indexes - continuing with setup");
+			}
 		}
 		#endregion
 	}

@@ -35,7 +35,9 @@ namespace eRents.Application.Service.MessagingService
 				ReceiverId = recipient.UserId,
 				MessageText = message.Body,
 				DateSent = DateTime.UtcNow,
-				IsRead = false
+				IsRead = false,
+				CreatedBy = sender.UserId.ToString(),
+				ModifiedBy = sender.UserId.ToString()
 			};
 
 			await _messageRepository.AddAsync(messageEntity);

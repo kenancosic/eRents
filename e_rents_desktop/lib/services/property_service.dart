@@ -3,9 +3,12 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/lookup_service.dart';
 
 class PropertyService extends ApiService {
-  PropertyService(super.baseUrl, super.storageService);
+  final LookupService _lookupService;
+
+  PropertyService(super.baseUrl, super.storageService, this._lookupService);
 
   Future<List<Property>> getProperties({
     Map<String, String>? queryParams,
@@ -26,7 +29,7 @@ class PropertyService extends ApiService {
   }
 
   Future<Property> createProperty(Property property) async {
-    final createRequest = _propertyToInsertRequest(property);
+    final createRequest = await _propertyToInsertRequest(property);
     print(
       'PropertyService: Creating property with data: ${json.encode(createRequest)}',
     );
@@ -41,7 +44,7 @@ class PropertyService extends ApiService {
   }
 
   Future<Property> updateProperty(int propertyId, Property propertyData) async {
-    final updateRequest = _propertyToUpdateRequest(propertyData);
+    final updateRequest = await _propertyToUpdateRequest(propertyData);
     print(
       'PropertyService: Updating property $propertyId with data: ${json.encode(updateRequest)}',
     );
@@ -60,7 +63,9 @@ class PropertyService extends ApiService {
   }
 
   // Helper method to convert Property to PropertyInsertRequest DTO
-  Map<String, dynamic> _propertyToInsertRequest(Property property) {
+  Future<Map<String, dynamic>> _propertyToInsertRequest(
+    Property property,
+  ) async {
     final request = {
       'name': property.name,
       'description': property.description,
@@ -71,10 +76,12 @@ class PropertyService extends ApiService {
       'area': property.area,
       'dailyRate': property.dailyRate,
       'minimumStayDays': property.minimumStayDays,
-      // Convert enums to the format expected by backend
-      'propertyTypeId': _propertyTypeToId(property.type),
-      'rentingTypeId': _rentingTypeToId(property.rentingType),
-      'status': _propertyStatusToString(property.status),
+      // ✅ IMPROVED: Use LookupService for dynamic ID mapping
+      'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),
+      'rentingTypeId': await _lookupService.getRentingTypeId(
+        property.rentingType,
+      ),
+      'status': await _getPropertyStatusString(property.status),
       // IMPROVED: Send amenityIds for better performance and type safety
       'amenityIds': property.amenityIds ?? [],
       // Extract image IDs from the images list
@@ -93,7 +100,9 @@ class PropertyService extends ApiService {
   }
 
   // Helper method to convert Property to PropertyUpdateRequest DTO
-  Map<String, dynamic> _propertyToUpdateRequest(Property property) {
+  Future<Map<String, dynamic>> _propertyToUpdateRequest(
+    Property property,
+  ) async {
     final request = {
       'name': property.name,
       'description': property.description,
@@ -104,10 +113,12 @@ class PropertyService extends ApiService {
       'area': property.area,
       'dailyRate': property.dailyRate,
       'minimumStayDays': property.minimumStayDays,
-      // Convert enums to the format expected by backend
-      'propertyTypeId': _propertyTypeToId(property.type),
-      'rentingTypeId': _rentingTypeToId(property.rentingType),
-      'status': _propertyStatusToString(property.status),
+      // ✅ IMPROVED: Use LookupService for dynamic ID mapping
+      'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),
+      'rentingTypeId': await _lookupService.getRentingTypeId(
+        property.rentingType,
+      ),
+      'status': await _getPropertyStatusString(property.status),
       // IMPROVED: Send amenityIds for better performance and type safety
       'amenityIds': property.amenityIds ?? [],
       // Extract image IDs from the images list
@@ -141,49 +152,12 @@ class PropertyService extends ApiService {
     return addressJson;
   }
 
-  // Property type to backend ID mapping
-  int _propertyTypeToId(PropertyType type) {
-    switch (type) {
-      case PropertyType.apartment:
-        return 1;
-      case PropertyType.house:
-        return 2;
-      case PropertyType.condo:
-        return 3;
-      case PropertyType.townhouse:
-        return 4;
-      case PropertyType.studio:
-        return 5;
-      default:
-        return 1; // Default to apartment
-    }
-  }
-
-  // Renting type to backend ID mapping
-  int _rentingTypeToId(RentingType type) {
-    switch (type) {
-      case RentingType.monthly:
-        return 1;
-      case RentingType.daily:
-        return 2;
-      default:
-        return 1; // Default to monthly
-    }
-  }
-
-  // Property status to backend string mapping
-  String _propertyStatusToString(PropertyStatus status) {
-    switch (status) {
-      case PropertyStatus.available:
-        return 'Available';
-      case PropertyStatus.rented:
-        return 'Rented';
-      case PropertyStatus.maintenance:
-        return 'Maintenance';
-      case PropertyStatus.unavailable:
-        return 'Unavailable';
-      default:
-        return 'Available';
-    }
+  // ✅ REPLACED: Use LookupService for dynamic mapping instead of hardcoded values
+  // Property status to backend string mapping (using lookup service internally)
+  Future<String> _getPropertyStatusString(PropertyStatus status) async {
+    final lookupData = await _lookupService.getAllLookupData();
+    final id = await _lookupService.getPropertyStatusId(status);
+    final item = lookupData.getPropertyStatusById(id);
+    return item?.name ?? 'Available'; // fallback to Available if not found
   }
 }

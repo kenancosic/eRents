@@ -44,6 +44,26 @@ namespace eRents.Application.Service.PropertyService
 		/// </summary>
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
+			// Validate PropertyTypeId if provided
+			if (insert.PropertyTypeId.HasValue)
+			{
+				var isValidPropertyType = await _propertyRepository.IsValidPropertyTypeIdAsync(insert.PropertyTypeId.Value);
+				if (!isValidPropertyType)
+				{
+					throw new ArgumentException($"PropertyTypeId {insert.PropertyTypeId.Value} does not exist.");
+				}
+			}
+
+			// Validate RentingTypeId if provided
+			if (insert.RentingTypeId.HasValue)
+			{
+				var isValidRentingType = await _propertyRepository.IsValidRentingTypeIdAsync(insert.RentingTypeId.Value);
+				if (!isValidRentingType)
+				{
+					throw new ArgumentException($"RentingTypeId {insert.RentingTypeId.Value} does not exist.");
+				}
+			}
+
 			// Handle address processing - Direct assignment to Address value object
 			if (insert.Address != null)
 			{
@@ -77,6 +97,26 @@ namespace eRents.Application.Service.PropertyService
 		/// </summary>
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
+			// Validate PropertyTypeId if provided
+			if (update.PropertyTypeId.HasValue)
+			{
+				var isValidPropertyType = await _propertyRepository.IsValidPropertyTypeIdAsync(update.PropertyTypeId.Value);
+				if (!isValidPropertyType)
+				{
+					throw new ArgumentException($"PropertyTypeId {update.PropertyTypeId.Value} does not exist.");
+				}
+			}
+
+			// Validate RentingTypeId if provided
+			if (update.RentingTypeId.HasValue)
+			{
+				var isValidRentingType = await _propertyRepository.IsValidRentingTypeIdAsync(update.RentingTypeId.Value);
+				if (!isValidRentingType)
+				{
+					throw new ArgumentException($"RentingTypeId {update.RentingTypeId.Value} does not exist.");
+				}
+			}
+
 			// Handle address processing - Direct assignment to Address value object
 			if (update.Address != null)
 			{
@@ -102,7 +142,7 @@ namespace eRents.Application.Service.PropertyService
 				var amenitiesToRemove = entity.Amenities
 					.Where(a => !newAmenityIds.Contains(a.AmenityId))
 					.ToList();
-				
+
 				foreach (var amenity in amenitiesToRemove)
 				{
 					entity.Amenities.Remove(amenity);
@@ -229,7 +269,7 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<PropertyResponse>(entity);
 		}
 
-		// Override UpdateAsync to validate ownership - OPTIMIZED APPROACH WITH CONCURRENCY CONTROL
+		// Override UpdateAsync to validate ownership - FIXED LOGICAL ISSUES
 		public override async Task<PropertyResponse> UpdateAsync(int id, PropertyUpdateRequest update)
 		{
 			var currentUserId = _currentUserService.UserId;
@@ -249,15 +289,20 @@ namespace eRents.Application.Service.PropertyService
 				var entity = await _propertyRepository.GetQueryable()
 					.Include(p => p.Amenities)
 					.FirstOrDefaultAsync(p => p.PropertyId == id);
-					
+
 				if (entity == null)
 					throw new KeyNotFoundException("Property not found");
 
 				// Store original row version for concurrency check
 				var originalRowVersion = (entity as BaseEntity)?.RowVersion;
 
-				// Map basic properties
-				_mapper.Map(update, entity);
+				// FIXED: Handle complex relationships BEFORE AutoMapper mapping
+				// This preserves the loaded navigation properties
+				await BeforeUpdateAsync(update, entity);
+
+				// FIXED: Map basic properties AFTER handling relationships
+				// Use a more controlled mapping that doesn't overwrite navigation properties
+				MapBasicPropertiesOnly(update, entity);
 
 				// Set audit fields
 				if (entity is BaseEntity baseEntity)
@@ -265,9 +310,6 @@ namespace eRents.Application.Service.PropertyService
 					baseEntity.ModifiedBy = currentUserId;
 					baseEntity.UpdatedAt = DateTime.UtcNow;
 				}
-
-				// Handle complex relationships within the transaction
-				await BeforeUpdateAsync(update, entity);
 
 				// Use concurrency-aware update with retry
 				if (_propertyRepository is IConcurrentRepository<Property> concurrentRepo)
@@ -281,6 +323,34 @@ namespace eRents.Application.Service.PropertyService
 
 				return _mapper.Map<PropertyResponse>(entity);
 			}) ?? throw new InvalidOperationException("Repository does not support concurrent operations");
+		}
+
+		/// <summary>
+		/// Maps only basic properties, avoiding navigation properties that are handled separately
+		/// </summary>
+		private void MapBasicPropertiesOnly(PropertyUpdateRequest update, Property entity)
+		{
+			// Map basic scalar properties manually to avoid overwriting navigation properties
+			if (!string.IsNullOrEmpty(update.Name))
+				entity.Name = update.Name;
+
+			if (!string.IsNullOrEmpty(update.Description))
+				entity.Description = update.Description;
+
+			if (update.Price.HasValue)
+				entity.Price = update.Price.Value;
+
+			if (update.PropertyTypeId.HasValue)
+				entity.PropertyTypeId = update.PropertyTypeId.Value;
+
+			if (update.RentingTypeId.HasValue)
+				entity.RentingTypeId = update.RentingTypeId.Value;
+
+			if (!string.IsNullOrEmpty(update.Status))
+				entity.Status = update.Status;
+
+			// Note: Address, Amenities, and Images are handled in BeforeUpdateAsync
+			// Note: OwnerId should never be updated through this method
 		}
 
 		// Override DeleteAsync to validate ownership

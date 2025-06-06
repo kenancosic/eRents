@@ -147,6 +147,24 @@ class BookingListItem extends StatelessWidget {
                             .bodySmall
                             ?.copyWith(color: Colors.grey[700]),
                       ),
+                      const SizedBox(height: 2),
+                      // Guest count and payment status
+                      Row(
+                        children: [
+                          Icon(Icons.group, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            booking.guestCountDisplay,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                    color: Colors.grey[600], fontSize: 12),
+                          ),
+                          const SizedBox(width: 12),
+                          _buildPaymentStatusIndicator(),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -264,5 +282,56 @@ class BookingListItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildPaymentStatusIndicator() {
+    if (booking.isPaymentCompleted) {
+      return Row(
+        children: [
+          Icon(Icons.check_circle, size: 12, color: Colors.green[600]),
+          const SizedBox(width: 2),
+          Text(
+            'Paid',
+            style: TextStyle(
+              color: Colors.green[600],
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else if (booking.isPaymentPending) {
+      return Row(
+        children: [
+          Icon(Icons.schedule, size: 12, color: Colors.orange[600]),
+          const SizedBox(width: 2),
+          Text(
+            'Pending',
+            style: TextStyle(
+              color: Colors.orange[600],
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else if (booking.isPaymentFailed) {
+      return Row(
+        children: [
+          Icon(Icons.error, size: 12, color: Colors.red[600]),
+          const SizedBox(width: 2),
+          Text(
+            'Failed',
+            style: TextStyle(
+              color: Colors.red[600],
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    }
+    // Return empty container if no payment status
+    return const SizedBox.shrink();
   }
 }

@@ -18,6 +18,15 @@ class Booking {
   final String? reviewContent;
   final int? reviewRating;
 
+  // New Phase 2 fields - Payment tracking
+  final String paymentMethod;
+  final String? paymentStatus; // "Pending", "Completed", "Failed"
+  final String? paymentReference; // PayPal Transaction ID
+
+  // New Phase 2 fields - Booking details
+  final int numberOfGuests;
+  final String? specialRequests;
+
   Booking({
     required this.bookingId,
     required this.propertyId,
@@ -35,6 +44,12 @@ class Booking {
     this.bookingDate,
     this.reviewContent,
     this.reviewRating,
+    // New fields with defaults
+    this.paymentMethod = 'PayPal',
+    this.paymentStatus,
+    this.paymentReference,
+    this.numberOfGuests = 1,
+    this.specialRequests,
   });
 
   String get statusDisplay {
@@ -49,6 +64,16 @@ class Booking {
         return 'Active';
     }
   }
+
+  // Helper methods for payment status
+  bool get isPaymentCompleted => paymentStatus?.toLowerCase() == 'completed';
+  bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
+  bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
+
+  // Helper methods for booking details
+  String get guestCountDisplay =>
+      numberOfGuests == 1 ? '1 Guest' : '$numberOfGuests Guests';
+  bool get hasSpecialRequests => specialRequests?.isNotEmpty == true;
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     String statusString = json['bookingStatus']?['statusName'] ??
@@ -85,6 +110,12 @@ class Booking {
           : null,
       reviewContent: json['reviewContent'] as String?,
       reviewRating: json['reviewRating'] as int?,
+      // New fields with safe parsing
+      paymentMethod: json['paymentMethod'] as String? ?? 'PayPal',
+      paymentStatus: json['paymentStatus'] as String?,
+      paymentReference: json['paymentReference'] as String?,
+      numberOfGuests: json['numberOfGuests'] as int? ?? 1,
+      specialRequests: json['specialRequests'] as String?,
     );
   }
 
@@ -105,6 +136,12 @@ class Booking {
         'bookingDate': bookingDate?.toIso8601String(),
         'reviewContent': reviewContent,
         'reviewRating': reviewRating,
+        // New fields
+        'paymentMethod': paymentMethod,
+        'paymentStatus': paymentStatus,
+        'paymentReference': paymentReference,
+        'numberOfGuests': numberOfGuests,
+        'specialRequests': specialRequests,
       };
 
   bool isActive() {

@@ -16,5 +16,10 @@ namespace eRents.Shared.DTO.Response
 		public string Status { get; set; }
 		public string? TenantName { get; set; }
 		public string? TenantEmail { get; set; }
+		
+		// Additional booking details for management purposes
+		public int NumberOfGuests { get; set; } = 1;
+		public string PaymentMethod { get; set; } = "PayPal";
+		public string? PaymentStatus { get; set; }
 	}
 }

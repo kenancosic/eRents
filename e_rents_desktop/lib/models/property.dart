@@ -24,6 +24,11 @@ class Property {
   final String currency;
   final double? dailyRate;
   final int? minimumStayDays;
+
+  // Fee Settings (Property-level defaults for desktop app management)
+  final double? defaultSecurityDeposit;
+  final double? defaultCleaningFee;
+  final double? defaultServiceFee;
   final DateTime dateAdded;
   final Address? address;
 
@@ -45,6 +50,9 @@ class Property {
     this.currency = "BAM",
     this.dailyRate,
     this.minimumStayDays,
+    this.defaultSecurityDeposit,
+    this.defaultCleaningFee,
+    this.defaultServiceFee,
     required this.dateAdded,
     this.address,
   });
@@ -81,6 +89,10 @@ class Property {
       currency: json['currency'] as String? ?? "BAM",
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
+      defaultSecurityDeposit:
+          (json['defaultSecurityDeposit'] as num?)?.toDouble(),
+      defaultCleaningFee: (json['defaultCleaningFee'] as num?)?.toDouble(),
+      defaultServiceFee: (json['defaultServiceFee'] as num?)?.toDouble(),
       // Handle date field name differences
       dateAdded:
           json['dateAdded'] != null
@@ -263,6 +275,9 @@ class Property {
       'currency': currency,
       'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
+      'defaultSecurityDeposit': defaultSecurityDeposit,
+      'defaultCleaningFee': defaultCleaningFee,
+      'defaultServiceFee': defaultServiceFee,
       'dateAdded': dateAdded.toIso8601String(),
       'address': address?.toJson(),
       'amenityIds': amenityIds,
@@ -287,6 +302,9 @@ class Property {
     String? currency,
     double? dailyRate,
     int? minimumStayDays,
+    double? defaultSecurityDeposit,
+    double? defaultCleaningFee,
+    double? defaultServiceFee,
     DateTime? dateAdded,
     Address? address,
   }) {
@@ -308,6 +326,10 @@ class Property {
       currency: currency ?? this.currency,
       dailyRate: dailyRate ?? this.dailyRate,
       minimumStayDays: minimumStayDays ?? this.minimumStayDays,
+      defaultSecurityDeposit:
+          defaultSecurityDeposit ?? this.defaultSecurityDeposit,
+      defaultCleaningFee: defaultCleaningFee ?? this.defaultCleaningFee,
+      defaultServiceFee: defaultServiceFee ?? this.defaultServiceFee,
       dateAdded: dateAdded ?? this.dateAdded,
       address: address ?? this.address,
     );

@@ -180,5 +180,88 @@ namespace eRents.WebApi.Controllers
 				return HandleStandardError(ex, $"Booking deletion (ID: {id})");
 			}
 		}
+
+		[HttpGet("availability/{propertyId}")]
+		[AllowAnonymous] // Allow anonymous users to check availability
+		public async Task<IActionResult> CheckAvailability(int propertyId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+		{
+			try
+			{
+				var isAvailable = await _bookingService.IsPropertyAvailableAsync(propertyId, DateOnly.FromDateTime(startDate), DateOnly.FromDateTime(endDate));
+				
+				_logger.LogInformation("Availability check for property {PropertyId} from {StartDate} to {EndDate}: {IsAvailable}", 
+					propertyId, startDate.ToShortDateString(), endDate.ToShortDateString(), isAvailable);
+					
+				return Ok(new { IsAvailable = isAvailable, PropertyId = propertyId, StartDate = startDate, EndDate = endDate });
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Availability check for property {propertyId}");
+			}
+		}
+
+		[HttpPost("{id}/cancel")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<IActionResult> CancelBooking(int id, [FromBody] BookingCancellationRequest request)
+		{
+			try
+			{
+				// Use the enhanced cancellation request with the proper DTO
+				var enhancedRequest = new eRents.Shared.DTO.Requests.BookingCancellationRequest
+				{
+					BookingId = id,
+					CancellationReason = request?.Reason,
+					RequestRefund = request?.RequestRefund ?? true,
+					AdditionalNotes = "Cancelled via API"
+				};
+				
+				var result = await _bookingService.CancelBookingAsync(enhancedRequest);
+				
+				_logger.LogInformation("Booking {BookingId} cancelled by user {UserId}. Reason: {Reason}", 
+					id, _currentUserService.UserId ?? "unknown", request?.Reason ?? "No reason provided");
+					
+				return Ok(new { 
+					Message = "Booking cancelled successfully", 
+					BookingId = id,
+					Booking = result
+				});
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Booking cancellation (ID: {id})");
+			}
+		}
+
+		[HttpGet("{id}/refund-calculation")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<IActionResult> CalculateRefundAmount(int id, [FromQuery] DateTime? cancellationDate = null)
+		{
+			try
+			{
+				var effectiveCancellationDate = cancellationDate ?? DateTime.Now;
+				var refundAmount = await _bookingService.CalculateRefundAmountAsync(id, effectiveCancellationDate);
+				
+				_logger.LogInformation("Refund calculated for booking {BookingId}: {RefundAmount}", 
+					id, refundAmount);
+					
+				return Ok(new { 
+					BookingId = id, 
+					CancellationDate = effectiveCancellationDate, 
+					RefundAmount = refundAmount,
+					Currency = "BAM"
+				});
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Refund calculation (BookingId: {id})");
+			}
+		}
+	}
+
+	// Supporting DTOs
+	public class BookingCancellationRequest
+	{
+		public string? Reason { get; set; }
+		public bool RequestRefund { get; set; } = false;
 	}
 }

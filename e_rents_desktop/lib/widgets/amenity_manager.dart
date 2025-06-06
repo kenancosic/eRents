@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/services/amenity_service.dart';
-import 'package:e_rents_desktop/repositories/amenity_repository.dart';
-import 'package:e_rents_desktop/base/service_locator.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/models/lookup_data.dart';
 
 /// A modern, reusable amenity widget that can work in both view and edit modes.
 /// Uses the new AmenityService to fetch amenities from the AmenitiesController backend.
@@ -48,10 +48,8 @@ class AmenityManager extends StatefulWidget {
 
 class _AmenityManagerState extends State<AmenityManager> {
   List<int> _selectedAmenityIds = [];
-  List<AmenityItem> _availableAmenities = [];
-  Map<int, AmenityItem> _amenityMap = {};
-  bool _isLoading = true;
-  String? _error;
+  List<LookupItem> _availableAmenities = [];
+  Map<int, LookupItem> _amenityMap = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -59,7 +57,7 @@ class _AmenityManagerState extends State<AmenityManager> {
   void initState() {
     super.initState();
     _selectedAmenityIds = List.from(widget.initialAmenityIds ?? []);
-    _loadAmenities();
+    // LookupProvider will auto-load data when accessed
   }
 
   @override
@@ -68,46 +66,13 @@ class _AmenityManagerState extends State<AmenityManager> {
     super.dispose();
   }
 
-  Future<void> _loadAmenities() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+  void _updateAmenitiesFromProvider(LookupProvider lookupProvider) {
+    _availableAmenities = lookupProvider.amenities;
 
-    try {
-      final amenityRepository = getService<AmenityRepository>();
-
-      if (widget.mode == AmenityManagerMode.view &&
-          _selectedAmenityIds.isNotEmpty) {
-        // For view mode with specific amenity IDs, fetch only those amenities
-        _availableAmenities = await amenityRepository.getAmenitiesByIds(
-          _selectedAmenityIds,
-        );
-        print(
-          'AmenityManager: Loaded ${_availableAmenities.length} specific amenities for view mode',
-        );
-      } else {
-        // For edit mode or view mode without specific IDs, load all amenities
-        _availableAmenities = await amenityRepository.getAll();
-        print(
-          'AmenityManager: Loaded ${_availableAmenities.length} amenities from backend',
-        );
-      }
-
-      // Create amenity map from the list
-      _amenityMap = {};
-      for (final amenity in _availableAmenities) {
-        _amenityMap[amenity.id] = amenity;
-      }
-    } catch (e) {
-      print('AmenityManager: Error loading amenities: $e');
-      setState(() {
-        _error = 'Failed to load amenities: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    // Create amenity map from the list
+    _amenityMap = {};
+    for (final amenity in _availableAmenities) {
+      _amenityMap[amenity.id] = amenity;
     }
   }
 
@@ -137,7 +102,7 @@ class _AmenityManagerState extends State<AmenityManager> {
     widget.onAmenityIdsChanged?.call(_selectedAmenityIds);
   }
 
-  List<AmenityItem> get _filteredAmenities {
+  List<LookupItem> get _filteredAmenities {
     if (_searchQuery.isEmpty) return _availableAmenities;
 
     return _availableAmenities
@@ -152,40 +117,55 @@ class _AmenityManagerState extends State<AmenityManager> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (_isLoading) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+    return Consumer<LookupProvider>(
+      builder: (context, lookupProvider, child) {
+        // Update amenities from provider
+        _updateAmenitiesFromProvider(lookupProvider);
 
-    if (_error != null) {
-      return Card(
-        color: Colors.red.shade50,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Icon(Icons.error_outline, color: Colors.red.shade700, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: TextStyle(color: Colors.red.shade700),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: _loadAmenities,
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+        if (lookupProvider.isLoading) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
+        if (lookupProvider.error != null && !lookupProvider.hasData) {
+          return Card(
+            color: Colors.red.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red.shade700,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Failed to load amenities: ${lookupProvider.error}',
+                    style: TextStyle(color: Colors.red.shade700),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () => lookupProvider.refreshLookupData(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return _buildContent(theme);
+      },
+    );
+  }
+
+  Widget _buildContent(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,7 +276,7 @@ class _AmenityManagerState extends State<AmenityManager> {
         _selectedAmenityIds
             .map((id) => _amenityMap[id])
             .where((amenity) => amenity != null)
-            .cast<AmenityItem>()
+            .cast<LookupItem>()
             .toList();
 
     if (selectedAmenities.isEmpty) {

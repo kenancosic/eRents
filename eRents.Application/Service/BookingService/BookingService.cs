@@ -124,6 +124,11 @@ namespace eRents.Application.Service.BookingService
 			DateOnly startDate = DateOnly.FromDateTime(request.StartDate);
 			DateOnly endDate = DateOnly.FromDateTime(request.EndDate);
 
+			// Enhanced Validation
+			ValidateBookingDates(startDate, endDate);
+			ValidateBookingPricing(request);
+			ValidateGuestInformation(request);
+
 			var isAvailable = await _bookingRepository.IsPropertyAvailableAsync(propertyId, startDate, endDate);
 			if (!isAvailable)
 			{
@@ -133,19 +138,28 @@ namespace eRents.Application.Service.BookingService
 			// Process payment before confirming booking
 			var paymentRequest = new PaymentRequest
 			{
-				BookingId = propertyId,  // Update to the actual BookingId if needed
+				BookingId = null,  // Will be set after booking creation
+				PropertyId = propertyId,  // Correct property reference
 				Amount = request.TotalPrice,
-				PaymentMethod = request.PaymentMethod ?? "Credit Card"  // Use provided or default payment method
+				PaymentMethod = request.PaymentMethod ?? "PayPal",  // Default to PayPal
+				Currency = "BAM"  // Base currency
 			};
 
 			var paymentResponse = await _paymentService.ProcessPaymentAsync(paymentRequest);
 			if (paymentResponse.Status != "Success")
 			{
-				throw new InvalidOperationException("Payment failed.");
+				throw new InvalidOperationException($"Payment failed: {paymentResponse.Status}. Please check your payment details and try again.");
 			}
 
 			// Proceed with creating the booking - ensure proper type conversions
 			var bookingEntity = _mapper.Map<Booking>(request);
+			
+			// Set default currency
+			if (string.IsNullOrEmpty(request.Currency))
+			{
+				// For future enhancement: add Currency property to BookingInsertRequest
+				// bookingEntity.Currency = "BAM";
+			}
 
 			// Set the user to the current user (never trust client data)
 			if (int.TryParse(currentUserId, out int userIdInt))
@@ -161,11 +175,18 @@ namespace eRents.Application.Service.BookingService
 
 			var bookingResponse = _mapper.Map<BookingResponse>(bookingEntity);
 
+			// Update payment record with actual BookingId (for future enhancement)
+			// TODO: Update payment record: paymentRequest.BookingId = bookingResponse.BookingId;
+
 			// Publish booking creation notification
 			var notificationMessage = new BookingNotificationMessage
 			{
 				BookingId = bookingResponse.BookingId,
-				Message = "A new booking has been created."
+				Message = "A new booking has been created.",
+				PropertyId = propertyId,
+				UserId = currentUserId,
+				Amount = request.TotalPrice,
+				Currency = "BAM"
 			};
 			await _rabbitMqService.PublishMessageAsync("bookingQueue", notificationMessage);
 
@@ -319,5 +340,220 @@ namespace eRents.Application.Service.BookingService
 
 			return summaryItems;
 		}
+
+		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
+		{
+			return await _bookingRepository.IsPropertyAvailableAsync(propertyId, startDate, endDate);
+		}
+
+		#region Enhanced Validation Methods
+
+		private void ValidateBookingDates(DateOnly startDate, DateOnly endDate)
+		{
+			if (startDate >= endDate)
+			{
+				throw new InvalidOperationException("End date must be after start date.");
+			}
+
+			if (startDate < DateOnly.FromDateTime(DateTime.Today))
+			{
+				throw new InvalidOperationException("Booking start date cannot be in the past.");
+			}
+
+			var daysDifference = endDate.DayNumber - startDate.DayNumber;
+			if (daysDifference > 365)
+			{
+				throw new InvalidOperationException("Booking duration cannot exceed 365 days.");
+			}
+		}
+
+		private void ValidateBookingPricing(BookingInsertRequest request)
+		{
+			if (request.TotalPrice <= 0)
+			{
+				throw new InvalidOperationException("Total price must be greater than zero.");
+			}
+		}
+
+		private void ValidateGuestInformation(BookingInsertRequest request)
+		{
+			if (request.NumberOfGuests <= 0)
+			{
+				throw new InvalidOperationException("Number of guests must be at least 1.");
+			}
+
+			if (request.NumberOfGuests > 10)
+			{
+				throw new InvalidOperationException("Number of guests cannot exceed 10. Please contact support for larger groups.");
+			}
+		}
+
+		private decimal CalculateSecurityDepositAmount(decimal basePrice, string cancellationPolicy, int numberOfGuests)
+		{
+			// Base security deposit calculation
+			decimal baseDeposit = basePrice * 0.2m; // 20% of base price
+
+			// Adjust based on cancellation policy
+			decimal policyMultiplier = cancellationPolicy switch
+			{
+				"Flexible" => 0.5m,   // Lower deposit for flexible policy
+				"Standard" => 1.0m,   // Standard deposit
+				"Strict" => 1.5m,     // Higher deposit for strict policy
+				_ => 1.0m
+			};
+
+			// Adjust for number of guests
+			decimal guestMultiplier = numberOfGuests switch
+			{
+				<= 2 => 1.0m,
+				<= 4 => 1.2m,
+				<= 6 => 1.4m,
+				_ => 1.6m
+			};
+
+			return Math.Round(baseDeposit * policyMultiplier * guestMultiplier, 2);
+		}
+
+		#endregion
+
+		#region Enhanced Cancellation Methods
+
+		public async Task<BookingResponse> CancelBookingAsync(BookingCancellationRequest request)
+		{
+			var currentUserId = _currentUserService.UserId;
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (string.IsNullOrEmpty(currentUserId))
+				throw new UnauthorizedAccessException("User not authenticated");
+
+			// Get the booking
+			var booking = await _bookingRepository.GetByIdAsync(request.BookingId);
+			if (booking == null)
+				throw new KeyNotFoundException("Booking not found");
+
+			// Check if user has permission to cancel this booking
+			if (!await _bookingRepository.IsBookingOwnerOrPropertyOwnerAsync(request.BookingId, currentUserId, currentUserRole))
+				throw new UnauthorizedAccessException("You can only cancel your own bookings or bookings for your properties");
+
+			// Check if booking can be cancelled
+			if (booking.BookingStatus.StatusName == "Cancelled")
+				throw new InvalidOperationException("Booking is already cancelled");
+
+			if (booking.BookingStatus.StatusName == "Completed")
+				throw new InvalidOperationException("Cannot cancel a completed booking");
+
+			// Calculate refund amount based on cancellation policy and timing
+			var refundAmount = await CalculateRefundAmountAsync(request.BookingId, DateTime.Now);
+
+			// Update booking status to cancelled
+			booking.BookingStatusId = 4; // Assuming 4 is Cancelled status ID
+
+			// Add cancellation details (would require new fields in Booking entity)
+			// booking.CancellationReason = request.CancellationReason;
+			// booking.CancellationDate = DateTime.Now;
+			// booking.RefundAmount = refundAmount;
+
+			await _bookingRepository.UpdateAsync(booking);
+
+			// Process refund if requested and amount > 0
+			if (request.RequestRefund && refundAmount > 0)
+			{
+				await ProcessRefundAsync(booking, refundAmount, request.RefundMethod);
+			}
+
+			// Send cancellation notification
+			var notificationMessage = new BookingNotificationMessage
+			{
+				BookingId = booking.BookingId,
+				Message = $"Booking has been cancelled. Refund amount: {refundAmount:C}",
+				PropertyId = booking.PropertyId ?? 0,
+				UserId = currentUserId,
+				Amount = refundAmount,
+				Currency = booking.Currency ?? "BAM"
+			};
+			await _rabbitMqService.PublishMessageAsync("bookingCancellationQueue", notificationMessage);
+
+			return _mapper.Map<BookingResponse>(booking);
+		}
+
+		public async Task<decimal> CalculateRefundAmountAsync(int bookingId, DateTime cancellationDate)
+		{
+			var booking = await _bookingRepository.GetByIdAsync(bookingId);
+			if (booking == null)
+				throw new KeyNotFoundException("Booking not found");
+
+			var startDate = booking.StartDate.ToDateTime(TimeOnly.MinValue);
+			var daysUntilStart = (startDate - cancellationDate).TotalDays;
+
+			// Simplified refund calculation (Standard policy)
+			decimal refundPercentage = CalculateStandardRefund(daysUntilStart);
+
+			// Full amount refundable with simplified approach
+			return Math.Round(booking.TotalPrice * refundPercentage, 2);
+		}
+
+		private decimal CalculateFlexibleRefund(double daysUntilStart)
+		{
+			return daysUntilStart switch
+			{
+				>= 1 => 1.0m,    // 100% refund if cancelled 1+ days before
+				>= 0 => 0.5m,    // 50% refund if cancelled on the day
+				_ => 0.0m        // No refund after start date
+			};
+		}
+
+		private decimal CalculateStandardRefund(double daysUntilStart)
+		{
+			return daysUntilStart switch
+			{
+				>= 7 => 1.0m,    // 100% refund if cancelled 7+ days before
+				>= 3 => 0.5m,    // 50% refund if cancelled 3-6 days before
+				>= 1 => 0.25m,   // 25% refund if cancelled 1-2 days before
+				_ => 0.0m        // No refund if cancelled on or after start date
+			};
+		}
+
+		private decimal CalculateStrictRefund(double daysUntilStart)
+		{
+			return daysUntilStart switch
+			{
+				>= 14 => 1.0m,   // 100% refund if cancelled 14+ days before
+				>= 7 => 0.5m,    // 50% refund if cancelled 7-13 days before
+				>= 1 => 0.0m,    // No refund if cancelled less than 7 days before
+				_ => 0.0m        // No refund after start date
+			};
+		}
+
+		private async Task ProcessRefundAsync(Booking booking, decimal refundAmount, string? refundMethod)
+		{
+			// TODO: Implement actual refund processing with PayPal
+			// This would integrate with the payment service to process refunds
+
+			try
+			{
+				// Placeholder for PayPal refund processing
+				// var refundRequest = new RefundRequest
+				// {
+				//     OriginalPaymentReference = booking.PaymentReference,
+				//     RefundAmount = refundAmount,
+				//     Currency = booking.Currency,
+				//     Reason = "Booking Cancellation"
+				// };
+				// 
+				// var refundResponse = await _paymentService.ProcessRefundAsync(refundRequest);
+
+				// Log the refund for tracking
+				// TODO: Add logging or create a separate refund tracking entity
+			}
+			catch (Exception ex)
+			{
+				// Log error but don't fail the cancellation
+				// The refund can be processed manually if needed
+				// TODO: Add proper logging
+				throw new InvalidOperationException($"Booking cancelled successfully, but refund processing failed: {ex.Message}");
+			}
+		}
+
+		#endregion
 	}
 }

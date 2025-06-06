@@ -30,8 +30,78 @@ class BookingService {
     }
   }
 
-  // TODO: Add other booking-related methods if needed:
-  // - getBookingDetails(int bookingId)
-  // - cancelBooking(int bookingId)
-  // - updateBooking(int bookingId, Map<String, dynamic> bookingData) // If modification is allowed
+  Future<Booking> createBooking({
+    required int propertyId,
+    required DateTime startDate,
+    DateTime? endDate,
+    required double totalPrice,
+    required int numberOfGuests,
+    String? specialRequests,
+    String paymentMethod = 'PayPal',
+  }) async {
+    try {
+      final Map<String, dynamic> bookingData = {
+        'propertyId': propertyId,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+        'totalPrice': totalPrice,
+        'numberOfGuests': numberOfGuests,
+        'specialRequests': specialRequests,
+        'paymentMethod': paymentMethod,
+      };
+
+      final response = await _apiService.post(
+        '/Bookings',
+        bookingData,
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return Booking.fromJson(data);
+      } else {
+        print(
+            'Failed to create booking: ${response.statusCode} ${response.body}');
+        throw Exception('Failed to create booking');
+      }
+    } catch (e) {
+      print('Error in BookingService.createBooking: $e');
+      throw Exception('An error occurred while creating booking: $e');
+    }
+  }
+
+  Future<Booking?> getBookingDetails(int bookingId) async {
+    try {
+      final response = await _apiService.get(
+        '/Bookings/$bookingId',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return Booking.fromJson(data);
+      } else {
+        print(
+            'Failed to load booking details: ${response.statusCode} ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error in BookingService.getBookingDetails: $e');
+      return null;
+    }
+  }
+
+  Future<bool> cancelBooking(int bookingId) async {
+    try {
+      final response = await _apiService.delete(
+        '/Bookings/$bookingId',
+        authenticated: true,
+      );
+
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('Error in BookingService.cancelBooking: $e');
+      return false;
+    }
+  }
 }

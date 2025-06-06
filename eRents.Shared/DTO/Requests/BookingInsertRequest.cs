@@ -9,9 +9,11 @@ namespace eRents.Shared.DTO.Requests
 		public int UserId { get; set; }
 		public DateTime StartDate { get; set; }
 		public DateTime EndDate { get; set; }
+		
 		public decimal TotalPrice { get; set; }
-		public string? PaymentMethod { get; set; }
-		public int NumberOfGuests { get; set; }
+		public string PaymentMethod { get; set; } = "PayPal";
+		public string Currency { get; set; } = "BAM";
+		public int NumberOfGuests { get; set; } = 1;
 		public string? SpecialRequests { get; set; }
 	}
 }

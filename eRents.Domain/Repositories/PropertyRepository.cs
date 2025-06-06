@@ -198,5 +198,20 @@ namespace eRents.Domain.Repositories
 
 			return property;
 		}
+
+		// Validation methods for related entities
+		public async Task<bool> IsValidPropertyTypeIdAsync(int propertyTypeId)
+		{
+			return await _context.PropertyTypes
+				.AsNoTracking()
+				.AnyAsync(pt => pt.TypeId == propertyTypeId);
+		}
+
+		public async Task<bool> IsValidRentingTypeIdAsync(int rentingTypeId)
+		{
+			return await _context.RentingTypes
+				.AsNoTracking()
+				.AnyAsync(rt => rt.RentingTypeId == rentingTypeId);
+		}
 	}
 }

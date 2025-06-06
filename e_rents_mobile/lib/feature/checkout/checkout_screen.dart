@@ -32,6 +32,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'PayPal';
   bool _showPriceBreakdown = false;
 
+  // New booking details fields
+  int _numberOfGuests = 1;
+  final TextEditingController _specialRequestsController =
+      TextEditingController();
+
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
 
@@ -65,6 +70,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const SizedBox(height: 24),
               // Price details section
               _buildPriceDetails(),
+              const SizedBox(height: 24),
+              // Booking details section
+              _buildBookingDetails(),
               const SizedBox(height: 24),
               // Payment methods section
               _buildPaymentMethods(),
@@ -214,6 +222,126 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((255 * 0.05).round()),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Booking Details',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Number of guests selector
+          Row(
+            children: [
+              Icon(Icons.group, color: Colors.grey[600]),
+              const SizedBox(width: 8),
+              const Text(
+                'Number of guests',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              const Spacer(),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: _numberOfGuests > 1
+                          ? () => setState(() => _numberOfGuests--)
+                          : null,
+                      icon: const Icon(Icons.remove),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        '$_numberOfGuests',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _numberOfGuests < 10
+                          ? () => setState(() => _numberOfGuests++)
+                          : null,
+                      icon: const Icon(Icons.add),
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Special requests field
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.note_alt, color: Colors.grey[600]),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Special requests (optional)',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _specialRequestsController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText:
+                      'Any special requests or preferences for your stay...',
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: accentColor),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
           ),
         ],
       ),

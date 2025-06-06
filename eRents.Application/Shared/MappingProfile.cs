@@ -43,17 +43,31 @@ namespace eRents.Application.Shared
 
 		private void ConfigureBookingMappings()
 		{
-			// ✅ OPTIMIZED: Only map complex properties, let AutoMapper handle the rest
+			// ✅ OPTIMIZED: Only map properties that need custom logic - AutoMapper handles identical names automatically
 			CreateMap<Booking, BookingResponse>()
-				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.BookingId))
-				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name))
-				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName))
-				.ForMember(dest => dest.Currency, opt => opt.MapFrom(src => src.Property.Currency))
-				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0))
-				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0));
+				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.BookingId)) // Different names
+				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
+				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property
+				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
+				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0)); // Null handling
+				// ✅ PaymentMethod, PaymentStatus, PaymentReference, NumberOfGuests, SpecialRequests, Currency 
+				//    are automatically mapped by AutoMapper (same property names)
+
+			CreateMap<Booking, BookingSummaryResponse>()
+				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
+				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
+				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property
+				.ForMember(dest => dest.TenantName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}".Trim() : null)) // Custom logic
+				.ForMember(dest => dest.TenantEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null)) // Nested with null check
+				.ForMember(dest => dest.PropertyImageId, opt => opt.MapFrom(src => src.Property != null ? src.Property.Images.FirstOrDefault(i => i.IsCover) != null ? src.Property.Images.FirstOrDefault(i => i.IsCover).ImageId : src.Property.Images.FirstOrDefault() != null ? src.Property.Images.FirstOrDefault().ImageId : (int?)null : null)); // Complex logic
+				// ✅ BookingId, NumberOfGuests, PaymentMethod, PaymentStatus are automatically mapped
 
 			CreateMap<BookingInsertRequest, Booking>()
-				.ForMember(dest => dest.BookingId, opt => opt.Ignore());
+				.ForMember(dest => dest.BookingId, opt => opt.Ignore()) // Ignore auto-generated ID
+				.ForMember(dest => dest.BookingStatusId, opt => opt.MapFrom(src => 1)) // Default to "Upcoming"
+				.ForMember(dest => dest.BookingDate, opt => opt.MapFrom(src => DateOnly.FromDateTime(DateTime.UtcNow))) // Default value
+				.ForMember(dest => dest.PaymentStatus, opt => opt.MapFrom(src => "Pending")); // Default status
+				// ✅ PaymentMethod, Currency, NumberOfGuests, SpecialRequests are automatically mapped
 
 			CreateMap<BookingUpdateRequest, Booking>();
 		}

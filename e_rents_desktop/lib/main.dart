@@ -9,13 +9,14 @@ import 'base/base.dart'; // Barrel file for all base imports
 import 'widgets/global_error_dialog.dart';
 import 'repositories/profile_repository.dart';
 import 'repositories/home_repository.dart';
+import 'repositories/booking_repository.dart';
 
 // Service imports
 import 'services/auth_service.dart';
 import 'services/secure_storage_service.dart';
 import 'services/user_preferences_service.dart';
 import 'services/property_service.dart';
-import 'services/amenity_service.dart';
+
 import 'services/booking_service.dart';
 import 'services/review_service.dart';
 import 'services/maintenance_service.dart';
@@ -25,9 +26,11 @@ import 'services/chat_service.dart';
 import 'services/report_service.dart';
 import 'services/profile_service.dart';
 import 'services/image_service.dart';
+import 'services/lookup_service.dart';
 
 // Provider imports (only essential ones loaded at startup)
 import 'features/auth/providers/auth_provider.dart';
+import 'providers/lookup_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,12 +68,20 @@ Future<void> _setupServices(String baseUrl) async {
   locator.registerSingleton<AuthService>(
     AuthService(baseUrl, secureStorageService),
   );
+
+  // Register LookupService first (PropertyService depends on it)
+  locator.registerSingleton<LookupService>(
+    LookupService(baseUrl, secureStorageService),
+  );
+
   locator.registerSingleton<PropertyService>(
-    PropertyService(baseUrl, secureStorageService),
+    PropertyService(
+      baseUrl,
+      secureStorageService,
+      locator.get<LookupService>(),
+    ),
   );
-  locator.registerSingleton<AmenityService>(
-    AmenityService(baseUrl, secureStorageService),
-  );
+
   locator.registerSingleton<BookingService>(
     BookingService(baseUrl, secureStorageService),
   );
@@ -106,13 +117,6 @@ Future<void> _setupServices(String baseUrl) async {
   locator.registerLazySingleton<PropertyRepository>(
     () => PropertyRepository(
       service: locator.get<PropertyService>(),
-      cacheManager: locator.get<CacheManager>(),
-    ),
-  );
-
-  locator.registerLazySingleton<AmenityRepository>(
-    () => AmenityRepository(
-      service: locator.get<AmenityService>(),
       cacheManager: locator.get<CacheManager>(),
     ),
   );
@@ -166,6 +170,13 @@ Future<void> _setupServices(String baseUrl) async {
     ),
   );
 
+  locator.registerLazySingleton<BookingRepository>(
+    () => BookingRepository(
+      service: locator.get<BookingService>(),
+      cacheManager: locator.get<CacheManager>(),
+    ),
+  );
+
   // Add other repositories as needed...
 }
 
@@ -187,6 +198,16 @@ class ERentsApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(getService<AuthService>()),
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final lookupProvider = LookupProvider(getService<LookupService>());
+            // Initialize lookup data immediately (non-blocking)
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              lookupProvider.initializeLookupData();
+            });
+            return lookupProvider;
+          },
         ),
 
         // ✅ Feature providers are created lazily in routes using ProviderRegistry

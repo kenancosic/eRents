@@ -8,8 +8,10 @@ namespace eRents.Shared.DTO.Requests
 {
 	public class PaymentRequest
 	{
-		public int BookingId { get; set; }
+		public int? BookingId { get; set; }  // Nullable since it might not exist during creation
+		public int PropertyId { get; set; }  // Property being booked
 		public decimal Amount { get; set; }
-		public string? PaymentMethod { get; set; }  // e.g., Credit Card, PayPal
+		public string PaymentMethod { get; set; } = "PayPal";  // Default to PayPal
+		public string Currency { get; set; } = "BAM";  // Base currency
 	}
 }

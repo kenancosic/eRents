@@ -146,6 +146,14 @@ class ApiService {
       print('ApiService: Error response status: ${response.statusCode}');
       print('ApiService: Error response body: ${response.body}');
 
+      // Handle concurrency conflicts (HTTP 409) with user-friendly message
+      if (response.statusCode == 409) {
+        print('ApiService: Concurrency conflict detected');
+        throw Exception(
+          'This item has been modified by another user. Please refresh and try again.',
+        );
+      }
+
       try {
         final errorJson = json.decode(response.body);
         errorMessage =

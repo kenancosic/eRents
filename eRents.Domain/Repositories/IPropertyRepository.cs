@@ -21,5 +21,9 @@ namespace eRents.Domain.Repositories
 		Task<List<Property>> GetAvailablePropertiesAsync();
 		Task<bool> IsOwnerAsync(int propertyId, string userId);
 		Task<Property> GetByIdWithOwnerCheckAsync(int propertyId, string currentUserId, string currentUserRole);
+
+		// Validation methods for related entities
+		Task<bool> IsValidPropertyTypeIdAsync(int propertyTypeId);
+		Task<bool> IsValidRentingTypeIdAsync(int rentingTypeId);
 	}
 }

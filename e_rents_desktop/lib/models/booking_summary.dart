@@ -13,6 +13,15 @@ class BookingSummary {
   final String? tenantName;
   final String? tenantEmail;
 
+  // New Payment Information fields (matching backend)
+  final String paymentMethod;
+  final String? paymentStatus; // "Pending", "Completed", "Failed"
+  final String? paymentReference; // PayPal Transaction ID
+
+  // New Booking Info fields (matching backend)
+  final int numberOfGuests;
+  final String? specialRequests;
+
   BookingSummary({
     required this.bookingId,
     required this.propertyId,
@@ -26,6 +35,11 @@ class BookingSummary {
     required this.bookingStatus,
     this.tenantName,
     this.tenantEmail,
+    this.paymentMethod = 'PayPal',
+    this.paymentStatus,
+    this.paymentReference,
+    this.numberOfGuests = 1,
+    this.specialRequests,
   });
 
   factory BookingSummary.fromJson(Map<String, dynamic> json) {
@@ -48,9 +62,16 @@ class BookingSummary {
               : null,
       totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'BAM',
-      bookingStatus: json['bookingStatus'] as String? ?? '',
+      bookingStatus:
+          json['bookingStatus'] as String? ?? json['status'] as String? ?? '',
       tenantName: json['tenantName'] as String?,
       tenantEmail: json['tenantEmail'] as String?,
+      // New fields with safe parsing
+      paymentMethod: json['paymentMethod'] as String? ?? 'PayPal',
+      paymentStatus: json['paymentStatus'] as String?,
+      paymentReference: json['paymentReference'] as String?,
+      numberOfGuests: json['numberOfGuests'] as int? ?? 1,
+      specialRequests: json['specialRequests'] as String?,
     );
   }
 
@@ -66,10 +87,28 @@ class BookingSummary {
       'totalPrice': totalPrice,
       'currency': currency,
       'bookingStatus': bookingStatus,
+      'status':
+          bookingStatus, // Also include as 'status' for backend compatibility
       'tenantName': tenantName,
       'tenantEmail': tenantEmail,
+      // New fields
+      'paymentMethod': paymentMethod,
+      'paymentStatus': paymentStatus,
+      'paymentReference': paymentReference,
+      'numberOfGuests': numberOfGuests,
+      'specialRequests': specialRequests,
     };
   }
+
+  // Helper methods for payment status
+  bool get isPaymentCompleted => paymentStatus?.toLowerCase() == 'completed';
+  bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
+  bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
+
+  // Helper methods for booking management
+  String get guestCountDisplay =>
+      numberOfGuests == 1 ? '1 Guest' : '$numberOfGuests Guests';
+  bool get hasSpecialRequests => specialRequests?.isNotEmpty == true;
 }
 
 // Stats classes for property details

@@ -174,6 +174,31 @@ class PropertyBookingsSection extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          // Guest count and payment status row
+          Row(
+            children: [
+              Icon(Icons.group, size: 12, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text(
+                booking.guestCountDisplay,
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
+              const SizedBox(width: 16),
+              _buildPaymentStatusChip(booking),
+              if (booking.hasSpecialRequests) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: booking.specialRequests!,
+                  child: Icon(
+                    Icons.note_alt_outlined,
+                    size: 12,
+                    color: Colors.orange[600],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -192,5 +217,51 @@ class PropertyBookingsSection extends StatelessWidget {
       default:
         return Colors.grey;
     }
+  }
+
+  Widget _buildPaymentStatusChip(BookingSummary booking) {
+    Color chipColor;
+    IconData icon;
+    String text;
+
+    if (booking.isPaymentCompleted) {
+      chipColor = Colors.green;
+      icon = Icons.check_circle;
+      text = 'Paid';
+    } else if (booking.isPaymentPending) {
+      chipColor = Colors.orange;
+      icon = Icons.schedule;
+      text = 'Pending';
+    } else if (booking.isPaymentFailed) {
+      chipColor = Colors.red;
+      icon = Icons.error;
+      text = 'Failed';
+    } else {
+      return const SizedBox.shrink(); // Hide if no payment status
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: chipColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: chipColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: chipColor),
+          const SizedBox(width: 2),
+          Text(
+            text,
+            style: TextStyle(
+              color: chipColor,
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

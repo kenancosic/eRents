@@ -11,5 +11,8 @@ namespace eRents.Application.Service.BookingService
     {
         Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId);
         Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId);
+        Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate);
+        Task<BookingResponse> CancelBookingAsync(BookingCancellationRequest request);
+        Task<decimal> CalculateRefundAmountAsync(int bookingId, DateTime cancellationDate);
     }
 }

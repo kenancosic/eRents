@@ -39,6 +39,11 @@ public partial class Property : BaseEntity
     public decimal? DailyRate { get; set; }
     public int? MinimumStayDays { get; set; }
 
+    // Fee Settings (Property-level defaults for desktop app management)
+    public decimal? DefaultSecurityDeposit { get; set; }
+    public decimal? DefaultCleaningFee { get; set; }
+    public decimal? DefaultServiceFee { get; set; }
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();

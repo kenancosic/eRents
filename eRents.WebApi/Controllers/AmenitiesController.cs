@@ -1,13 +1,13 @@
-using eRents.Application.Service.PropertyService;
+using eRents.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using eRents.Shared.Services;
 using eRents.Shared.DTO.Response;
 using eRents.Application.Exceptions;
 using ValidationException = eRents.Application.Exceptions.ValidationException;
-using eRents.Domain.Repositories;
 
 namespace eRents.WebApi.Controllers
 {
@@ -15,19 +15,16 @@ namespace eRents.WebApi.Controllers
 	[Route("[controller]")]
 	public class AmenitiesController : ControllerBase
 	{
-		private readonly IPropertyService _propertyService;
+		private readonly ERentsContext _context;
 		private readonly ILogger<AmenitiesController> _logger;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IPropertyRepository _propertyRepository;
 
 		public AmenitiesController(
-			IPropertyService propertyService,
-			IPropertyRepository propertyRepository,
+			ERentsContext context,
 			ILogger<AmenitiesController> logger,
 			ICurrentUserService currentUserService)
 		{
-			_propertyService = propertyService;
-			_propertyRepository = propertyRepository;
+			_context = context;
 			_logger = logger;
 			_currentUserService = currentUserService;
 		}
@@ -118,20 +115,27 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet]
-		[Authorize]
+		[AllowAnonymous] // Allow anonymous access like other lookup data
 		public async Task<IActionResult> GetAmenities()
 		{
 			try
 			{
-				_logger.LogInformation("Get amenities request by user {UserId}",
-					_currentUserService.UserId ?? "unknown");
+				_logger.LogInformation("Get amenities request");
 
-				var amenities = await _propertyService.GetAmenitiesAsync();
+				var amenities = await _context.Amenities
+					.AsNoTracking()
+					.OrderBy(a => a.AmenityName)
+					.ToListAsync();
 
-				_logger.LogInformation("Retrieved {AmenityCount} amenities for user {UserId}",
-					amenities.Count(), _currentUserService.UserId ?? "unknown");
+				var response = amenities.Select(a => new
+				{
+					Id = a.AmenityId,
+					Name = a.AmenityName
+				}).ToList();
 
-				return Ok(amenities);
+				_logger.LogInformation("Retrieved {AmenityCount} amenities", response.Count);
+
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{
@@ -140,18 +144,17 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet("by-ids")]
-		[Authorize]
+		[AllowAnonymous] // Allow anonymous access like other lookup data
 		public async Task<IActionResult> GetAmenitiesByIds([FromQuery] int[] ids)
 		{
 			try
 			{
-				_logger.LogInformation("Get amenities by IDs request: {AmenityIds} by user {UserId}",
-					string.Join(",", ids), _currentUserService.UserId ?? "unknown");
+				_logger.LogInformation("Get amenities by IDs request: {AmenityIds}",
+					string.Join(",", ids));
 
 				if (ids == null || !ids.Any())
 				{
-					_logger.LogWarning("Get amenities by IDs failed - No IDs provided by user {UserId}",
-						_currentUserService.UserId ?? "unknown");
+					_logger.LogWarning("Get amenities by IDs failed - No IDs provided");
 					return BadRequest(new StandardErrorResponse
 					{
 						Type = "Validation",
@@ -162,19 +165,21 @@ namespace eRents.WebApi.Controllers
 					});
 				}
 
-				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(ids);
+				var amenities = await _context.Amenities
+					.AsNoTracking()
+					.Where(a => ids.Contains(a.AmenityId))
+					.OrderBy(a => a.AmenityName)
+					.ToListAsync();
 
-				// Map domain models to response DTOs
-				var amenityResponses = amenities.Select(a => new AmenityResponse
+				var response = amenities.Select(a => new
 				{
 					Id = a.AmenityId,
 					Name = a.AmenityName
 				}).ToList();
 
-				_logger.LogInformation("Retrieved {AmenityCount} amenities by IDs for user {UserId}",
-					amenityResponses.Count, _currentUserService.UserId ?? "unknown");
+				_logger.LogInformation("Retrieved {AmenityCount} amenities by IDs", response.Count);
 
-				return Ok(amenityResponses);
+				return Ok(response);
 			}
 			catch (Exception ex)
 			{
@@ -182,126 +187,7 @@ namespace eRents.WebApi.Controllers
 			}
 		}
 
-		[HttpPost]
-		[Authorize(Roles = "Landlord")]
-		public async Task<IActionResult> AddAmenity([FromBody] string amenityName)
-		{
-			try
-			{
-				_logger.LogInformation("Add amenity request: {AmenityName} by user {UserId}",
-					amenityName, _currentUserService.UserId ?? "unknown");
-
-				if (string.IsNullOrWhiteSpace(amenityName))
-				{
-					_logger.LogWarning("Add amenity failed - Empty amenity name by user {UserId}",
-						_currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Amenity name cannot be empty",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				var amenity = await _propertyService.AddAmenityAsync(amenityName);
-
-				_logger.LogInformation("Amenity added successfully: {AmenityName} by user {UserId}",
-					amenityName, _currentUserService.UserId ?? "unknown");
-
-				return Ok(amenity);
-			}
-			catch (Exception ex)
-			{
-				return HandleStandardError(ex, $"Add amenity '{amenityName}'");
-			}
-		}
-
-		[HttpPut("{id}")]
-		[Authorize(Roles = "Landlord")]
-		public async Task<IActionResult> UpdateAmenity(int id, [FromBody] string amenityName)
-		{
-			try
-			{
-				_logger.LogInformation("Update amenity request: ID {AmenityId} to {AmenityName} by user {UserId}",
-					id, amenityName, _currentUserService.UserId ?? "unknown");
-
-				if (id <= 0)
-				{
-					_logger.LogWarning("Update amenity failed - Invalid amenity ID {AmenityId} by user {UserId}",
-						id, _currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Valid amenity ID is required",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				if (string.IsNullOrWhiteSpace(amenityName))
-				{
-					_logger.LogWarning("Update amenity failed - Empty amenity name for ID {AmenityId} by user {UserId}",
-						id, _currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Amenity name cannot be empty",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				var amenity = await _propertyService.UpdateAmenityAsync(id, amenityName);
-
-				_logger.LogInformation("Amenity updated successfully: ID {AmenityId} to {AmenityName} by user {UserId}",
-					id, amenityName, _currentUserService.UserId ?? "unknown");
-
-				return Ok(amenity);
-			}
-			catch (Exception ex)
-			{
-				return HandleStandardError(ex, $"Update amenity {id}");
-			}
-		}
-
-		[HttpDelete("{id}")]
-		[Authorize(Roles = "Landlord")]
-		public async Task<IActionResult> DeleteAmenity(int id)
-		{
-			try
-			{
-				_logger.LogInformation("Delete amenity request: ID {AmenityId} by user {UserId}",
-					id, _currentUserService.UserId ?? "unknown");
-
-				if (id <= 0)
-				{
-					_logger.LogWarning("Delete amenity failed - Invalid amenity ID {AmenityId} by user {UserId}",
-						id, _currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Valid amenity ID is required",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
-
-				await _propertyService.DeleteAmenityAsync(id);
-
-				_logger.LogInformation("Amenity deleted successfully: ID {AmenityId} by user {UserId}",
-					id, _currentUserService.UserId ?? "unknown");
-
-				return NoContent();
-			}
-			catch (Exception ex)
-			{
-				return HandleStandardError(ex, $"Delete amenity {id}");
-			}
-		}
+		// CRUD operations removed - amenities are now managed via database queries only
+		// Add new amenities directly to the database as needed
 	}
 }

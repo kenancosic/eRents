@@ -26,6 +26,10 @@ import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
+import 'package:e_rents_desktop/features/bookings/bookings_screen.dart';
+import 'package:e_rents_desktop/features/bookings/providers/booking_collection_provider.dart';
+import 'package:e_rents_desktop/features/bookings/providers/booking_detail_provider.dart';
+import 'package:e_rents_desktop/repositories/booking_repository.dart';
 
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
@@ -303,6 +307,14 @@ class AppRouter {
                   child: _createTenantsScreen(),
                 ),
           ),
+          GoRoute(
+            path: '/bookings',
+            builder:
+                (context, state) => ContentWrapper(
+                  title: 'Booking Management',
+                  child: _createBookingsScreen(),
+                ),
+          ),
         ],
       ),
     ],
@@ -506,6 +518,26 @@ class AppRouter {
     return ChangeNotifierProvider.value(
       value: provider,
       child: const ProfileScreen(),
+    );
+  }
+
+  static Widget _createBookingsScreen() {
+    final registry = ProviderRegistry();
+    final collectionProvider = registry.getOrCreate<BookingCollectionProvider>(
+      () => BookingCollectionProvider(getService<BookingRepository>()),
+    );
+    collectionProvider.initializeAndFetchIfNeeded();
+
+    final detailProvider = BookingDetailProvider(
+      getService<BookingRepository>(),
+    );
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: collectionProvider),
+        ChangeNotifierProvider.value(value: detailProvider),
+      ],
+      child: const BookingsScreen(),
     );
   }
 }
