@@ -1,12 +1,13 @@
 using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-    public class TenantPreferenceRepository : BaseRepository<TenantPreference>, ITenantPreferenceRepository
+    public class TenantPreferenceRepository : ConcurrentBaseRepository<TenantPreference>, ITenantPreferenceRepository
     {
-        public TenantPreferenceRepository(ERentsContext context) : base(context) { }
+        public TenantPreferenceRepository(ERentsContext context, ILogger<TenantPreferenceRepository> logger) : base(context, logger) { }
 
         public async Task<List<TenantPreference>> GetActivePreferencesAsync(Dictionary<string, string>? filters = null)
         {

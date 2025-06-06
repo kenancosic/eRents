@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class Property
+public partial class Property : BaseEntity
 {
     public int PropertyId { get; set; }
 

@@ -37,19 +37,39 @@ namespace eRents.WebApi.Extensions
         /// </summary>
         public static IServiceCollection AddERentsRepositories(this IServiceCollection services)
         {
-            // Core entity repositories
+            // Core entity repositories with concurrency control
             services.AddTransient<IUserRepository, UserRepository>();
             services.AddTransient<IPropertyRepository, PropertyRepository>();
             services.AddTransient<IBookingRepository, BookingRepository>();
             services.AddTransient<IReviewRepository, ReviewRepository>();
-            services.AddTransient<IImageRepository, ImageRepository>();
             services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
-            services.AddTransient<ITenantRepository, TenantRepository>();
-            
-            // Lookup and reference repositories
             services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
-            // Legacy repositories removed as part of Address refactoring: IGeoRegionRepository, IAddressDetailRepository
+            
+            // Register concurrent repository interfaces for entities that need concurrency control
+            services.AddTransient<IConcurrentRepository<Property>, PropertyRepository>();
+            services.AddTransient<IConcurrentRepository<User>, UserRepository>();
+            services.AddTransient<IConcurrentRepository<Booking>, BookingRepository>();
+            services.AddTransient<IConcurrentRepository<Review>, ReviewRepository>();
+            services.AddTransient<IConcurrentRepository<MaintenanceIssue>, MaintenanceRepository>();
+            services.AddTransient<IConcurrentRepository<TenantPreference>, TenantPreferenceRepository>();
+            
+            // Phase 3 concurrent repositories
+            services.AddTransient<IConcurrentRepository<Message>, MessageRepository>();
+            services.AddTransient<IConcurrentRepository<Tenant>, TenantRepository>();
+            services.AddTransient<IConcurrentRepository<Image>, ImageRepository>();
+            
+            // Phase 4 concurrent repositories
+            services.AddTransient<IConcurrentRepository<Payment>, PaymentRepository>();
+            services.AddTransient<IConcurrentRepository<Amenity>, AmenityRepository>();
+            
+            // Repository interfaces for Phase 3 entities
+            services.AddTransient<IImageRepository, ImageRepository>();
+            services.AddTransient<ITenantRepository, TenantRepository>();
             services.AddTransient<IMessageRepository, MessageRepository>();
+            
+            // Repository interfaces for Phase 4 entities
+            services.AddTransient<IPaymentRepository, PaymentRepository>();
+            services.AddTransient<IAmenityRepository, AmenityRepository>();
             
             // Generic base repository for UserType (existing pattern)
             services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();

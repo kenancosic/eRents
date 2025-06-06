@@ -1,6 +1,7 @@
 ﻿using eRents.Domain.Models;
 using eRents.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace eRents.Domain.Shared
 {
@@ -33,11 +34,26 @@ namespace eRents.Domain.Shared
 		{
 			try
 			{
-				// Clear change tracker to avoid tracking conflicts with related entities
-				_context.ChangeTracker.Clear();
-				
-				// Use Update which will mark the entity and all related entities as modified
-				_context.Set<TEntity>().Update(entity);
+				// Get the primary key value using reflection
+				var entityType = _context.Model.FindEntityType(typeof(TEntity));
+				var primaryKey = entityType.FindPrimaryKey();
+				var keyProperty = primaryKey.Properties.First();
+				var keyValue = keyProperty.PropertyInfo.GetValue(entity);
+
+				// Load the existing entity from database with tracking
+				var existingEntity = await _context.Set<TEntity>().FindAsync(keyValue);
+				if (existingEntity == null)
+				{
+					throw new KeyNotFoundException($"Entity with key {keyValue} not found");
+				}
+
+				// Update only the scalar properties, not navigation properties
+				var entry = _context.Entry(existingEntity);
+				entry.CurrentValues.SetValues(entity);
+
+				// For collection navigation properties, we need special handling
+				// This is handled in the service layer's BeforeUpdateAsync method
+
 				await _context.SaveChangesAsync();
 			}
 			catch (DbUpdateException ex)

@@ -1,12 +1,13 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class MessageRepository : BaseRepository<Message>, IMessageRepository
+	public class MessageRepository : ConcurrentBaseRepository<Message>, IMessageRepository
 	{
-		public MessageRepository(ERentsContext context) : base(context) { }
+		public MessageRepository(ERentsContext context, ILogger<MessageRepository> logger) : base(context, logger) { }
 
 		public async Task<IEnumerable<Message>> GetMessagesBetweenUsersAsync(int senderId, int receiverId)
 		{

@@ -1,12 +1,13 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class ImageRepository : BaseRepository<Image>, IImageRepository
+	public class ImageRepository : ConcurrentBaseRepository<Image>, IImageRepository
 	{
-		public ImageRepository(ERentsContext context) : base(context) { }
+		public ImageRepository(ERentsContext context, ILogger<ImageRepository> logger) : base(context, logger) { }
 
 		public async Task<IEnumerable<Image>> GetImagesByPropertyIdAsync(int propertyId)
 		{

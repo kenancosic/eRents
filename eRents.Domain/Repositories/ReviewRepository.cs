@@ -1,12 +1,13 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class ReviewRepository : BaseRepository<Review>, IReviewRepository
+	public class ReviewRepository : ConcurrentBaseRepository<Review>, IReviewRepository
 	{
-		public ReviewRepository(ERentsContext context) : base(context) { }
+		public ReviewRepository(ERentsContext context, ILogger<ReviewRepository> logger) : base(context, logger) { }
 
 		public async Task<decimal> GetAverageRatingAsync(int propertyId)
 		{

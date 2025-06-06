@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class Booking
+public partial class Booking : BaseEntity
 {
     public int BookingId { get; set; }
 

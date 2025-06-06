@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eRents.Domain.Models;
 
@@ -11,9 +12,11 @@ using eRents.Domain.Models;
 namespace eRents.Domain.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    partial class ERentsContextModelSnapshot : ModelSnapshot
+    [Migration("20250606154611_AddConcurrencyControlToMultipleEntities")]
+    partial class AddConcurrencyControlToMultipleEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -38,26 +41,6 @@ namespace eRents.Domain.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)")
                         .HasColumnName("amenity_name");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("AmenityId")
                         .HasName("PK__Amenitie__E908452DD87B33D9");
@@ -205,13 +188,6 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("content_type");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("DateUploaded")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
@@ -244,27 +220,14 @@ namespace eRents.Domain.Migrations
                     b.Property<int?>("MaintenanceIssueId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int");
 
                     b.Property<int?>("ReviewId")
                         .HasColumnType("int");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<byte[]>("ThumbnailData")
                         .HasColumnType("varbinary(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<int?>("Width")
                         .HasColumnType("int")
@@ -485,13 +448,6 @@ namespace eRents.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageId"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("DateSent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
@@ -512,26 +468,13 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("text")
                         .HasColumnName("message_text");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("ReceiverId")
                         .HasColumnType("int")
                         .HasColumnName("receiver_id");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int>("SenderId")
                         .HasColumnType("int")
                         .HasColumnName("sender_id");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("MessageId")
                         .HasName("PK__Messages__0BBF6EE695058BE7");
@@ -601,22 +544,11 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("amount");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateOnly?>("DatePaid")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("date")
                         .HasColumnName("date_paid")
                         .HasDefaultValueSql("(getdate())");
-
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PaymentMethod")
                         .HasMaxLength(50)
@@ -640,18 +572,9 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int")
                         .HasColumnName("property_id");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
                     b.Property<int?>("TenantId")
                         .HasColumnType("int")
                         .HasColumnName("tenant_id");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("PaymentId")
                         .HasName("PK__Payments__ED1FC9EA3D8D2E81");
@@ -1007,39 +930,19 @@ namespace eRents.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TenantId"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateOnly?>("LeaseStartDate")
                         .HasColumnType("date")
                         .HasColumnName("lease_start_date");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int")
                         .HasColumnName("property_id");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
 
                     b.Property<string>("TenantStatus")
                         .HasMaxLength(50)
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)")
                         .HasColumnName("tenant_status");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int")

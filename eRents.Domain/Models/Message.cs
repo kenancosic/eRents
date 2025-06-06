@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class Message
+public partial class Message : BaseEntity
 {
     public int MessageId { get; set; }
 

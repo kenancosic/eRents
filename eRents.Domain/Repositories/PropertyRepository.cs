@@ -2,12 +2,19 @@
 using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class PropertyRepository : BaseRepository<Property>, IPropertyRepository
+	/// <summary>
+	/// Repository implementation for Property entity with concurrency control
+	/// </summary>
+	public class PropertyRepository : ConcurrentBaseRepository<Property>, IPropertyRepository
 	{
-		public PropertyRepository(ERentsContext context) : base(context) { }
+		public PropertyRepository(ERentsContext context, ILogger<PropertyRepository> logger)
+			: base(context, logger)
+		{
+		}
 
 		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
 		{

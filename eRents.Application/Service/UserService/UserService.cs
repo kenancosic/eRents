@@ -94,13 +94,40 @@ namespace eRents.Application.Service.UserService
 			var entity = await _userRepository.GetByIdAsync(id);
 			if (entity == null) return null;
 
-			_mapper.Map(update, entity);
-			await BeforeUpdateAsync(update, entity);
+			// Use transaction with retry mechanism for user updates
+			if (_userRepository is IConcurrentRepository<User> concurrentRepo)
+			{
+				return await concurrentRepo.ExecuteInTransactionAsync(async () =>
+				{
+					// Store original row version for concurrency check
+					var originalRowVersion = (entity as BaseEntity)?.RowVersion;
 
-			await _userRepository.UpdateAsync(entity);
+					_mapper.Map(update, entity);
+					
+					// Set audit fields
+					if (entity is BaseEntity baseEntity)
+					{
+						baseEntity.ModifiedBy = entity.UserId.ToString(); // User modifying their own profile
+						baseEntity.UpdatedAt = DateTime.UtcNow;
+					}
 
-			// Return the mapped response - BeforeUpdateAsync ensures navigation properties are correct
-			return _mapper.Map<UserResponse>(entity);
+					await BeforeUpdateAsync(update, entity);
+
+					// Use concurrency-aware update with retry
+					await concurrentRepo.UpdateWithRetryAsync(entity, maxRetries: 3);
+
+					// Return the mapped response
+					return _mapper.Map<UserResponse>(entity);
+				});
+			}
+			else
+			{
+				// Fallback for non-concurrent repository
+				_mapper.Map(update, entity);
+				await BeforeUpdateAsync(update, entity);
+				await _userRepository.UpdateAsync(entity);
+				return _mapper.Map<UserResponse>(entity);
+			}
 		}
 
 		protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearchObject search = null)
@@ -193,12 +220,33 @@ namespace eRents.Application.Service.UserService
 				throw new ValidationException("New password and confirmation password do not match.");
 			}
 
-			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			user.ResetToken = null;
-			user.ResetTokenExpiration = null;
+			// Use concurrency control for password reset
+			if (_userRepository is IConcurrentRepository<User> concurrentRepo)
+			{
+				await concurrentRepo.ExecuteInTransactionAsync(async () =>
+				{
+					user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+					user.ResetToken = null;
+					user.ResetTokenExpiration = null;
 
-			await _userRepository.UpdateAsync(user);
-			await _userRepository.SaveChangesAsync(); // Ensure changes are saved
+					// Set audit fields
+					if (user is BaseEntity baseEntity)
+					{
+						baseEntity.ModifiedBy = "system"; // System reset
+						baseEntity.UpdatedAt = DateTime.UtcNow;
+					}
+
+					await concurrentRepo.UpdateWithRetryAsync(user, maxRetries: 3);
+				});
+			}
+			else
+			{
+				user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+				user.ResetToken = null;
+				user.ResetTokenExpiration = null;
+				await _userRepository.UpdateAsync(user);
+				await _userRepository.SaveChangesAsync(); // Ensure changes are saved
+			}
 		}
 
 		public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
@@ -215,8 +263,28 @@ namespace eRents.Application.Service.UserService
 			if (request.NewPassword != request.ConfirmPassword)
 				throw new ValidationException("New password and confirmation must match.");
 
-			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			await _userRepository.UpdateAsync(user);
+			// Use concurrency control for password change
+			if (_userRepository is IConcurrentRepository<User> concurrentRepo)
+			{
+				await concurrentRepo.ExecuteInTransactionAsync(async () =>
+				{
+					user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+
+					// Set audit fields
+					if (user is BaseEntity baseEntity)
+					{
+						baseEntity.ModifiedBy = userId.ToString(); // User changing their own password
+						baseEntity.UpdatedAt = DateTime.UtcNow;
+					}
+
+					await concurrentRepo.UpdateWithRetryAsync(user, maxRetries: 3);
+				});
+			}
+			else
+			{
+				user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+				await _userRepository.UpdateAsync(user);
+			}
 		}
 
 		public async Task ForgotPasswordAsync(string email)

@@ -102,6 +102,23 @@ public partial class ERentsContext : DbContext
             entity.ToTable("Booking");
 
             entity.Property(e => e.BookingId).HasColumnName("booking_id");
+            
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
             entity.Property(e => e.PropertyId).HasColumnName("property_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
@@ -288,6 +305,23 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("daily_rate");
             entity.Property(e => e.MinimumStayDays).HasColumnName("minimum_stay_days");
 
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
+
             // Configure Address as owned entity (value object)
             entity.OwnsOne(p => p.Address, address =>
             {
@@ -338,6 +372,23 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.ReviewId).HasName("PK__Complain__A771F61C85B78CAA");
 
             entity.Property(e => e.ReviewId).HasColumnName("review_id");
+            
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at_review");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at_review");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
             entity.Property(e => e.ReviewType)
                 .IsRequired()
                 .HasConversion<string>()
@@ -414,6 +465,23 @@ public partial class ERentsContext : DbContext
             entity.HasIndex(e => e.Username, "UQ__Users__F3DBC5724649C4DE").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at_base");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at_base");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
@@ -507,6 +575,23 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.MaintenanceIssueId);
 
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at_maintenance");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at_maintenance");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
+
             entity.Property(e => e.Title).HasMaxLength(255).IsUnicode(true);
             entity.Property(e => e.Cost).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.Category).HasMaxLength(100).IsUnicode(true);
@@ -572,6 +657,23 @@ public partial class ERentsContext : DbContext
         modelBuilder.Entity<TenantPreference>(entity =>
         {
             entity.HasKey(e => e.TenantPreferenceId);
+            
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
             
             entity.Property(e => e.City).HasMaxLength(100).IsUnicode(true);
             entity.Property(e => e.MinPrice).HasColumnType("decimal(10, 2)");

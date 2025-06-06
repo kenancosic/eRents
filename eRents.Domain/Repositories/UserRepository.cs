@@ -3,12 +3,13 @@ using eRents.Domain.Shared;
 using eRents.Shared.Exceptions;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class UserRepository : BaseRepository<User>, IUserRepository
+	public class UserRepository : ConcurrentBaseRepository<User>, IUserRepository
 	{
-		public UserRepository(ERentsContext context) : base(context) { }
+		public UserRepository(ERentsContext context, ILogger<UserRepository> logger) : base(context, logger) { }
 
 		public override async Task<User> GetByIdAsync(int id)
 		{

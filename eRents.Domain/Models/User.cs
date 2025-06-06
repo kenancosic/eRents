@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class User
+public partial class User : BaseEntity
 {
     public int UserId { get; set; }
 

@@ -1,12 +1,13 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-	public class BookingRepository : BaseRepository<Booking>, IBookingRepository
+	public class BookingRepository : ConcurrentBaseRepository<Booking>, IBookingRepository
 	{
-		public BookingRepository(ERentsContext context) : base(context) { }
+		public BookingRepository(ERentsContext context, ILogger<BookingRepository> logger) : base(context, logger) { }
 
 		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
 		{

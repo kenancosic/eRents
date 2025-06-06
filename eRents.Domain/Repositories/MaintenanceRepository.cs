@@ -2,15 +2,16 @@ using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace eRents.Domain.Repositories
 {
-	public class MaintenanceRepository : BaseRepository<MaintenanceIssue>, IMaintenanceRepository
+	public class MaintenanceRepository : ConcurrentBaseRepository<MaintenanceIssue>, IMaintenanceRepository
 	{
-		public MaintenanceRepository(ERentsContext context) : base(context) { }
+		public MaintenanceRepository(ERentsContext context, ILogger<MaintenanceRepository> logger) : base(context, logger) { }
 
 		public override async Task<MaintenanceIssue> GetByIdAsync(int id)
 		{

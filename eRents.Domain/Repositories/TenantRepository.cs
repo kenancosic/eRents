@@ -1,12 +1,13 @@
 using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Domain.Repositories
 {
-    public class TenantRepository : BaseRepository<Tenant>, ITenantRepository
+    public class TenantRepository : ConcurrentBaseRepository<Tenant>, ITenantRepository
     {
-        public TenantRepository(ERentsContext context) : base(context) { }
+        public TenantRepository(ERentsContext context, ILogger<TenantRepository> logger) : base(context, logger) { }
 
         public async Task<List<User>> GetCurrentTenantsForLandlordAsync(int landlordId, Dictionary<string, string>? filters = null)
         {

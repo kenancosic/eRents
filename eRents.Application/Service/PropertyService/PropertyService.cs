@@ -91,19 +91,33 @@ namespace eRents.Application.Service.PropertyService
 					update.Address.Longitude);
 			}
 
-			// Handle amenities processing - SIMPLIFIED: Only use IDs
-			if (update.AmenityIds?.Any() == true)
+			// Handle amenities processing - OPTIMIZED: Work with already-loaded amenities
+			if (update.AmenityIds != null)
 			{
-				var amenities = await _propertyRepository.GetAmenitiesByIdsAsync(update.AmenityIds);
-				entity.Amenities.Clear();
-				foreach (var amenity in amenities)
+				// Get current amenity IDs
+				var currentAmenityIds = entity.Amenities.Select(a => a.AmenityId).ToHashSet();
+				var newAmenityIds = update.AmenityIds.ToHashSet();
+
+				// Remove amenities that are no longer needed
+				var amenitiesToRemove = entity.Amenities
+					.Where(a => !newAmenityIds.Contains(a.AmenityId))
+					.ToList();
+				
+				foreach (var amenity in amenitiesToRemove)
 				{
-					entity.Amenities.Add(amenity);
+					entity.Amenities.Remove(amenity);
 				}
-			}
-			else if (update.AmenityIds != null) // Empty list provided = clear all amenities
-			{
-				entity.Amenities.Clear();
+
+				// Add new amenities
+				var amenityIdsToAdd = newAmenityIds.Except(currentAmenityIds);
+				if (amenityIdsToAdd.Any())
+				{
+					var amenitiesToAdd = await _propertyRepository.GetAmenitiesByIdsAsync(amenityIdsToAdd);
+					foreach (var amenity in amenitiesToAdd)
+					{
+						entity.Amenities.Add(amenity);
+					}
+				}
 			}
 			// If AmenityIds is null, preserve existing amenities (no change)
 
@@ -215,7 +229,7 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<PropertyResponse>(entity);
 		}
 
-		// Override UpdateAsync to validate ownership - SIMPLIFIED APPROACH
+		// Override UpdateAsync to validate ownership - OPTIMIZED APPROACH WITH CONCURRENCY CONTROL
 		public override async Task<PropertyResponse> UpdateAsync(int id, PropertyUpdateRequest update)
 		{
 			var currentUserId = _currentUserService.UserId;
@@ -228,19 +242,45 @@ namespace eRents.Application.Service.PropertyService
 			if (!await _propertyRepository.IsOwnerAsync(id, currentUserId))
 				throw new UnauthorizedAccessException("You can only update your own properties");
 
-			var entity = await _propertyRepository.GetByIdAsync(id);
-			if (entity == null)
-				throw new KeyNotFoundException("Property not found");
+			// Use transaction with retry mechanism for complex updates involving relationships
+			return await (_propertyRepository as IConcurrentRepository<Property>)?.ExecuteInTransactionAsync(async () =>
+			{
+				// Get entity with amenities for efficient update
+				var entity = await _propertyRepository.GetQueryable()
+					.Include(p => p.Amenities)
+					.FirstOrDefaultAsync(p => p.PropertyId == id);
+					
+				if (entity == null)
+					throw new KeyNotFoundException("Property not found");
 
-			// Simple approach: Map the basic fields first
-			_mapper.Map(update, entity);
+				// Store original row version for concurrency check
+				var originalRowVersion = (entity as BaseEntity)?.RowVersion;
 
-			// Then handle complex relationships in BeforeUpdateAsync
-			await BeforeUpdateAsync(update, entity);
+				// Map basic properties
+				_mapper.Map(update, entity);
 
-			await _propertyRepository.UpdateAsync(entity);
+				// Set audit fields
+				if (entity is BaseEntity baseEntity)
+				{
+					baseEntity.ModifiedBy = currentUserId;
+					baseEntity.UpdatedAt = DateTime.UtcNow;
+				}
 
-			return _mapper.Map<PropertyResponse>(entity);
+				// Handle complex relationships within the transaction
+				await BeforeUpdateAsync(update, entity);
+
+				// Use concurrency-aware update with retry
+				if (_propertyRepository is IConcurrentRepository<Property> concurrentRepo)
+				{
+					await concurrentRepo.UpdateWithRetryAsync(entity, maxRetries: 3);
+				}
+				else
+				{
+					await _propertyRepository.UpdateEntityAsync(entity);
+				}
+
+				return _mapper.Map<PropertyResponse>(entity);
+			}) ?? throw new InvalidOperationException("Repository does not support concurrent operations");
 		}
 
 		// Override DeleteAsync to validate ownership

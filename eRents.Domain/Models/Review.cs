@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
@@ -9,7 +10,7 @@ public enum ReviewType
     TenantReview     // Landlord reviewing a tenant after booking ends
 }
 
-public partial class Review
+public partial class Review : BaseEntity
 {
     public int ReviewId { get; set; }
 

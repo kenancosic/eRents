@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class Image
+public partial class Image : BaseEntity
 {
     public int ImageId { get; set; }
 

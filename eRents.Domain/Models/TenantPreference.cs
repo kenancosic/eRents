@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class TenantPreference
+public partial class TenantPreference : BaseEntity
 {
     public int TenantPreferenceId { get; set; }
 

@@ -10,6 +10,7 @@ using eRents.RabbitMQMicroservice.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using eRents.WebApi.Hubs;
+using eRents.WebApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -148,6 +149,9 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// Add concurrency handling middleware
+app.UseConcurrencyHandling();
 
 // Enable CORS
 app.UseCors("AllowFrontends");
