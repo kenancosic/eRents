@@ -19,7 +19,9 @@ public partial class User
 
     public virtual Image? ProfileImage { get; set; }
 
-    public Address? Address { get; set; }
+    public int? AddressDetailId { get; set; }
+
+    public virtual AddressDetail? AddressDetail { get; set; }
 
     public int? UserTypeId { get; set; }
 

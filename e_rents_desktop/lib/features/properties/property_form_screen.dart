@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/address_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
@@ -11,7 +12,8 @@ import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
-
+import './widgets/property_form_fields.dart';
+import './widgets/property_selection_widgets.dart';
 import './models/property_form_state.dart';
 
 class PropertyFormScreen extends StatefulWidget {

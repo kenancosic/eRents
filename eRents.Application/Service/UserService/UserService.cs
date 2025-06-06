@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using eRents.Application.Exceptions;
 using eRents.Application.Shared;
+using eRents.Application.Service.LocationManagementService;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.Services;
@@ -23,6 +24,7 @@ namespace eRents.Application.Service.UserService
 		private readonly IUserRepository _userRepository;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly IBaseRepository<UserType> _userTypeRepository;
+		private readonly ILocationManagementService _locationManagementService;
 		private readonly IConfiguration _configuration;
 
 		public UserService(
@@ -30,12 +32,14 @@ namespace eRents.Application.Service.UserService
 			IMapper mapper,
 			IRabbitMQService rabbitMqService,
 			IBaseRepository<UserType> userTypeRepository,
+			ILocationManagementService locationManagementService,
 			IConfiguration configuration)
 				: base(userRepository, mapper)
 		{
 			_userRepository = userRepository;
 			_rabbitMqService = rabbitMqService;
 			_userTypeRepository = userTypeRepository;
+			_locationManagementService = locationManagementService;
 			_configuration = configuration;
 		}
 
@@ -44,19 +48,11 @@ namespace eRents.Application.Service.UserService
 			entity.CreatedAt = DateTime.UtcNow;
 			entity.UpdatedAt = DateTime.UtcNow;
 			
-			// Create Address value object if address data is provided
+			// Process address using LocationManagementService if address data is provided
 			if (insert.AddressDetail != null)
 			{
-				entity.Address = Address.Create(
-					insert.AddressDetail.StreetLine1,
-					insert.AddressDetail.StreetLine2,
-					insert.AddressDetail.GeoRegion?.City,
-					insert.AddressDetail.GeoRegion?.State,
-					insert.AddressDetail.GeoRegion?.Country ?? "Bosnia and Herzegovina",
-					insert.AddressDetail.GeoRegion?.PostalCode,
-					insert.AddressDetail.Latitude,
-					insert.AddressDetail.Longitude
-				);
+				var processedAddress = await _locationManagementService.ProcessAddressAsync(insert.AddressDetail);
+				entity.AddressDetailId = processedAddress.AddressDetailId;
 				// Remove the AddressDetail from the insert to prevent AutoMapper conflicts
 				insert.AddressDetail = null;
 			}
@@ -68,19 +64,17 @@ namespace eRents.Application.Service.UserService
 		{
 			entity.UpdatedAt = DateTime.UtcNow;
 			
-			// Create Address value object if address data is provided
+			// Process address using LocationManagementService if address data is provided
 			if (update.AddressDetail != null)
 			{
-				entity.Address = Address.Create(
-					update.AddressDetail.StreetLine1,
-					update.AddressDetail.StreetLine2,
-					update.AddressDetail.GeoRegion?.City,
-					update.AddressDetail.GeoRegion?.State,
-					update.AddressDetail.GeoRegion?.Country ?? "Bosnia and Herzegovina",
-					update.AddressDetail.GeoRegion?.PostalCode,
-					update.AddressDetail.Latitude,
-					update.AddressDetail.Longitude
-				);
+				var processedAddress = await _locationManagementService.ProcessUserAddressAsync(entity.UserId, update.AddressDetail);
+				
+				// Update the AddressDetailId
+				entity.AddressDetailId = processedAddress.AddressDetailId;
+				
+				// CRITICAL FIX: Update the navigation property with the new address data
+				// This ensures AutoMapper uses the new address data instead of the old cached data
+				entity.AddressDetail = processedAddress;
 				
 				// Remove the AddressDetail from the update to prevent AutoMapper conflicts
 				update.AddressDetail = null;
@@ -124,7 +118,8 @@ namespace eRents.Application.Service.UserService
 		{
 			// Include UserTypeNavigation for role information
 			query = query.Include(u => u.UserTypeNavigation);
-			// Address is now a value object, no include needed
+			// Also include AddressDetail and its GeoRegion for address information in UserResponse
+			query = query.Include(u => u.AddressDetail).ThenInclude(ad => ad.GeoRegion);
 			return base.AddInclude(query, search);
 		}
 

@@ -14,6 +14,8 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Users
 				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(u => u.UserTypeNavigation)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(u => u.UserId == id);
@@ -23,6 +25,8 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Users
 				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(u => u.UserTypeNavigation)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(u => u.Username == username);
@@ -32,6 +36,8 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Users
 				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(u => u.UserTypeNavigation)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(u => u.Email == email);
@@ -41,11 +47,13 @@ namespace eRents.Domain.Repositories
 		{
 			try
 			{
-							return await _context.Users
-				.Include(u => u.ProfileImage)
-				.Include(u => u.UserTypeNavigation)
-				.AsNoTracking()
-				.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
+				return await _context.Users
+					.Include(u => u.ProfileImage)
+					.Include(u => u.AddressDetail)
+						.ThenInclude(ad => ad.GeoRegion)
+					.Include(u => u.UserTypeNavigation)
+					.AsNoTracking()
+					.FirstOrDefaultAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
 			}
 			catch (Exception ex)
 			{
@@ -58,6 +66,8 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Users
 				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(u => u.UserTypeNavigation)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(u => u.ResetToken == token);
@@ -75,11 +85,13 @@ namespace eRents.Domain.Repositories
 
 		public async Task<IEnumerable<User>> GetAllUsersAsync(UserSearchObject searchObject)
 		{
-					var query = _context.Users
-			.Include(u => u.ProfileImage)
-			.Include(u => u.UserTypeNavigation)
-			.AsNoTracking()
-			.AsQueryable();
+			var query = _context.Users
+				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
+				.Include(u => u.UserTypeNavigation)
+				.AsNoTracking()
+				.AsQueryable();
 
 			if (searchObject != null)
 			{
@@ -104,11 +116,13 @@ namespace eRents.Domain.Repositories
 				if (searchObject.CreatedTo.HasValue)
 					query = query.Where(u => u.CreatedAt <= searchObject.CreatedTo);
 				
-							if (searchObject.IsPaypalLinked.HasValue)
-				query = query.Where(u => u.IsPaypalLinked == searchObject.IsPaypalLinked);
-			
-			if (!string.IsNullOrEmpty(searchObject.City))
-				query = query.Where(u => u.Address != null && u.Address.City.Contains(searchObject.City));
+				if (searchObject.IsPaypalLinked.HasValue)
+					query = query.Where(u => u.IsPaypalLinked == searchObject.IsPaypalLinked);
+				
+				if (!string.IsNullOrEmpty(searchObject.City))
+					query = query.Where(u => u.AddressDetail != null && 
+						u.AddressDetail.GeoRegion != null && 
+						u.AddressDetail.GeoRegion.City.Contains(searchObject.City));
 
 				// Sorting
 				if (!string.IsNullOrEmpty(searchObject.SortBy))
@@ -135,6 +149,8 @@ namespace eRents.Domain.Repositories
 		{
 			return await _context.Users
 				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(u => u.UserTypeNavigation)
 				.Include(u => u.Tenancies)
 					.ThenInclude(t => t.Property)
@@ -148,12 +164,14 @@ namespace eRents.Domain.Repositories
 
 		public async Task<IEnumerable<User>> GetUsersByRoleAsync(string role, UserSearchObject searchObject)
 		{
-					var query = _context.Users
-			.Include(u => u.ProfileImage)
-			.Include(u => u.UserTypeNavigation)
-			.AsNoTracking()
-			.Where(u => u.UserTypeNavigation.TypeName == role)
-			.AsQueryable();
+			var query = _context.Users
+				.Include(u => u.ProfileImage)
+				.Include(u => u.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
+				.Include(u => u.UserTypeNavigation)
+				.AsNoTracking()
+				.Where(u => u.UserTypeNavigation.TypeName == role)
+				.AsQueryable();
 
 			if (searchObject != null)
 			{
@@ -175,8 +193,10 @@ namespace eRents.Domain.Repositories
 				if (searchObject.CreatedTo.HasValue)
 					query = query.Where(u => u.CreatedAt <= searchObject.CreatedTo);
 				
-							if (!string.IsNullOrEmpty(searchObject.City))
-				query = query.Where(u => u.Address != null && u.Address.City.Contains(searchObject.City));
+				if (!string.IsNullOrEmpty(searchObject.City))
+					query = query.Where(u => u.AddressDetail != null && 
+						u.AddressDetail.GeoRegion != null && 
+						u.AddressDetail.GeoRegion.City.Contains(searchObject.City));
 
 				// Sorting
 				if (!string.IsNullOrEmpty(searchObject.SortBy))

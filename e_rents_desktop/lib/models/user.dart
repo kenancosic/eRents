@@ -1,4 +1,4 @@
-import './address.dart';
+import './address_detail.dart';
 
 enum UserType { admin, landlord, tenant }
 
@@ -17,7 +17,8 @@ class User {
   final String? resetToken;
   final DateTime? resetTokenExpiration;
 
-  final Address? address;
+  final int? addressDetailId;
+  final AddressDetail? addressDetail;
 
   final bool isPaypalLinked;
   final String? paypalUserIdentifier;
@@ -38,7 +39,8 @@ class User {
     this.resetTokenExpiration,
     this.isPaypalLinked = false,
     this.paypalUserIdentifier,
-    this.address,
+    this.addressDetailId,
+    this.addressDetail,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -64,9 +66,12 @@ class User {
               : null,
       isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
       paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
-      address:
+      addressDetailId: json['addressDetailId'] as int?,
+      addressDetail:
           json['addressDetail'] != null
-              ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
+              ? AddressDetail.fromJson(
+                json['addressDetail'] as Map<String, dynamic>,
+              )
               : null,
     );
   }
@@ -116,7 +121,7 @@ class User {
       'resetTokenExpiration': resetTokenExpiration?.toIso8601String(),
       'isPaypalLinked': isPaypalLinked,
       'paypalUserIdentifier': paypalUserIdentifier,
-      'addressDetail': address?.toAddressDetailJson(),
+      'addressDetail': addressDetail?.toJson(),
     };
   }
 
@@ -138,7 +143,8 @@ class User {
     DateTime? resetTokenExpiration,
     bool? isPaypalLinked,
     String? paypalUserIdentifier,
-    Address? address,
+    int? addressDetailId,
+    AddressDetail? addressDetail,
   }) {
     return User(
       id: id ?? this.id,
@@ -156,7 +162,8 @@ class User {
       resetTokenExpiration: resetTokenExpiration ?? this.resetTokenExpiration,
       isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
       paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
-      address: address ?? this.address,
+      addressDetailId: addressDetailId ?? this.addressDetailId,
+      addressDetail: addressDetail ?? this.addressDetail,
     );
   }
 }

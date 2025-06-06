@@ -1,6 +1,7 @@
 import 'package:e_rents_mobile/core/models/booking_model.dart'; // Using BookingModel for UI representation
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/models/address.dart';
+import 'package:e_rents_mobile/core/models/address_detail.dart';
+import 'package:e_rents_mobile/core/models/geo_region.dart';
 
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
@@ -29,11 +30,16 @@ class UpcomingStaysSection extends StatelessWidget {
         booking.propertyId
       ], // Use booking propertyId as imageId placeholder
       amenityIds: [1, 2, 3], // Default amenities for booking card
-      address: Address(
+      addressDetail: AddressDetail(
+        addressDetailId: booking.propertyId,
+        geoRegionId: 1,
         streetLine1: 'Property Address', // Mock address
-        city: 'City',
-        state: 'State',
-        country: 'Country',
+        geoRegion: GeoRegion(
+          geoRegionId: 1,
+          city: 'City',
+          country: 'Country',
+          state: 'State',
+        ),
       ),
       facilities: "Wi-Fi, Kitchen, Air Conditioning", // Mock facilities
       status: PropertyStatus.rented,

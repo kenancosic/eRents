@@ -13,6 +13,8 @@ namespace eRents.Domain.Repositories
 		{
 			var query = _context.Properties
 											.Include(p => p.Images)  // Include related images
+											.Include(p => p.AddressDetail) 
+											    .ThenInclude(ad => ad.GeoRegion)
 											.AsNoTracking()
 											.AsQueryable();
 
@@ -23,26 +25,26 @@ namespace eRents.Domain.Repositories
 
 			if (!string.IsNullOrWhiteSpace(searchObject.CityName))
 			{
-				query = query.Where(p => p.Address != null && p.Address.City != null && p.Address.City.Contains(searchObject.CityName));
+				query = query.Where(p => p.AddressDetail != null && p.AddressDetail.GeoRegion != null && p.AddressDetail.GeoRegion.City.Contains(searchObject.CityName));
 			}
 
 			if (!string.IsNullOrWhiteSpace(searchObject.StateName))
 			{
-				query = query.Where(p => p.Address != null && p.Address.State != null && p.Address.State.Contains(searchObject.StateName));
+				query = query.Where(p => p.AddressDetail != null && p.AddressDetail.GeoRegion != null && p.AddressDetail.GeoRegion.State != null && p.AddressDetail.GeoRegion.State.Contains(searchObject.StateName));
 			}
 
 			if (!string.IsNullOrWhiteSpace(searchObject.CountryName))
 			{
-				query = query.Where(p => p.Address != null && p.Address.Country != null && p.Address.Country.Contains(searchObject.CountryName));
+				query = query.Where(p => p.AddressDetail != null && p.AddressDetail.GeoRegion != null && p.AddressDetail.GeoRegion.Country.Contains(searchObject.CountryName));
 			}
 
 			if (searchObject.Latitude.HasValue && searchObject.Longitude.HasValue && searchObject.Radius.HasValue)
 			{
 				decimal radiusInDegrees = searchObject.Radius.Value / 111; // Approximate conversion from km to degrees
 				query = query.Where(p =>
-						p.Address != null && p.Address.Latitude.HasValue && p.Address.Longitude.HasValue &&
-						((p.Address.Latitude.Value - searchObject.Latitude.Value) * (p.Address.Latitude.Value - searchObject.Latitude.Value) +
-						(p.Address.Longitude.Value - searchObject.Longitude.Value) * (p.Address.Longitude.Value - searchObject.Longitude.Value)) <= radiusInDegrees * radiusInDegrees);
+						p.AddressDetail != null && p.AddressDetail.Latitude.HasValue && p.AddressDetail.Longitude.HasValue &&
+						((p.AddressDetail.Latitude.Value - searchObject.Latitude.Value) * (p.AddressDetail.Latitude.Value - searchObject.Latitude.Value) +
+						(p.AddressDetail.Longitude.Value - searchObject.Longitude.Value) * (p.AddressDetail.Longitude.Value - searchObject.Longitude.Value)) <= radiusInDegrees * radiusInDegrees);
 			}
 
 			// Add other filters as needed...
@@ -72,6 +74,8 @@ namespace eRents.Domain.Repositories
 			return await _context.Properties
 							.Include(p => p.Images)
 							.Include(p => p.Reviews)  // Include reviews for AverageRating calculation
+							.Include(p => p.AddressDetail)
+							    .ThenInclude(ad => ad.GeoRegion)
 							.Include(p => p.Amenities)  // Include amenities for property editing
 							.AsNoTracking()
 							.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
@@ -132,6 +136,8 @@ namespace eRents.Domain.Repositories
 			return await _context.Properties
 				.Include(p => p.Images)
 				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(p => p.Owner)
 				.Include(p => p.Amenities)
 				.AsNoTracking()
@@ -144,6 +150,8 @@ namespace eRents.Domain.Repositories
 			return await _context.Properties
 				.Include(p => p.Images)
 				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(p => p.Owner)
 				.Include(p => p.Amenities)
 				.AsNoTracking()
@@ -166,6 +174,8 @@ namespace eRents.Domain.Repositories
 			var property = await _context.Properties
 				.Include(p => p.Images)
 				.Include(p => p.Reviews)
+				.Include(p => p.AddressDetail)
+					.ThenInclude(ad => ad.GeoRegion)
 				.Include(p => p.Owner)
 				.Include(p => p.Amenities)
 				.AsNoTracking()

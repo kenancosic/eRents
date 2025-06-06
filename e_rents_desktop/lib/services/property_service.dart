@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
+import 'package:e_rents_desktop/models/address_detail.dart';
+import 'package:e_rents_desktop/models/geo_region.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 
 class PropertyService extends ApiService {
@@ -82,8 +83,8 @@ class PropertyService extends ApiService {
     };
 
     // Only add address if it has meaningful data
-    if (property.address != null) {
-      final addressJson = _transformAddressForBackend(property.address!);
+    if (property.addressDetail != null) {
+      final addressJson = _transformAddressForBackend(property.addressDetail!);
       if (addressJson != null) {
         request['addressDetail'] = addressJson;
       }
@@ -115,8 +116,8 @@ class PropertyService extends ApiService {
     };
 
     // Only add address if it has meaningful data
-    if (property.address != null) {
-      final addressJson = _transformAddressForBackend(property.address!);
+    if (property.addressDetail != null) {
+      final addressJson = _transformAddressForBackend(property.addressDetail!);
       if (addressJson != null) {
         request['addressDetail'] = addressJson;
       }
@@ -126,8 +127,8 @@ class PropertyService extends ApiService {
   }
 
   // Transform address to match backend DTO structure
-  Map<String, dynamic>? _transformAddressForBackend(Address address) {
-    final streetLine1 = address.streetLine1?.trim() ?? '';
+  Map<String, dynamic>? _transformAddressForBackend(AddressDetail address) {
+    final streetLine1 = address.streetLine1.trim();
 
     if (streetLine1.isEmpty) {
       return null; // No meaningful address data
@@ -144,21 +145,22 @@ class PropertyService extends ApiService {
       addressJson['streetLine2'] = address.streetLine2;
     }
 
-    // Add geo region using flattened address structure
-    if (address.city?.isNotEmpty == true) {
+    // Add geo region if it exists
+    if (address.geoRegion != null) {
+      final geoRegion = address.geoRegion!;
       addressJson['geoRegion'] = {
-        'city': address.city,
-        'country': address.country ?? 'Bosnia and Herzegovina',
+        'city': geoRegion.city,
+        'country': geoRegion.country ?? 'Bosnia and Herzegovina',
       };
 
       // Add optional geo region fields
-      if (address.state?.isNotEmpty == true) {
+      if (geoRegion.state?.isNotEmpty == true) {
         (addressJson['geoRegion'] as Map<String, dynamic>)['state'] =
-            address.state;
+            geoRegion.state;
       }
-      if (address.postalCode?.isNotEmpty == true) {
+      if (geoRegion.postalCode?.isNotEmpty == true) {
         (addressJson['geoRegion'] as Map<String, dynamic>)['postalCode'] =
-            address.postalCode;
+            geoRegion.postalCode;
       }
     }
 

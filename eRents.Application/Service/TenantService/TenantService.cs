@@ -257,8 +257,24 @@ namespace eRents.Application.Service.TenantService
 				// Profile image ID only (following optimized DTO pattern)
 				ProfileImageId = user.ProfileImageId,
 
-							// Address details - User now uses Address value object (Phase B migration complete)
-			AddressDetail = user.Address != null ? MapAddressToAddressDetailResponse(user.Address) : null
+				// Address details if available
+				AddressDetail = user.AddressDetail != null ? new AddressDetailResponse
+				{
+					Id = user.AddressDetail.AddressDetailId,
+					StreetLine1 = user.AddressDetail.StreetLine1,
+					StreetLine2 = user.AddressDetail.StreetLine2,
+					Latitude = user.AddressDetail.Latitude,
+					Longitude = user.AddressDetail.Longitude,
+					GeoRegionId = user.AddressDetail.GeoRegionId,
+					GeoRegion = user.AddressDetail.GeoRegion != null ? new GeoRegionResponse
+					{
+						Id = user.AddressDetail.GeoRegion.GeoRegionId,
+						City = user.AddressDetail.GeoRegion.City,
+						State = user.AddressDetail.GeoRegion.State,
+						Country = user.AddressDetail.GeoRegion.Country,
+						PostalCode = user.AddressDetail.GeoRegion.PostalCode
+					} : null
+				} : null
 			};
 		}
 
@@ -286,7 +302,7 @@ namespace eRents.Application.Service.TenantService
 				UserFullName = preference.User != null ? $"{preference.User.FirstName} {preference.User.LastName}" : null,
 				UserEmail = preference.User?.Email,
 				UserPhone = preference.User?.PhoneNumber,
-				UserCity = preference.User?.Address?.City,
+				UserCity = preference.User?.AddressDetail?.GeoRegion?.City,
 				ProfileImageUrl = preference.User?.ProfileImage != null ? $"/Image/{preference.User.ProfileImage.ImageId}" : null,
 
 				// Placeholder match score - TODO: Implement ML-based algorithm
@@ -337,9 +353,24 @@ namespace eRents.Application.Service.TenantService
 				// Image IDs only (simplified)
 				ImageIds = property.Images?.Select(img => img.ImageId).ToList() ?? new List<int>(),
 
-				// Address details - using Address value object (Property already migrated)
-				AddressDetail = property.Address != null ? 
-					MapAddressToAddressDetailResponse(property.Address) : null,
+				// Address details
+				AddressDetail = property.AddressDetail != null ? new AddressDetailResponse
+				{
+					Id = property.AddressDetail.AddressDetailId,
+					StreetLine1 = property.AddressDetail.StreetLine1,
+					StreetLine2 = property.AddressDetail.StreetLine2,
+					Latitude = property.AddressDetail.Latitude,
+					Longitude = property.AddressDetail.Longitude,
+					GeoRegionId = property.AddressDetail.GeoRegionId,
+					GeoRegion = property.AddressDetail.GeoRegion != null ? new GeoRegionResponse
+					{
+						Id = property.AddressDetail.GeoRegion.GeoRegionId,
+						City = property.AddressDetail.GeoRegion.City,
+						State = property.AddressDetail.GeoRegion.State,
+						Country = property.AddressDetail.GeoRegion.Country,
+						PostalCode = property.AddressDetail.GeoRegion.PostalCode
+					} : null
+				} : null,
 
 				// Amenity IDs only (simplified)
 				AmenityIds = property.Amenities?.Select(a => a.AmenityId).ToList() ?? new List<int>()
@@ -355,28 +386,6 @@ namespace eRents.Application.Service.TenantService
 				"maintenance" => 3,
 				"draft" => 4,
 				_ => 1 // Default to available
-			};
-		}
-
-		// ✅ HELPER: Map Address value object to AddressDetailResponse DTO
-		private static AddressDetailResponse MapAddressToAddressDetailResponse(Address address)
-		{
-			if (address == null)
-				return null;
-
-			return new AddressDetailResponse
-			{
-				StreetLine1 = address.StreetLine1,
-				StreetLine2 = address.StreetLine2,
-				Latitude = address.Latitude,
-				Longitude = address.Longitude,
-				GeoRegion = new GeoRegionResponse
-				{
-					City = address.City,
-					State = address.State,
-					Country = address.Country,
-					PostalCode = address.PostalCode
-				}
 			};
 		}
 	}

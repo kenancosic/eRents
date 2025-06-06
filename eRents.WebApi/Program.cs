@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using eRents.RabbitMQMicroservice.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using eRents.WebApi.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,12 @@ builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
 		options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 	});
 builder.Services.AddLogging();
+
+// Add SignalR
+builder.Services.AddSignalR(options =>
+{
+	options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+});
 
 // Add CORS for frontend applications
 builder.Services.AddCors(options =>
@@ -149,5 +156,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR hub
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();

@@ -112,9 +112,9 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                     widget.searchTerm.toLowerCase(),
                   );
                 case 'City':
-                  return (tenant.address?.city ?? '').toLowerCase().contains(
-                    widget.searchTerm.toLowerCase(),
-                  );
+                  return (tenant.addressDetail?.geoRegion?.city ?? '')
+                      .toLowerCase()
+                      .contains(widget.searchTerm.toLowerCase());
                 default:
                   return tenant.fullName.toLowerCase().contains(
                     widget.searchTerm.toLowerCase(),
@@ -320,7 +320,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                     maintenanceIssues: [], // Add required field
                     amenityIds: [], // Amenities fetched via AmenitiesController
                     dateAdded: DateTime.now(),
-                    address: null,
+                    addressDetail: null,
                   );
 
                   print(
@@ -416,7 +416,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
         'cell':
             (User tenant) => DataCell(
               Text(
-                tenant.address?.city ?? 'N/A',
+                tenant.addressDetail?.geoRegion?.city ?? 'N/A',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -509,7 +509,7 @@ class _CurrentTenantsTableWidgetState extends State<CurrentTenantsTableWidget> {
                           amenityIds:
                               [], // Amenities fetched via AmenitiesController
                           dateAdded: DateTime.now(),
-                          address: null,
+                          addressDetail: null,
                         );
                         properties.add(property);
                       }

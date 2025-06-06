@@ -7,7 +7,8 @@ import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/models/address.dart';
+import 'package:e_rents_mobile/core/models/address_detail.dart';
+import 'package:e_rents_mobile/core/models/geo_region.dart';
 import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/feature/home/widgets/upcoming_stays_section.dart';
 import 'package:e_rents_mobile/feature/home/widgets/currently_residing_section.dart';
@@ -33,23 +34,28 @@ class HomeScreen extends StatelessWidget {
       averageRating: 4.8,
       imageIds: [id],
       amenityIds: [1, 2, 3, 4],
-      address: Address(
+      addressDetail: AddressDetail(
+        addressDetailId: id,
+        geoRegionId: id,
         streetLine1: id == 1
             ? 'Lukavac Street'
             : id == 300
                 ? 'Downtown Street'
                 : 'Paradise Beach Road',
-        city: id == 1
-            ? 'Lukavac'
-            : id == 300
-                ? 'Downtown'
-                : 'Paradise City',
-        state: id == 1
-            ? 'BiH'
-            : id == 300
-                ? 'NY'
-                : 'FL',
-        country: 'USA',
+        geoRegion: GeoRegion(
+          geoRegionId: id,
+          city: id == 1
+              ? 'Lukavac'
+              : id == 300
+                  ? 'Downtown'
+                  : 'Paradise City',
+          country: 'USA',
+          state: id == 1
+              ? 'BiH'
+              : id == 300
+                  ? 'NY'
+                  : 'FL',
+        ),
       ),
       facilities: "Wi-Fi, Kitchen, Air Conditioning",
       status: PropertyStatus.available,

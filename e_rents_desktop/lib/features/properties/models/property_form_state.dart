@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/models/address.dart';
+import 'package:e_rents_desktop/models/address_detail.dart';
+import 'package:e_rents_desktop/models/geo_region.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart'
     as picker;
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class PropertyFormState extends ChangeNotifier {
   // Text controllers
@@ -140,29 +142,30 @@ class PropertyFormState extends ChangeNotifier {
     _status = property.status;
 
     // Populate address fields if available
-    if (property.address != null) {
-      final address = property.address!;
+    if (property.addressDetail != null) {
+      final address = property.addressDetail!;
 
       // Parse street line 1 to extract number and name
-      if (address.streetLine1?.isNotEmpty == true) {
-        final streetParts = address.streetLine1!.split(' ');
-        if (streetParts.length > 1) {
-          // Try to parse first part as number
-          final firstPart = streetParts.first;
-          if (int.tryParse(firstPart) != null) {
-            streetNumberController.text = firstPart;
-            streetNameController.text = streetParts.skip(1).join(' ');
-          } else {
-            streetNameController.text = address.streetLine1!;
-          }
+      final streetParts = address.streetLine1.split(' ');
+      if (streetParts.length > 1) {
+        // Try to parse first part as number
+        final firstPart = streetParts.first;
+        if (int.tryParse(firstPart) != null) {
+          streetNumberController.text = firstPart;
+          streetNameController.text = streetParts.skip(1).join(' ');
         } else {
-          streetNameController.text = address.streetLine1!;
+          streetNameController.text = address.streetLine1;
         }
+      } else {
+        streetNameController.text = address.streetLine1;
       }
 
-      cityController.text = address.city ?? '';
-      countryController.text = address.country ?? 'Bosnia and Herzegovina';
-      postalCodeController.text = address.postalCode ?? '';
+      if (address.geoRegion != null) {
+        cityController.text = address.geoRegion!.city;
+        countryController.text =
+            address.geoRegion!.country ?? 'Bosnia and Herzegovina';
+        postalCodeController.text = address.geoRegion!.postalCode ?? '';
+      }
 
       _latitude = address.latitude;
       _longitude = address.longitude;
@@ -216,7 +219,7 @@ class PropertyFormState extends ChangeNotifier {
       status: _status,
       imageIds:
           _images.map((img) => img.id ?? 0).where((id) => id > 0).toList(),
-      address: _createAddress(),
+      addressDetail: _createAddressDetail(initialProperty),
       bedrooms: bedrooms > 0 ? bedrooms : 1, // Ensure minimum 1 bedroom
       bathrooms: bathrooms > 0 ? bathrooms : 1, // Ensure minimum 1 bathroom
       area: double.parse(areaController.text),
@@ -235,7 +238,7 @@ class PropertyFormState extends ChangeNotifier {
     );
   }
 
-  Address? _createAddress() {
+  AddressDetail? _createAddressDetail(Property? initialProperty) {
     // Only create address if we have meaningful data
     final streetName = streetNameController.text.trim();
     final streetNumber = streetNumberController.text.trim();
@@ -257,24 +260,47 @@ class PropertyFormState extends ChangeNotifier {
       streetLine1 = city; // Fallback to city if no street info
     }
 
-    return Address(
+    return AddressDetail(
+      addressDetailId: initialProperty?.addressDetail?.addressDetailId,
       streetLine1: streetLine1,
+      geoRegionId: initialProperty?.addressDetail?.geoRegionId,
+      geoRegion: _createGeoRegion(initialProperty),
       streetLine2:
           _selectedFormattedAddress?.isNotEmpty == true
               ? _selectedFormattedAddress
               : null,
-      city: city.isNotEmpty ? city : null,
-      state: null, // Can be added later if needed
-      country:
-          countryController.text.trim().isNotEmpty
-              ? countryController.text.trim()
-              : 'Bosnia and Herzegovina',
-      postalCode:
-          postalCodeController.text.trim().isNotEmpty
-              ? postalCodeController.text.trim()
-              : null,
       latitude: _latitude,
       longitude: _longitude,
+    );
+  }
+
+  GeoRegion? _createGeoRegion(Property? initialProperty) {
+    final city = cityController.text.trim();
+    final country = countryController.text.trim();
+    final postalCode = postalCodeController.text.trim();
+
+    if (city.isEmpty && country.isEmpty) {
+      return initialProperty
+          ?.addressDetail
+          ?.geoRegion; // Keep existing if no new data
+    }
+
+    return GeoRegion(
+      geoRegionId: initialProperty?.addressDetail?.geoRegion?.geoRegionId,
+      city:
+          city.isNotEmpty
+              ? city
+              : (initialProperty?.addressDetail?.geoRegion?.city ?? ''),
+      state: initialProperty?.addressDetail?.geoRegion?.state,
+      country:
+          country.isNotEmpty
+              ? country
+              : (initialProperty?.addressDetail?.geoRegion?.country ??
+                  'Bosnia and Herzegovina'),
+      postalCode:
+          postalCode.isNotEmpty
+              ? postalCode
+              : initialProperty?.addressDetail?.geoRegion?.postalCode,
     );
   }
 

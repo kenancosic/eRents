@@ -82,8 +82,8 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
         const SizedBox(height: 8),
         Text('Email: ${widget.tenant.email}'),
         if (widget.tenant.phone != null) Text('Phone: ${widget.tenant.phone}'),
-        if (widget.tenant.address?.city != null)
-          Text('City: ${widget.tenant.address?.city}'),
+        if (widget.tenant.addressDetail?.geoRegion?.city != null)
+          Text('City: ${widget.tenant.addressDetail?.geoRegion?.city}'),
         const Divider(),
       ],
     );
@@ -101,7 +101,7 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
         ...widget.properties!.map(
           (property) => ListTile(
             title: Text(property.title),
-            subtitle: Text(property.address?.getStreetAddress() ?? ''),
+            subtitle: Text(property.addressDetail?.streetLine1 ?? ''),
             trailing: Text('\$${property.price}/month'),
           ),
         ),

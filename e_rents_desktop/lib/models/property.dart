@@ -1,6 +1,6 @@
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import './address.dart';
+import './address_detail.dart';
 
 enum PropertyStatus { available, rented, maintenance, unavailable }
 
@@ -25,7 +25,8 @@ class Property {
   final double? dailyRate;
   final int? minimumStayDays;
   final DateTime dateAdded;
-  final Address? address;
+  final int? addressDetailId;
+  final AddressDetail? addressDetail;
 
   Property({
     required this.id,
@@ -46,7 +47,8 @@ class Property {
     this.dailyRate,
     this.minimumStayDays,
     required this.dateAdded,
-    this.address,
+    this.addressDetailId,
+    this.addressDetail,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -78,9 +80,12 @@ class Property {
           json['dateAdded'] != null
               ? DateTime.parse(json['dateAdded'] as String)
               : DateTime.now(),
-      address:
+      addressDetailId: json['addressDetailId'] as int?,
+      addressDetail:
           json['addressDetail'] != null
-              ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
+              ? AddressDetail.fromJson(
+                json['addressDetail'] as Map<String, dynamic>,
+              )
               : null,
     );
   }
@@ -204,7 +209,7 @@ class Property {
       'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
       'dateAdded': dateAdded.toIso8601String(),
-      'addressDetail': address?.toAddressDetailJson(),
+      'addressDetail': addressDetail?.toJson(),
       'amenityIds': amenityIds,
     };
   }
@@ -228,7 +233,8 @@ class Property {
     double? dailyRate,
     int? minimumStayDays,
     DateTime? dateAdded,
-    Address? address,
+    int? addressDetailId,
+    AddressDetail? addressDetail,
   }) {
     return Property(
       id: id ?? this.id,
@@ -249,7 +255,8 @@ class Property {
       dailyRate: dailyRate ?? this.dailyRate,
       minimumStayDays: minimumStayDays ?? this.minimumStayDays,
       dateAdded: dateAdded ?? this.dateAdded,
-      address: address ?? this.address,
+      addressDetailId: addressDetailId ?? this.addressDetailId,
+      addressDetail: addressDetail ?? this.addressDetail,
     );
   }
 
@@ -269,6 +276,7 @@ class Property {
     maintenanceIssues: [],
     amenityIds: [],
     dateAdded: DateTime.now(),
-    address: null,
+    addressDetailId: null,
+    addressDetail: null,
   );
 }

@@ -194,11 +194,10 @@ class PropertyCard extends StatelessWidget {
   }
 
   String _getLocationString() {
-    if (property.address != null) {
-      final address = property.address!;
-      final street = address.streetLine1 ?? '';
-      final city = address.city ?? '';
-      return street.isNotEmpty ? '$street, $city' : city;
+    if (property.addressDetail?.geoRegion != null) {
+      final region = property.addressDetail!.geoRegion!;
+      final street = property.addressDetail!.streetLine1 ?? '';
+      return street.isNotEmpty ? '$street, ${region.city}' : region.city;
     }
     return 'Location not available';
   }

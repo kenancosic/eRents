@@ -269,7 +269,7 @@ class ProfileStateProvider extends StateProvider<User?> {
     if (user.email.isNotEmpty) completedFields++;
     if (user.phone != null && user.phone!.isNotEmpty) completedFields++;
     if (user.profileImageId != null) completedFields++;
-    if (user.address != null) completedFields++;
+    if (user.addressDetail != null) completedFields++;
 
     return ((completedFields / totalFields) * 100).round();
   }

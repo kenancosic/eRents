@@ -1,5 +1,6 @@
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.ImageService;
+using eRents.Application.Service.LocationManagementService;
 using eRents.Application.Service.MaintenanceService;
 using eRents.Application.Service.MessagingService;
 using eRents.Application.Service.PaymentService;
@@ -16,6 +17,12 @@ using eRents.RabbitMQMicroservice.Services;
 using eRents.Shared.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using eRents.WebApi.Extensions;
+using eRents.WebAPI.Filters;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Logging;
+using eRents.WebApi.Hubs;
 
 namespace eRents.WebApi.Extensions
 {
@@ -42,7 +49,8 @@ namespace eRents.WebApi.Extensions
             
             // Lookup and reference repositories
             services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
-            // Legacy repositories removed as part of Address refactoring: IGeoRegionRepository, IAddressDetailRepository
+            services.AddTransient<IGeoRegionRepository, GeoRegionRepository>();
+            services.AddTransient<IAddressDetailRepository, AddressDetailRepository>();
             services.AddTransient<IMessageRepository, MessageRepository>();
             
             // Generic base repository for UserType (existing pattern)
@@ -67,9 +75,13 @@ namespace eRents.WebApi.Extensions
             
             // Specialized services
             services.AddTransient<IImageService, ImageService>();
+            services.AddTransient<ILocationManagementService, LocationManagementService>();
             services.AddTransient<IMessageHandlerService, MessageHandlerService>();
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
+            
+            // Real-time messaging service
+            services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
             
             // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
             

@@ -13,6 +13,9 @@ namespace eRents.Domain.Repositories
             var query = _context.TenantPreferences
                 .Include(tp => tp.User)
                     .ThenInclude(u => u.ProfileImage)
+                .Include(tp => tp.User)
+                    .ThenInclude(u => u.AddressDetail)
+                        .ThenInclude(ad => ad.GeoRegion)
                 .Include(tp => tp.Amenities)
                 .Where(tp => tp.IsActive)
                 .AsQueryable();
@@ -112,6 +115,9 @@ namespace eRents.Domain.Repositories
             var query = _context.TenantPreferences
                 .Include(tp => tp.User)
                     .ThenInclude(u => u.ProfileImage)
+                .Include(tp => tp.User)
+                    .ThenInclude(u => u.AddressDetail)
+                        .ThenInclude(ad => ad.GeoRegion)
                 .Include(tp => tp.Amenities)
                 .Where(tp => tp.IsActive)
                 .AsQueryable();

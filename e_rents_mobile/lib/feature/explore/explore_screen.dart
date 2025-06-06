@@ -1,5 +1,4 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/models/address.dart';
 // import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
@@ -7,7 +6,8 @@ import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-
+import 'package:e_rents_mobile/core/models/address_detail.dart';
+import 'package:e_rents_mobile/core/models/geo_region.dart';
 import 'package:e_rents_mobile/core/models/image_model.dart';
 
 import 'package:flutter/material.dart';
@@ -51,13 +51,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
         averageRating: 4.8,
         imageIds: [1],
         amenityIds: [1, 2, 3],
-        address: Address(
+        addressDetailId: 1,
+        addressDetail: AddressDetail(
+          addressDetailId: 1,
+          geoRegionId: 1,
           streetLine1: 'Main Street 123',
-          city: 'Lukavac',
-          state: 'T.K.',
-          country: 'F.BiH',
           latitude: 44.5328,
           longitude: 18.6704,
+          geoRegion: GeoRegion(
+            geoRegionId: 1,
+            city: 'Lukavac',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
         ),
         rentalType: PropertyRentalType.monthly,
         minimumStayDays: 30,
@@ -73,13 +79,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
         averageRating: 4.9,
         imageIds: [2],
         amenityIds: [1, 3, 4, 5],
-        address: Address(
+        addressDetailId: 2,
+        addressDetail: AddressDetail(
+          addressDetailId: 2,
+          geoRegionId: 2,
           streetLine1: 'Villa Street 456',
-          city: 'Tuzla',
-          state: 'T.K.',
-          country: 'F.BiH',
           latitude: 44.5398,
           longitude: 18.6804,
+          geoRegion: GeoRegion(
+            geoRegionId: 2,
+            city: 'Tuzla',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
         ),
         rentalType: PropertyRentalType.daily,
         dailyRate: 400.0,
@@ -96,13 +108,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
         averageRating: 4.8,
         imageIds: [3],
         amenityIds: [2, 4, 5, 6],
-        address: Address(
+        addressDetailId: 3,
+        addressDetail: AddressDetail(
+          addressDetailId: 3,
+          geoRegionId: 3,
           streetLine1: 'Square Avenue 789',
-          city: 'Tuzla',
-          state: 'T.K.',
-          country: 'F.BiH',
           latitude: 44.5258,
           longitude: 18.6654,
+          geoRegion: GeoRegion(
+            geoRegionId: 3,
+            city: 'Tuzla',
+            state: 'T.K.',
+            country: 'F.BiH',
+          ),
         ),
         rentalType: PropertyRentalType.both,
         dailyRate: 120.0,
@@ -116,10 +134,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       int index = entry.key;
       Property property = entry.value;
 
-      // Use coordinates from address
+      // Use coordinates from addressDetail
       LatLng position = LatLng(
-        property.address?.latitude ?? _center.latitude,
-        property.address?.longitude ?? _center.longitude,
+        property.addressDetail?.latitude ?? _center.latitude,
+        property.addressDetail?.longitude ?? _center.longitude,
       );
 
       return Marker(
@@ -159,8 +177,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     Property property = _properties[index];
     LatLng position = LatLng(
-      property.address?.latitude ?? _center.latitude,
-      property.address?.longitude ?? _center.longitude,
+      property.addressDetail?.latitude ?? _center.latitude,
+      property.addressDetail?.longitude ?? _center.longitude,
     );
 
     mapController.animateCamera(

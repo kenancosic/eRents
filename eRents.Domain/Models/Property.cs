@@ -23,7 +23,8 @@ public partial class Property
 
     public string Name { get; set; } = null!;
 
-    public Address? Address { get; set; }
+    public int? AddressDetailId { get; set; }
+    public virtual AddressDetail? AddressDetail { get; set; }
 
     public int? PropertyTypeId { get; set; }
 

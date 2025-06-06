@@ -33,43 +33,7 @@ namespace eRents.Domain.Shared
 		{
 			try
 			{
-				// Clear change tracker to avoid tracking conflicts with related entities
-				_context.ChangeTracker.Clear();
-				
-				// Use Update which will mark the entity and all related entities as modified
 				_context.Set<TEntity>().Update(entity);
-				await _context.SaveChangesAsync();
-			}
-			catch (DbUpdateException ex)
-			{
-				// Log error and rethrow
-				throw new RepositoryException("An error occurred while updating the entity in the database.", ex);
-			}
-		}
-
-		/// <summary>
-		/// Alternative update method that handles tracking conflicts more gracefully
-		/// by attaching the entity and selectively marking properties as modified
-		/// </summary>
-		public virtual async Task UpdateEntityAsync(TEntity entity)
-		{
-			try
-			{
-				// Check if entity is already tracked
-				var existingEntry = _context.Entry(entity);
-				
-				if (existingEntry.State == Microsoft.EntityFrameworkCore.EntityState.Detached)
-				{
-					// Entity is not tracked, safe to attach and update
-					_context.Set<TEntity>().Attach(entity);
-					existingEntry.State = Microsoft.EntityFrameworkCore.EntityState.Modified;
-				}
-				else
-				{
-					// Entity is already tracked, update its values
-					existingEntry.CurrentValues.SetValues(entity);
-				}
-				
 				await _context.SaveChangesAsync();
 			}
 			catch (DbUpdateException ex)
