@@ -1,7 +1,9 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
+using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq;
 
 namespace eRents.Domain.Repositories
 {
@@ -136,7 +138,105 @@ namespace eRents.Domain.Repositories
 			if (currentUserRole == "User" && booking.UserId != userId)
 				return null;
 
-			return booking;
-		}
+					return booking;
 	}
+
+	// Override pagination methods for booking-specific filtering and sorting
+	protected override IQueryable<Booking> ApplyIncludes<TSearch>(IQueryable<Booking> query, TSearch search)
+	{
+		// Always include these navigation properties for complete booking data
+		return query
+			.Include(b => b.Property)
+				.ThenInclude(p => p.Images)
+			.Include(b => b.User)
+			.Include(b => b.BookingStatus);
+	}
+
+	protected override IQueryable<Booking> ApplyFilters<TSearch>(IQueryable<Booking> query, TSearch search)
+	{
+		// Apply base filters first (date range, search term)
+		query = base.ApplyFilters(query, search);
+
+		if (search is BookingSearchObject bookingSearch)
+		{
+			// Apply search term across multiple fields
+			if (!string.IsNullOrEmpty(bookingSearch.SearchTerm))
+			{
+				query = query.Where(b => 
+					b.Property.Name.Contains(bookingSearch.SearchTerm) ||
+					b.User.FirstName.Contains(bookingSearch.SearchTerm) ||
+					b.User.LastName.Contains(bookingSearch.SearchTerm) ||
+					(b.User.FirstName + " " + b.User.LastName).Contains(bookingSearch.SearchTerm) ||
+					b.BookingId.ToString().Contains(bookingSearch.SearchTerm));
+			}
+			
+			// Apply domain-specific filters
+			if (bookingSearch.PropertyId.HasValue)
+				query = query.Where(b => b.PropertyId == bookingSearch.PropertyId);
+				
+			if (bookingSearch.UserId.HasValue)
+				query = query.Where(b => b.UserId == bookingSearch.UserId);
+				
+			if (!string.IsNullOrEmpty(bookingSearch.Status))
+				query = query.Where(b => b.BookingStatus.StatusName == bookingSearch.Status);
+				
+			if (bookingSearch.Statuses?.Any() == true)
+				query = query.Where(b => bookingSearch.Statuses.Contains(b.BookingStatus.StatusName));
+				
+			if (bookingSearch.StartDate.HasValue)
+				query = query.Where(b => b.StartDate >= DateOnly.FromDateTime(bookingSearch.StartDate.Value));
+				
+			if (bookingSearch.EndDate.HasValue)
+				query = query.Where(b => b.EndDate <= DateOnly.FromDateTime(bookingSearch.EndDate.Value));
+				
+			if (bookingSearch.MinTotalPrice.HasValue)
+				query = query.Where(b => b.TotalPrice >= bookingSearch.MinTotalPrice);
+				
+			if (bookingSearch.MaxTotalPrice.HasValue)
+				query = query.Where(b => b.TotalPrice <= bookingSearch.MaxTotalPrice);
+				
+			if (bookingSearch.MinNumberOfGuests.HasValue)
+				query = query.Where(b => b.NumberOfGuests >= bookingSearch.MinNumberOfGuests);
+				
+			if (bookingSearch.MaxNumberOfGuests.HasValue)
+				query = query.Where(b => b.NumberOfGuests <= bookingSearch.MaxNumberOfGuests);
+				
+			if (!string.IsNullOrEmpty(bookingSearch.PaymentMethod))
+				query = query.Where(b => b.PaymentMethod == bookingSearch.PaymentMethod);
+		}
+		
+		return query;
+	}
+
+
+	
+	protected override IQueryable<Booking>? ApplyCustomOrdering<TSearch>(IQueryable<Booking> query, string sortBy, bool descending)
+	{
+		return sortBy.ToLower() switch
+		{
+			"date" => descending 
+				? query.OrderByDescending(b => b.StartDate)
+				: query.OrderBy(b => b.StartDate),
+			"property" => descending
+				? query.OrderByDescending(b => b.Property.Name)
+				: query.OrderBy(b => b.Property.Name),
+			"status" => descending
+				? query.OrderByDescending(b => b.BookingStatus.StatusName)
+				: query.OrderBy(b => b.BookingStatus.StatusName),
+			"amount" => descending
+				? query.OrderByDescending(b => b.TotalPrice)
+				: query.OrderBy(b => b.TotalPrice),
+			"guest" or "guests" => descending
+				? query.OrderByDescending(b => b.NumberOfGuests)
+				: query.OrderBy(b => b.NumberOfGuests),
+			"created" => descending
+				? query.OrderByDescending(b => b.CreatedAt)
+				: query.OrderBy(b => b.CreatedAt),
+			"tenant" or "user" => descending
+				? query.OrderByDescending(b => b.User.LastName).ThenByDescending(b => b.User.FirstName)
+				: query.OrderBy(b => b.User.LastName).ThenBy(b => b.User.FirstName),
+			_ => null // Return null to use default ordering
+		};
+	}
+}
 }

@@ -13,6 +13,15 @@ using System.Linq;
 
 namespace eRents.WebApi.Controllers
 {
+	/// <summary>
+	/// Bookings management controller with Universal System support
+	/// 🆕 UNIVERSAL SYSTEM ENDPOINTS:
+	/// - GET /bookings - Paginated results (supports nopaging=true)
+	/// - GET /bookings?nopaging=true&propertyId=123&minTotalPrice=100&status=confirmed
+	/// - GET /bookings?page=1&pageSize=10&sortBy=StartDate&sortDesc=true
+	/// - Automatic filtering: PropertyId, UserId, PaymentMethod, BookingStatusId, TotalPrice (Min/Max), NumberOfGuests (Min/Max)
+	/// - Navigation filtering: Status, Statuses (multi-select), SearchTerm (Property, User names)
+	/// </summary>
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
@@ -99,24 +108,10 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet]
-		public override async Task<IEnumerable<BookingResponse>> Get([FromQuery] BookingSearchObject search)
+		public override async Task<ActionResult<PagedList<BookingResponse>>> Get([FromQuery] BookingSearchObject search)
 		{
-			try
-			{
-				// This will automatically filter by user context based on role
-				var result = await _bookingService.GetAsync(search);
-				
-				_logger.LogInformation("User {UserId} retrieved {BookingCount} bookings with search filters", 
-					_currentUserService.UserId ?? "unknown", result.Count());
-					
-				return result;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Booking retrieval failed for user {UserId}", 
-					_currentUserService.UserId ?? "unknown");
-				throw;
-			}
+			// Use the base implementation which now returns PagedList<T>
+			return await base.Get(search);
 		}
 		
 		// Override Insert method from base controller to ensure proper authorization

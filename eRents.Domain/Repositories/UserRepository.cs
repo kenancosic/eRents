@@ -93,17 +93,17 @@ namespace eRents.Domain.Repositories
 				if (!string.IsNullOrEmpty(searchObject.Role))
 					query = query.Where(u => u.UserTypeNavigation.TypeName == searchObject.Role);
 				
-				if (!string.IsNullOrEmpty(searchObject.Search))
-					query = query.Where(u => u.FirstName.Contains(searchObject.Search) || 
-						u.LastName.Contains(searchObject.Search) || 
-						u.Username.Contains(searchObject.Search) || 
-						u.Email.Contains(searchObject.Search));
+				if (!string.IsNullOrEmpty(searchObject.SearchTerm))
+					query = query.Where(u => u.FirstName.Contains(searchObject.SearchTerm) || 
+						u.LastName.Contains(searchObject.SearchTerm) || 
+						u.Username.Contains(searchObject.SearchTerm) || 
+						u.Email.Contains(searchObject.SearchTerm));
 				
-				if (searchObject.CreatedFrom.HasValue)
-					query = query.Where(u => u.CreatedAt >= searchObject.CreatedFrom);
+				if (searchObject.MinCreatedAt.HasValue)
+					query = query.Where(u => u.CreatedAt >= searchObject.MinCreatedAt);
 				
-				if (searchObject.CreatedTo.HasValue)
-					query = query.Where(u => u.CreatedAt <= searchObject.CreatedTo);
+				if (searchObject.MaxCreatedAt.HasValue)
+					query = query.Where(u => u.CreatedAt <= searchObject.MaxCreatedAt);
 				
 							if (searchObject.IsPaypalLinked.HasValue)
 				query = query.Where(u => u.IsPaypalLinked == searchObject.IsPaypalLinked);
@@ -164,17 +164,17 @@ namespace eRents.Domain.Repositories
 				if (!string.IsNullOrEmpty(searchObject.Email))
 					query = query.Where(u => u.Email.Contains(searchObject.Email));
 				
-				if (!string.IsNullOrEmpty(searchObject.Search))
-					query = query.Where(u => u.FirstName.Contains(searchObject.Search) || 
-						u.LastName.Contains(searchObject.Search) || 
-						u.Username.Contains(searchObject.Search) || 
-						u.Email.Contains(searchObject.Search));
+				if (!string.IsNullOrEmpty(searchObject.SearchTerm))
+					query = query.Where(u => u.FirstName.Contains(searchObject.SearchTerm) || 
+						u.LastName.Contains(searchObject.SearchTerm) || 
+						u.Username.Contains(searchObject.SearchTerm) || 
+						u.Email.Contains(searchObject.SearchTerm));
 				
-				if (searchObject.CreatedFrom.HasValue)
-					query = query.Where(u => u.CreatedAt >= searchObject.CreatedFrom);
+				if (searchObject.MinCreatedAt.HasValue)
+					query = query.Where(u => u.CreatedAt >= searchObject.MinCreatedAt);
 				
-				if (searchObject.CreatedTo.HasValue)
-					query = query.Where(u => u.CreatedAt <= searchObject.CreatedTo);
+				if (searchObject.MaxCreatedAt.HasValue)
+					query = query.Where(u => u.CreatedAt <= searchObject.MaxCreatedAt);
 				
 							if (!string.IsNullOrEmpty(searchObject.City))
 				query = query.Where(u => u.Address != null && u.Address.City.Contains(searchObject.City));

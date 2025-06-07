@@ -12,13 +12,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Service.MaintenanceService
 {
-    public class MaintenanceService : ICRUDService<MaintenanceIssueResponse, MaintenanceIssueSearchObject, MaintenanceIssueRequest, MaintenanceIssueRequest>, IMaintenanceService
+    public class MaintenanceService : BaseCRUDService<MaintenanceIssueResponse, MaintenanceIssue, MaintenanceIssueSearchObject, MaintenanceIssueRequest, MaintenanceIssueRequest>, IMaintenanceService
     {
         private readonly IMaintenanceRepository _repository;
         private readonly IMapper _mapper;
         private readonly ERentsContext _context;
 
         public MaintenanceService(IMaintenanceRepository repository, IMapper mapper, ERentsContext context)
+            : base(repository, mapper)
         {
             _repository = repository;
             _mapper = mapper;
@@ -43,10 +44,18 @@ namespace eRents.Application.Service.MaintenanceService
             return _mapper.Map<MaintenanceIssueResponse>(entity);
         }
 
+        // 🆕 MIGRATED: Using NoPaging option instead of separate GetAll method
         public async Task<IEnumerable<MaintenanceIssueResponse>> GetAsync(MaintenanceIssueSearchObject search = null)
         {
-            var entities = await _repository.GetAllAsync(search);
-            return _mapper.Map<IEnumerable<MaintenanceIssueResponse>>(entities);
+            // Set NoPaging to true to get all results without pagination
+            search ??= new MaintenanceIssueSearchObject();
+            search.NoPaging = true;
+            
+            // Use the Universal System GetPagedAsync method with NoPaging=true
+            var pagedResult = await GetPagedAsync(search);
+            
+            // Return just the items (for backward compatibility)
+            return pagedResult.Items;
         }
 
         public async Task<MaintenanceIssueResponse> InsertAsync(MaintenanceIssueRequest insert)
@@ -72,6 +81,8 @@ namespace eRents.Application.Service.MaintenanceService
             await _repository.DeleteAsync(entity);
             return true;
         }
+
+        // ✅ REMOVED: GetPagedAsync, GetCountAsync, SearchAsync now inherited from BaseCRUDService
 
         public async Task UpdateStatusAsync(int issueId, string status, string? resolutionNotes, decimal? cost, System.DateTime? resolvedAt)
         {

@@ -1,6 +1,7 @@
 import '../base/base.dart';
 import '../services/booking_service.dart';
 import '../models/booking.dart';
+import '../widgets/universal_table.dart';
 
 /// Repository for booking data management with caching support
 class BookingRepository extends BaseRepository<Booking, BookingService> {
@@ -300,5 +301,50 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     await cacheManager.clearByRegex(
       RegExp('^${resourceName}_(all|count|landlord|tenant)'),
     );
+  }
+
+  /// ✅ PRODUCTION: Get paginated bookings directly from backend Universal System
+  Future<PagedResult<Booking>> getPagedBookings(
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      final cacheKey = _buildSpecialCacheKey('paged', params);
+
+      // Try cache first (shorter TTL for paginated data)
+      if (enableCaching) {
+        final cached = await cacheManager.get<PagedResult<Booking>>(cacheKey);
+        if (cached != null) {
+          return cached;
+        }
+      }
+
+      // Use backend Universal System pagination
+      final pagedData = await service.getPagedBookings(params);
+
+      // Parse PagedList<BookingResponse> from backend
+      final List<dynamic> items = pagedData['items'] ?? [];
+      final bookings = items.map((json) => Booking.fromJson(json)).toList();
+
+      final pagedResult = PagedResult<Booking>(
+        items: bookings,
+        totalCount: pagedData['totalCount'] ?? 0,
+        page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
+        pageSize: pagedData['pageSize'] ?? 25,
+        totalPages: pagedData['totalPages'] ?? 0,
+      );
+
+      // Cache the result (shorter TTL for paginated data)
+      if (enableCaching) {
+        await cacheManager.set(
+          cacheKey,
+          pagedResult,
+          duration: const Duration(minutes: 2),
+        );
+      }
+
+      return pagedResult;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 }

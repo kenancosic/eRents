@@ -2,12 +2,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using eRents.Shared.Services;
+using eRents.Shared.SearchObjects;
 
 namespace eRents.WebApi.Controllers.Base
 {
 	public class BaseCRUDController<T, TSearch, TInsert, TUpdate> : BaseController<T, TSearch>
 			where T : class
-			where TSearch : class
+			where TSearch : BaseSearchObject
 			where TInsert : class
 			where TUpdate : class
 	{

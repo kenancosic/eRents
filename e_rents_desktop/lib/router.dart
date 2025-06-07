@@ -26,10 +26,7 @@ import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
-import 'package:e_rents_desktop/features/bookings/bookings_screen.dart';
-import 'package:e_rents_desktop/features/bookings/providers/booking_collection_provider.dart';
-import 'package:e_rents_desktop/features/bookings/providers/booking_detail_provider.dart';
-import 'package:e_rents_desktop/repositories/booking_repository.dart';
+import 'package:e_rents_desktop/features/bookings/bookings_table_screen.dart';
 
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
@@ -311,8 +308,8 @@ class AppRouter {
             path: '/bookings',
             builder:
                 (context, state) => ContentWrapper(
-                  title: 'Booking Management',
-                  child: _createBookingsScreen(),
+                  title: 'Bookings',
+                  child: _createBookingsTableScreen(),
                 ),
           ),
         ],
@@ -521,23 +518,9 @@ class AppRouter {
     );
   }
 
-  static Widget _createBookingsScreen() {
-    final registry = ProviderRegistry();
-    final collectionProvider = registry.getOrCreate<BookingCollectionProvider>(
-      () => BookingCollectionProvider(getService<BookingRepository>()),
-    );
-    collectionProvider.initializeAndFetchIfNeeded();
-
-    final detailProvider = BookingDetailProvider(
-      getService<BookingRepository>(),
-    );
-
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: collectionProvider),
-        ChangeNotifierProvider.value(value: detailProvider),
-      ],
-      child: const BookingsScreen(),
-    );
+  static Widget _createBookingsTableScreen() {
+    // ✅ NEW: Simple integration with ServerTableWidget and BookingTableProvider
+    // No need for complex provider setup - the table widget handles its own data management
+    return const BookingsTableScreen();
   }
 }

@@ -16,16 +16,19 @@ namespace eRents.WebApi
 			_logger = logger;
 		}
 
-		public async Task InitAsync(ERentsContext context)
-		{
-			if (context.Database.GetDbConnection().ConnectionString == null)
-				throw new InvalidOperationException("The database connection string is not configured properly.");
-			context.Database.SetCommandTimeout(300);
-			await context.Database.EnsureCreatedAsync();
-			
-			// Apply performance indexes after database creation
-			await ApplyPerformanceIndexesAsync(context);
-		}
+			public async Task InitAsync(ERentsContext context)
+	{
+		if (context.Database.GetDbConnection().ConnectionString == null)
+			throw new InvalidOperationException("The database connection string is not configured properly.");
+		context.Database.SetCommandTimeout(300);
+		
+		// Apply pending migrations instead of EnsureCreated to properly set up schema
+		await context.Database.MigrateAsync();
+		
+		// Skip performance indexes for now - can be added later when system is stable
+		// await ApplyPerformanceIndexesAsync(context);
+		_logger?.LogInformation("Database initialization completed. Performance indexes skipped for stability.");
+	}
 
 		public async Task InsertDataAsync(ERentsContext context, bool forceSeed = false)
 		{
@@ -241,6 +244,13 @@ namespace eRents.WebApi
 
 			var userTypes = await context.UserTypes.ToListAsync();
 			// Generate common password for all test users (Test123!)
+			// 
+			// TEST CREDENTIALS FOR BOOKING SYSTEM:
+			// =====================================
+			// DESKTOP APP (Landlord): testLandlord / Test123!
+			// MOBILE APP (Tenant):    testUser / Test123!
+			// ADMIN ACCESS:           admin / Test123!
+			//
 			var commonPassword = "Test123!";
 			var commonSalt = GenerateSalt();
 			var commonHash = GenerateHash(commonSalt, commonPassword);
@@ -456,7 +466,10 @@ namespace eRents.WebApi
 
 			var bookings = new List<Booking>();
 
-			// Generate realistic booking history
+			// First, create specific test data for TestLandlord and TestUser
+			await CreateTestBookingDataAsync(context, bookings, properties, bookingStatuses);
+
+			// Then generate realistic booking history for other users
 			foreach (var tenant in tenants)
 			{
 				var bookingCount = _random.Next(2, 5); // 2-4 bookings per tenant
@@ -470,6 +483,106 @@ namespace eRents.WebApi
 
 			context.Bookings.AddRange(bookings);
 			await context.SaveChangesAsync();
+		}
+
+		/// <summary>
+		/// Creates specific test booking data for TestLandlord (desktop) and TestUser (mobile) testing
+		/// </summary>
+		private async Task CreateTestBookingDataAsync(ERentsContext context, List<Booking> bookings, 
+			List<Property> allProperties, List<BookingStatus> bookingStatuses)
+		{
+			_logger?.LogInformation("Creating specific test booking data for TestLandlord and TestUser...");
+
+			// Get test users
+			var testLandlord = await context.Users.FirstOrDefaultAsync(u => u.Username == "testLandlord");
+			var testUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "testUser");
+			var otherTenants = await context.Users.Include(u => u.UserTypeNavigation)
+				.Where(u => u.UserTypeNavigation.TypeName == "Tenant" && u.Username != "testUser")
+				.Take(3).ToListAsync();
+
+			if (testLandlord == null || testUser == null)
+			{
+				_logger?.LogWarning("TestLandlord or TestUser not found, skipping specific test data creation");
+				return;
+			}
+
+			// Get TestLandlord's properties
+			var testLandlordProperties = allProperties.Where(p => p.OwnerId == testLandlord.UserId).ToList();
+			if (!testLandlordProperties.Any())
+			{
+				_logger?.LogWarning("No properties found for TestLandlord, skipping specific test data creation");
+				return;
+			}
+
+			// 1. DESKTOP APP TEST DATA (TestLandlord's perspective)
+			// Create bookings by various tenants for TestLandlord's properties
+			foreach (var property in testLandlordProperties)
+			{
+				// Create 2-3 bookings per property with different statuses
+				for (int i = 0; i < 3; i++)
+				{
+					var tenant = i == 0 ? testUser : otherTenants[i % otherTenants.Count];
+					var booking = CreateSpecificTestBooking(tenant, property, bookingStatuses, i);
+					bookings.Add(booking);
+				}
+			}
+
+			// 2. MOBILE APP TEST DATA (TestUser's perspective)
+			// Create additional bookings for TestUser across different properties
+			var otherProperties = allProperties.Where(p => p.OwnerId != testLandlord.UserId).Take(2).ToList();
+			foreach (var property in otherProperties)
+			{
+				var booking = CreateRealisticBooking(testUser, property, bookingStatuses);
+				bookings.Add(booking);
+			}
+
+			_logger?.LogInformation($"Created specific test data: {bookings.Count} bookings for TestLandlord and TestUser");
+		}
+
+		/// <summary>
+		/// Creates a specific test booking with predetermined status and dates for testing
+		/// </summary>
+		private Booking CreateSpecificTestBooking(User tenant, Property property, List<BookingStatus> statuses, int variant)
+		{
+			var (startDate, endDate, statusName) = variant switch
+			{
+				0 => (DateOnly.FromDateTime(DateTime.Now.AddDays(-30)), DateOnly.FromDateTime(DateTime.Now.AddDays(-15)), "Completed"), // Past booking
+				1 => (DateOnly.FromDateTime(DateTime.Now.AddDays(-5)), DateOnly.FromDateTime(DateTime.Now.AddDays(10)), "Active"), // Current booking
+				2 => (DateOnly.FromDateTime(DateTime.Now.AddDays(7)), DateOnly.FromDateTime(DateTime.Now.AddDays(14)), "Confirmed"), // Future booking
+				_ => (DateOnly.FromDateTime(DateTime.Now.AddDays(-60)), DateOnly.FromDateTime(DateTime.Now.AddDays(-45)), "Completed") // Default past booking
+			};
+
+			var status = statuses.First(s => s.StatusName == statusName);
+			var duration = endDate.DayNumber - startDate.DayNumber;
+
+			return new Booking
+			{
+				PropertyId = property.PropertyId,
+				UserId = tenant.UserId,
+				StartDate = startDate,
+				EndDate = endDate,
+				MinimumStayEndDate = endDate.AddDays(property.MinimumStayDays ?? 1),
+				TotalPrice = CalculateBookingPrice(property, duration),
+				BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-_random.Next(1, 90))),
+				BookingStatusId = status.BookingStatusId,
+				
+				// Enhanced booking fields (Phase 3 additions)
+				PaymentMethod = "PayPal",
+				Currency = "BAM",
+				PaymentStatus = statusName == "Completed" ? "Completed" : statusName == "Active" ? "Completed" : "Pending",
+				PaymentReference = $"PAY-{Guid.NewGuid():N}[..8]",
+				NumberOfGuests = _random.Next(1, 4),
+				SpecialRequests = variant switch
+				{
+					0 => "Late check-in requested",
+					1 => "Extra towels needed",
+					2 => "Early check-in if possible",
+					_ => null
+				},
+				
+				CreatedBy = "system",
+				ModifiedBy = "system"
+			};
 		}
 
 		private Booking CreateRealisticBooking(User tenant, Property property, List<BookingStatus> statuses)
@@ -1108,96 +1221,9 @@ namespace eRents.WebApi
 		}
 		#endregion
 
-		#region Database Performance Optimization
-		private async Task ApplyPerformanceIndexesAsync(ERentsContext context)
-		{
-			_logger?.LogInformation("Applying performance indexes...");
-
-			try
-			{
-				// Check if indexes already exist to avoid errors
-				var indexQueries = new[]
-				{
-					// Booking Performance Indexes
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_DateRange_Status')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_Property_DateRange_Status
-						ON Bookings(PropertyId, StartDate, EndDate, BookingStatusId)
-						INCLUDE (BookingId, UserId, TotalPrice)
-						WHERE BookingStatusId != 4
-					END",
-
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_User_Status_Dates')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_User_Status_Dates
-						ON Bookings(UserId, BookingStatusId, StartDate, EndDate)
-						INCLUDE (PropertyId, TotalPrice, BookingDate)
-					END",
-
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_Status_Dates')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_Property_Status_Dates
-						ON Bookings(PropertyId, BookingStatusId, StartDate)
-						INCLUDE (BookingId, UserId, EndDate, TotalPrice, BookingDate)
-					END",
-
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Status_DateRange')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_Status_DateRange
-						ON Bookings(BookingStatusId, BookingDate, StartDate)
-						INCLUDE (PropertyId, UserId, TotalPrice, EndDate)
-					END",
-
-					// Property Search Optimization
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Property_Status_Type_Price')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Property_Status_Type_Price
-						ON Properties(Status, PropertyTypeId, Price)
-						INCLUDE (PropertyId, Name, DailyRate, MinimumStayDays, OwnerId)
-						WHERE Status = 'Available'
-					END",
-
-					// Revenue Analytics Optimization
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Revenue_Analytics')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_Revenue_Analytics
-						ON Bookings(BookingDate, BookingStatusId)
-						INCLUDE (PropertyId, UserId, TotalPrice, StartDate, EndDate)
-						WHERE BookingStatusId IN (2, 3)
-					END",
-
-					@"IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Booking_Property_Performance')
-					BEGIN
-						CREATE NONCLUSTERED INDEX IX_Booking_Property_Performance
-						ON Bookings(PropertyId, BookingStatusId, StartDate, EndDate)
-						INCLUDE (BookingId, TotalPrice, BookingDate)
-						WHERE BookingStatusId IN (2, 3)
-					END"
-				};
-
-				foreach (var query in indexQueries)
-				{
-					try
-					{
-						await context.Database.ExecuteSqlRawAsync(query);
-					}
-					catch (Exception ex)
-					{
-						_logger?.LogWarning(ex, "Index creation warning - continuing with setup");
-					}
-				}
-
-				// Update statistics
-				await context.Database.ExecuteSqlRawAsync("UPDATE STATISTICS Bookings");
-				await context.Database.ExecuteSqlRawAsync("UPDATE STATISTICS Properties");
-
-				_logger?.LogInformation("Performance indexes applied successfully");
-			}
-			catch (Exception ex)
-			{
-				_logger?.LogError(ex, "Error applying performance indexes - continuing with setup");
-			}
-		}
+				#region Database Performance Optimization (Disabled)
+		// Performance indexing disabled for stability - can be re-enabled later
+		// See git history for the full indexing implementation
 		#endregion
 	}
 }

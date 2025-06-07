@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.Services;
 using eRents.Shared.Exceptions;
+using eRents.Shared.SearchObjects;
 using eRents.Application.Exceptions;
 using ValidationException = eRents.Application.Exceptions.ValidationException;
 
@@ -13,7 +14,7 @@ namespace eRents.WebApi.Controllers.Base
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
-	public class BaseController<T, TSearch> : ControllerBase where T : class where TSearch : class
+	public class BaseController<T, TSearch> : ControllerBase where T : class where TSearch : BaseSearchObject
 	{
 		public IService<T, TSearch> Service { get; set; }
 		protected readonly ILogger _logger;
@@ -27,9 +28,39 @@ namespace eRents.WebApi.Controllers.Base
 		}
 
 		[HttpGet]
-		public virtual async Task<IEnumerable<T>> Get([FromQuery] TSearch search = null)
+		public virtual async Task<ActionResult<PagedList<T>>> Get([FromQuery] TSearch search)
+		{
+			try
+			{
+				var result = await Service.GetPagedAsync(search);
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, HandleStandardError(ex, "Data retrieval"));
+			}
+		}
+		
+		// NEW: Legacy support for clients not ready for pagination
+		[HttpGet("legacy")]
+		public virtual async Task<IEnumerable<T>> GetLegacy([FromQuery] TSearch search = null)
 		{
 			return await Service.GetAsync(search);
+		}
+		
+		// NEW: Count endpoint for UI elements
+		[HttpGet("count")]
+		public virtual async Task<ActionResult<int>> GetCount([FromQuery] TSearch search)
+		{
+			try
+			{
+				var count = await Service.GetCountAsync(search);
+				return Ok(count);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, HandleStandardError(ex, "Count retrieval"));
+			}
 		}
 
 		[HttpGet("{id}")]

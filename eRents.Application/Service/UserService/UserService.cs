@@ -137,11 +137,11 @@ namespace eRents.Application.Service.UserService
 				query = query.Where(x => x.Username == search.Username);
 			}
 
-			if (!string.IsNullOrWhiteSpace(search?.NameFTS))
+						if (!string.IsNullOrWhiteSpace(search?.SearchTerm))
 			{
-				query = query.Where(x => x.Username.Contains(search.NameFTS)
-								|| x.FirstName.Contains(search.NameFTS)
-								|| x.LastName.Contains(search.NameFTS));
+				query = query.Where(x => x.Username.Contains(search.SearchTerm)
+				|| x.FirstName.Contains(search.SearchTerm)
+				|| x.LastName.Contains(search.SearchTerm));
 			}
 
 			return base.AddFilter(query, search);
@@ -352,8 +352,15 @@ namespace eRents.Application.Service.UserService
 		// User list operations for admin and tenant management
 		public async Task<IEnumerable<UserResponse>> GetAllUsersAsync(UserSearchObject searchObject)
 		{
-			var users = await _userRepository.GetAllUsersAsync(searchObject);
-			return _mapper.Map<IEnumerable<UserResponse>>(users);
+			// Set NoPaging to true to get all results without pagination
+			searchObject ??= new UserSearchObject();
+			searchObject.NoPaging = true;
+			
+			// Use the standard GetPagedAsync method with NoPaging=true
+			var pagedResult = await GetPagedAsync(searchObject);
+			
+			// Return just the items (for backward compatibility)
+			return pagedResult.Items;
 		}
 
 		public async Task<IEnumerable<UserResponse>> GetTenantsByLandlordAsync(int landlordId)

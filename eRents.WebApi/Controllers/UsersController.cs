@@ -28,14 +28,29 @@ namespace eRents.Controllers
 		/// Override base Get method to restrict access - users should use specific endpoints
 		/// </summary>
 		[HttpGet]
-		public override async Task<IEnumerable<UserResponse>> Get([FromQuery] UserSearchObject search)
+		public override async Task<ActionResult<PagedList<UserResponse>>> Get([FromQuery] UserSearchObject search)
 		{
-			// Redirect users to use specific secure endpoints instead of general user listing
-			throw new UnauthorizedAccessException("Direct user listing not allowed. Use /Users/all (Admin), /Users/tenants (Landlord), or /Users/by-role/{role} instead.");
+			// Only admins can access general user listing
+			var role = _currentUserService.UserRole;
+			
+			if (role == "Admin")
+			{
+				// Use the base implementation which returns PagedList<T>
+				return await base.Get(search);
+			}
+			else
+			{
+				// For non-admins, return empty paginated result
+				_logger.LogWarning("Non-admin user {UserId} attempted to access general user listing", 
+					_currentUserService.UserId);
+				return Ok(new PagedList<UserResponse>(new List<UserResponse>(), 1, 10, 0));
+			}
 		}
 
 		/// <summary>
 		/// Admin only - Get all users with advanced filtering
+		/// 🆕 ALTERNATIVE: You can also use the base Get endpoint with ?nopaging=true
+		/// Example: GET /users?nopaging=true&role=tenant&isPaypalLinked=true
 		/// </summary>
 		[HttpGet("all")]
 		[Authorize(Roles = "Admin")]
@@ -43,6 +58,7 @@ namespace eRents.Controllers
 		{
 			try
 			{
+				// 🆕 This method now uses NoPaging internally via GetPagedAsync
 				var users = await _userService.GetAllUsersAsync(searchObject);
 				
 				_logger.LogInformation("Admin {AdminId} retrieved {UserCount} users with filters", 

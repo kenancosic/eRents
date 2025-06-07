@@ -198,8 +198,22 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<PropertyResponse>(property);
 		}
 
-		// Override GetAllAsync to implement user-scoped filtering
+		// 🆕 MIGRATED: Using Universal System with NoPaging option
 		public override async Task<IEnumerable<PropertyResponse>> GetAsync(PropertySearchObject search = null)
+		{
+			// Set NoPaging to true to get all results without pagination
+			search ??= new PropertySearchObject();
+			search.NoPaging = true;
+			
+			// Use the Universal System GetPagedAsync method with NoPaging=true
+			var pagedResult = await GetPagedAsync(search);
+			
+			// Return just the items (for backward compatibility)
+			return pagedResult.Items;
+		}
+
+		// 🆕 NEW: Universal System implementation with user-scoped data access
+		public override async Task<PagedList<PropertyResponse>> GetPagedAsync(PropertySearchObject search = null)
 		{
 			var currentUserId = _currentUserService.UserId;
 			var currentUserRole = _currentUserService.UserRole;
@@ -207,36 +221,43 @@ namespace eRents.Application.Service.PropertyService
 			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
 				throw new UnauthorizedAccessException("User not authenticated");
 
-			List<Property> properties;
+			// 1. Get user-scoped data based on role
+			var userScopedProperties = await GetUserScopedPropertiesAsync();
+			
+			// 2. Apply Universal System filtering and sorting
+			var filteredProperties = ApplyUniversalFilters(userScopedProperties, search);
+			var sortedProperties = ApplyUniversalSorting(filteredProperties, search);
 
-			if (currentUserRole == "Landlord")
-			{
-				// Landlords see only their own properties
-				properties = await _propertyRepository.GetByOwnerIdAsync(currentUserId);
-			}
-			else if (currentUserRole == "Tenant" || currentUserRole == "User")
-			{
-				// Tenants and Regular Users see available properties
-				properties = await _propertyRepository.GetAvailablePropertiesAsync();
-			}
-			else
-			{
-				throw new UnauthorizedAccessException("Invalid user role");
-			}
+			// 3. Apply pagination or return all results based on NoPaging
+			search ??= new PropertySearchObject();
+			var page = search.PageNumber;
+			var pageSize = search.PageSizeValue;
+			var totalCount = sortedProperties.Count;
+			
+			var pagedProperties = sortedProperties
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.ToList();
 
-			// Apply additional filtering if search object is provided
-			if (search != null)
-			{
-				var query = properties.AsQueryable();
-				if (!string.IsNullOrEmpty(search.Name))
-				{
-					query = query.Where(p => p.Name.Contains(search.Name));
-				}
-				// Add more filters as needed
-				properties = query.ToList();
-			}
+			// 4. Map to DTOs
+			var dtoItems = _mapper.Map<List<PropertyResponse>>(pagedProperties);
+			return new PagedList<PropertyResponse>(dtoItems, page, pageSize, totalCount);
+		}
 
-			return _mapper.Map<IEnumerable<PropertyResponse>>(properties);
+		/// <summary>
+		/// Get properties based on user role and permissions
+		/// </summary>
+		private async Task<List<Property>> GetUserScopedPropertiesAsync()
+		{
+			var currentUserRole = _currentUserService.UserRole;
+			var currentUserId = _currentUserService.UserId;
+
+			return currentUserRole switch
+			{
+				"Landlord" => await _propertyRepository.GetByOwnerIdAsync(currentUserId),
+				"Tenant" or "User" => await _propertyRepository.GetAvailablePropertiesAsync(),
+				_ => throw new UnauthorizedAccessException("Invalid user role")
+			};
 		}
 
 		// Override InsertAsync to set OwnerId to current user - SIMPLIFIED APPROACH  
@@ -517,25 +538,97 @@ namespace eRents.Application.Service.PropertyService
 			return _mapper.Map<List<PropertyResponse>>(properties);
 		}
 
-		// Add the BaseCRUDService override methods as needed
-		protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearchObject search = null)
+		// 🆕 UNIVERSAL SYSTEM: Custom filters for navigation properties only
+		protected override IQueryable<Property> ApplyCustomFilters(IQueryable<Property> query, PropertySearchObject search)
 		{
-			if (search == null)
-				return query;
+			if (search == null) return query;
 
-			if (!string.IsNullOrEmpty(search.Name))
+			// ✅ AUTOMATIC: Name, OwnerId, Price (Min/Max), Status, PropertyTypeId, RentingTypeId, 
+			//               Bedrooms (Min/Max), Bathrooms (Min/Max), Area (Min/Max), etc.
+			//               All handled automatically by Universal System! 🎉
+
+			// Handle SearchTerm for navigation properties (can't be automated)
+			if (!string.IsNullOrEmpty(search.SearchTerm))
 			{
-				query = query.Where(p => p.Name.Contains(search.Name));
+				var searchTerm = search.SearchTerm.ToLower();
+				query = query.Where(p => 
+					(p.Address != null && p.Address.City.ToLower().Contains(searchTerm)) ||
+					(p.Address != null && p.Address.State.ToLower().Contains(searchTerm)) ||
+					(p.Owner != null && p.Owner.FirstName.ToLower().Contains(searchTerm)) ||
+					(p.Owner != null && p.Owner.LastName.ToLower().Contains(searchTerm)) ||
+					p.PropertyId.ToString().Contains(searchTerm));
+			}
+
+			// Navigation property: Address filters
+			if (!string.IsNullOrEmpty(search.CityName))
+				query = query.Where(p => p.Address != null && p.Address.City.Contains(search.CityName));
+
+			if (!string.IsNullOrEmpty(search.StateName))
+				query = query.Where(p => p.Address != null && p.Address.State.Contains(search.StateName));
+
+			if (!string.IsNullOrEmpty(search.CountryName))
+				query = query.Where(p => p.Address != null && p.Address.Country.Contains(search.CountryName));
+
+			// Navigation property: Amenities (many-to-many)
+			if (search.AmenityIds?.Any() == true)
+				query = query.Where(p => p.Amenities.Any(a => search.AmenityIds.Contains(a.AmenityId)));
+
+			// Complex filter: Average rating calculation
+			if (search.MinRating.HasValue || search.MaxRating.HasValue)
+			{
+				if (search.MinRating.HasValue)
+					query = query.Where(p => p.Reviews.Any() && p.Reviews.Average(r => r.StarRating ?? 0) >= search.MinRating.Value);
+
+				if (search.MaxRating.HasValue)
+					query = query.Where(p => p.Reviews.Any() && p.Reviews.Average(r => r.StarRating ?? 0) <= search.MaxRating.Value);
+			}
+
+			// Geolocation filtering (if coordinates provided)
+			if (search.Latitude.HasValue && search.Longitude.HasValue && search.Radius.HasValue)
+			{
+				// Simple radius-based filtering (for more advanced geographic queries, consider using PostGIS)
+				var lat = search.Latitude.Value;
+				var lng = search.Longitude.Value;
+				var radius = search.Radius.Value;
+
+				query = query.Where(p => p.Address != null && 
+					p.Address.Latitude.HasValue && p.Address.Longitude.HasValue &&
+					Math.Sqrt(Math.Pow((double)(p.Address.Latitude - lat), 2) + Math.Pow((double)(p.Address.Longitude - lng), 2)) <= radius);
 			}
 
 			return query;
+		}
+
+		// 🆕 UNIVERSAL SYSTEM: Custom sorting for navigation properties only
+		protected override List<Property> ApplyCustomSorting(List<Property> entities, PropertySearchObject search)
+		{
+			if (search?.SortBy == null)
+				return ApplyDefaultSorting(entities);
+
+			// ✅ AUTOMATIC: "Price", "Name", "DateAdded", "Area", "DailyRate", "Bedrooms", "Bathrooms" work automatically!
+			// Handle only navigation properties that can't be automated:
+			return search.SortBy.ToLower() switch
+			{
+				"city" => search.SortDescending
+					? entities.OrderByDescending(p => p.Address?.City ?? "").ToList()
+					: entities.OrderBy(p => p.Address?.City ?? "").ToList(),
+				"owner" => search.SortDescending
+					? entities.OrderByDescending(p => p.Owner?.FirstName ?? "").ToList()
+					: entities.OrderBy(p => p.Owner?.FirstName ?? "").ToList(),
+				"rating" => search.SortDescending
+					? entities.OrderByDescending(p => p.Reviews.Any() ? p.Reviews.Average(r => r.StarRating ?? 0) : 0).ToList()
+					: entities.OrderBy(p => p.Reviews.Any() ? p.Reviews.Average(r => r.StarRating ?? 0) : 0).ToList(),
+				_ => base.ApplyCustomSorting(entities, search) // Use universal sorting
+			};
 		}
 
 		protected override IQueryable<Property> AddInclude(IQueryable<Property> query, PropertySearchObject search = null)
 		{
 			return query.Include(p => p.Images)
 									.Include(p => p.Owner)
-									.Include(p => p.Amenities);
+									.Include(p => p.Amenities)
+									.Include(p => p.Reviews)
+									.Include(p => p.Address);
 		}
 
 		// Missing methods from IPropertyService

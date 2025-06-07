@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
+using eRents.Shared.DTO.Response;
 
 namespace eRents.Application.Shared
 {
@@ -58,6 +59,15 @@ namespace eRents.Application.Shared
 		protected virtual Task BeforeUpdateAsync(TUpdate update, TEntity entity)
 		{
 			return Task.CompletedTask; // Override in derived classes for custom update logic
+		}
+
+		// NEW: Implementation of SearchAsync from ICRUDService
+		/// <summary>
+		/// Alias for GetPagedAsync - provides more intuitive name for search operations
+		/// </summary>
+		public virtual async Task<PagedList<TDto>> SearchAsync(TSearch search = null)
+		{
+			return await GetPagedAsync(search);
 		}
 	}
 }

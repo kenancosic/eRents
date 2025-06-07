@@ -273,24 +273,49 @@ class BookingService extends ApiService {
     }
   }
 
+  /// Get paginated bookings (Universal System with backend pagination)
+  Future<Map<String, dynamic>> getPagedBookings([
+    Map<String, dynamic>? params,
+  ]) async {
+    try {
+      // Build query parameters for Universal System
+      final queryParams = <String, dynamic>{};
+
+      // Add any additional params
+      if (params != null) {
+        queryParams.addAll(params);
+      }
+
+      String endpoint = '/Bookings';
+      if (queryParams.isNotEmpty) {
+        final queryString = queryParams.entries
+            .map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}')
+            .join('&');
+        endpoint = '/Bookings?$queryString';
+      }
+
+      final response = await get(endpoint, authenticated: true);
+
+      // Backend returns PagedList<BookingResponse> from Universal System
+      final Map<String, dynamic> pagedData = json.decode(response.body);
+      return pagedData;
+    } catch (e) {
+      print('BookingService: Error loading paged bookings: $e');
+      throw Exception('Failed to load paged bookings: $e');
+    }
+  }
+
   /// Get bookings by landlord (all bookings for landlord's properties)
+  /// ✅ LEGACY: For backwards compatibility with existing code
   Future<List<Booking>> getBookingsByLandlord([
     Map<String, dynamic>? params,
   ]) async {
     try {
-      String queryString = '';
-      if (params != null && params.isNotEmpty) {
-        queryString =
-            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
-      }
+      // Use the new paginated endpoint but return only items for legacy compatibility
+      final pagedData = await getPagedBookings(params);
 
-      final response = await get(
-        '/Bookings/landlord$queryString',
-        authenticated: true,
-      );
-
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Booking.fromJson(json)).toList();
+      final List<dynamic> items = pagedData['items'] ?? [];
+      return items.map((json) => Booking.fromJson(json)).toList();
     } catch (e) {
       print('BookingService: Error loading landlord bookings: $e');
       throw Exception('Failed to load landlord bookings: $e');
@@ -302,16 +327,23 @@ class BookingService extends ApiService {
     Map<String, dynamic>? params,
   ]) async {
     try {
-      String queryString = '';
-      if (params != null && params.isNotEmpty) {
-        queryString =
-            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+      // Build query parameters
+      final queryParams = <String, dynamic>{};
+
+      // Add any additional params
+      if (params != null) {
+        queryParams.addAll(params);
       }
 
-      final response = await get(
-        '/Bookings/tenant$queryString',
-        authenticated: true,
-      );
+      String endpoint = '/Bookings';
+      if (queryParams.isNotEmpty) {
+        final queryString = queryParams.entries
+            .map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}')
+            .join('&');
+        endpoint = '/Bookings?$queryString';
+      }
+
+      final response = await get(endpoint, authenticated: true);
 
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => Booking.fromJson(json)).toList();

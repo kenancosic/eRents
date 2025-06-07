@@ -9,6 +9,15 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eRents.WebApi.Controllers
 {
+	/// <summary>
+	/// Reviews management controller with Universal System support
+	/// 🆕 UNIVERSAL SYSTEM ENDPOINTS:
+	/// - GET /reviews - Paginated results (supports nopaging=true)
+	/// - GET /reviews?nopaging=true&propertyId=123&minStarRating=4&reviewType=PropertyReview
+	/// - GET /reviews?page=1&pageSize=10&sortBy=DateCreated&sortDesc=true
+	/// - Automatic filtering: PropertyId, ReviewerId, RevieweeId, StarRating (Min/Max), DateCreated (Min/Max), ReviewType
+	/// - Navigation filtering: PropertyName, ReviewerName, RevieweeName, HasReplies, IsOriginalReview
+	/// </summary>
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize]
@@ -25,23 +34,10 @@ namespace eRents.WebApi.Controllers
 		}
 
 		[HttpGet]
-		public override async Task<IEnumerable<ReviewResponse>> Get([FromQuery] ReviewSearchObject search)
+		public override async Task<ActionResult<PagedList<ReviewResponse>>> Get([FromQuery] ReviewSearchObject search)
 		{
-			try
-			{
-				var result = await _reviewService.GetAsync(search);
-				
-				_logger.LogInformation("User {UserId} retrieved {ReviewCount} reviews with search filters", 
-					_currentUserService.UserId ?? "unknown", result.Count());
-					
-				return result;
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Review retrieval failed for user {UserId}", 
-					_currentUserService.UserId ?? "unknown");
-				throw; // Let the base controller handle the error response
-			}
+			// Use the base implementation which now returns PagedList<T>
+			return await base.Get(search);
 		}
 
 		[HttpGet("{id}")]
