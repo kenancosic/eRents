@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
@@ -20,81 +19,28 @@ class TenantsScreen extends StatefulWidget {
 class _TenantsScreenState extends State<TenantsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _searchTerm = '';
-  String _currentFilterField = 'Full Name'; // Default placeholder
-  final TextEditingController _searchController = TextEditingController();
-  String _searchLabelText = 'Search current tenants: ';
-
-  // Placeholder filter fields
-  final List<String> _currentTenantFilterFields = [
-    'Full Name',
-    'Email',
-    'Phone',
-    'City',
-  ];
-  final List<String> _searchingTenantFilterFields = [
-    'City',
-    'Price Range',
-    'Amenities',
-    'Description',
-  ];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_handleTabChange);
-    _searchController.addListener(() {
-      if (_searchTerm != _searchController.text) {
-        setState(() {
-          _searchTerm = _searchController.text;
-        });
-      }
-    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = Provider.of<TenantCollectionProvider>(
         context,
         listen: false,
       );
-      // loadAllData already handles setting state management
       provider.loadAllData();
     });
   }
 
-  void _handleTabChange() {
-    if (_tabController.index == 0) {
-      setState(() {
-        _currentFilterField =
-            _currentTenantFilterFields.first; // Use placeholder
-        _searchController.clear();
-        _searchTerm = '';
-        _searchLabelText = 'Search current tenants: ';
-      });
-    } else {
-      setState(() {
-        _currentFilterField =
-            _searchingTenantFilterFields.first; // Use placeholder
-        _searchController.clear();
-        _searchTerm = '';
-        _searchLabelText = 'Search tenants advertisements: ';
-      });
-    }
-  }
-
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
   void _sendMessage(BuildContext context, User tenant) {
-    // TODO: Implement direct message to tenant or open chat screen
-    // Consider using ChatProvider or navigating to a chat screen with tenant.id
-    print("Attempting to send message to tenant: ${tenant.fullName}");
-    // Example: context.go('/chat/${tenant.id}');
-    // Or show a dialog to compose a message, then use ChatProvider.
     final chatProvider = Provider.of<ChatCollectionProvider>(
       context,
       listen: false,
@@ -107,13 +53,6 @@ class _TenantsScreenState extends State<TenantsScreen>
     BuildContext context,
     TenantPreference preference,
   ) {
-    // TODO: Implement how to contact a searching tenant.
-    // This might involve finding the user associated with the preference first,
-    // then initiating a chat or offer.
-    print(
-      "Attempting to contact searching tenant for preference in: ${preference.city}",
-    );
-    // Example: showSendPropertyOfferDialog(context, preference.userId, availablePropertiesFromSomewhere);
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -127,9 +66,6 @@ class _TenantsScreenState extends State<TenantsScreen>
     User tenant,
     List<Property> properties,
   ) {
-    print("Show profile for tenant: ${tenant.fullName}");
-
-    // Show the tenant profile dialog
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -137,9 +73,7 @@ class _TenantsScreenState extends State<TenantsScreen>
           tenant: tenant,
           properties: properties,
           onSendMessage: () {
-            // Close dialog first
             Navigator.of(dialogContext).pop();
-            // Then navigate to chat
             _sendMessage(context, tenant);
           },
         );
@@ -148,20 +82,14 @@ class _TenantsScreenState extends State<TenantsScreen>
   }
 
   void _navigateToPropertyDetails(BuildContext context, Property property) {
-    print(
-      'TenantsScreen: Navigating to property details for property ID: ${property.propertyId}',
-    );
-    print('TenantsScreen: Property title: ${property.name}');
-    print('TenantsScreen: Full property data: ${property.toString()}');
     context.push('/properties/${property.propertyId}');
   }
 
   void _showTenantPreferenceDetails(
     BuildContext context,
     TenantPreference preference,
-    User tenant, // Added User parameter
+    User tenant,
   ) {
-    // Show the tenant preference details dialog
     showDialog(
       context: context,
       builder:
@@ -236,8 +164,6 @@ class _TenantsScreenState extends State<TenantsScreen>
         final currentTenants = provider.currentTenants;
         final searchingTenants = provider.prospectiveTenants;
 
-        // Always show the tables - even with 0 data
-        // Remove empty state check that was preventing tables from showing
         return RefreshIndicator(
           onRefresh: () => provider.refreshAllData(),
           child: Column(
@@ -266,7 +192,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Tenants Advertisements'),
+                        const Text('Tenant Advertisements'),
                         if (provider.isLoadingProspective) ...[
                           const SizedBox(width: 8),
                           const SizedBox(
@@ -284,50 +210,16 @@ class _TenantsScreenState extends State<TenantsScreen>
                 indicatorColor: Theme.of(context).colorScheme.primary,
               ),
 
-              // Search bar with refresh button
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      _searchLabelText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildSearchBar(provider)),
-                    const SizedBox(width: 12),
-                    // Tab-specific refresh button
-                    IconButton(
-                      onPressed: () {
-                        if (_tabController.index == 0) {
-                          provider.refreshCurrentTenants();
-                        } else {
-                          provider.refreshProspectiveTenants();
-                        }
-                      },
-                      icon: Icon(
-                        Icons.refresh,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      tooltip: 'Refresh current tab',
-                    ),
-                  ],
-                ),
-              ),
-
-              // Tab views - always show tables
+              // Tab views - Universal Tables handle their own search
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
                   children: [
                     CurrentTenantsTableWidget(
                       tenants: currentTenants,
-                      searchTerm: _searchTerm,
-                      currentFilterField: _currentFilterField,
+                      searchTerm:
+                          '', // No longer used - Universal Table handles search
+                      currentFilterField: '', // No longer used
                       onSendMessage: (tenant) => _sendMessage(context, tenant),
                       onShowProfile:
                           (tenant, properties) =>
@@ -339,8 +231,9 @@ class _TenantsScreenState extends State<TenantsScreen>
                     TenantsAdvertisementTableWidget(
                       preferences: searchingTenants,
                       tenants: currentTenants,
-                      searchTerm: _searchTerm,
-                      currentFilterField: _currentFilterField,
+                      searchTerm:
+                          '', // No longer used - Universal Table handles search
+                      currentFilterField: '', // No longer used
                       onSendMessage:
                           (pref) =>
                               _sendMessageToSearchingTenant(context, pref),
@@ -358,53 +251,6 @@ class _TenantsScreenState extends State<TenantsScreen>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSearchBar(TenantCollectionProvider provider) {
-    final List<String> filterFields =
-        _tabController.index == 0
-            ? _currentTenantFilterFields
-            : _searchingTenantFilterFields;
-
-    return CustomSearchBar(
-      controller: _searchController,
-      hintText: 'Enter $_currentFilterField...',
-      onFilterPressed: () {
-        _showFilterOptionsDialog(context, filterFields);
-      },
-    );
-  }
-
-  void _showFilterOptionsDialog(
-    BuildContext context,
-    List<String> filterFields,
-  ) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Search by Field'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children:
-                    filterFields.map((field) {
-                      return RadioListTile<String>(
-                        title: Text(field),
-                        value: field,
-                        groupValue: _currentFilterField,
-                        onChanged: (value) {
-                          setState(() {
-                            _currentFilterField = value!;
-                          });
-                          context.pop();
-                        },
-                      );
-                    }).toList(),
-              ),
-            ),
-          ),
     );
   }
 }

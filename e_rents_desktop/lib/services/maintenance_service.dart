@@ -24,21 +24,40 @@ class MaintenanceService extends ApiService {
       print('MaintenanceService: API Response status: ${response.statusCode}');
       print('MaintenanceService: Raw API Response body: ${response.body}');
 
-      final List<dynamic> jsonResponse = json.decode(response.body);
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
       print(
-        'MaintenanceService: Parsed JSON response length: ${jsonResponse.length}',
+        'MaintenanceService: Parsed JSON response structure: ${jsonResponse.keys.toList()}',
       );
 
-      // Log the first item to see the structure
-      if (jsonResponse.isNotEmpty) {
+      // Handle paginated response from Universal System
+      List<dynamic> itemsJson;
+      if (jsonResponse.containsKey('items')) {
+        // Paginated response
+        itemsJson = jsonResponse['items'] as List<dynamic>;
         print(
-          'MaintenanceService: First item structure: ${jsonResponse.first}',
+          'MaintenanceService: Found paginated response with ${itemsJson.length} items',
         );
+        if (jsonResponse.containsKey('totalCount')) {
+          print(
+            'MaintenanceService: Total count: ${jsonResponse['totalCount']}',
+          );
+        }
+      } else {
+        // Direct list response (fallback for non-paginated)
+        itemsJson = jsonResponse as List<dynamic>;
+        print(
+          'MaintenanceService: Found direct list response with ${itemsJson.length} items',
+        );
+      }
+
+      // Log the first item to see the structure
+      if (itemsJson.isNotEmpty) {
+        print('MaintenanceService: First item structure: ${itemsJson.first}');
       }
 
       // Add individual item parsing try-catch if needed, similar to other services
       final maintenanceIssues =
-          jsonResponse
+          itemsJson
               .map((json) {
                 try {
                   print(

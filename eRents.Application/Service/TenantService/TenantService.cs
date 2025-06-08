@@ -3,6 +3,7 @@ using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.Enums;
 using eRents.Shared.Services;
 
 namespace eRents.Application.Service.TenantService
@@ -142,7 +143,7 @@ namespace eRents.Application.Service.TenantService
 
 			var review = new Review
 			{
-				ReviewType = Domain.Models.ReviewType.TenantReview,
+				ReviewType = ReviewType.TenantReview,
 				RevieweeId = tenantId,
 				ReviewerId = currentUserId,
 				StarRating = request.StarRating,

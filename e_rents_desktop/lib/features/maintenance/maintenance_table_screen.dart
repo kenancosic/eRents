@@ -5,14 +5,14 @@ import '../../models/maintenance_issue.dart';
 import '../../base/service_locator.dart';
 import 'providers/maintenance_universal_table_provider.dart';
 
-class MaintenanceScreen extends StatefulWidget {
-  const MaintenanceScreen({super.key});
+class MaintenanceTableScreen extends StatefulWidget {
+  const MaintenanceTableScreen({super.key});
 
   @override
-  State<MaintenanceScreen> createState() => _MaintenanceScreenState();
+  State<MaintenanceTableScreen> createState() => _MaintenanceTableScreenState();
 }
 
-class _MaintenanceScreenState extends State<MaintenanceScreen> {
+class _MaintenanceTableScreenState extends State<MaintenanceTableScreen> {
   late MaintenanceRepository _maintenanceRepository;
 
   @override

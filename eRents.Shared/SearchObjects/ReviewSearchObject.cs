@@ -1,4 +1,4 @@
-﻿using eRents.Domain.Models;
+﻿using eRents.Shared.Enums;
 
 namespace eRents.Shared.SearchObjects
 {

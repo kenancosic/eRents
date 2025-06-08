@@ -593,7 +593,7 @@ namespace eRents.Application.Service.PropertyService
 
 				query = query.Where(p => p.Address != null && 
 					p.Address.Latitude.HasValue && p.Address.Longitude.HasValue &&
-					Math.Sqrt(Math.Pow((double)(p.Address.Latitude - lat), 2) + Math.Pow((double)(p.Address.Longitude - lng), 2)) <= radius);
+					Math.Sqrt(Math.Pow((double)(p.Address.Latitude - lat), 2) + Math.Pow((double)(p.Address.Longitude - lng), 2)) <= (double)radius);
 			}
 
 			return query;

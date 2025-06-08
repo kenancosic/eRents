@@ -1,14 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
+using eRents.Shared.Enums;
 
 namespace eRents.Domain.Models;
-
-public enum ReviewType
-{
-    PropertyReview,  // Tenant reviewing a property after stay
-    TenantReview     // Landlord reviewing a tenant after booking ends
-}
 
 public partial class Review : BaseEntity
 {

@@ -1,4 +1,5 @@
 using eRents.Domain.Models;
+using eRents.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
@@ -153,10 +154,10 @@ namespace eRents.WebApi
 			// PropertyStatuses
 			var propertyStatuses = new[]
 			{
-				new PropertyStatus { StatusName = "Available" },
-				new PropertyStatus { StatusName = "Rented" },
-				new PropertyStatus { StatusName = "Under Maintenance" },
-				new PropertyStatus { StatusName = "Unavailable" }
+				new Domain.Models.PropertyStatus { StatusName = "Available" },
+				new Domain.Models.PropertyStatus { StatusName = "Rented" },
+				new Domain.Models.PropertyStatus { StatusName = "Under Maintenance" },
+				new Domain.Models.PropertyStatus { StatusName = "Unavailable" }
 			};
 			await UpsertByName(context, propertyStatuses, ps => ps.StatusName);
 

@@ -12,9 +12,20 @@ class ChatService extends ApiService {
     print('ChatService: Attempting to fetch contacts...');
     try {
       final response = await get('/Chat/Contacts', authenticated: true);
-      final List<dynamic> jsonResponse = json.decode(response.body);
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+      // Handle paginated response from Universal System
+      List<dynamic> itemsJson;
+      if (jsonResponse.containsKey('items')) {
+        // Paginated response
+        itemsJson = jsonResponse['items'] as List<dynamic>;
+      } else {
+        // Direct list response (fallback for non-paginated)
+        itemsJson = jsonResponse as List<dynamic>;
+      }
+
       // Add individual item parsing try-catch if needed
-      final contacts = jsonResponse.map((json) => User.fromJson(json)).toList();
+      final contacts = itemsJson.map((json) => User.fromJson(json)).toList();
       print('ChatService: Successfully fetched ${contacts.length} contacts.');
       return contacts;
     } catch (e) {
@@ -46,10 +57,20 @@ class ChatService extends ApiService {
 
     try {
       final response = await get(endpoint, authenticated: true);
-      final List<dynamic> jsonResponse = json.decode(response.body);
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+      // Handle paginated response from Universal System
+      List<dynamic> itemsJson;
+      if (jsonResponse.containsKey('items')) {
+        // Paginated response
+        itemsJson = jsonResponse['items'] as List<dynamic>;
+      } else {
+        // Direct list response (fallback for non-paginated)
+        itemsJson = jsonResponse as List<dynamic>;
+      }
+
       // Add individual item parsing try-catch if needed
-      final messages =
-          jsonResponse.map((json) => Message.fromJson(json)).toList();
+      final messages = itemsJson.map((json) => Message.fromJson(json)).toList();
       print(
         'ChatService: Successfully fetched ${messages.length} messages for contact $contactId.',
       );

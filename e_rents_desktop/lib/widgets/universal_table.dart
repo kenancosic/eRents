@@ -314,6 +314,86 @@ abstract class BaseUniversalTableProvider<TModel>
   Widget actionCell(List<Widget> actions) {
     return Row(mainAxisSize: MainAxisSize.min, children: actions);
   }
+
+  /// Helper: Create priority badge cell
+  Widget priorityCell(String priority, {Color? color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color ?? Colors.grey,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          priority,
+          style: const TextStyle(fontSize: 14),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  /// Helper: Create clickable link cell with icon
+  Widget linkCell({
+    required String text,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(icon, size: 18, color: Colors.grey[600]),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: color ?? Colors.blue),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Helper: Create icon action button cell
+  Widget iconActionCell({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+    Color? color,
+  }) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      tooltip: tooltip,
+      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      color: color,
+      onPressed: onPressed,
+    );
+  }
 }
 
 /// Main Universal Table Widget - Complete table solution
@@ -463,9 +543,6 @@ class _UniversalTableWidgetState<T> extends State<UniversalTableWidget<T>> {
           // Search and Filters
           if (widget.showSearch || widget.showFilters) _buildSearchAndFilters(),
 
-          // Column Visibility Controls
-          if (widget.showColumnVisibility) _buildColumnVisibilityControls(),
-
           // Table Content
           Expanded(child: _buildTableContent()),
 
@@ -505,23 +582,30 @@ class _UniversalTableWidgetState<T> extends State<UniversalTableWidget<T>> {
   Widget _buildSearchAndFilters() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Row(
+      child: Column(
         children: [
-          if (widget.showSearch) ...[
-            Expanded(
-              flex: 3,
-              child: CustomSearchBar(
-                controller: _searchController,
-                hintText: widget.searchHint,
-                onChanged: _onSearchChanged,
-                onFilterPressed:
-                    widget.showFilters ? () => _showFiltersDialog() : null,
-              ),
-            ),
-          ],
+          // Search bar and column visibility in one row
+          Row(
+            children: [
+              if (widget.showSearch) ...[
+                Expanded(
+                  child: CustomSearchBar(
+                    controller: _searchController,
+                    hintText: widget.searchHint,
+                    onChanged: _onSearchChanged,
+                    onFilterPressed:
+                        widget.showFilters ? () => _showFiltersDialog() : null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (widget.showColumnVisibility) _buildColumnVisibilityButton(),
+            ],
+          ),
+          // Active filters chips on second row if any
           if (widget.showFilters && _activeFilters.isNotEmpty) ...[
-            const SizedBox(width: 16),
-            _buildActiveFiltersChips(),
+            const SizedBox(height: 12),
+            Row(children: [_buildActiveFiltersChips()]),
           ],
         ],
       ),
@@ -545,41 +629,64 @@ class _UniversalTableWidgetState<T> extends State<UniversalTableWidget<T>> {
     );
   }
 
-  Widget _buildColumnVisibilityControls() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Container(
+  Widget _buildColumnVisibilityButton() {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return SizedBox(
+          width: 48,
+          child: Container(
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: PopupMenuButton<String>(
+            child: IconButton(
               icon: const Icon(Icons.view_column, size: 18),
-              tooltip: 'Toggle Columns',
-              padding: const EdgeInsets.all(8),
-              onSelected: (String columnKey) {
-                setState(() {
-                  _columnVisibility[columnKey] =
-                      !(_columnVisibility[columnKey] ?? true);
-                });
-              },
-              itemBuilder: (context) {
-                return widget.dataProvider.columns.map((column) {
-                  final isVisible = _columnVisibility[column.key] ?? true;
-                  return CheckedPopupMenuItem<String>(
-                    value: column.key,
-                    checked: isVisible,
-                    child: Text(column.label),
-                  );
-                }).toList();
+              tooltip: 'Show/Hide Columns',
+              onPressed: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
+                }
               },
             ),
           ),
-        ],
-      ),
+        );
+      },
+      menuChildren: [
+        SizedBox(
+          width: 250,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text(
+                  'Show Columns',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              const Divider(height: 1),
+              ...widget.dataProvider.columns.map((column) {
+                final isVisible = _columnVisibility[column.key] ?? true;
+                return CheckboxListTile(
+                  title: Text(column.label),
+                  value: isVisible,
+                  dense: true,
+                  onChanged: (bool? value) {
+                    if (value != null) {
+                      setState(() {
+                        _columnVisibility[column.key] = value;
+                      });
+                    }
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1041,6 +1148,86 @@ class UniversalTable {
     List<FilterOption>? options,
   }) {
     return TableFilter(key: key, label: label, type: type, options: options);
+  }
+
+  /// Helper: Create priority badge cell
+  static Widget priorityCell(String priority, {Color? color}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color ?? Colors.grey,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          priority,
+          style: const TextStyle(fontSize: 14),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  /// Helper: Create clickable link cell with icon
+  static Widget linkCell({
+    required String text,
+    required VoidCallback onTap,
+    IconData? icon,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(icon, size: 18, color: Colors.grey[600]),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: color ?? Colors.blue),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Helper: Create icon action button cell
+  static Widget iconActionCell({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+    Color? color,
+  }) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      tooltip: tooltip,
+      constraints: const BoxConstraints(),
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      color: color,
+      onPressed: onPressed,
+    );
   }
 }
 

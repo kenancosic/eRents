@@ -18,8 +18,19 @@ class PropertyService extends ApiService {
       endpoint += '?${Uri(queryParameters: queryParams).query}';
     }
     final response = await get(endpoint, authenticated: true);
-    final List<dynamic> jsonResponse = json.decode(response.body);
-    return jsonResponse.map((json) => Property.fromJson(json)).toList();
+    final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+    // Handle paginated response from Universal System
+    List<dynamic> itemsJson;
+    if (jsonResponse.containsKey('items')) {
+      // Paginated response
+      itemsJson = jsonResponse['items'] as List<dynamic>;
+    } else {
+      // Direct list response (fallback for non-paginated)
+      itemsJson = jsonResponse as List<dynamic>;
+    }
+
+    return itemsJson.map((json) => Property.fromJson(json)).toList();
   }
 
   Future<Property> getPropertyById(int propertyId) async {

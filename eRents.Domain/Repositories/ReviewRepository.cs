@@ -1,5 +1,6 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
+using eRents.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

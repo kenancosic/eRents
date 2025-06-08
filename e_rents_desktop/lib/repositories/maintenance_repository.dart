@@ -1,6 +1,7 @@
 import '../base/base.dart';
 import '../models/maintenance_issue.dart';
 import '../services/maintenance_service.dart';
+import '../widgets/universal_table.dart';
 
 /// Repository for managing maintenance issues with caching and business logic.
 ///
@@ -194,6 +195,87 @@ class MaintenanceRepository
     return issues
         .where((issue) => issue.createdAt.isAfter(thirtyDaysAgo))
         .toList();
+  }
+
+  /// ✅ UNIVERSAL TABLE: Get paginated maintenance issues from backend Universal System
+  Future<PagedResult<MaintenanceIssue>> getPagedMaintenanceIssues(
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      // For now, use the existing getAll method and implement local pagination
+      // TODO: Update when backend supports Universal System pagination for maintenance
+      final allIssues = await getAll();
+
+      final page = (params['page'] ?? 1) - 1; // Convert to 0-based
+      final pageSize = params['pageSize'] ?? 25;
+      final searchTerm = params['searchTerm'] as String?;
+
+      // Apply search filter
+      List<MaintenanceIssue> filteredIssues = List.from(allIssues);
+      if (searchTerm != null && searchTerm.isNotEmpty) {
+        final lowercaseQuery = searchTerm.toLowerCase();
+        filteredIssues =
+            filteredIssues
+                .where(
+                  (issue) =>
+                      issue.title.toLowerCase().contains(lowercaseQuery) ||
+                      issue.description.toLowerCase().contains(
+                        lowercaseQuery,
+                      ) ||
+                      (issue.category?.toLowerCase().contains(lowercaseQuery) ??
+                          false),
+                )
+                .toList();
+      }
+
+      // Apply sorting
+      final sortBy = params['sortBy'] as String?;
+      final sortDesc = params['sortDesc'] as bool? ?? false;
+
+      if (sortBy != null) {
+        filteredIssues.sort((a, b) {
+          int comparison = 0;
+          switch (sortBy) {
+            case 'priority':
+              comparison = a.priority.index.compareTo(b.priority.index);
+              break;
+            case 'status':
+              comparison = a.status.index.compareTo(b.status.index);
+              break;
+            case 'title':
+              comparison = a.title.compareTo(b.title);
+              break;
+            case 'createdAt':
+              comparison = a.createdAt.compareTo(b.createdAt);
+              break;
+            default:
+              comparison = 0;
+          }
+          return sortDesc ? -comparison : comparison;
+        });
+      }
+
+      // Apply pagination
+      final totalCount = filteredIssues.length;
+      final totalPages = (totalCount / pageSize).ceil();
+      final startIndex = page * pageSize;
+      final endIndex = (startIndex + pageSize).clamp(0, totalCount);
+
+      final pageItems =
+          startIndex < totalCount
+              ? filteredIssues.sublist(startIndex, endIndex)
+              : <MaintenanceIssue>[];
+
+      return PagedResult<MaintenanceIssue>(
+        items: pageItems,
+        totalCount: totalCount,
+        page: page,
+        pageSize: pageSize,
+        totalPages: totalPages,
+      );
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 }
 
