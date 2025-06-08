@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../models/maintenance_issue.dart';
 import '../../../repositories/maintenance_repository.dart';
-import '../../../widgets/universal_table.dart';
+import '../../../widgets/table/custom_table.dart';
 
 /// ✅ MAINTENANCE UNIVERSAL TABLE PROVIDER - 90% automatic, 10% custom
 ///
@@ -13,7 +13,7 @@ import '../../../widgets/universal_table.dart';
 ///
 /// Only maintenance-specific column definitions are required (10% custom code)
 class MaintenanceUniversalTableProvider
-    extends BaseUniversalTableProvider<MaintenanceIssue> {
+    extends TableProvider<MaintenanceIssue> {
   final BuildContext context;
 
   MaintenanceUniversalTableProvider({

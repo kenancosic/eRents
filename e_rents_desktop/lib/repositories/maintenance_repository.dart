@@ -1,7 +1,7 @@
 import '../base/base.dart';
 import '../models/maintenance_issue.dart';
 import '../services/maintenance_service.dart';
-import '../widgets/universal_table.dart';
+import '../widgets/table/custom_table.dart';
 
 /// Repository for managing maintenance issues with caching and business logic.
 ///

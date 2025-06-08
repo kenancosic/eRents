@@ -109,6 +109,39 @@ class BookingSummary {
   String get guestCountDisplay =>
       numberOfGuests == 1 ? '1 Guest' : '$numberOfGuests Guests';
   bool get hasSpecialRequests => specialRequests?.isNotEmpty == true;
+
+  /// Create BookingSummary from Booking model
+  factory BookingSummary.fromBooking(dynamic booking) {
+    return BookingSummary(
+      bookingId: booking.bookingId ?? 0,
+      propertyId: booking.propertyId ?? 0,
+      propertyName: booking.property?.name ?? '',
+      propertyImageId:
+          booking.property?.images?.isNotEmpty == true
+              ? booking.property!.images!.first.imageId
+              : null,
+      propertyImageData:
+          booking.property?.images?.isNotEmpty == true
+              ? booking.property!.images!.first.imageData
+              : null,
+      startDate: booking.startDate ?? DateTime.now(),
+      endDate: booking.endDate,
+      totalPrice: booking.totalPrice ?? 0.0,
+      currency: booking.currency ?? 'BAM',
+      bookingStatus: booking.bookingStatus?.statusName ?? booking.status ?? '',
+      tenantName:
+          booking.user != null
+              ? '${booking.user.firstName ?? ''} ${booking.user.lastName ?? ''}'
+                  .trim()
+              : null,
+      tenantEmail: booking.user?.email,
+      paymentMethod: booking.paymentMethod ?? 'PayPal',
+      paymentStatus: booking.paymentStatus,
+      paymentReference: booking.paymentReference,
+      numberOfGuests: booking.numberOfGuests ?? 1,
+      specialRequests: booking.specialRequests,
+    );
+  }
 }
 
 // Stats classes for property details

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/widgets/universal_table.dart';
+import 'package:e_rents_desktop/widgets/table/custom_table.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:provider/provider.dart';
 

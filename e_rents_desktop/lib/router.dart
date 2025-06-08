@@ -26,7 +26,7 @@ import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
-import 'package:e_rents_desktop/features/bookings/bookings_table_screen.dart';
+import 'package:e_rents_desktop/features/bookings/bookings_list_screen.dart';
 
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
@@ -519,8 +519,10 @@ class AppRouter {
   }
 
   static Widget _createBookingsTableScreen() {
-    // ✅ NEW: Simple integration with ServerTableWidget and BookingTableProvider
-    // No need for complex provider setup - the table widget handles its own data management
-    return const BookingsTableScreen();
+    // ✅ PRODUCTION: Using rich UI version with enhanced styling
+    return const BookingsListScreen();
+
+    // FALLBACK: Simple version available if needed
+    // return const BookingsTableScreen();
   }
 }

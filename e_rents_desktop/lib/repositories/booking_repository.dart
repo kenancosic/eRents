@@ -1,7 +1,7 @@
 import '../base/base.dart';
 import '../services/booking_service.dart';
 import '../models/booking.dart';
-import '../widgets/universal_table.dart';
+import '../widgets/table/custom_table.dart';
 
 /// Repository for booking data management with caching support
 class BookingRepository extends BaseRepository<Booking, BookingService> {
@@ -32,30 +32,32 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
 
   @override
   Future<Booking> createInService(Booking item) async {
-    // Convert Booking to BookingInsertRequest
-    final request = BookingInsertRequest(
-      propertyId: item.propertyId!,
-      startDate: item.startDate,
-      endDate: item.endDate ?? item.startDate.add(const Duration(days: 1)),
-      totalPrice: item.totalPrice,
-      paymentMethod: item.paymentMethod,
-      currency: item.currency,
-      numberOfGuests: item.numberOfGuests,
-      specialRequests: item.specialRequests,
-    );
+    // Convert Booking to Map<String, dynamic>
+    final request = {
+      'propertyId': item.propertyId!,
+      'startDate': item.startDate?.toIso8601String(),
+      'endDate':
+          (item.endDate ?? item.startDate?.add(const Duration(days: 1)))
+              ?.toIso8601String(),
+      'totalPrice': item.totalPrice,
+      'paymentMethod': item.paymentMethod ?? 'PayPal',
+      'currency': item.currency ?? 'BAM',
+      'numberOfGuests': item.numberOfGuests ?? 1,
+      'specialRequests': item.specialRequests,
+    };
 
     return await service.createBooking(request);
   }
 
   @override
   Future<Booking> updateInService(String id, Booking item) async {
-    // Convert Booking to BookingUpdateRequest (only updatable fields)
-    final request = BookingUpdateRequest(
-      startDate: item.startDate,
-      endDate: item.endDate,
-      numberOfGuests: item.numberOfGuests,
-      specialRequests: item.specialRequests,
-    );
+    // Convert Booking to Map<String, dynamic> (only updatable fields)
+    final request = {
+      'startDate': item.startDate?.toIso8601String(),
+      'endDate': item.endDate?.toIso8601String(),
+      'numberOfGuests': item.numberOfGuests,
+      'specialRequests': item.specialRequests,
+    };
 
     return await service.updateBooking(id, request);
   }
@@ -119,45 +121,22 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     }
   }
 
-  /// Get bookings by tenant with caching
-  Future<List<Booking>> getBookingsByTenant([
-    Map<String, dynamic>? params,
+  /// Cancel a booking
+  Future<bool> cancelBooking(
+    int bookingId,
+    String reason, [
+    bool requestRefund = false,
   ]) async {
     try {
-      final cacheKey = _buildSpecialCacheKey('tenant', params);
-
-      // Try cache first
-      if (enableCaching) {
-        final cached = await cacheManager.get<List<Booking>>(cacheKey);
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      // Fetch from service
-      final bookings = await service.getBookingsByTenant(params);
-
-      // Cache the result
-      if (enableCaching) {
-        await cacheManager.set(cacheKey, bookings, duration: defaultCacheTtl);
-      }
-
-      return bookings;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Cancel a booking
-  Future<bool> cancelBooking(BookingCancellationRequest request) async {
-    try {
-      final success = await service.cancelBooking(request);
+      final success = await service.cancelBooking(
+        bookingId,
+        reason,
+        requestRefund,
+      );
 
       if (success && enableCaching) {
         // Invalidate cache for the specific booking and lists
-        final bookingCacheKey = _buildItemCacheKey(
-          request.bookingId.toString(),
-        );
+        final bookingCacheKey = _buildItemCacheKey(bookingId.toString());
         await cacheManager.remove(bookingCacheKey);
         await _invalidateListCaches();
       }
@@ -303,7 +282,8 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     );
   }
 
-  /// ✅ PRODUCTION: Get paginated bookings directly from backend Universal System
+  /// ✅ UNIVERSAL SYSTEM: Get paginated bookings for landlords
+  /// Matches BookingController.cs GET /bookings with Universal System support
   Future<PagedResult<Booking>> getPagedBookings(
     Map<String, dynamic> params,
   ) async {
@@ -318,10 +298,11 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
         }
       }
 
-      // Use backend Universal System pagination
+      // ✅ LANDLORD FOCUS: The controller automatically filters for landlord's properties
+      // through role-based authorization and context
       final pagedData = await service.getPagedBookings(params);
 
-      // Parse PagedList<BookingResponse> from backend
+      // Parse Universal System PagedList<BookingResponse>
       final List<dynamic> items = pagedData['items'] ?? [];
       final bookings = items.map((json) => Booking.fromJson(json)).toList();
 
@@ -343,6 +324,68 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
       }
 
       return pagedResult;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// ✅ LANDLORD SPECIFIC: Get current stays for landlord's properties
+  /// Matches: GET /bookings/current?propertyId=123
+  Future<List<Booking>> getCurrentStaysForProperty(int? propertyId) async {
+    try {
+      final cacheKey = _buildSpecialCacheKey('current', {
+        'propertyId': propertyId,
+      });
+
+      if (enableCaching) {
+        final cached = await cacheManager.get<List<Booking>>(cacheKey);
+        if (cached != null) {
+          return cached;
+        }
+      }
+
+      final bookings = await service.getCurrentStays(propertyId);
+
+      if (enableCaching) {
+        await cacheManager.set(
+          cacheKey,
+          bookings,
+          duration: const Duration(minutes: 1),
+        );
+      }
+
+      return bookings;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// ✅ LANDLORD SPECIFIC: Get upcoming stays for landlord's properties
+  /// Matches: GET /bookings/upcoming?propertyId=123
+  Future<List<Booking>> getUpcomingStaysForProperty(int? propertyId) async {
+    try {
+      final cacheKey = _buildSpecialCacheKey('upcoming', {
+        'propertyId': propertyId,
+      });
+
+      if (enableCaching) {
+        final cached = await cacheManager.get<List<Booking>>(cacheKey);
+        if (cached != null) {
+          return cached;
+        }
+      }
+
+      final bookings = await service.getUpcomingStays(propertyId);
+
+      if (enableCaching) {
+        await cacheManager.set(
+          cacheKey,
+          bookings,
+          duration: const Duration(minutes: 1),
+        );
+      }
+
+      return bookings;
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
