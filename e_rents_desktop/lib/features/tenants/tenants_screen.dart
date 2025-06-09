@@ -41,12 +41,9 @@ class _TenantsScreenState extends State<TenantsScreen>
   }
 
   void _sendMessage(BuildContext context, User tenant) {
-    final chatProvider = Provider.of<ChatCollectionProvider>(
-      context,
-      listen: false,
-    );
-    chatProvider.selectContact(tenant.id);
-    context.go('/chat');
+    // Navigate to chat with contact ID as parameter
+    // The chat screen will handle contact selection when it loads
+    context.go('/chat?contactId=${tenant.id}');
   }
 
   void _sendMessageToSearchingTenant(

@@ -108,7 +108,29 @@ class ChatDetailProvider extends DetailProvider<Message> {
     }
   }
 
-  /// Send a property offer message
+  /// Send an enterprise message with guaranteed delivery
+  Future<Message> sendEnterpriseMessage(
+    int receiverId,
+    String messageText,
+  ) async {
+    try {
+      final sentMessage = await _chatRepository.sendEnterpriseMessage(
+        receiverId,
+        messageText,
+      );
+
+      // Add to local messages list
+      _messages.add(sentMessage);
+
+      await _updateItem(receiverId.toString());
+
+      return sentMessage;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Send a property offer
   Future<Message> sendPropertyOffer(int receiverId, int propertyId) async {
     try {
       final sentMessage = await _chatRepository.sendPropertyOfferMessage(

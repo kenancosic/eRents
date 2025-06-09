@@ -10,7 +10,9 @@ import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String? contactId;
+
+  const ChatScreen({super.key, this.contactId});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -20,6 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   int? _currentUserId;
+  bool _hasAutoSelected = false; // Track if we've already auto-selected
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         return;
       }
+
       // Load contacts via the new collection provider - already done in router factory
     });
   }
@@ -170,10 +174,56 @@ class _ChatScreenState extends State<ChatScreen> {
     return chatProvider.searchContacts(searchQuery);
   }
 
+  // Helper method to handle auto-selection when contacts are available
+  void _handleAutoSelection(ChatCollectionProvider chatProvider) {
+    if (!_hasAutoSelected &&
+        widget.contactId != null &&
+        chatProvider.contacts.isNotEmpty) {
+      final contactIdInt = int.tryParse(widget.contactId!);
+      if (contactIdInt != null) {
+        print(
+          "ChatScreen: Attempting to auto-select contact ID: $contactIdInt",
+        );
+        print(
+          "ChatScreen: Available contacts: ${chatProvider.contacts.map((c) => '${c.id}: ${c.fullName}').toList()}",
+        );
+
+        // Check if the contact exists in the loaded contacts
+        final contactExists = chatProvider.contacts.any(
+          (contact) => contact.id == contactIdInt,
+        );
+        if (contactExists) {
+          print("ChatScreen: Contact found, auto-selecting...");
+          _selectContact(context, contactIdInt);
+          _hasAutoSelected = true;
+        } else {
+          print(
+            "ChatScreen: Contact ID $contactIdInt not found in loaded contacts",
+          );
+          // Show a message to the user
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  "Contact not found. Please select a contact from the list.",
+                ),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          _hasAutoSelected = true; // Prevent repeated attempts
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer2<ChatCollectionProvider, ChatDetailProvider>(
       builder: (context, chatCollectionProvider, chatDetailProvider, _) {
+        // Handle auto-selection when contacts are loaded
+        _handleAutoSelection(chatCollectionProvider);
+
         final contacts = _getFilteredContacts(chatCollectionProvider);
         final messages = chatDetailProvider.messages;
         final selectedContact = chatCollectionProvider.selectedContact;

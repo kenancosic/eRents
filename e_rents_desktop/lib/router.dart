@@ -258,11 +258,13 @@ class AppRouter {
           ),
           GoRoute(
             path: '/chat',
-            builder:
-                (context, state) => ContentWrapper(
-                  title: 'Messages',
-                  child: _createChatScreen(),
-                ),
+            builder: (context, state) {
+              final contactId = state.uri.queryParameters['contactId'];
+              return ContentWrapper(
+                title: 'Messages',
+                child: _createChatScreen(contactId: contactId),
+              );
+            },
           ),
           GoRoute(
             path: '/revenue',
@@ -460,7 +462,7 @@ class AppRouter {
     );
   }
 
-  static Widget _createChatScreen() {
+  static Widget _createChatScreen({String? contactId}) {
     final registry = ProviderRegistry();
     final chatCollectionProvider = registry.getOrCreate<ChatCollectionProvider>(
       () => ChatCollectionProvider(getService<ChatRepository>()),
@@ -475,7 +477,7 @@ class AppRouter {
         ChangeNotifierProvider.value(value: chatCollectionProvider),
         ChangeNotifierProvider.value(value: chatDetailProvider),
       ],
-      child: const ChatScreen(),
+      child: ChatScreen(contactId: contactId),
     );
   }
 

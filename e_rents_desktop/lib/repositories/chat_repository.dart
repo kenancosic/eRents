@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/chat_service.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 
 /// Repository for chat data management with caching and real-time capabilities
 /// Handles both messages and contacts with appropriate TTL strategies
@@ -20,7 +22,13 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
     minutes: 5,
   ); // Messages need more frequent updates
 
-  ChatRepository({required super.service, required super.cacheManager});
+  final ApiService _apiService;
+
+  ChatRepository({
+    required super.service,
+    required super.cacheManager,
+    required ApiService apiService,
+  }) : _apiService = apiService;
 
   @override
   String get resourceName => 'chat';
@@ -96,41 +104,56 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
     }
   }
 
-  /// Send a message and update cache
+  /// Send a standard message
   Future<Message> sendMessage(int receiverId, String messageText) async {
     try {
-      final sentMessage = await service.sendMessage(receiverId, messageText);
+      final response = await _apiService.post('/Chat/SendMessage', {
+        'receiverId': receiverId,
+        'messageText': messageText,
+      });
 
-      // Update cache with new message
-      if (_messagesCache.containsKey(receiverId)) {
-        _messagesCache[receiverId]!.add(sentMessage);
-        _messagesCacheTimestamp[receiverId] = DateTime.now();
-      }
-
-      return sentMessage;
+      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+      return Message.fromJson(jsonData);
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
   }
 
-  /// Send a property offer message
+  /// Send an enterprise message with guaranteed delivery (RabbitMQ + SignalR)
+  Future<Message> sendEnterpriseMessage(
+    int receiverId,
+    String messageText,
+  ) async {
+    try {
+      final response = await _apiService.post('/Chat/SendEnterpriseMessage', {
+        'receiverId': receiverId,
+        'messageText': messageText,
+      });
+
+      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+      // Extract the actual message from the enterprise response
+      final messageData = jsonData['data'] as Map<String, dynamic>;
+      return Message.fromJson(messageData);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Send a property offer message using enterprise delivery
   Future<Message> sendPropertyOfferMessage(
     int receiverId,
     int propertyId,
   ) async {
     try {
-      final sentMessage = await service.sendPropertyOfferMessage(
-        receiverId,
-        propertyId,
-      );
+      final response = await _apiService.post('/Chat/SendPropertyOffer', {
+        'receiverId': receiverId,
+        'propertyId': propertyId,
+      });
 
-      // Update cache with new message
-      if (_messagesCache.containsKey(receiverId)) {
-        _messagesCache[receiverId]!.add(sentMessage);
-        _messagesCacheTimestamp[receiverId] = DateTime.now();
-      }
-
-      return sentMessage;
+      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+      // Extract the actual message from the enterprise response
+      final messageData = jsonData['data'] as Map<String, dynamic>;
+      return Message.fromJson(messageData);
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
