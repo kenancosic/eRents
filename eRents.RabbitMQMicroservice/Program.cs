@@ -37,8 +37,8 @@ namespace eRents.RabbitMQMicroservice
 					// Register email service
 					services.AddTransient<IEmailService, SmtpEmailService>();
 
-					// Register message service
-					services.AddTransient<IMessageService, UserMessageService>();
+					// Register message service with HttpClient
+					services.AddHttpClient<IMessageService, UserMessageService>();
 
 					// Register SignalR notification service
 					services.AddHttpClient<ISignalRNotificationService, SignalRNotificationService>();

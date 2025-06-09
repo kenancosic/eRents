@@ -4,31 +4,30 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using eRents.Shared.Services;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.DTO.Requests;
 using eRents.Application.Exceptions;
 using ValidationException = eRents.Application.Exceptions.ValidationException;
+using eRents.Domain.Repositories;
 
 namespace eRents.WebApi.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize] // Require authentication for all messaging operations
-	public class MessagesController : ControllerBase
+	public class ChatController : ControllerBase
 	{
 		private readonly IMessageHandlerService _messageHandlerService;
-		private readonly ILogger<MessagesController> _logger;
+		private readonly ILogger<ChatController> _logger;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IRealTimeMessagingService _realTimeMessagingService;
 
-		public MessagesController(
+		public ChatController(
 			IMessageHandlerService messageHandlerService,
-			ILogger<MessagesController> logger,
-			ICurrentUserService currentUserService,
-			IRealTimeMessagingService realTimeMessagingService)
+			ILogger<ChatController> logger,
+			ICurrentUserService currentUserService)
 		{
 			_messageHandlerService = messageHandlerService;
 			_logger = logger;
 			_currentUserService = currentUserService;
-			_realTimeMessagingService = realTimeMessagingService;
 		}
 
 		/// <summary>
@@ -116,29 +115,121 @@ namespace eRents.WebApi.Controllers
 			});
 		}
 
-		[HttpPost]
-		public async Task<IActionResult> SendMessage([FromBody] UserMessage userMessage)
+		/// <summary>
+		/// Get all contacts for the current user - Clean Architecture approach
+		/// </summary>
+		[HttpGet("Contacts")]
+		public async Task<IActionResult> GetContacts()
 		{
 			try
 			{
-				_logger.LogInformation("Send message request from user {UserId} to recipient {RecipientUsername}", 
-					_currentUserService.UserId ?? "unknown", userMessage?.RecipientUsername ?? "unknown");
+				_logger.LogInformation("Get contacts request from user {UserId}", 
+					_currentUserService.UserId ?? "unknown");
 
-				if (userMessage == null || string.IsNullOrWhiteSpace(userMessage.Body))
+				if (!int.TryParse(_currentUserService.UserId, out var userId) || userId <= 0)
 				{
-					_logger.LogWarning("Send message failed - Invalid message content by user {UserId}", 
-						_currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
+					return Unauthorized(new StandardErrorResponse
 					{
-						Type = "Validation",
-						Message = "Message body cannot be empty",
+						Type = "Authorization",
+						Message = "User not authenticated",
 						Timestamp = DateTime.UtcNow,
 						TraceId = HttpContext.TraceIdentifier,
 						Path = Request.Path.Value
 					});
 				}
 
-				// Get sender ID
+				// Delegate to application service
+				var contacts = await _messageHandlerService.GetContactsAsync(userId);
+
+				_logger.LogInformation("Retrieved {ContactCount} contacts for user {UserId}", 
+					contacts.Count(), userId);
+
+				return Ok(new { items = contacts });
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Get contacts");
+			}
+		}
+
+		/// <summary>
+		/// Get messages for a specific contact
+		/// </summary>
+		/// <summary>
+		/// Get messages for a specific contact - Clean Architecture approach
+		/// </summary>
+		[HttpGet("{contactId}/Messages")]
+		public async Task<IActionResult> GetMessages(int contactId, [FromQuery] int page = 0, [FromQuery] int pageSize = 50)
+		{
+			try
+			{
+				_logger.LogInformation("Get messages request for contact {ContactId} by user {UserId}", 
+					contactId, _currentUserService.UserId ?? "unknown");
+
+				if (!int.TryParse(_currentUserService.UserId, out var userId) || userId <= 0)
+				{
+					return Unauthorized(new StandardErrorResponse
+					{
+						Type = "Authorization",
+						Message = "User not authenticated",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				if (contactId <= 0)
+				{
+					return BadRequest(new StandardErrorResponse
+					{
+						Type = "Validation",
+						Message = "Valid contact ID is required",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				// Delegate to application service
+				var messageResponses = await _messageHandlerService.GetConversationAsync(userId, contactId);
+				var sortedMessages = messageResponses.OrderBy(m => m.DateSent).Skip(page * pageSize).Take(pageSize).ToList();
+
+				_logger.LogInformation("Retrieved {MessageCount} messages for contact {ContactId}", 
+					sortedMessages.Count, contactId);
+
+				return Ok(new { items = sortedMessages });
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Get messages for contact {contactId}");
+			}
+		}
+
+		/// <summary>
+		/// Send message using SignalR + RabbitMQ for guaranteed delivery
+		/// </summary>
+		[HttpPost("SendMessage")]
+		public async Task<IActionResult> SendMessage([FromBody] SendMessageRequest request)
+		{
+			try
+			{
+				_logger.LogInformation("Send message request from user {UserId} to recipient {ReceiverId}", 
+					_currentUserService.UserId ?? "unknown", request?.ReceiverId ?? 0);
+
+				// Basic request validation
+				if (request == null || string.IsNullOrWhiteSpace(request.MessageText))
+				{
+					return BadRequest(new StandardErrorResponse
+					{
+						Type = "Validation",
+						Message = "Message content cannot be empty",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				// Authentication check
 				if (!int.TryParse(_currentUserService.UserId, out var senderId) || senderId <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
@@ -151,27 +242,24 @@ namespace eRents.WebApi.Controllers
 					});
 				}
 
-				// Get receiver ID
-				var receiverId = await _messageHandlerService.GetUserIdByUsernameAsync(userMessage.RecipientUsername);
-				if (receiverId <= 0)
-				{
-					return BadRequest(new StandardErrorResponse
-					{
-						Type = "Validation",
-						Message = "Invalid recipient username",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
-				}
+				// Use RabbitMQ + SignalR for all messaging (reliable delivery)
+				var messageResponse = await _messageHandlerService.SendMessageAsync(senderId, request);
 
-				// Send message using real-time messaging service
-				await _realTimeMessagingService.SendMessageAsync(senderId, receiverId, userMessage.Body);
+				_logger.LogInformation("Message queued for reliable delivery from user {UserId} to recipient {ReceiverId}", 
+					senderId, request.ReceiverId);
 				
-				_logger.LogInformation("Message sent successfully from user {UserId} to recipient {RecipientUsername}", 
-					senderId, userMessage.RecipientUsername);
-				
-				return Ok(new { message = "Message sent successfully" });
+				return Ok(messageResponse);
+			}
+			catch (ArgumentException ex)
+			{
+				return BadRequest(new StandardErrorResponse
+				{
+					Type = "Validation",
+					Message = ex.Message,
+					Timestamp = DateTime.UtcNow,
+					TraceId = HttpContext.TraceIdentifier,
+					Path = Request.Path.Value
+				});
 			}
 			catch (Exception ex)
 			{
@@ -179,73 +267,66 @@ namespace eRents.WebApi.Controllers
 			}
 		}
 
-		[HttpGet("{senderId}/{receiverId}")]
-		public async Task<IActionResult> GetMessages(int senderId, int receiverId)
+		/// <summary>
+		/// Send property offer message using RabbitMQ + SignalR
+		/// </summary>
+		[HttpPost("SendPropertyOffer")]
+		public async Task<IActionResult> SendPropertyOffer([FromBody] PropertyOfferRequest request)
 		{
 			try
 			{
-				_logger.LogInformation("Get messages request between users {SenderId} and {ReceiverId} by user {UserId}", 
-					senderId, receiverId, _currentUserService.UserId ?? "unknown");
+				_logger.LogInformation("Send property offer from user {UserId} to recipient {ReceiverId} for property {PropertyId}", 
+					_currentUserService.UserId ?? "unknown", request?.ReceiverId ?? 0, request?.PropertyId ?? 0);
 
-				if (senderId <= 0 || receiverId <= 0)
+				// Basic request validation
+				if (request == null || request.ReceiverId <= 0 || request.PropertyId <= 0)
 				{
-					_logger.LogWarning("Get messages failed - Invalid sender or receiver ID by user {UserId}", 
-						_currentUserService.UserId ?? "unknown");
 					return BadRequest(new StandardErrorResponse
 					{
 						Type = "Validation",
-						Message = "Valid sender and receiver IDs are required",
+						Message = "Valid receiver ID and property ID are required",
 						Timestamp = DateTime.UtcNow,
 						TraceId = HttpContext.TraceIdentifier,
 						Path = Request.Path.Value
 					});
 				}
 
-				var messages = await _messageHandlerService.GetMessagesAsync(senderId, receiverId);
-				
-				_logger.LogInformation("Retrieved {MessageCount} messages between users {SenderId} and {ReceiverId}", 
-					messages.Count(), senderId, receiverId);
-				
-				return Ok(messages);
-			}
-			catch (Exception ex)
-			{
-				return HandleStandardError(ex, $"Get messages between users {senderId} and {receiverId}");
-			}
-		}
-
-		[HttpPut("{messageId}/read")]
-		public async Task<IActionResult> MarkMessageAsRead(int messageId)
-		{
-			try
-			{
-				_logger.LogInformation("Mark message as read request for message {MessageId} by user {UserId}", 
-					messageId, _currentUserService.UserId ?? "unknown");
-
-				if (messageId <= 0)
+				// Authentication check
+				if (!int.TryParse(_currentUserService.UserId, out var senderId) || senderId <= 0)
 				{
-					_logger.LogWarning("Mark message as read failed - Invalid message ID {MessageId} by user {UserId}", 
-						messageId, _currentUserService.UserId ?? "unknown");
-					return BadRequest(new StandardErrorResponse
+					return Unauthorized(new StandardErrorResponse
 					{
-						Type = "Validation",
-						Message = "Valid message ID is required",
+						Type = "Authorization",
+						Message = "User not authenticated",
 						Timestamp = DateTime.UtcNow,
 						TraceId = HttpContext.TraceIdentifier,
 						Path = Request.Path.Value
 					});
 				}
 
-				await _messageHandlerService.MarkMessageAsReadAsync(messageId);
+				// Send property offer via RabbitMQ + SignalR
+				var messageResponse = await _messageHandlerService.SendPropertyOfferMessageAsync(
+					senderId, request.ReceiverId, request.PropertyId);
+
+				_logger.LogInformation("Property offer sent from user {UserId} to recipient {ReceiverId} for property {PropertyId}", 
+					senderId, request.ReceiverId, request.PropertyId);
 				
-				_logger.LogInformation("Message {MessageId} marked as read by user {UserId}", 
-					messageId, _currentUserService.UserId ?? "unknown");
-				
-				return Ok(new { message = "Message marked as read" });
+				return Ok(messageResponse);
+			}
+			catch (ArgumentException ex)
+			{
+				return BadRequest(new StandardErrorResponse
+				{
+					Type = "Validation",
+					Message = ex.Message,
+					Timestamp = DateTime.UtcNow,
+					TraceId = HttpContext.TraceIdentifier,
+					Path = Request.Path.Value
+				});
 			}
 			catch (Exception ex)
 			{
-				return HandleStandardError(ex, $"Mark message {messageId} as read");
+				return HandleStandardError(ex, "Send property offer");
 			}
 		}
 	}

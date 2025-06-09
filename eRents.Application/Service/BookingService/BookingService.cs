@@ -9,6 +9,7 @@ using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using eRents.Shared.Services;
+using eRents.Shared.Enums;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -25,8 +26,17 @@ namespace eRents.Application.Service.BookingService
 		private readonly IPaymentService _paymentService;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly IMapper _mapper;
+		private readonly ILogger<BookingService> _logger;
+		private readonly BookingCalculationService _calculationService;
 
-		public BookingService(IBookingRepository repository, IMapper mapper, ICurrentUserService currentUserService, ILogger<BookingService> logger, IPaymentService paymentService, IRabbitMQService rabbitMqService)
+		public BookingService(
+			IBookingRepository repository, 
+			IMapper mapper, 
+			ICurrentUserService currentUserService, 
+			ILogger<BookingService> logger, 
+			IPaymentService paymentService, 
+			IRabbitMQService rabbitMqService,
+			BookingCalculationService calculationService)
 			: base(repository, mapper)
 		{
 			_bookingRepository = repository;
@@ -34,6 +44,8 @@ namespace eRents.Application.Service.BookingService
 			_paymentService = paymentService;
 			_rabbitMqService = rabbitMqService;
 			_mapper = mapper;
+			_logger = logger;
+			_calculationService = calculationService;
 		}
 
 		// ✅ FIXED: Use base universal system with user context security
@@ -494,6 +506,70 @@ namespace eRents.Application.Service.BookingService
 
 		#endregion
 
+		#region Enhanced Validation Methods
+
+		private async Task ValidateComprehensiveCancellationRequestAsync(BookingCancellationRequest request, string userRole)
+		{
+			// Basic input validation
+			if (request == null)
+				throw new ArgumentNullException(nameof(request), "Cancellation request cannot be null");
+
+			if (request.BookingId <= 0)
+				throw new ArgumentException("Valid booking ID is required", nameof(request.BookingId));
+
+			// Role-specific validation
+			if (userRole == "Landlord")
+			{
+				if (string.IsNullOrWhiteSpace(request.CancellationReason))
+					throw new InvalidOperationException("Landlords must provide a cancellation reason");
+
+				var validReasons = new[] { 
+					"emergency", "maintenance", "property damage", "force majeure",
+					"overbooking", "scheduling conflict", "health and safety concerns", "legal issues"
+				};
+
+				if (!validReasons.Contains(request.CancellationReason.ToLower()))
+					throw new InvalidOperationException($"Invalid cancellation reason. Valid reasons: {string.Join(", ", validReasons)}");
+			}
+
+			// Validate additional notes length
+			if (!string.IsNullOrEmpty(request.AdditionalNotes) && request.AdditionalNotes.Length > 1000)
+				throw new InvalidOperationException("Additional notes cannot exceed 1000 characters");
+
+			// Validate refund method
+			if (!string.IsNullOrEmpty(request.RefundMethod))
+			{
+				var validMethods = new[] { "Original", "PayPal", "BankTransfer" };
+				if (!validMethods.Contains(request.RefundMethod, StringComparer.OrdinalIgnoreCase))
+					throw new InvalidOperationException($"Invalid refund method. Valid methods: {string.Join(", ", validMethods)}");
+			}
+		}
+
+		private void ValidateBookingCancellationBusinessRules(Booking booking)
+		{
+			// Check if booking can be cancelled
+			if (booking.BookingStatus?.StatusName == "Cancelled")
+				throw new InvalidOperationException("Booking is already cancelled");
+
+			if (booking.BookingStatus?.StatusName == "Completed")
+				throw new InvalidOperationException("Cannot cancel a completed booking");
+
+			// Check if booking is too far in the past
+			if (booking.EndDate.HasValue && booking.EndDate.Value < DateOnly.FromDateTime(DateTime.Today.AddDays(-30)))
+				throw new InvalidOperationException("Cannot cancel bookings that ended more than 30 days ago");
+
+			// Additional business rules can be added here
+			if (booking.StartDate < DateOnly.FromDateTime(DateTime.Today.AddDays(-1)))
+			{
+				// Allow cancellation of past bookings only in specific circumstances
+				var daysSinceStart = (DateTime.Today - booking.StartDate.ToDateTime(TimeOnly.MinValue)).Days;
+				if (daysSinceStart > 7)
+					throw new InvalidOperationException("Cannot cancel bookings that started more than 7 days ago");
+			}
+		}
+
+		#endregion
+
 		#region Enhanced Cancellation Methods
 
 		public async Task<BookingResponse> CancelBookingAsync(BookingCancellationRequest request)
@@ -504,24 +580,27 @@ namespace eRents.Application.Service.BookingService
 			if (string.IsNullOrEmpty(currentUserId))
 				throw new UnauthorizedAccessException("User not authenticated");
 
-			// Get the booking
+			// 1. Comprehensive Input Validation
+			await ValidateComprehensiveCancellationRequestAsync(request, currentUserRole);
+
+			// 2. Get the booking with proper authorization
 			var booking = await _bookingRepository.GetByIdAsync(request.BookingId);
 			if (booking == null)
 				throw new KeyNotFoundException("Booking not found");
 
-			// Check if user has permission to cancel this booking
+			// 3. Check if user has permission to cancel this booking
 			if (!await _bookingRepository.IsBookingOwnerOrPropertyOwnerAsync(request.BookingId, currentUserId, currentUserRole))
 				throw new UnauthorizedAccessException("You can only cancel your own bookings or bookings for your properties");
 
-			// Check if booking can be cancelled
-			if (booking.BookingStatus.StatusName == "Cancelled")
-				throw new InvalidOperationException("Booking is already cancelled");
+			// 4. Business Rules Validation
+			ValidateBookingCancellationBusinessRules(booking);
 
-			if (booking.BookingStatus.StatusName == "Completed")
-				throw new InvalidOperationException("Cannot cancel a completed booking");
+			// 5. Apply role-specific cancellation policies
+			var cancellationPolicy = DetermineCancellationPolicy(currentUserRole, request.CancellationReason);
+			ValidateCancellationRequest(booking, currentUserRole, request, cancellationPolicy);
 
-			// Calculate refund amount based on cancellation policy and timing
-			var refundAmount = await CalculateRefundAmountAsync(request.BookingId, DateTime.Now);
+			// Calculate refund amount based on role-specific policies
+			var refundAmount = await CalculateRoleBasedRefundAsync(booking, DateTime.Now, currentUserRole, cancellationPolicy);
 
 			// Update booking status to cancelled
 			booking.BookingStatusId = 4; // Assuming 4 is Cancelled status ID
@@ -539,11 +618,11 @@ namespace eRents.Application.Service.BookingService
 				await ProcessRefundAsync(booking, refundAmount, request.RefundMethod);
 			}
 
-			// Send cancellation notification
+			// Send role-specific cancellation notification
 			var notificationMessage = new BookingNotificationMessage
 			{
 				BookingId = booking.BookingId,
-				Message = $"Booking has been cancelled. Refund amount: {refundAmount:C}",
+				Message = GenerateCancellationMessage(currentUserRole, request.CancellationReason, refundAmount),
 				PropertyId = booking.PropertyId ?? 0,
 				UserId = currentUserId,
 				Amount = refundAmount,
@@ -560,14 +639,89 @@ namespace eRents.Application.Service.BookingService
 			if (booking == null)
 				throw new KeyNotFoundException("Booking not found");
 
+			var currentUserRole = _currentUserService.UserRole;
+			var cancellationPolicy = DetermineCancellationPolicy(currentUserRole, "Standard");
+			
+			return await CalculateRoleBasedRefundAsync(booking, cancellationDate, currentUserRole, cancellationPolicy);
+		}
+
+		private async Task<decimal> CalculateRoleBasedRefundAsync(Booking booking, DateTime cancellationDate, string userRole, CancellationPolicy policy)
+		{
+			// Use centralized calculation service for consistent logic
+			return _calculationService.CalculateRefundAmount(booking, cancellationDate, userRole, policy);
+		}
+
+		private CancellationPolicy DetermineCancellationPolicy(string userRole, string? reason)
+		{
+			if (userRole == "Landlord")
+			{
+				return reason?.ToLower() switch
+				{
+					"emergency" or "maintenance" or "property damage" or "force majeure" => CancellationPolicy.Emergency,
+					"overbooking" or "scheduling conflict" => CancellationPolicy.Flexible,
+					_ => CancellationPolicy.Standard
+				};
+			}
+			return CancellationPolicy.Standard;
+		}
+
+		private void ValidateCancellationRequest(Booking booking, string userRole, BookingCancellationRequest request, CancellationPolicy policy)
+		{
 			var startDate = booking.StartDate.ToDateTime(TimeOnly.MinValue);
-			var daysUntilStart = (startDate - cancellationDate).TotalDays;
+			var hoursUntilStart = (startDate - DateTime.Now).TotalHours;
 
-			// Simplified refund calculation (Standard policy)
-			decimal refundPercentage = CalculateStandardRefund(daysUntilStart);
+			// Landlord-specific validation
+			if (userRole == "Landlord")
+			{
+				// Require reason for landlord cancellations
+				if (string.IsNullOrWhiteSpace(request.CancellationReason))
+					throw new InvalidOperationException("Landlords must provide a reason for cancellation");
 
-			// Full amount refundable with simplified approach
-			return Math.Round(booking.TotalPrice * refundPercentage, 2);
+				// Emergency cancellations allowed anytime
+				if (policy == CancellationPolicy.Emergency)
+					return;
+
+				// Standard landlord cancellations must be at least 24 hours before
+				if (hoursUntilStart < 24)
+					throw new InvalidOperationException("Landlords cannot cancel bookings less than 24 hours before check-in without emergency reasons");
+
+				// Warn about guest impact for recent cancellations
+				if (hoursUntilStart < 72)
+				{
+					// Log warning about short-notice impact
+					// This could trigger additional notification to support team
+				}
+			}
+		}
+
+		private string GenerateCancellationMessage(string userRole, string? reason, decimal refundAmount)
+		{
+			var roleMessage = userRole == "Landlord" ? "Landlord" : "Guest";
+			var reasonText = !string.IsNullOrEmpty(reason) ? $" Reason: {reason}." : "";
+			return $"Booking cancelled by {roleMessage}.{reasonText} Refund amount: {refundAmount:C}";
+		}
+
+		private decimal CalculateLandlordRefund(double daysUntilStart, CancellationPolicy policy)
+		{
+			return policy switch
+			{
+				CancellationPolicy.Emergency => 1.0m, // Full refund for emergencies
+				CancellationPolicy.Flexible => daysUntilStart switch
+				{
+					>= 7 => 1.0m,    // 100% refund if 7+ days
+					>= 3 => 0.75m,   // 75% refund if 3-6 days
+					>= 1 => 0.5m,    // 50% refund if 1-2 days
+					_ => 0.25m       // 25% refund same day
+				},
+				CancellationPolicy.Standard => daysUntilStart switch
+				{
+					>= 14 => 1.0m,   // 100% refund if 14+ days
+					>= 7 => 0.5m,    // 50% refund if 7-13 days
+					>= 3 => 0.25m,   // 25% refund if 3-6 days
+					_ => 0.0m        // No refund less than 3 days
+				},
+				_ => 0.0m
+			};
 		}
 
 		private decimal CalculateFlexibleRefund(double daysUntilStart)
@@ -604,30 +758,29 @@ namespace eRents.Application.Service.BookingService
 
 		private async Task ProcessRefundAsync(Booking booking, decimal refundAmount, string? refundMethod)
 		{
-			// TODO: Implement actual refund processing with PayPal
-			// This would integrate with the payment service to process refunds
-
 			try
 			{
-				// Placeholder for PayPal refund processing
-				// var refundRequest = new RefundRequest
-				// {
-				//     OriginalPaymentReference = booking.PaymentReference,
-				//     RefundAmount = refundAmount,
-				//     Currency = booking.Currency,
-				//     Reason = "Booking Cancellation"
-				// };
-				// 
-				// var refundResponse = await _paymentService.ProcessRefundAsync(refundRequest);
+				// Process actual refund using integrated payment service
+				var refundRequest = new RefundRequest
+				{
+					OriginalPaymentReference = booking.PaymentReference ?? "",
+					RefundAmount = refundAmount,
+					Currency = booking.Currency ?? "BAM",
+					Reason = "Booking Cancellation",
+					BookingId = booking.BookingId
+				};
+				
+				var refundResponse = await _paymentService.ProcessRefundAsync(refundRequest);
 
-				// Log the refund for tracking
-				// TODO: Add logging or create a separate refund tracking entity
+				// Log successful refund
+				_logger.LogInformation("Refund processed successfully for booking {BookingId}. Amount: {RefundAmount}. Reference: {RefundReference}", 
+					booking.BookingId, refundAmount, refundResponse.PaymentReference);
 			}
 			catch (Exception ex)
 			{
 				// Log error but don't fail the cancellation
-				// The refund can be processed manually if needed
-				// TODO: Add proper logging
+				_logger.LogError(ex, "Refund processing failed for booking {BookingId}. Amount: {RefundAmount}", 
+					booking.BookingId, refundAmount);
 				throw new InvalidOperationException($"Booking cancelled successfully, but refund processing failed: {ex.Message}");
 			}
 		}

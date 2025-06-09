@@ -11,6 +11,10 @@ namespace eRents.Shared.DTO.Response
 		public int PaymentId { get; set; }
 		public string? Status { get; set; }
 		public string? PaymentReference { get; set; }
-		public string ApprovalUrl { get; set; }
+		public string? ApprovalUrl { get; set; }
+		public decimal Amount { get; set; }
+		public string Currency { get; set; } = "BAM";
+		public DateTime? CreatedAt { get; set; }
+		public string? PaymentMethod { get; set; }
 	}
 }

@@ -197,23 +197,30 @@ namespace eRents.WebApi.Controllers
 
 		[HttpPost("{id}/cancel")]
 		[Authorize(Roles = "User,Tenant,Landlord")]
-		public async Task<IActionResult> CancelBooking(int id, [FromBody] BookingCancellationRequest request)
+		public async Task<IActionResult> CancelBooking(int id, [FromBody] eRents.Shared.DTO.Requests.BookingCancellationRequest request)
 		{
 			try
 			{
-				// Use the enhanced cancellation request with the proper DTO
-				var enhancedRequest = new eRents.Shared.DTO.Requests.BookingCancellationRequest
+				// Validate the enhanced cancellation request
+				if (request == null)
 				{
-					BookingId = id,
-					CancellationReason = request?.Reason,
-					RequestRefund = request?.RequestRefund ?? true,
-					AdditionalNotes = "Cancelled via API"
-				};
+					return BadRequest(new StandardErrorResponse
+					{
+						Type = "Validation",
+						Message = "Cancellation request is required",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				// Set the booking ID from route parameter
+				request.BookingId = id;
 				
-				var result = await _bookingService.CancelBookingAsync(enhancedRequest);
+				var result = await _bookingService.CancelBookingAsync(request);
 				
 				_logger.LogInformation("Booking {BookingId} cancelled by user {UserId}. Reason: {Reason}", 
-					id, _currentUserService.UserId ?? "unknown", request?.Reason ?? "No reason provided");
+					id, _currentUserService.UserId ?? "unknown", request?.CancellationReason ?? "No reason provided");
 					
 				return Ok(new { 
 					Message = "Booking cancelled successfully", 
@@ -251,12 +258,5 @@ namespace eRents.WebApi.Controllers
 				return HandleStandardError(ex, $"Refund calculation (BookingId: {id})");
 			}
 		}
-	}
-
-	// Supporting DTOs
-	public class BookingCancellationRequest
-	{
-		public string? Reason { get; set; }
-		public bool RequestRefund { get; set; } = false;
 	}
 }

@@ -9,5 +9,6 @@ namespace eRents.Application.Service.PaymentService
 		Task<PaymentResponse> GetPaymentStatusAsync(int paymentId);
 		Task<PaymentResponse> CreatePaymentAsync(decimal amount, string currency, string returnUrl, string cancelUrl);
 		Task<PaymentResponse> ExecutePaymentAsync(string paymentId, string payerId);
+		Task<PaymentResponse> ProcessRefundAsync(RefundRequest request);
 	}
 }

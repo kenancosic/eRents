@@ -97,6 +97,9 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
             
+            // Booking calculation service (required by BookingService)
+            services.AddTransient<BookingCalculationService>();
+            
             // Real-time messaging service
             services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
             

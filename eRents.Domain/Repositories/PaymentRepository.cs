@@ -31,6 +31,12 @@ namespace eRents.Domain.Repositories
                             .FirstOrDefaultAsync(p => p.PaymentReference == paymentReference);
         }
 
+        public async Task<Payment?> GetByPaymentReferenceAsync(string paymentReference)
+        {
+            return await _context.Payments
+                            .FirstOrDefaultAsync(p => p.PaymentReference == paymentReference);
+        }
+
         public async Task<decimal> GetTotalPaymentsByTenantAsync(int tenantId)
         {
             return await _context.Payments

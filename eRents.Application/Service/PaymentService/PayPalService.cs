@@ -156,6 +156,72 @@ public class PayPalService : IPaymentService
 	}
 
 	/// <summary>
+	/// Processes a refund for a PayPal payment.
+	/// </summary>
+	public async Task<PaymentResponse> ProcessRefundAsync(RefundRequest request)
+	{
+		try
+		{
+			var accessToken = await GetAccessTokenAsync();
+			_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+			// PayPal refund request structure
+			var refundRequest = new
+			{
+				amount = new
+				{
+					currency_code = request.Currency,
+					value = request.RefundAmount.ToString("0.00")
+				},
+				note_to_payer = request.Reason ?? "Refund processed"
+			};
+
+			var jsonContent = new StringContent(JsonSerializer.Serialize(refundRequest), Encoding.UTF8, "application/json");
+			
+			// Use the original payment reference as the capture ID for refund
+			var refundUrl = $"{_baseUrl}/v2/payments/captures/{request.OriginalPaymentReference}/refund";
+			var response = await _httpClient.PostAsync(refundUrl, jsonContent);
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var responseContent = await response.Content.ReadAsStringAsync();
+				var refundResponse = JsonSerializer.Deserialize<PayPalRefundResponse>(responseContent, new JsonSerializerOptions
+				{
+					PropertyNameCaseInsensitive = true
+				});
+
+				return new PaymentResponse
+				{
+					PaymentId = GeneratePaymentId(refundResponse.Id),
+					Status = refundResponse.Status,
+					PaymentReference = refundResponse.Id
+				};
+			}
+			else
+			{
+				// Handle refund failure
+				var errorContent = await response.Content.ReadAsStringAsync();
+				return new PaymentResponse
+				{
+					PaymentId = 0,
+					Status = "FAILED",
+					PaymentReference = $"Refund failed: {response.StatusCode} - {errorContent}"
+				};
+			}
+		}
+		catch (Exception ex)
+		{
+			// Return error response for exceptions
+			return new PaymentResponse
+			{
+				PaymentId = 0,
+				Status = "ERROR",
+				PaymentReference = $"Refund processing error: {ex.Message}"
+			};
+		}
+	}
+
+	/// <summary>
 	/// Retrieves the status of a PayPal order.
 	/// </summary>
 	public async Task<PaymentResponse> GetPaymentStatusAsync(int paymentId)
@@ -199,10 +265,8 @@ public class PayPalService : IPaymentService
 	/// </summary>
 	private int GeneratePaymentId(string orderId)
 	{
-		// This is a placeholder; adapt your logic as needed.
-		return int.Parse(orderId.Substring(0, Math.Min(orderId.Length, 9))
-								 .GetHashCode().ToString("X").Substring(0, 8),
-								 System.Globalization.NumberStyles.HexNumber);
+		// Simple conversion from orderId to int (for demo purposes).
+		return Math.Abs(orderId.GetHashCode() % 100000);
 	}
 }
 
@@ -227,4 +291,10 @@ public class PayPalLink
 	public string Href { get; set; }
 	public string Rel { get; set; }
 	public string Method { get; set; }
+}
+
+public class PayPalRefundResponse
+{
+	public string Id { get; set; }
+	public string Status { get; set; }
 }
