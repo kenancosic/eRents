@@ -1,5 +1,6 @@
 import '../../../base/base.dart';
 import '../../../models/maintenance_issue.dart';
+import '../../../utils/date_utils.dart';
 
 /// Detail provider for managing single maintenance issue data
 ///
@@ -137,28 +138,17 @@ class MaintenanceDetailProvider extends DetailProvider<MaintenanceIssue> {
 
   /// Get formatted creation date
   String getFormattedCreatedDate() {
-    return '${createdAt.day}/${createdAt.month}/${createdAt.year}';
+    return AppDateUtils.formatShort(createdAt);
   }
 
   /// Get formatted creation date with time
   String getFormattedCreatedDateTime() {
-    return '${getFormattedCreatedDate()} at ${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}';
+    return AppDateUtils.formatShortWithTime(createdAt);
   }
 
   /// Get time ago string (e.g., "2 days ago")
   String getTimeAgo() {
-    final now = DateTime.now();
-    final difference = now.difference(createdAt);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
-    } else {
-      return 'Just now';
-    }
+    return AppDateUtils.formatRelative(createdAt);
   }
 
   /// Get issue summary for display

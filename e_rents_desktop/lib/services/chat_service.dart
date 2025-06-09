@@ -108,10 +108,38 @@ class ChatService extends ApiService {
     }
   }
 
+  Future<Message> sendPropertyOfferMessage(
+    int receiverId,
+    int propertyId,
+  ) async {
+    print(
+      'ChatService: Attempting to send property offer message to $receiverId for property $propertyId...',
+    );
+    try {
+      final response = await post('/Chat/SendMessage', {
+        'receiverId': receiverId,
+        'messageText': 'PROPERTY_OFFER::$propertyId',
+      }, authenticated: true);
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      final sentMessage = Message.fromJson(jsonResponse);
+      print(
+        'ChatService: Successfully sent property offer message ${sentMessage.id} to $receiverId.',
+      );
+      return sentMessage;
+    } catch (e) {
+      print(
+        'ChatService: Error sending property offer message to $receiverId: $e. Backend integration might be pending or endpoint unavailable.',
+      );
+      throw Exception(
+        'Failed to send property offer message to $receiverId. Backend integration pending or endpoint unavailable. Cause: $e',
+      );
+    }
+  }
+
   Future<void> deleteMessage(int messageId) async {
     print('ChatService: Attempting to delete message $messageId...');
     try {
-      await delete('/Messages/$messageId', authenticated: true);
+      await delete('/Chat/$messageId', authenticated: true);
       print('ChatService: Successfully deleted message $messageId.');
     } catch (e) {
       print(
@@ -126,7 +154,7 @@ class ChatService extends ApiService {
   Future<void> markMessageAsRead(int messageId) async {
     print('ChatService: Attempting to mark message $messageId as read...');
     try {
-      await put('/Messages/$messageId/Read', {}, authenticated: true);
+      await put('/Chat/$messageId/read', {}, authenticated: true);
       print('ChatService: Successfully marked message $messageId as read.');
     } catch (e) {
       print(

@@ -15,6 +15,7 @@ import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_reviews_section.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_financial_summary.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_bookings_section.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final String propertyId;
@@ -369,20 +370,7 @@ class _MaintenanceCard extends StatelessWidget {
   const _MaintenanceCard({required this.property, required this.issues});
 
   String _formatTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays > 365) {
-      return '${(difference.inDays / 365).floor()} years ago';
-    } else if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} months ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
-    }
+    return AppDateUtils.formatRelative(dateTime);
   }
 
   @override

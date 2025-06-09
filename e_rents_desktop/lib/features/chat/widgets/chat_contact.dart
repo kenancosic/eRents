@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class ChatContact extends StatelessWidget {
   final String name;
@@ -72,7 +73,7 @@ class ChatContact extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _formatTime(lastMessageTime),
+                        _formatRelativeTime(lastMessageTime),
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -123,18 +124,7 @@ class ChatContact extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m';
-    } else {
-      return 'now';
-    }
+  String _formatRelativeTime(DateTime dateTime) {
+    return AppDateUtils.formatRelative(dateTime);
   }
 }

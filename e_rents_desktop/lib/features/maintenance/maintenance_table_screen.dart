@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 import '../../repositories/maintenance_repository.dart';
 import '../../models/maintenance_issue.dart';
 import '../../base/service_locator.dart';
@@ -292,6 +293,6 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return AppDateUtils.formatShort(date);
   }
 }

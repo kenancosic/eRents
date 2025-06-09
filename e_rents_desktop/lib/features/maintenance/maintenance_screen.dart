@@ -4,6 +4,7 @@ import '../../repositories/maintenance_repository.dart';
 import '../../models/maintenance_issue.dart';
 import '../../base/service_locator.dart';
 import 'providers/maintenance_universal_table_provider.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -292,6 +293,6 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+    return AppDateUtils.formatShort(date);
   }
 }

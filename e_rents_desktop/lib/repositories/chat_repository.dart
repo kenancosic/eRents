@@ -118,10 +118,22 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
     int receiverId,
     int propertyId,
   ) async {
-    const String offerMessageContent = "PROPERTY_OFFER::";
-    final messageText = "$offerMessageContent$propertyId";
+    try {
+      final sentMessage = await service.sendPropertyOfferMessage(
+        receiverId,
+        propertyId,
+      );
 
-    return await sendMessage(receiverId, messageText);
+      // Update cache with new message
+      if (_messagesCache.containsKey(receiverId)) {
+        _messagesCache[receiverId]!.add(sentMessage);
+        _messagesCacheTimestamp[receiverId] = DateTime.now();
+      }
+
+      return sentMessage;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 
   /// Delete a message and update cache

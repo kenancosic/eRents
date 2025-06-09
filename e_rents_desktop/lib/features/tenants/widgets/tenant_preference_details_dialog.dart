@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class TenantPreferenceDetailsDialog extends StatelessWidget {
   final TenantPreference preference;
@@ -367,7 +368,7 @@ class TenantPreferenceDetailsDialog extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    return AppDateUtils.formatShort(date);
   }
 
   String _getInitials(String fullName) {

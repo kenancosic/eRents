@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/widgets/table/custom_table.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/tenant_match_score_widget.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class TenantsAdvertisementTableWidget extends StatelessWidget {
   final List<TenantPreference> preferences;
@@ -369,7 +370,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
 
   // Helper method to format dates in a user-friendly way
   String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return AppDateUtils.formatShort(date);
   }
 
   // Helper method to get initials from a full name

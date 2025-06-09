@@ -150,18 +150,31 @@ class BookingService extends ApiService {
     }
   }
 
-  /// ✅ CANCELLATION: Cancel a booking
+  /// ✅ CANCELLATION: Cancel a booking with enhanced request
   /// Matches: POST /bookings/{id}/cancel
   Future<bool> cancelBooking(
     int bookingId,
-    String reason, [
-    bool requestRefund = false,
-  ]) async {
+    String reason,
+    bool requestRefund, {
+    String? additionalNotes,
+    bool isEmergency = false,
+    String? refundMethod,
+  }) async {
     try {
-      final response = await post('$endpoint/$bookingId/cancel', {
-        'reason': reason,
+      final requestBody = {
+        'bookingId': bookingId,
+        'cancellationReason': reason,
         'requestRefund': requestRefund,
-      }, authenticated: true);
+        'additionalNotes': additionalNotes,
+        'isEmergency': isEmergency,
+        'refundMethod': refundMethod ?? 'Original',
+      };
+
+      final response = await post(
+        '$endpoint/$bookingId/cancel',
+        requestBody,
+        authenticated: true,
+      );
 
       return response.statusCode == 200;
     } catch (e) {
@@ -172,14 +185,13 @@ class BookingService extends ApiService {
   /// ✅ REFUND: Calculate refund amount
   /// Matches: GET /bookings/{id}/refund-calculation?cancellationDate=...
   Future<double> calculateRefundAmount(
-    int bookingId, [
-    DateTime? cancellationDate,
-  ]) async {
+    int bookingId,
+    DateTime cancellationDate,
+  ) async {
     try {
-      final params = <String, dynamic>{};
-      if (cancellationDate != null) {
-        params['cancellationDate'] = cancellationDate.toIso8601String();
-      }
+      final params = <String, dynamic>{
+        'cancellationDate': cancellationDate.toIso8601String(),
+      };
 
       String queryString = '';
       if (params.isNotEmpty) {

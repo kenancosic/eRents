@@ -120,28 +120,32 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
   }
 
   /// Cancel a booking
-  Future<bool> cancelBooking(
+  Future<void> cancelBooking(
     int bookingId,
-    String reason, [
-    bool requestRefund = false,
-  ]) async {
+    String reason,
+    bool requestRefund, {
+    String? additionalNotes,
+    bool isEmergency = false,
+  }) async {
     try {
-      final success = await service.cancelBooking(
-        bookingId,
-        reason,
-        requestRefund,
-      );
+      final requestBody = {
+        'bookingId': bookingId,
+        'cancellationReason': reason,
+        'requestRefund': requestRefund,
+        'additionalNotes': additionalNotes,
+        'isEmergency': isEmergency,
+      };
 
-      if (success && enableCaching) {
+      await service.cancelBooking(bookingId, reason, requestRefund);
+
+      if (enableCaching) {
         // Invalidate cache for the specific booking and lists
         final bookingCacheKey = _buildItemCacheKey(bookingId.toString());
         await cacheManager.remove(bookingCacheKey);
         await _invalidateListCaches();
       }
-
-      return success;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
+    } catch (e) {
+      throw Exception('Failed to cancel booking: $e');
     }
   }
 
@@ -186,32 +190,18 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
   }
 
   /// Calculate refund amount
-  Future<double> calculateRefundAmount(int bookingId) async {
+  Future<double> calculateRefundAmount(
+    int bookingId,
+    DateTime cancellationDate,
+  ) async {
     try {
-      final cacheKey = 'refund_${bookingId}';
-
-      // Try cache first (short TTL for calculations)
-      if (enableCaching) {
-        final cached = await cacheManager.get<double>(cacheKey);
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      final refundAmount = await service.calculateRefundAmount(bookingId);
-
-      // Cache for a short time (calculations might change)
-      if (enableCaching) {
-        await cacheManager.set(
-          cacheKey,
-          refundAmount,
-          duration: const Duration(minutes: 5),
-        );
-      }
-
-      return refundAmount;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
+      final response = await service.calculateRefundAmount(
+        bookingId,
+        cancellationDate,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Failed to calculate refund amount: $e');
     }
   }
 

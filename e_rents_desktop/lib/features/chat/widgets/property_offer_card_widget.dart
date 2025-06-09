@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
-import 'package:e_rents_desktop/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +8,11 @@ class PropertyOfferCardWidget extends StatelessWidget {
   final String propertyId;
 
   const PropertyOfferCardWidget({super.key, required this.propertyId});
+
+  String _buildImageUrl(int imageId) {
+    // Use the base URL to construct full image URL
+    return 'http://localhost:5000/Image/$imageId';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,26 +64,36 @@ class PropertyOfferCardWidget extends StatelessWidget {
           child: Row(
             children: [
               property.imageIds.isNotEmpty
-                  ? ImageUtils.buildImage(
-                    '/Image/${property.imageIds.first}',
-                    width: 70,
-                    height: 70,
-                    fit: BoxFit.cover,
-                    errorWidget: Container(
+                  ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      _buildImageUrl(property.imageIds.first),
                       width: 70,
                       height: 70,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.house_outlined,
-                        size: 40,
-                        color: Colors.white,
-                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder:
+                          (context, error, stackTrace) => Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.house_outlined,
+                              size: 40,
+                              color: Colors.white,
+                            ),
+                          ),
                     ),
                   )
                   : Container(
                     width: 70,
                     height: 70,
-                    color: Colors.grey[300],
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: const Icon(
                       Icons.house_outlined,
                       size: 40,

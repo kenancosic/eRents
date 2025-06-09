@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widg
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -329,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 12),
         _buildSummaryItem(
           'Member Since',
-          '${user.createdAt.day}/${user.createdAt.month}/${user.createdAt.year}',
+          AppDateUtils.formatPrimary(user.createdAt),
           Icons.calendar_today,
         ),
         const SizedBox(height: 12),

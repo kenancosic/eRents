@@ -31,9 +31,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ SIMPLE: The screen just configures the table and handles interactions
+    // ✅ CLEAN: Using BaseTableFactory-powered implementation
     return BookingListFactory.create(
       repository: _bookingRepository,
+      context: context, // Required for navigation actions
       title: '', // ContentWrapper handles the title
       headerActions: _buildHeaderActions(context),
       onRowTap: _handleRowTap,

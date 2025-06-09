@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/features/maintenance/providers/maintenance_detai
 import 'package:e_rents_desktop/base/base.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class MaintenanceIssueDetailsScreen extends StatefulWidget {
   final MaintenanceIssue? issue;
@@ -518,13 +519,6 @@ class _MaintenanceIssueDetailsScreenState
   }
 
   String _formatTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-    if (difference.inDays > 0) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hours ago';
-    } else {
-      return '${difference.inMinutes} minutes ago';
-    }
+    return AppDateUtils.formatRelative(dateTime);
   }
 }
