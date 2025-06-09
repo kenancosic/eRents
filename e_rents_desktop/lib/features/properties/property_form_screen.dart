@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
+import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
 
@@ -247,32 +248,28 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Basic Information',
-              theme: theme,
-              sectionIcon: Icons.info_outline,
+              titleIcon: Icons.info_outline,
               children: [
                 _buildTitleAndPriceRow(formState, theme),
                 const SizedBox(height: 16),
                 _buildDescriptionField(formState, theme),
               ],
             ),
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Property Type & Status',
-              theme: theme,
-              sectionIcon: Icons.category_outlined,
+              titleIcon: Icons.category_outlined,
               children: [_buildSelectionSections(formState, theme)],
             ),
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Address Details',
-              theme: theme,
-              sectionIcon: Icons.location_on_outlined,
+              titleIcon: Icons.location_on_outlined,
               children: [_buildAddressSection(formState, theme)],
             ),
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Property Features',
-              theme: theme,
-              sectionIcon: Icons.construction_outlined,
+              titleIcon: Icons.construction_outlined,
               children: [
                 _buildPropertyDetailsRow(formState, theme),
                 if (formState.rentingType == RentingType.daily) ...[
@@ -281,10 +278,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 ],
               ],
             ),
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Amenities',
-              theme: theme,
-              sectionIcon: Icons.deck_outlined,
+              titleIcon: Icons.deck_outlined,
               children: [
                 AmenityManager(
                   mode: AmenityManagerMode.edit,
@@ -297,10 +293,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 ),
               ],
             ),
-            _buildSectionCard(
+            SectionCard.withChildren(
               title: 'Property Images',
-              theme: theme,
-              sectionIcon: Icons.image_outlined,
+              titleIcon: Icons.image_outlined,
               children: [
                 ImagePickerInput(
                   initialImages: formState.images,
@@ -314,45 +309,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
               ],
             ),
             const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required ThemeData theme,
-    required List<Widget> children,
-    IconData? sectionIcon,
-  }) {
-    return Card(
-      elevation: 2.0,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (sectionIcon != null)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Icon(sectionIcon, color: theme.colorScheme.primary),
-                  ),
-                Text(
-                  title,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24, thickness: 1),
-            ...children,
           ],
         ),
       ),

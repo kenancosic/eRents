@@ -197,13 +197,51 @@ class MaintenanceRepository
         .toList();
   }
 
-  /// ✅ UNIVERSAL TABLE: Get paginated maintenance issues from backend Universal System
+  /// ✅ UNIVERSAL SYSTEM: Get paginated maintenance issues from backend Universal System
   Future<PagedResult<MaintenanceIssue>> getPagedMaintenanceIssues(
     Map<String, dynamic> params,
   ) async {
     try {
-      // For now, use the existing getAll method and implement local pagination
-      // TODO: Update when backend supports Universal System pagination for maintenance
+      final cacheKey = _buildSpecialCacheKey('paged', params);
+
+      // Try cache first (shorter TTL for paginated data)
+      if (enableCaching) {
+        final cached = await cacheManager.get<PagedResult<MaintenanceIssue>>(
+          cacheKey,
+        );
+        if (cached != null) {
+          return cached;
+        }
+      }
+
+      // Use Universal System pagination from service
+      final pagedData = await service.getPagedMaintenanceIssues(params);
+
+      // Parse Universal System PagedList<MaintenanceIssueResponse>
+      final List<dynamic> items = pagedData['items'] ?? [];
+      final issues =
+          items.map((json) => MaintenanceIssue.fromJson(json)).toList();
+
+      final pagedResult = PagedResult<MaintenanceIssue>(
+        items: issues,
+        totalCount: pagedData['totalCount'] ?? 0,
+        page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
+        pageSize: pagedData['pageSize'] ?? 25,
+        totalPages: pagedData['totalPages'] ?? 0,
+      );
+
+      // Cache the result (shorter TTL for paginated data)
+      if (enableCaching) {
+        await cacheManager.set(
+          cacheKey,
+          pagedResult,
+          duration: const Duration(minutes: 2),
+        );
+      }
+
+      return pagedResult;
+    } catch (e, stackTrace) {
+      // Fallback to local pagination if backend doesn't support it yet
       final allIssues = await getAll();
 
       final page = (params['page'] ?? 1) - 1; // Convert to 0-based
@@ -304,4 +342,28 @@ class MaintenanceStats {
       totalIssues > 0 ? totalCost / totalIssues : 0.0;
 
   bool get hasEmergencyIssues => emergencyIssues > 0;
+}
+
+// Add missing helper method for MaintenanceRepository
+extension MaintenanceRepositoryHelpers on MaintenanceRepository {
+  /// Build cache key for special operations
+  String _buildSpecialCacheKey(
+    String operation, [
+    Map<String, dynamic>? params,
+  ]) {
+    final buffer = StringBuffer();
+    buffer.write('${resourceName}_$operation');
+
+    if (params != null && params.isNotEmpty) {
+      final sortedParams = Map.fromEntries(
+        params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+      );
+
+      for (final entry in sortedParams.entries) {
+        buffer.write('_${entry.key}:${entry.value}');
+      }
+    }
+
+    return buffer.toString();
+  }
 }

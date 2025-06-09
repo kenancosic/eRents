@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_stats_provider.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
+import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/booking_summary.dart';
@@ -107,7 +108,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           const SizedBox(height: 16),
           PropertyImagesGrid(images: property.imageIds),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Overview',
             child: PropertyOverviewSection(
               property: property,
@@ -115,7 +116,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Current Tenant',
             child: TenantInfo(
               property: property,
@@ -123,17 +124,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Property Statistics',
             child: _PropertyStatsCard(stats: stats),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Financial Summary',
             child: PropertyFinancialSummary(bookingStats: stats?.bookingStats),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Bookings',
             child: PropertyBookingsSection(
               currentBookings: _getBookingsByStatus('active', stats),
@@ -142,7 +143,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Reviews',
             child: PropertyReviewsSection(
               reviewStats: stats?.reviewStats,
@@ -151,7 +152,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildSectionCard(
+          SectionCard(
             title: 'Maintenance',
             child: _MaintenanceCard(
               property: property,
@@ -183,7 +184,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 const SizedBox(height: 24),
                 PropertyImagesGrid(images: property.imageIds),
                 const SizedBox(height: 24),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Overview',
                   child: PropertyOverviewSection(
                     property: property,
@@ -193,7 +194,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Bookings',
                   child: PropertyBookingsSection(
                     currentBookings: _getBookingsByStatus('active', stats),
@@ -202,7 +203,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Financial Summary',
                   child: PropertyFinancialSummary(
                     bookingStats: stats?.bookingStats,
@@ -218,7 +219,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionCard(
+                SectionCard(
                   title: 'Current Tenant',
                   child: TenantInfo(
                     property: property,
@@ -226,12 +227,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Property Statistics',
                   child: _PropertyStatsCard(stats: stats),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Reviews',
                   child: PropertyReviewsSection(
                     reviewStats: stats?.reviewStats,
@@ -240,7 +241,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildSectionCard(
+                SectionCard(
                   title: 'Maintenance',
                   child: _MaintenanceCard(
                     property: property,
@@ -251,46 +252,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // Helper to wrap sections in a styled Card
-  Widget _buildSectionCard({
-    required String title,
-    required Widget child,
-    IconData? icon,
-  }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (icon != null) ...[
-                  Icon(
-                    icon,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const Divider(height: 24, thickness: 1),
-            child,
-          ],
-        ),
       ),
     );
   }

@@ -1,12 +1,17 @@
 import '../../../base/base.dart';
+import '../../../base/providers/base_collection_provider_mixin.dart';
 import '../../../models/property.dart';
 import '../../../models/renting_type.dart';
+import '../../../widgets/table/core/table_query.dart';
 
 /// Collection provider for managing property data
 ///
 /// Replaces the old PropertyProvider with a cleaner, more focused implementation
 /// that separates concerns and uses the repository pattern for data access.
-class PropertyCollectionProvider extends CollectionProvider<Property> {
+///
+/// ✅ UNIVERSAL SYSTEM INTEGRATION - Updated for Universal System pagination
+class PropertyCollectionProvider extends CollectionProvider<Property>
+    with PaginationProviderMixin<Property> {
   PropertyCollectionProvider(PropertyRepository super.repository);
 
   /// Get the property repository with proper typing
@@ -15,6 +20,15 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
   // Implementation required by CollectionProvider
   @override
   String _getItemId(Property item) => item.propertyId.toString();
+
+  // ✅ UNIVERSAL SYSTEM - New pagination-first method using mixin
+  /// Get paged properties using Universal System
+  /// Default method for table components and large data sets
+  Future<Map<String, dynamic>> getPagedProperties([
+    Map<String, dynamic>? params,
+  ]) async {
+    return getPagedData(propertyRepository.getPagedProperties, params);
+  }
 
   // Property-specific convenience getters
 

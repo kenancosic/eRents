@@ -90,6 +90,7 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
   // ✅ BOOKING-SPECIFIC METHODS
 
   /// Get bookings by landlord with caching
+  /// UPDATED: Uses new Universal System method
   Future<List<Booking>> getBookingsByLandlord([
     Map<String, dynamic>? params,
   ]) async {
@@ -104,8 +105,8 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
         }
       }
 
-      // Fetch from service
-      final bookings = await service.getBookingsByLandlord(params);
+      // Use new Universal System method
+      final bookings = await service.getAllBookings(params);
 
       // Cache the result
       if (enableCaching) {

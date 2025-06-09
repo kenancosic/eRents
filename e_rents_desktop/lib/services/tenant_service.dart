@@ -5,27 +5,88 @@ import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 
-/// ✅ Backend Integration Complete: All tenant management endpoints implemented
-/// Backend API Endpoints: /Tenant/*
-/// Security: User-scoped access control with ownership validation
-/// Pattern: Business Logic Controller (Non-CRUD) following established patterns
+/// ✅ UNIVERSAL SYSTEM TENANT SERVICE - Full Universal System Integration
+///
+/// This service provides tenant management using Universal System:
+/// - Universal System pagination as default for tenant data
+/// - Non-paginated requests using noPaging=true parameter
+/// - Specialized tenant relationship management
+/// - Tenant preferences and feedback systems
+/// - Property offer tracking and assignments
 class TenantService extends ApiService {
   TenantService(super.baseUrl, super.secureStorageService);
 
-  /// Get current tenants for the authenticated landlord
+  String get endpoint => '/tenant';
+
+  /// ✅ UNIVERSAL SYSTEM: Get paginated tenant data (inherits from user endpoint)
+  /// Uses the underlying UsersController pagination via TenantController
+  Future<Map<String, dynamic>> getPagedTenants(
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      // Build query string from params
+      String queryString = '';
+      if (params.isNotEmpty) {
+        queryString =
+            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      return json.decode(response.body);
+    } catch (e) {
+      throw Exception('Failed to fetch paginated tenants: $e');
+    }
+  }
+
+  /// ✅ UNIVERSAL SYSTEM: Get all tenants without pagination
+  /// Uses noPaging=true for cases where all data is needed
+  Future<List<User>> getAllTenants([Map<String, dynamic>? params]) async {
+    try {
+      // Use Universal System with noPaging=true for all items
+      final queryParams = <String, dynamic>{'noPaging': 'true', ...?params};
+
+      String queryString = '';
+      if (queryParams.isNotEmpty) {
+        queryString =
+            '?' +
+            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      final responseData = json.decode(response.body);
+
+      // Handle Universal System response format
+      List<dynamic> itemsJson;
+      if (responseData is Map && responseData.containsKey('items')) {
+        // Universal System response with noPaging=true
+        itemsJson = responseData['items'] as List<dynamic>;
+      } else if (responseData is List) {
+        // Direct list response (fallback)
+        itemsJson = responseData;
+      } else {
+        itemsJson = [];
+      }
+
+      return itemsJson.map((json) => User.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch all tenants: $e');
+    }
+  }
+
+  /// ✅ SPECIALIZED: Get current tenants for the authenticated landlord
   /// Backend: GET /Tenant/current
   /// Returns: List<UserResponseDto> from backend ITenantService.GetCurrentTenantsAsync()
   Future<List<User>> getCurrentTenants({
     Map<String, String>? queryParams,
   }) async {
     print('TenantService: Fetching current tenants...');
-    String endpoint = '/Tenant/current';
+    String currentEndpoint = '$endpoint/current';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
-      endpoint += '?$queryString';
+      currentEndpoint += '?$queryString';
     }
     try {
-      final response = await get(endpoint, authenticated: true);
+      final response = await get(currentEndpoint, authenticated: true);
       final List<dynamic> data = jsonDecode(response.body);
       final tenants = data.map((json) => User.fromJson(json)).toList();
       print(
@@ -38,20 +99,20 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get prospective tenants (tenants actively searching)
+  /// ✅ SPECIALIZED: Get prospective tenants (tenants actively searching)
   /// Backend: GET /Tenant/prospective
   /// Returns: List<TenantPreferenceResponseDto> from backend ITenantService.GetProspectiveTenantsAsync()
   Future<List<TenantPreference>> getProspectiveTenants({
     Map<String, String>? queryParams,
   }) async {
     print('TenantService: Fetching prospective tenants...');
-    String endpoint = '/Tenant/prospective';
+    String prospectiveEndpoint = '$endpoint/prospective';
     if (queryParams != null && queryParams.isNotEmpty) {
       final queryString = Uri(queryParameters: queryParams).query;
-      endpoint += '?$queryString';
+      prospectiveEndpoint += '?$queryString';
     }
     try {
-      final response = await get(endpoint, authenticated: true);
+      final response = await get(prospectiveEndpoint, authenticated: true);
       final List<dynamic> data = jsonDecode(response.body);
       final preferences =
           data.map((json) => TenantPreference.fromJson(json)).toList();
@@ -65,14 +126,14 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get specific tenant details
+  /// ✅ CRUD: Get specific tenant details
   /// Backend: GET /Tenant/current/{tenantId}
   /// Returns: UserResponseDto from backend ITenantService.GetTenantByIdAsync()
   Future<User> getTenantById(int tenantId) async {
     print('TenantService: Fetching tenant $tenantId...');
     try {
       final response = await get(
-        '/Tenant/current/$tenantId',
+        '$endpoint/current/$tenantId',
         authenticated: true,
       );
       final user = User.fromJson(jsonDecode(response.body));
@@ -84,14 +145,14 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get tenant preferences
+  /// ✅ SPECIALIZED: Get tenant preferences
   /// Backend: GET /Tenant/preferences/{tenantId}
   /// Returns: TenantPreferenceResponseDto from backend ITenantService.GetTenantPreferencesAsync()
   Future<TenantPreference> getTenantPreferences(int tenantId) async {
     print('TenantService: Fetching preferences for tenant $tenantId...');
     try {
       final response = await get(
-        '/Tenant/preferences/$tenantId',
+        '$endpoint/preferences/$tenantId',
         authenticated: true,
       );
       return TenantPreference.fromJson(jsonDecode(response.body));
@@ -101,7 +162,7 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Update tenant preferences
+  /// ✅ SPECIALIZED: Update tenant preferences
   /// Backend: PUT /Tenant/preferences/{tenantId}
   /// Returns: TenantPreferenceResponseDto from backend ITenantService.UpdateTenantPreferencesAsync()
   Future<TenantPreference> updateTenantPreferences(
@@ -111,7 +172,7 @@ class TenantService extends ApiService {
     print('TenantService: Updating preferences for tenant $tenantId...');
     try {
       final response = await put(
-        '/Tenant/preferences/$tenantId',
+        '$endpoint/preferences/$tenantId',
         preferences.toJson(),
         authenticated: true,
       );
@@ -122,14 +183,14 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get tenant feedbacks/reviews
+  /// ✅ SPECIALIZED: Get tenant feedbacks/reviews
   /// Backend: GET /Tenant/feedback/{tenantId}
   /// Returns: List<ReviewResponseDto> from backend ITenantService.GetTenantFeedbacksAsync()
   Future<List<Review>> getTenantFeedbacks(int tenantId) async {
     print('TenantService: Fetching feedbacks for tenant $tenantId...');
     try {
       final response = await get(
-        '/Tenant/feedback/$tenantId',
+        '$endpoint/feedback/$tenantId',
         authenticated: true,
       );
       final List<dynamic> data = jsonDecode(response.body);
@@ -140,14 +201,14 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Add tenant feedback/review
+  /// ✅ SPECIALIZED: Add tenant feedback/review
   /// Backend: POST /Tenant/feedback/{tenantId}
   /// Returns: ReviewResponseDto from backend ITenantService.AddTenantFeedbackAsync()
   Future<Review> addTenantFeedback(int tenantId, Review feedback) async {
     print('TenantService: Adding feedback for tenant $tenantId...');
     try {
       final response = await post(
-        '/Tenant/feedback/$tenantId',
+        '$endpoint/feedback/$tenantId',
         feedback.toJson(),
         authenticated: true,
       );
@@ -158,7 +219,7 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Record property offered to tenant
+  /// ✅ SPECIALIZED: Record property offered to tenant
   /// Backend: POST /Tenant/{tenantId}/offer/{propertyId}
   /// Returns: void from backend ITenantService.RecordPropertyOfferedToTenantAsync()
   Future<void> recordPropertyOfferedToTenant(
@@ -170,7 +231,7 @@ class TenantService extends ApiService {
     );
     try {
       await post(
-        '/Tenant/$tenantId/offer/$propertyId',
+        '$endpoint/$tenantId/offer/$propertyId',
         {},
         authenticated: true,
       );
@@ -181,13 +242,16 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get tenant relationships for landlord portfolio
+  /// ✅ SPECIALIZED: Get tenant relationships for landlord portfolio
   /// Backend: GET /Tenant/relationships
   /// Returns: List<TenantRelationshipDto> from backend ITenantService.GetTenantRelationshipsForLandlordAsync()
   Future<List<Map<String, dynamic>>> getTenantRelationships() async {
     print('TenantService: Fetching tenant relationships...');
     try {
-      final response = await get('/Tenant/relationships', authenticated: true);
+      final response = await get(
+        '$endpoint/relationships',
+        authenticated: true,
+      );
       final List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
     } catch (e) {
@@ -196,7 +260,7 @@ class TenantService extends ApiService {
     }
   }
 
-  /// Get property assignments for tenants
+  /// ✅ SPECIALIZED: Get property assignments for tenants
   /// Backend: GET /Tenant/assignments
   /// Returns: Dictionary<int, PropertyResponseDto> from backend ITenantService.GetTenantPropertyAssignmentsAsync()
   Future<Map<String, dynamic>> getTenantPropertyAssignments(
@@ -212,7 +276,7 @@ class TenantService extends ApiService {
       final queryString = queryParts.join('&');
 
       final response = await get(
-        '/Tenant/assignments?$queryString',
+        '$endpoint/assignments?$queryString',
         authenticated: true,
       );
 
@@ -230,6 +294,30 @@ class TenantService extends ApiService {
     } catch (e) {
       print('TenantService: Error fetching tenant property assignments: $e');
       rethrow;
+    }
+  }
+
+  /// ✅ UNIVERSAL SYSTEM: Get tenant count
+  /// Uses Universal System count or extracts from paged response
+  Future<int> getTenantCount([Map<String, dynamic>? params]) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'pageSize': 1, // Minimal page size, we only need count
+        ...?params,
+      };
+
+      String queryString = '';
+      if (queryParams.isNotEmpty) {
+        queryString =
+            '?' +
+            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      final responseData = json.decode(response.body);
+      return responseData['totalCount'] ?? 0;
+    } catch (e) {
+      throw Exception('Failed to get tenant count: $e');
     }
   }
 }

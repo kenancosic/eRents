@@ -3,12 +3,12 @@ import '../models/booking.dart';
 import '../models/booking_summary.dart';
 import 'api_service.dart';
 
-/// ✅ LANDLORD BOOKING SERVICE - Matches BookingController.cs endpoints
+/// ✅ UNIVERSAL SYSTEM BOOKING SERVICE - Full Universal System Integration
 ///
-/// This service provides booking management specifically for landlords:
-/// - Universal System pagination support
-/// - Property-based filtering
-/// - Current/upcoming bookings for landlord properties
+/// This service provides booking management for landlords using Universal System:
+/// - Universal System pagination as default
+/// - Non-paginated requests using noPaging=true parameter
+/// - Property-based filtering and specialized endpoints
 /// - Availability checking and cancellation management
 class BookingService extends ApiService {
   BookingService(super.baseUrl, super.secureStorageService);
@@ -16,6 +16,7 @@ class BookingService extends ApiService {
   String get endpoint => '/bookings';
 
   /// ✅ UNIVERSAL SYSTEM: Get paginated bookings with full filtering support
+  /// DEFAULT METHOD - Uses pagination by default
   /// Matches: GET /bookings?page=1&pageSize=10&sortBy=StartDate&sortDesc=true
   Future<Map<String, dynamic>> getPagedBookings(
     Map<String, dynamic> params,
@@ -32,6 +33,39 @@ class BookingService extends ApiService {
       return json.decode(response.body);
     } catch (e) {
       throw Exception('Failed to fetch paginated bookings: $e');
+    }
+  }
+
+  /// ✅ UNIVERSAL SYSTEM: Get all bookings without pagination
+  /// Uses noPaging=true for cases where all data is needed
+  Future<List<Booking>> getAllBookings([Map<String, dynamic>? params]) async {
+    try {
+      // Use Universal System with noPaging=true for all items
+      final queryParams = <String, dynamic>{'noPaging': 'true', ...?params};
+
+      String queryString = '';
+      if (queryParams.isNotEmpty) {
+        queryString =
+            '?' +
+            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      final responseData = json.decode(response.body);
+
+      // Handle both paginated and non-paginated responses
+      final List<dynamic> items;
+      if (responseData is Map && responseData['items'] != null) {
+        items = responseData['items'];
+      } else if (responseData is List) {
+        items = responseData;
+      } else {
+        items = [];
+      }
+
+      return items.map((json) => Booking.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch all bookings: $e');
     }
   }
 
@@ -85,41 +119,6 @@ class BookingService extends ApiService {
       return data.map((json) => Booking.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to fetch upcoming stays: $e');
-    }
-  }
-
-  /// ✅ LANDLORD SPECIFIC: Get all bookings for landlord (legacy method)
-  /// Uses Universal System with landlord-specific filtering
-  Future<List<Booking>> getBookingsByLandlord([
-    Map<String, dynamic>? params,
-  ]) async {
-    try {
-      // Use Universal System but request all items (nopaging=true)
-      final queryParams = <String, dynamic>{'nopaging': 'true', ...?params};
-
-      String queryString = '';
-      if (queryParams.isNotEmpty) {
-        queryString =
-            '?' +
-            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
-      }
-
-      final response = await get('$endpoint$queryString', authenticated: true);
-      final responseData = json.decode(response.body);
-
-      // Handle both paginated and non-paginated responses
-      final List<dynamic> items;
-      if (responseData is Map && responseData['items'] != null) {
-        items = responseData['items'];
-      } else if (responseData is List) {
-        items = responseData;
-      } else {
-        items = [];
-      }
-
-      return items.map((json) => Booking.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch landlord bookings: $e');
     }
   }
 
@@ -247,7 +246,8 @@ class BookingService extends ApiService {
     }
   }
 
-  /// Helper: Get booking count
+  /// ✅ UNIVERSAL SYSTEM: Get booking count using Universal System
+  /// Uses Universal System count endpoint or extracts from paged response
   Future<int> getBookingCount([Map<String, dynamic>? params]) async {
     try {
       final queryParams = <String, dynamic>{
@@ -278,11 +278,6 @@ class BookingService extends ApiService {
     } catch (e) {
       throw Exception('Failed to check active booking status: $e');
     }
-  }
-
-  /// Helper: Get all bookings (legacy support)
-  Future<List<Booking>> getAllBookings([Map<String, dynamic>? params]) async {
-    return await getBookingsByLandlord(params);
   }
 
   // ✅ PROPERTY STATS METHODS (for property_stats_provider.dart)
@@ -338,10 +333,8 @@ class BookingService extends ApiService {
         );
       }
 
-      // Get all bookings for the property
-      final allBookings = await getBookingsByLandlord({
-        'propertyId': propertyIdInt,
-      });
+      // Get all bookings for the property using Universal System
+      final allBookings = await getAllBookings({'propertyId': propertyIdInt});
       final currentBookings = await getCurrentStays(propertyIdInt);
 
       // Calculate stats

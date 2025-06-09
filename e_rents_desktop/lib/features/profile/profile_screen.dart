@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.d
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
+import 'package:e_rents_desktop/widgets/common/section_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -146,9 +147,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       return Column(
                         children: [
                           // Personal Information Section
-                          _buildSectionCard(
+                          SectionCard(
                             title: 'Personal Information',
-                            icon: Icons.person,
+                            titleIcon: Icons.person,
                             child: PersonalInfoFormWidget(
                               isEditing: _isEditing,
                               formKey: _personalInfoFormKey,
@@ -158,9 +159,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 24),
 
                           // Security Section
-                          _buildSectionCard(
+                          SectionCard(
                             title: 'Security & Password',
-                            icon: Icons.security,
+                            titleIcon: Icons.security,
                             child: ChangePasswordWidget(
                               isEditing: _isEditing,
                               formKey: _passwordFormKey,
@@ -170,18 +171,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 24),
 
                           // Payment Settings Section
-                          _buildSectionCard(
+                          SectionCard(
                             title: 'Payment Settings',
-                            icon: Icons.payment,
+                            titleIcon: Icons.payment,
                             child: PaypalSettingsWidget(isEditing: _isEditing),
                           ),
 
                           const SizedBox(height: 24),
 
                           // Account Summary Section
-                          _buildSectionCard(
+                          SectionCard(
                             title: 'Account Summary',
-                            icon: Icons.info_outline,
+                            titleIcon: Icons.info_outline,
                             child: _buildAccountSummary(provider.currentUser),
                           ),
                         ],
@@ -198,9 +199,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Column(
                             children: [
                               // Personal Information Section
-                              _buildSectionCard(
+                              SectionCard(
                                 title: 'Personal Information',
-                                icon: Icons.person,
+                                titleIcon: Icons.person,
                                 child: PersonalInfoFormWidget(
                                   isEditing: _isEditing,
                                   formKey: _personalInfoFormKey,
@@ -210,9 +211,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 24),
 
                               // Security Section
-                              _buildSectionCard(
+                              SectionCard(
                                 title: 'Security & Password',
-                                icon: Icons.security,
+                                titleIcon: Icons.security,
                                 child: ChangePasswordWidget(
                                   isEditing: _isEditing,
                                   formKey: _passwordFormKey,
@@ -230,9 +231,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Column(
                             children: [
                               // Payment Settings Section
-                              _buildSectionCard(
+                              SectionCard(
                                 title: 'Payment Settings',
-                                icon: Icons.payment,
+                                titleIcon: Icons.payment,
                                 child: PaypalSettingsWidget(
                                   isEditing: _isEditing,
                                 ),
@@ -241,9 +242,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 24),
 
                               // Account Summary Section
-                              _buildSectionCard(
+                              SectionCard(
                                 title: 'Account Summary',
-                                icon: Icons.info_outline,
+                                titleIcon: Icons.info_outline,
                                 child: _buildAccountSummary(
                                   provider.currentUser,
                                 ),
@@ -309,38 +310,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSectionCard({
-    required String title,
-    required IconData icon,
-    required Widget child,
-  }) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: Theme.of(context).primaryColor),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            child,
-          ],
-        ),
-      ),
     );
   }
 

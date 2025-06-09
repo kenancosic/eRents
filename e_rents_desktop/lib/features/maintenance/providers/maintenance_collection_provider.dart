@@ -1,17 +1,33 @@
 import '../../../base/base.dart';
+import '../../../base/providers/base_collection_provider_mixin.dart';
 import '../../../models/maintenance_issue.dart';
+import '../../../widgets/table/core/table_query.dart';
 
 /// Collection provider for managing maintenance issues
 ///
 /// Replaces the old MaintenanceProvider with a cleaner, more focused implementation
 /// that separates concerns and uses the repository pattern for data access.
-class MaintenanceCollectionProvider
-    extends CollectionProvider<MaintenanceIssue> {
+///
+/// ✅ UNIVERSAL SYSTEM INTEGRATION - Updated for Universal System pagination
+class MaintenanceCollectionProvider extends CollectionProvider<MaintenanceIssue>
+    with PaginationProviderMixin<MaintenanceIssue> {
   MaintenanceCollectionProvider(super.repository);
 
   /// Get the maintenance repository with proper typing
   MaintenanceRepository get maintenanceRepository =>
       repository as MaintenanceRepository;
+
+  // ✅ UNIVERSAL SYSTEM - New pagination-first method using mixin
+  /// Get paged maintenance issues using Universal System
+  /// Default method for table components and large data sets
+  Future<Map<String, dynamic>> getPagedMaintenanceIssues([
+    Map<String, dynamic>? params,
+  ]) async {
+    return getPagedData(
+      maintenanceRepository.getPagedMaintenanceIssues,
+      params,
+    );
+  }
 
   // Maintenance-specific convenience getters
 

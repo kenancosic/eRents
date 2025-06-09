@@ -1,11 +1,16 @@
 import 'package:e_rents_desktop/base/base.dart';
+import 'package:e_rents_desktop/base/providers/base_collection_provider_mixin.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/repositories/tenant_repository.dart';
+import '../../../widgets/table/core/table_query.dart';
 
 /// Collection provider for tenant management
 /// Handles both current tenants and prospective tenants (searching)
-class TenantCollectionProvider extends CollectionProvider<User> {
+///
+/// ✅ UNIVERSAL SYSTEM INTEGRATION - Updated for Universal System pagination
+class TenantCollectionProvider extends CollectionProvider<User>
+    with PaginationProviderMixin<User> {
   final TenantRepository _repository;
 
   // Separate data for prospective tenants
@@ -18,6 +23,15 @@ class TenantCollectionProvider extends CollectionProvider<User> {
 
   TenantCollectionProvider(this._repository)
     : super(_repository as Repository<User>);
+
+  // ✅ UNIVERSAL SYSTEM - New pagination-first method using mixin
+  /// Get paged tenants using Universal System
+  /// Default method for table components and large data sets
+  Future<Map<String, dynamic>> getPagedTenants([
+    Map<String, dynamic>? params,
+  ]) async {
+    return getPagedData(_repository.getPagedTenants, params);
+  }
 
   // Getters for prospective tenants data
   List<TenantPreference> get prospectiveTenants => _prospectiveTenants;

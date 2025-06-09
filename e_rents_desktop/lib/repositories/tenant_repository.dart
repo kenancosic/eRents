@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/tenant_service.dart';
+import '../widgets/table/core/table_query.dart';
 
 /// Repository for tenant data management with intelligent caching
 /// Handles both current tenants and prospective tenants (searching)
@@ -18,6 +19,52 @@ class TenantRepository extends BaseRepository<User, TenantService> {
 
   // Additional cache for prospective tenants and assignments
   final Map<String, DateTime> _cacheTimestamps = {};
+
+  // ✅ UNIVERSAL SYSTEM INTEGRATION
+  /// Get paged tenants using Universal System with backend pagination
+  Future<PagedResult<User>> getPagedTenants(Map<String, dynamic> params) async {
+    final specialCacheKey = _buildSpecialCacheKey('paged', params);
+
+    if (enableCaching) {
+      final cached = await cacheManager.get<PagedResult<User>>(specialCacheKey);
+      if (cached != null) {
+        return cached;
+      }
+    }
+
+    // Call service pagination method
+    final result = await service.getPagedTenants(params);
+
+    // Convert service response to PagedResult
+    final pagedData = PagedResult<User>(
+      items: result['data'] as List<User>,
+      totalCount: result['totalCount'] as int,
+      page: (result['pageNumber'] as int) - 1, // Convert to 0-based
+      pageSize: result['pageSize'] as int,
+      totalPages: result['totalPages'] as int,
+    );
+
+    if (enableCaching) {
+      await cacheManager.set(
+        specialCacheKey,
+        pagedData,
+        duration: defaultCacheTtl,
+      );
+    }
+
+    return pagedData;
+  }
+
+  /// Build cache key for paginated/special requests
+  String _buildSpecialCacheKey(String operation, Map<String, dynamic> params) {
+    final sortedParams = Map.fromEntries(
+      params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    );
+    final paramStr = sortedParams.entries
+        .map((e) => '${e.key}:${e.value}')
+        .join('_');
+    return '${resourceName}_${operation}_$paramStr';
+  }
 
   /// Get current tenants with caching and filtering
   Future<List<User>> getCurrentTenants({

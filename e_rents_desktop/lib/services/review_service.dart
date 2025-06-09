@@ -3,78 +3,183 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/booking_summary.dart'; // For PropertyReviewStats
 
-// TODO: Full backend integration for all review features is pending.
-// Ensure all endpoints are functional and error handling is robust.
+/// ✅ UNIVERSAL SYSTEM REVIEW SERVICE - Full Universal System Integration
+///
+/// This service provides review management using Universal System:
+/// - Universal System pagination as default
+/// - Non-paginated requests using noPaging=true parameter
+/// - Property-specific reviews and statistics
+/// - CRUD operations for review management
 class ReviewService extends ApiService {
   ReviewService(super.baseUrl, super.storageService);
 
+  String get endpoint => '/reviews';
+
+  /// ✅ UNIVERSAL SYSTEM: Get paginated reviews with full filtering support
+  /// DEFAULT METHOD - Uses pagination by default
+  /// Matches: GET /reviews?page=1&pageSize=10&sortBy=StarRating&sortDesc=true
+  Future<Map<String, dynamic>> getPagedReviews(
+    Map<String, dynamic> params,
+  ) async {
+    try {
+      // Build query string from params
+      String queryString = '';
+      if (params.isNotEmpty) {
+        queryString =
+            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      return json.decode(response.body);
+    } catch (e) {
+      throw Exception('Failed to fetch paginated reviews: $e');
+    }
+  }
+
+  /// ✅ UNIVERSAL SYSTEM: Get all reviews without pagination
+  /// Uses noPaging=true for cases where all data is needed
+  Future<List<Review>> getAllReviews([Map<String, dynamic>? params]) async {
+    try {
+      // Use Universal System with noPaging=true for all items
+      final queryParams = <String, dynamic>{'noPaging': 'true', ...?params};
+
+      String queryString = '';
+      if (queryParams.isNotEmpty) {
+        queryString =
+            '?' +
+            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      final responseData = json.decode(response.body);
+
+      // Handle Universal System response format
+      List<dynamic> itemsJson;
+      if (responseData is Map && responseData.containsKey('items')) {
+        // Universal System response with noPaging=true
+        itemsJson = responseData['items'] as List<dynamic>;
+      } else if (responseData is List) {
+        // Direct list response (fallback)
+        itemsJson = responseData;
+      } else {
+        itemsJson = [];
+      }
+
+      return itemsJson.map((json) => Review.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch all reviews: $e');
+    }
+  }
+
+  /// ✅ PROPERTY SPECIFIC: Get reviews for a specific property
+  /// Uses Universal System filtering by propertyId
   Future<List<Review>> getPropertyReviews(String propertyId) async {
     print(
       'ReviewService: Attempting to fetch reviews for property $propertyId...',
     );
     try {
-      final response = await get(
-        '/Reviews?PropertyId=$propertyId',
-        authenticated: true,
-      );
-      final List<dynamic> data = json.decode(response.body);
-      final List<Review> reviews = [];
-      for (final item in data) {
-        try {
-          reviews.add(Review.fromJson(item));
-        } catch (e) {
-          print(
-            'ReviewService: Error parsing a review item for property $propertyId: $e. Skipping this item.',
-          );
-          // Optionally, add a placeholder or skip, depending on UI handling needs.
-          // For now, we skip the problematic review item.
-        }
-      }
+      // Use Universal System with propertyId filter and noPaging=true
+      final reviews = await getAllReviews({'propertyId': propertyId});
+
       print(
-        'ReviewService: Successfully fetched and parsed ${reviews.length} reviews for property $propertyId.',
+        'ReviewService: Successfully fetched ${reviews.length} reviews for property $propertyId.',
       );
       return reviews;
     } catch (e) {
       print(
-        'ReviewService: Error loading reviews for property $propertyId: $e. Backend integration might be pending or endpoint unavailable. Returning empty list.',
+        'ReviewService: Error loading reviews for property $propertyId: $e',
       );
-      return []; // Return empty list on error or if backend is unavailable
+      return []; // Return empty list on error for backward compatibility
     }
   }
 
-  Future<PropertyReviewStats> getPropertyReviewStats(String propertyId) async {
-    print(
-      'ReviewService: Attempting to fetch review stats for property $propertyId...',
-    );
+  /// ✅ UNIVERSAL SYSTEM: Get review count
+  /// Uses Universal System count or extracts from paged response
+  Future<int> getReviewCount([Map<String, dynamic>? params]) async {
     try {
-      final response = await get(
-        '/Properties/$propertyId/review-stats',
+      final queryParams = <String, dynamic>{
+        'pageSize': 1, // Minimal page size, we only need count
+        ...?params,
+      };
+
+      String queryString = '';
+      if (queryParams.isNotEmpty) {
+        queryString =
+            '?' +
+            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+      }
+
+      final response = await get('$endpoint$queryString', authenticated: true);
+      final responseData = json.decode(response.body);
+      return responseData['totalCount'] ?? 0;
+    } catch (e) {
+      throw Exception('Failed to get review count: $e');
+    }
+  }
+
+  /// ✅ CRUD: Get single review by ID
+  /// Matches: GET /reviews/{id}
+  Future<Review> getReviewById(String reviewId) async {
+    try {
+      final response = await get('$endpoint/$reviewId', authenticated: true);
+      final responseData = json.decode(response.body);
+      return Review.fromJson(responseData);
+    } catch (e) {
+      throw Exception('Failed to fetch review $reviewId: $e');
+    }
+  }
+
+  /// ✅ CRUD: Create review
+  /// Matches: POST /reviews
+  Future<Review> createReview(Map<String, dynamic> request) async {
+    try {
+      final response = await post(endpoint, request, authenticated: true);
+      final responseData = json.decode(response.body);
+      return Review.fromJson(responseData);
+    } catch (e) {
+      throw Exception('Failed to create review: $e');
+    }
+  }
+
+  /// ✅ CRUD: Update review
+  /// Matches: PUT /reviews/{id}
+  Future<Review> updateReview(
+    String reviewId,
+    Map<String, dynamic> request,
+  ) async {
+    try {
+      final response = await put(
+        '$endpoint/$reviewId',
+        request,
         authenticated: true,
       );
-      final Map<String, dynamic> data = json.decode(response.body);
-      print(
-        'ReviewService: Successfully fetched review stats for property $propertyId.',
-      );
-      return PropertyReviewStats.fromJson(data);
+      final responseData = json.decode(response.body);
+      return Review.fromJson(responseData);
     } catch (e) {
-      print(
-        'ReviewService: Error loading review stats for property $propertyId: $e. Backend integration might be pending or endpoint unavailable.',
-      );
-      // Throw an exception or return a specific error state object.
-      // For now, throwing an exception to make the issue visible to the caller.
-      throw Exception(
-        'Failed to load review stats for property $propertyId. Backend integration pending or endpoint unavailable. Cause: $e',
-      );
+      throw Exception('Failed to update review $reviewId: $e');
     }
   }
 
+  /// ✅ CRUD: Delete review
+  /// Matches: DELETE /reviews/{id}
+  Future<bool> deleteReview(String reviewId) async {
+    try {
+      final response = await delete('$endpoint/$reviewId', authenticated: true);
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      throw Exception('Failed to delete review $reviewId: $e');
+    }
+  }
+
+  /// ✅ SPECIALIZED: Get property review statistics
+  /// Matches: GET /reviews/{propertyId}/average-rating (specialized endpoint)
   Future<double> getAverageRating(String propertyId) async {
     print(
       'ReviewService: Attempting to fetch average rating for property $propertyId...',
     );
     try {
       final response = await get(
-        '/Reviews/$propertyId/average-rating',
+        '$endpoint/$propertyId/average-rating',
         authenticated: true,
       );
       final Map<String, dynamic> data = json.decode(response.body);
@@ -118,10 +223,36 @@ class ReviewService extends ApiService {
       return parsedRating;
     } catch (e) {
       print(
-        'ReviewService: Error loading average rating for property $propertyId: $e. Backend integration might be pending or endpoint unavailable.',
+        'ReviewService: Error loading average rating for property $propertyId: $e',
       );
       throw Exception(
-        'Failed to load average rating for property $propertyId. Backend integration pending or endpoint unavailable. Cause: $e',
+        'Failed to load average rating for property $propertyId: $e',
+      );
+    }
+  }
+
+  /// ✅ SPECIALIZED: Get property review statistics
+  /// Note: This endpoint may be moved to PropertiesController in the future
+  Future<PropertyReviewStats> getPropertyReviewStats(String propertyId) async {
+    print(
+      'ReviewService: Attempting to fetch review stats for property $propertyId...',
+    );
+    try {
+      final response = await get(
+        '/properties/$propertyId/review-stats',
+        authenticated: true,
+      );
+      final Map<String, dynamic> data = json.decode(response.body);
+      print(
+        'ReviewService: Successfully fetched review stats for property $propertyId.',
+      );
+      return PropertyReviewStats.fromJson(data);
+    } catch (e) {
+      print(
+        'ReviewService: Error loading review stats for property $propertyId: $e',
+      );
+      throw Exception(
+        'Failed to load review stats for property $propertyId: $e',
       );
     }
   }
