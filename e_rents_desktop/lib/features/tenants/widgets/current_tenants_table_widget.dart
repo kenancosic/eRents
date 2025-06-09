@@ -30,7 +30,7 @@ class CurrentTenantsTableWidget extends StatelessWidget {
       builder: (context, tenantProvider, child) {
         final propertyAssignments = tenantProvider.propertyAssignments;
 
-        return UniversalTable.create<User>(
+        return CustomTable.create<User>(
           fetchData: (params) async {
             // Since this is static data (already loaded), simulate server response
             final searchTerm =
@@ -115,7 +115,7 @@ class CurrentTenantsTableWidget extends StatelessWidget {
             );
           },
           columns: [
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'profile',
               label: 'Profile',
               cellBuilder:
@@ -138,20 +138,20 @@ class CurrentTenantsTableWidget extends StatelessWidget {
               sortable: false,
               width: const FixedColumnWidth(60),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'fullName',
               label: 'Full Name',
-              cellBuilder: (tenant) => UniversalTable.textCell(tenant.fullName),
+              cellBuilder: (tenant) => CustomTable.textCell(tenant.fullName),
               width: const FlexColumnWidth(1.2),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'property',
               label: 'Property',
               cellBuilder: (tenant) {
                 final propertyData = propertyAssignments[tenant.id];
 
                 if (propertyData == null || propertyData.isEmpty) {
-                  return UniversalTable.textCell('N/A - No active lease');
+                  return CustomTable.textCell('N/A - No active lease');
                 }
 
                 final propertyTitle =
@@ -208,42 +208,42 @@ class CurrentTenantsTableWidget extends StatelessWidget {
               },
               width: const FlexColumnWidth(1.5),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'email',
               label: 'Email',
-              cellBuilder: (tenant) => UniversalTable.textCell(tenant.email),
+              cellBuilder: (tenant) => CustomTable.textCell(tenant.email),
               width: const FlexColumnWidth(1.2),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'phone',
               label: 'Phone',
               cellBuilder:
-                  (tenant) => UniversalTable.textCell(tenant.phone ?? 'N/A'),
+                  (tenant) => CustomTable.textCell(tenant.phone ?? 'N/A'),
               width: const FlexColumnWidth(1),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'city',
               label: 'City',
               cellBuilder:
                   (tenant) =>
-                      UniversalTable.textCell(tenant.address?.city ?? 'N/A'),
+                      CustomTable.textCell(tenant.address?.city ?? 'N/A'),
               width: const FlexColumnWidth(1),
             ),
-            UniversalTable.column<User>(
+            CustomTable.column<User>(
               key: 'actions',
               label: 'Actions',
               cellBuilder:
                   (tenant) => Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      UniversalTable.iconActionCell(
+                      CustomTable.iconActionCell(
                         icon: Icons.message,
                         onPressed: () => onSendMessage(tenant),
                         tooltip: 'Send Message',
                         color: Colors.blue,
                       ),
                       const SizedBox(width: 4),
-                      UniversalTable.iconActionCell(
+                      CustomTable.iconActionCell(
                         icon: Icons.person,
                         onPressed: () {
                           final propertyData = propertyAssignments[tenant.id];

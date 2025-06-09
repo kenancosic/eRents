@@ -3,7 +3,7 @@ import '../core/table_query.dart';
 import '../core/table_columns.dart';
 import '../core/table_filters.dart';
 import '../core/table_types.dart';
-import '../universal_table_widget.dart';
+import '../custom_table_widget.dart';
 import '../providers/base_table_provider.dart';
 
 /// Universal Table Utilities - Helper methods for common table operations
@@ -11,9 +11,9 @@ import '../providers/base_table_provider.dart';
 /// This file contains static utility methods for creating tables, cells,
 /// columns, and filters. Similar to ImageUtils for image handling.
 
-class UniversalTable {
+class CustomTable {
   /// Quick table creation using the modular table system
-  static UniversalTableWidget<T> create<T>({
+  static CustomTableWidget<T> create<T>({
     required Future<PagedResult<T>> Function(Map<String, dynamic>) fetchData,
     required List<TableColumnConfig<T>> columns,
     String title = '',
@@ -33,7 +33,7 @@ class UniversalTable {
       emptyMessage: emptyStateMessage,
     );
 
-    return UniversalTableWidget<T>(
+    return CustomTableWidget<T>(
       dataProvider: provider,
       title: title,
       searchHint: searchHint,

@@ -30,7 +30,7 @@ export 'providers/table_provider.dart';
 export 'config/table_config.dart';
 
 // Export main table widget
-export 'universal_table_widget.dart';
+export 'custom_table_widget.dart';
 
 // Export utilities (the main API like ImageUtils)
 export 'utils/table_helpers.dart';

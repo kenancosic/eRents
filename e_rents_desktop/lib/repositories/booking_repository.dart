@@ -5,10 +5,7 @@ import '../widgets/table/custom_table.dart';
 
 /// Repository for booking data management with caching support
 class BookingRepository extends BaseRepository<Booking, BookingService> {
-  BookingRepository({
-    required BookingService service,
-    required CacheManager cacheManager,
-  }) : super(service: service, cacheManager: cacheManager);
+  BookingRepository({required super.service, required super.cacheManager});
 
   @override
   String get resourceName => 'bookings';

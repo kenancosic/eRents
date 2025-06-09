@@ -25,7 +25,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return UniversalTable.create<TenantPreference>(
+    return CustomTable.create<TenantPreference>(
       fetchData: (params) async {
         // Since this is static data (already loaded), simulate server response
         final searchTerm = params['searchTerm']?.toString().toLowerCase() ?? '';
@@ -113,7 +113,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
         );
       },
       columns: [
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'tenant',
           label: 'Tenant',
           cellBuilder:
@@ -164,13 +164,13 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
               ),
           width: const FlexColumnWidth(1.5),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'city',
           label: 'Location',
-          cellBuilder: (preference) => UniversalTable.textCell(preference.city),
+          cellBuilder: (preference) => CustomTable.textCell(preference.city),
           width: const FlexColumnWidth(0.8),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'budget',
           label: 'Budget',
           cellBuilder:
@@ -193,7 +193,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
               ),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'moveIn',
           label: 'Move-in Timeline',
           cellBuilder:
@@ -244,7 +244,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
               ),
           width: const FlexColumnWidth(1.2),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'amenities',
           label: 'Key Amenities',
           cellBuilder:
@@ -298,7 +298,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
           sortable: false,
           width: const FlexColumnWidth(1.2),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'description',
           label: 'Description',
           cellBuilder:
@@ -313,7 +313,7 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
               ),
           width: const FlexColumnWidth(1.5),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'matchScore',
           label: 'Match',
           cellBuilder:
@@ -322,21 +322,21 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
               ),
           width: const FixedColumnWidth(70),
         ),
-        UniversalTable.column<TenantPreference>(
+        CustomTable.column<TenantPreference>(
           key: 'actions',
           label: 'Actions',
           cellBuilder:
               (preference) => Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  UniversalTable.iconActionCell(
+                  CustomTable.iconActionCell(
                     icon: Icons.send,
                     onPressed: () => onSendMessage(preference),
                     tooltip: 'Send Property Offer',
                     color: Colors.blue,
                   ),
                   const SizedBox(width: 4),
-                  UniversalTable.iconActionCell(
+                  CustomTable.iconActionCell(
                     icon: Icons.visibility,
                     onPressed:
                         () => onShowDetails(

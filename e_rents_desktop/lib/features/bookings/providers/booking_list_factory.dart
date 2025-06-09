@@ -19,14 +19,14 @@ import '../../../widgets/table/custom_table.dart';
 
 class BookingListFactory {
   /// Create a booking table with enhanced modular design
-  static UniversalTableWidget<Booking> create({
+  static CustomTableWidget<Booking> create({
     required BookingRepository repository,
     String title = 'Bookings',
     Widget? headerActions,
     void Function(Booking)? onRowTap,
     void Function(Booking)? onRowDoubleTap,
   }) {
-    return UniversalTable.create<Booking>(
+    return CustomTable.create<Booking>(
       fetchData: repository.getPagedBookings,
       columns: _buildColumns(),
       title: title,

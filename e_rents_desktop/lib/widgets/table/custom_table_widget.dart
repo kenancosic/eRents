@@ -7,7 +7,7 @@ import 'providers/base_table_provider.dart';
 import '../custom_search_bar.dart';
 
 /// Main Universal Table Widget - Complete table solution using modular architecture
-class UniversalTableWidget<T> extends StatefulWidget {
+class CustomTableWidget<T> extends StatefulWidget {
   final BaseTableProvider<T> dataProvider;
   final String title;
   final int defaultPageSize;
@@ -19,7 +19,7 @@ class UniversalTableWidget<T> extends StatefulWidget {
   final bool showColumnVisibility;
   final String searchHint;
 
-  const UniversalTableWidget({
+  const CustomTableWidget({
     super.key,
     required this.dataProvider,
     this.title = '',
@@ -34,11 +34,10 @@ class UniversalTableWidget<T> extends StatefulWidget {
   });
 
   @override
-  State<UniversalTableWidget<T>> createState() =>
-      _UniversalTableWidgetState<T>();
+  State<CustomTableWidget<T>> createState() => _CustomTableWidgetState<T>();
 }
 
-class _UniversalTableWidgetState<T> extends State<UniversalTableWidget<T>> {
+class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   late TableQuery _currentQuery;
   PagedResult<T>? _currentData;
   bool _isLoading = false;

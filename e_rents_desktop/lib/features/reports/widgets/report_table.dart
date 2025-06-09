@@ -116,7 +116,7 @@ class _FinancialReportUniversalTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return UniversalTable.create<FinancialReportItem>(
+    return CustomTable.create<FinancialReportItem>(
       fetchData: (params) async {
         // Since this is static data (already loaded), we simulate server response
         final searchTerm = params['searchTerm']?.toString().toLowerCase() ?? '';
@@ -193,41 +193,41 @@ class _FinancialReportUniversalTable extends StatelessWidget {
         );
       },
       columns: [
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'dateFrom',
           label: 'Date From',
-          cellBuilder: (item) => UniversalTable.textCell(item.dateFrom),
+          cellBuilder: (item) => CustomTable.textCell(item.dateFrom),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'dateTo',
           label: 'Date To',
-          cellBuilder: (item) => UniversalTable.textCell(item.dateTo),
+          cellBuilder: (item) => CustomTable.textCell(item.dateTo),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'property',
           label: 'Property',
-          cellBuilder: (item) => UniversalTable.textCell(item.property),
+          cellBuilder: (item) => CustomTable.textCell(item.property),
           width: const FlexColumnWidth(2),
         ),
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'totalRent',
           label: 'Total Rent',
-          cellBuilder: (item) => UniversalTable.currencyCell(item.totalRent),
+          cellBuilder: (item) => CustomTable.currencyCell(item.totalRent),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'maintenanceCosts',
           label: 'Maintenance Costs',
           cellBuilder:
-              (item) => UniversalTable.currencyCell(item.maintenanceCosts),
+              (item) => CustomTable.currencyCell(item.maintenanceCosts),
           width: const FlexColumnWidth(1.2),
         ),
-        UniversalTable.column<FinancialReportItem>(
+        CustomTable.column<FinancialReportItem>(
           key: 'total',
           label: 'Total',
-          cellBuilder: (item) => UniversalTable.currencyCell(item.total),
+          cellBuilder: (item) => CustomTable.currencyCell(item.total),
           width: const FlexColumnWidth(1),
         ),
       ],
@@ -250,7 +250,7 @@ class _TenantReportUniversalTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return UniversalTable.create<TenantReportItem>(
+    return CustomTable.create<TenantReportItem>(
       fetchData: (params) async {
         // Since this is static data (already loaded), we simulate server response
         final searchTerm = params['searchTerm']?.toString().toLowerCase() ?? '';
@@ -328,41 +328,40 @@ class _TenantReportUniversalTable extends StatelessWidget {
         );
       },
       columns: [
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'tenantName',
           label: 'Tenant',
-          cellBuilder: (item) => UniversalTable.textCell(item.tenantName),
+          cellBuilder: (item) => CustomTable.textCell(item.tenantName),
           width: const FlexColumnWidth(1.5),
         ),
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'propertyName',
           label: 'Property',
-          cellBuilder: (item) => UniversalTable.textCell(item.propertyName),
+          cellBuilder: (item) => CustomTable.textCell(item.propertyName),
           width: const FlexColumnWidth(2),
         ),
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'dateFrom',
           label: 'Lease Start',
-          cellBuilder: (item) => UniversalTable.textCell(item.dateFrom),
+          cellBuilder: (item) => CustomTable.textCell(item.dateFrom),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'dateTo',
           label: 'Lease End',
-          cellBuilder: (item) => UniversalTable.textCell(item.dateTo),
+          cellBuilder: (item) => CustomTable.textCell(item.dateTo),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'costOfRent',
           label: 'Cost of Rent',
-          cellBuilder: (item) => UniversalTable.currencyCell(item.costOfRent),
+          cellBuilder: (item) => CustomTable.currencyCell(item.costOfRent),
           width: const FlexColumnWidth(1),
         ),
-        UniversalTable.column<TenantReportItem>(
+        CustomTable.column<TenantReportItem>(
           key: 'totalPaidRent',
           label: 'Total Paid Rent',
-          cellBuilder:
-              (item) => UniversalTable.currencyCell(item.totalPaidRent),
+          cellBuilder: (item) => CustomTable.currencyCell(item.totalPaidRent),
           width: const FlexColumnWidth(1),
         ),
       ],

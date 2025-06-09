@@ -162,7 +162,7 @@ class MaintenanceUniversalTableProvider
 
 /// ✅ FACTORY - One-liner table creation (like ImageUtils pattern)
 class MaintenanceTableFactory {
-  static UniversalTableWidget<MaintenanceIssue> create({
+  static CustomTableWidget<MaintenanceIssue> create({
     required MaintenanceRepository repository,
     required BuildContext context,
     String title = 'Maintenance Issues',
@@ -188,7 +188,7 @@ class MaintenanceTableFactory {
     );
 
     // ✅ WIDGET: Return ready-to-use table widget
-    return UniversalTableWidget<MaintenanceIssue>(
+    return CustomTableWidget<MaintenanceIssue>(
       dataProvider: provider,
       title: title,
     );
