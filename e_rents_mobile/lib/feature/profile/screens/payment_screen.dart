@@ -3,7 +3,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -32,7 +32,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _addPayPalAccount() async {
     if (_formKey.currentState!.validate()) {
-      final userProvider = context.read<UserProvider>();
+      final userProvider = context.read<UserDetailProvider>();
 
       final paymentData = {
         'type': 'paypal',
@@ -133,7 +133,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       showBackButton: true,
     );
 
-    return Consumer<UserProvider>(
+    return Consumer<UserDetailProvider>(
       builder: (context, userProvider, _) {
         final isLoading = userProvider.state == ViewState.busy;
         final paymentMethods = userProvider.paymentMethods ?? [];

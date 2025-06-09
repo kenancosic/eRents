@@ -10,7 +10,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final int propertyId;
@@ -116,10 +116,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     try {
       // Get current user from provider
-      final userProvider = context.read<UserProvider>();
-      final currentUser = userProvider.user;
+      final userProvider = context.read<UserDetailProvider>();
+      final currentUser = userProvider.item;
 
-      if (currentUser == null) {
+      if (currentUser == null || currentUser.userId == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -133,24 +133,24 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
       final issue = MaintenanceIssue(
         propertyId: widget.propertyId,
-        tenantId: currentUser.userId!,
+        reportedByUserId: currentUser.userId!,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priority: _selectedPriority,
-        dateReported: DateTime.now(),
+        createdAt: DateTime.now(),
       );
 
       final maintenanceService = MaintenanceService(
         context.read<ApiService>(), // Assuming ApiService is available
       );
 
-      final success = await maintenanceService.reportMaintenanceIssue(
+      final createdIssue = await maintenanceService.reportMaintenanceIssue(
         issue,
         _selectedImages,
       );
 
       if (mounted) {
-        if (success) {
+        if (createdIssue != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(

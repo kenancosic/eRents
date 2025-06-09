@@ -1,5 +1,5 @@
 // Removed FilterModel import - using direct parameters instead
-import 'package:e_rents_mobile/feature/home/home_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_collection_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
@@ -66,11 +66,11 @@ class FilterDialogState extends State<FilterDialog> {
           label: 'Apply',
           isLoading: false,
           onPressed: () {
-            context.read<HomeProvider>().filterProperties(
-                  city: _selectedCity,
-                  minPrice: _minPrice,
-                  maxPrice: _maxPrice,
-                );
+            context.read<PropertyCollectionProvider>().applyFilters({
+              if (_selectedCity != null) 'city': _selectedCity,
+              if (_minPrice != null) 'minPrice': _minPrice,
+              if (_maxPrice != null) 'maxPrice': _maxPrice,
+            });
             Navigator.of(context).pop();
           },
         ),

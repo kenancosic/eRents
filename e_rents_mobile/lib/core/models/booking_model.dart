@@ -27,6 +27,9 @@ class Booking {
   final int numberOfGuests;
   final String? specialRequests;
 
+  // ✅ NEW CRITICAL FIELD for backend alignment
+  final int? bookingStatusId; // Backend expects bookingStatusId for filtering
+
   Booking({
     required this.bookingId,
     required this.propertyId,
@@ -50,6 +53,8 @@ class Booking {
     this.paymentReference,
     this.numberOfGuests = 1,
     this.specialRequests,
+    // Backend alignment
+    this.bookingStatusId,
   });
 
   String get statusDisplay {
@@ -116,6 +121,8 @@ class Booking {
       paymentReference: json['paymentReference'] as String?,
       numberOfGuests: json['numberOfGuests'] as int? ?? 1,
       specialRequests: json['specialRequests'] as String?,
+      // Backend alignment
+      bookingStatusId: json['bookingStatusId'] as int?,
     );
   }
 
@@ -142,6 +149,8 @@ class Booking {
         'paymentReference': paymentReference,
         'numberOfGuests': numberOfGuests,
         'specialRequests': specialRequests,
+        // Backend alignment
+        'bookingStatusId': bookingStatusId,
       };
 
   bool isActive() {

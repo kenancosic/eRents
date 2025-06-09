@@ -1,5 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
+import 'package:e_rents_mobile/core/services/service_locator.dart';
 import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
@@ -15,12 +16,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -54,8 +55,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     super.didChangeDependencies();
     if (widget.bookingId != null) {
       _currentBooking = context
-          .read<UserBookingsProvider>()
-          .getBookingById(widget.bookingId!);
+          .read<BookingCollectionProvider>()
+          .findById(widget.bookingId!.toString());
       if (_currentBooking == null) {
         print(
             "Booking with ID ${widget.bookingId} not found during didChangeDependencies.");
@@ -67,8 +68,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   Widget build(BuildContext context) {
     final Booking? displayedBooking = widget.bookingId != null
         ? context
-            .watch<UserBookingsProvider>()
-            .getBookingById(widget.bookingId!)
+            .watch<BookingCollectionProvider>()
+            .findById(widget.bookingId!.toString())
         : null;
 
     final appBar = CustomAppBar(
@@ -80,13 +81,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       providers: [
         ChangeNotifierProvider<PropertyDetailProvider>(
           create: (_) {
-            final provider = PropertyDetailProvider();
-            provider.fetchPropertyDetail(widget.propertyId);
+            final provider = ServiceLocator.get<PropertyDetailProvider>();
+            provider.loadItem(widget.propertyId.toString());
             return provider;
           },
         ),
-        ChangeNotifierProvider<SavedProvider>.value(
-          value: context.read<SavedProvider>(),
+        ChangeNotifierProvider<SavedCollectionProvider>.value(
+          value: context.read<SavedCollectionProvider>(),
         ),
       ],
       child: BaseScreen(
@@ -99,8 +100,29 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (propertyProvider.errorMessage != null) {
-                return Center(child: Text(propertyProvider.errorMessage!));
+              if (propertyProvider.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        propertyProvider.errorMessage ??
+                            'Failed to load property',
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 16),
+                      CustomButton(
+                        label: 'Retry',
+                        onPressed: () => propertyProvider.refreshItem(),
+                        width: ButtonWidth.content,
+                        isLoading: false,
+                      ),
+                    ],
+                  ),
+                );
               }
 
               final property = propertyProvider.property;
@@ -111,33 +133,36 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               final List<Review> uiReviews = [
                 Review(
                   reviewId: 1,
+                  reviewType: ReviewType.propertyReview,
                   propertyId: property.propertyId,
+                  revieweeId: property.ownerId,
+                  reviewerId: 123,
                   description:
                       'Great property! Very clean and comfortable. The location is perfect and the host was very responsive.',
                   starRating: 4.5,
-                  dateReported: DateTime(2023, 10, 15),
-                  isComplaint: false,
-                  isFlagged: false,
+                  dateCreated: DateTime(2023, 10, 15),
                 ),
                 Review(
                   reviewId: 2,
+                  reviewType: ReviewType.propertyReview,
                   propertyId: property.propertyId,
+                  revieweeId: property.ownerId,
+                  reviewerId: 124,
                   description:
                       'Absolutely loved my stay here. The amenities were top-notch and everything was as described.',
                   starRating: 5.0,
-                  dateReported: DateTime(2023, 9, 28),
-                  isComplaint: false,
-                  isFlagged: false,
+                  dateCreated: DateTime(2023, 9, 28),
                 ),
                 Review(
                   reviewId: 3,
+                  reviewType: ReviewType.propertyReview,
                   propertyId: property.propertyId,
+                  revieweeId: property.ownerId,
+                  reviewerId: 125,
                   description:
                       'Good value for money. The property is well-maintained and in a nice neighborhood.',
                   starRating: 4.0,
-                  dateReported: DateTime(2023, 8, 12),
-                  isComplaint: false,
-                  isFlagged: false,
+                  dateCreated: DateTime(2023, 8, 12),
                 ),
               ];
 
@@ -161,24 +186,28 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           PropertyHeader(property: property),
                           const SizedBox(height: 16),
                           PropertyDetails(
-                            averageRating: property.averageRating,
+                            averageRating:
+                                propertyProvider.averageRating ?? 0.0,
                             numberOfReviews: 12,
-                            city: property.address?.city,
+                            city: propertyProvider.city ?? 'Unknown City',
                             address: property.address?.streetLine1,
-                            rooms: '2 rooms',
-                            area: '874 m²',
+                            rooms:
+                                propertyProvider.specificationsDisplay ?? 'N/A',
+                            area: (propertyProvider.area ?? 0) > 0
+                                ? '${(propertyProvider.area ?? 0).toStringAsFixed(0)} m²'
+                                : 'N/A',
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
                           PropertyDescriptionSection(
-                            description: property.description ??
-                                'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
+                            description: propertyProvider.description.isNotEmpty
+                                ? propertyProvider.description
+                                : 'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          // Context-specific action section
                           PropertyActionFactory.createActionSection(
                             property: property,
                             viewContext: widget.viewContext,
@@ -221,7 +250,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             builder: (context, propertyProvider, child) {
               final property = propertyProvider.property;
 
-              // Only show price footer for browsing context
               if (widget.viewContext == ViewContext.browsing &&
                   property != null) {
                 return PropertyPriceFooter(
@@ -230,7 +258,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 );
               }
 
-              // For all other contexts, actions are handled by the action sections
               return const SizedBox.shrink();
             },
           ),
@@ -327,14 +354,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               onPressed: () {
                 if (commentController.text.isNotEmpty) {
                   provider.addReview(Review(
-                    reviewId:
-                        DateTime.now().millisecondsSinceEpoch, // Temporary ID
+                    reviewId: DateTime.now().millisecondsSinceEpoch,
+                    reviewType: ReviewType.propertyReview,
                     propertyId: provider.property?.propertyId ?? 0,
+                    revieweeId: provider.property?.ownerId ?? 0,
+                    reviewerId: 123, // Current user ID - would come from auth
                     description: commentController.text,
                     starRating: rating,
-                    dateReported: DateTime.now(),
-                    isComplaint: false,
-                    isFlagged: false,
+                    dateCreated: DateTime.now(),
                   ));
                   context.pop();
                 }

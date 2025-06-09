@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
@@ -72,8 +72,8 @@ class CustomSlidingDrawer extends StatelessWidget {
   }
 
   Widget _buildCustomDrawerHeader(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    final user = userProvider.user;
+    final userProvider = Provider.of<UserDetailProvider>(context);
+    final user = userProvider.item;
 
     return Container(
       padding: const EdgeInsets.only(
@@ -83,7 +83,7 @@ class CustomSlidingDrawer extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: Colors.white.withOpacity(0.3),
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
             child: CircleAvatar(
               radius: 38,
               backgroundImage: const AssetImage('assets/images/user-image.png'),
@@ -167,7 +167,9 @@ class CustomSlidingDrawer extends StatelessWidget {
 
           if (confirmLogout == true) {
             if (!context.mounted) return;
-            await context.read<UserProvider>().logout();
+            // Note: logout functionality should be handled by AuthService/AuthProvider
+            // await context.read<UserDetailProvider>().logout();
+            // For now, just navigate to login
             if (!context.mounted) return;
             context.go('/login');
           }

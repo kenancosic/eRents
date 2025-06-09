@@ -3,7 +3,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +28,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<UserProvider>().user;
+    final user = context.read<UserDetailProvider>().user;
 
     _nameController = TextEditingController(text: user?.name ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
@@ -55,7 +55,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
 
   Future<void> _saveDetails() async {
     if (_formKey.currentState!.validate()) {
-      final userProvider = context.read<UserProvider>();
+      final userProvider = context.read<UserDetailProvider>();
       final currentUser = userProvider.user;
 
       if (currentUser != null) {
@@ -63,28 +63,32 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
           userId: currentUser.userId,
           username: currentUser.username,
           email: _emailController.text,
-          name: _nameController.text,
+          firstName: _nameController.text,
           lastName: _lastNameController.text,
           phoneNumber: _phoneController.text,
           address: currentUser.address,
           dateOfBirth: currentUser.dateOfBirth,
-          userType: currentUser.userType,
+          role: currentUser.role,
           token: currentUser.token,
         );
 
-        final success = await userProvider.updateProfile(updatedUser);
+        try {
+          await userProvider.updateCurrentUserProfile(updatedUser);
 
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
-          );
-          Navigator.of(context).pop();
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(
-                    userProvider.errorMessage ?? 'Failed to update profile')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile updated successfully')),
+            );
+            Navigator.of(context).pop();
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      userProvider.errorMessage ?? 'Failed to update profile')),
+            );
+          }
         }
       }
     }
@@ -97,9 +101,9 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
       showBackButton: true,
     );
 
-    return Consumer<UserProvider>(
+    return Consumer<UserDetailProvider>(
       builder: (context, userProvider, _) {
-        final isLoading = userProvider.state == ViewState.busy;
+        final isLoading = userProvider.isLoading;
 
         return BaseScreen(
           appBar: appBar,

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:typed_data';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 
 class CurrentlyResidingSection extends StatelessWidget {
@@ -16,13 +16,14 @@ class CurrentlyResidingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserBookingsProvider>(
+    return Consumer<BookingCollectionProvider>(
       builder: (context, bookingsProvider, child) {
         // Find the first active booking
         Booking? activeBooking;
         try {
-          activeBooking = bookingsProvider.upcomingBookings
-              .firstWhere((b) => b.status == BookingStatus.active);
+          activeBooking = bookingsProvider.currentBookings.isNotEmpty
+              ? bookingsProvider.currentBookings.first
+              : null;
         } catch (e) {
           activeBooking = null; // No active booking found
         }

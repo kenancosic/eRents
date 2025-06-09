@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
@@ -10,23 +12,21 @@ class LeaseService {
   /// Submit a lease extension request
   Future<bool> requestLeaseExtension(LeaseExtensionRequest request) async {
     try {
-      // Mock API delay
-      await Future.delayed(const Duration(milliseconds: 1200));
-
-      // In a real app, this would send the request to the server
-      /* Real API call:
       final response = await _apiService.post(
-        '/leases/extension-requests',
+        '/api/lease-extensions',
         request.toJson(),
         authenticated: true,
       );
-      
-      return response.statusCode == 201;
-      */
 
-      return true; // Mock success
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        debugPrint(
+            'LeaseService: Failed to request extension: ${response.statusCode} ${response.body}');
+        return false;
+      }
     } catch (e) {
-      print('Error requesting lease extension: $e');
+      debugPrint('LeaseService.requestLeaseExtension: $e');
       return false;
     }
   }

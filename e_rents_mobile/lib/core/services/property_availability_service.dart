@@ -144,42 +144,6 @@ class PropertyAvailabilityService {
     return null;
   }
 
-  /// Calculate pricing for a date range
-  Map<String, dynamic> calculatePricing({
-    required Property property,
-    required DateTime startDate,
-    required DateTime endDate,
-    required bool isDailyRental,
-  }) {
-    final duration = endDate.difference(startDate).inDays;
-    double baseRate;
-    String unitLabel;
-    int unitCount;
-
-    if (isDailyRental && property.dailyRate != null) {
-      baseRate = property.dailyRate!;
-      unitLabel = 'nights';
-      unitCount = duration;
-    } else {
-      // Monthly calculation
-      baseRate = property.price;
-      unitLabel = 'months';
-      unitCount = (duration / 30).ceil();
-      if (unitCount < 1) unitCount = 1;
-    }
-
-    final subtotal = baseRate * unitCount;
-    final serviceFee = subtotal * 0.1; // 10% service fee
-    final total = subtotal + serviceFee;
-
-    return {
-      'baseRate': baseRate,
-      'unitLabel': unitLabel,
-      'unitCount': unitCount,
-      'subtotal': subtotal,
-      'serviceFee': serviceFee,
-      'total': total,
-      'isDailyRental': isDailyRental,
-    };
-  }
+  // NOTE: Pricing calculations have been moved to PricingService
+  // This service now focuses only on availability data management
 }

@@ -5,7 +5,8 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/mock/mock_properties.dart';
+import 'package:e_rents_mobile/core/services/service_locator.dart';
+import 'package:e_rents_mobile/core/repositories/property_repository.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 
 class SavedScreen extends StatefulWidget {
@@ -16,8 +17,8 @@ class SavedScreen extends StatefulWidget {
 }
 
 class _SavedScreenState extends State<SavedScreen> {
-  late List<Property> _savedProperties;
-  bool _isLoading = true;
+  List<Property> _savedProperties = [];
+  bool _isLoading = false;
   String? _errorMessage;
 
   @override
@@ -44,8 +45,10 @@ class _SavedScreenState extends State<SavedScreen> {
 
       // Simulate network delay
       await Future.delayed(const Duration(milliseconds: 800));
-      // Get mock properties (in a real app, filter for saved ones)
-      final allProperties = MockProperties.getAllProperties();
+
+      // Get properties from repository instead of mock
+      final propertyRepository = ServiceLocator.get<PropertyRepository>();
+      final allProperties = await propertyRepository.getAll();
 
       // Simulate that some properties are saved (every other property)
       final savedProperties =

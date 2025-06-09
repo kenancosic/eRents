@@ -31,6 +31,8 @@ class Property {
   final double? area;
   final double? dailyRate;
   final int? minimumStayDays;
+  final int? propertyTypeId;
+  final int? rentingTypeId;
 
   Property({
     required this.propertyId,
@@ -53,6 +55,8 @@ class Property {
     this.area,
     this.dailyRate,
     this.minimumStayDays,
+    this.propertyTypeId,
+    this.rentingTypeId,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -95,6 +99,8 @@ class Property {
       area: (json['area'] as num?)?.toDouble(),
       dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
+      propertyTypeId: json['propertyTypeId'] as int?,
+      rentingTypeId: json['rentingTypeId'] as int?,
     );
   }
 
@@ -154,6 +160,8 @@ class Property {
       'area': area,
       'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
+      'propertyTypeId': propertyTypeId,
+      'rentingTypeId': rentingTypeId,
     };
   }
 }

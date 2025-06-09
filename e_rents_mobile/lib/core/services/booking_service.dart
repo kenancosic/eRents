@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart'; // Changed to booking_model.dart
 import 'package:e_rents_mobile/core/services/api_service.dart';
 
@@ -20,12 +21,13 @@ class BookingService {
         return data.map((json) => Booking.fromJson(json)).toList();
       } else {
         // Consider more specific error handling based on status code
-        print(
-            'Failed to load bookings: ${response.statusCode} ${response.body}');
-        throw Exception('Failed to load bookings');
+        debugPrint(
+            'BookingService: Failed to load bookings: ${response.statusCode} ${response.body}');
+        throw Exception('Failed to load bookings: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in BookingService.getUserBookings: $e');
+      debugPrint('BookingService.getUserBookings: $e');
+      if (e is Exception) rethrow;
       throw Exception('An error occurred while fetching bookings: $e');
     }
   }
@@ -60,12 +62,14 @@ class BookingService {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return Booking.fromJson(data);
       } else {
-        print(
-            'Failed to create booking: ${response.statusCode} ${response.body}');
-        throw Exception('Failed to create booking');
+        debugPrint(
+            'BookingService: Failed to create booking: ${response.statusCode} ${response.body}');
+        throw Exception(
+            'Failed to create booking: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in BookingService.createBooking: $e');
+      debugPrint('BookingService.createBooking: $e');
+      if (e is Exception) rethrow;
       throw Exception('An error occurred while creating booking: $e');
     }
   }
@@ -80,13 +84,18 @@ class BookingService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return Booking.fromJson(data);
-      } else {
-        print(
-            'Failed to load booking details: ${response.statusCode} ${response.body}');
+      } else if (response.statusCode == 404) {
+        debugPrint('BookingService: Booking $bookingId not found');
         return null;
+      } else {
+        debugPrint(
+            'BookingService: Failed to load booking details: ${response.statusCode} ${response.body}');
+        throw Exception(
+            'Failed to load booking details: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in BookingService.getBookingDetails: $e');
+      debugPrint('BookingService.getBookingDetails: $e');
+      if (e is Exception) rethrow;
       return null;
     }
   }
@@ -98,9 +107,15 @@ class BookingService {
         authenticated: true,
       );
 
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      } else {
+        debugPrint(
+            'BookingService: Failed to cancel booking: ${response.statusCode} ${response.body}');
+        return false;
+      }
     } catch (e) {
-      print('Error in BookingService.cancelBooking: $e');
+      debugPrint('BookingService.cancelBooking: $e');
       return false;
     }
   }

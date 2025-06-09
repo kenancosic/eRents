@@ -90,20 +90,20 @@ class ElevatedTextButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: defaultTextColor.withOpacity(0.2),
+            color: defaultTextColor.withValues(alpha: 0.2),
             offset: const Offset(0, 2),
             blurRadius: 4,
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             offset: const Offset(0, 1),
             blurRadius: 2,
             spreadRadius: 0,
           ),
         ],
         border: Border.all(
-          color: defaultTextColor.withOpacity(0.3),
+          color: defaultTextColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -113,8 +113,8 @@ class ElevatedTextButton extends StatelessWidget {
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(8),
-          splashColor: defaultTextColor.withOpacity(0.1),
-          highlightColor: defaultTextColor.withOpacity(0.05),
+          splashColor: defaultTextColor.withValues(alpha: 0.1),
+          highlightColor: defaultTextColor.withValues(alpha: 0.05),
           child: Container(
             padding: defaultPadding,
             child: buttonChild,

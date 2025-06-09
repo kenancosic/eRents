@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/property_availability_service.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/core/services/pricing_service.dart';
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:go_router/go_router.dart';
@@ -26,6 +27,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 8));
   Map<DateTime, bool> _availability = {};
   bool _isLoading = true;
+  bool _isLoadingPricing = false;
   String? _errorMessage;
   Map<String, dynamic>? _pricingDetails;
 
@@ -56,10 +58,10 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       final availabilityService =
           PropertyAvailabilityService(context.read<ApiService>());
 
-      final bookingsProvider = context.read<UserBookingsProvider>();
+      final bookingsProvider = context.read<BookingCollectionProvider>();
       final existingBookings = [
         ...bookingsProvider.upcomingBookings,
-        ...bookingsProvider.completedBookings,
+        ...bookingsProvider.pastBookings,
         ...bookingsProvider.cancelledBookings,
       ];
 
@@ -84,20 +86,33 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     }
   }
 
-  void _calculatePricing() {
-    final availabilityService =
-        PropertyAvailabilityService(context.read<ApiService>());
-
-    final pricing = availabilityService.calculatePricing(
-      property: widget.property,
-      startDate: _startDate,
-      endDate: _endDate,
-      isDailyRental: widget.property.rentalType == PropertyRentalType.daily,
-    );
+  Future<void> _calculatePricing() async {
+    final pricingService = context.read<PricingService>();
 
     setState(() {
-      _pricingDetails = pricing;
+      _isLoadingPricing = true;
     });
+
+    try {
+      final pricing = await pricingService.getPricing(
+        propertyId: widget.property.propertyId,
+        startDate: _startDate,
+        endDate: _endDate,
+        numberOfGuests: 1, // Default, could be made configurable
+        isDailyRental: widget.property.rentalType == PropertyRentalType.daily,
+      );
+
+      setState(() {
+        _pricingDetails = pricing;
+        _isLoadingPricing = false;
+      });
+    } catch (e) {
+      debugPrint('Error calculating pricing: $e');
+      setState(() {
+        _pricingDetails = null;
+        _isLoadingPricing = false;
+      });
+    }
   }
 
   void _validateCurrentSelection() {

@@ -4,6 +4,8 @@ import 'package:e_rents_mobile/feature/chat/chat_room_screen.dart';
 import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
+import 'package:e_rents_mobile/feature/home/screens/modern_home_screen.dart';
+import 'package:e_rents_mobile/examples/integration_test_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/payment_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
@@ -23,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
 import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
-import 'package:e_rents_mobile/core/widgets/scaffold_with_nested_navigation.dart';
+import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 
 // Navigator keys
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
@@ -50,7 +52,13 @@ class AppRouter {
           // This is where you'd build your main scaffold with the CustomBottomNavigationBar
           // The navigationShell is used to display the correct page for the current tab
           // and to handle tab changes via the CustomBottomNavigationBar's onTap
-          return ScaffoldWithNestedNavigation(navigationShell: navigationShell);
+          return Scaffold(
+            body: navigationShell,
+            bottomNavigationBar: CustomBottomNavigationBar(
+              currentIndex: navigationShell.currentIndex,
+              onTap: (index) => navigationShell.goBranch(index),
+            ),
+          );
         },
         branches: <StatefulShellBranch>[
           // Branch A: Home
@@ -176,6 +184,18 @@ class AppRouter {
         path: '/password_reset_confirmation',
         name: 'password_reset_confirmation',
         builder: (context, state) => const PasswordResetConfirmationScreen(),
+      ),
+      // NEW: Modern home screen for testing repository architecture
+      GoRoute(
+        path: '/modern-home',
+        name: 'modern_home',
+        builder: (context, state) => const ModernHomeScreen(),
+      ),
+      // Integration test screen
+      GoRoute(
+        path: '/integration-test',
+        name: 'integration_test',
+        builder: (context, state) => const IntegrationTestScreen(),
       ),
       GoRoute(
         path: '/property/:id', // Moved to be a top-level route

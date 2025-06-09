@@ -195,7 +195,7 @@ class CustomOutlinedButton extends StatelessWidget {
 
       shadows = [
         BoxShadow(
-          color: borderColor.withOpacity(0.15),
+          color: borderColor.withValues(alpha: 0.15),
           offset: Offset(0, shadowOffset),
           blurRadius: shadowBlur,
           spreadRadius: -1,

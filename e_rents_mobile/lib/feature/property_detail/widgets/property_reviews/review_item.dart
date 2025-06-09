@@ -15,8 +15,8 @@ class ReviewItem extends StatelessWidget {
     // Extract available data from Review model
     final rating = review.starRating ?? 0.0;
     final comment = review.description ?? 'No comment provided';
-    final date = review.dateReported != null
-        ? '${review.dateReported!.day}/${review.dateReported!.month}/${review.dateReported!.year}'
+    final date = review.dateCreated != null
+        ? '${review.dateCreated.day}/${review.dateCreated.month}/${review.dateCreated.year}'
         : 'Unknown date';
     // Generate a user name from review ID (placeholder)
     final userName = 'User ${review.reviewId}';

@@ -2,7 +2,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     // Initialize user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UserProvider>().initUser();
+      context.read<UserDetailProvider>().initUser();
     });
   }
 
@@ -39,8 +39,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (pickedFile != null) {
         final File imageFile = File(pickedFile.path);
         // Upload image using provider
-        final success =
-            await context.read<UserProvider>().uploadProfileImage(imageFile);
+        final success = await context
+            .read<UserDetailProvider>()
+            .uploadProfileImage(imageFile);
 
         if (!success && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (shouldLogout == true && mounted) {
-      await context.read<UserProvider>().logout();
+      await context.read<UserDetailProvider>().logout();
       // Navigate to login screen
       if (mounted) {
         context.go('/login');
@@ -91,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<UserProvider>(
+    return Consumer<UserDetailProvider>(
       builder: (context, userProvider, _) {
         final user = userProvider.user;
         final isLoading = userProvider.state == ViewState.busy;
@@ -245,7 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Helper method to build a switch list tile for public profile
   Widget _buildSwitchListTile({
     required BuildContext context,
-    required UserProvider userProvider,
+    required UserDetailProvider userProvider,
   }) {
     final user = userProvider.user;
     final bool isPublic = user?.isPublic ?? false;

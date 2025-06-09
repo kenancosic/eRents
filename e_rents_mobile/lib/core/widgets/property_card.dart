@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
-import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
 
 enum PropertyCardLayout {
   horizontal, // Original horizontal layout
@@ -468,10 +467,10 @@ class BookmarkButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconSize = isCompact ? 16.0 : 20.0;
 
-    return Consumer<SavedProvider>(
+    return Consumer<SavedCollectionProvider>(
       builder: (context, savedProvider, child) {
         final isBookmarked = savedProvider.isPropertySaved(property.propertyId);
-        final isLoading = savedProvider.state == ViewState.busy;
+        final isLoading = savedProvider.isLoading;
 
         return GestureDetector(
           onTap: isLoading

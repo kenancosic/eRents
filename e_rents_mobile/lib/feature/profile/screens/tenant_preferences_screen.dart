@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +32,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
   @override
   void initState() {
     super.initState();
-    final userProvider = context.read<UserProvider>();
+    final userProvider = context.read<UserDetailProvider>();
     final preferences = userProvider.tenantPreference;
 
     _cityController = TextEditingController(text: preferences?.city ?? '');
@@ -88,7 +88,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final userProvider = context.read<UserProvider>();
+      final userProvider = context.read<UserDetailProvider>();
       final User? currentUser = userProvider.user;
 
       if (currentUser == null || currentUser.userId == null) {
@@ -139,9 +139,9 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
       appBar: AppBar(
         title: const Text('Accommodation Preferences'),
       ),
-      body: Consumer<UserProvider>(
+      body: Consumer<UserDetailProvider>(
         builder: (context, userProvider, child) {
-          if (userProvider.state == ViewState.busy &&
+          if (userProvider.isLoading &&
               userProvider.tenantPreference == null &&
               userProvider.user == null) {
             // Initial loading state for both user and preferences
@@ -266,13 +266,11 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: userProvider.state == ViewState.busy
-                        ? null
-                        : _submitForm,
+                    onPressed: userProvider.isLoading ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         padding: const EdgeInsets.symmetric(vertical: 16.0)),
-                    child: userProvider.state == ViewState.busy
+                    child: userProvider.isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('Save Preferences'),
                   ),

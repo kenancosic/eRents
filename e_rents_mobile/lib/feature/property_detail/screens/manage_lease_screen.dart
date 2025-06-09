@@ -10,7 +10,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 
 class ManageLeaseScreen extends StatefulWidget {
   final int propertyId;
@@ -106,7 +106,7 @@ class _ManageLeaseScreenState extends State<ManageLeaseScreen> {
       final request = LeaseExtensionRequest(
         bookingId: widget.bookingId,
         propertyId: widget.propertyId,
-        tenantId: context.read<UserProvider>().user?.userId ?? 1,
+        tenantId: context.read<UserDetailProvider>().item?.userId ?? 1,
         newEndDate: _isIndefiniteExtension ? null : _newEndDate,
         newMinimumStayEndDate: _newMinimumStayEndDate,
         reason: _reasonController.text.trim(),

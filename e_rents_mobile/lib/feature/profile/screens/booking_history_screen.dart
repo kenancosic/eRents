@@ -1,7 +1,6 @@
-import 'package:e_rents_mobile/core/base/base_provider.dart'; // For ViewState
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:e_rents_mobile/feature/profile/widgets/booking_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -95,19 +94,19 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
           ],
         ),
       ),
-      body: Consumer<UserBookingsProvider>(
+      body: Consumer<BookingCollectionProvider>(
         builder: (context, provider, child) {
-          if (provider.state == ViewState.busy) {
+          if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (provider.state == ViewState.error) {
+          if (provider.hasError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(provider.errorMessage ?? 'Failed to load bookings.'),
                   ElevatedButton(
-                    onPressed: () => provider.fetchBookings(),
+                    onPressed: () => provider.loadUserBookings(),
                     child: const Text('Try Again'),
                   )
                 ],
@@ -120,8 +119,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
             children: [
               _buildBookingList(
                   provider.upcomingBookings, 'No Upcoming Bookings'),
-              _buildBookingList(
-                  provider.completedBookings, 'No Completed Bookings'),
+              _buildBookingList(provider.pastBookings, 'No Completed Bookings'),
               _buildBookingList(
                   provider.cancelledBookings, 'No Cancelled Bookings'),
             ],

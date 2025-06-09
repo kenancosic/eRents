@@ -1,3 +1,4 @@
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -6,7 +7,7 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
-import 'package:e_rents_mobile/feature/profile/user_bookings_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 
 /// Section shown when user has an upcoming booking
 /// Shows booking details and management options
@@ -169,7 +170,7 @@ class UpcomingBookingSection extends StatelessWidget {
         booking: booking,
         onCancellationConfirmed: () {
           // Refresh the bookings to get updated data
-          context.read<UserBookingsProvider>().fetchBookings();
+          context.read<BookingCollectionProvider>().loadUserBookings();
 
           // Navigate back to home or bookings screen
           context.go('/home');

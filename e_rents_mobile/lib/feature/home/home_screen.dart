@@ -8,12 +8,10 @@ import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address.dart';
-import 'package:e_rents_mobile/core/models/image_model.dart';
 import 'package:e_rents_mobile/feature/home/widgets/upcoming_stays_section.dart';
 import 'package:e_rents_mobile/feature/home/widgets/currently_residing_section.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:typed_data';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

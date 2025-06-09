@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
@@ -18,12 +19,12 @@ class HomeService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Booking.fromJson(json)).toList();
       } else {
-        print(
-            'Failed to load current residences: ${response.statusCode} ${response.body}');
+        debugPrint(
+            'HomeService: Failed to load current residences: ${response.statusCode} ${response.body}');
         return [];
       }
     } catch (e) {
-      print('Error getting current residences: $e');
+      debugPrint('HomeService.getCurrentResidences: $e');
       return [];
     }
   }
@@ -38,12 +39,12 @@ class HomeService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Booking.fromJson(json)).toList();
       } else {
-        print(
-            'Failed to load upcoming stays: ${response.statusCode} ${response.body}');
+        debugPrint(
+            'HomeService: Failed to load upcoming stays: ${response.statusCode} ${response.body}');
         return [];
       }
     } catch (e) {
-      print('Error getting upcoming stays: $e');
+      debugPrint('HomeService.getUpcomingStays: $e');
       return [];
     }
   }
@@ -58,12 +59,12 @@ class HomeService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Property.fromJson(json)).toList();
       } else {
-        print(
-            'Failed to load popular properties: ${response.statusCode} ${response.body}');
+        debugPrint(
+            'HomeService: Failed to load popular properties: ${response.statusCode} ${response.body}');
         return [];
       }
     } catch (e) {
-      print('Error getting popular properties: $e');
+      debugPrint('HomeService.getMostRentedProperties: $e');
       return [];
     }
   }

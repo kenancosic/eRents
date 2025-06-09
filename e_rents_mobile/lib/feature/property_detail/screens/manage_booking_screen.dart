@@ -9,7 +9,7 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/user_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 
 class ManageBookingScreen extends StatefulWidget {
   final int propertyId;
@@ -55,7 +55,8 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
       final startDate = DateTime.now().subtract(const Duration(days: 30));
       final endDate = DateTime.now().add(const Duration(days: 365));
 
-      final availability = await leaseService.getPropertyAvailability(
+      // Fetch availability from service (currently using mock data below)
+      await leaseService.getPropertyAvailability(
         widget.propertyId,
         startDate: startDate,
         endDate: endDate,
@@ -175,7 +176,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         LeaseExtensionRequest(
           bookingId: widget.bookingId,
           propertyId: widget.propertyId,
-          tenantId: context.read<UserProvider>().user?.userId ?? 1,
+          tenantId: context.read<UserDetailProvider>().item?.userId ?? 1,
           newEndDate: endExtension,
           reason:
               'Booking extension for additional ${_selectedExtensionDates.length} days',

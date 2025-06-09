@@ -9,6 +9,12 @@ abstract class BaseProvider with ChangeNotifier {
   ViewState get state => _state;
   String? get errorMessage => _errorMessage;
 
+  // Convenience getters for UI compatibility
+  bool get isLoading => _state == ViewState.busy;
+  bool get hasError => _state == ViewState.error;
+  bool get isIdle => _state == ViewState.idle;
+  bool get hasData => !isLoading && !hasError;
+
   void setState(ViewState viewState) {
     _state = viewState;
     notifyListeners();

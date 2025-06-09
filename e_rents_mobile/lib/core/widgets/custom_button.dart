@@ -186,7 +186,7 @@ class CustomButton extends StatelessWidget {
 
       shadows = [
         BoxShadow(
-          color: primaryColor.withOpacity(0.25),
+          color: primaryColor.withValues(alpha: 0.25),
           offset: Offset(0, shadowOffset),
           blurRadius: shadowBlur,
           spreadRadius: -2,

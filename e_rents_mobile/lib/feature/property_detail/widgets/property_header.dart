@@ -1,8 +1,7 @@
 // lib/feature/property_detail/widgets/property_header.dart
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
-import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
 import 'package:provider/provider.dart';
 
 class PropertyHeader extends StatelessWidget {
@@ -15,7 +14,7 @@ class PropertyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SavedProvider>(
+    return Consumer<SavedCollectionProvider>(
       builder: (context, savedProvider, child) {
         final isSaved = savedProvider.isPropertySaved(property.propertyId);
 
@@ -36,7 +35,7 @@ class PropertyHeader extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 minimumSize: Size.zero,
               ),
-              onPressed: savedProvider.state == ViewState.busy
+              onPressed: savedProvider.isLoading
                   ? null
                   : () async {
                       await savedProvider.toggleSavedStatus(property);
@@ -54,7 +53,7 @@ class PropertyHeader extends StatelessWidget {
                         );
                       }
                     },
-              icon: savedProvider.state == ViewState.busy
+              icon: savedProvider.isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
