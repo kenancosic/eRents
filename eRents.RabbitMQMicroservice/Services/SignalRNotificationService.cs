@@ -37,7 +37,7 @@ namespace eRents.RabbitMQMicroservice.Services
                     timestamp = DateTime.UtcNow
                 };
 
-                await SendNotificationAsync($"{_webApiBaseUrl}/api/notifications/message", notification);
+                await SendNotificationAsync($"{_webApiBaseUrl}/notifications/message", notification);
                 _logger.LogInformation("Message notification sent from {SenderId} to {ReceiverId}", senderId, receiverId);
             }
             catch (Exception ex)
@@ -58,7 +58,7 @@ namespace eRents.RabbitMQMicroservice.Services
                     timestamp = DateTime.UtcNow
                 };
 
-                await SendNotificationAsync($"{_webApiBaseUrl}/api/notifications/booking", notificationData);
+                await SendNotificationAsync($"{_webApiBaseUrl}/notifications/booking", notificationData);
                 _logger.LogInformation("Booking notification sent to user {UserId} for booking {BookingId}", userId, bookingId);
             }
             catch (Exception ex)
@@ -79,7 +79,7 @@ namespace eRents.RabbitMQMicroservice.Services
                     timestamp = DateTime.UtcNow
                 };
 
-                await SendNotificationAsync($"{_webApiBaseUrl}/api/notifications/review", notificationData);
+                await SendNotificationAsync($"{_webApiBaseUrl}/notifications/review", notificationData);
                 _logger.LogInformation("Review notification sent to property owner {PropertyOwnerId} for review {ReviewId}", propertyOwnerId, reviewId);
             }
             catch (Exception ex)
@@ -99,7 +99,7 @@ namespace eRents.RabbitMQMicroservice.Services
                     timestamp = DateTime.UtcNow
                 };
 
-                await SendNotificationAsync($"{_webApiBaseUrl}/api/notifications/system", notificationData);
+                await SendNotificationAsync($"{_webApiBaseUrl}/notifications/system", notificationData);
                 _logger.LogInformation("System notification sent to user {UserId}", userId);
             }
             catch (Exception ex)

@@ -12,7 +12,7 @@ public partial class Property : BaseEntity
 
     public string? Description { get; set; }
 
-    public decimal Price { get; set; }
+    public decimal Price { get; set; }  // Daily rate for "Daily" rentals, Monthly rate for "Annual" rentals
 
     public string Currency { get; set; } = "BAM";
 
@@ -35,14 +35,9 @@ public partial class Property : BaseEntity
     public int? Bathrooms { get; set; }
 
     public decimal? Area { get; set; }
-
-    public decimal? DailyRate { get; set; }
     public int? MinimumStayDays { get; set; }
 
-    // Fee Settings (Property-level defaults for desktop app management)
-    public decimal? DefaultSecurityDeposit { get; set; }
-    public decimal? DefaultCleaningFee { get; set; }
-    public decimal? DefaultServiceFee { get; set; }
+    public bool RequiresApproval { get; set; } = false; // For annual rentals requiring landlord approval
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

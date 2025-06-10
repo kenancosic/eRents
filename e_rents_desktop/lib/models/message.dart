@@ -7,6 +7,12 @@ class Message {
   final bool isRead;
   final bool isDeleted;
 
+  // Fields from other entities - use "EntityName + FieldName" pattern
+  final String? userFirstNameSender; // Sender's first name
+  final String? userLastNameSender; // Sender's last name
+  final String? userFirstNameReceiver; // Receiver's first name
+  final String? userLastNameReceiver; // Receiver's last name
+
   Message({
     required this.id,
     required this.senderId,
@@ -15,6 +21,10 @@ class Message {
     required this.dateSent,
     this.isRead = false,
     this.isDeleted = false,
+    this.userFirstNameSender,
+    this.userLastNameSender,
+    this.userFirstNameReceiver,
+    this.userLastNameReceiver,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) {
@@ -26,6 +36,11 @@ class Message {
       dateSent: DateTime.parse(json['dateSent'] as String),
       isRead: json['isRead'] as bool? ?? false,
       isDeleted: json['isDeleted'] as bool? ?? false,
+      // Fields from other entities - use "EntityName + FieldName" pattern
+      userFirstNameSender: json['userFirstNameSender'] as String?,
+      userLastNameSender: json['userLastNameSender'] as String?,
+      userFirstNameReceiver: json['userFirstNameReceiver'] as String?,
+      userLastNameReceiver: json['userLastNameReceiver'] as String?,
     );
   }
 
@@ -49,6 +64,10 @@ class Message {
     DateTime? dateSent,
     bool? isRead,
     bool? isDeleted,
+    String? userFirstNameSender,
+    String? userLastNameSender,
+    String? userFirstNameReceiver,
+    String? userLastNameReceiver,
   }) {
     return Message(
       id: id ?? this.id,
@@ -58,6 +77,25 @@ class Message {
       dateSent: dateSent ?? this.dateSent,
       isRead: isRead ?? this.isRead,
       isDeleted: isDeleted ?? this.isDeleted,
+      userFirstNameSender: userFirstNameSender ?? this.userFirstNameSender,
+      userLastNameSender: userLastNameSender ?? this.userLastNameSender,
+      userFirstNameReceiver:
+          userFirstNameReceiver ?? this.userFirstNameReceiver,
+      userLastNameReceiver: userLastNameReceiver ?? this.userLastNameReceiver,
     );
   }
+
+  // Computed properties for UI convenience (for backward compatibility)
+  String? get senderName =>
+      !((userFirstNameSender?.isEmpty ?? true) &&
+              (userLastNameSender?.isEmpty ?? true))
+          ? '${userFirstNameSender ?? ''} ${userLastNameSender ?? ''}'.trim()
+          : null;
+
+  String? get receiverName =>
+      !((userFirstNameReceiver?.isEmpty ?? true) &&
+              (userLastNameReceiver?.isEmpty ?? true))
+          ? '${userFirstNameReceiver ?? ''} ${userLastNameReceiver ?? ''}'
+              .trim()
+          : null;
 }

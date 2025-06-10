@@ -10,12 +10,13 @@ class TenantPreference {
   final String description;
   final bool isActive;
 
-  // User information from backend TenantPreferenceResponseDto
-  final String? userFullName;
-  final String? userEmail;
-  final String? userPhone;
-  final String? userCity;
-  final String? profileImageUrl;
+  // Fields from other entities - use "EntityName + FieldName" pattern
+  final String? userFirstName; // User's first name
+  final String? userLastName; // User's last name
+  final String? userEmail; // User's email
+  final String? userPhoneNumber; // User's phone number
+  final String? userCity; // User's city from address
+  final String? profileImageUrl; // Profile image URL
 
   // Match scoring from backend
   final double matchScore;
@@ -32,9 +33,10 @@ class TenantPreference {
     required this.amenities,
     required this.description,
     this.isActive = true,
-    this.userFullName,
+    this.userFirstName,
+    this.userLastName,
     this.userEmail,
-    this.userPhone,
+    this.userPhoneNumber,
     this.userCity,
     this.profileImageUrl,
     this.matchScore = 0.0,
@@ -56,12 +58,13 @@ class TenantPreference {
       amenities: List<String>.from(json['amenities'] ?? []),
       description: json['description'] ?? '',
       isActive: json['isActive'] ?? true,
-      // User information from backend
-      userFullName: json['userFullName'],
-      userEmail: json['userEmail'],
-      userPhone: json['userPhone'],
-      userCity: json['userCity'],
-      profileImageUrl: json['profileImageUrl'],
+      // Fields from other entities - use "EntityName + FieldName" pattern
+      userFirstName: json['userFirstName'] as String?,
+      userLastName: json['userLastName'] as String?,
+      userEmail: json['userEmail'] as String?,
+      userPhoneNumber: json['userPhoneNumber'] as String?,
+      userCity: json['userCity'] as String?,
+      profileImageUrl: json['profileImageUrl'] as String?,
       // Match scoring
       matchScore: (json['matchScore'] ?? 0.0).toDouble(),
       matchReasons: List<String>.from(json['matchReasons'] ?? []),
@@ -80,13 +83,16 @@ class TenantPreference {
       'amenities': amenities,
       'description': description,
       'isActive': isActive,
-      'userFullName': userFullName,
-      'userEmail': userEmail,
-      'userPhone': userPhone,
-      'userCity': userCity,
-      'profileImageUrl': profileImageUrl,
       'matchScore': matchScore,
       'matchReasons': matchReasons,
     };
   }
+
+  // Computed properties for UI convenience (for backward compatibility)
+  String? get userFullName =>
+      !((userFirstName?.isEmpty ?? true) && (userLastName?.isEmpty ?? true))
+          ? '${userFirstName ?? ''} ${userLastName ?? ''}'.trim()
+          : null;
+
+  String? get userPhone => userPhoneNumber;
 }

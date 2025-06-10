@@ -32,6 +32,13 @@ class Property {
   final DateTime dateAdded;
   final Address? address;
 
+  // Fields from other entities - use "EntityName + FieldName" pattern
+  final String? propertyTypeName;
+  final String? rentingTypeName;
+  final String? userFirstName; // Owner's first name
+  final String? userLastName; // Owner's last name
+  final double? averageRating; // Computed from reviews
+
   Property({
     required this.propertyId,
     required this.ownerId,
@@ -55,6 +62,11 @@ class Property {
     this.defaultServiceFee,
     required this.dateAdded,
     this.address,
+    this.propertyTypeName,
+    this.rentingTypeName,
+    this.userFirstName,
+    this.userLastName,
+    this.averageRating,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -104,6 +116,12 @@ class Property {
           json['address'] != null
               ? Address.fromJson(json['address'] as Map<String, dynamic>)
               : null,
+      // Fields from other entities - use "EntityName + FieldName" pattern
+      propertyTypeName: json['propertyTypeName'] as String?,
+      rentingTypeName: json['rentingTypeName'] as String?,
+      userFirstName: json['userFirstName'] as String?,
+      userLastName: json['userLastName'] as String?,
+      averageRating: (json['averageRating'] as num?)?.toDouble(),
     );
   }
 
@@ -353,4 +371,25 @@ class Property {
     dateAdded: DateTime.now(),
     address: null,
   );
+
+  // Computed properties for UI convenience (for backward compatibility)
+  String? get ownerName =>
+      !((userFirstName?.isEmpty ?? true) && (userLastName?.isEmpty ?? true))
+          ? '${userFirstName ?? ''} ${userLastName ?? ''}'.trim()
+          : null;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Property &&
+          runtimeType == other.runtimeType &&
+          propertyId == other.propertyId;
+
+  @override
+  int get hashCode => propertyId.hashCode;
+
+  @override
+  String toString() {
+    return 'Property(id: $propertyId, name: $name, status: $status, price: $price)';
+  }
 }

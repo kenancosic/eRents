@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class NotificationsController : ControllerBase
     {
         private readonly IHubContext<ChatHub> _hubContext;

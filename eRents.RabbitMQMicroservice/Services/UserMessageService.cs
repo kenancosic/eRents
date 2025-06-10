@@ -32,8 +32,8 @@ namespace eRents.RabbitMQMicroservice.Services
 					message.SenderUsername, message.RecipientUsername);
 
 				// Parse user IDs from usernames
-				var senderId = ParseUserIdFromUsername(message.SenderUsername);
-				var receiverId = ParseUserIdFromUsername(message.RecipientUsername);
+				var senderId = await ParseUserIdFromUsernameAsync(message.SenderUsername);
+				var receiverId = await ParseUserIdFromUsernameAsync(message.RecipientUsername);
 
 				if (senderId == 0 || receiverId == 0)
 				{
@@ -58,7 +58,7 @@ namespace eRents.RabbitMQMicroservice.Services
 			}
 		}
 
-		private int ParseUserIdFromUsername(string username)
+		private async Task<int> ParseUserIdFromUsernameAsync(string username)
 		{
 			// Handle format "user_{id}"
 			if (username.StartsWith("user_") && int.TryParse(username.Substring(5), out var userId))
@@ -66,8 +66,30 @@ namespace eRents.RabbitMQMicroservice.Services
 				return userId;
 			}
 
-			// For actual usernames, we'd need to call the WebAPI to resolve them
-			// For now, we'll return 0 which indicates failure
+			// For actual usernames, call the WebAPI to resolve them
+			try
+			{
+				var response = await _httpClient.GetAsync($"{_webApiBaseUrl}/internal/users/resolve/{username}");
+				if (response.IsSuccessStatusCode)
+				{
+					var content = await response.Content.ReadAsStringAsync();
+					var userInfo = JsonSerializer.Deserialize<JsonElement>(content);
+					if (userInfo.TryGetProperty("userId", out var userIdElement))
+					{
+						return userIdElement.GetInt32();
+					}
+				}
+				else
+				{
+					_logger.LogWarning("Failed to resolve username {Username}. Status: {StatusCode}", 
+						username, response.StatusCode);
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error resolving username {Username}", username);
+			}
+
 			_logger.LogWarning("Unable to parse user ID from username: {Username}", username);
 			return 0;
 		}
@@ -87,7 +109,7 @@ namespace eRents.RabbitMQMicroservice.Services
 				var json = JsonSerializer.Serialize(messageData);
 				var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-				var response = await _httpClient.PostAsync($"{_webApiBaseUrl}/api/internal/messages/persist", content);
+				var response = await _httpClient.PostAsync($"{_webApiBaseUrl}/internal/messages/persist", content);
 				
 				if (!response.IsSuccessStatusCode)
 				{

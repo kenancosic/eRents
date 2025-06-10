@@ -14,5 +14,10 @@ namespace eRents.Application.Service.BookingService
         Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate);
         Task<BookingResponse> CancelBookingAsync(BookingCancellationRequest request);
         Task<decimal> CalculateRefundAmountAsync(int bookingId, DateTime cancellationDate);
+
+        // 🆕 NEW: Dual Rental System Support
+        Task<bool> CanCreateDailyBookingAsync(int propertyId, DateOnly startDate, DateOnly endDate);
+        Task<bool> IsPropertyDailyRentalTypeAsync(int propertyId);
+        Task<bool> HasConflictWithAnnualRentalAsync(int propertyId, DateOnly startDate, DateOnly endDate);
     }
 }

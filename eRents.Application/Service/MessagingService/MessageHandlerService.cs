@@ -15,19 +15,22 @@ namespace eRents.Application.Service.MessagingService
 		private readonly IMapper _mapper;
 		private readonly IRealTimeMessagingService _realTimeMessagingService;
 		private readonly IRabbitMQService _rabbitMqService;
+		private readonly IUserLookupService _userLookupService;
 
 		public MessageHandlerService(
 			IUserRepository userRepository, 
 			IMessageRepository messageRepository, 
 			IMapper mapper,
 			IRealTimeMessagingService realTimeMessagingService,
-			IRabbitMQService rabbitMqService)
+			IRabbitMQService rabbitMqService,
+			IUserLookupService userLookupService)
 		{
 			_userRepository = userRepository;
 			_messageRepository = messageRepository;
 			_mapper = mapper;
 			_realTimeMessagingService = realTimeMessagingService;
 			_rabbitMqService = rabbitMqService;
+			_userLookupService = userLookupService;
 		}
 
 		public async Task HandleUserMessageAsync(UserMessage message)
@@ -72,20 +75,12 @@ namespace eRents.Application.Service.MessagingService
 
 		public async Task<int> GetUserIdByUsernameAsync(string username)
 		{
-			// Handle the special case where username is in format "user_{id}"
-			if (username.StartsWith("user_") && int.TryParse(username.Substring(5), out var userId))
-			{
-				return userId;
-			}
-
-			var user = await _userRepository.GetByUsernameAsync(username);
-			return user?.UserId ?? 0;
+			return await _userLookupService.GetUserIdByUsernameAsync(username);
 		}
 
 		public async Task<string> GetUsernameByUserIdAsync(int userId)
 		{
-			var user = await _userRepository.GetByIdAsync(userId);
-			return user?.Username ?? $"user_{userId}";
+			return await _userLookupService.GetUsernameByUserIdAsync(userId);
 		}
 
 		// HTTP API methods - Application layer business logic with RabbitMQ + SignalR

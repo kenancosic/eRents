@@ -340,7 +340,7 @@ namespace eRents.Application.Service.TenantService
 				Bedrooms = property.Bedrooms,
 				Bathrooms = property.Bathrooms,
 				Area = property.Area,
-				DailyRate = property.DailyRate,
+				// DailyRate field removed - using single Price field for both daily and monthly rates
 				MinimumStayDays = property.MinimumStayDays,
 				CreatedAt = property.DateAdded ?? DateTime.UtcNow,
 				UpdatedAt = property.DateAdded ?? DateTime.UtcNow,

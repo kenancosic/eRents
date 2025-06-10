@@ -289,8 +289,29 @@ namespace eRents.Application.Shared
 					{
 						var parameter = Expression.Parameter(entityType, "e");
 						var property = Expression.Property(parameter, entityProp);
-						var constant = Expression.Constant(searchValue);
-						var equal = Expression.Equal(property, constant);
+						
+						// Handle nullable vs non-nullable type comparison
+						var constant = Expression.Constant(searchValue, searchProp.PropertyType);
+						
+						// If types don't match exactly (nullable vs non-nullable), convert them
+						Expression left = property;
+						Expression right = constant;
+						
+						if (property.Type != constant.Type)
+						{
+							// If entity property is nullable and search value is not, convert search value to nullable
+							if (IsNullableType(property.Type) && !IsNullableType(constant.Type))
+							{
+								right = Expression.Convert(constant, property.Type);
+							}
+							// If entity property is not nullable and search value is nullable, convert entity property
+							else if (!IsNullableType(property.Type) && IsNullableType(constant.Type))
+							{
+								left = Expression.Convert(property, constant.Type);
+							}
+						}
+						
+						var equal = Expression.Equal(left, right);
 						var lambda = Expression.Lambda<Func<TEntity, bool>>(equal, parameter);
 						
 						query = query.Where(lambda);
@@ -307,7 +328,11 @@ namespace eRents.Application.Shared
 		private bool IsHelperProperty(string propertyName)
 		{
 			// Properties that don't match entity properties exactly (navigation helpers)
-			var helperProperties = new[] { "Status", "Statuses", "Role", "City" };
+			var helperProperties = new[] { 
+				"Status", "Statuses", "Role", "City", 
+				// RentalRequest helpers
+				"LandlordId", "PendingOnly", "ExpiringRequests", "UserFullName", "PropertyLocation"
+			};
 			return helperProperties.Contains(propertyName);
 		}
 
@@ -321,6 +346,14 @@ namespace eRents.Application.Shared
 			var entityUnderlyingType = Nullable.GetUnderlyingType(entityType) ?? entityType;
 			
 			return searchUnderlyingType == entityUnderlyingType;
+		}
+
+		/// <summary>
+		/// Check if a type is nullable
+		/// </summary>
+		private bool IsNullableType(Type type)
+		{
+			return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
 		}
 
 		private IQueryable<TEntity> ApplyRangeFilters(IQueryable<TEntity> query, TSearch search)

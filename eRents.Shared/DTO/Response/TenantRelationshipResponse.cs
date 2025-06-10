@@ -5,6 +5,7 @@ namespace eRents.Shared.DTO.Response
 {
 	public class TenantRelationshipResponse : BaseResponse
 	{
+		// Direct tenant relationship entity fields - use exact entity field names
 		public int TenantId { get; set; }
 		public int UserId { get; set; } // Use UserController to fetch user details
 		public int? PropertyId { get; set; } // Use PropertiesController to fetch property details
@@ -12,10 +13,11 @@ namespace eRents.Shared.DTO.Response
 		public DateTime? LeaseEndDate { get; set; }
 		public string? TenantStatus { get; set; } // Active, Completed, Cancelled
 
-		// Essential display fields (small data)
-		public string UserFullName { get; set; } = null!; // Keep for list display
-		public string UserEmail { get; set; } = null!; // Keep for contact
-		public string? PropertyTitle { get; set; } // Keep for list display
+		// Fields from other entities - use "EntityName + FieldName" pattern
+		public string? UserFirstName { get; set; }  // User's first name
+		public string? UserLastName { get; set; }   // User's last name
+		public string? UserEmail { get; set; }      // User's email
+		public string? PropertyName { get; set; }   // Property name
 
 		// Booking details - could be optimized further by using BookingId only
 		public int? CurrentBookingId { get; set; }
@@ -29,5 +31,9 @@ namespace eRents.Shared.DTO.Response
 		public decimal TotalRevenue { get; set; }
 		public double? AverageRating { get; set; }
 		public int MaintenanceIssuesReported { get; set; }
+		
+		        // Computed properties for UI convenience (for backward compatibility)
+        public string? UserFullName { get; set; }
+        public string? PropertyTitle { get; set; }
 	}
 }

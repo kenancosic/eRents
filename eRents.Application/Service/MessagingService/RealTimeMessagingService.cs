@@ -16,18 +16,18 @@ namespace eRents.Application.Service.MessagingService
 	public class RealTimeMessagingService<TChatHub> : IRealTimeMessagingService where TChatHub : Hub
 	{
 		private readonly IHubContext<TChatHub> _hubContext;
-		private readonly IMessageHandlerService _messageHandlerService;
+		private readonly IUserLookupService _userLookupService;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly ILogger<RealTimeMessagingService<TChatHub>> _logger;
 
 		public RealTimeMessagingService(
 				IHubContext<TChatHub> hubContext,
-				IMessageHandlerService messageHandlerService,
+				IUserLookupService userLookupService,
 				IRabbitMQService rabbitMqService,
 				ILogger<RealTimeMessagingService<TChatHub>> logger)
 		{
 			_hubContext = hubContext;
-			_messageHandlerService = messageHandlerService;
+			_userLookupService = userLookupService;
 			_rabbitMqService = rabbitMqService;
 			_logger = logger;
 		}
@@ -37,8 +37,8 @@ namespace eRents.Application.Service.MessagingService
 			try
 			{
 				// Get usernames for the message
-				var senderUsername = await _messageHandlerService.GetUsernameByUserIdAsync(senderId);
-				var receiverUsername = await _messageHandlerService.GetUsernameByUserIdAsync(receiverId);
+				var senderUsername = await _userLookupService.GetUsernameByUserIdAsync(senderId);
+				var receiverUsername = await _userLookupService.GetUsernameByUserIdAsync(receiverId);
 
 				// Create and save the message
 				var userMessage = new UserMessage

@@ -8,38 +8,54 @@ enum IssueStatus { pending, inProgress, completed, cancelled }
 class MaintenanceIssue {
   final int maintenanceIssueId;
   final int propertyId;
+  final int tenantId;
   final String title;
   final String description;
   final IssuePriority priority;
   final IssueStatus status;
   final DateTime createdAt;
   final DateTime? resolvedAt;
-  final double? cost;
-  final String? assignedTo;
-  final List<erents.ImageInfo> images;
-  final int reportedBy;
-  final String? resolutionNotes;
-  final String? category; // e.g., plumbing, electrical, structural, etc.
+  final List<int> imageIds;
+  final String? landlordResponse;
+  final DateTime? landlordResponseDate;
+  final String? category;
   final bool requiresInspection;
   final bool isTenantComplaint;
+  final double? cost;
+  final String? resolutionNotes;
+  final String? propertyName;
+  final String? propertyAddress;
+  final String? userFirstNameTenant;
+  final String? userLastNameTenant;
+  final String? userEmailTenant;
+  final String? userFirstNameLandlord;
+  final String? userLastNameLandlord;
 
   MaintenanceIssue({
     required this.maintenanceIssueId,
     required this.propertyId,
+    required this.tenantId,
     required this.title,
     required this.description,
     required this.priority,
     this.status = IssueStatus.pending,
     required this.createdAt,
     this.resolvedAt,
-    this.cost,
-    this.assignedTo,
-    this.images = const [],
-    required this.reportedBy,
-    this.resolutionNotes,
+    this.imageIds = const [],
+    this.landlordResponse,
+    this.landlordResponseDate,
     this.category,
     this.requiresInspection = false,
     this.isTenantComplaint = false,
+    this.cost,
+    this.resolutionNotes,
+    this.propertyName,
+    this.propertyAddress,
+    this.userFirstNameTenant,
+    this.userLastNameTenant,
+    this.userEmailTenant,
+    this.userFirstNameLandlord,
+    this.userLastNameLandlord,
   });
 
   factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
@@ -51,6 +67,7 @@ class MaintenanceIssue {
           json['id'] as int? ??
           0,
       propertyId: json['propertyId'] as int? ?? 0,
+      tenantId: json['tenantId'] as int? ?? json['reportedBy'] as int? ?? 0,
       title: json['title'] as String? ?? '',
       description: json['description'] as String? ?? '',
       priority: _parsePriority(json['priority']),
@@ -67,18 +84,24 @@ class MaintenanceIssue {
               : json['dateResolved'] != null
               ? DateTime.parse(json['dateResolved'] as String)
               : null,
-      cost: (json['cost'] as num?)?.toDouble(),
-      assignedTo: json['assignedTo'] as String?,
-      images: _parseImages(json['images']),
-      reportedBy:
-          json['reportedBy'] as int? ??
-          json['reportedByUserId'] as int? ??
-          json['tenantId'] as int? ??
-          0,
-      resolutionNotes: json['resolutionNotes'] as String?,
+      imageIds: _parseImageIds(json['imageIds']),
+      landlordResponse: json['landlordResponse'] as String?,
+      landlordResponseDate:
+          json['landlordResponseDate'] != null
+              ? DateTime.parse(json['landlordResponseDate'] as String)
+              : null,
       category: json['category'] as String?,
       requiresInspection: json['requiresInspection'] as bool? ?? false,
       isTenantComplaint: json['isTenantComplaint'] as bool? ?? false,
+      cost: (json['cost'] as num?)?.toDouble(),
+      resolutionNotes: json['resolutionNotes'] as String?,
+      propertyName: json['propertyName'] as String?,
+      propertyAddress: json['propertyAddress'] as String?,
+      userFirstNameTenant: json['userFirstNameTenant'] as String?,
+      userLastNameTenant: json['userLastNameTenant'] as String?,
+      userEmailTenant: json['userEmailTenant'] as String?,
+      userFirstNameLandlord: json['userFirstNameLandlord'] as String?,
+      userLastNameLandlord: json['userLastNameLandlord'] as String?,
     );
   }
 
@@ -115,20 +138,24 @@ class MaintenanceIssue {
     }
   }
 
-  static List<erents.ImageInfo> _parseImages(dynamic imagesValue) {
-    if (imagesValue == null) return [];
+  static List<int> _parseImageIds(dynamic imageIdsValue) {
+    if (imageIdsValue == null) return [];
 
     try {
-      final List<dynamic> imagesList = imagesValue as List;
-      return imagesList.map((e) {
-        if (e is String) {
-          return erents.ImageInfo(id: int.parse(e), url: e);
-        } else if (e is Map<String, dynamic>) {
-          return erents.ImageInfo.fromJson(e);
-        } else {
-          return erents.ImageInfo(id: 0, url: '');
-        }
-      }).toList();
+      if (imageIdsValue is List) {
+        return imageIdsValue
+            .map((e) {
+              if (e is int) return e;
+              if (e is String) return int.tryParse(e) ?? 0;
+              if (e is Map<String, dynamic> && e['id'] != null) {
+                return e['id'] as int;
+              }
+              return 0;
+            })
+            .where((id) => id > 0)
+            .toList();
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -138,60 +165,99 @@ class MaintenanceIssue {
     return {
       'maintenanceIssueId': maintenanceIssueId,
       'propertyId': propertyId,
+      'tenantId': tenantId,
       'title': title,
       'description': description,
       'priority': priority.toString().split('.').last,
       'status': status.toString().split('.').last,
       'createdAt': createdAt.toIso8601String(),
+      'dateReported': createdAt.toIso8601String(),
       'resolvedAt': resolvedAt?.toIso8601String(),
-      'cost': cost,
-      'assignedTo': assignedTo,
-      'images': images.map((e) => e.toJson()).toList(),
-      'reportedBy': reportedBy,
-      'resolutionNotes': resolutionNotes,
+      'dateResolved': resolvedAt?.toIso8601String(),
+      'imageIds': imageIds,
+      'landlordResponse': landlordResponse,
+      'landlordResponseDate': landlordResponseDate?.toIso8601String(),
       'category': category,
       'requiresInspection': requiresInspection,
       'isTenantComplaint': isTenantComplaint,
+      'cost': cost,
+      'resolutionNotes': resolutionNotes,
     };
   }
 
   MaintenanceIssue copyWith({
     int? maintenanceIssueId,
     int? propertyId,
+    int? tenantId,
     String? title,
     String? description,
     IssuePriority? priority,
     IssueStatus? status,
     DateTime? createdAt,
     DateTime? resolvedAt,
-    double? cost,
-    String? assignedTo,
-    List<erents.ImageInfo>? images,
-    int? reportedBy,
-    String? resolutionNotes,
+    List<int>? imageIds,
+    String? landlordResponse,
+    DateTime? landlordResponseDate,
     String? category,
     bool? requiresInspection,
-    bool? isTenantComplaint,
+    bool? isTenantCompliant,
+    double? cost,
+    String? resolutionNotes,
+    String? propertyName,
+    String? propertyAddress,
+    String? userFirstNameTenant,
+    String? userLastNameTenant,
+    String? userEmailTenant,
+    String? userFirstNameLandlord,
+    String? userLastNameLandlord,
   }) {
     return MaintenanceIssue(
       maintenanceIssueId: maintenanceIssueId ?? this.maintenanceIssueId,
       propertyId: propertyId ?? this.propertyId,
+      tenantId: tenantId ?? this.tenantId,
       title: title ?? this.title,
       description: description ?? this.description,
       priority: priority ?? this.priority,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       resolvedAt: resolvedAt ?? this.resolvedAt,
-      cost: cost ?? this.cost,
-      assignedTo: assignedTo ?? this.assignedTo,
-      images: images ?? this.images,
-      reportedBy: reportedBy ?? this.reportedBy,
-      resolutionNotes: resolutionNotes ?? this.resolutionNotes,
+      imageIds: imageIds ?? this.imageIds,
+      landlordResponse: landlordResponse ?? this.landlordResponse,
+      landlordResponseDate: landlordResponseDate ?? this.landlordResponseDate,
       category: category ?? this.category,
       requiresInspection: requiresInspection ?? this.requiresInspection,
-      isTenantComplaint: isTenantComplaint ?? this.isTenantComplaint,
+      isTenantComplaint: isTenantCompliant ?? this.isTenantComplaint,
+      cost: cost ?? this.cost,
+      resolutionNotes: resolutionNotes ?? this.resolutionNotes,
+      propertyName: propertyName ?? this.propertyName,
+      propertyAddress: propertyAddress ?? this.propertyAddress,
+      userFirstNameTenant: userFirstNameTenant ?? this.userFirstNameTenant,
+      userLastNameTenant: userLastNameTenant ?? this.userLastNameTenant,
+      userEmailTenant: userEmailTenant ?? this.userEmailTenant,
+      userFirstNameLandlord:
+          userFirstNameLandlord ?? this.userFirstNameLandlord,
+      userLastNameLandlord: userLastNameLandlord ?? this.userLastNameLandlord,
     );
   }
+
+  String? get tenantName =>
+      !((userFirstNameTenant?.isEmpty ?? true) &&
+              (userLastNameTenant?.isEmpty ?? true))
+          ? '${userFirstNameTenant ?? ''} ${userLastNameTenant ?? ''}'.trim()
+          : null;
+
+  String? get landlordName =>
+      !((userFirstNameLandlord?.isEmpty ?? true) &&
+              (userLastNameLandlord?.isEmpty ?? true))
+          ? '${userFirstNameLandlord ?? ''} ${userLastNameLandlord ?? ''}'
+              .trim()
+          : null;
+
+  int get reportedBy => tenantId;
+  List<erents.ImageInfo> get images =>
+      imageIds
+          .map((id) => erents.ImageInfo(id: id, url: '/Image/$id'))
+          .toList();
 
   Color get priorityColor {
     switch (priority) {

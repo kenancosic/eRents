@@ -41,7 +41,18 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     );
     _priority = widget.issue?.priority ?? IssuePriority.medium;
     _isTenantComplaint = widget.issue?.isTenantComplaint ?? false;
-    _images = List.from(widget.issue?.images ?? []);
+    // Convert imageIds to ImageInfo objects for UI compatibility
+    _images =
+        widget.issue?.imageIds
+            .map(
+              (id) => erents.ImageInfo(
+                id: id,
+                url: '/Image/$id', // Construct URL from ID
+                fileName: 'image_$id.jpg',
+              ),
+            )
+            .toList() ??
+        [];
   }
 
   @override
@@ -63,9 +74,13 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
       createdAt: widget.issue?.createdAt ?? DateTime.now(),
       resolvedAt: widget.issue?.resolvedAt,
       cost: widget.issue?.cost,
-      assignedTo: widget.issue?.assignedTo,
-      images: _images,
-      reportedBy: _currentUserId,
+      imageIds:
+          _images
+              .map((img) => img.id)
+              .where((id) => id != null && id > 0)
+              .cast<int>()
+              .toList(),
+      tenantId: _currentUserId,
       resolutionNotes: widget.issue?.resolutionNotes,
       category: _categoryController.text,
       requiresInspection: widget.issue?.requiresInspection ?? false,

@@ -61,9 +61,12 @@ class Booking {
   // Navigation properties (loaded from includes)
   final String? propertyName;
   final String? propertyAddress;
-  final List<String>? propertyImages;
+  final int?
+  propertyImageId; // Property's main image ID - construct URL as needed
   final String? userName;
   final String? userEmail;
+  final String? tenantName; // New DTO field
+  final String? tenantEmail; // New DTO field
 
   // Base entity fields
   final DateTime createdAt;
@@ -89,9 +92,11 @@ class Booking {
     this.specialRequests,
     this.propertyName,
     this.propertyAddress,
-    this.propertyImages,
+    this.propertyImageId,
     this.userName,
     this.userEmail,
+    this.tenantName,
+    this.tenantEmail,
     required this.createdAt,
     this.updatedAt,
     this.createdBy,
@@ -101,49 +106,42 @@ class Booking {
   /// Create a Booking from JSON response
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      bookingId: json['bookingId'] ?? json['BookingId'] ?? 0,
-      propertyId: json['propertyId'] ?? json['PropertyId'],
-      userId: json['userId'] ?? json['UserId'],
-      startDate: DateTime.parse(json['startDate'] ?? json['StartDate']),
-      endDate:
-          json['endDate'] != null || json['EndDate'] != null
-              ? DateTime.parse(json['endDate'] ?? json['EndDate'])
-              : null,
+      bookingId: json['bookingId'] ?? 0,
+      propertyId: json['propertyId'],
+      userId: json['userId'],
+      startDate: DateTime.parse(json['startDate']),
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
       minimumStayEndDate:
-          json['minimumStayEndDate'] != null ||
-                  json['MinimumStayEndDate'] != null
-              ? DateTime.parse(
-                json['minimumStayEndDate'] ?? json['MinimumStayEndDate'],
-              )
+          json['minimumStayEndDate'] != null
+              ? DateTime.parse(json['minimumStayEndDate'])
               : null,
-      totalPrice: (json['totalPrice'] ?? json['TotalPrice'] ?? 0.0).toDouble(),
+      totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
       bookingDate:
-          json['bookingDate'] != null || json['BookingDate'] != null
-              ? DateTime.parse(json['bookingDate'] ?? json['BookingDate'])
+          json['bookingDate'] != null
+              ? DateTime.parse(json['bookingDate'])
               : null,
       status: _parseStatus(json),
-      paymentMethod: json['paymentMethod'] ?? json['PaymentMethod'] ?? 'PayPal',
-      currency: json['currency'] ?? json['Currency'] ?? 'BAM',
-      paymentStatus: json['paymentStatus'] ?? json['PaymentStatus'],
-      paymentReference: json['paymentReference'] ?? json['PaymentReference'],
-      numberOfGuests: json['numberOfGuests'] ?? json['NumberOfGuests'] ?? 1,
-      specialRequests: json['specialRequests'] ?? json['SpecialRequests'],
-      propertyName: json['propertyName'] ?? json['PropertyName'],
-      propertyAddress: json['propertyAddress'] ?? json['PropertyAddress'],
-      propertyImages: _parsePropertyImages(json),
-      userName: json['userName'] ?? json['UserName'],
-      userEmail: json['userEmail'] ?? json['UserEmail'],
+      paymentMethod: json['paymentMethod'] ?? 'PayPal',
+      currency: json['currency'] ?? 'BAM',
+      paymentStatus: json['paymentStatus'],
+      paymentReference: json['paymentReference'],
+      numberOfGuests: json['numberOfGuests'] ?? 1,
+      specialRequests: json['specialRequests'],
+      propertyName: json['propertyName'],
+      propertyAddress: json['propertyAddress'],
+      propertyImageId: json['propertyImageId'],
+      // ✅ FIXED: Use exact Entity field names from BookingResponse
+      userName: _buildFullName(json['userFirstName'], json['userLastName']),
+      userEmail: json['userEmail'],
+      tenantName: json['tenantName'],
+      tenantEmail: json['tenantEmail'],
       createdAt: DateTime.parse(
-        json['createdAt'] ??
-            json['CreatedAt'] ??
-            DateTime.now().toIso8601String(),
+        json['createdAt'] ?? DateTime.now().toIso8601String(),
       ),
       updatedAt:
-          json['updatedAt'] != null || json['UpdatedAt'] != null
-              ? DateTime.parse(json['updatedAt'] ?? json['UpdatedAt'])
-              : null,
-      createdBy: json['createdBy'] ?? json['CreatedBy'],
-      modifiedBy: json['modifiedBy'] ?? json['ModifiedBy'],
+          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdBy: json['createdBy'],
+      modifiedBy: json['modifiedBy'],
     );
   }
 
@@ -170,12 +168,7 @@ class Booking {
 
   /// Helper method to parse booking status from JSON
   static BookingStatus _parseStatus(Map<String, dynamic> json) {
-    final statusString =
-        json['status'] ??
-        json['Status'] ??
-        json['bookingStatus']?['statusName'] ??
-        json['BookingStatus']?['StatusName'] ??
-        'upcoming';
+    final statusString = json['status'] ?? 'upcoming';
 
     try {
       return BookingStatus.fromString(statusString);
@@ -184,25 +177,10 @@ class Booking {
     }
   }
 
-  /// Helper method to parse property images from JSON
-  static List<String>? _parsePropertyImages(Map<String, dynamic> json) {
-    final images =
-        json['propertyImages'] ??
-        json['PropertyImages'] ??
-        json['property']?['images'] ??
-        json['Property']?['Images'];
-
-    if (images == null) return null;
-
-    if (images is List) {
-      return images
-          .map((img) => img is String ? img : img['url'] ?? img['Url'] ?? '')
-          .where((url) => url.isNotEmpty)
-          .cast<String>()
-          .toList();
-    }
-
-    return null;
+  /// Helper method to build full name from first and last name
+  static String? _buildFullName(String? firstName, String? lastName) {
+    if (firstName == null && lastName == null) return null;
+    return '${firstName ?? ''} ${lastName ?? ''}'.trim();
   }
 
   /// Copy with method for updates
@@ -224,9 +202,11 @@ class Booking {
     String? specialRequests,
     String? propertyName,
     String? propertyAddress,
-    List<String>? propertyImages,
+    int? propertyImageId,
     String? userName,
     String? userEmail,
+    String? tenantName,
+    String? tenantEmail,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? createdBy,
@@ -250,9 +230,11 @@ class Booking {
       specialRequests: specialRequests ?? this.specialRequests,
       propertyName: propertyName ?? this.propertyName,
       propertyAddress: propertyAddress ?? this.propertyAddress,
-      propertyImages: propertyImages ?? this.propertyImages,
+      propertyImageId: propertyImageId ?? this.propertyImageId,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
+      tenantName: tenantName ?? this.tenantName,
+      tenantEmail: tenantEmail ?? this.tenantEmail,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       createdBy: createdBy ?? this.createdBy,

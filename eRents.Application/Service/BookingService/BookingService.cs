@@ -363,21 +363,8 @@ namespace eRents.Application.Service.BookingService
 				(b.EndDate == null || b.EndDate >= DateOnly.FromDateTime(today))
 			).ToList();
 
-			// Map to BookingSummaryResponse
-			var summaryItems = currentBookings.Select(b => new BookingSummaryResponse
-			{
-				BookingId = b.BookingId,
-				PropertyId = b.PropertyId ?? 0,
-				PropertyName = b.Property?.Name ?? "Unknown Property",
-				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
-				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
-				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
-				TotalPrice = b.TotalPrice,
-				Currency = "BAM", // Default currency
-				Status = b.BookingStatus?.StatusName ?? "Unknown",
-				TenantName = b.User != null ? $"{b.User.FirstName} {b.User.LastName}".Trim() : null,
-				TenantEmail = b.User?.Email
-			}).ToList();
+			// Map to BookingSummaryResponse using AutoMapper
+			var summaryItems = _mapper.Map<List<BookingSummaryResponse>>(currentBookings);
 
 			return summaryItems;
 		}
@@ -412,21 +399,8 @@ namespace eRents.Application.Service.BookingService
 				b.StartDate > DateOnly.FromDateTime(today)
 			).ToList();
 
-			// Map to BookingSummaryResponse
-			var summaryItems = upcomingBookings.Select(b => new BookingSummaryResponse
-			{
-				BookingId = b.BookingId,
-				PropertyId = b.PropertyId ?? 0,
-				PropertyName = b.Property?.Name ?? "Unknown Property",
-				PropertyImageId = b.Property?.Images?.FirstOrDefault()?.ImageId,
-				StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
-				EndDate = b.EndDate?.ToDateTime(TimeOnly.MinValue),
-				TotalPrice = b.TotalPrice,
-				Currency = "BAM", // Default currency
-				Status = b.BookingStatus?.StatusName ?? "Unknown",
-				TenantName = b.User != null ? $"{b.User.FirstName} {b.User.LastName}".Trim() : null,
-				TenantEmail = b.User?.Email
-			}).ToList();
+			// Map to BookingSummaryResponse using AutoMapper
+			var summaryItems = _mapper.Map<List<BookingSummaryResponse>>(upcomingBookings);
 
 			return summaryItems;
 		}

@@ -33,6 +33,9 @@ namespace eRents.Application.Shared
 			ConfigureReviewMappings();
 			ConfigureUserMappings();
 			ConfigureMaintenanceMappings();
+			ConfigureMessageMappings();
+			ConfigureTenantMappings();
+			ConfigureRentalRequestMappings();
 		}
 
 		private void ConfigureAmenityMappings()
@@ -47,18 +50,23 @@ namespace eRents.Application.Shared
 			CreateMap<Booking, BookingResponse>()
 				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.BookingId)) // Different names
 				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
-				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property
+				.ForMember(dest => dest.BookingStatusStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
 				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
-				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0)); // Null handling
+				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0)) // Null handling
+				// ✅ FIXED: Use correct "EntityName + FieldName" pattern
+				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User.FirstName)) 
+				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User.LastName))
+				.ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User.Email));
 				// ✅ PaymentMethod, PaymentStatus, PaymentReference, NumberOfGuests, SpecialRequests, Currency 
 				//    are automatically mapped by AutoMapper (same property names)
 
 			CreateMap<Booking, BookingSummaryResponse>()
 				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
 				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
-				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property
-				.ForMember(dest => dest.TenantName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}".Trim() : null)) // Custom logic
-				.ForMember(dest => dest.TenantEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null)) // Nested with null check
+				.ForMember(dest => dest.BookingStatusStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
+				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null)) // Nested with null check - corrected name
+				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null)) // Nested with null check - corrected name
+				.ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null)) // Nested with null check - corrected name
 				.ForMember(dest => dest.PropertyImageId, opt => opt.MapFrom(src => src.Property != null ? src.Property.Images.FirstOrDefault(i => i.IsCover) != null ? src.Property.Images.FirstOrDefault(i => i.IsCover).ImageId : src.Property.Images.FirstOrDefault() != null ? src.Property.Images.FirstOrDefault().ImageId : (int?)null : null)); // Complex logic
 				// ✅ BookingId, NumberOfGuests, PaymentMethod, PaymentStatus are automatically mapped
 
@@ -109,7 +117,9 @@ namespace eRents.Application.Shared
 				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()))
 				.ForMember(dest => dest.PropertyTypeName, opt => opt.MapFrom(src => src.PropertyType != null ? src.PropertyType.TypeName.ToLower() : null))
 				.ForMember(dest => dest.RentingTypeName, opt => opt.MapFrom(src => src.RentingType != null ? src.RentingType.TypeName.ToLower() : null))
-				.ForMember(dest => dest.OwnerName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : null))
+				// ✅ FIXED: Use correct "EntityName + FieldName" pattern
+				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.FirstName : null))
+				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.LastName : null))
 				.ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => 
 					src.Reviews != null && src.Reviews.Any() ? (double?)src.Reviews.Average(r => r.StarRating) : null));
 
@@ -162,9 +172,17 @@ namespace eRents.Application.Shared
 
 		private void ConfigureReviewMappings()
 		{
-			// ✅ SIMPLIFIED: Review mappings
+			// ✅ UPDATED: Review mappings with correct EntityName + FieldName pattern
 			CreateMap<Review, ReviewResponse>()
-				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()))
+				.ForMember(dest => dest.UserFirstNameReviewer, opt => opt.MapFrom(src => src.Reviewer != null ? src.Reviewer.FirstName : null))
+				.ForMember(dest => dest.UserLastNameReviewer, opt => opt.MapFrom(src => src.Reviewer != null ? src.Reviewer.LastName : null))
+				.ForMember(dest => dest.UserFirstNameReviewee, opt => opt.MapFrom(src => src.Reviewee != null ? src.Reviewee.FirstName : null))
+				.ForMember(dest => dest.UserLastNameReviewee, opt => opt.MapFrom(src => src.Reviewee != null ? src.Reviewee.LastName : null))
+				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property != null ? src.Property.Name : null))
+				// Computed properties for backward compatibility
+				.ForMember(dest => dest.ReviewerName, opt => opt.MapFrom(src => src.Reviewer != null ? $"{src.Reviewer.FirstName} {src.Reviewer.LastName}".Trim() : "Anonymous"))
+				.ForMember(dest => dest.RevieweeName, opt => opt.MapFrom(src => src.Reviewee != null ? $"{src.Reviewee.FirstName} {src.Reviewee.LastName}".Trim() : null));
 
 			CreateMap<ReviewInsertRequest, Review>()
 				.ForMember(dest => dest.ReviewId, opt => opt.Ignore());
@@ -196,18 +214,76 @@ namespace eRents.Application.Shared
 
 		private void ConfigureMaintenanceMappings()
 		{
-			// ✅ OPTIMIZED: Maintenance issue mappings with proper field alignment
+			// ✅ UPDATED: Maintenance issue mappings with correct EntityName + FieldName pattern
 			CreateMap<MaintenanceIssue, MaintenanceIssueResponse>()
 				.ForMember(dest => dest.TenantId, opt => opt.MapFrom(src => src.ReportedByUserId))
 				.ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority != null ? src.Priority.PriorityName : null))
 				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status != null ? src.Status.StatusName : null))
 				.ForMember(dest => dest.DateReported, opt => opt.MapFrom(src => src.CreatedAt))
 				.ForMember(dest => dest.DateResolved, opt => opt.MapFrom(src => src.ResolvedAt))
-				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()));
+				.ForMember(dest => dest.ImageIds, opt => opt.MapFrom(src => src.Images.Select(i => i.ImageId).ToList()))
+				// ✅ NEW: Add mappings for fields from other entities
+				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property != null ? src.Property.Name : null))
+				.ForMember(dest => dest.PropertyAddress, opt => opt.MapFrom(src => src.Property != null && src.Property.Address != null ? GetLocationString(src.Property.Address) : null))
+				.ForMember(dest => dest.UserFirstNameTenant, opt => opt.MapFrom(src => src.ReportedByUser != null ? src.ReportedByUser.FirstName : null))
+				.ForMember(dest => dest.UserLastNameTenant, opt => opt.MapFrom(src => src.ReportedByUser != null ? src.ReportedByUser.LastName : null))
+				.ForMember(dest => dest.UserEmailTenant, opt => opt.MapFrom(src => src.ReportedByUser != null ? src.ReportedByUser.Email : null))
+				.ForMember(dest => dest.UserFirstNameLandlord, opt => opt.MapFrom(src => src.Property != null && src.Property.Owner != null ? src.Property.Owner.FirstName : null))
+				.ForMember(dest => dest.UserLastNameLandlord, opt => opt.MapFrom(src => src.Property != null && src.Property.Owner != null ? src.Property.Owner.LastName : null));
 
 			CreateMap<MaintenanceIssueRequest, MaintenanceIssue>()
 				.ForMember(dest => dest.MaintenanceIssueId, opt => opt.Ignore())
 				.ForMember(dest => dest.Images, opt => opt.Ignore());
+		}
+
+		private void ConfigureMessageMappings()
+		{
+			// ✅ NEW: Message mappings with correct EntityName + FieldName pattern
+			CreateMap<Message, MessageResponse>()
+				.ForMember(dest => dest.UserFirstNameSender, opt => opt.MapFrom(src => src.Sender != null ? src.Sender.FirstName : null))
+				.ForMember(dest => dest.UserLastNameSender, opt => opt.MapFrom(src => src.Sender != null ? src.Sender.LastName : null))
+				.ForMember(dest => dest.UserFirstNameReceiver, opt => opt.MapFrom(src => src.Receiver != null ? src.Receiver.FirstName : null))
+				.ForMember(dest => dest.UserLastNameReceiver, opt => opt.MapFrom(src => src.Receiver != null ? src.Receiver.LastName : null))
+				// Computed properties for backward compatibility
+				.ForMember(dest => dest.SenderName, opt => opt.MapFrom(src => src.Sender != null ? $"{src.Sender.FirstName} {src.Sender.LastName}".Trim() : "Unknown Sender"))
+				.ForMember(dest => dest.ReceiverName, opt => opt.MapFrom(src => src.Receiver != null ? $"{src.Receiver.FirstName} {src.Receiver.LastName}".Trim() : "Unknown Receiver"));
+		}
+
+		private void ConfigureTenantMappings()
+		{
+			// ✅ NEW: Tenant preference mappings with correct EntityName + FieldName pattern
+			CreateMap<TenantPreference, TenantPreferenceResponse>()
+				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null))
+				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null))
+				.ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+				.ForMember(dest => dest.UserPhoneNumber, opt => opt.MapFrom(src => src.User != null ? src.User.PhoneNumber : null))
+				.ForMember(dest => dest.UserCity, opt => opt.MapFrom(src => src.User != null && src.User.Address != null ? src.User.Address.City : null))
+				// Computed properties for backward compatibility
+				.ForMember(dest => dest.UserFullName, opt => opt.MapFrom(src => src.User != null ? $"{src.User.FirstName} {src.User.LastName}".Trim() : null))
+				.ForMember(dest => dest.UserPhone, opt => opt.MapFrom(src => src.User != null ? src.User.PhoneNumber : null));
+		}
+
+		private void ConfigureRentalRequestMappings()
+		{
+			// ✅ NEW: RentalRequest mappings with correct EntityName + FieldName pattern
+			CreateMap<RentalRequest, RentalRequestResponse>()
+				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property != null ? src.Property.Name : null))
+				.ForMember(dest => dest.PropertyAddressCity, opt => opt.MapFrom(src => src.Property != null && src.Property.Address != null ? src.Property.Address.City : null))
+				.ForMember(dest => dest.PropertyAddressCountry, opt => opt.MapFrom(src => src.Property != null && src.Property.Address != null ? src.Property.Address.Country : null))
+				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null))
+				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null))
+				.ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+				.ForMember(dest => dest.UserPhoneNumber, opt => opt.MapFrom(src => src.User != null ? src.User.PhoneNumber : null))
+				.ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.RequestDate))
+				.ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.ResponseDate ?? src.RequestDate));
+
+			CreateMap<RentalRequestInsertRequest, RentalRequest>()
+				.ForMember(dest => dest.RequestId, opt => opt.Ignore())
+				.ForMember(dest => dest.RequestDate, opt => opt.MapFrom(src => DateTime.UtcNow))
+				.ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Pending"));
+
+			CreateMap<RentalRequestUpdateRequest, RentalRequest>()
+				.ForMember(dest => dest.ResponseDate, opt => opt.MapFrom(src => src.ResponseDate ?? DateTime.UtcNow));
 		}
 
 		// ✅ OPTIMIZED: Helper methods for complex mapping logic

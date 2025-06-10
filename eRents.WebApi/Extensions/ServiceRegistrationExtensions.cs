@@ -1,11 +1,15 @@
 using eRents.Application.Service.BookingService;
+using eRents.Application.Service.ContractExpirationService;
 using eRents.Application.Service.ImageService;
 using eRents.Application.Service.MaintenanceService;
 using eRents.Application.Service.MessagingService;
+using eRents.Application.Service.NotificationService;
 using eRents.Application.Service.PaymentService;
 using eRents.Application.Service.PropertyService;
+using eRents.Application.Service.RentalRequestService;
 using eRents.Application.Service.ReportService;
 using eRents.Application.Service.ReviewService;
+using eRents.Application.Service.SimpleRentalService;
 using eRents.Application.Service.StatisticsService;
 using eRents.Application.Service.TenantService;
 using eRents.Application.Service.UserService;
@@ -71,6 +75,10 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IPaymentRepository, PaymentRepository>();
             services.AddTransient<IAmenityRepository, AmenityRepository>();
             
+            // ✅ NEW: RentalRequest repository for dual rental system
+            services.AddTransient<IRentalRequestRepository, RentalRequestRepository>();
+            services.AddTransient<IConcurrentRepository<RentalRequest>, RentalRequestRepository>();
+            
             // Generic base repository for UserType (existing pattern)
             services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();
             
@@ -93,6 +101,7 @@ namespace eRents.WebApi.Extensions
             
             // Specialized services
             services.AddTransient<IImageService, ImageService>();
+            services.AddTransient<IUserLookupService, UserLookupService>();
             services.AddTransient<IMessageHandlerService, MessageHandlerService>();
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
@@ -102,6 +111,18 @@ namespace eRents.WebApi.Extensions
             
             // Real-time messaging service
             services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
+            
+            // ✅ NEW: RentalRequest service for dual rental system
+            services.AddTransient<IRentalRequestService, RentalRequestService>();
+            
+            // ✅ NEW: SimpleRentalService for dual rental system core logic
+            services.AddTransient<ISimpleRentalService, SimpleRentalService>();
+            
+            // ✅ NEW: Notification service for contract expiration notifications
+            services.AddTransient<INotificationService, NotificationService>();
+            
+            // ✅ NEW: Contract expiration background service
+            services.AddHostedService<ContractExpirationService>();
             
             // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
             

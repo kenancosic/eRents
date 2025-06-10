@@ -380,7 +380,7 @@ namespace eRents.WebApi
 				Name = GeneratePropertyName(propertyType.TypeName, city),
 				Description = GeneratePropertyDescription(propertyType.TypeName),
 				Price = basePrice + _random.Next(-200, 500),
-				DailyRate = Math.Round(basePrice / 20, 2),
+									// DailyRate field removed - using single Price field
 				Currency = "BAM",
 				Status = GetRandomPropertyStatus(),
 				DateAdded = DateTime.Now.AddDays(-_random.Next(1, 730)),
@@ -486,59 +486,70 @@ namespace eRents.WebApi
 			await context.SaveChangesAsync();
 		}
 
-		/// <summary>
-		/// Creates specific test booking data for TestLandlord (desktop) and TestUser (mobile) testing
-		/// </summary>
-		private async Task CreateTestBookingDataAsync(ERentsContext context, List<Booking> bookings, 
-			List<Property> allProperties, List<BookingStatus> bookingStatuses)
+			/// <summary>
+	/// Creates specific test booking data for TestLandlord (desktop) and TestUser (mobile) testing
+	/// ✅ ORGANIZED: Clear test data for both desktop and mobile app testing
+	/// </summary>
+	private async Task CreateTestBookingDataAsync(ERentsContext context, List<Booking> bookings, 
+		List<Property> allProperties, List<BookingStatus> bookingStatuses)
+	{
+		_logger?.LogInformation("Creating organized test booking data for TestLandlord and TestUser...");
+
+		// Get test users
+		var testLandlord = await context.Users.FirstOrDefaultAsync(u => u.Username == "testLandlord");
+		var testUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "testUser");
+		var otherTenants = await context.Users.Include(u => u.UserTypeNavigation)
+			.Where(u => u.UserTypeNavigation.TypeName == "Tenant" && u.Username != "testUser")
+			.Take(3).ToListAsync();
+
+		if (testLandlord == null || testUser == null)
 		{
-			_logger?.LogInformation("Creating specific test booking data for TestLandlord and TestUser...");
+			_logger?.LogWarning("TestLandlord or TestUser not found, skipping specific test data creation");
+			return;
+		}
 
-			// Get test users
-			var testLandlord = await context.Users.FirstOrDefaultAsync(u => u.Username == "testLandlord");
-			var testUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "testUser");
-			var otherTenants = await context.Users.Include(u => u.UserTypeNavigation)
-				.Where(u => u.UserTypeNavigation.TypeName == "Tenant" && u.Username != "testUser")
-				.Take(3).ToListAsync();
+		// Get TestLandlord's properties (for desktop app testing)
+		var testLandlordProperties = allProperties.Where(p => p.OwnerId == testLandlord.UserId).ToList();
+		if (!testLandlordProperties.Any())
+		{
+			_logger?.LogWarning("No properties found for TestLandlord, skipping specific test data creation");
+			return;
+		}
 
-			if (testLandlord == null || testUser == null)
+		// ✅ 1. DESKTOP APP TEST DATA (TestLandlord's perspective - view tenant bookings)
+		// Create bookings by various tenants for TestLandlord's properties
+		foreach (var property in testLandlordProperties)
+		{
+			// Create 3 bookings per property with different statuses for comprehensive testing
+			for (int i = 0; i < 3; i++)
 			{
-				_logger?.LogWarning("TestLandlord or TestUser not found, skipping specific test data creation");
-				return;
-			}
-
-			// Get TestLandlord's properties
-			var testLandlordProperties = allProperties.Where(p => p.OwnerId == testLandlord.UserId).ToList();
-			if (!testLandlordProperties.Any())
-			{
-				_logger?.LogWarning("No properties found for TestLandlord, skipping specific test data creation");
-				return;
-			}
-
-			// 1. DESKTOP APP TEST DATA (TestLandlord's perspective)
-			// Create bookings by various tenants for TestLandlord's properties
-			foreach (var property in testLandlordProperties)
-			{
-				// Create 2-3 bookings per property with different statuses
-				for (int i = 0; i < 3; i++)
-				{
-					var tenant = i == 0 ? testUser : otherTenants[i % otherTenants.Count];
-					var booking = CreateSpecificTestBooking(tenant, property, bookingStatuses, i);
-					bookings.Add(booking);
-				}
-			}
-
-			// 2. MOBILE APP TEST DATA (TestUser's perspective)
-			// Create additional bookings for TestUser across different properties
-			var otherProperties = allProperties.Where(p => p.OwnerId != testLandlord.UserId).Take(2).ToList();
-			foreach (var property in otherProperties)
-			{
-				var booking = CreateRealisticBooking(testUser, property, bookingStatuses);
+				var tenant = i == 0 ? testUser : otherTenants[i % otherTenants.Count];
+				var booking = CreateSpecificTestBooking(tenant, property, bookingStatuses, i);
+				
+				// ✅ ENSURE: All required fields are set for proper data relationships
+				booking.PropertyId = property.PropertyId;
+				booking.UserId = tenant.UserId;
+				
 				bookings.Add(booking);
 			}
-
-			_logger?.LogInformation($"Created specific test data: {bookings.Count} bookings for TestLandlord and TestUser");
 		}
+
+		// ✅ 2. MOBILE APP TEST DATA (TestUser's perspective - view own bookings)
+		// Create additional bookings for TestUser across different properties
+		var otherProperties = allProperties.Where(p => p.OwnerId != testLandlord.UserId).Take(2).ToList();
+		foreach (var property in otherProperties)
+		{
+			var booking = CreateRealisticBooking(testUser, property, bookingStatuses);
+			
+			// ✅ ENSURE: All required fields are set for proper data relationships
+			booking.PropertyId = property.PropertyId;
+			booking.UserId = testUser.UserId;
+			
+			bookings.Add(booking);
+		}
+
+		_logger?.LogInformation($"✅ Created organized test data: {bookings.Count} bookings with proper relationships for TestLandlord and TestUser");
+	}
 
 		/// <summary>
 		/// Creates a specific test booking with predetermined status and dates for testing
@@ -620,7 +631,7 @@ namespace eRents.WebApi
 		}
 
 		private decimal CalculateBookingPrice(Property property, int duration) =>
-			property.DailyRate.HasValue ? property.DailyRate.Value * duration : property.Price / 30 * duration;
+								property.Price * duration; // Using single Price field for calculation
 		#endregion
 
 		#region 6. Tenants

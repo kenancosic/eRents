@@ -25,5 +25,13 @@ namespace eRents.Application.Service.TenantService
         // Tenant Relationships
         Task<List<TenantRelationshipResponse>> GetTenantRelationshipsForLandlordAsync();
         Task<Dictionary<int, PropertyResponse>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds);
+
+        // 🆕 NEW: Annual Rental System Support
+        Task<bool> CreateTenantFromApprovedRentalRequestAsync(int rentalRequestId);
+        Task<bool> HasActiveTenantAsync(int propertyId);
+        Task<DateTime?> GetLeaseEndDateAsync(int tenantId);
+        Task<decimal> GetCurrentMonthlyRentAsync(int tenantId);
+        Task<bool> IsLeaseExpiringInDaysAsync(int tenantId, int days);
+        Task<List<UserResponse>> GetTenantsWithExpiringLeasesAsync(int landlordId, int daysAhead);
     }
 } 

@@ -30,5 +30,12 @@ namespace eRents.Application.Service.PropertyService
 		Task<AmenityResponse> AddAmenityAsync(string amenityName);
 		Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName);
 		Task DeleteAmenityAsync(int id);
+
+		// 🆕 NEW: Dual Rental System Support
+		Task<bool> IsPropertyAvailableForRentalTypeAsync(int propertyId, string rentalType, DateOnly? startDate = null, DateOnly? endDate = null);
+		Task<bool> IsPropertyVisibleInMarketAsync(int propertyId);
+		Task<List<PropertyResponse>> GetPropertiesByRentalTypeAsync(string rentalType);
+		Task<bool> CanPropertyAcceptBookingsAsync(int propertyId);
+		Task<bool> HasActiveAnnualTenantAsync(int propertyId);
 	}
 }

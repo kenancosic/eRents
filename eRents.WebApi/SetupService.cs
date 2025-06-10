@@ -346,7 +346,7 @@ namespace eRents.WebApi
 				Name = GeneratePropertyName(propertyType.TypeName, city),
 				Description = GeneratePropertyDescription(propertyType.TypeName),
 				Price = basePrice + _random.Next(-200, 500),
-				DailyRate = Math.Round(basePrice / 20, 2),
+									// DailyRate field removed - using single Price field
 				Currency = "BAM",
 				Status = GetRandomPropertyStatus(),
 				DateAdded = DateTime.Now.AddDays(-_random.Next(1, 730)),
@@ -479,7 +479,7 @@ namespace eRents.WebApi
 		}
 
 		private decimal CalculateBookingPrice(Property property, int duration) =>
-			property.DailyRate.HasValue ? property.DailyRate.Value * duration : property.Price / 30 * duration;
+								property.Price * duration; // Using single Price field for calculation
 		#endregion
 
 		#region 6. Tenants

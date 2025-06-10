@@ -137,6 +137,7 @@ Future<void> _setupServices(String baseUrl) async {
 
   locator.registerLazySingleton<ChatRepository>(
     () => ChatRepository(
+      apiService: locator.get<ChatService>(),
       service: locator.get<ChatService>(),
       cacheManager: locator.get<CacheManager>(),
     ),

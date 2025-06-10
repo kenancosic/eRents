@@ -30,6 +30,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ IMPROVED: Load stats when provider is available (handled by Consumer)
   }
 
   void _navigateToEditScreen(BuildContext context, int propertyId) {
@@ -42,6 +43,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       builder: (context, detailProvider, statsProvider, child) {
         final property = detailProvider.property;
         final stats = statsProvider.stats;
+
+        // ✅ IMPROVED: Auto-load stats when property is available and stats aren't loaded yet
+        if (property != null && !statsProvider.isStatsFor(widget.propertyId)) {
+          print(
+            '🏠 PropertyDetailsScreen: Loading stats for property ID: ${widget.propertyId}',
+          );
+          print('🏠 PropertyDetailsScreen: Property name: ${property.name}');
+          Future.microtask(
+            () => statsProvider.loadPropertyStats(widget.propertyId),
+          );
+        }
 
         return Scaffold(
           appBar: AppBar(
@@ -60,9 +72,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           body: LoadingOrErrorWidget(
             isLoading: detailProvider.isLoading,
             error: detailProvider.error?.message,
-            onRetry: () {
-              detailProvider.loadPropertyById(int.parse(widget.propertyId));
-              statsProvider.loadPropertyStats(widget.propertyId);
+            onRetry: () async {
+              await detailProvider.loadPropertyById(
+                int.parse(widget.propertyId),
+              );
+              await statsProvider.loadPropertyStats(widget.propertyId);
             },
             errorTitle: 'Failed to Load Property',
             child:

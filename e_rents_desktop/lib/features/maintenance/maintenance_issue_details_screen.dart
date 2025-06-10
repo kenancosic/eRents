@@ -192,7 +192,7 @@ class _MaintenanceIssueDetailsScreenState
             ),
             const SizedBox(height: 8),
             Text(
-              'Reported by ${issue.reportedBy} • ${_formatTimeAgo(issue.createdAt)}',
+              'Reported by ${issue.tenantName ?? "Tenant ID ${issue.tenantId}"} • ${_formatTimeAgo(issue.createdAt)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             const SizedBox(height: 24),
@@ -202,7 +202,7 @@ class _MaintenanceIssueDetailsScreenState
             ),
             const SizedBox(height: 8),
             Text(issue.description, style: const TextStyle(fontSize: 16)),
-            if (issue.images.isNotEmpty) ...[
+            if (issue.imageIds.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
                 'Attached Images',
@@ -216,25 +216,28 @@ class _MaintenanceIssueDetailsScreenState
                 height: 200,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: issue.images.length,
+                  itemCount: issue.imageIds.length,
                   itemBuilder: (context, index) {
-                    final image = issue.images[index];
+                    final imageId = issue.imageIds[index];
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child:
-                            image.url != null && image.url!.isNotEmpty
-                                ? Image.network(
-                                  image.url!,
-                                  width: 200,
-                                  fit: BoxFit.cover,
-                                )
-                                : Image.asset(
-                                  'assets/images/placeholder.jpg',
-                                  width: 200,
-                                  fit: BoxFit.cover,
+                        child: Image.network(
+                          'http://localhost:5000/Image/$imageId',
+                          width: 200,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (context, error, stackTrace) => Container(
+                                width: 200,
+                                color: Colors.grey[300],
+                                child: Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey[600],
+                                  size: 40,
                                 ),
+                              ),
+                        ),
                       ),
                     );
                   },

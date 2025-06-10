@@ -191,18 +191,32 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
 
   Future<List<BookingSummary>> _loadCurrentBookings(String propertyId) async {
     try {
-      return await _bookingService.getCurrentBookings(propertyId);
+      print(
+        '🔍 PropertyStatsProvider: Loading current bookings for property ID: $propertyId',
+      );
+      final result = await _bookingService.getCurrentBookings(propertyId);
+      print(
+        '✅ PropertyStatsProvider: Found ${result.length} current bookings for property $propertyId',
+      );
+      return result;
     } catch (e) {
-      print('Error loading current bookings: $e');
+      print('❌ Error loading current bookings for property $propertyId: $e');
       return [];
     }
   }
 
   Future<List<BookingSummary>> _loadUpcomingBookings(String propertyId) async {
     try {
-      return await _bookingService.getUpcomingBookings(propertyId);
+      print(
+        '🔍 PropertyStatsProvider: Loading upcoming bookings for property ID: $propertyId',
+      );
+      final result = await _bookingService.getUpcomingBookings(propertyId);
+      print(
+        '✅ PropertyStatsProvider: Found ${result.length} upcoming bookings for property $propertyId',
+      );
+      return result;
     } catch (e) {
-      print('Error loading upcoming bookings: $e');
+      print('❌ Error loading upcoming bookings for property $propertyId: $e');
       return [];
     }
   }

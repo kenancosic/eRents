@@ -63,10 +63,15 @@ class BookingSummary {
       totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'BAM',
       bookingStatus:
-          json['bookingStatus'] as String? ?? json['status'] as String? ?? '',
-      tenantName: json['tenantName'] as String?,
-      tenantEmail: json['tenantEmail'] as String?,
-      // New fields with safe parsing
+          json['bookingStatusStatusName'] as String? ??
+          json['status'] as String? ??
+          json['bookingStatus'] as String? ??
+          '',
+      tenantName:
+          json['tenantName'] as String? ??
+          _buildTenantName(json['userFirstName'], json['userLastName']),
+      tenantEmail:
+          json['tenantEmail'] as String? ?? json['userEmail'] as String?,
       paymentMethod: json['paymentMethod'] as String? ?? 'PayPal',
       paymentStatus: json['paymentStatus'] as String?,
       paymentReference: json['paymentReference'] as String?,
@@ -112,35 +117,40 @@ class BookingSummary {
 
   /// Create BookingSummary from Booking model
   factory BookingSummary.fromBooking(dynamic booking) {
-    return BookingSummary(
-      bookingId: booking.bookingId ?? 0,
-      propertyId: booking.propertyId ?? 0,
-      propertyName: booking.property?.name ?? '',
-      propertyImageId:
-          booking.property?.images?.isNotEmpty == true
-              ? booking.property!.images!.first.imageId
-              : null,
-      propertyImageData:
-          booking.property?.images?.isNotEmpty == true
-              ? booking.property!.images!.first.imageData
-              : null,
-      startDate: booking.startDate ?? DateTime.now(),
-      endDate: booking.endDate,
-      totalPrice: booking.totalPrice ?? 0.0,
-      currency: booking.currency ?? 'BAM',
-      bookingStatus: booking.bookingStatus?.statusName ?? booking.status ?? '',
-      tenantName:
-          booking.user != null
-              ? '${booking.user.firstName ?? ''} ${booking.user.lastName ?? ''}'
-                  .trim()
-              : null,
-      tenantEmail: booking.user?.email,
-      paymentMethod: booking.paymentMethod ?? 'PayPal',
-      paymentStatus: booking.paymentStatus,
-      paymentReference: booking.paymentReference,
-      numberOfGuests: booking.numberOfGuests ?? 1,
-      specialRequests: booking.specialRequests,
-    );
+    try {
+      return BookingSummary(
+        bookingId: booking.bookingId ?? 0,
+        propertyId: booking.propertyId ?? 0,
+        propertyName: booking.propertyName ?? '',
+        propertyImageId: booking.propertyImageId,
+        propertyImageData: null, // Not available in new DTO structure
+        startDate: booking.startDate ?? DateTime.now(),
+        endDate: booking.endDate,
+        totalPrice: booking.totalPrice ?? 0.0,
+        currency: booking.currency ?? 'BAM',
+        bookingStatus: booking.status?.toString() ?? '',
+        tenantName: booking.tenantName ?? booking.userName,
+        tenantEmail: booking.tenantEmail ?? booking.userEmail,
+        paymentMethod: booking.paymentMethod ?? 'PayPal',
+        paymentStatus: booking.paymentStatus,
+        paymentReference: booking.paymentReference,
+        numberOfGuests: booking.numberOfGuests ?? 1,
+        specialRequests: booking.specialRequests,
+      );
+    } catch (e) {
+      print('❌ BookingSummary.fromBooking error: $e');
+      print('❌ Booking object type: ${booking.runtimeType}');
+      print('❌ Available properties: ${booking.toString()}');
+      rethrow;
+    }
+  }
+
+  // Helper method to build tenant name from separate fields
+  static String? _buildTenantName(dynamic firstName, dynamic lastName) {
+    final first = firstName as String? ?? '';
+    final last = lastName as String? ?? '';
+    final combined = '$first $last'.trim();
+    return combined.isEmpty ? null : combined;
   }
 }
 

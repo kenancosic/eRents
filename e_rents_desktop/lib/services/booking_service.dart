@@ -84,13 +84,21 @@ class BookingService extends ApiService {
             '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
       }
 
-      final response = await get(
-        '$endpoint/current$queryString',
-        authenticated: true,
-      );
+      final url = '$endpoint/current$queryString';
+      print('🌐 BookingService: Making API call to: $url');
+
+      final response = await get(url, authenticated: true);
+      print('📋 BookingService: API response status: ${response.statusCode}');
+      print('📋 BookingService: API response body: ${response.body}');
+
       final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Booking.fromJson(json)).toList();
+      final result = data.map((json) => Booking.fromJson(json)).toList();
+      print(
+        '✅ BookingService: Parsed ${result.length} current bookings from API',
+      );
+      return result;
     } catch (e) {
+      print('❌ BookingService: getCurrentStays API error: $e');
       throw Exception('Failed to fetch current stays: $e');
     }
   }
@@ -110,14 +118,21 @@ class BookingService extends ApiService {
             '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
       }
 
-      final response = await get(
-        '$endpoint/upcoming$queryString',
-        authenticated: true,
-      );
+      final url = '$endpoint/upcoming$queryString';
+      print('🌐 BookingService: Making API call to: $url');
+
+      final response = await get(url, authenticated: true);
+      print('📋 BookingService: API response status: ${response.statusCode}');
+      print('📋 BookingService: API response body: ${response.body}');
 
       final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Booking.fromJson(json)).toList();
+      final result = data.map((json) => Booking.fromJson(json)).toList();
+      print(
+        '✅ BookingService: Parsed ${result.length} upcoming bookings from API',
+      );
+      return result;
     } catch (e) {
+      print('❌ BookingService: getUpcomingStays API error: $e');
       throw Exception('Failed to fetch upcoming stays: $e');
     }
   }
@@ -297,16 +312,35 @@ class BookingService extends ApiService {
   /// Get current bookings (for property stats - BookingSummary format)
   Future<List<BookingSummary>> getCurrentBookings(String propertyId) async {
     try {
+      print(
+        '🔍 BookingService: getCurrentBookings called with propertyId: $propertyId',
+      );
+
       // Convert string to int for internal API calls
       final propertyIdInt = int.tryParse(propertyId);
-      if (propertyIdInt == null) return [];
+      if (propertyIdInt == null) {
+        print('❌ BookingService: Invalid propertyId format: $propertyId');
+        return [];
+      }
 
+      print(
+        '🔄 BookingService: Calling getCurrentStays for propertyId: $propertyIdInt',
+      );
       final bookings = await getCurrentStays(propertyIdInt);
-      return bookings
-          .map((booking) => BookingSummary.fromBooking(booking))
-          .toList();
+      print(
+        '✅ BookingService: getCurrentStays returned ${bookings.length} bookings',
+      );
+
+      final result =
+          bookings
+              .map((booking) => BookingSummary.fromBooking(booking))
+              .toList();
+      print(
+        '✅ BookingService: Converted to ${result.length} BookingSummary objects',
+      );
+      return result;
     } catch (e) {
-      print('Error loading current bookings: $e');
+      print('❌ BookingService: Error loading current bookings: $e');
       return [];
     }
   }
@@ -314,16 +348,35 @@ class BookingService extends ApiService {
   /// Get upcoming bookings (for property stats - BookingSummary format)
   Future<List<BookingSummary>> getUpcomingBookings(String propertyId) async {
     try {
+      print(
+        '🔍 BookingService: getUpcomingBookings called with propertyId: $propertyId',
+      );
+
       // Convert string to int for internal API calls
       final propertyIdInt = int.tryParse(propertyId);
-      if (propertyIdInt == null) return [];
+      if (propertyIdInt == null) {
+        print('❌ BookingService: Invalid propertyId format: $propertyId');
+        return [];
+      }
 
+      print(
+        '🔄 BookingService: Calling getUpcomingStays for propertyId: $propertyIdInt',
+      );
       final bookings = await getUpcomingStays(propertyIdInt);
-      return bookings
-          .map((booking) => BookingSummary.fromBooking(booking))
-          .toList();
+      print(
+        '✅ BookingService: getUpcomingStays returned ${bookings.length} bookings',
+      );
+
+      final result =
+          bookings
+              .map((booking) => BookingSummary.fromBooking(booking))
+              .toList();
+      print(
+        '✅ BookingService: Converted to ${result.length} BookingSummary objects',
+      );
+      return result;
     } catch (e) {
-      print('Error loading upcoming bookings: $e');
+      print('❌ BookingService: Error loading upcoming bookings: $e');
       return [];
     }
   }

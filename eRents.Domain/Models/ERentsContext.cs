@@ -59,6 +59,8 @@ public partial class ERentsContext : DbContext
 
     public virtual DbSet<LeaseExtensionRequest> LeaseExtensionRequests { get; set; }
 
+    public virtual DbSet<RentalRequest> RentalRequests { get; set; }
+
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<PropertyAvailability> PropertyAvailabilities { get; set; }
@@ -300,10 +302,10 @@ public partial class ERentsContext : DbContext
                 .HasColumnName("area");
             entity.Property(e => e.Bedrooms).HasColumnName("bedrooms");
             entity.Property(e => e.Bathrooms).HasColumnName("bathrooms");
-            entity.Property(e => e.DailyRate)
-                .HasColumnType("decimal(10, 2)")
-                .HasColumnName("daily_rate");
             entity.Property(e => e.MinimumStayDays).HasColumnName("minimum_stay_days");
+            entity.Property(e => e.RequiresApproval)
+                .HasDefaultValue(false)
+                .HasColumnName("requires_approval");
 
             // Configure BaseEntity properties for concurrency control
             entity.Property(e => e.RowVersion)
@@ -732,6 +734,44 @@ public partial class ERentsContext : DbContext
             entity.HasOne(d => d.Tenant)
                 .WithMany()
                 .HasForeignKey(d => d.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RentalRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId);
+            
+            // Configure BaseEntity properties for concurrency control
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .HasColumnName("row_version");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getutcdate())")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(50)
+                .HasColumnName("created_by");
+            entity.Property(e => e.ModifiedBy)
+                .HasMaxLength(50)
+                .HasColumnName("modified_by");
+            
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.RequestDate).HasDefaultValueSql("(getutcdate())");
+            entity.Property(e => e.Message).HasMaxLength(1000);
+            entity.Property(e => e.LandlordResponse).HasMaxLength(1000);
+            entity.Property(e => e.ProposedMonthlyRent).HasColumnType("decimal(10, 2)");
+
+            entity.HasOne(d => d.Property)
+                .WithMany()
+                .HasForeignKey(d => d.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(d => d.User)
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
