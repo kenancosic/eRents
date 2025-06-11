@@ -101,7 +101,8 @@ namespace eRents.Application.Service.RentalRequestService
         // ✅ User methods (tenants/users requesting rentals)
         public async Task<RentalRequestResponse> RequestAnnualRentalAsync(RentalRequestInsertRequest request)
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             
             // Validate business rules
             if (!await ValidateRequestBusinessRulesAsync(request))
@@ -123,20 +124,23 @@ namespace eRents.Application.Service.RentalRequestService
 
         public async Task<List<RentalRequestResponse>> GetMyRequestsAsync()
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             var requests = await _rentalRequestRepository.GetRequestsByUserAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
         public async Task<bool> CanRequestPropertyAsync(int propertyId)
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             return await _rentalRequestRepository.CanUserRequestPropertyAsync(currentUserId, propertyId);
         }
 
         public async Task<RentalRequestResponse> WithdrawRequestAsync(int requestId)
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             
             // Verify user owns this request
             if (!await _rentalRequestRepository.IsRequestOwnerAsync(requestId, currentUserId))
@@ -162,14 +166,16 @@ namespace eRents.Application.Service.RentalRequestService
         // ✅ Landlord methods (property owners managing requests)
         public async Task<List<RentalRequestResponse>> GetPendingRequestsAsync()
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             var requests = await _rentalRequestRepository.GetPendingRequestsForLandlordAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
         public async Task<List<RentalRequestResponse>> GetAllRequestsForMyPropertiesAsync()
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             var requests = await _rentalRequestRepository.GetRequestsByLandlordAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
@@ -205,7 +211,8 @@ namespace eRents.Application.Service.RentalRequestService
 
         public async Task<RentalRequestResponse> RespondToRequestAsync(int requestId, RentalRequestUpdateRequest response)
         {
-            var currentUserId = _currentUserService.GetCurrentUserId();
+            if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+                throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
             
             // Verify user is property owner
             if (!await _rentalRequestRepository.IsPropertyOwnerAsync(requestId, currentUserId))
@@ -268,20 +275,22 @@ namespace eRents.Application.Service.RentalRequestService
             if (request == null || request.Status != "Approved")
                 return false;
 
-            // Check if tenant record already exists
-            var existingTenant = await _tenantRepository.GetByUserAndPropertyAsync(request.UserId, request.PropertyId);
+            // Check if tenant already exists for this property and user
+            var existingTenant = await _tenantRepository.GetQueryable()
+                .FirstOrDefaultAsync(t => t.UserId == request.UserId && t.PropertyId == request.PropertyId && t.TenantStatus == "Active");
+            
             if (existingTenant != null)
-                return true; // Already exists
+            {
+                return false;
+            }
 
-            // Create new tenant record
+            // Create tenant record
             var tenant = new Tenant
             {
-                UserId = request.UserId,
                 PropertyId = request.PropertyId,
-                LeaseStartDate = request.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
-                TenantStatus = "Active",
-                // LeaseEndDate will be calculated from RentalRequest data
-                CreatedAt = DateTime.UtcNow
+                UserId = request.UserId,
+                LeaseStartDate = DateOnly.FromDateTime(DateTime.UtcNow), // Convert DateTime to DateOnly
+                TenantStatus = "Active"
             };
 
             await _tenantRepository.AddAsync(tenant);

@@ -21,14 +21,14 @@ namespace eRents.Shared.DTO.Response
 		public string? SpecialRequests { get; set; }
 		
 		// Fields from other entities - use "EntityName + FieldName" pattern
-		public string PropertyName { get; set; } // Could be fetched from PropertiesController using PropertyId
-		public string BookingStatusStatusName { get; set; }
-		public string? UserFirstName { get; set; }  // User's first name
-		public string? UserLastName { get; set; }   // User's last name
-		public string? UserEmail { get; set; }      // User's email
+		public string? PropertyName { get; set; } // Property.Name
+		public string? BookingStatusName { get; set; } // BookingStatus.StatusName
+		public string? UserFirstName { get; set; }  // User.FirstName
+		public string? UserLastName { get; set; }   // User.LastName
+		public string? UserEmail { get; set; }      // User.Email
 		
 		// Computed properties for UI convenience (for backward compatibility)
-		public string Status => BookingStatusStatusName ?? "Unknown";
+		public string Status => BookingStatusName ?? "Unknown";
 		public string? FirstName => UserFirstName;
 		public string? LastName => UserLastName;
 		public string? Email => UserEmail;

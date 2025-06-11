@@ -139,27 +139,27 @@ namespace eRents.Application.Service.ReviewService
 			{
 				var searchTerm = search.SearchTerm.ToLower();
 				query = query.Where(r => 
-					(r.Property != null && r.Property.Name.ToLower().Contains(searchTerm)) ||
-					(r.Reviewer != null && r.Reviewer.FirstName.ToLower().Contains(searchTerm)) ||
-					(r.Reviewer != null && r.Reviewer.LastName.ToLower().Contains(searchTerm)) ||
-					(r.Reviewee != null && r.Reviewee.FirstName.ToLower().Contains(searchTerm)) ||
-					(r.Reviewee != null && r.Reviewee.LastName.ToLower().Contains(searchTerm)) ||
+					(r.Property.Name != null && r.Property.Name.ToLower().Contains(searchTerm)) ||
+					(r.Reviewer.FirstName != null && r.Reviewer.FirstName.ToLower().Contains(searchTerm)) ||
+					(r.Reviewer.LastName != null && r.Reviewer.LastName.ToLower().Contains(searchTerm)) ||
+					(r.Reviewee.FirstName != null && r.Reviewee.FirstName.ToLower().Contains(searchTerm)) ||
+					(r.Reviewee.LastName != null && r.Reviewee.LastName.ToLower().Contains(searchTerm)) ||
 					r.ReviewId.ToString().Contains(searchTerm));
 			}
 
 			// Navigation property: Property name filtering
 			if (!string.IsNullOrEmpty(search.PropertyName))
-				query = query.Where(r => r.Property != null && r.Property.Name.Contains(search.PropertyName));
+				query = query.Where(r => r.Property.Name.Contains(search.PropertyName));
 
 			// Navigation property: Reviewer name filtering
 			if (!string.IsNullOrEmpty(search.ReviewerName))
 			{
 				var nameParts = search.ReviewerName.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
 				foreach (var part in nameParts)
-				{
-					query = query.Where(r => r.Reviewer != null && 
-						(r.Reviewer.FirstName.ToLower().Contains(part) || r.Reviewer.LastName.ToLower().Contains(part)));
-				}
+				 {
+          query = query.Where(r => r.Reviewer != null && 
+                (r.Reviewer.FirstName.ToLower().Contains(part) || r.Reviewer.LastName.ToLower().Contains(part)));
+        }
 			}
 
 			// Navigation property: Reviewee name filtering
@@ -167,10 +167,10 @@ namespace eRents.Application.Service.ReviewService
 			{
 				var nameParts = search.RevieweeName.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
 				foreach (var part in nameParts)
-				{
-					query = query.Where(r => r.Reviewee != null && 
-						(r.Reviewee.FirstName.ToLower().Contains(part) || r.Reviewee.LastName.ToLower().Contains(part)));
-				}
+        {
+            query = query.Where(r => r.Reviewee != null && 
+                (r.Reviewee.FirstName.ToLower().Contains(part) || r.Reviewee.LastName.ToLower().Contains(part)));
+        }
 			}
 
 			// Complex filter: Has replies
@@ -217,14 +217,14 @@ namespace eRents.Application.Service.ReviewService
 			return search.SortBy.ToLower() switch
 			{
 				"propertyname" => search.SortDescending
-					? entities.OrderByDescending(r => r.Property?.Name ?? "").ToList()
-					: entities.OrderBy(r => r.Property?.Name ?? "").ToList(),
-				"reviewername" => search.SortDescending
-					? entities.OrderByDescending(r => $"{r.Reviewer?.FirstName} {r.Reviewer?.LastName}".Trim()).ToList()
-					: entities.OrderBy(r => $"{r.Reviewer?.FirstName} {r.Reviewer?.LastName}".Trim()).ToList(),
-				"revieweename" => search.SortDescending
-					? entities.OrderByDescending(r => $"{r.Reviewee?.FirstName} {r.Reviewee?.LastName}".Trim()).ToList()
-					: entities.OrderBy(r => $"{r.Reviewee?.FirstName} {r.Reviewee?.LastName}".Trim()).ToList(),
+            ? entities.OrderByDescending(r => r.Property?.Name ?? "").ToList()
+            : entities.OrderBy(r => r.Property?.Name ?? "").ToList(),
+        "reviewername" => search.SortDescending
+            ? entities.OrderByDescending(r => $"{r.Reviewer?.FirstName} {r.Reviewer?.LastName}".Trim()).ToList()
+            : entities.OrderBy(r => $"{r.Reviewer?.FirstName} {r.Reviewer?.LastName}".Trim()).ToList(),
+        "revieweename" => search.SortDescending
+            ? entities.OrderByDescending(r => $"{r.Reviewee?.FirstName} {r.Reviewee?.LastName}".Trim()).ToList()
+            : entities.OrderBy(r => $"{r.Reviewee?.FirstName} {r.Reviewee?.LastName}".Trim()).ToList(),
 				// DEPRECATED: Backward compatibility
 				"date" => search.SortDescending
 					? entities.OrderByDescending(r => r.DateCreated).ToList()

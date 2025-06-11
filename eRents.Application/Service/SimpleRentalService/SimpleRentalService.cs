@@ -1,12 +1,15 @@
 using AutoMapper;
 using eRents.Application.Service.BookingService;
 using eRents.Application.Service.RentalRequestService;
+using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
+using eRents.Shared.SearchObjects;
 using eRents.Shared.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Application.Service.SimpleRentalService
 {
@@ -70,15 +73,16 @@ namespace eRents.Application.Service.SimpleRentalService
         public async Task<bool> IsPropertyAvailableForDailyRentalAsync(int propertyId, DateOnly startDate, DateOnly endDate)
         {
             // Check for active annual tenant (blocks all daily rentals)
-            var hasActiveTenant = await _tenantRepository.GetEntities()
+            var hasActiveTenant = await _tenantRepository.GetQueryable()
                 .AnyAsync(t => t.PropertyId == propertyId && 
                               t.TenantStatus == "Active" &&
-                              t.LeaseStartDate <= endDate.ToDateTime(TimeOnly.MinValue));
+                              t.LeaseStartDate.HasValue &&
+                              t.LeaseStartDate.Value.ToDateTime(TimeOnly.MinValue) <= endDate.ToDateTime(TimeOnly.MinValue));
 
             if (hasActiveTenant) return false;
 
             // Check for approved annual rental requests that would conflict
-            var hasApprovedAnnualRequest = await _rentalRequestRepository.GetEntities()
+            var hasApprovedAnnualRequest = await _rentalRequestRepository.GetQueryable()
                 .AnyAsync(r => r.PropertyId == propertyId && 
                               r.Status == "Approved" &&
                               r.ProposedStartDate <= endDate &&
@@ -129,41 +133,36 @@ namespace eRents.Application.Service.SimpleRentalService
 
         public async Task<List<RentalRequestResponse>> GetPendingRequestsAsync(int landlordId)
         {
-            var search = new SearchObjects.RentalRequestSearchObject
+            var search = new RentalRequestSearchObject
             {
                 LandlordId = landlordId,
                 PendingOnly = true
             };
 
             var result = await _rentalRequestService.SearchAsync(search);
-            return result.Data.ToList();
+            return result.Items?.ToList() ?? new List<RentalRequestResponse>();
         }
 
         // ✅ Business Logic Validation (as outlined in simplified document)
         public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
         {
             // Check for active tenant (annual rental)
-            var hasActiveTenant = await _tenantRepository.GetEntities()
-                .AnyAsync(t => t.PropertyId == propertyId && 
-                              t.TenantStatus == "Active" &&
-                              t.LeaseStartDate <= endDate.ToDateTime(TimeOnly.MinValue));
-
-            // Check for existing bookings (daily rental)  
-            var hasConflictingBookings = await _bookingRepository.GetEntities()
-                .Include(b => b.BookingStatus)
-                .AnyAsync(b => b.PropertyId == propertyId &&
-                              b.BookingStatus.StatusName != "Cancelled" &&
-                              DateOnly.FromDateTime(b.StartDate) < endDate && 
-                              DateOnly.FromDateTime(b.EndDate) > startDate);
-
-            // Check for approved annual rental requests
-            var hasApprovedAnnualRequest = await _rentalRequestRepository.GetEntities()
-                .AnyAsync(r => r.PropertyId == propertyId && 
-                              r.Status == "Approved" &&
-                              r.ProposedStartDate <= endDate &&
-                              r.ProposedEndDate >= startDate);
+            var hasActiveTenant = await _tenantRepository.GetQueryable()
+                .Where(t => t.PropertyId == propertyId && 
+                           t.TenantStatus == "Active" &&
+                           t.LeaseStartDate.HasValue &&
+                           t.LeaseStartDate.Value.ToDateTime(TimeOnly.MinValue) <= endDate.ToDateTime(TimeOnly.MinValue))
+                .AnyAsync();
+    
+            // Check for approved annual rental request
+            var hasApprovedAnnualRequest = await _rentalRequestRepository.GetQueryable()
+                .Where(r => r.PropertyId == propertyId &&
+                           r.Status == "Approved" &&
+                           r.ProposedStartDate <= endDate &&
+                           r.ProposedEndDate >= startDate)
+                .AnyAsync();
                 
-            return !hasActiveTenant && !hasConflictingBookings && !hasApprovedAnnualRequest;
+            return !hasActiveTenant && !hasApprovedAnnualRequest;
         }
 
         public async Task<bool> ValidateLeaseDurationAsync(DateOnly startDate, DateOnly endDate)
@@ -202,11 +201,68 @@ namespace eRents.Application.Service.SimpleRentalService
 
         public async Task<string> GetPropertyRentalTypeAsync(int propertyId)
         {
-            var property = await _propertyRepository.GetEntities()
+            var property = await _propertyRepository.GetQueryable()
                 .Include(p => p.RentingType)
                 .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
             return property?.RentingType?.TypeName ?? "Daily";
+        }
+
+        public async Task<bool> ValidateRentalAvailability(int propertyId, DateOnly startDate, DateOnly endDate)
+        {
+            // Check for active tenant (annual rental)
+            var hasActiveTenant = await _tenantRepository.GetQueryable()
+                .Where(t => t.PropertyId == propertyId && 
+                           t.TenantStatus == "Active" &&
+                           t.LeaseStartDate.HasValue &&
+                           t.LeaseStartDate.Value.ToDateTime(TimeOnly.MinValue) <= endDate.ToDateTime(TimeOnly.MinValue))
+                .AnyAsync();
+    
+            // Check for existing bookings (daily rental)  
+            var hasConflictingBookings = await _bookingRepository.GetQueryable()
+                .Include(b => b.BookingStatus)
+                .Where(b => b.PropertyId == propertyId &&
+                           b.BookingStatus.StatusName != "Cancelled" &&
+                           b.StartDate < endDate &&
+                           (b.EndDate == null || b.EndDate > startDate))
+                .AnyAsync();
+    
+            return !hasActiveTenant && !hasConflictingBookings;
+        }
+        
+        public async Task<List<RentalRequest>> GetConflictingRequests(int propertyId, DateOnly startDate, DateOnly endDate)
+        {
+            return await _rentalRequestRepository.GetQueryable()
+                .Where(r => r.PropertyId == propertyId &&
+                           r.Status == "Pending" &&
+                           r.ProposedStartDate <= endDate &&
+                           r.ProposedEndDate >= startDate)
+                .ToListAsync();
+        }
+
+        public async Task<bool> IsValidLeaseDuration(DateOnly startDate, DateOnly endDate)
+        {
+            return (endDate.DayNumber - startDate.DayNumber) >= 180;
+        }
+
+        public async Task<bool> CanApproveRequest(int requestId, int currentUserId)
+        {
+            var request = await _rentalRequestRepository.GetQueryable()
+                .Include(r => r.Property)
+                .Where(r => r.RequestId == requestId)
+                .FirstOrDefaultAsync();
+        
+            return request?.Property.OwnerId == currentUserId;
+        }
+
+        public async Task<List<Property>> GetAvailablePropertiesForRentalType(string rentalType)
+        {
+            var availableProperties = await _propertyRepository.GetQueryable()
+                .Where(p => p.Status.ToLowerInvariant() == "available" &&
+                           p.RentingType.TypeName.ToLowerInvariant() == rentalType.ToLowerInvariant())
+                .ToListAsync();
+
+            return availableProperties;
         }
     }
 } 

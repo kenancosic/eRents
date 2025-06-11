@@ -50,7 +50,7 @@ namespace eRents.Application.Shared
 			CreateMap<Booking, BookingResponse>()
 				.ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.BookingId)) // Different names
 				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
-				.ForMember(dest => dest.BookingStatusStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
+				.ForMember(dest => dest.BookingStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
 				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
 				.ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId ?? 0)) // Null handling
 				// ✅ FIXED: Use correct "EntityName + FieldName" pattern
@@ -63,7 +63,7 @@ namespace eRents.Application.Shared
 			CreateMap<Booking, BookingSummaryResponse>()
 				.ForMember(dest => dest.PropertyId, opt => opt.MapFrom(src => src.PropertyId ?? 0)) // Null handling
 				.ForMember(dest => dest.PropertyName, opt => opt.MapFrom(src => src.Property.Name)) // Nested property
-				.ForMember(dest => dest.BookingStatusStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
+				.ForMember(dest => dest.BookingStatusName, opt => opt.MapFrom(src => src.BookingStatus.StatusName)) // Nested property - corrected name
 				.ForMember(dest => dest.UserFirstName, opt => opt.MapFrom(src => src.User != null ? src.User.FirstName : null)) // Nested with null check - corrected name
 				.ForMember(dest => dest.UserLastName, opt => opt.MapFrom(src => src.User != null ? src.User.LastName : null)) // Nested with null check - corrected name
 				.ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null)) // Nested with null check - corrected name

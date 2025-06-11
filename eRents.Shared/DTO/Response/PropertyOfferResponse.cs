@@ -14,14 +14,14 @@ namespace eRents.Shared.DTO.Response
         public string Status { get; set; } = "Pending"; // Pending, Accepted, Rejected, Expired
         public string? Message { get; set; }
         
-        // Fields from other entities - use "EntityName + FieldName" pattern
-        public string? PropertyName { get; set; }        // Property name
-        public decimal? PropertyPrice { get; set; }      // Property price
-        public string? UserFirstNameTenant { get; set; } // Tenant's first name
-        public string? UserLastNameTenant { get; set; }  // Tenant's last name
-        public string? UserEmailTenant { get; set; }     // Tenant's email
-        public string? UserFirstNameLandlord { get; set; } // Landlord's first name
-        public string? UserLastNameLandlord { get; set; }  // Landlord's last name
+        		// Fields from other entities - use "EntityName + FieldName" pattern
+		public string? PropertyName { get; set; }        // Property.Name
+		public decimal? PropertyPrice { get; set; }      // Property.Price
+		public string? UserFirstNameTenant { get; set; } // User.FirstName (tenant role)
+		public string? UserLastNameTenant { get; set; }  // User.LastName (tenant role)
+		public string? UserEmailTenant { get; set; }     // User.Email (tenant role)
+		public string? UserFirstNameLandlord { get; set; } // User.FirstName (landlord role)
+		public string? UserLastNameLandlord { get; set; }  // User.LastName (landlord role)
         
         // Computed properties for UI convenience (for backward compatibility)
         public string? PropertyTitle => PropertyName; // Alias for backward compatibility

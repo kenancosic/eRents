@@ -106,8 +106,7 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IStatisticsService, StatisticsService>();
             services.AddTransient<IReportService, ReportService>();
             
-            // Booking calculation service (required by BookingService)
-            services.AddTransient<BookingCalculationService>();
+            			// ✅ BookingCalculationService removed - calculations now done inline
             
             // Real-time messaging service
             services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
@@ -143,13 +142,9 @@ namespace eRents.WebApi.Extensions
             // Message queue services
             services.AddSingleton<IRabbitMQService, RabbitMQService>();
             
-            // Payment services with configuration injection
-            services.AddSingleton<IPaymentService>(serviceProvider =>
-                new PayPalService(
-                    serviceProvider.GetRequiredService<HttpClient>(),
-                    configuration
-                )
-            );
+            // Payment services with refactored architecture (Phase 1 refactoring)
+            services.AddScoped<IPayPalGateway, PayPalService>();
+            services.AddScoped<IPaymentService, PaymentService>();
             
             return services;
         }

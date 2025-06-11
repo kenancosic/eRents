@@ -24,8 +24,8 @@ namespace eRents.Application.Service.PropertyService
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
-		private static MLContext _mlContext = null;
-		private static ITransformer _model = null;
+		private static MLContext? _mlContext = null;
+		private static ITransformer? _model = null;
 		private static object _lock = new object();
 
 		public PropertyService(
@@ -734,6 +734,78 @@ namespace eRents.Application.Service.PropertyService
 		{
 			// TODO: Implement amenity deletion
 			throw new NotImplementedException("Amenity management functionality needs to be implemented");
+		}
+
+		// 🆕 NEW: Dual Rental System Support Methods
+		public async Task<bool> IsPropertyAvailableForRentalTypeAsync(int propertyId, string rentalType, DateOnly? startDate = null, DateOnly? endDate = null)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null)
+				return false;
+
+			// Check if property supports the requested rental type
+			if (!string.Equals(property.RentingType?.TypeName, rentalType, StringComparison.OrdinalIgnoreCase))
+				return false;
+
+			// Check property status
+			if (property.Status?.ToLowerInvariant() != "available")
+				return false;
+
+			// For date-specific availability checks
+			if (startDate.HasValue && endDate.HasValue)
+			{
+				// Check for conflicts based on rental type
+				if (rentalType.ToLowerInvariant() == "daily")
+				{
+					return await CanPropertyAcceptBookingsAsync(propertyId);
+				}
+				else if (rentalType.ToLowerInvariant() == "monthly" || rentalType.ToLowerInvariant() == "annual")
+				{
+					return !await HasActiveAnnualTenantAsync(propertyId);
+				}
+			}
+
+			return true;
+		}
+
+		public async Task<bool> IsPropertyVisibleInMarketAsync(int propertyId)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null)
+				return false;
+
+			// Property is visible if available and not occupied by annual tenant
+			return property.Status?.ToLowerInvariant() == "available" && !await HasActiveAnnualTenantAsync(propertyId);
+		}
+
+		public async Task<List<PropertyResponse>> GetPropertiesByRentalTypeAsync(string rentalType)
+		{
+			var query = _propertyRepository.GetQueryable()
+				.Where(p => p.RentingType.TypeName.ToLowerInvariant() == rentalType.ToLowerInvariant());
+			var properties = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(query);
+			return _mapper.Map<List<PropertyResponse>>(properties);
+		}
+
+		public async Task<bool> CanPropertyAcceptBookingsAsync(int propertyId)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null)
+				return false;
+
+			// Property can accept bookings if:
+			// 1. It's available
+			// 2. It's a daily rental type
+			// 3. No active annual tenant
+			return property.Status?.ToLowerInvariant() == "available" &&
+			       property.RentingType?.TypeName?.ToLowerInvariant() == "daily" &&
+			       !await HasActiveAnnualTenantAsync(propertyId);
+		}
+
+		public async Task<bool> HasActiveAnnualTenantAsync(int propertyId)
+		{
+			// Note: This would require access to TenantRepository
+			// For now, return false as placeholder
+			return await Task.FromResult(false);
 		}
 	}
 }

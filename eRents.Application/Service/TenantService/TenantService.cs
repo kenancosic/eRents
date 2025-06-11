@@ -36,7 +36,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task<List<UserResponse>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 			var tenants = await _tenantRepository.GetCurrentTenantsForLandlordAsync(currentUserId, queryParams);
 
 			var tenantDtos = new List<UserResponse>();
@@ -54,7 +55,8 @@ namespace eRents.Application.Service.TenantService
 			if (tenant == null)
 				throw new ArgumentException($"Tenant with ID {tenantId} not found");
 
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Verify this tenant has relationship with current landlord
 			var isActive = await _tenantRepository.IsTenantCurrentlyActiveAsync(tenantId, currentUserId);
@@ -67,7 +69,8 @@ namespace eRents.Application.Service.TenantService
 		public async Task<List<TenantPreferenceResponse>> GetProspectiveTenantsAsync(Dictionary<string, string>? queryParams = null)
 		{
 			var preferences = await _tenantPreferenceRepository.GetPreferencesWithUserDetailsAsync(queryParams);
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Convert to DTOs with placeholder match scores
 			var preferenceDtos = new List<TenantPreferenceResponse>();
@@ -88,7 +91,8 @@ namespace eRents.Application.Service.TenantService
 			if (preference == null)
 				throw new ArgumentException($"No preferences found for tenant {tenantId}");
 
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
@@ -112,13 +116,15 @@ namespace eRents.Application.Service.TenantService
 
 			await _tenantPreferenceRepository.UpdateAsync(preference);
 
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 			return await MapTenantPreferenceToResponseDtoAsync(preference, currentUserId);
 		}
 
 		public async Task<List<ReviewResponse>> GetTenantFeedbacksAsync(int tenantId)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Get reviews where current landlord reviewed this tenant
 			var reviews = await _reviewRepository.GetTenantReviewsByLandlordAsync(currentUserId, tenantId);
@@ -134,7 +140,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task<ReviewResponse> AddTenantFeedbackAsync(int tenantId, ReviewInsertRequest request)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Verify landlord has had business relationship with this tenant
 			var hasRelationship = await _tenantRepository.IsTenantCurrentlyActiveAsync(tenantId, currentUserId);
@@ -159,7 +166,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task RecordPropertyOfferedToTenantAsync(int tenantId, int propertyId)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Verify property ownership
 			var property = await _propertyRepository.GetByIdAsync(propertyId);
@@ -173,7 +181,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task<List<PropertyOfferResponse>> GetPropertyOffersForTenantAsync(int tenantId)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 
 			// Get all offers made by current landlord to this tenant
 			// Implementation depends on your PropertyOffer domain model
@@ -183,7 +192,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task<List<TenantRelationshipResponse>> GetTenantRelationshipsForLandlordAsync()
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 			var relationships = await _tenantRepository.GetTenantRelationshipsForLandlordAsync(currentUserId);
 
 			var relationshipDtos = new List<TenantRelationshipResponse>();
@@ -223,7 +233,8 @@ namespace eRents.Application.Service.TenantService
 
 		public async Task<Dictionary<int, PropertyResponse>> GetTenantPropertyAssignmentsAsync(List<int> tenantIds)
 		{
-			var currentUserId = int.Parse(_currentUserService.UserId);
+			if (!int.TryParse(_currentUserService.UserId, out var currentUserId))
+				throw new UnauthorizedAccessException("User is not authenticated or user ID is invalid.");
 			var assignments = await _tenantRepository.GetTenantPropertyAssignmentsAsync(tenantIds, currentUserId);
 
 			var assignmentDtos = new Dictionary<int, PropertyResponse>();
@@ -366,8 +377,63 @@ namespace eRents.Application.Service.TenantService
 			};
 		}
 
+		// 🆕 NEW: Annual Rental System Support Methods
+		public async Task<bool> CreateTenantFromApprovedRentalRequestAsync(int rentalRequestId)
+		{
+			// This method would be implemented once RentalRequestService is available
+			// For now, returning true as placeholder
+			// Implementation would:
+			// 1. Get the approved rental request
+			// 2. Create a Tenant record with lease details
+			// 3. Update property status to "Rented"
+			// 4. Send notification to tenant and landlord
+			return await Task.FromResult(true);
+		}
 
+		public async Task<bool> HasActiveTenantAsync(int propertyId)
+		{
+			// Use existing method that checks for active tenants
+			var query = _tenantRepository.GetQueryable()
+				.Where(t => t.PropertyId == propertyId && t.TenantStatus == "Active");
+			var tenant = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(query);
+			return tenant != null;
+		}
 
+		public async Task<DateTime?> GetLeaseEndDateAsync(int tenantId)
+		{
+			var tenant = await _tenantRepository.GetByIdAsync(tenantId);
+			if (tenant?.LeaseStartDate == null)
+				return null;
+
+			// Calculate lease end date based on rental request data
+			// This would require accessing the original rental request
+			// For now, return estimated date (6 months from start)
+			return tenant.LeaseStartDate.Value.AddMonths(6).ToDateTime(TimeOnly.MinValue);
+		}
+
+		public async Task<decimal> GetCurrentMonthlyRentAsync(int tenantId)
+		{
+			// Note: This would require a proper method in the repository or join with Payment data
+			// For now, return 0 as placeholder
+			return await Task.FromResult(0m);
+		}
+
+		public async Task<bool> IsLeaseExpiringInDaysAsync(int tenantId, int days)
+		{
+			var leaseEndDate = await GetLeaseEndDateAsync(tenantId);
+			if (!leaseEndDate.HasValue)
+				return false;
+
+			var targetDate = DateTime.UtcNow.AddDays(days);
+			return leaseEndDate.Value <= targetDate;
+		}
+
+		public async Task<List<UserResponse>> GetTenantsWithExpiringLeasesAsync(int landlordId, int daysAhead)
+		{
+			// Note: This would require a more complex query joining tenants with properties
+			// For now, return empty list as placeholder
+			return await Task.FromResult(new List<UserResponse>());
+		}
 
 	}
 }

@@ -11,25 +11,25 @@ using System.Threading.Tasks;
 namespace eRents.Application.Service.PaymentService
 {
 	/// <summary>
-	/// Integrated Payment Service that connects PayPal processing with database Payment records
-	/// This service ensures all payments are tracked in the database while using PayPal for processing
+	/// Integrated Payment Service that orchestrates PayPal processing with database Payment records
+	/// This service ensures all payments are tracked in the database while using PayPal gateway for processing
 	/// </summary>
 	public class PaymentService : IPaymentService
 	{
-		private readonly PayPalService _payPalService;
+		private readonly IPayPalGateway _payPalGateway;
 		private readonly IPaymentRepository _paymentRepository;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IMapper _mapper;
 		private readonly ILogger<PaymentService> _logger;
 
 		public PaymentService(
-			PayPalService payPalService,
+			IPayPalGateway payPalGateway,
 			IPaymentRepository paymentRepository,
 			ICurrentUserService currentUserService,
 			IMapper mapper,
 			ILogger<PaymentService> logger)
 		{
-			_payPalService = payPalService;
+			_payPalGateway = payPalGateway;
 			_paymentRepository = paymentRepository;
 			_currentUserService = currentUserService;
 			_mapper = mapper;
@@ -43,13 +43,13 @@ namespace eRents.Application.Service.PaymentService
 		{
 			try
 			{
-				// 1. Create PayPal payment
-				var paypalResponse = await _payPalService.CreatePaymentAsync(
-					request.Amount, 
-					request.Currency, 
-					"https://yourdomain.com/payment/success", 
-					"https://yourdomain.com/payment/cancel"
-				);
+							// 1. Create PayPal order
+			var paypalResponse = await _payPalGateway.CreateOrderAsync(
+				request.Amount, 
+				request.Currency, 
+				"https://yourdomain.com/payment/success", 
+				"https://yourdomain.com/payment/cancel"
+			);
 
 				// 2. Create database payment record
 				var payment = new Payment
@@ -60,7 +60,7 @@ namespace eRents.Application.Service.PaymentService
 					DatePaid = null, // Will be set when payment is completed
 					PaymentMethod = request.PaymentMethod,
 					PaymentStatus = "Pending",
-					PaymentReference = paypalResponse.PaymentReference,
+					PaymentReference = paypalResponse.Id,
 					CreatedAt = DateTime.UtcNow
 				};
 
@@ -71,7 +71,7 @@ namespace eRents.Application.Service.PaymentService
 				{
 					PaymentId = payment.PaymentId,
 					Status = paypalResponse.Status,
-					PaymentReference = paypalResponse.PaymentReference,
+					PaymentReference = paypalResponse.Id,
 					ApprovalUrl = paypalResponse.ApprovalUrl,
 					Amount = request.Amount,
 					Currency = request.Currency
@@ -92,8 +92,8 @@ namespace eRents.Application.Service.PaymentService
 		{
 			try
 			{
-				// 1. Execute PayPal payment
-				var paypalResponse = await _payPalService.ExecutePaymentAsync(paymentId, payerId);
+							// 1. Capture PayPal order
+			var paypalResponse = await _payPalGateway.CaptureOrderAsync(paymentId);
 
 				// 2. Update database payment record
 				var payment = await _paymentRepository.GetByPaymentReferenceAsync(paymentId);
@@ -116,7 +116,14 @@ namespace eRents.Application.Service.PaymentService
 				}
 
 				// Fallback if database record not found
-				return paypalResponse;
+				return new PaymentResponse
+				{
+					PaymentId = 0,
+					Status = paypalResponse.Status,
+					PaymentReference = paypalResponse.Id,
+					Amount = paypalResponse.Amount,
+					Currency = paypalResponse.Currency
+				};
 			}
 			catch (Exception ex)
 			{
@@ -130,7 +137,17 @@ namespace eRents.Application.Service.PaymentService
 		/// </summary>
 		public async Task<PaymentResponse> CreatePaymentAsync(decimal amount, string currency, string returnUrl, string cancelUrl)
 		{
-			return await _payPalService.CreatePaymentAsync(amount, currency, returnUrl, cancelUrl);
+			var paypalResponse = await _payPalGateway.CreateOrderAsync(amount, currency, returnUrl, cancelUrl);
+			
+			return new PaymentResponse
+			{
+				PaymentId = 0, // No database record for standalone orders
+				Status = paypalResponse.Status,
+				PaymentReference = paypalResponse.Id,
+				ApprovalUrl = paypalResponse.ApprovalUrl,
+				Amount = amount,
+				Currency = currency
+			};
 		}
 
 		/// <summary>
@@ -154,8 +171,17 @@ namespace eRents.Application.Service.PaymentService
 					};
 				}
 
-				// 2. Fallback to PayPal service
-				return await _payPalService.GetPaymentStatusAsync(paymentId);
+				// 2. Fallback to PayPal gateway - convert paymentId to order ID  
+				var paypalResponse = await _payPalGateway.GetOrderStatusAsync($"ORDER-{paymentId}");
+				
+				return new PaymentResponse
+				{
+					PaymentId = paymentId,
+					Status = paypalResponse.Status,
+					PaymentReference = paypalResponse.Id,
+					Amount = paypalResponse.Amount,
+					Currency = paypalResponse.Currency
+				};
 			}
 			catch (Exception ex)
 			{
@@ -176,8 +202,13 @@ namespace eRents.Application.Service.PaymentService
 				if (originalPayment == null)
 					throw new KeyNotFoundException("Original payment not found");
 
-				// 2. Process PayPal refund (placeholder - would need actual PayPal refund API)
-				// var paypalRefundResponse = await _payPalService.ProcessRefundAsync(request);
+				// 2. Process PayPal refund
+				var paypalRefundResponse = await _payPalGateway.ProcessRefundAsync(
+					request.OriginalPaymentReference, 
+					request.RefundAmount, 
+					request.Currency, 
+					request.Reason
+				);
 
 				// 3. Create refund payment record
 				var refundPayment = new Payment
@@ -188,7 +219,7 @@ namespace eRents.Application.Service.PaymentService
 					DatePaid = DateOnly.FromDateTime(DateTime.UtcNow),
 					PaymentMethod = "Refund",
 					PaymentStatus = "Completed",
-					PaymentReference = $"REFUND-{Guid.NewGuid()}",
+					PaymentReference = paypalRefundResponse.Id,
 					CreatedAt = DateTime.UtcNow
 				};
 

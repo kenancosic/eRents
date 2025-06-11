@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using eRents.Shared.DTO.Response;
 
 namespace eRents.Application.Service.NotificationService
 {

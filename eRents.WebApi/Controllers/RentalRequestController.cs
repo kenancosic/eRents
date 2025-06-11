@@ -7,6 +7,7 @@ using eRents.Shared.Services;
 using eRents.WebApi.Controllers.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace eRents.WebApi.Controllers
 {
@@ -15,12 +16,13 @@ namespace eRents.WebApi.Controllers
     /// Implements Phase 2 rental request workflow with landlord approval process
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [Authorize]
     public class RentalRequestController : BaseCRUDController<RentalRequestResponse, RentalRequestSearchObject, RentalRequestInsertRequest, RentalRequestUpdateRequest>
     {
         private readonly IRentalRequestService _rentalRequestService;
         private readonly ISimpleRentalService _simpleRentalService;
+        private readonly ICurrentUserService _currentUserService;
 
         public RentalRequestController(
             IRentalRequestService rentalRequestService, 
@@ -31,13 +33,15 @@ namespace eRents.WebApi.Controllers
         {
             _rentalRequestService = rentalRequestService;
             _simpleRentalService = simpleRentalService;
+            _currentUserService = currentUserService;
         }
 
         /// <summary>
         /// Request an annual rental for a property (Phase 2 endpoint)
         /// </summary>
-        [HttpPost("request-rental")]
-        public async Task<IActionResult> RequestRental([FromBody] RentalRequestInsertRequest request)
+        [HttpPost("request-annual-rental")]
+        [Authorize]
+        public async Task<IActionResult> RequestAnnualRental([FromBody] RentalRequestInsertRequest request)
         {
             try
             {
@@ -46,35 +50,57 @@ namespace eRents.WebApi.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "An error occurred while processing your rental request." });
+                return StatusCode(500, new { message = "An unexpected error occurred", details = ex.Message });
             }
         }
 
         /// <summary>
         /// Approve or reject a rental request (Phase 2 endpoint)
         /// </summary>
-        [HttpPost("approve-rental/{requestId}")]
-        public async Task<IActionResult> ApproveRental(int requestId, [FromBody] ApprovalRequest request)
+        [HttpPost("approve/{requestId}")]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> ApproveRequest(int requestId, [FromBody] JsonElement responsePayload)
         {
+            string? response = responsePayload.TryGetProperty("response", out var r) ? r.GetString() : "Request approved.";
             try
             {
-                var result = await _simpleRentalService.ApproveRentalRequestAsync(requestId, request.Approved, request.Response);
-                if (result)
-                    return Ok(new { message = request.Approved ? "Request approved successfully" : "Request rejected successfully" });
-                else
-                    return BadRequest(new { error = "Failed to process approval" });
+                var result = await _rentalRequestService.ApproveRequestAsync(requestId, response);
+                return Ok(result);
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                return Forbid();
+                return Forbid(ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "An error occurred while processing the approval." });
+                return StatusCode(500, new { message = "An unexpected error occurred", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Reject a rental request (Phase 2 endpoint)
+        /// </summary>
+        [HttpPost("reject/{requestId}")]
+        [Authorize(Roles = "Landlord")]
+        public async Task<IActionResult> RejectRequest(int requestId, [FromBody] JsonElement responsePayload)
+        {
+            string? response = responsePayload.TryGetProperty("response", out var r) ? r.GetString() : "Request rejected.";
+            try
+            {
+                var result = await _rentalRequestService.RejectRequestAsync(requestId, response);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred", details = ex.Message });
             }
         }
 
@@ -82,16 +108,17 @@ namespace eRents.WebApi.Controllers
         /// Get pending rental requests for current landlord (Phase 2 endpoint)
         /// </summary>
         [HttpGet("pending-requests")]
+        [Authorize(Roles = "Landlord")]
         public async Task<IActionResult> GetPendingRequests()
         {
             try
             {
-                var requests = await _rentalRequestService.GetPendingRequestsAsync();
-                return Ok(requests);
+                var result = await _rentalRequestService.GetPendingRequestsAsync();
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "An error occurred while retrieving pending requests." });
+                return StatusCode(500, new { message = "An unexpected error occurred", details = ex.Message });
             }
         }
 
@@ -116,16 +143,17 @@ namespace eRents.WebApi.Controllers
         /// Get current user's rental requests
         /// </summary>
         [HttpGet("my-requests")]
+        [Authorize]
         public async Task<IActionResult> GetMyRequests()
         {
             try
             {
-                var requests = await _rentalRequestService.GetMyRequestsAsync();
-                return Ok(requests);
+                var result = await _rentalRequestService.GetMyRequestsAsync();
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "An error occurred while retrieving your requests." });
+                return StatusCode(500, new { message = "An unexpected error occurred", details = ex.Message });
             }
         }
 
@@ -187,14 +215,5 @@ namespace eRents.WebApi.Controllers
                 return StatusCode(500, new { error = "An error occurred while retrieving expiring contracts." });
             }
         }
-    }
-
-    /// <summary>
-    /// Request DTO for rental approval/rejection
-    /// </summary>
-    public class ApprovalRequest
-    {
-        public bool Approved { get; set; }
-        public string? Response { get; set; }
     }
 } 

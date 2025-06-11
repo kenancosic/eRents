@@ -64,7 +64,7 @@ namespace eRents.Application.Service.ContractExpirationService
             _logger.LogInformation("Checking for contracts expiring on {TargetDate}", targetDate);
 
             // Get tenants with leases expiring in 60 days
-            var expiringContracts = await tenantRepository.GetEntities()
+            var expiringContracts = await tenantRepository.GetQueryable()
                 .Include(t => t.User)
                 .Include(t => t.Property)
                     .ThenInclude(p => p.Owner)
@@ -72,25 +72,18 @@ namespace eRents.Application.Service.ContractExpirationService
                 .ToListAsync();
                 
             // Filter by calculated lease end date
-            var filtered = new List<Tenant>();
-            
-            foreach (var tenant in expiringContracts)
+            var filtered = expiringContracts.Where(t => 
             {
-                var originalRequest = await rentalRequestRepository.GetEntities()
-                    .Where(r => r.UserId == tenant.UserId && 
-                               r.PropertyId == tenant.PropertyId && 
-                               r.Status == "Approved")
+                var originalRequest = rentalRequestRepository.GetQueryable()
+                    .Where(r => r.UserId == t.UserId && r.PropertyId == t.PropertyId && r.Status == "Approved")
                     .OrderByDescending(r => r.RequestDate)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
                 
-                if (originalRequest == null) continue;
+                if (originalRequest == null) return false;
                 
-                var leaseEndDate = tenant.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths);
-                if (DateOnly.FromDateTime(leaseEndDate) == targetDate)
-                {
-                    filtered.Add(tenant);
-                }
-            }
+                var leaseEndDate = t.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths);
+                return leaseEndDate.ToDateTime(TimeOnly.MinValue) <= targetDate.ToDateTime(TimeOnly.MinValue);
+            }).ToList();
                 
             foreach (var tenant in filtered)
             {
@@ -131,31 +124,23 @@ namespace eRents.Application.Service.ContractExpirationService
             _logger.LogInformation("Processing expired contracts as of {Today}", today);
             
             // Get all active tenants and check calculated lease end dates
-            var activeTenants = await tenantRepository.GetEntities()
+            var activeTenants = await tenantRepository.GetQueryable()
                 .Include(t => t.Property)
-                .Include(t => t.User)
                 .Where(t => t.TenantStatus == "Active" && t.LeaseStartDate.HasValue)
                 .ToListAsync();
                 
-            var expiredContracts = new List<Tenant>();
-            
-            foreach (var tenant in activeTenants)
+            var expiredContracts = activeTenants.Where(t =>
             {
-                var originalRequest = await rentalRequestRepository.GetEntities()
-                    .Where(r => r.UserId == tenant.UserId && 
-                               r.PropertyId == tenant.PropertyId && 
-                               r.Status == "Approved")
+                var originalRequest = rentalRequestRepository.GetQueryable()
+                    .Where(r => r.UserId == t.UserId && r.PropertyId == t.PropertyId && r.Status == "Approved")
                     .OrderByDescending(r => r.RequestDate)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
                     
-                if (originalRequest == null) continue;
+                if (originalRequest == null) return false;
                 
-                var leaseEndDate = DateOnly.FromDateTime(tenant.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths));
-                if (leaseEndDate < today)
-                {
-                    expiredContracts.Add(tenant);
-                }
-            }
+                var leaseEndDate = t.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths);
+                return leaseEndDate.ToDateTime(TimeOnly.MinValue) <= today.ToDateTime(TimeOnly.MinValue);
+            }).ToList();
                 
             foreach (var tenant in expiredContracts)
             {

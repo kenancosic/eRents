@@ -1,16 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using eRents.Application.Service.PaymentService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using Microsoft.Extensions.Configuration;
 
-public class PayPalService : IPaymentService
+namespace eRents.Application.Service.PaymentService
+{
+
+/// <summary>
+/// PayPal gateway implementation - Pure PayPal API integration
+/// No database operations, only external PayPal communication
+/// </summary>
+public class PayPalService : IPayPalGateway
 {
 	private readonly HttpClient _httpClient;
 	private readonly string _clientId;
@@ -52,9 +59,9 @@ public class PayPalService : IPaymentService
 	}
 
 	/// <summary>
-	/// Creates a new PayPal order.
+	/// Creates a new PayPal order and returns approval URL
 	/// </summary>
-	public async Task<PaymentResponse> CreatePaymentAsync(decimal amount, string currency, string returnUrl, string cancelUrl)
+	public async Task<PayPalOrderResponse> CreateOrderAsync(decimal amount, string currency, string returnUrl, string cancelUrl)
 	{
 		var accessToken = await GetAccessTokenAsync();
 		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -106,24 +113,31 @@ public class PayPalService : IPaymentService
 			}
 		}
 
-		return new PaymentResponse
+		return new PayPalOrderResponse
 		{
-			PaymentId = GeneratePaymentId(orderResponse.Id),
+			Id = orderResponse.Id,
 			Status = orderResponse.Status,
-			PaymentReference = orderResponse.Id,
-			ApprovalUrl = approvalUrl
+			ApprovalUrl = approvalUrl,
+			Amount = amount,
+			Currency = currency,
+			Links = orderResponse.Links?.Select(l => new PayPalLinkResponse
+			{
+				Href = l.Href,
+				Rel = l.Rel,
+				Method = l.Method
+			}).ToList() ?? new List<PayPalLinkResponse>()
 		};
 	}
 
 	/// <summary>
-	/// Captures an approved PayPal order.
+	/// Captures an approved PayPal order
 	/// </summary>
-	public async Task<PaymentResponse> ExecutePaymentAsync(string paymentId, string payerId)
+	public async Task<PayPalOrderResponse> CaptureOrderAsync(string orderId)
 	{
 		var accessToken = await GetAccessTokenAsync();
 		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-		var captureUrl = $"{_baseUrl}/v2/checkout/orders/{paymentId}/capture";
+		var captureUrl = $"{_baseUrl}/v2/checkout/orders/{orderId}/capture";
 		var response = await _httpClient.PostAsync(captureUrl, null);
 		response.EnsureSuccessStatusCode();
 
@@ -133,32 +147,53 @@ public class PayPalService : IPaymentService
 			PropertyNameCaseInsensitive = true
 		});
 
-		return new PaymentResponse
+		return new PayPalOrderResponse
 		{
-			PaymentId = GeneratePaymentId(captureResponse.Id),
+			Id = captureResponse.Id,
 			Status = captureResponse.Status,
-			PaymentReference = captureResponse.Id
+			Links = captureResponse.Links?.Select(l => new PayPalLinkResponse
+			{
+				Href = l.Href,
+				Rel = l.Rel,
+				Method = l.Method
+			}).ToList() ?? new List<PayPalLinkResponse>()
 		};
 	}
 
 	/// <summary>
-	/// Dummy implementation for additional payment processing logic.
+	/// Gets the status of a PayPal order
 	/// </summary>
-	public async Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request)
+	public async Task<PayPalOrderResponse> GetOrderStatusAsync(string orderId)
 	{
-		// Implement additional logic if needed.
-		return await Task.FromResult(new PaymentResponse
+		var accessToken = await GetAccessTokenAsync();
+		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+		var response = await _httpClient.GetAsync($"{_baseUrl}/v2/checkout/orders/{orderId}");
+		response.EnsureSuccessStatusCode();
+
+		var responseContent = await response.Content.ReadAsStringAsync();
+		var orderResponse = JsonSerializer.Deserialize<PayPalOrderResponse>(responseContent, new JsonSerializerOptions
 		{
-			PaymentId = new Random().Next(1000, 9999),
-			Status = "Success",
-			PaymentReference = "PAY-" + Guid.NewGuid().ToString()
+			PropertyNameCaseInsensitive = true
 		});
+
+		return new PayPalOrderResponse
+		{
+			Id = orderResponse.Id,
+			Status = orderResponse.Status,
+			Links = orderResponse.Links?.Select(l => new PayPalLinkResponse
+			{
+				Href = l.Href,
+				Rel = l.Rel,
+				Method = l.Method
+			}).ToList() ?? new List<PayPalLinkResponse>()
+		};
 	}
 
 	/// <summary>
-	/// Processes a refund for a PayPal payment.
+	/// Processes a refund for a captured PayPal payment
 	/// </summary>
-	public async Task<PaymentResponse> ProcessRefundAsync(RefundRequest request)
+	public async Task<PayPalRefundResponse> ProcessRefundAsync(string captureId, decimal amount, string currency, string reason = null)
 	{
 		try
 		{
@@ -170,16 +205,16 @@ public class PayPalService : IPaymentService
 			{
 				amount = new
 				{
-					currency_code = request.Currency,
-					value = request.RefundAmount.ToString("0.00")
+					currency_code = currency,
+					value = amount.ToString("0.00")
 				},
-				note_to_payer = request.Reason ?? "Refund processed"
+				note_to_payer = reason ?? "Refund processed"
 			};
 
 			var jsonContent = new StringContent(JsonSerializer.Serialize(refundRequest), Encoding.UTF8, "application/json");
 			
-			// Use the original payment reference as the capture ID for refund
-			var refundUrl = $"{_baseUrl}/v2/payments/captures/{request.OriginalPaymentReference}/refund";
+			// Use the capture ID for refund
+			var refundUrl = $"{_baseUrl}/v2/payments/captures/{captureId}/refund";
 			var response = await _httpClient.PostAsync(refundUrl, jsonContent);
 			
 			if (response.IsSuccessStatusCode)
@@ -190,111 +225,26 @@ public class PayPalService : IPaymentService
 					PropertyNameCaseInsensitive = true
 				});
 
-				return new PaymentResponse
+				return new PayPalRefundResponse
 				{
-					PaymentId = GeneratePaymentId(refundResponse.Id),
+					Id = refundResponse.Id,
 					Status = refundResponse.Status,
-					PaymentReference = refundResponse.Id
+					Amount = amount,
+					Currency = currency
 				};
 			}
 			else
 			{
-				// Handle refund failure
-				var errorContent = await response.Content.ReadAsStringAsync();
-				return new PaymentResponse
-				{
-					PaymentId = 0,
-					Status = "FAILED",
-					PaymentReference = $"Refund failed: {response.StatusCode} - {errorContent}"
-				};
+				throw new HttpRequestException($"Failed to process refund. Status: {response.StatusCode}");
 			}
 		}
 		catch (Exception ex)
 		{
-			// Return error response for exceptions
-			return new PaymentResponse
-			{
-				PaymentId = 0,
-				Status = "ERROR",
-				PaymentReference = $"Refund processing error: {ex.Message}"
-			};
+			throw new Exception($"An error occurred while processing the refund: {ex.Message}", ex);
 		}
 	}
-
-	/// <summary>
-	/// Retrieves the status of a PayPal order.
-	/// </summary>
-	public async Task<PaymentResponse> GetPaymentStatusAsync(int paymentId)
-	{
-		// For demo purposes, assume you have a mapping between your internal paymentId and PayPal order id.
-		string paypalOrderId = $"SAMPLE-ORDER-ID-{paymentId}";
-		var accessToken = await GetAccessTokenAsync();
-		_httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-		try
-		{
-			var response = await _httpClient.GetAsync($"{_baseUrl}/v2/checkout/orders/{paypalOrderId}");
-			response.EnsureSuccessStatusCode();
-
-			var responseContent = await response.Content.ReadAsStringAsync();
-			var orderResponse = JsonSerializer.Deserialize<PayPalOrderResponse>(responseContent, new JsonSerializerOptions
-			{
-				PropertyNameCaseInsensitive = true
-			});
-
-			return new PaymentResponse
-			{
-				PaymentId = paymentId,
-				Status = orderResponse.Status,
-				PaymentReference = orderResponse.Id
-			};
-		}
-		catch (Exception)
-		{
-			return new PaymentResponse
-			{
-				PaymentId = paymentId,
-				Status = "Unknown",
-				PaymentReference = "Not Found"
-			};
-		}
-	}
-
-	/// <summary>
-	/// Generates a PaymentId from the PayPal order id.
-	/// </summary>
-	private int GeneratePaymentId(string orderId)
-	{
-		// Simple conversion from orderId to int (for demo purposes).
-		return Math.Abs(orderId.GetHashCode() % 100000);
-	}
 }
 
-// DTO classes for deserialization
-public class PayPalTokenResponse
-{
-	public string AccessToken { get; set; }
-	public string TokenType { get; set; }
-	public string AppId { get; set; }
-	public int ExpiresIn { get; set; }
-}
+// PayPal token response class moved to eRents.Shared/DTO/Response/PayPalOrderResponse.cs
 
-public class PayPalOrderResponse
-{
-	public string Id { get; set; }
-	public string Status { get; set; }
-	public List<PayPalLink> Links { get; set; }
-}
-
-public class PayPalLink
-{
-	public string Href { get; set; }
-	public string Rel { get; set; }
-	public string Method { get; set; }
-}
-
-public class PayPalRefundResponse
-{
-	public string Id { get; set; }
-	public string Status { get; set; }
 }

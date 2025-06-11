@@ -16,20 +16,20 @@ namespace eRents.Shared.DTO.Response
 		public string PaymentMethod { get; set; } = "PayPal";
 		public string? PaymentStatus { get; set; }
 		
-		// Fields from other entities - use "EntityName + FieldName" pattern
-		public string PropertyName { get; set; }
-		public int? PropertyImageId { get; set; }
-		public string BookingStatusStatusName { get; set; }
-		public string? UserFirstName { get; set; }
-		public string? UserLastName { get; set; }
-		public string? UserEmail { get; set; }
+				// Fields from other entities - use "EntityName + FieldName" pattern
+		public string? PropertyName { get; set; } // Property.Name
+		public int? PropertyImageId { get; set; } // Property.CoverImageId
+		public string? BookingStatusName { get; set; } // BookingStatus.StatusName
+		public string? UserFirstName { get; set; } // User.FirstName
+		public string? UserLastName { get; set; } // User.LastName
+		public string? UserEmail { get; set; } // User.Email
 		
 		// Computed properties for UI convenience
-		public string Status => BookingStatusStatusName ?? "Unknown";
+		public string Status => BookingStatusName ?? "Unknown";
 		public string? TenantName => 
 			!string.IsNullOrEmpty(UserFirstName) || !string.IsNullOrEmpty(UserLastName)
-				? $"{UserFirstName} {UserLastName}".Trim()
-				: null;
+			? $"{UserFirstName} {UserLastName}".Trim()
+			: null;
 		public string? TenantEmail => UserEmail;
 	}
 }
