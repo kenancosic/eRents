@@ -321,5 +321,96 @@ namespace eRents.Domain.Repositories
 				.AsNoTracking()
 				.AnyAsync(rt => rt.RentingTypeId == rentingTypeId);
 		}
+
+		public async Task<IEnumerable<Property>> GetPopularPropertiesAsync(int count)
+		{
+			// Example logic: properties with the most bookings
+			return await _context.Properties
+				.OrderByDescending(p => p.Bookings.Count)
+				.Take(count)
+				.ToListAsync();
+		}
+
+		public async Task<bool> AddSavedProperty(int propertyId, int userId)
+		{
+			var savedProperty = new UserSavedProperty { PropertyId = propertyId, UserId = userId };
+			_context.UserSavedProperties.Add(savedProperty);
+			return await _context.SaveChangesAsync() > 0;
+		}
+
+		public async Task AddImageAsync(Image image)
+		{
+			_context.Images.Add(image);
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task<PropertyAvailabilityResponse> GetPropertyAvailability(int propertyId, DateTime? start, DateTime? end)
+		{
+			if (!start.HasValue || !end.HasValue)
+			{
+				return new PropertyAvailabilityResponse(true, new List<string>());
+			}
+
+			var startDate = DateOnly.FromDateTime(start.Value);
+			var endDate = DateOnly.FromDateTime(end.Value);
+
+			var conflictingBookings = await _context.Bookings
+				.Where(b => b.PropertyId == propertyId && b.StartDate < endDate && b.EndDate > startDate)
+				.Select(b => b.BookingId.ToString())
+				.ToListAsync();
+
+			return new PropertyAvailabilityResponse(conflictingBookings.Count == 0, conflictingBookings);
+		}
+
+		public async Task<IEnumerable<Property>> GetPropertiesByRentalType(string rentalType)
+		{
+			return await _context.Properties
+				.Where(p => p.RentingType.TypeName == rentalType)
+				.ToListAsync();
+		}
+
+		public async Task<bool> HasActiveLease(int propertyId)
+		{
+			var today = DateOnly.FromDateTime(DateTime.UtcNow);
+			return await _context.RentalRequests
+				.AnyAsync(r => r.PropertyId == propertyId && r.Status == "Approved" && r.ProposedEndDate >= today);
+		}
+
+		public async Task UpdatePropertyAmenities(int propertyId, List<int> amenityIds)
+		{
+			var property = await _context.Properties.Include(p => p.Amenities).FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+			if (property == null) return;
+
+			var currentAmenityIds = property.Amenities.Select(a => a.AmenityId).ToHashSet();
+			var amenitiesToRemove = property.Amenities.Where(a => !amenityIds.Contains(a.AmenityId)).ToList();
+			var amenityIdsToAdd = amenityIds.Where(id => !currentAmenityIds.Contains(id)).ToList();
+
+			foreach (var amenity in amenitiesToRemove)
+			{
+				property.Amenities.Remove(amenity);
+			}
+
+			if (amenityIdsToAdd.Any())
+			{
+				var amenitiesToAdd = await _context.Amenities.Where(a => amenityIdsToAdd.Contains(a.AmenityId)).ToListAsync();
+				foreach (var amenity in amenitiesToAdd)
+				{
+					property.Amenities.Add(amenity);
+				}
+			}
+			await _context.SaveChangesAsync();
+		}
+
+		public async Task UpdatePropertyImages(int propertyId, List<int> imageIds)
+		{
+			var images = await _context.Images.Where(i => i.PropertyId == propertyId).ToListAsync();
+			
+			// This is a simplified implementation. A real one would handle adding/removing specific images.
+			_context.Images.RemoveRange(images);
+			
+			var newImages = imageIds.Select(id => new Image { ImageId = id, PropertyId = propertyId }).ToList();
+			await _context.Images.AddRangeAsync(newImages);
+			await _context.SaveChangesAsync();
+		}
 	}
 }

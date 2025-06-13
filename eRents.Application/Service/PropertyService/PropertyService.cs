@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using eRents.Shared.Enums;
 using eRents.Shared.Services;
 using System.Linq;
+using Microsoft.ML.Trainers;
 
 namespace eRents.Application.Service.PropertyService
 {
@@ -159,11 +160,11 @@ namespace eRents.Application.Service.PropertyService
 		{
 			var currentUserId = _currentUserService.UserId;
 
-			if (string.IsNullOrEmpty(currentUserId))
-				throw new System.UnauthorizedAccessException("User not authenticated");
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
+				throw new System.UnauthorizedAccessException("User not authenticated or user ID is invalid.");
 			
 			var entity = _mapper.Map<Property>(insert);
-			entity.OwnerId = currentUserId;
+			entity.OwnerId = userIdInt;
 
 			await BeforeInsertAsync(insert, entity);
 			await _propertyRepository.AddAsync(entity);
@@ -181,7 +182,7 @@ namespace eRents.Application.Service.PropertyService
 			}
 			
 			var currentUserId = _currentUserService.UserId;
-			if (entity.OwnerId != currentUserId)
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt) || entity.OwnerId != userIdInt)
 			{
 				throw new System.UnauthorizedAccessException("User is not authorized to update this property.");
 			}
@@ -200,7 +201,7 @@ namespace eRents.Application.Service.PropertyService
 			if (entity == null) return false;
 
 			var currentUserId = _currentUserService.UserId;
-			if (entity.OwnerId != currentUserId)
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt) || entity.OwnerId != userIdInt)
 			{
 				throw new System.UnauthorizedAccessException("User is not authorized to delete this property.");
 			}
@@ -242,7 +243,7 @@ namespace eRents.Application.Service.PropertyService
 					{
 						UserId = (float)r.ReviewerId,
 						PropertyId = (float)r.PropertyId,
-						Label = r.StarRating.Value
+						Label = (float)(r.StarRating ?? 0)
 					}).ToList();
 
 					var dataView = _mlContext.Data.LoadFromEnumerable(mlData);

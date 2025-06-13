@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
 
 namespace eRents.Application.Service.UserService
 {
@@ -250,7 +251,8 @@ namespace eRents.Application.Service.UserService
 		}
 		public async Task<System.Collections.Generic.IEnumerable<UserResponse>> GetTenantsByLandlordAsync(int landlordId)
 		{
-			return await _userRepository.GetTenantsByLandlordAsync(landlordId);
+			var tenants = await _userRepository.GetTenantsByLandlordAsync(landlordId);
+			return _mapper.Map<IEnumerable<UserResponse>>(tenants);
 		}
 		public async Task<System.Collections.Generic.IEnumerable<UserResponse>> GetUsersByRoleAsync(string role, UserSearchObject searchObject)
 		{
