@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import '../core/table_query.dart';
 import '../core/table_columns.dart';
@@ -128,7 +129,7 @@ abstract class TableProvider<TModel> extends BaseTableProvider<TModel> {
   /// Helper: Create date cell
   Widget dateCell(DateTime? date) {
     if (date == null) return textCell('N/A');
-    return textCell(date.toLocal().toString().split(' ')[0]);
+    return textCell(AppDateUtils.formatShort(date));
   }
 
   /// Helper: Create action buttons cell

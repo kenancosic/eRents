@@ -26,7 +26,7 @@ import 'package:e_rents_desktop/features/profile/profile_screen.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:e_rents_desktop/features/tenants/tenants_screen.dart';
-import 'package:e_rents_desktop/features/bookings/bookings_list_screen.dart';
+import 'package:e_rents_desktop/features/rents/rents_list_screen.dart';
 
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
@@ -307,11 +307,11 @@ class AppRouter {
                 ),
           ),
           GoRoute(
-            path: '/bookings',
+            path: '/rents',
             builder:
                 (context, state) => ContentWrapper(
-                  title: 'Bookings',
-                  child: _createBookingsTableScreen(),
+                  title: 'Rental Management',
+                  child: _createRentsTableScreen(),
                 ),
           ),
         ],
@@ -520,9 +520,9 @@ class AppRouter {
     );
   }
 
-  static Widget _createBookingsTableScreen() {
+  static Widget _createRentsTableScreen() {
     // ✅ PRODUCTION: Using rich UI version with enhanced styling
-    return const BookingsListScreen();
+    return const RentsListScreen();
 
     // FALLBACK: Simple version available if needed
     // return const BookingsTableScreen();

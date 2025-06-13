@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'core/table_query.dart';
 import 'core/table_types.dart';
 import 'core/table_columns.dart';
@@ -399,7 +400,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
                               newDescending = true;
                             } else {
                               // Currently descending - clear sorting
-                              newSortBy = null;
+                              newSortBy = ''; // Use empty string to clear sort
                               newDescending = false;
                             }
 
@@ -612,12 +613,12 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
                     _activeFilters.clear();
                   });
                   _updateQuery(_currentQuery.copyWith(filters: {}));
-                  Navigator.of(context).pop();
+                  context.pop();
                 },
                 child: const Text('Clear All'),
               ),
               TextButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => context.pop(),
                 child: const Text('Done'),
               ),
             ],

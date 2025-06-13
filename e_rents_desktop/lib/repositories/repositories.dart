@@ -10,3 +10,5 @@ export 'tenant_repository.dart';
 export 'chat_repository.dart';
 export 'statistics_repository.dart';
 export 'reports_repository.dart';
+export 'booking_repository.dart';
+export 'rental_request_repository.dart';

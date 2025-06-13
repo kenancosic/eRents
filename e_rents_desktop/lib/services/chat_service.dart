@@ -48,7 +48,8 @@ class ChatService extends ApiService {
     );
     String endpoint = '/Chat/$contactId/Messages';
     Map<String, String> queryParams = {};
-    if (page != null) queryParams['page'] = page.toString();
+    if (page != null)
+      queryParams['page'] = (page + 1).toString(); // Convert 0-based to 1-based
     if (pageSize != null) queryParams['pageSize'] = pageSize.toString();
 
     if (queryParams.isNotEmpty) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state_providers.dart';
 
@@ -23,7 +24,7 @@ class GlobalErrorDialog extends StatelessWidget {
                   actions: [
                     TextButton(
                       onPressed: () {
-                        Navigator.of(context).pop();
+                        context.pop();
                         errorProvider.clearError();
                       },
                       child: const Text('OK'),

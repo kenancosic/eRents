@@ -191,7 +191,7 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    context.pop();
                     context.push('/maintenance/${issue.maintenanceIssueId}');
                   },
                   icon: const Icon(Icons.visibility),
@@ -202,7 +202,7 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    context.pop();
                     context.push('/properties/${issue.propertyId}');
                   },
                   icon: const Icon(Icons.home),

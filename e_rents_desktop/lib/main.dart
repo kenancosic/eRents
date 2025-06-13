@@ -31,6 +31,7 @@ import 'services/lookup_service.dart';
 // Provider imports (only essential ones loaded at startup)
 import 'features/auth/providers/auth_provider.dart';
 import 'providers/lookup_provider.dart';
+import 'base/rental_service_registrations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +178,9 @@ Future<void> _setupServices(String baseUrl) async {
       cacheManager: locator.get<CacheManager>(),
     ),
   );
+
+  // Register unified rental management services
+  RentalServiceRegistrations.registerServices(locator, baseUrl);
 
   // Add other repositories as needed...
 }

@@ -1,7 +1,8 @@
 import '../base/base.dart';
 import '../services/booking_service.dart';
 import '../models/booking.dart';
-import '../widgets/table/custom_table.dart';
+import '../widgets/table/custom_table.dart' hide PagedResult;
+import '../models/paged_result.dart';
 
 /// Repository for booking data management with caching support
 class BookingRepository extends BaseRepository<Booking, BookingService> {
@@ -270,48 +271,25 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     );
   }
 
-  /// ✅ UNIVERSAL SYSTEM: Get paginated bookings for landlords
-  /// Matches BookingController.cs GET /bookings with Universal System support
+  /// Get paginated bookings with full Universal System filtering
   Future<PagedResult<Booking>> getPagedBookings(
     Map<String, dynamic> params,
   ) async {
     try {
-      final cacheKey = _buildSpecialCacheKey('paged', params);
-
-      // Try cache first (shorter TTL for paginated data)
+      final cacheKey = _buildCacheKey('paged_bookings', params);
       if (enableCaching) {
-        final cached = await cacheManager.get<PagedResult<Booking>>(cacheKey);
+        final cached = await cacheManager.get<Map<String, dynamic>>(cacheKey);
         if (cached != null) {
-          return cached;
+          return PagedResult.fromJson(cached, (json) => Booking.fromJson(json));
         }
       }
 
-      // ✅ LANDLORD FOCUS: The controller automatically filters for landlord's properties
-      // through role-based authorization and context
-      final pagedData = await service.getPagedBookings(params);
-
-      // Parse Universal System PagedList<BookingResponse>
-      final List<dynamic> items = pagedData['items'] ?? [];
-      final bookings = items.map((json) => Booking.fromJson(json)).toList();
-
-      final pagedResult = PagedResult<Booking>(
-        items: bookings,
-        totalCount: pagedData['totalCount'] ?? 0,
-        page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
-        pageSize: pagedData['pageSize'] ?? 25,
-        totalPages: pagedData['totalPages'] ?? 0,
-      );
-
-      // Cache the result (shorter TTL for paginated data)
+      final result = await service.getPagedBookings(params);
       if (enableCaching) {
-        await cacheManager.set(
-          cacheKey,
-          pagedResult,
-          duration: const Duration(minutes: 2),
-        );
+        await cacheManager.set(cacheKey, result, duration: defaultCacheTtl);
       }
 
-      return pagedResult;
+      return PagedResult.fromJson(result, (json) => Booking.fromJson(json));
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -377,5 +355,42 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
+  }
+
+  /// Convenience wrapper for fetching ALL bookings with optional filters (no paging).
+  /// This simply delegates to [fetchAllFromService] and preserves caching logic via [getAll].
+  Future<List<Booking>> getAllBookings([Map<String, dynamic>? params]) async {
+    // Expose the base [getAll] for outward callers (e.g. RentalManagementService)
+    return await getAll(params);
+  }
+
+  /// Convenience wrapper that aligns with RentalManagementService expectations.
+  /// When [propertyId] is omitted it returns stays for ALL landlord properties.
+  Future<List<Booking>> getCurrentStays([int? propertyId]) async {
+    return await getCurrentStaysForProperty(propertyId);
+  }
+
+  /// Convenience wrapper that aligns with RentalManagementService expectations.
+  /// When [propertyId] is omitted it returns upcoming stays for ALL landlord properties.
+  Future<List<Booking>> getUpcomingStays([int? propertyId]) async {
+    return await getUpcomingStaysForProperty(propertyId);
+  }
+
+  /// Build a cache key for this repository
+  String _buildCacheKey(String operation, [Map<String, dynamic>? params]) {
+    final buffer = StringBuffer();
+    buffer.write('${resourceName}_$operation');
+
+    if (params != null && params.isNotEmpty) {
+      final sortedParams = Map.fromEntries(
+        params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+      );
+
+      for (final entry in sortedParams.entries) {
+        buffer.write('_${entry.key}:${entry.value}');
+      }
+    }
+
+    return buffer.toString();
   }
 }
