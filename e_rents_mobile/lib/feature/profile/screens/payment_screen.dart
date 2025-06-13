@@ -86,12 +86,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
           CustomOutlinedButton.compact(
             label: 'Cancel',
             isLoading: false,
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => context.pop(false),
           ),
           CustomButton.compact(
             label: 'Delete',
             isLoading: false,
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => context.pop(true),
           ),
         ],
       ),

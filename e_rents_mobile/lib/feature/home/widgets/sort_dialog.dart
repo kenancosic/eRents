@@ -58,7 +58,7 @@ class _SortDialogState extends State<SortDialog> {
           label: 'Cancel',
           isLoading: false,
           onPressed: () {
-            Navigator.of(context).pop();
+            context.pop();
           },
         ),
         CustomButton.compact(
@@ -74,7 +74,7 @@ class _SortDialogState extends State<SortDialog> {
                 'sortDescending': descending,
               });
             }
-            Navigator.of(context).pop();
+            context.pop();
           },
         ),
       ],

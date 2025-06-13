@@ -53,6 +53,7 @@ namespace eRents.WebApi
 				await SeedPropertiesAsync(context);
 				await SeedBookingsAsync(context);
 				await SeedTenantsAsync(context);
+				await SeedRentalRequestsAsync(context);
 				await SeedMaintenanceAsync(context);
 				await SeedReviewsAsync(context);
 				await SeedPaymentsAsync(context);
@@ -209,8 +210,19 @@ namespace eRents.WebApi
 		{
 			var streets = new[]
 			{
-				"Maršala Tita 15", "Vidikovac 3", "Kujundžiluk 5", "Hasana Kikića 10",
-				"Trg Alije Izetbegovića 1", "Svetog Save 25"
+				// Sarajevo streets
+				"Ferhadija 15", "Baščaršija 3", "Kovači 5", "Sarajka 10",
+				"Maršala Tita 25", "Vidikovac 3", "Hrasno 8", "Ilidža 12",
+				// Banja Luka streets
+				"Gospodska 7", "Bulevar vojvode Petra Bojovića 15", "Kralja Petra I 3",
+				// Mostar streets
+				"Kujundžiluk 5", "Bulevar 1", "Rondo 8", "Španski trg 2",
+				// Tuzla streets
+				"Slatina 10", "Centar 5", "Gradina 7",
+				// Zenica streets
+				"Bulevar Kulina bana 12", "Centar 3", "Lukavac 8",
+				// Bijeljina streets
+				"Svetog Save 25", "Kralja Petra I 15", "Vojvode Stepe 7"
 			};
 			return streets[index % streets.Length];
 		}
@@ -407,23 +419,51 @@ namespace eRents.WebApi
 
 		private (int bedrooms, int bathrooms, decimal area, decimal basePrice) GetPropertySpecs(string propertyType) => propertyType switch
 		{
-			"Studio" => (0, 1, 35m, 400m),
-			"Apartment" => (2, 1, 75m, 750m),
-			"House" => (3, 2, 120m, 1100m),
-			"Villa" => (4, 3, 200m, 1600m),
-			"Condo" => (2, 2, 90m, 900m),
-			"Townhouse" => (3, 2, 150m, 1200m),
-			_ => (2, 1, 75m, 750m)
+			"Studio" => (0, 1, 35m, 40m),       // Daily rate for short-term rentals
+			"Apartment" => (2, 1, 75m, 65m),    // Daily rate for short-term rentals  
+			"House" => (3, 2, 120m, 120m),      // Daily rate for short-term rentals
+			"Villa" => (4, 3, 200m, 180m),      // Daily rate for short-term rentals
+			"Condo" => (2, 2, 90m, 85m),        // Daily rate for short-term rentals
+			"Townhouse" => (3, 2, 150m, 140m),  // Daily rate for short-term rentals
+			_ => (2, 1, 75m, 65m)               // Default daily rate for short-term rentals
 		};
 
 		private string GeneratePropertyName(string propertyType, string cityName)
 		{
-			var adjectives = new[] { "Moderni", "Luksuzni", "Prostrani", "Udoban", "Prekrasan", "Centralni" };
-			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType} {cityName}";
+			var adjectives = new[] 
+			{ 
+				"Moderan", "Luksuzan", "Prostran", "Udoban", "Prekrasan", 
+				"Centralni", "Novi", "Renoviran", "Opremljen", "Pogodan"
+			};
+			
+			var locations = new[]
+			{
+				"Centar", "Stari Grad", "Novo Sarajevo", "Ilidža", "Hrasno",
+				"Vidikovac", "Grbavica", "Marijin Dvor", "Bentbaša", "Vratnik"
+			};
+			
+			var features = new[]
+			{
+				"sa Balkonom", "sa Pogledom", "sa Parkingom", "sa Liftom",
+				"sa Terasom", "sa Baštom", "sa Klimom", "sa Garažom"
+			};
+			
+			return $"{adjectives[_random.Next(adjectives.Length)]} {propertyType} {cityName} - {locations[_random.Next(locations.Length)]} {features[_random.Next(features.Length)]}";
 		}
 
-		private string GeneratePropertyDescription(string propertyType) =>
-			$"Prekrasan {propertyType.ToLower()} s odličnim sadržajima i lokacijom. Idealno za {(propertyType == "Studio" ? "studente" : "porodice")}.";
+		private string GeneratePropertyDescription(string propertyType)
+		{
+			var descriptions = new[]
+			{
+				$"Prekrasan {propertyType.ToLower()} u centru grada, idealno za {(propertyType == "Studio" ? "studente" : "porodice")}. Opremljen modernim namještajem i svim potrebnim uređajima.",
+				$"Luksuzan {propertyType.ToLower()} sa odličnom lokacijom i pristupom svim sadržajima. Idealno za {(propertyType == "Studio" ? "studente" : "porodice")} koje traže udoban smještaj.",
+				$"Prostran {propertyType.ToLower()} sa prekrasnim pogledom na grad. Opremljen svim potrebnim uređajima i namještajem visokog kvaliteta.",
+				$"Moderan {propertyType.ToLower()} u mirnom dijelu grada, sa odličnom povezanošću sa centrom. Idealno za {(propertyType == "Studio" ? "studente" : "porodice")} koje traže udoban smještaj.",
+				$"Novi {propertyType.ToLower()} sa svim modernim sadržajima. Opremljen klimom, internetom i svim potrebnim uređajima za udoban boravak."
+			};
+			
+			return descriptions[_random.Next(descriptions.Length)];
+		}
 
 		private string GetRandomPropertyStatus()
 		{
@@ -486,85 +526,126 @@ namespace eRents.WebApi
 			await context.SaveChangesAsync();
 		}
 
-			/// <summary>
-	/// Creates specific test booking data for TestLandlord (desktop) and TestUser (mobile) testing
-	/// ✅ ORGANIZED: Clear test data for both desktop and mobile app testing
-	/// </summary>
-	private async Task CreateTestBookingDataAsync(ERentsContext context, List<Booking> bookings, 
-		List<Property> allProperties, List<BookingStatus> bookingStatuses)
-	{
-		_logger?.LogInformation("Creating organized test booking data for TestLandlord and TestUser...");
-
-		// Get test users
-		var testLandlord = await context.Users.FirstOrDefaultAsync(u => u.Username == "testLandlord");
-		var testUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "testUser");
-		var otherTenants = await context.Users.Include(u => u.UserTypeNavigation)
-			.Where(u => u.UserTypeNavigation.TypeName == "Tenant" && u.Username != "testUser")
-			.Take(3).ToListAsync();
-
-		if (testLandlord == null || testUser == null)
+		/// <summary>
+		/// Creates specific test booking data for TestLandlord (desktop) and TestUser (mobile) testing
+		/// ✅ ORGANIZED: Clear test data for both desktop and mobile app testing
+		/// </summary>
+		private async Task CreateTestBookingDataAsync(ERentsContext context, List<Booking> bookings, 
+			List<Property> allProperties, List<BookingStatus> bookingStatuses)
 		{
-			_logger?.LogWarning("TestLandlord or TestUser not found, skipping specific test data creation");
-			return;
-		}
+			_logger?.LogInformation("Creating organized test booking data for TestLandlord and TestUser...");
 
-		// Get TestLandlord's properties (for desktop app testing)
-		var testLandlordProperties = allProperties.Where(p => p.OwnerId == testLandlord.UserId).ToList();
-		if (!testLandlordProperties.Any())
-		{
-			_logger?.LogWarning("No properties found for TestLandlord, skipping specific test data creation");
-			return;
-		}
+			// Get test users
+			var testLandlord = await context.Users.FirstOrDefaultAsync(u => u.Username == "testLandlord");
+			var testUser = await context.Users.FirstOrDefaultAsync(u => u.Username == "testUser");
+			var otherTenants = await context.Users.Include(u => u.UserTypeNavigation)
+				.Where(u => u.UserTypeNavigation.TypeName == "Tenant" && u.Username != "testUser")
+				.Take(3).ToListAsync();
 
-		// ✅ 1. DESKTOP APP TEST DATA (TestLandlord's perspective - view tenant bookings)
-		// Create bookings by various tenants for TestLandlord's properties
-		foreach (var property in testLandlordProperties)
-		{
-			// Create 3 bookings per property with different statuses for comprehensive testing
-			for (int i = 0; i < 3; i++)
+			if (testLandlord == null || testUser == null)
 			{
-				var tenant = i == 0 ? testUser : otherTenants[i % otherTenants.Count];
-				var booking = CreateSpecificTestBooking(tenant, property, bookingStatuses, i);
+				_logger?.LogWarning("TestLandlord or TestUser not found, skipping specific test data creation");
+				return;
+			}
+
+			// Get TestLandlord's properties (for desktop app testing)
+			var testLandlordProperties = allProperties.Where(p => p.OwnerId == testLandlord.UserId).ToList();
+			if (!testLandlordProperties.Any())
+			{
+				_logger?.LogWarning("No properties found for TestLandlord, skipping specific test data creation");
+				return;
+			}
+
+			// ✅ 1. DESKTOP APP TEST DATA (TestLandlord's perspective - view tenant bookings)
+			// Create bookings by various tenants for TestLandlord's properties
+			foreach (var property in testLandlordProperties)
+			{
+				// ✅ Create comprehensive test data covering all status types to match RentalStatus enum
+				// Each property will have representative bookings in all statuses to test frontend status handling
+				var statusVariants = new[]
+				{
+					("Upcoming", testUser),                           // stayUpcoming
+					("Active", otherTenants[0]),                      // stayActive
+					("Confirmed", otherTenants[1]),                   // stayConfirmed
+					("Completed", otherTenants[_random.Next(otherTenants.Count)]),  // stayCompleted
+					("Cancelled", otherTenants[_random.Next(otherTenants.Count)])   // stayCancelled
+				};
+
+				foreach (var (statusName, tenant) in statusVariants)
+				{
+					// Find BookingStatus entity by name
+					var status = bookingStatuses.FirstOrDefault(s => s.StatusName == statusName);
+					if (status == null) continue;
+					
+					// Create booking with specific status
+					var booking = CreateStatusSpecificBooking(tenant, property, status);
+					
+					// ✅ ENSURE: All required fields are set for proper data relationships
+					booking.PropertyId = property.PropertyId;
+					booking.UserId = tenant.UserId;
+					
+					bookings.Add(booking);
+				}
+			}
+
+			// ✅ 2. MOBILE APP TEST DATA (TestUser's perspective - view own bookings)
+			// Create additional bookings for TestUser across different properties
+			var otherProperties = allProperties.Where(p => p.OwnerId != testLandlord.UserId).Take(2).ToList();
+			foreach (var property in otherProperties)
+			{
+				var booking = CreateRealisticBooking(testUser, property, bookingStatuses);
 				
 				// ✅ ENSURE: All required fields are set for proper data relationships
 				booking.PropertyId = property.PropertyId;
-				booking.UserId = tenant.UserId;
+				booking.UserId = testUser.UserId;
 				
 				bookings.Add(booking);
 			}
-		}
 
-		// ✅ 2. MOBILE APP TEST DATA (TestUser's perspective - view own bookings)
-		// Create additional bookings for TestUser across different properties
-		var otherProperties = allProperties.Where(p => p.OwnerId != testLandlord.UserId).Take(2).ToList();
-		foreach (var property in otherProperties)
-		{
-			var booking = CreateRealisticBooking(testUser, property, bookingStatuses);
-			
-			// ✅ ENSURE: All required fields are set for proper data relationships
-			booking.PropertyId = property.PropertyId;
-			booking.UserId = testUser.UserId;
-			
-			bookings.Add(booking);
+			_logger?.LogInformation($"✅ Created organized test data: {bookings.Count} bookings with proper relationships for TestLandlord and TestUser");
 		}
-
-		_logger?.LogInformation($"✅ Created organized test data: {bookings.Count} bookings with proper relationships for TestLandlord and TestUser");
-	}
 
 		/// <summary>
-		/// Creates a specific test booking with predetermined status and dates for testing
+		/// Creates a booking with a specific status to ensure frontend has test data for all status types
 		/// </summary>
-		private Booking CreateSpecificTestBooking(User tenant, Property property, List<BookingStatus> statuses, int variant)
+		private Booking CreateStatusSpecificBooking(User tenant, Property property, BookingStatus status)
 		{
-			var (startDate, endDate, statusName) = variant switch
+			// Configure dates based on status
+			DateOnly startDate, endDate;
+			
+			switch (status.StatusName)
 			{
-				0 => (DateOnly.FromDateTime(DateTime.Now.AddDays(-30)), DateOnly.FromDateTime(DateTime.Now.AddDays(-15)), "Completed"), // Past booking
-				1 => (DateOnly.FromDateTime(DateTime.Now.AddDays(-5)), DateOnly.FromDateTime(DateTime.Now.AddDays(10)), "Active"), // Current booking
-				2 => (DateOnly.FromDateTime(DateTime.Now.AddDays(7)), DateOnly.FromDateTime(DateTime.Now.AddDays(14)), "Confirmed"), // Future booking
-				_ => (DateOnly.FromDateTime(DateTime.Now.AddDays(-60)), DateOnly.FromDateTime(DateTime.Now.AddDays(-45)), "Completed") // Default past booking
-			};
-
-			var status = statuses.First(s => s.StatusName == statusName);
+				case "Active":
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-5));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(5));
+					break;
+					
+				case "Upcoming":
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(7));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(14));
+					break;
+					
+				case "Confirmed":
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(15));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(20));
+					break;
+					
+				case "Completed":
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-20));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-10));
+					break;
+					
+				case "Cancelled":
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-30));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-25));
+					break;
+					
+				default:
+					startDate = DateOnly.FromDateTime(DateTime.Now.AddDays(3));
+					endDate = DateOnly.FromDateTime(DateTime.Now.AddDays(8));
+					break;
+			}
+			
 			var duration = endDate.DayNumber - startDate.DayNumber;
 
 			return new Booking
@@ -575,22 +656,19 @@ namespace eRents.WebApi
 				EndDate = endDate,
 				MinimumStayEndDate = endDate.AddDays(property.MinimumStayDays ?? 1),
 				TotalPrice = CalculateBookingPrice(property, duration),
-				BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-_random.Next(1, 90))),
+				BookingDate = DateOnly.FromDateTime(DateTime.Now.AddDays(-_random.Next(1, 40))),
 				BookingStatusId = status.BookingStatusId,
 				
-				// Enhanced booking fields (Phase 3 additions)
+				// Enhanced booking fields
 				PaymentMethod = "PayPal",
 				Currency = "BAM",
-				PaymentStatus = statusName == "Completed" ? "Completed" : statusName == "Active" ? "Completed" : "Pending",
+				PaymentStatus = status.StatusName == "Completed" || status.StatusName == "Active" ? 
+					"Completed" : status.StatusName == "Cancelled" ? "Refunded" : "Pending",
 				PaymentReference = $"PAY-{Guid.NewGuid():N}[..8]",
 				NumberOfGuests = _random.Next(1, 4),
-				SpecialRequests = variant switch
-				{
-					0 => "Late check-in requested",
-					1 => "Extra towels needed",
-					2 => "Early check-in if possible",
-					_ => null
-				},
+				SpecialRequests = status.StatusName == "Active" ? 
+					"Please have extra towels available." : 
+					(status.StatusName == "Upcoming" ? "Late check-in expected." : null),
 				
 				CreatedBy = "system",
 				ModifiedBy = "system"
@@ -631,7 +709,7 @@ namespace eRents.WebApi
 		}
 
 		private decimal CalculateBookingPrice(Property property, int duration) =>
-								property.Price * duration; // Using single Price field for calculation
+			property.Price * duration; // Now using daily rates, so this calculation makes sense
 		#endregion
 
 		#region 6. Tenants
@@ -657,6 +735,112 @@ namespace eRents.WebApi
 			context.Tenants.AddRange(tenants);
 			await context.SaveChangesAsync();
 		}
+		#endregion
+
+		#region 6.5. Rental Requests (Annual Leases)
+		private async Task SeedRentalRequestsAsync(ERentsContext context)
+		{
+			_logger?.LogInformation("Seeding rental requests (annual lease requests)...");
+
+			var tenants = await context.Users.Include(u => u.UserTypeNavigation)
+				.Where(u => u.UserTypeNavigation.TypeName == "Tenant").Take(4).ToListAsync();
+			
+			var properties = await context.Properties
+				.Where(p => p.Status == "Available")
+				.Take(5).ToListAsync();
+
+			// Ensure we have some properties with Monthly/Long-term/Both rental types
+			if (!properties.Any())
+			{
+				_logger?.LogWarning("No available properties found for rental requests");
+				return;
+			}
+
+			var rentalRequests = new List<RentalRequest>();
+
+			// Create varied test data with multiple status types - mapping to RentalStatus enum on frontend
+			// Frontend enum: requestPending, requestApproved, requestRejected, requestWithdrawn
+			
+			// Create specific test data for different statuses
+			var statusVariants = new[] 
+			{ 
+				"Pending",     // Maps to requestPending
+				"Approved",    // Maps to requestApproved
+				"Rejected",    // Maps to requestRejected
+				"Withdrawn"    // Maps to requestWithdrawn
+			};
+
+			foreach (var status in statusVariants)
+			{
+				// Get a random property and tenant for each status type
+				var property = properties[_random.Next(properties.Count)];
+				var tenant = tenants[_random.Next(tenants.Count)];
+				
+				// Create a rental request with this status
+				var request = new RentalRequest
+				{
+					PropertyId = property.PropertyId,
+					UserId = tenant.UserId,
+					ProposedStartDate = DateOnly.FromDateTime(DateTime.Now.AddMonths(1)),
+					LeaseDurationMonths = 6 + (_random.Next(7) * 6), // 6, 12, 18, 24, 30, 36, or 42 months
+					ProposedMonthlyRent = property.Price * 25m, // Convert daily rate to approximate monthly (daily * 25 working days)
+					Message = $"I'm interested in renting this property long-term. {GetRandomLeaseRequestMessage()}",
+					Status = status,
+					RequestDate = DateTime.Now.AddDays(-_random.Next(1, 30)),
+					ResponseDate = status != "Pending" ? DateTime.Now.AddDays(-_random.Next(1, 7)) : null,
+					LandlordResponse = status == "Approved" ? 
+						"Your rental request has been approved. Welcome!" : 
+						(status == "Rejected" ? "Unfortunately, we can't accept your request at this time." : null),
+					CreatedBy = "system",
+					ModifiedBy = "system"
+				};
+				
+				rentalRequests.Add(request);
+			}
+
+			// Add a few more pending requests for good measure
+			for (int i = 0; i < 3; i++)
+			{
+				var property = properties[_random.Next(properties.Count)];
+				var tenant = tenants[_random.Next(tenants.Count)];
+				
+				var request = new RentalRequest
+				{
+					PropertyId = property.PropertyId,
+					UserId = tenant.UserId,
+					ProposedStartDate = DateOnly.FromDateTime(DateTime.Now.AddMonths(_random.Next(1, 3))),
+					LeaseDurationMonths = 6 + (_random.Next(3) * 6), // 6, 12, or 18 months
+					ProposedMonthlyRent = property.Price * 25m * (0.9m + (_random.Next(21) / 100.0m)), // ±10% of monthly equivalent
+					Message = GetRandomLeaseRequestMessage(),
+					Status = "Pending",
+					RequestDate = DateTime.Now.AddDays(-_random.Next(1, 14)),
+					CreatedBy = "system",
+					ModifiedBy = "system"
+				};
+				
+				rentalRequests.Add(request);
+			}
+
+			context.RentalRequests.AddRange(rentalRequests);
+			await context.SaveChangesAsync();
+			
+			_logger?.LogInformation($"Added {rentalRequests.Count} rental requests with varied statuses");
+		}
+
+		private string GetRandomLeaseRequestMessage()
+		{
+			var messages = new[]
+			{
+				"I'm looking for a long-term rental. I have a stable job and excellent references.",
+				"This property looks perfect for my needs. I'm hoping to settle here for at least a year.",
+				"I'm a quiet, responsible tenant looking for a new home. Would love to discuss this rental.",
+				"I'm relocating for work and need a place for an extended period. This property looks ideal.",
+				"I've been renting in this area for years and looking for a new place. Would this be available?",
+			};
+			
+			return messages[_random.Next(messages.Length)];
+		}
+		
 		#endregion
 
 		#region 7. Maintenance
@@ -1218,6 +1402,7 @@ namespace eRents.WebApi
 			context.Reviews.RemoveRange(context.Reviews);
 			context.Images.RemoveRange(context.Images);
 			context.Tenants.RemoveRange(context.Tenants);
+			context.RentalRequests.RemoveRange(context.RentalRequests);
 			context.Properties.RemoveRange(context.Properties);
 			context.Users.RemoveRange(context.Users);
 			// Legacy entities removed: AddressDetails, GeoRegions (replaced by Address value object)

@@ -127,7 +127,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
           ),
         );
         if (success) {
-          Navigator.of(context).pop();
+          context.pop();
         }
       }
     }

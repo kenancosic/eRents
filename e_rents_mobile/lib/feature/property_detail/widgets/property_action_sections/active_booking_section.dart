@@ -321,7 +321,7 @@ class ActiveBookingSection extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
             child: const Text('Got it'),
           ),
         ],

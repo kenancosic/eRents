@@ -23,10 +23,18 @@
 		public decimal? MaxDailyRate { get; set; }     // → entity.DailyRate <=
 		public int? MinBedrooms { get; set; }          // → entity.Bedrooms >=
 		public int? MaxBedrooms { get; set; }          // → entity.Bedrooms <=
-		public int? MinBathrooms { get; set; }         // → entity.Bathrooms >=
-		public int? MaxBathrooms { get; set; }         // → entity.Bathrooms <=
+		public decimal? MinBathrooms { get; set; }      // → entity.Bathrooms >=
+		public int? MaxBathrooms { get; set; }          // → entity.Bathrooms <=
 		public DateTime? MinDateAdded { get; set; }    // → entity.DateAdded >=
 		public DateTime? MaxDateAdded { get; set; }    // → entity.DateAdded <=
+		public DateTime? AvailableFrom { get; set; }   // → Check bookings for conflicts
+		public DateTime? AvailableTo { get; set; }     // → Check bookings for conflicts
+
+		// ⚙️ INCLUDES: Control eager loading of related data
+		public bool IncludeImages { get; set; }
+		public bool IncludeAmenities { get; set; }
+		public bool IncludeReviews { get; set; }
+		public bool IncludeOwner { get; set; }
 
 		// ⚙️ HELPER: Navigation properties (require custom implementation)
 		public string? CityName { get; set; }          // → entity.Address.City

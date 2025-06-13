@@ -50,7 +50,7 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
 
       if (mounted) {
         if (success) {
-          Navigator.of(context).pop();
+          context.pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Booking cancelled successfully'),
@@ -140,7 +140,7 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.pop(),
                     icon: const Icon(Icons.close),
                   ),
                 ],
@@ -306,9 +306,7 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
                       label: 'Keep Booking',
                       isLoading: false,
                       width: OutlinedButtonWidth.expanded,
-                      onPressed: _isSubmitting
-                          ? () {}
-                          : () => Navigator.of(context).pop(),
+                      onPressed: _isSubmitting ? () {} : () => context.pop(),
                     ),
                   ),
                   const SizedBox(width: 12),

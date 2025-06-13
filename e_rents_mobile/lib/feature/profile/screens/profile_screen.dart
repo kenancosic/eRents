@@ -70,12 +70,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CustomOutlinedButton.compact(
             label: 'Cancel',
             isLoading: false,
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => context.pop(false),
           ),
           CustomButton.compact(
             label: 'Logout',
             isLoading: false,
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => context.pop(true),
           ),
         ],
       ),

@@ -244,7 +244,7 @@ class MaintenanceIssueSearchObject {
     if (maxCost != null) json['maxCost'] = maxCost;
     if (fromDate != null) json['fromDate'] = fromDate!.toIso8601String();
     if (toDate != null) json['toDate'] = toDate!.toIso8601String();
-    if (page != null) json['page'] = page;
+    if (page != null) json['page'] = page! + 1; // Convert 0-based to 1-based
     if (pageSize != null) json['pageSize'] = pageSize;
     if (sortBy != null) json['sortBy'] = sortBy;
     if (sortDirection != null) json['sortDirection'] = sortDirection;

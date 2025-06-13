@@ -4,12 +4,50 @@ using eRents.Shared.Exceptions;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
 
 namespace eRents.Domain.Repositories
 {
-	public class UserRepository : ConcurrentBaseRepository<User>, IUserRepository
+	public class UserRepository : BaseRepository<User>, IUserRepository
 	{
-		public UserRepository(ERentsContext context, ILogger<UserRepository> logger) : base(context, logger) { }
+		public UserRepository(ERentsContext context) : base(context) { }
+
+		protected override IQueryable<User> ApplyIncludes<TSearch>(IQueryable<User> query, TSearch search)
+		{
+			return query.Include(u => u.UserTypeNavigation);
+		}
+
+		protected override IQueryable<User> ApplyFilters<TSearch>(IQueryable<User> query, TSearch search)
+		{
+			query = base.ApplyFilters(query, search);
+			if (search is not UserSearchObject userSearch) return query;
+
+			if (!string.IsNullOrWhiteSpace(userSearch.Username))
+			{
+				query = query.Where(x => x.Username == userSearch.Username);
+			}
+			
+			if (!string.IsNullOrWhiteSpace(userSearch.Role))
+			{
+				query = query.Where(u => u.UserTypeNavigation.TypeName == userSearch.Role);
+			}
+
+			return query;
+		}
+
+		protected override string[] GetSearchableProperties()
+		{
+			return new string[]
+			{
+				"Username",
+				"FirstName",
+				"LastName",
+				"Email"
+			};
+		}
 
 		public override async Task<User> GetByIdAsync(int id)
 		{

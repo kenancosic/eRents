@@ -751,7 +751,7 @@ class _FilterScreenState extends State<FilterScreen> {
                   onTap: () {
                     yearDialogContext.pop();
                     if (!context.mounted) return;
-                    Navigator.of(context).pop();
+                    context.pop();
 
                     setState(() {
                       if (isStartDate) {

@@ -132,7 +132,13 @@ namespace eRents.Domain.Shared
 			// Apply sorting (override in derived classes)  
 			query = ApplyOrdering(query, search);
 			
-			// Apply pagination
+			// Apply pagination if requested
+			if (search.NoPaging)
+			{
+				var allItems = await query.ToListAsync();
+				return new PagedList<TEntity>(allItems, 1, allItems.Count, allItems.Count);
+			}
+
 			var page = search.PageNumber;
 			var pageSize = search.PageSizeValue;
 			
@@ -169,6 +175,12 @@ namespace eRents.Domain.Shared
 			query = ApplyOrdering(query, search);
 			
 			// Apply projection and pagination
+			if (search.NoPaging)
+			{
+				var allItems = await query.Select(projection).ToListAsync();
+				return new PagedList<TProjection>(allItems, 1, allItems.Count, allItems.Count);
+			}
+
 			var page = search.PageNumber;
 			var pageSize = search.PageSizeValue;
 			
@@ -226,7 +238,7 @@ namespace eRents.Domain.Shared
 				query = ApplySearchTermFilter(query, search.SearchTerm);
 			}
 			
-			return query; // Default: minimal filtering
+			return query;
 		}
 		
 		/// <summary>
@@ -238,13 +250,18 @@ namespace eRents.Domain.Shared
 		{
 			if (!string.IsNullOrEmpty(search.SortBy))
 			{
-				// Try to apply custom sorting first
+				// 1. Try custom ordering first for complex/navigation properties
 				var customOrderedQuery = ApplyCustomOrdering<TSearch>(query, search.SortBy, search.SortDescending);
 				if (customOrderedQuery != null)
 					return customOrderedQuery;
+
+				// 2. Fallback to generic reflection-based sorting for simple properties
+				var genericOrderedQuery = ApplyGenericOrdering(query, search.SortBy, search.SortDescending);
+				if (genericOrderedQuery != null)
+					return genericOrderedQuery;
 			}
 			
-			// Apply default ordering by primary key
+			// 3. Apply default ordering by primary key as the final fallback
 			return ApplyDefaultOrdering(query);
 		}
 		
@@ -256,6 +273,37 @@ namespace eRents.Domain.Shared
 			IQueryable<TEntity> query, string sortBy, bool descending) where TSearch : BaseSearchObject
 		{
 			return null; // Default: no custom sorting
+		}
+		
+		/// <summary>
+		/// ✅ NEW: Applies generic sorting using reflection. Handles simple and nested properties.
+		/// </summary>
+		protected virtual IQueryable<TEntity>? ApplyGenericOrdering(IQueryable<TEntity> query, string sortBy, bool descending)
+		{
+			var parameter = Expression.Parameter(typeof(TEntity), "x");
+			Expression property;
+			try
+			{
+				property = GetPropertyPath(parameter, sortBy);
+			}
+			catch (ArgumentException)
+			{
+				// Property path is invalid
+				return null;
+			}
+
+			var lambda = Expression.Lambda(property, parameter);
+			var methodName = descending ? "OrderByDescending" : "OrderBy";
+
+			var resultExpression = Expression.Call(
+				typeof(Queryable),
+				methodName,
+				new Type[] { typeof(TEntity), property.Type },
+				query.Expression,
+				Expression.Quote(lambda)
+			);
+
+			return query.Provider.CreateQuery<TEntity>(resultExpression);
 		}
 		
 		/// <summary>
@@ -310,9 +358,62 @@ namespace eRents.Domain.Shared
 		protected virtual IQueryable<TEntity> ApplySearchTermFilter(
 			IQueryable<TEntity> query, string searchTerm)
 		{
-			// Default implementation: no search filtering
-			// Override in derived classes to implement meaningful search
+			var searchableProperties = GetSearchableProperties();
+			if (!searchableProperties.Any())
+			{
+				return query; // No properties to search
+			}
+
+			var entityType = typeof(TEntity);
+			var parameter = Expression.Parameter(entityType, "e");
+			
+			Expression? searchExpression = null;
+			var searchLower = searchTerm.ToLower();
+
+			foreach (var propertyName in searchableProperties)
+			{
+				try
+				{
+					var property = GetPropertyPath(parameter, propertyName);
+					if (property.Type == typeof(string))
+					{
+						var toLowerMethod = typeof(string).GetMethod("ToLower", Type.EmptyTypes);
+						var containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+						
+						var propertyToLower = Expression.Call(property, toLowerMethod);
+						var searchConstant = Expression.Constant(searchLower);
+						var containsCall = Expression.Call(propertyToLower, containsMethod, searchConstant);
+
+						searchExpression = searchExpression == null 
+							? containsCall 
+							: Expression.OrElse(searchExpression, containsCall);
+					}
+				}
+				catch(ArgumentException)
+				{
+					// Property path is invalid, skip it
+				}
+			}
+
+			if (searchExpression != null)
+			{
+				var lambda = Expression.Lambda<Func<TEntity, bool>>(searchExpression, parameter);
+				query = query.Where(lambda);
+			}
+
 			return query;
+		}
+		
+		/// <summary>
+		/// ✅ NEW: Override to define which properties should be searched for SearchTerm
+		/// Default implementation searches all top-level string properties.
+		/// </summary>
+		protected virtual string[] GetSearchableProperties()
+		{
+			return typeof(TEntity).GetProperties()
+				.Where(p => p.PropertyType == typeof(string) && p.CanRead)
+				.Select(p => p.Name)
+				.ToArray();
 		}
 		
 		/// <summary>
@@ -327,6 +428,19 @@ namespace eRents.Domain.Shared
 			var property = Expression.Property(parameter, primaryKey.PropertyInfo);
 			var converted = Expression.Convert(property, typeof(object));
 			return Expression.Lambda<Func<TEntity, object>>(converted, parameter);
+		}
+
+		/// <summary>
+		/// ✅ NEW: Helper to safely access nested properties (e.g., "User.FirstName")
+		/// </summary>
+		private Expression GetPropertyPath(Expression parameter, string propertyPath)
+		{
+			var property = parameter;
+			foreach (var part in propertyPath.Split('.'))
+			{
+				property = Expression.Property(property, part);
+			}
+			return property;
 		}
 	}
 }

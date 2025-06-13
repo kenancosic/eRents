@@ -520,7 +520,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _processPayment() async {
     // Store navigator to avoid async context usage issues
-    final navigator = Navigator.of(context);
+    final navigator = context;
 
     // Show loading dialog
     showDialog(

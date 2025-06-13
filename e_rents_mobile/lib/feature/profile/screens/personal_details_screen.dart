@@ -79,7 +79,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Profile updated successfully')),
             );
-            Navigator.of(context).pop();
+            context.pop();
           }
         } catch (e) {
           if (mounted) {

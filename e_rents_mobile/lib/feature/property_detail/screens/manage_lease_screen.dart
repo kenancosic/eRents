@@ -176,13 +176,13 @@ class _ManageLeaseScreenState extends State<ManageLeaseScreen> {
           CustomOutlinedButton.compact(
             label: 'Edit',
             isLoading: false,
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.pop(),
           ),
           CustomButton.compact(
             label: 'Looks Good',
             isLoading: false,
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
               _submitExtensionRequest();
             },
           ),

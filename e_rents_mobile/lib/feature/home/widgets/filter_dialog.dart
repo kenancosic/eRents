@@ -59,7 +59,7 @@ class FilterDialogState extends State<FilterDialog> {
           label: 'Cancel',
           isLoading: false,
           onPressed: () {
-            Navigator.of(context).pop();
+            context.pop();
           },
         ),
         CustomButton.compact(
@@ -71,7 +71,7 @@ class FilterDialogState extends State<FilterDialog> {
               if (_minPrice != null) 'minPrice': _minPrice,
               if (_maxPrice != null) 'maxPrice': _maxPrice,
             });
-            Navigator.of(context).pop();
+            context.pop();
           },
         ),
       ],

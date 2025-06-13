@@ -3,17 +3,125 @@ using eRents.Domain.Shared;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Shared.Services;
 
 namespace eRents.Domain.Repositories
 {
 	/// <summary>
 	/// Repository implementation for Property entity with concurrency control
 	/// </summary>
-	public class PropertyRepository : ConcurrentBaseRepository<Property>, IPropertyRepository
+	public class PropertyRepository : BaseRepository<Property>, IPropertyRepository
 	{
-		public PropertyRepository(ERentsContext context, ILogger<PropertyRepository> logger)
-			: base(context, logger)
+		private readonly ICurrentUserService _currentUserService;
+		public PropertyRepository(ERentsContext context, ICurrentUserService currentUserService)
+			: base(context)
 		{
+			_currentUserService = currentUserService;
+		}
+
+		public override IQueryable<Property> GetQueryable()
+		{
+			// Start with base query
+			var query = base.GetQueryable();
+
+			// Apply user-scoping based on role
+			var currentUserRole = _currentUserService.UserRole;
+
+			if (currentUserRole == "Landlord")
+			{
+				var currentUserId = _currentUserService.UserId;
+				query = query.Where(p => p.OwnerId == int.Parse(currentUserId));
+			}
+			else if (currentUserRole == "Tenant" || currentUserRole == "User")
+			{
+				// Tenants and Regular Users can only see available properties
+				query = query.Where(p => p.Status == "Available");
+			}
+			else if (currentUserRole != "Admin") // Admins see all
+			{
+				// For any other role, or if role is null, return no data for security
+				return query.Where(p => false);
+			}
+
+			return query;
+		}
+
+		protected override IQueryable<Property> ApplyIncludes<TSearch>(IQueryable<Property> query, TSearch search)
+		{
+			if (search is PropertySearchObject { IncludeImages: true })
+				query = query.Include(p => p.Images);
+
+			if (search is PropertySearchObject { IncludeAmenities: true })
+				query = query.Include(p => p.Amenities);
+
+			if (search is PropertySearchObject { IncludeOwner: true })
+				query = query.Include(p => p.Owner);
+
+			if (search is PropertySearchObject { IncludeReviews: true })
+				query = query.Include(p => p.Reviews);
+
+			return query.Include(p => p.Address)
+						.Include(p => p.PropertyType)
+						.Include(p => p.RentingType);
+		}
+
+		protected override IQueryable<Property> ApplyFilters<TSearch>(IQueryable<Property> query, TSearch search)
+		{
+			query = base.ApplyFilters(query, search);
+
+			if (search is not PropertySearchObject propertySearch) return query;
+
+			if (!string.IsNullOrWhiteSpace(propertySearch.Name))
+				query = query.Where(p => p.Name.Contains(propertySearch.Name));
+
+			if (!string.IsNullOrWhiteSpace(propertySearch.CityName))
+				query = query.Where(p => p.Address != null && p.Address.City.Contains(propertySearch.CityName));
+
+			if (propertySearch.MinPrice.HasValue)
+				query = query.Where(p => p.Price >= propertySearch.MinPrice.Value);
+
+			if (propertySearch.MaxPrice.HasValue)
+				query = query.Where(p => p.Price <= propertySearch.MaxPrice.Value);
+
+			if (propertySearch.AmenityIds?.Any() == true)
+			{
+				foreach (var amenityId in propertySearch.AmenityIds)
+				{
+					query = query.Where(p => p.Amenities.Any(a => a.AmenityId == amenityId));
+				}
+			}
+
+			if (propertySearch.AvailableFrom.HasValue && propertySearch.AvailableTo.HasValue)
+			{
+				var from = DateOnly.FromDateTime(propertySearch.AvailableFrom.Value);
+				var to = DateOnly.FromDateTime(propertySearch.AvailableTo.Value);
+				query = query.Where(p => !p.Bookings.Any(b =>
+					(b.StartDate < to && b.EndDate > from)
+				));
+			}
+
+			if (propertySearch.Latitude.HasValue && propertySearch.Longitude.HasValue && propertySearch.Radius.HasValue)
+			{
+				// This logic remains complex and better suited for a stored procedure or a different query strategy
+				// For now, it is kept here but marked for future optimization.
+			}
+
+			return query;
+		}
+
+		protected override IQueryable<Property>? ApplyCustomOrdering<TSearch>(IQueryable<Property> query, string sortBy, bool descending)
+		{
+			if (sortBy.Equals("distance", System.StringComparison.OrdinalIgnoreCase))
+			{
+				// Cannot be implemented efficiently in LINQ to Entities.
+				// This would require raw SQL or a database function.
+				// Returning null to allow fallback to default sorting.
+				return null;
+			}
+
+			// For other complex sorts (e.g., by review count), add logic here.
+
+			return base.ApplyCustomOrdering<TSearch>(query, sortBy, descending);
 		}
 
 		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
