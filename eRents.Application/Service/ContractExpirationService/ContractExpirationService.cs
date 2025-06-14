@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using eRents.Application.Service.LeaseCalculationService;
 
 namespace eRents.Application.Service.ContractExpirationService
 {
@@ -56,36 +57,26 @@ namespace eRents.Application.Service.ContractExpirationService
         private async Task CheckContractsExpiringIn60Days(IServiceProvider serviceProvider)
         {
             var tenantRepository = serviceProvider.GetRequiredService<ITenantRepository>();
-            var rentalRequestRepository = serviceProvider.GetRequiredService<IRentalRequestRepository>();
             var notificationService = serviceProvider.GetRequiredService<INotificationService>();
+            // ✅ Phase 2: Use centralized LeaseCalculationService instead of duplicated logic
+            var leaseCalculationService = serviceProvider.GetRequiredService<ILeaseCalculationService>();
 
             var targetDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(60));
             
             _logger.LogInformation("Checking for contracts expiring on {TargetDate}", targetDate);
 
-            // Get tenants with leases expiring in 60 days
+            // ✅ Phase 2: Use centralized service to get expiring tenants
+            var expiringTenants = await leaseCalculationService.GetExpiringTenants(60);
+            
+            // Get additional data needed for notifications
             var expiringContracts = await tenantRepository.GetQueryable()
                 .Include(t => t.User)
                 .Include(t => t.Property)
                     .ThenInclude(p => p.Owner)
-                .Where(t => t.TenantStatus == "Active" && t.LeaseStartDate.HasValue)
+                .Where(t => expiringTenants.Select(et => et.TenantId).Contains(t.TenantId))
                 .ToListAsync();
                 
-            // Filter by calculated lease end date
-            var filtered = expiringContracts.Where(t => 
-            {
-                var originalRequest = rentalRequestRepository.GetQueryable()
-                    .Where(r => r.UserId == t.UserId && r.PropertyId == t.PropertyId && r.Status == "Approved")
-                    .OrderByDescending(r => r.RequestDate)
-                    .FirstOrDefault();
-                
-                if (originalRequest == null) return false;
-                
-                var leaseEndDate = t.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths);
-                return leaseEndDate.ToDateTime(TimeOnly.MinValue) <= targetDate.ToDateTime(TimeOnly.MinValue);
-            }).ToList();
-                
-            foreach (var tenant in filtered)
+            foreach (var tenant in expiringContracts)
             {
                 try
                 {
@@ -109,38 +100,29 @@ namespace eRents.Application.Service.ContractExpirationService
                 }
             }
 
-            _logger.LogInformation("Processed {Count} expiring contracts", filtered.Count);
+            _logger.LogInformation("Processed {Count} expiring contracts", expiringContracts.Count);
         }
         
         private async Task ProcessExpiredContracts(IServiceProvider serviceProvider)
         {
             var tenantRepository = serviceProvider.GetRequiredService<ITenantRepository>();
             var propertyRepository = serviceProvider.GetRequiredService<IPropertyRepository>();
-            var rentalRequestRepository = serviceProvider.GetRequiredService<IRentalRequestRepository>();
             var notificationService = serviceProvider.GetRequiredService<INotificationService>();
+            // ✅ Phase 2: Use centralized LeaseCalculationService instead of duplicated logic
+            var leaseCalculationService = serviceProvider.GetRequiredService<ILeaseCalculationService>();
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             
             _logger.LogInformation("Processing expired contracts as of {Today}", today);
             
-            // Get all active tenants and check calculated lease end dates
-            var activeTenants = await tenantRepository.GetQueryable()
+            // ✅ Phase 2: Use centralized service to get expired tenants
+            var expiredTenants = await leaseCalculationService.GetExpiredTenants();
+            
+            // Get additional data needed for processing
+            var expiredContracts = await tenantRepository.GetQueryable()
                 .Include(t => t.Property)
-                .Where(t => t.TenantStatus == "Active" && t.LeaseStartDate.HasValue)
+                .Where(t => expiredTenants.Select(et => et.TenantId).Contains(t.TenantId))
                 .ToListAsync();
-                
-            var expiredContracts = activeTenants.Where(t =>
-            {
-                var originalRequest = rentalRequestRepository.GetQueryable()
-                    .Where(r => r.UserId == t.UserId && r.PropertyId == t.PropertyId && r.Status == "Approved")
-                    .OrderByDescending(r => r.RequestDate)
-                    .FirstOrDefault();
-                    
-                if (originalRequest == null) return false;
-                
-                var leaseEndDate = t.LeaseStartDate.Value.AddMonths(originalRequest.LeaseDurationMonths);
-                return leaseEndDate.ToDateTime(TimeOnly.MinValue) <= today.ToDateTime(TimeOnly.MinValue);
-            }).ToList();
                 
             foreach (var tenant in expiredContracts)
             {

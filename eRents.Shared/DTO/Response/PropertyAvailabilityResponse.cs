@@ -6,6 +6,16 @@ namespace eRents.Shared.DTO.Response
 {
 	public class PropertyAvailabilityResponse : BaseResponse
 	{
-		public Dictionary<DateTime, bool> Availability { get; set; }
+		public bool? IsAvailable { get; set; }
+		public List<string> ConflictingBookingIds { get; set; } = new List<string>();
+		public List<BookedDateRange> BookedPeriods { get; set; } = new List<BookedDateRange>();
+
+		public PropertyAvailabilityResponse() { }
+
+		public PropertyAvailabilityResponse(bool isAvailable, List<string> conflictingBookingIds)
+		{
+			IsAvailable = isAvailable;
+			ConflictingBookingIds = conflictingBookingIds;
+		}
 	}
 } 

@@ -19,9 +19,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
 	.AddJsonOptions(options =>
 	{
-		// Configure JSON serialization to use camelCase
+		// Configure JSON serialization to use camelCase and be case-insensitive
 		options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 		options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+		options.JsonSerializerOptions.PropertyNameCaseInsensitive = true; // Fix: Add case-insensitive deserialization
 	});
 builder.Services.AddLogging();
 
@@ -121,8 +122,8 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 
 		await setupService.InitAsync(context);
 
-		// For testing purposes - set to true to force reseed the database even if it's not empty
-		bool forceSeed = true;
+		// Configuration-based seeding: only force seed in development or when explicitly configured
+		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", app.Environment.IsDevelopment());
 		await setupService.InsertDataAsync(context, forceSeed);
 	}
 	catch (Exception ex)

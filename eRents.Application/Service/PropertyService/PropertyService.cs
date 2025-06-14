@@ -12,6 +12,7 @@ using eRents.Shared.Enums;
 using eRents.Shared.Services;
 using System.Linq;
 using Microsoft.ML.Trainers;
+using Microsoft.EntityFrameworkCore;
 
 namespace eRents.Application.Service.PropertyService
 {
@@ -353,6 +354,36 @@ namespace eRents.Application.Service.PropertyService
 		public async Task<bool> HasActiveAnnualTenantAsync(int propertyId)
 		{
 			return await _propertyRepository.HasActiveLease(propertyId);
+		}
+
+		// ✅ Phase 3: Property Management Methods (moved from SimpleRentalService)
+		public async Task<bool> UpdatePropertyAvailabilityAsync(int propertyId, bool isAvailable)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			if (property == null) return false;
+
+			property.Status = isAvailable ? "Available" : "Unavailable";
+			await _propertyRepository.UpdateAsync(property);
+			return true;
+		}
+
+		public async Task<string> GetPropertyRentalTypeAsync(int propertyId)
+		{
+			var property = await _propertyRepository.GetQueryable()
+				.Include(p => p.RentingType)
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+			return property?.RentingType?.TypeName ?? "Daily";
+		}
+
+		public async Task<List<PropertyResponse>> GetAvailablePropertiesForRentalTypeAsync(string rentalType)
+		{
+			var availableProperties = await _propertyRepository.GetQueryable()
+				.Where(p => p.Status.ToLowerInvariant() == "available" &&
+						   p.RentingType.TypeName.ToLowerInvariant() == rentalType.ToLowerInvariant())
+				.ToListAsync();
+
+			return _mapper.Map<List<PropertyResponse>>(availableProperties);
 		}
 	}
 

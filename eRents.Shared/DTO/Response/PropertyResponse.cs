@@ -20,7 +20,6 @@ namespace eRents.Shared.DTO.Response
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }
-		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
 		
 		// Location (nested object)

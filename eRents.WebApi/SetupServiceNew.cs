@@ -110,12 +110,8 @@ namespace eRents.WebApi
 			// RentingTypes
 			var rentingTypes = new[]
 			{
-				new RentingType { TypeName = "Long-term" },
-				new RentingType { TypeName = "Short-term" },
-				new RentingType { TypeName = "Vacation" },
 				new RentingType { TypeName = "Daily" },
-				new RentingType { TypeName = "Monthly" },
-				new RentingType { TypeName = "Both" }
+				new RentingType { TypeName = "Monthly" }
 			};
 			await UpsertByName(context, rentingTypes, rt => rt.TypeName);
 
@@ -391,7 +387,7 @@ namespace eRents.WebApi
 			{
 				Name = GeneratePropertyName(propertyType.TypeName, city),
 				Description = GeneratePropertyDescription(propertyType.TypeName),
-				Price = basePrice + _random.Next(-200, 500),
+				Price = Math.Max(basePrice + _random.Next(-50, 150), 50m), // Ensure minimum 50 BAM, reasonable variation
 									// DailyRate field removed - using single Price field
 				Currency = "BAM",
 				Status = GetRandomPropertyStatus(),
@@ -419,13 +415,13 @@ namespace eRents.WebApi
 
 		private (int bedrooms, int bathrooms, decimal area, decimal basePrice) GetPropertySpecs(string propertyType) => propertyType switch
 		{
-			"Studio" => (0, 1, 35m, 40m),       // Daily rate for short-term rentals
-			"Apartment" => (2, 1, 75m, 65m),    // Daily rate for short-term rentals  
-			"House" => (3, 2, 120m, 120m),      // Daily rate for short-term rentals
-			"Villa" => (4, 3, 200m, 180m),      // Daily rate for short-term rentals
-			"Condo" => (2, 2, 90m, 85m),        // Daily rate for short-term rentals
-			"Townhouse" => (3, 2, 150m, 140m),  // Daily rate for short-term rentals
-			_ => (2, 1, 75m, 65m)               // Default daily rate for short-term rentals
+			"Studio" => (0, 1, 35m, 80m),       // Daily rate for short-term rentals
+			"Apartment" => (2, 1, 75m, 120m),   // Daily rate for short-term rentals  
+			"House" => (3, 2, 120m, 200m),      // Daily rate for short-term rentals
+			"Villa" => (4, 3, 200m, 300m),      // Daily rate for short-term rentals
+			"Condo" => (2, 2, 90m, 150m),       // Daily rate for short-term rentals
+			"Townhouse" => (3, 2, 150m, 250m),  // Daily rate for short-term rentals
+			_ => (2, 1, 75m, 120m)              // Default daily rate for short-term rentals
 		};
 
 		private string GeneratePropertyName(string propertyType, string cityName)
@@ -1371,17 +1367,18 @@ namespace eRents.WebApi
 		// Password hashing utilities matching UserService implementation
 		private static byte[] GenerateSalt()
 		{
-			using var rng = RandomNumberGenerator.Create();
 			var salt = new byte[16];
-			rng.GetBytes(salt);
+			using (var rng = RandomNumberGenerator.Create())
+			{
+				rng.GetBytes(salt);
+			}
 			return salt;
 		}
 
 		private static byte[] GenerateHash(byte[] salt, string password)
 		{
-			using var sha256 = SHA256.Create();
-			var combinedBytes = salt.Concat(Encoding.UTF8.GetBytes(password)).ToArray();
-			return sha256.ComputeHash(combinedBytes);
+			var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256);
+			return pbkdf2.GetBytes(20);
 		}
 
 		private async Task ClearExistingDataAsync(ERentsContext context)

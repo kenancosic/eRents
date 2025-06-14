@@ -9,10 +9,12 @@ using eRents.Application.Service.PropertyService;
 using eRents.Application.Service.RentalRequestService;
 using eRents.Application.Service.ReportService;
 using eRents.Application.Service.ReviewService;
-using eRents.Application.Service.SimpleRentalService;
+using eRents.Application.Service.RentalCoordinatorService;
 using eRents.Application.Service.StatisticsService;
 using eRents.Application.Service.TenantService;
 using eRents.Application.Service.UserService;
+using eRents.Application.Service.AvailabilityService;
+using eRents.Application.Service.LeaseCalculationService;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
 using eRents.Domain.Shared;
@@ -49,11 +51,8 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
             services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
             
-            // Register concurrent repository interfaces for entities that need concurrency control
-            services.AddTransient<IConcurrentRepository<Property>, PropertyRepository>();
-            services.AddTransient<IConcurrentRepository<User>, UserRepository>();
-            services.AddTransient<IConcurrentRepository<Booking>, BookingRepository>();
-            services.AddTransient<IConcurrentRepository<Review>, ReviewRepository>();
+            // Register concurrent repository interfaces ONLY for entities that actually implement IConcurrentRepository
+            // These repositories inherit from ConcurrentBaseRepository
             services.AddTransient<IConcurrentRepository<MaintenanceIssue>, MaintenanceRepository>();
             services.AddTransient<IConcurrentRepository<TenantPreference>, TenantPreferenceRepository>();
             
@@ -77,7 +76,6 @@ namespace eRents.WebApi.Extensions
             
             // ✅ NEW: RentalRequest repository for dual rental system
             services.AddTransient<IRentalRequestRepository, RentalRequestRepository>();
-            services.AddTransient<IConcurrentRepository<RentalRequest>, RentalRequestRepository>();
             
             // Generic base repository for UserType (existing pattern)
             services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();
@@ -94,6 +92,7 @@ namespace eRents.WebApi.Extensions
             // Core business services
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IPropertyService, PropertyService>();
+            // Updated BookingService with PropertyRepository and TenantRepository dependencies for dual rental system
             services.AddTransient<IBookingService, BookingService>();
             services.AddTransient<IReviewService, ReviewService>();
             services.AddTransient<IMaintenanceService, MaintenanceService>();
@@ -114,14 +113,18 @@ namespace eRents.WebApi.Extensions
             // ✅ NEW: RentalRequest service for dual rental system
             services.AddTransient<IRentalRequestService, RentalRequestService>();
             
-            // ✅ NEW: SimpleRentalService for dual rental system core logic
-            services.AddTransient<ISimpleRentalService, SimpleRentalService>();
+            // ✅ Phase 3: RentalCoordinatorService - Clean architecture replacing SimpleRentalService
+            services.AddTransient<IRentalCoordinatorService, RentalCoordinatorService>();
             
             // ✅ NEW: Notification service for contract expiration notifications
             services.AddTransient<INotificationService, NotificationService>();
             
             // ✅ NEW: Contract expiration background service
             services.AddHostedService<ContractExpirationService>();
+            
+            // ✅ Phase 2: Centralized availability and lease calculation services
+            services.AddTransient<IAvailabilityService, AvailabilityService>();
+            services.AddTransient<ILeaseCalculationService, LeaseCalculationService>();
             
             // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
             

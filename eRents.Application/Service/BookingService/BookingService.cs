@@ -16,24 +16,37 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using eRents.Application.Service.AvailabilityService;
+using eRents.Application.Service.LeaseCalculationService;
 
 namespace eRents.Application.Service.BookingService
 {
 	public class BookingService : BaseCRUDService<BookingResponse, Booking, BookingSearchObject, BookingInsertRequest, BookingUpdateRequest>, IBookingService
 	{
+		#region Dependencies
 		private readonly IBookingRepository _bookingRepository;
 		private readonly ICurrentUserService _currentUserService;
 		private readonly IPaymentService _paymentService;
 		private readonly IRabbitMQService _rabbitMqService;
 		private readonly IMapper _mapper;
 		private readonly ILogger<BookingService> _logger;
+		private readonly IPropertyRepository _propertyRepository;
+		private readonly ITenantRepository _tenantRepository;
+		// ✅ Phase 2: New centralized services
+		private readonly IAvailabilityService _availabilityService;
+		private readonly ILeaseCalculationService _leaseCalculationService;
+
 		public BookingService(
 			IBookingRepository repository, 
 			IMapper mapper, 
 			ICurrentUserService currentUserService, 
 			ILogger<BookingService> logger, 
 			IPaymentService paymentService, 
-			IRabbitMQService rabbitMqService)
+			IRabbitMQService rabbitMqService,
+			IPropertyRepository propertyRepository,
+			ITenantRepository tenantRepository,
+			IAvailabilityService availabilityService,
+			ILeaseCalculationService leaseCalculationService)
 			: base(repository, mapper)
 		{
 			_bookingRepository = repository;
@@ -42,7 +55,12 @@ namespace eRents.Application.Service.BookingService
 			_rabbitMqService = rabbitMqService;
 			_mapper = mapper;
 			_logger = logger;
+			_propertyRepository = propertyRepository;
+			_tenantRepository = tenantRepository;
+			_availabilityService = availabilityService;
+			_leaseCalculationService = leaseCalculationService;
 		}
+		#endregion
 
 		// Override GetByIdAsync to implement user-scoped access
 		public override async Task<BookingResponse> GetByIdAsync(int id)
@@ -79,7 +97,8 @@ namespace eRents.Application.Service.BookingService
 			ValidateBookingPricing(request);
 			ValidateGuestInformation(request);
 
-			var isAvailable = await _bookingRepository.IsPropertyAvailableAsync(propertyId, startDate, endDate);
+			// ✅ Phase 2: Use centralized AvailabilityService instead of BookingRepository
+			var isAvailable = await _availabilityService.IsAvailableForDailyRental(propertyId, startDate, endDate);
 			if (!isAvailable)
 			{
 				throw new InvalidOperationException("Property is not available for the selected dates.");
@@ -267,7 +286,8 @@ namespace eRents.Application.Service.BookingService
 
 		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
 		{
-			return await _bookingRepository.IsPropertyAvailableAsync(propertyId, startDate, endDate);
+			// ✅ Phase 2: Use centralized AvailabilityService
+			return await _availabilityService.IsAvailableForDailyRental(propertyId, startDate, endDate);
 		}
 
 		#region Enhanced Validation Methods
@@ -549,30 +569,38 @@ namespace eRents.Application.Service.BookingService
 		// 🆕 NEW: Dual Rental System Support Methods
 		public async Task<bool> CanCreateDailyBookingAsync(int propertyId, DateOnly startDate, DateOnly endDate)
 		{
-			// Check if property supports daily rentals
-			if (!await IsPropertyDailyRentalTypeAsync(propertyId))
-				return false;
-
-			// Check for conflicts with annual rentals  
-			if (await HasConflictWithAnnualRentalAsync(propertyId, startDate, endDate))
-				return false;
-
-			// Check for conflicts with existing daily bookings
-			return await IsPropertyAvailableAsync(propertyId, startDate, endDate);
+			// ✅ Phase 2: Use centralized AvailabilityService for comprehensive check
+			return await _availabilityService.IsAvailableForDailyRental(propertyId, startDate, endDate);
 		}
 
 		public async Task<bool> IsPropertyDailyRentalTypeAsync(int propertyId)
 		{
-			// Note: This would require access to PropertyRepository or property data
-			// For now, return true as placeholder - this needs PropertyRepository injection
-			return await Task.FromResult(true);
+			// ✅ Phase 2: Use centralized AvailabilityService
+			return await _availabilityService.SupportsRentalType(propertyId, RentalType.Daily);
 		}
 
 		public async Task<bool> HasConflictWithAnnualRentalAsync(int propertyId, DateOnly startDate, DateOnly endDate)
 		{
-			// Note: This would require access to TenantRepository to check for active tenants
-			// For now, return false as placeholder - this needs TenantRepository injection
-			return await Task.FromResult(false);
+			// ✅ Phase 2: Now using proper LeaseCalculationService instead of simplified assumption
+			try
+			{
+				var conflicts = await _availabilityService.GetConflicts(propertyId, startDate, endDate);
+				var hasLeaseConflict = conflicts.Any(c => c.ConflictType == "Lease");
+				
+				if (hasLeaseConflict)
+				{
+					var leaseConflict = conflicts.First(c => c.ConflictType == "Lease");
+					_logger.LogInformation("Daily booking conflict detected for property {PropertyId}: {Description} overlaps with requested dates {RequestStart} to {RequestEnd}", 
+						propertyId, leaseConflict.Description, startDate, endDate);
+				}
+				
+				return hasLeaseConflict;
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error checking for annual rental conflicts for property {PropertyId}", propertyId);
+				return true; // Fail safe - prevent booking if we can't verify
+			}
 		}
 
 		#endregion

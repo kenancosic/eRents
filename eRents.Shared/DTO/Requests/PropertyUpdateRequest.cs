@@ -21,7 +21,6 @@ namespace eRents.Shared.DTO.Requests
 		public int? Bedrooms { get; set; }
 		public int? Bathrooms { get; set; }
 		public decimal? Area { get; set; }
-		public decimal? DailyRate { get; set; }
 		public int? MinimumStayDays { get; set; }
 		public AddressRequest? Address { get; set; }
 		public List<int>? AmenityIds { get; set; }

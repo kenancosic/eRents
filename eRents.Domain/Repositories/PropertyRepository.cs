@@ -1,5 +1,6 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
+using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -93,11 +94,46 @@ namespace eRents.Domain.Repositories
 
 			if (propertySearch.AvailableFrom.HasValue && propertySearch.AvailableTo.HasValue)
 			{
-				var from = DateOnly.FromDateTime(propertySearch.AvailableFrom.Value);
-				var to = DateOnly.FromDateTime(propertySearch.AvailableTo.Value);
+				var fromDate = DateOnly.FromDateTime(propertySearch.AvailableFrom.Value);
+				var toDate = DateOnly.FromDateTime(propertySearch.AvailableTo.Value);
+
+				// Exclude properties with conflicting daily bookings
 				query = query.Where(p => !p.Bookings.Any(b =>
-					(b.StartDate < to && b.EndDate > from)
+					b.BookingStatus.StatusName != "Cancelled" &&
+					b.StartDate < toDate && b.EndDate > fromDate
 				));
+
+				// Refactored to be cleaner, though it pulls active tenants into memory for the final check.
+				// This is an acceptable trade-off as a property typically has 0 or 1 active tenants.
+				var potentiallyConflictingProperties = query
+					.Where(p => p.Tenants.Any(t => t.TenantStatus == "Active" && t.LeaseStartDate.HasValue))
+					.Select(p => p.PropertyId)
+					.ToList();
+
+				if (potentiallyConflictingProperties.Any())
+				{
+					var conflictingPropertyIds = new HashSet<int>();
+					var tenants = _context.Tenants
+						.Where(t => t.PropertyId.HasValue && 
+								   potentiallyConflictingProperties.Contains(t.PropertyId.Value) && 
+								   t.TenantStatus == "Active")
+						.ToList();
+
+					foreach (var tenant in tenants)
+					{
+						var leaseEndDate = GetLeaseEndDateForTenant(tenant);
+						if (leaseEndDate.HasValue && tenant.LeaseStartDate.HasValue && 
+							tenant.LeaseStartDate.Value < toDate && leaseEndDate.Value > fromDate)
+						{
+							conflictingPropertyIds.Add(tenant.PropertyId!.Value);
+						}
+					}
+					
+					if (conflictingPropertyIds.Any())
+					{
+						query = query.Where(p => !conflictingPropertyIds.Contains(p.PropertyId));
+					}
+				}
 			}
 
 			if (propertySearch.Latitude.HasValue && propertySearch.Longitude.HasValue && propertySearch.Radius.HasValue)
@@ -346,20 +382,82 @@ namespace eRents.Domain.Repositories
 
 		public async Task<PropertyAvailabilityResponse> GetPropertyAvailability(int propertyId, DateTime? start, DateTime? end)
 		{
-			if (!start.HasValue || !end.HasValue)
+			var response = new PropertyAvailabilityResponse();
+
+			if (start.HasValue && end.HasValue)
 			{
-				return new PropertyAvailabilityResponse(true, new List<string>());
+				// Use case 1: Check availability for a specific date range
+				var startDate = DateOnly.FromDateTime(start.Value);
+				var endDate = DateOnly.FromDateTime(end.Value);
+
+				var conflictingBookings = await _context.Bookings
+					.Where(b => b.PropertyId == propertyId &&
+								b.BookingStatus.StatusName != "Cancelled" &&
+								b.EndDate.HasValue &&
+								b.StartDate < endDate && b.EndDate.Value > startDate)
+					.Select(b => b.BookingId.ToString())
+					.ToListAsync();
+
+				response.IsAvailable = conflictingBookings.Count == 0 && !await HasActiveLeaseInRange(propertyId, startDate, endDate);
+				response.ConflictingBookingIds = conflictingBookings;
+			}
+			else
+			{
+				// Use case 2: Get all booked periods for a calendar view
+				var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+				// Get daily rental bookings
+				var dailyBookings = await _context.Bookings
+					.Where(b => b.PropertyId == propertyId &&
+								b.BookingStatus.StatusName != "Cancelled" &&
+								b.EndDate.HasValue &&
+								b.EndDate.Value >= today)
+					.Select(b => new BookedDateRange
+					{
+						StartDate = b.StartDate.ToDateTime(TimeOnly.MinValue),
+						EndDate = b.EndDate!.Value.ToDateTime(TimeOnly.MinValue)
+					})
+					.ToListAsync();
+				response.BookedPeriods.AddRange(dailyBookings);
+
+				// Get annual rental leases - need to calculate end date in memory since ProposedEndDate is calculated
+				var approvedRequests = await _context.RentalRequests
+					.Where(r => r.PropertyId == propertyId &&
+								r.Status == "Approved")
+					.ToListAsync();
+
+				var annualLeases = approvedRequests
+					.Where(r => r.ProposedEndDate >= today)
+					.Select(r => new BookedDateRange
+					{
+						StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+						EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue)
+					})
+					.ToList();
+				response.BookedPeriods.AddRange(annualLeases);
 			}
 
-			var startDate = DateOnly.FromDateTime(start.Value);
-			var endDate = DateOnly.FromDateTime(end.Value);
+			return response;
+		}
 
-			var conflictingBookings = await _context.Bookings
-				.Where(b => b.PropertyId == propertyId && b.StartDate < endDate && b.EndDate > startDate)
-				.Select(b => b.BookingId.ToString())
+		private async Task<bool> HasActiveLeaseInRange(int propertyId, DateOnly startDate, DateOnly endDate)
+		{
+			var tenants = await _context.Tenants
+				.Where(t => t.PropertyId == propertyId && t.TenantStatus == "Active" && t.LeaseStartDate.HasValue)
 				.ToListAsync();
 
-			return new PropertyAvailabilityResponse(conflictingBookings.Count == 0, conflictingBookings);
+			foreach (var tenant in tenants)
+			{
+				var leaseEndDate = GetLeaseEndDateForTenant(tenant);
+				if (leaseEndDate.HasValue && tenant.LeaseStartDate.HasValue)
+				{
+					if (tenant.LeaseStartDate.Value < endDate && leaseEndDate.Value > startDate)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		public async Task<IEnumerable<Property>> GetPropertiesByRentalType(string rentalType)
@@ -372,8 +470,13 @@ namespace eRents.Domain.Repositories
 		public async Task<bool> HasActiveLease(int propertyId)
 		{
 			var today = DateOnly.FromDateTime(DateTime.UtcNow);
-			return await _context.RentalRequests
-				.AnyAsync(r => r.PropertyId == propertyId && r.Status == "Approved" && r.ProposedEndDate >= today);
+			
+			// Since ProposedEndDate is a calculated property, we need to fetch the data and calculate in memory
+			var approvedRequests = await _context.RentalRequests
+				.Where(r => r.PropertyId == propertyId && r.Status == "Approved")
+				.ToListAsync();
+				
+			return approvedRequests.Any(r => r.ProposedEndDate >= today);
 		}
 
 		public async Task UpdatePropertyAmenities(int propertyId, List<int> amenityIds)
@@ -411,6 +514,22 @@ namespace eRents.Domain.Repositories
 			var newImages = imageIds.Select(id => new Image { ImageId = id, PropertyId = propertyId }).ToList();
 			await _context.Images.AddRangeAsync(newImages);
 			await _context.SaveChangesAsync();
+		}
+
+		private DateOnly? GetLeaseEndDateForTenant(Tenant tenant)
+		{
+			if (!tenant.LeaseStartDate.HasValue || !tenant.PropertyId.HasValue) return null;
+
+			var rentalRequest = _context.RentalRequests
+				.Where(r => r.UserId == tenant.UserId &&
+							r.PropertyId == tenant.PropertyId.Value &&
+							r.Status == "Approved")
+				.OrderByDescending(r => r.RequestDate)
+				.FirstOrDefault();
+
+			return rentalRequest != null
+				? tenant.LeaseStartDate.Value.AddMonths(rentalRequest.LeaseDurationMonths)
+				: null;
 		}
 	}
 }

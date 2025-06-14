@@ -1,5 +1,6 @@
 ﻿using eRents.Domain.Models;
 using eRents.Domain.Shared;
+using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
 using System.Collections.Generic;
 using System.Threading.Tasks;

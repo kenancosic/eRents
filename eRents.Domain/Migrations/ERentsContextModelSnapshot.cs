@@ -65,7 +65,7 @@ namespace eRents.Domain.Migrations
                     b.HasIndex(new[] { "AmenityName" }, "UQ__Amenitie__E1B33D18C14BC270")
                         .IsUnique();
 
-                    b.ToTable("Amenities");
+                    b.ToTable("Amenities", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
@@ -299,7 +299,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("ReviewId");
 
-                    b.ToTable("Images");
+                    b.ToTable("Images", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.IssuePriority", b =>
@@ -317,7 +317,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("PriorityId");
 
-                    b.ToTable("IssuePriorities");
+                    b.ToTable("IssuePriorities", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.IssueStatus", b =>
@@ -335,7 +335,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("StatusId");
 
-                    b.ToTable("IssueStatuses");
+                    b.ToTable("IssueStatuses", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.LeaseExtensionRequest", b =>
@@ -395,7 +395,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("LeaseExtensionRequests");
+                    b.ToTable("LeaseExtensionRequests", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
@@ -493,7 +493,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("StatusId");
 
-                    b.ToTable("MaintenanceIssues");
+                    b.ToTable("MaintenanceIssues", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Message", b =>
@@ -560,7 +560,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Messages");
+                    b.ToTable("Messages", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Notification", b =>
@@ -605,7 +605,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Payment", b =>
@@ -680,7 +680,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Property", b =>
@@ -810,7 +810,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("RentingTypeId");
 
-                    b.ToTable("Properties");
+                    b.ToTable("Properties", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyAmenity", b =>
@@ -864,7 +864,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("PropertyId");
 
-                    b.ToTable("PropertyAvailabilities");
+                    b.ToTable("PropertyAvailabilities", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyStatus", b =>
@@ -882,7 +882,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("StatusId");
 
-                    b.ToTable("PropertyStatuses");
+                    b.ToTable("PropertyStatuses", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyType", b =>
@@ -900,7 +900,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("TypeId");
 
-                    b.ToTable("PropertyTypes");
+                    b.ToTable("PropertyTypes", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.RentalRequest", b =>
@@ -984,7 +984,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RentalRequests");
+                    b.ToTable("RentalRequests", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.RentingType", b =>
@@ -1002,7 +1002,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("RentingTypeId");
 
-                    b.ToTable("RentingTypes");
+                    b.ToTable("RentingTypes", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
@@ -1101,7 +1101,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
@@ -1233,7 +1233,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TenantPreferences");
+                    b.ToTable("TenantPreferences", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.TenantPreferenceAmenity", b =>
@@ -1248,7 +1248,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("AmenityId");
 
-                    b.ToTable("TenantPreferenceAmenities");
+                    b.ToTable("TenantPreferenceAmenities", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
@@ -1380,7 +1380,7 @@ namespace eRents.Domain.Migrations
                     b.HasIndex(new[] { "Username" }, "UQ__Users__F3DBC5724649C4DE")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserPreferences", b =>
@@ -1417,7 +1417,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("UserPreferences");
+                    b.ToTable("UserPreferences", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserSavedProperty", b =>
@@ -1438,7 +1438,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("PropertyId");
 
-                    b.ToTable("UserSavedProperties");
+                    b.ToTable("UserSavedProperties", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserType", b =>
@@ -1456,7 +1456,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("UserTypeId");
 
-                    b.ToTable("UserTypes");
+                    b.ToTable("UserTypes", (string)null);
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
@@ -1688,7 +1688,7 @@ namespace eRents.Domain.Migrations
 
                             b1.HasKey("PropertyId");
 
-                            b1.ToTable("Properties");
+                            b1.ToTable("Properties", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("PropertyId");
@@ -1898,7 +1898,7 @@ namespace eRents.Domain.Migrations
 
                             b1.HasKey("UserId");
 
-                            b1.ToTable("Users");
+                            b1.ToTable("Users", (string)null);
 
                             b1.WithOwner()
                                 .HasForeignKey("UserId");

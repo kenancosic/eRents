@@ -14,15 +14,6 @@ using eRents.Domain.Repositories;
 
 namespace eRents.WebApi.Controllers
 {
-	/// <summary>
-	/// Properties management controller with Universal System support
-	/// 🆕 UNIVERSAL SYSTEM ENDPOINTS:
-	/// - GET /properties - Paginated results (supports nopaging=true)
-	/// - GET /properties?nopaging=true&minPrice=100&maxPrice=500&cityName=sarajevo
-	/// - GET /properties?page=1&pageSize=10&sortBy=Price&sortDesc=true
-	/// - Automatic filtering: OwnerId, Price (Min/Max), Status, Bedrooms (Min/Max), etc.
-	/// - Navigation filtering: CityName, AmenityIds, MinRating/MaxRating
-	/// </summary>
 	[ApiController]
 	[Route("[controller]")]
 	[Authorize] // All endpoints require authentication

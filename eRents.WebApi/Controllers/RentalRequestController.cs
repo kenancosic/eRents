@@ -1,5 +1,5 @@
 using eRents.Application.Service.RentalRequestService;
-using eRents.Application.Service.SimpleRentalService;
+using eRents.Application.Service.RentalCoordinatorService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
@@ -13,7 +13,7 @@ namespace eRents.WebApi.Controllers
 {
     /// <summary>
     /// Controller for managing annual rental requests in the dual rental system
-    /// Implements Phase 2 rental request workflow with landlord approval process
+    /// ✅ Phase 3: Migrated to use IRentalCoordinatorService for clean architecture
     /// </summary>
     [ApiController]
     [Route("[controller]")]
@@ -21,18 +21,18 @@ namespace eRents.WebApi.Controllers
     public class RentalRequestController : BaseCRUDController<RentalRequestResponse, RentalRequestSearchObject, RentalRequestInsertRequest, RentalRequestUpdateRequest>
     {
         private readonly IRentalRequestService _rentalRequestService;
-        private readonly ISimpleRentalService _simpleRentalService;
+        private readonly IRentalCoordinatorService _rentalCoordinatorService;
         private readonly ICurrentUserService _currentUserService;
 
         public RentalRequestController(
             IRentalRequestService rentalRequestService, 
-            ISimpleRentalService simpleRentalService,
+            IRentalCoordinatorService rentalCoordinatorService,
             ILogger<RentalRequestController> logger,
             ICurrentUserService currentUserService) 
             : base(rentalRequestService, logger, currentUserService)
         {
             _rentalRequestService = rentalRequestService;
-            _simpleRentalService = simpleRentalService;
+            _rentalCoordinatorService = rentalCoordinatorService;
             _currentUserService = currentUserService;
         }
 
@@ -207,7 +207,7 @@ namespace eRents.WebApi.Controllers
         {
             try
             {
-                var contracts = await _simpleRentalService.GetExpiringContractsAsync(daysAhead);
+                var contracts = await _rentalCoordinatorService.GetExpiringContractsAsync(daysAhead);
                 return Ok(contracts);
             }
             catch (Exception ex)

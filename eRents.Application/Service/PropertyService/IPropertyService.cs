@@ -37,5 +37,10 @@ namespace eRents.Application.Service.PropertyService
 		Task<List<PropertyResponse>> GetPropertiesByRentalTypeAsync(string rentalType);
 		Task<bool> CanPropertyAcceptBookingsAsync(int propertyId);
 		Task<bool> HasActiveAnnualTenantAsync(int propertyId);
+
+		// ✅ Phase 3: Property Management Methods (moved from SimpleRentalService)
+		Task<bool> UpdatePropertyAvailabilityAsync(int propertyId, bool isAvailable);
+		Task<string> GetPropertyRentalTypeAsync(int propertyId);
+		Task<List<PropertyResponse>> GetAvailablePropertiesForRentalTypeAsync(string rentalType);
 	}
 }

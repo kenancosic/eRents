@@ -19,8 +19,6 @@
 		public decimal? MaxPrice { get; set; }         // → entity.Price <=
 		public decimal? MinArea { get; set; }          // → entity.Area >=
 		public decimal? MaxArea { get; set; }          // → entity.Area <=
-		public decimal? MinDailyRate { get; set; }     // → entity.DailyRate >=
-		public decimal? MaxDailyRate { get; set; }     // → entity.DailyRate <=
 		public int? MinBedrooms { get; set; }          // → entity.Bedrooms >=
 		public int? MaxBedrooms { get; set; }          // → entity.Bedrooms <=
 		public decimal? MinBathrooms { get; set; }      // → entity.Bathrooms >=
@@ -62,6 +60,6 @@
 		public DateTime? DateAddedTo { get; set; }
 
 		// Note: SortBy and SortDescending are now inherited from BaseSearchObject
-		// SortBy supports: "Price", "Name", "DateAdded", "Area", "DailyRate", etc.
+		// SortBy supports: "Price", "Name", "DateAdded", "Area", etc.
 	}
 }
