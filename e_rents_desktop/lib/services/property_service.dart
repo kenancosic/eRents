@@ -46,8 +46,13 @@ class PropertyService extends ApiService {
     Map<String, String>? queryParams,
   }) async {
     try {
-      // Convert to Map<String, dynamic> and add noPaging
-      final params = <String, dynamic>{'noPaging': 'true'};
+      // Convert to Map<String, dynamic> and add noPaging + include flags
+      final params = <String, dynamic>{
+        'noPaging': 'true',
+        'IncludeImages': 'true',
+        'IncludeAmenities': 'true',
+        'IncludeOwner': 'true',
+      };
       if (queryParams != null) {
         params.addAll(queryParams);
       }
@@ -159,7 +164,6 @@ class PropertyService extends ApiService {
       'bedrooms': property.bedrooms > 0 ? property.bedrooms : 1,
       'bathrooms': property.bathrooms > 0 ? property.bathrooms : 1,
       'area': property.area,
-      'dailyRate': property.dailyRate,
       'minimumStayDays': property.minimumStayDays,
       // ✅ IMPROVED: Use LookupService for dynamic ID mapping
       'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),
@@ -196,7 +200,6 @@ class PropertyService extends ApiService {
       'bedrooms': property.bedrooms > 0 ? property.bedrooms : 1,
       'bathrooms': property.bathrooms > 0 ? property.bathrooms : 1,
       'area': property.area,
-      'dailyRate': property.dailyRate,
       'minimumStayDays': property.minimumStayDays,
       // ✅ IMPROVED: Use LookupService for dynamic ID mapping
       'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),

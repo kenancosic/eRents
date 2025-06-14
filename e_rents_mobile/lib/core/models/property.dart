@@ -2,8 +2,7 @@ import './address.dart';
 
 enum PropertyRentalType {
   daily, // Short-term daily rentals (hotels, vacation rentals)
-  monthly, // Long-term monthly leases with minimum stays
-  both // Properties that support both daily and monthly rentals
+  monthly // Long-term monthly leases with minimum stays
 }
 
 enum PropertyType { apartment, house, condo, townhouse, studio }

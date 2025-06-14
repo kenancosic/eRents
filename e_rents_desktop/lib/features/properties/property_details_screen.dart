@@ -164,6 +164,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               reviewStats: stats?.reviewStats,
               reviews:
                   [], // Empty for now - can be enhanced to convert Map to Review objects
+              propertyId: property.propertyId,
+              propertyName: property.name,
             ),
           ),
           const SizedBox(height: 16),
@@ -253,6 +255,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     reviewStats: stats?.reviewStats,
                     reviews:
                         [], // Empty for now - can be enhanced to convert Map to Review objects
+                    propertyId: property.propertyId,
+                    propertyName: property.name,
                   ),
                 ),
                 const SizedBox(height: 16),

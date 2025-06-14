@@ -89,12 +89,6 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   /// Check if property has address details
   bool get hasAddress => property?.address != null;
 
-  /// Check if property has daily rate
-  bool get hasDailyRate => property?.dailyRate != null;
-
-  /// Get daily rate safely
-  double get dailyRate => property?.dailyRate ?? 0.0;
-
   /// Check if property has minimum stay requirement
   bool get hasMinimumStay => property?.minimumStayDays != null;
 
@@ -110,7 +104,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
     switch (property!.rentingType) {
       case RentingType.daily:
         // Assume 70% occupancy rate for daily rentals
-        return (property!.dailyRate ?? property!.price) * 30 * 0.7;
+        return property!.price * 30 * 0.7;
       case RentingType.monthly:
         return property!.price;
     }

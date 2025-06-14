@@ -256,4 +256,39 @@ class ReviewService extends ApiService {
       );
     }
   }
+
+  /// ✅ SPECIALIZED: Create reply to a review
+  /// Matches: POST /reviews (with parentReviewId)
+  Future<Review> createReply({
+    required int parentReviewId,
+    required String description,
+  }) async {
+    try {
+      final request = {
+        'parentReviewId': parentReviewId,
+        'description': description,
+        'reviewType': 'PropertyReview', // Replies are property reviews
+      };
+
+      final response = await post(endpoint, request, authenticated: true);
+      final responseData = json.decode(response.body);
+      return Review.fromJson(responseData);
+    } catch (e) {
+      throw Exception('Failed to create reply: $e');
+    }
+  }
+
+  /// ✅ SPECIALIZED: Get replies for a specific review
+  /// Uses Universal System filtering by parentReviewId
+  Future<List<Review>> getReviewReplies(int parentReviewId) async {
+    try {
+      final replies = await getAllReviews({'parentReviewId': parentReviewId});
+      return replies;
+    } catch (e) {
+      print(
+        'ReviewService: Error loading replies for review $parentReviewId: $e',
+      );
+      return [];
+    }
+  }
 }

@@ -50,6 +50,9 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   final Map<String, bool> _columnVisibility = {};
   final Map<String, dynamic> _activeFilters = {};
 
+  // Cancellation support
+  bool _disposed = false;
+
   @override
   void initState() {
     super.initState();
@@ -65,38 +68,56 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
 
   @override
   void dispose() {
+    _disposed = true;
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchData() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (_disposed) return; // Early exit if disposed
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       final result = await widget.dataProvider.fetchData(_currentQuery);
-      setState(() {
-        _currentData = result;
-        _isLoading = false;
-      });
+
+      // Check if widget is still mounted before calling setState
+      if (mounted && !_disposed) {
+        setState(() {
+          _currentData = result;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
+      // Check if widget is still mounted before calling setState
+      if (mounted && !_disposed) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
   void _updateQuery(TableQuery newQuery) {
-    setState(() {
-      _currentQuery = newQuery;
-    });
+    if (_disposed) return; // Early exit if disposed
+
+    if (mounted) {
+      setState(() {
+        _currentQuery = newQuery;
+      });
+    }
     _fetchData();
   }
 
   void _onSearchChanged(String value) {
+    if (_disposed) return; // Early exit if disposed
+
     _updateQuery(
       _currentQuery.copyWith(
         searchTerm: value.isEmpty ? null : value,
@@ -106,10 +127,14 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   }
 
   void _onPageChanged(int page) {
+    if (_disposed) return; // Early exit if disposed
+
     _updateQuery(_currentQuery.copyWith(page: page));
   }
 
   void _onPageSizeChanged(int pageSize) {
+    if (_disposed) return; // Early exit if disposed
+
     _updateQuery(
       _currentQuery.copyWith(
         pageSize: pageSize,
@@ -119,6 +144,8 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   }
 
   void _onFilterChanged(String key, dynamic value) {
+    if (_disposed) return; // Early exit if disposed
+
     final newFilters = Map<String, dynamic>.from(_activeFilters);
     if (value == null) {
       newFilters.remove(key);
@@ -126,10 +153,12 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
       newFilters[key] = value;
     }
 
-    setState(() {
-      _activeFilters.clear();
-      _activeFilters.addAll(newFilters);
-    });
+    if (mounted) {
+      setState(() {
+        _activeFilters.clear();
+        _activeFilters.addAll(newFilters);
+      });
+    }
 
     _updateQuery(
       _currentQuery.copyWith(

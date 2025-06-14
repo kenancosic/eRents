@@ -5,8 +5,9 @@ import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart'
     as picker;
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/base/lifecycle_mixin.dart';
 
-class PropertyFormState extends ChangeNotifier {
+class PropertyFormState extends ChangeNotifier with LifecycleMixin {
   final LookupProvider? lookupProvider;
 
   // Text controllers
@@ -16,7 +17,7 @@ class PropertyFormState extends ChangeNotifier {
   final TextEditingController bedroomsController = TextEditingController();
   final TextEditingController bathroomsController = TextEditingController();
   final TextEditingController areaController = TextEditingController();
-  final TextEditingController dailyRateController = TextEditingController();
+
   final TextEditingController minimumStayDaysController =
       TextEditingController();
   final TextEditingController currencyController = TextEditingController(
@@ -94,53 +95,64 @@ class PropertyFormState extends ChangeNotifier {
 
   // Setters for database IDs
   set propertyTypeId(int? value) {
+    if (disposed) return;
     _propertyTypeId = value;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set propertyStatusId(int? value) {
+    if (disposed) return;
     _propertyStatusId = value;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set rentingTypeId(int? value) {
+    if (disposed) return;
     _rentingTypeId = value;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   // Legacy setters for backward compatibility with enums
   set type(PropertyType value) {
+    if (disposed) return;
     _propertyTypeId = _getPropertyTypeIdFromEnum(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set status(PropertyStatus value) {
+    if (disposed) return;
     _propertyStatusId = _getPropertyStatusIdFromEnum(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set rentingType(RentingType value) {
+    if (disposed) return;
     _rentingTypeId = _getRentingTypeIdFromEnum(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set images(List<picker.ImageInfo> value) {
+    if (disposed) return;
     _images = List.from(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set selectedAmenities(List<String> value) {
+    if (disposed) return;
     _selectedAmenities = List.from(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   set selectedAmenityIds(List<int> value) {
+    if (disposed) return;
     _selectedAmenityIds = List.from(value);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Update address from Google Places API selection
   void updateAddressFromGoogle(Address? address) {
+    if (disposed) return;
+
     _selectedAddress = address;
 
     if (address != null) {
@@ -148,7 +160,7 @@ class PropertyFormState extends ChangeNotifier {
       _populateManualFieldsFromAddress(address);
     }
 
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Update address data from manual input or legacy method
@@ -172,7 +184,7 @@ class PropertyFormState extends ChangeNotifier {
     // Create unified address from the data
     _selectedAddress = _createAddressFromManualFields();
 
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Populate manual address fields from Address object
@@ -241,14 +253,18 @@ class PropertyFormState extends ChangeNotifier {
 
   /// Update address from manual field changes
   void updateAddressFromManualFields() {
+    if (disposed) return;
+
     _selectedAddress = _createAddressFromManualFields();
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   void setFetchingState(bool loading, [String? error]) {
+    if (disposed) return;
+
     _isFetchingData = loading;
     _fetchError = error;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   void populateFromProperty(Property property) {
@@ -264,7 +280,6 @@ class PropertyFormState extends ChangeNotifier {
         (property.bathrooms > 0 ? property.bathrooms : 1).toString();
     areaController.text = property.area.toString();
 
-    dailyRateController.text = property.dailyRate?.toString() ?? '';
     minimumStayDaysController.text = property.minimumStayDays?.toString() ?? '';
 
     // Set IDs based on property enums
@@ -282,7 +297,7 @@ class PropertyFormState extends ChangeNotifier {
     _selectedAmenityIds = property.amenityIds;
     // Note: property.images no longer exists, images are fetched via imageIds from ImageController
 
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   /// Sanitize currency to ensure it meets database constraints:
@@ -339,10 +354,7 @@ class PropertyFormState extends ChangeNotifier {
       maintenanceIssues: initialProperty?.maintenanceIssues ?? [],
       amenityIds: _selectedAmenityIds,
       currency: _sanitizeCurrency(currencyController.text),
-      dailyRate:
-          dailyRateController.text.isNotEmpty
-              ? double.tryParse(dailyRateController.text)
-              : null,
+
       minimumStayDays:
           minimumStayDaysController.text.isNotEmpty
               ? int.tryParse(minimumStayDaysController.text)
@@ -455,7 +467,7 @@ class PropertyFormState extends ChangeNotifier {
     bedroomsController.dispose();
     bathroomsController.dispose();
     areaController.dispose();
-    dailyRateController.dispose();
+
     minimumStayDaysController.dispose();
     currencyController.dispose();
     streetNameController.dispose();

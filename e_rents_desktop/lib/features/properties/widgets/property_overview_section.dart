@@ -41,16 +41,9 @@ class PropertyOverviewSection extends StatelessWidget {
         _buildDetailRow('Renting Type', property.rentingType.displayName),
         const Divider(),
         _buildDetailRow(
-          'Monthly Price',
-          '${property.price.toStringAsFixed(0)} ${property.currency}',
+          'Price',
+          '${property.price.toStringAsFixed(0)} ${property.currency}/${property.rentingType.displayName.toLowerCase()}',
         ),
-        if (property.dailyRate != null) ...[
-          const Divider(),
-          _buildDetailRow(
-            'Daily Rate',
-            '${property.dailyRate!.toStringAsFixed(0)} ${property.currency}',
-          ),
-        ],
         if (property.minimumStayDays != null) ...[
           const Divider(),
           _buildDetailRow('Minimum Stay', '${property.minimumStayDays} days'),

@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:e_rents_desktop/utils/image_utils.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 /// A widget for picking, displaying, and managing a list of image paths.
 class ImageInfo {
@@ -315,8 +316,8 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
         },
       );
     } else if (image.url != null) {
-      // Existing image with URL - use ImageUtils for proper handling
-      return ImageUtils.buildImage(
+      // Existing image with URL - use ApiService for proper handling
+      return getService<ApiService>().buildImage(
         image.url,
         fit: BoxFit.cover,
         width: double.infinity,

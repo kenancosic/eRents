@@ -4,9 +4,10 @@ import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/auth_service.dart';
 import 'package:e_rents_desktop/base/app_error.dart';
+import 'package:e_rents_desktop/base/lifecycle_mixin.dart';
 import 'package:e_rents_desktop/utils/provider_registry.dart';
 
-class AuthProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier with LifecycleMixin {
   final AuthService _authService;
   User? _currentUser;
   bool _isAuthenticated = false;
@@ -18,24 +19,30 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _initializeAuth() async {
+    if (disposed) return;
+
     _isLoading = true;
     _error = null;
-    notifyListeners();
+    safeNotifyListeners();
 
     try {
       _isAuthenticated = await _authService.isAuthenticated();
-      if (_isAuthenticated) {
+      if (_isAuthenticated && !disposed) {
         await _fetchCurrentUserDetails();
         if (_currentUser == null) {
           _isAuthenticated = false;
         }
       }
     } catch (e) {
-      _error = AppError.fromException(e);
-      _isAuthenticated = false;
+      if (!disposed) {
+        _error = AppError.fromException(e);
+        _isAuthenticated = false;
+      }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (!disposed) {
+        _isLoading = false;
+        safeNotifyListeners();
+      }
     }
   }
 
@@ -48,19 +55,26 @@ class AuthProvider extends ChangeNotifier {
 
   // Helper methods
   void _setError(String message) {
+    if (disposed) return;
+
     _error = AppError(type: ErrorType.authentication, message: message);
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   void _clearError() {
+    if (disposed) return;
+
     _error = null;
-    notifyListeners();
+    safeNotifyListeners();
   }
 
   Future<void> _fetchCurrentUserDetails() async {
-    if (_isAuthenticated) {
-      try {
-        final userResponse = await _authService.getMe();
+    if (disposed || !_isAuthenticated) return;
+
+    try {
+      final userResponse = await _authService.getMe();
+
+      if (!disposed) {
         if (userResponse.containsKey('user')) {
           _currentUser = User.fromJson(userResponse['user']);
         } else {
@@ -70,7 +84,9 @@ class AuthProvider extends ChangeNotifier {
             'Failed to load user profile. Please try logging in again.',
           );
         }
-      } catch (e) {
+      }
+    } catch (e) {
+      if (!disposed) {
         debugPrint('Error fetching user details: $e');
         _currentUser = null;
         _isAuthenticated = false;
@@ -80,36 +96,44 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> login(LoginRequestModel request) async {
-    _isLoading = true;
-    _clearError();
-    notifyListeners();
+    if (disposed) return false;
 
-    try {
-      await _authService.login(request);
-      _isAuthenticated = true;
-      await _fetchCurrentUserDetails();
+    return await executeAsync(() async {
+      _isLoading = true;
+      _clearError();
+      safeNotifyListeners();
 
-      // Verify we have a valid landlord user
-      if (_currentUser == null || _currentUser!.role != UserType.landlord) {
-        _isAuthenticated = false;
-        _currentUser = null;
-        await _authService.logout(); // Clear any stored data
-        throw Exception(
-          'Desktop application is for landlords only. Please use the mobile app to access your account.',
-        );
+      try {
+        await _authService.login(request);
+        _isAuthenticated = true;
+        await _fetchCurrentUserDetails();
+
+        // Verify we have a valid landlord user
+        if (_currentUser == null || _currentUser!.role != UserType.landlord) {
+          _isAuthenticated = false;
+          _currentUser = null;
+          await _authService.logout(); // Clear any stored data
+          throw Exception(
+            'Desktop application is for landlords only. Please use the mobile app to access your account.',
+          );
+        }
+
+        if (!disposed) {
+          _isLoading = false;
+          safeNotifyListeners();
+        }
+        return true;
+      } catch (e) {
+        if (!disposed) {
+          _isAuthenticated = false;
+          _currentUser = null;
+          _error = AppError.fromException(e);
+          _isLoading = false;
+          safeNotifyListeners();
+        }
+        return false;
       }
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isAuthenticated = false;
-      _currentUser = null;
-      _error = AppError.fromException(e);
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    });
   }
 
   Future<User?> register(RegisterRequestModel request) async {
@@ -122,50 +146,69 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _isLoading = true;
-    _clearError();
-    notifyListeners();
+    if (disposed) return;
 
-    try {
-      await _authService.logout();
-      _currentUser = null;
-      _isAuthenticated = false;
+    await executeAsync(() async {
+      _isLoading = true;
+      _clearError();
+      safeNotifyListeners();
 
-      // Clear all cached providers on logout to free memory and ensure fresh data on next login
-      final registry = ProviderRegistry();
-      registry.clear();
-    } catch (e) {
-      _error = AppError.fromException(e);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+      try {
+        await _authService.logout();
+        if (!disposed) {
+          _currentUser = null;
+          _isAuthenticated = false;
+
+          // Clear all cached providers on logout to free memory and ensure fresh data on next login
+          final registry = ProviderRegistry();
+          registry.clear();
+        }
+      } catch (e) {
+        if (!disposed) {
+          _error = AppError.fromException(e);
+        }
+      } finally {
+        if (!disposed) {
+          _isLoading = false;
+          safeNotifyListeners();
+        }
+      }
+    });
   }
 
   Future<bool> checkAndUpdateAuthStatus() async {
-    _isLoading = true;
-    _clearError();
-    notifyListeners();
+    if (disposed) return false;
 
-    try {
-      _isAuthenticated = await _authService.isAuthenticated();
-      if (_isAuthenticated) {
-        await _fetchCurrentUserDetails();
-        if (_currentUser == null) {
-          _isAuthenticated = false;
+    return await executeAsync(() async {
+      _isLoading = true;
+      _clearError();
+      safeNotifyListeners();
+
+      try {
+        _isAuthenticated = await _authService.isAuthenticated();
+        if (_isAuthenticated && !disposed) {
+          await _fetchCurrentUserDetails();
+          if (_currentUser == null) {
+            _isAuthenticated = false;
+          }
+        } else if (!disposed) {
+          _currentUser = null;
         }
-      } else {
-        _currentUser = null;
+
+        if (!disposed) {
+          _isLoading = false;
+          safeNotifyListeners();
+        }
+        return _isAuthenticated;
+      } catch (e) {
+        if (!disposed) {
+          _error = AppError.fromException(e);
+          _isAuthenticated = false;
+          _isLoading = false;
+          safeNotifyListeners();
+        }
+        return false;
       }
-      _isLoading = false;
-      notifyListeners();
-      return _isAuthenticated;
-    } catch (e) {
-      _error = AppError.fromException(e);
-      _isAuthenticated = false;
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    });
   }
 }

@@ -436,8 +436,6 @@ class RentalTypeBadge extends StatelessWidget {
         return Colors.blue[600]!;
       case PropertyRentalType.monthly:
         return Colors.green[600]!;
-      case PropertyRentalType.both:
-        return Colors.purple[600]!;
     }
   }
 
@@ -447,8 +445,6 @@ class RentalTypeBadge extends StatelessWidget {
         return 'Daily';
       case PropertyRentalType.monthly:
         return 'Monthly';
-      case PropertyRentalType.both:
-        return 'Both';
     }
   }
 }

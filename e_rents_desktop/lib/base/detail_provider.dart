@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'app_error.dart';
 import 'provider_state.dart';
 import 'repository.dart';
+import 'lifecycle_mixin.dart';
 
 /// Base provider for managing single entity details
-abstract class DetailProvider<T> extends ChangeNotifier {
+abstract class DetailProvider<T> extends ChangeNotifier with LifecycleMixin {
   /// The repository for data access
   final Repository<T> repository;
 
@@ -25,9 +28,6 @@ abstract class DetailProvider<T> extends ChangeNotifier {
 
   /// Current item ID being loaded/displayed
   String? _currentId;
-
-  /// Whether this provider has been disposed
-  bool _disposed = false;
 
   DetailProvider(this.repository);
 
@@ -189,60 +189,59 @@ abstract class DetailProvider<T> extends ChangeNotifier {
 
   /// Execute an operation with proper state management
   Future<void> _execute(Future<void> Function() action) async {
+    if (disposed) return; // Early exit if disposed
+
     try {
       _setState(ProviderState.loading);
       _clearError();
 
-      await action();
+      // Use LifecycleMixin's executeAsync for proper lifecycle management
+      await executeAsync(action);
 
-      _setState(ProviderState.success);
+      if (!disposed) {
+        _setState(ProviderState.success);
+      }
     } catch (e, stackTrace) {
-      _setError(AppError.fromException(e, stackTrace));
+      if (!disposed) {
+        _setError(AppError.fromException(e, stackTrace));
+      }
     }
   }
 
   /// Set the provider state
   void _setState(ProviderState newState) {
-    if (_state != newState) {
-      _state = newState;
-      // Schedule notification
-      Future.microtask(() {
-        if (!_disposed) {
-          notifyListeners();
-        }
-      });
-    }
+    if (disposed || _state == newState) return;
+
+    _state = newState;
+    safeNotifyListeners();
   }
 
   /// Set an error and update state
   void _setError(AppError error) {
+    if (disposed) return;
+
     _error = error;
     _state = ProviderState.error;
-    // Schedule notification
-    Future.microtask(() {
-      if (!_disposed) {
-        notifyListeners();
-      }
-    });
+    safeNotifyListeners();
   }
 
   /// Clear the current error
   void _clearError() {
-    if (_error != null) {
-      _error = null;
-      // Schedule notification
-      Future.microtask(() {
-        if (!_disposed) {
-          notifyListeners();
-        }
-      });
-    }
+    if (disposed || _error == null) return;
+
+    _error = null;
+    safeNotifyListeners();
+  }
+
+  /// Cancel all pending operations
+  void _cancelPendingOperations() {
+    cancelPendingOperations(); // Use LifecycleMixin method
   }
 
   @override
   void dispose() {
-    _disposed = true;
     _item = null;
-    super.dispose();
+    super
+        .dispose(); // This calls LifecycleMixin.dispose() which handles disposal tracking
   }
 }

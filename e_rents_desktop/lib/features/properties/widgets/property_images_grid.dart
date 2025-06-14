@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
-import 'package:e_rents_desktop/utils/image_utils.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<int> images;
@@ -37,7 +38,7 @@ class PropertyImagesGrid extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ImageUtils.buildImage(
+                    getService<ApiService>().buildImage(
                       '/Image/$image',
                       fit: BoxFit.cover,
                       errorWidget: Container(
@@ -92,7 +93,7 @@ class PropertyImagesGrid extends StatelessWidget {
           (context) => Dialog(
             child: Stack(
               children: [
-                ImageUtils.buildImage(
+                getService<ApiService>().buildImage(
                   '/Image/$image',
                   fit: BoxFit.contain,
                   errorWidget: Container(

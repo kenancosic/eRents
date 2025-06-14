@@ -7,12 +7,14 @@ import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/feature/explore/explore_provider.dart';
 
 import 'package:e_rents_mobile/core/models/image_model.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -22,101 +24,27 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  late GoogleMapController mapController;
+  late GoogleMapController _mapController;
   final PageController _pageController = PageController();
-  int _selectedPropertyIndex = 0;
+  int _selectedPropertyIndex = -1;
 
-  final LatLng _center = const LatLng(44.5328, 18.6704);
-
-  // Sample properties using your existing Property model
-  late final List<Property> _properties;
+  final LatLng _center = const LatLng(44.5328, 18.6704); // Default center
 
   @override
   void initState() {
     super.initState();
-    _initializeProperties();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ExploreProvider>().fetchProperties();
+    });
   }
 
-  void _initializeProperties() {
-    // Mock data using your existing Property structure
-    _properties = [
-      Property(
-        propertyId: 1,
-        ownerId: 1,
-        name: 'Small cottage in the center of town',
-        description: 'Cozy cottage perfect for a peaceful stay',
-        price: 526.0,
-        status: PropertyStatus.available,
-        dateAdded: DateTime.now(),
-        averageRating: 4.8,
-        imageIds: [1],
-        amenityIds: [1, 2, 3],
-        address: Address(
-          streetLine1: 'Main Street 123',
-          city: 'Lukavac',
-          state: 'T.K.',
-          country: 'F.BiH',
-          latitude: 44.5328,
-          longitude: 18.6704,
-        ),
-        rentalType: PropertyRentalType.monthly,
-        minimumStayDays: 30,
-      ),
-      Property(
-        propertyId: 2,
-        ownerId: 2,
-        name: 'Entire private villa in Tuzla City',
-        description: 'Beautiful villa with modern amenities',
-        price: 400.0,
-        status: PropertyStatus.available,
-        dateAdded: DateTime.now(),
-        averageRating: 4.9,
-        imageIds: [2],
-        amenityIds: [1, 3, 4, 5],
-        address: Address(
-          streetLine1: 'Villa Street 456',
-          city: 'Tuzla',
-          state: 'T.K.',
-          country: 'F.BiH',
-          latitude: 44.5398,
-          longitude: 18.6804,
-        ),
-        rentalType: PropertyRentalType.daily,
-        dailyRate: 400.0,
-        minimumStayDays: 3,
-      ),
-      Property(
-        propertyId: 3,
-        ownerId: 3,
-        name: 'Entire rental unit, close to main square',
-        description: 'Prime location rental unit',
-        price: 1290.0,
-        status: PropertyStatus.available,
-        dateAdded: DateTime.now(),
-        averageRating: 4.8,
-        imageIds: [3],
-        amenityIds: [2, 4, 5, 6],
-        address: Address(
-          streetLine1: 'Square Avenue 789',
-          city: 'Tuzla',
-          state: 'T.K.',
-          country: 'F.BiH',
-          latitude: 44.5258,
-          longitude: 18.6654,
-        ),
-        rentalType: PropertyRentalType.both,
-        dailyRate: 120.0,
-        minimumStayDays: 7,
-      ),
-    ];
-  }
+  Set<Marker> _getMarkers(List<Property> properties) {
+    if (properties.isEmpty) return {};
 
-  Set<Marker> get _markers {
-    return _properties.asMap().entries.map((entry) {
+    return properties.asMap().entries.map((entry) {
       int index = entry.key;
       Property property = entry.value;
 
-      // Use coordinates from address
       LatLng position = LatLng(
         property.address?.latitude ?? _center.latitude,
         property.address?.longitude ?? _center.longitude,
@@ -132,13 +60,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         icon: _selectedPropertyIndex == index
             ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
-            : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+            : BitmapDescriptor.defaultMarker,
       );
     }).toSet();
   }
 
   void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+    _mapController = controller;
   }
 
   void _onMarkerTapped(int index) {
@@ -157,208 +85,171 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _selectedPropertyIndex = index;
     });
 
-    Property property = _properties[index];
-    LatLng position = LatLng(
-      property.address?.latitude ?? _center.latitude,
-      property.address?.longitude ?? _center.longitude,
-    );
-
-    mapController.animateCamera(
-      CameraUpdate.newLatLngZoom(position, 15.0),
-    );
-  }
-
-  void _handleSearchChanged(String query) {
-    // TODO: Implement search logic
+    final properties = context.read<ExploreProvider>().properties?.items ?? [];
+    if (index < properties.length) {
+      Property property = properties[index];
+      LatLng position = LatLng(
+        property.address?.latitude ?? _center.latitude,
+        property.address?.longitude ?? _center.longitude,
+      );
+      _mapController.animateCamera(
+        CameraUpdate.newLatLngZoom(position, 15.0),
+      );
+    }
   }
 
   void _handleFilterButtonPressed() {
     context.push('/filter', extra: {
       'onApplyFilters': (Map<String, dynamic> filters) =>
-          _handleApplyFilters(context, filters),
+          context.read<ExploreProvider>().applyFilters(filters),
     });
-  }
-
-  void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filters applied to map/list!')),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final searchBar = CustomSearchBar(
-      onSearchChanged: _handleSearchChanged,
-      hintText: 'Search places...',
-      showFilterIcon: true,
-      onFilterIconPressed: _handleFilterButtonPressed,
-    );
+    return Consumer<ExploreProvider>(
+      builder: (context, provider, child) {
+        final properties = provider.properties?.items ?? [];
+        final isLoading = provider.isLoading;
+        final hasError = provider.hasError;
+        final errorMessage = provider.errorMessage;
 
-    final appBar = CustomAppBar(
-      showSearch: true,
-      searchWidget: searchBar,
-      showBackButton: false,
-    );
+        final searchBar = CustomSearchBar(
+          onSearchChanged: (query) => provider.search(query),
+          hintText: 'Search places...',
+          showFilterIcon: true,
+          onFilterIconPressed: _handleFilterButtonPressed,
+        );
 
-    return BaseScreen(
-      useSlidingDrawer: false,
-      appBar: appBar,
-      body: Column(
-        children: [
-          // Map Section (60% of screen)
-          Expanded(
-            flex: 6,
-            child: Stack(
-              children: [
-                GoogleMap(
-                  onMapCreated: _onMapCreated,
-                  initialCameraPosition: CameraPosition(
-                    target: _center,
-                    zoom: 14.0,
-                  ),
-                  markers: _markers,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: true,
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                ),
-                // Results counter overlay
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      '${_properties.length} properties',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+        final appBar = CustomAppBar(
+          showSearch: true,
+          searchWidget: searchBar,
+          showBackButton: false,
+        );
+
+        return BaseScreen(
+          useSlidingDrawer: false,
+          appBar: appBar,
+          body: Column(
+            children: [
+              Expanded(
+                flex: 6,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      onMapCreated: _onMapCreated,
+                      initialCameraPosition: CameraPosition(
+                        target: _center,
+                        zoom: 14.0,
                       ),
+                      markers: _getMarkers(properties),
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: true,
+                      zoomControlsEnabled: false,
+                      mapToolbarEnabled: false,
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Property List Section (40% of screen)
-          Expanded(
-            flex: 4,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Handle indicator
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  // Section title
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Available Properties',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        ElevatedTextButton(
-                          text: 'View All',
-                          isCompact: true,
-                          onPressed: () {
-                            // TODO: Navigate to full list view
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Horizontal property list
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      onPageChanged: _onPropertyCardChanged,
-                      itemCount: _properties.length,
-                      itemBuilder: (context, index) {
-                        final property = _properties[index];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: PropertyCard(
-                            layout: PropertyCardLayout.compactHorizontal,
-                            property: property,
-                            onTap: () {
-                              context.push('/property/${property.propertyId}');
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  // Page indicator
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _properties.length,
-                        (index) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          height: 8,
-                          width: _selectedPropertyIndex == index ? 24 : 8,
+                    if (!isLoading)
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: _selectedPropertyIndex == index
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8)
+                            ],
+                          ),
+                          child: Text(
+                            '${provider.properties?.totalCount ?? 0} properties found',
+                            style: const TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    if (isLoading && properties.isEmpty)
+                      const Center(child: CircularProgressIndicator()),
+                  ],
+                ),
               ),
-            ),
+              Expanded(
+                flex: 4,
+                child: Container(
+                  child: (isLoading && properties.isEmpty)
+                      ? const SizedBox.shrink()
+                      : hasError
+                          ? Center(
+                              child: Text(errorMessage ?? 'An error occurred'))
+                          : properties.isEmpty
+                              ? const Center(
+                                  child: Text('No properties found.'))
+                              : Column(
+                                  children: [
+                                    Expanded(
+                                      child: PageView.builder(
+                                        controller: _pageController,
+                                        onPageChanged: _onPropertyCardChanged,
+                                        itemCount: properties.length,
+                                        itemBuilder: (context, index) {
+                                          final property = properties[index];
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16),
+                                            child: PropertyCard(
+                                              layout: PropertyCardLayout
+                                                  .compactHorizontal,
+                                              property: property,
+                                              onTap: () => context.push(
+                                                  '/property/${property.propertyId}'),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    // Page indicator
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: List.generate(
+                                          properties.length,
+                                          (index) => AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 300),
+                                            margin: const EdgeInsets.symmetric(
+                                                horizontal: 4),
+                                            height: 8,
+                                            width:
+                                                _selectedPropertyIndex == index
+                                                    ? 24
+                                                    : 8,
+                                            decoration: BoxDecoration(
+                                              color: _selectedPropertyIndex ==
+                                                      index
+                                                  ? Theme.of(context)
+                                                      .primaryColor
+                                                  : Colors.grey[300],
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

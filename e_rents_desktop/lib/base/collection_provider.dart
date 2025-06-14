@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'app_error.dart';
 import 'provider_state.dart';
 import 'repository.dart';
+import 'lifecycle_mixin.dart';
 
 /// Base provider for managing collections of items
-abstract class CollectionProvider<T> extends ChangeNotifier {
+abstract class CollectionProvider<T> extends ChangeNotifier
+    with LifecycleMixin {
   /// The repository for data access
   final Repository<T> repository;
 
@@ -22,9 +25,6 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
 
   /// Whether data is being refreshed (for pull-to-refresh)
   bool _isRefreshing = false;
-
-  /// Whether this provider has been disposed
-  bool _disposed = false;
 
   /// Current filter parameters
   Map<String, dynamic>? _currentParams;
@@ -100,6 +100,7 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
     try {
       _currentParams = params ?? _currentParams;
       final fetchedItems = await repository.getAll(_currentParams);
+
       _items = fetchedItems;
       _clearError();
       _setState(ProviderState.success);
@@ -176,9 +177,7 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
   Future<void> loadCount([Map<String, dynamic>? params]) async {
     try {
       _totalCount = await repository.count(params ?? _currentParams);
-      if (!_disposed) {
-        notifyListeners();
-      }
+      safeNotifyListeners();
     } catch (e) {
       // Count is optional, don't fail the whole operation
       debugPrint('Failed to load count: $e');
@@ -244,10 +243,6 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
 
   // Protected getters and methods
 
-  /// Check if this provider has been disposed (for use in subclasses)
-  @protected
-  bool get disposed => _disposed;
-
   // Private methods
 
   /// Execute an operation with proper state management
@@ -256,7 +251,8 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
       _setState(ProviderState.loading);
       _clearError();
 
-      await action();
+      // Use LifecycleMixin's executeAsync for proper lifecycle management
+      await executeAsync(action);
 
       _setState(ProviderState.success);
     } catch (e, stackTrace) {
@@ -266,46 +262,25 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
 
   /// Set the provider state
   void _setState(ProviderState newState) {
-    if (_state != newState) {
-      _state = newState;
-      if (!_disposed) {
-        // Schedule notification to avoid issues if called during build phase
-        Future.microtask(() {
-          if (!_disposed) {
-            notifyListeners();
-          }
-        });
-      }
-    }
+    if (_state == newState) return;
+
+    _state = newState;
+    safeNotifyListeners();
   }
 
   /// Set an error and update state
   void _setError(AppError error) {
     _error = error;
     _state = ProviderState.error;
-    if (!_disposed) {
-      // Schedule notification
-      Future.microtask(() {
-        if (!_disposed) {
-          notifyListeners();
-        }
-      });
-    }
+    safeNotifyListeners();
   }
 
   /// Clear the current error
   void _clearError() {
-    if (_error != null) {
-      _error = null;
-      if (!_disposed) {
-        // Schedule notification
-        Future.microtask(() {
-          if (!_disposed) {
-            notifyListeners();
-          }
-        });
-      }
-    }
+    if (_error == null) return;
+
+    _error = null;
+    safeNotifyListeners();
   }
 
   /// Find the index of an item by ID
@@ -325,7 +300,6 @@ abstract class CollectionProvider<T> extends ChangeNotifier {
 
   @override
   void dispose() {
-    _disposed = true;
     _items.clear();
     super.dispose();
   }

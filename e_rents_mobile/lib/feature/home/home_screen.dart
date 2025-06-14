@@ -140,7 +140,7 @@ class HomeScreen extends StatelessWidget {
               final property = _createMockProperty(
                 104 + index,
                 'Recommended Property ${index + 1}',
-                PropertyRentalType.both,
+                PropertyRentalType.monthly,
                 dailyRate: 85.0 + (index * 10),
               );
               return SizedBox(

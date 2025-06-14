@@ -1,7 +1,8 @@
-import 'package:e_rents_desktop/utils/image_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 import 'package:go_router/go_router.dart';
 
 class TenantProfileWidget extends StatefulWidget {
@@ -36,7 +37,9 @@ class _TenantProfileWidgetState extends State<TenantProfileWidget> {
             radius: 20,
             backgroundImage:
                 widget.tenant.profileImageId != null
-                    ? NetworkImage('/Image/${widget.tenant.profileImageId}')
+                    ? getService<ApiService>().buildImageProvider(
+                      '/Image/${widget.tenant.profileImageId}',
+                    )
                     : const AssetImage('assets/images/user-image.png'),
             child:
                 widget.tenant.profileImageId == null

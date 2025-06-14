@@ -22,13 +22,7 @@ class Property {
   final List<MaintenanceIssue> maintenanceIssues;
   final List<int> amenityIds;
   final String currency;
-  final double? dailyRate;
   final int? minimumStayDays;
-
-  // Fee Settings (Property-level defaults for desktop app management)
-  final double? defaultSecurityDeposit;
-  final double? defaultCleaningFee;
-  final double? defaultServiceFee;
   final DateTime dateAdded;
   final Address? address;
 
@@ -55,11 +49,7 @@ class Property {
     required this.maintenanceIssues,
     required this.amenityIds,
     this.currency = "BAM",
-    this.dailyRate,
     this.minimumStayDays,
-    this.defaultSecurityDeposit,
-    this.defaultCleaningFee,
-    this.defaultServiceFee,
     required this.dateAdded,
     this.address,
     this.propertyTypeName,
@@ -99,12 +89,7 @@ class Property {
       maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
       amenityIds: _parseAmenityIds(json['amenityIds']),
       currency: json['currency'] as String? ?? "BAM",
-      dailyRate: (json['dailyRate'] as num?)?.toDouble(),
       minimumStayDays: json['minimumStayDays'] as int?,
-      defaultSecurityDeposit:
-          (json['defaultSecurityDeposit'] as num?)?.toDouble(),
-      defaultCleaningFee: (json['defaultCleaningFee'] as num?)?.toDouble(),
-      defaultServiceFee: (json['defaultServiceFee'] as num?)?.toDouble(),
       // Handle date field name differences
       dateAdded:
           json['dateAdded'] != null
@@ -291,11 +276,7 @@ class Property {
       'bathrooms': bathrooms,
       'area': area,
       'currency': currency,
-      'dailyRate': dailyRate,
       'minimumStayDays': minimumStayDays,
-      'defaultSecurityDeposit': defaultSecurityDeposit,
-      'defaultCleaningFee': defaultCleaningFee,
-      'defaultServiceFee': defaultServiceFee,
       'dateAdded': dateAdded.toIso8601String(),
       'address': address?.toJson(),
       'amenityIds': amenityIds,
@@ -318,11 +299,7 @@ class Property {
     List<MaintenanceIssue>? maintenanceIssues,
     List<int>? amenityIds,
     String? currency,
-    double? dailyRate,
     int? minimumStayDays,
-    double? defaultSecurityDeposit,
-    double? defaultCleaningFee,
-    double? defaultServiceFee,
     DateTime? dateAdded,
     Address? address,
   }) {
@@ -342,12 +319,7 @@ class Property {
       maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
       amenityIds: amenityIds ?? this.amenityIds,
       currency: currency ?? this.currency,
-      dailyRate: dailyRate ?? this.dailyRate,
       minimumStayDays: minimumStayDays ?? this.minimumStayDays,
-      defaultSecurityDeposit:
-          defaultSecurityDeposit ?? this.defaultSecurityDeposit,
-      defaultCleaningFee: defaultCleaningFee ?? this.defaultCleaningFee,
-      defaultServiceFee: defaultServiceFee ?? this.defaultServiceFee,
       dateAdded: dateAdded ?? this.dateAdded,
       address: address ?? this.address,
     );

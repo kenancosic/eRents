@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/models/paged_list.dart';
+import 'package:e_rents_mobile/core/models/property_search_object.dart';
+import 'package:e_rents_mobile/core/services/api_client.dart';
 
 class PropertyService {
   final ApiService _apiService;
+  final ApiClient _apiClient;
 
-  PropertyService(this._apiService);
+  PropertyService(this._apiService, this._apiClient);
 
   /// Get property by ID
   Future<Property?> getPropertyById(int propertyId) async {
@@ -198,5 +202,20 @@ class PropertyService {
   Future<List<Property>> getPropertiesInPriceRange(
       double minPrice, double maxPrice) async {
     return await getProperties({'minPrice': minPrice, 'maxPrice': maxPrice});
+  }
+
+  Future<PagedList<Property>> searchProperties(
+      PropertySearchObject searchObject) async {
+    try {
+      final response = await _apiService.get(
+        'properties/search',
+        queryParameters: searchObject.toQueryParameters(),
+      );
+      return PagedList.fromJson(response, (json) => Property.fromJson(json));
+    } catch (e) {
+      // Handle or rethrow the error as appropriate
+      print('Error searching properties: $e');
+      rethrow;
+    }
   }
 }

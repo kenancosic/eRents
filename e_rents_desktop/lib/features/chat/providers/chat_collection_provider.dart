@@ -44,9 +44,9 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
     await _updateContactStatistics();
   }
 
-  /// Load all contacts
+  /// Load all contacts using disposal-safe operations
   Future<void> loadContacts({bool forceRefresh = false}) async {
-    if (_isLoadingContacts) return;
+    if (_isLoadingContacts || disposed) return;
 
     _isLoadingContacts = true;
     if (!disposed) notifyListeners();
@@ -55,18 +55,22 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
       final contacts = await _chatRepository.getContacts(
         forceRefresh: forceRefresh,
       );
-      _contacts = contacts;
 
-      // Update statistics after loading contacts
-      await _updateContactStatistics();
-
-      // Just notify listeners, don't set state as this is not the main items collection
+      if (!disposed) {
+        _contacts = contacts;
+        // Update statistics after loading contacts
+        await _updateContactStatistics();
+      }
     } catch (e, stackTrace) {
-      // Handle error appropriately for contacts loading
-      throw AppError.fromException(e, stackTrace);
+      if (!disposed) {
+        // Handle error appropriately for contacts loading
+        throw AppError.fromException(e, stackTrace);
+      }
     } finally {
-      _isLoadingContacts = false;
-      if (!disposed) notifyListeners();
+      if (!disposed) {
+        _isLoadingContacts = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -77,6 +81,8 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
 
   /// Select a contact for conversation
   void selectContact(int contactId) {
+    if (disposed) return;
+
     _selectedContactId = contactId;
     _selectedContact = _contacts.firstWhere(
       (contact) => contact.id == contactId,
@@ -92,14 +98,16 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
             updatedAt: DateTime.now(),
           ),
     );
-    if (!disposed) notifyListeners();
+    notifyListeners();
   }
 
   /// Clear contact selection
   void clearSelection() {
+    if (disposed) return;
+
     _selectedContactId = null;
     _selectedContact = null;
-    if (!disposed) notifyListeners();
+    notifyListeners();
   }
 
   /// Get unread message count for a specific contact
@@ -119,20 +127,26 @@ class ChatCollectionProvider extends CollectionProvider<Message> {
 
   /// Update unread count for a contact
   void updateUnreadCount(int contactId, int count) {
+    if (disposed) return;
+
     _unreadCountMap[contactId] = count;
-    if (!disposed) notifyListeners();
+    notifyListeners();
   }
 
   /// Mark all messages as read for a contact
   Future<void> markContactAsRead(int contactId) async {
+    if (disposed) return;
+
     _unreadCountMap[contactId] = 0;
-    if (!disposed) notifyListeners();
+    notifyListeners();
   }
 
   /// Update last activity for a contact
   void updateLastActivity(int contactId, DateTime timestamp) {
+    if (disposed) return;
+
     _lastActivityMap[contactId] = timestamp;
-    if (!disposed) notifyListeners();
+    notifyListeners();
   }
 
   /// Search contacts by name or email

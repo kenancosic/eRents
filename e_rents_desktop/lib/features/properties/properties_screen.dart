@@ -12,8 +12,8 @@ import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/base/provider_state.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/utils/image_utils.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({super.key});
@@ -398,7 +398,7 @@ class _PropertyListItem extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               child:
                   property.imageIds.isNotEmpty
-                      ? ImageUtils.buildImage(
+                      ? getService<ApiService>().buildImage(
                         '/Image/${property.imageIds.first}',
                         width: 56,
                         height: 56,
@@ -410,10 +410,22 @@ class _PropertyListItem extends StatelessWidget {
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey[600],
-                            size: 24,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
+                              Text(
+                                'ID: ${property.imageIds.first}',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       )
@@ -424,10 +436,22 @@ class _PropertyListItem extends StatelessWidget {
                           color: Colors.grey[200],
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(
-                          Icons.apartment,
-                          color: Colors.grey[600],
-                          size: 24,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.apartment,
+                              color: Colors.grey[600],
+                              size: 20,
+                            ),
+                            Text(
+                              'No Images',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
             ),
@@ -569,26 +593,50 @@ class _PropertyGridItem extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     property.imageIds.isNotEmpty
-                        ? ImageUtils.buildImage(
+                        ? getService<ApiService>().buildImage(
                           '/Image/${property.imageIds.first}',
                           fit: BoxFit.cover,
                           errorWidget: Container(
                             // Consistent error widget
                             decoration: BoxDecoration(color: Colors.grey[200]),
-                            child: Icon(
-                              Icons.image_not_supported_outlined,
-                              color: Colors.grey[600],
-                              size: 48,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey[600],
+                                  size: 20,
+                                ),
+                                Text(
+                                  'ID: ${property.imageIds.first}',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         )
                         : Container(
                           // Consistent placeholder
                           decoration: BoxDecoration(color: Colors.grey[200]),
-                          child: Icon(
-                            Icons.apartment_outlined,
-                            color: Colors.grey[600],
-                            size: 48,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.apartment,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
+                              Text(
+                                'No Images',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                     Positioned(

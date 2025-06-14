@@ -34,7 +34,7 @@ class _FilterScreenState extends State<FilterScreen> {
     'Cabin',
     'Apartment'
   ];
-  final List<String> _rentalPeriods = ['Any', 'Monthly', 'Annually', 'Per day'];
+  final List<String> _rentalPeriods = ['Any', 'Monthly', 'Per day'];
   final List<String> _facilities = [
     'Any',
     'WiFi',
@@ -88,8 +88,7 @@ class _FilterScreenState extends State<FilterScreen> {
           _isDateFilterEnabled && (_useEndDate || _rentalPeriod == 'Per day')
               ? _endDate
               : null,
-      'isMonthlyRental':
-          _rentalPeriod == 'Monthly' || _rentalPeriod == 'Annually',
+      'isMonthlyRental': _rentalPeriod == 'Monthly',
       'useEndDate': _useEndDate,
     };
     widget.onApplyFilters(filters);

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/booking_summary.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_reviews_modal.dart';
 import 'package:intl/intl.dart';
 
 class PropertyReviewsSection extends StatelessWidget {
   final PropertyReviewStats? reviewStats;
   final List<Review> reviews;
+  final int propertyId;
+  final String propertyName;
 
   const PropertyReviewsSection({
     super.key,
     this.reviewStats,
     required this.reviews,
+    required this.propertyId,
+    required this.propertyName,
   });
 
   @override
@@ -60,7 +65,14 @@ class PropertyReviewsSection extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    // TODO: Navigate to all reviews
+                    showDialog(
+                      context: context,
+                      builder:
+                          (context) => PropertyReviewsModal(
+                            propertyId: propertyId,
+                            propertyName: propertyName,
+                          ),
+                    );
                   },
                   child: const Text('View All'),
                 ),
@@ -69,7 +81,7 @@ class PropertyReviewsSection extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildRatingOverview(),
+                _buildRatingOverview(context),
                 const SizedBox(width: 24),
                 Expanded(child: _buildRecentReviews()),
               ],
@@ -80,26 +92,45 @@ class PropertyReviewsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingOverview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
+  Widget _buildRatingOverview(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder:
+              (context) => PropertyReviewsModal(
+                propertyId: propertyId,
+                propertyName: propertyName,
+              ),
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              reviewStats!.averageRating.toStringAsFixed(1),
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Text(
+                  reviewStats!.averageRating.toStringAsFixed(1),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildStars(reviewStats!.averageRating),
+              ],
             ),
-            const SizedBox(width: 8),
-            _buildStars(reviewStats!.averageRating),
+            const SizedBox(height: 4),
+            Text(
+              '${reviewStats!.totalReviews} review${reviewStats!.totalReviews != 1 ? 's' : ''} - Click to view',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          '${reviewStats!.totalReviews} review${reviewStats!.totalReviews != 1 ? 's' : ''}',
-          style: TextStyle(color: Colors.grey[600]),
-        ),
-      ],
+      ),
     );
   }
 

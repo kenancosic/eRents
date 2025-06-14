@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/repositories/property_repository.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
 import 'package:e_rents_desktop/base/service_locator.dart';
-import 'package:e_rents_desktop/utils/image_utils.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -78,7 +78,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                     return ListTile(
                       leading:
                           property.imageIds.isNotEmpty
-                              ? ImageUtils.buildImage(
+                              ? getService<ApiService>().buildImage(
                                 '/Image/${property.imageIds.first}',
                                 width: 50,
                                 height: 50,

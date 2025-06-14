@@ -4,6 +4,7 @@ export 'provider_state.dart';
 export 'cache_manager.dart';
 export 'repository.dart';
 export 'service_locator.dart';
+export 'lifecycle_mixin.dart';
 
 // Specialized providers
 export 'collection_provider.dart';

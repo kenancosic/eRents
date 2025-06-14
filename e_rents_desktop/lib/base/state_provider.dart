@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'lifecycle_mixin.dart';
 
 /// Base provider for simple state management
 ///
@@ -8,7 +9,7 @@ import 'package:flutter/foundation.dart';
 /// - User preferences
 /// - Form state
 /// - Navigation state
-class StateProvider<T> extends ChangeNotifier {
+class StateProvider<T> extends ChangeNotifier with LifecycleMixin {
   /// The current state value
   T _state;
 
@@ -59,6 +60,8 @@ class StateProvider<T> extends ChangeNotifier {
 
   /// Update the state
   void updateState(T newState) {
+    if (disposed) return;
+
     // Validate the new state if validator is provided
     if (_validator != null && !_validator(newState)) {
       debugPrint('StateProvider: State validation failed for $newState');
@@ -77,12 +80,14 @@ class StateProvider<T> extends ChangeNotifier {
         _addToHistory(_state);
       }
 
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 
   /// Reset to initial state (first entry in history if tracking, otherwise requires initial value)
   void reset([T? initialState]) {
+    if (disposed) return;
+
     if (_trackHistory && _history.isNotEmpty) {
       updateState(_history.first);
     } else if (initialState != null) {
@@ -94,6 +99,8 @@ class StateProvider<T> extends ChangeNotifier {
 
   /// Undo the last state change (only works if history tracking is enabled)
   void undo() {
+    if (disposed) return;
+
     if (!_trackHistory) {
       debugPrint('StateProvider: Cannot undo - history tracking is disabled');
       return;
@@ -105,12 +112,14 @@ class StateProvider<T> extends ChangeNotifier {
 
       // Set state to previous value without adding to history
       _state = _history.last;
-      notifyListeners();
+      safeNotifyListeners();
     }
   }
 
   /// Clear the state history
   void clearHistory() {
+    if (disposed) return;
+
     if (_trackHistory) {
       _history.clear();
       _addToHistory(_state);
@@ -119,11 +128,15 @@ class StateProvider<T> extends ChangeNotifier {
 
   /// Transform the current state using a function
   void transform(T Function(T) transformer) {
+    if (disposed) return;
+
     updateState(transformer(_state));
   }
 
   /// Update state conditionally
   void updateIf(bool Function(T) condition, T newState) {
+    if (disposed) return;
+
     if (condition(_state)) {
       updateState(newState);
     }
@@ -131,6 +144,8 @@ class StateProvider<T> extends ChangeNotifier {
 
   /// Add current state to history
   void _addToHistory(T state) {
+    if (disposed) return;
+
     _history.add(state);
 
     // Maintain maximum history size

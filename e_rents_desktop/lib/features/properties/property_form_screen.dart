@@ -270,13 +270,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
             SectionCard.withChildren(
               title: 'Property Features',
               titleIcon: Icons.construction_outlined,
-              children: [
-                _buildPropertyDetailsRow(formState, theme),
-                if (formState.rentingType == RentingType.daily) ...[
-                  const SizedBox(height: 16),
-                  _buildDailyRateRow(formState, theme),
-                ],
-              ],
+              children: [_buildPropertyDetailsRow(formState, theme)],
             ),
             SectionCard.withChildren(
               title: 'Amenities',
@@ -827,64 +821,6 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
               }
               if (area <= 0) {
                 return 'Area must be greater than 0';
-              }
-              return null;
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDailyRateRow(PropertyFormState formState, ThemeData theme) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildModernNumberField(
-            controller: formState.dailyRateController,
-            labelText: 'Daily Rate',
-            suffixText:
-                formState.currencyController.text.isNotEmpty
-                    ? formState.currencyController.text
-                    : 'BAM',
-            theme: theme,
-            isRequired: formState.rentingType == RentingType.daily,
-            leadingIcon: Icons.price_check_outlined,
-            keyboardType: TextInputType.number,
-            validator: (value) {
-              if (formState.rentingType == RentingType.daily &&
-                  (value == null || value.isEmpty)) {
-                return 'Daily rate is required for daily rentals';
-              }
-              if (value != null && value.isNotEmpty) {
-                final rate = double.tryParse(value);
-                if (rate == null) {
-                  return 'Please enter a valid daily rate';
-                }
-                if (rate <= 0) {
-                  return 'Daily rate must be positive';
-                }
-              }
-              return null;
-            },
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildModernNumberField(
-            controller: formState.minimumStayDaysController,
-            labelText: 'Min. Stay (days)',
-            theme: theme,
-            isRequired: false,
-            leadingIcon: Icons.calendar_today_outlined,
-            keyboardType: TextInputType.number,
-            validator: (value) {
-              if (value != null && value.isNotEmpty) {
-                final days = int.tryParse(value);
-                if (days == null) return 'Enter a valid number of days';
-                if (days < 1 && formState.rentingType == RentingType.daily) {
-                  return 'Minimum stay must be at least 1 day';
-                }
               }
               return null;
             },
