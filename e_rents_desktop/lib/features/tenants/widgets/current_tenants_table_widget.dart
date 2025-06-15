@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/widgets/table/custom_table.dart';
 import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
 import 'package:provider/provider.dart';
@@ -321,14 +320,16 @@ class CurrentTenantsTableWidget extends StatelessWidget {
       name: propertyData['title']?.toString() ?? 'Unknown Property',
       ownerId: int.tryParse(propertyData['ownerId']?.toString() ?? '0') ?? 0,
       description: propertyData['description']?.toString() ?? '',
-      type: PropertyType.apartment, // Default type
+      propertyTypeId: propertyData['propertyTypeId'],
+      propertyTypeName: propertyData['propertyTypeName'], // Default type
       price:
           (propertyData['price']?.toString() != null
               ? double.tryParse(propertyData['price'].toString()) ?? 0.0
               : 0.0),
-      rentingType: RentingType.monthly, // Default
-      status: PropertyStatus.available, // Default
-      imageIds: [], // Images fetched via ImageController
+      rentingTypeId: propertyData['rentingTypeId'],
+      rentingTypeName: propertyData['rentingTypeName'], // Default
+      status: propertyData['status'], // Default
+      imageIds: propertyData['imageIds'], // Images fetched via ImageController
       bedrooms: int.tryParse(propertyData['bedrooms']?.toString() ?? '0') ?? 0,
       bathrooms:
           int.tryParse(propertyData['bathrooms']?.toString() ?? '0') ?? 0,
@@ -336,10 +337,12 @@ class CurrentTenantsTableWidget extends StatelessWidget {
           (propertyData['area']?.toString() != null
               ? double.tryParse(propertyData['area'].toString()) ?? 0.0
               : 0.0),
-      maintenanceIssues: [], // Add required field
-      amenityIds: [], // Amenities fetched via AmenitiesController
+      maintenanceIssues:
+          propertyData['maintenanceIssues'], // Add required field
+      amenityIds:
+          propertyData['amenityIds'], // Amenities fetched via AmenitiesController
       dateAdded: DateTime.now(),
-      address: null,
+      address: propertyData['address'],
     );
   }
 }

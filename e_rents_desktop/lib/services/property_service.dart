@@ -4,14 +4,17 @@ import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/lookup_service.dart';
+import 'package:e_rents_desktop/base/app_error.dart';
 
-/// ✅ UNIVERSAL SYSTEM PROPERTY SERVICE - Full Universal System Integration
+/// Property Service - Clean Architecture Implementation
 ///
-/// This service provides property management using Universal System:
-/// - Universal System pagination as default
-/// - Non-paginated requests using noPaging=true parameter
-/// - CRUD operations with dynamic lookup integration
-/// - Landlord-specific property access and filtering
+/// This service handles all Property-related operations with:
+/// - Clean separation of concerns
+/// - Proper error handling
+/// - DTO transformation
+/// - Amenity and image management
+/// - Statistics and availability checking
+/// - Universal System pagination support
 class PropertyService extends ApiService {
   final LookupService _lookupService;
 
@@ -19,144 +22,384 @@ class PropertyService extends ApiService {
 
   String get endpoint => '/properties';
 
-  /// ✅ UNIVERSAL SYSTEM: Get paginated properties with full filtering support
-  /// DEFAULT METHOD - Uses pagination by default
-  /// Matches: GET /properties?page=1&pageSize=10&sortBy=Price&sortDesc=false
-  Future<Map<String, dynamic>> getPagedProperties(
-    Map<String, dynamic> params,
-  ) async {
-    try {
-      // Build query string from params
-      String queryString = '';
-      if (params.isNotEmpty) {
-        queryString =
-            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
-      }
+  // ========================================
+  // CORE CRUD OPERATIONS
+  // ========================================
 
-      final response = await get('$endpoint$queryString', authenticated: true);
-      return json.decode(response.body);
-    } catch (e) {
-      throw Exception('Failed to fetch paginated properties: $e');
-    }
-  }
-
-  /// ✅ UNIVERSAL SYSTEM: Get all properties without pagination
-  /// Uses noPaging=true for cases where all data is needed
+  /// Get all properties with optional filtering
+  /// Uses Universal System with noPaging=true for collection operations
   Future<List<Property>> getProperties({
     Map<String, String>? queryParams,
   }) async {
     try {
-      // Convert to Map<String, dynamic> and add noPaging + include flags
       final params = <String, dynamic>{
         'noPaging': 'true',
         'IncludeImages': 'true',
         'IncludeAmenities': 'true',
         'IncludeOwner': 'true',
+        'IncludePropertyType': 'true',
+        'IncludeRentingType': 'true',
+        ...?queryParams,
       };
-      if (queryParams != null) {
-        params.addAll(queryParams);
-      }
 
-      String queryString = '';
-      if (params.isNotEmpty) {
-        queryString =
-            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
-      }
-
-      final response = await get('$endpoint$queryString', authenticated: true);
+      final response = await get(_buildEndpoint(params), authenticated: true);
       final responseData = json.decode(response.body);
 
       // Handle Universal System response format
       List<dynamic> itemsJson;
       if (responseData is Map && responseData.containsKey('items')) {
-        // Universal System response with noPaging=true
         itemsJson = responseData['items'] as List<dynamic>;
       } else if (responseData is List) {
-        // Direct list response (fallback)
         itemsJson = responseData;
       } else {
         itemsJson = [];
       }
 
       return itemsJson.map((json) => Property.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch properties: $e');
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
     }
   }
 
-  /// ✅ UNIVERSAL SYSTEM: Get property count
-  /// Uses Universal System count or extracts from paged response
-  Future<int> getPropertyCount([Map<String, dynamic>? params]) async {
+  /// Get paginated properties for Universal System table support
+  Future<Map<String, dynamic>> getPagedProperties(
+    Map<String, dynamic> params,
+  ) async {
     try {
-      final queryParams = <String, dynamic>{
-        'pageSize': 1, // Minimal page size, we only need count
-        ...?params,
+      final response = await get(_buildEndpoint(params), authenticated: true);
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Get single property by ID with full relationships
+  Future<Property> getPropertyById(int propertyId) async {
+    try {
+      final params = {
+        'IncludeImages': 'true',
+        'IncludeAmenities': 'true',
+        'IncludeOwner': 'true',
+        'IncludePropertyType': 'true',
+        'IncludeRentingType': 'true',
+        'IncludeReviews': 'true',
       };
 
-      String queryString = '';
-      if (queryParams.isNotEmpty) {
-        queryString =
-            '?' +
-            queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
-      }
-
-      final response = await get('$endpoint$queryString', authenticated: true);
-      final responseData = json.decode(response.body);
-      return responseData['totalCount'] ?? 0;
-    } catch (e) {
-      throw Exception('Failed to get property count: $e');
+      final response = await get(
+        '$endpoint/$propertyId?${_buildQueryString(params)}',
+        authenticated: true,
+      );
+      final jsonResponse = json.decode(response.body);
+      return Property.fromJson(jsonResponse);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
     }
   }
 
-  /// ✅ CRUD: Get single property by ID
-  /// Matches: GET /properties/{id}
-  Future<Property> getPropertyById(int propertyId) async {
-    final response = await get('$endpoint/$propertyId', authenticated: true);
-    final Map<String, dynamic> jsonResponse = json.decode(response.body);
-    return Property.fromJson(jsonResponse);
-  }
-
-  /// ✅ CRUD: Create property
-  /// Matches: POST /properties
+  /// Create new property
   Future<Property> createProperty(Property property) async {
-    final createRequest = await _propertyToInsertRequest(property);
-    print(
-      'PropertyService: Creating property with data: ${json.encode(createRequest)}',
-    );
+    try {
+      final createRequest = await _buildInsertRequest(property);
 
-    final response = await post(endpoint, createRequest, authenticated: true);
-    final Map<String, dynamic> jsonResponse = json.decode(response.body);
-    return Property.fromJson(jsonResponse);
+      final response = await post(endpoint, createRequest, authenticated: true);
+      final jsonResponse = json.decode(response.body);
+      return Property.fromJson(jsonResponse);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 
-  /// ✅ CRUD: Update property
-  /// Matches: PUT /properties/{id}
-  Future<Property> updateProperty(int propertyId, Property propertyData) async {
-    final updateRequest = await _propertyToUpdateRequest(propertyData);
-    print(
-      'PropertyService: Updating property $propertyId with data: ${json.encode(updateRequest)}',
-    );
+  /// Update existing property
+  Future<Property> updateProperty(int propertyId, Property property) async {
+    try {
+      final updateRequest = await _buildUpdateRequest(property);
 
-    final response = await put(
-      '$endpoint/$propertyId',
-      updateRequest,
-      authenticated: true,
-    );
-    final Map<String, dynamic> jsonResponse = json.decode(response.body);
-    return Property.fromJson(jsonResponse);
+      final response = await put(
+        '$endpoint/$propertyId',
+        updateRequest,
+        authenticated: true,
+      );
+      final jsonResponse = json.decode(response.body);
+      return Property.fromJson(jsonResponse);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 
-  /// ✅ CRUD: Delete property
-  /// Matches: DELETE /properties/{id}
+  /// Delete property
   Future<void> deleteProperty(int propertyId) async {
-    await delete('$endpoint/$propertyId', authenticated: true);
+    try {
+      await delete('$endpoint/$propertyId', authenticated: true);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
   }
 
-  // Helper method to convert Property to PropertyInsertRequest DTO
-  Future<Map<String, dynamic>> _propertyToInsertRequest(
-    Property property,
+  // ========================================
+  // PROPERTY SEARCH & FILTERING
+  // ========================================
+
+  /// Search properties with advanced filtering
+  Future<List<Property>> searchProperties({
+    String? name,
+    int? ownerId,
+    String? description,
+    String? status,
+    String? currency,
+    int? propertyTypeId,
+    int? rentingTypeId,
+    int? bedrooms,
+    int? bathrooms,
+    int? minimumStayDays,
+    double? minPrice,
+    double? maxPrice,
+    double? minArea,
+    double? maxArea,
+    DateTime? availableFrom,
+    DateTime? availableTo,
+    String? cityName,
+    String? stateName,
+    String? countryName,
+    List<int>? amenityIds,
+    double? minRating,
+    double? maxRating,
+    double? latitude,
+    double? longitude,
+    double? radius,
+  }) async {
+    try {
+      final searchParams = <String, String>{
+        'noPaging': 'true',
+        'IncludeImages': 'true',
+        'IncludeAmenities': 'true',
+        'IncludeOwner': 'true',
+        'IncludePropertyType': 'true',
+        'IncludeRentingType': 'true',
+      };
+
+      // Add search parameters
+      if (name != null) searchParams['name'] = name;
+      if (ownerId != null) searchParams['ownerId'] = ownerId.toString();
+      if (description != null) searchParams['description'] = description;
+      if (status != null) searchParams['status'] = status;
+      if (currency != null) searchParams['currency'] = currency;
+      if (propertyTypeId != null)
+        searchParams['propertyTypeId'] = propertyTypeId.toString();
+      if (rentingTypeId != null)
+        searchParams['rentingTypeId'] = rentingTypeId.toString();
+      if (bedrooms != null) searchParams['bedrooms'] = bedrooms.toString();
+      if (bathrooms != null) searchParams['bathrooms'] = bathrooms.toString();
+      if (minimumStayDays != null)
+        searchParams['minimumStayDays'] = minimumStayDays.toString();
+      if (minPrice != null) searchParams['minPrice'] = minPrice.toString();
+      if (maxPrice != null) searchParams['maxPrice'] = maxPrice.toString();
+      if (minArea != null) searchParams['minArea'] = minArea.toString();
+      if (maxArea != null) searchParams['maxArea'] = maxArea.toString();
+      if (availableFrom != null)
+        searchParams['availableFrom'] = availableFrom.toIso8601String();
+      if (availableTo != null)
+        searchParams['availableTo'] = availableTo.toIso8601String();
+      if (cityName != null) searchParams['cityName'] = cityName;
+      if (stateName != null) searchParams['stateName'] = stateName;
+      if (countryName != null) searchParams['countryName'] = countryName;
+      if (amenityIds != null && amenityIds.isNotEmpty) {
+        searchParams['amenityIds'] = amenityIds.join(',');
+      }
+      if (minRating != null) searchParams['minRating'] = minRating.toString();
+      if (maxRating != null) searchParams['maxRating'] = maxRating.toString();
+      if (latitude != null) searchParams['latitude'] = latitude.toString();
+      if (longitude != null) searchParams['longitude'] = longitude.toString();
+      if (radius != null) searchParams['radius'] = radius.toString();
+
+      return await getProperties(queryParams: searchParams);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Get available properties
+  Future<List<Property>> getAvailableProperties() async {
+    return await searchProperties(status: 'Available');
+  }
+
+  /// Get properties by rental type
+  Future<List<Property>> getPropertiesByRentalType(String rentalType) async {
+    // Map rental type name to enum and get ID
+    RentingType? rentingTypeEnum;
+    switch (rentalType.toLowerCase()) {
+      case 'daily':
+        rentingTypeEnum = RentingType.daily;
+        break;
+      case 'monthly':
+        rentingTypeEnum = RentingType.monthly;
+        break;
+    }
+
+    if (rentingTypeEnum != null) {
+      final rentingTypeId = await _lookupService.getRentingTypeId(
+        rentingTypeEnum,
+      );
+      return await searchProperties(rentingTypeId: rentingTypeId);
+    }
+
+    return await searchProperties();
+  }
+
+  /// Get properties by owner
+  Future<List<Property>> getPropertiesByOwner(int ownerId) async {
+    return await searchProperties(ownerId: ownerId);
+  }
+
+  // ========================================
+  // AMENITY MANAGEMENT
+  // ========================================
+
+  /// Get all amenities
+  Future<List<Map<String, dynamic>>> getAmenities() async {
+    try {
+      final response = await get('/amenities', authenticated: true);
+      final List<dynamic> data = json.decode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Add new amenity
+  Future<Map<String, dynamic>> addAmenity(String amenityName) async {
+    try {
+      final response = await post('/amenities', {
+        'amenityName': amenityName,
+      }, authenticated: true);
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Update property amenities
+  Future<void> updatePropertyAmenities(
+    int propertyId,
+    List<int> amenityIds,
   ) async {
-    final request = {
+    try {
+      await put('$endpoint/$propertyId/amenities', {
+        'amenityIds': amenityIds,
+      }, authenticated: true);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  // ========================================
+  // IMAGE MANAGEMENT
+  // ========================================
+
+  /// Upload property image
+  Future<Map<String, dynamic>> uploadPropertyImage(
+    int propertyId,
+    Map<String, dynamic> imageRequest,
+  ) async {
+    try {
+      final response = await post(
+        '$endpoint/$propertyId/images',
+        imageRequest,
+        authenticated: true,
+      );
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Update property images
+  Future<void> updatePropertyImages(int propertyId, List<int> imageIds) async {
+    try {
+      await put('$endpoint/$propertyId/images', {
+        'imageIds': imageIds,
+      }, authenticated: true);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  // ========================================
+  // AVAILABILITY & BUSINESS LOGIC
+  // ========================================
+
+  /// Check property availability
+  Future<Map<String, dynamic>> getPropertyAvailability(
+    int propertyId,
+    DateTime? start,
+    DateTime? end,
+  ) async {
+    try {
+      final params = <String, String>{};
+      if (start != null) params['start'] = start.toIso8601String();
+      if (end != null) params['end'] = end.toIso8601String();
+
+      final queryString =
+          params.isNotEmpty ? '?${_buildQueryString(params)}' : '';
+      final response = await get(
+        '$endpoint/$propertyId/availability$queryString',
+        authenticated: true,
+      );
+      return json.decode(response.body);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Update property status
+  Future<void> updatePropertyStatus(int propertyId, String status) async {
+    try {
+      await put('$endpoint/$propertyId/status', {
+        'status': status,
+      }, authenticated: true);
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  // ========================================
+  // STATISTICS & ANALYTICS
+  // ========================================
+
+  /// Get popular properties
+  Future<List<Property>> getPopularProperties({int limit = 10}) async {
+    try {
+      final response = await get(
+        '$endpoint/popular?limit=$limit',
+        authenticated: true,
+      );
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Property.fromJson(json)).toList();
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Get property recommendations for user
+  Future<List<Property>> getPropertyRecommendations(int userId) async {
+    try {
+      final response = await get(
+        '$endpoint/recommend?userId=$userId',
+        authenticated: true,
+      );
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Property.fromJson(json)).toList();
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  // ========================================
+  // PRIVATE HELPER METHODS
+  // ========================================
+
+  /// Build PropertyInsertRequest DTO
+  Future<Map<String, dynamic>> _buildInsertRequest(Property property) async {
+    return {
       'name': property.name,
       'description': property.description,
       'price': property.price,
@@ -165,87 +408,43 @@ class PropertyService extends ApiService {
       'bathrooms': property.bathrooms > 0 ? property.bathrooms : 1,
       'area': property.area,
       'minimumStayDays': property.minimumStayDays,
-      // ✅ IMPROVED: Use LookupService for dynamic ID mapping
-      'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),
-      'rentingTypeId': await _lookupService.getRentingTypeId(
-        property.rentingType,
-      ),
-      'status': await _getPropertyStatusString(property.status),
-      // IMPROVED: Send amenityIds for better performance and type safety
-      'amenityIds': property.amenityIds ?? [],
-      // Extract image IDs from the images list
+      'requiresApproval': property.requiresApproval,
+      'propertyTypeId':
+          property.propertyTypeId ??
+          await _lookupService.getPropertyTypeId(property.type),
+      'rentingTypeId':
+          property.rentingTypeId ??
+          await _lookupService.getRentingTypeId(property.rentingType),
+      'status': property.status ?? 'Available',
+      'amenityIds': property.amenityIds,
       'imageIds': property.imageIds,
+      if (property.address != null)
+        'address': _transformAddressForBackend(property.address!),
     };
-
-    // Only add address if it has meaningful data
-    if (property.address != null) {
-      final addressJson = _transformAddressForBackend(property.address!);
-      if (addressJson != null) {
-        request['address'] = addressJson;
-      }
-    }
-
-    return request;
   }
 
-  // Helper method to convert Property to PropertyUpdateRequest DTO
-  Future<Map<String, dynamic>> _propertyToUpdateRequest(
-    Property property,
-  ) async {
-    final request = {
-      'name': property.name,
-      'description': property.description,
-      'price': property.price,
-      'currency': property.currency,
-      'bedrooms': property.bedrooms > 0 ? property.bedrooms : 1,
-      'bathrooms': property.bathrooms > 0 ? property.bathrooms : 1,
-      'area': property.area,
-      'minimumStayDays': property.minimumStayDays,
-      // ✅ IMPROVED: Use LookupService for dynamic ID mapping
-      'propertyTypeId': await _lookupService.getPropertyTypeId(property.type),
-      'rentingTypeId': await _lookupService.getRentingTypeId(
-        property.rentingType,
-      ),
-      'status': await _getPropertyStatusString(property.status),
-      // IMPROVED: Send amenityIds for better performance and type safety
-      'amenityIds': property.amenityIds ?? [],
-      // Extract image IDs from the images list
-      'imageIds': property.imageIds,
-    };
-
-    // Only add address if it has meaningful data
-    if (property.address != null) {
-      final addressJson = _transformAddressForBackend(property.address!);
-      if (addressJson != null) {
-        request['address'] = addressJson;
-      }
-    }
-
-    return request;
+  /// Build PropertyUpdateRequest DTO
+  Future<Map<String, dynamic>> _buildUpdateRequest(Property property) async {
+    return await _buildInsertRequest(property); // Same structure for updates
   }
 
-  // Transform address to match backend DTO structure
+  /// Transform address for backend compatibility
   Map<String, dynamic>? _transformAddressForBackend(Address address) {
-    // Check if address has meaningful data
-    if (address.isEmpty) {
-      return null;
-    }
-
-    // Use the unified Address structure that aligns with backend AddressRequest
-    final addressJson = address.toJson();
-
-    print(
-      'PropertyService: Transformed address for backend: ${json.encode(addressJson)}',
-    );
-    return addressJson;
+    if (address.isEmpty) return null;
+    return address.toJson();
   }
 
-  // ✅ REPLACED: Use LookupService for dynamic mapping instead of hardcoded values
-  // Property status to backend string mapping (using lookup service internally)
-  Future<String> _getPropertyStatusString(PropertyStatus status) async {
-    final lookupData = await _lookupService.getAllLookupData();
-    final id = await _lookupService.getPropertyStatusId(status);
-    final item = lookupData.getPropertyStatusById(id);
-    return item?.name ?? 'Available'; // fallback to Available if not found
+  /// Build endpoint URL with query parameters
+  String _buildEndpoint(Map<String, dynamic> params) {
+    final queryString = _buildQueryString(params);
+    return queryString.isNotEmpty ? '$endpoint?$queryString' : endpoint;
+  }
+
+  /// Build query string from parameters
+  String _buildQueryString(Map<String, dynamic> params) {
+    if (params.isEmpty) return '';
+    return params.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}')
+        .join('&');
   }
 }

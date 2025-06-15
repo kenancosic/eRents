@@ -35,6 +35,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
+import 'services/review_service.dart';
 // ✅ NEW: Import base infrastructure and new providers
 import 'features/properties/providers/property_detail_provider.dart';
 import 'features/properties/providers/property_stats_provider.dart';
@@ -334,7 +335,10 @@ class AppRouter {
     final registry = ProviderRegistry();
 
     final propertyDetailProvider = registry.getOrCreate<PropertyDetailProvider>(
-      () => PropertyDetailProvider(getService()),
+      () => PropertyDetailProvider(
+        getService<PropertyRepository>(),
+        reviewService: getService<ReviewService>(),
+      ),
     );
     propertyDetailProvider.loadPropertyById(int.parse(propertyId));
 
@@ -398,12 +402,15 @@ class AppRouter {
       // initializeAndFetchIfNeeded could be called if the form needed initial data from it.
       return ChangeNotifierProvider.value(
         value: collectionProvider,
-        child: const PropertyFormScreen(propertyId: null),
+        child: const PropertyFormScreen(property: null),
       );
     } else {
       // Edit mode
       final detailProvider = registry.getOrCreate<PropertyDetailProvider>(
-        () => PropertyDetailProvider(getService()),
+        () => PropertyDetailProvider(
+          getService<PropertyRepository>(),
+          reviewService: getService<ReviewService>(),
+        ),
       );
       detailProvider.loadPropertyById(int.parse(propertyId)); // Safe call
 
@@ -418,7 +425,11 @@ class AppRouter {
           ChangeNotifierProvider.value(value: detailProvider),
           ChangeNotifierProvider.value(value: collectionProvider),
         ],
-        child: PropertyFormScreen(propertyId: propertyId),
+        child: Consumer<PropertyDetailProvider>(
+          builder: (context, detailProvider, _) {
+            return PropertyFormScreen(property: detailProvider.property);
+          },
+        ),
       );
     }
   }

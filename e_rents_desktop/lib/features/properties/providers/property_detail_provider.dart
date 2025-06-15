@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import '../../../base/base.dart';
 import '../../../models/property.dart';
 import '../../../models/renting_type.dart';
-import '../../../repositories/property_repository.dart';
+
+import '../../../models/review.dart';
+import '../../../services/review_service.dart';
 
 /// Detail provider for managing single property data
 ///
@@ -9,14 +12,20 @@ import '../../../repositories/property_repository.dart';
 /// focused only on property detail management. Related data (bookings, reviews, etc.)
 /// are handled by separate specialized providers.
 class PropertyDetailProvider extends DetailProvider<Property> {
-  PropertyDetailProvider(PropertyRepository super.repository);
+  final ReviewService reviewService;
+
+  PropertyDetailProvider(
+    PropertyRepository super.repository, {
+    required this.reviewService,
+  });
 
   /// Get the property repository with proper typing
   PropertyRepository get propertyRepository => repository as PropertyRepository;
 
-  // Implementation required by DetailProvider
-  @override
-  String _getItemId(Property item) => item.propertyId.toString();
+  /// List of reviews for the current property
+  List<Review> reviews = [];
+  bool areReviewsLoading = false;
+  AppError? reviewsError;
 
   // Property-specific convenience getters
 
@@ -24,13 +33,14 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   Property? get property => item;
 
   /// Check if property is available for rent
-  bool get isAvailable => property?.status == PropertyStatus.available;
+  bool get isAvailable => property?.propertyStatus == PropertyStatus.available;
 
   /// Check if property is currently rented
-  bool get isRented => property?.status == PropertyStatus.rented;
+  bool get isRented => property?.propertyStatus == PropertyStatus.rented;
 
   /// Check if property is under maintenance
-  bool get inMaintenance => property?.status == PropertyStatus.maintenance;
+  bool get inMaintenance =>
+      property?.propertyStatus == PropertyStatus.maintenance;
 
   /// Get property title safely
   String get title => property?.name ?? 'Unknown Property';
@@ -44,11 +54,11 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   /// Get property currency safely
   String get currency => property?.currency ?? 'BAM';
 
-  /// Get property type safely
-  PropertyType get propertyType => property?.type ?? PropertyType.apartment;
+  /// Get property type safely - NO FALLBACK to avoid masking data issues
+  PropertyType? get propertyType => property?.type;
 
-  /// Get property renting type safely
-  RentingType get rentingType => property?.rentingType ?? RentingType.monthly;
+  /// Get property renting type safely - NO FALLBACK to avoid masking data issues
+  RentingType? get rentingType => property?.rentingType;
 
   /// Get number of bedrooms safely
   int get bedrooms => property?.bedrooms ?? 0;
@@ -99,9 +109,9 @@ class PropertyDetailProvider extends DetailProvider<Property> {
 
   /// Calculate monthly income potential
   double get monthlyIncomeEstimate {
-    if (property == null) return 0.0;
+    if (property == null || rentingType == null) return 0.0;
 
-    switch (property!.rentingType) {
+    switch (rentingType!) {
       case RentingType.daily:
         // Assume 70% occupancy rate for daily rentals
         return property!.price * 30 * 0.7;
@@ -118,7 +128,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
 
   /// Get property status display text
   String get statusDisplayText {
-    switch (property?.status) {
+    switch (property?.propertyStatus) {
       case PropertyStatus.available:
         return 'Available';
       case PropertyStatus.rented:
@@ -127,7 +137,7 @@ class PropertyDetailProvider extends DetailProvider<Property> {
         return 'Under Maintenance';
       case PropertyStatus.unavailable:
         return 'Unavailable';
-      default:
+      case null:
         return 'Unknown';
     }
   }
@@ -145,14 +155,18 @@ class PropertyDetailProvider extends DetailProvider<Property> {
         return 'Townhouse';
       case PropertyType.studio:
         return 'Studio';
-      default:
+      case null:
         return 'Unknown';
     }
   }
 
-  /// Get renting type display text
+  /// Get renting type display text with improved error handling
   String get rentingTypeDisplayText {
-    switch (rentingType) {
+    if (rentingType == null) {
+      return 'Type Unknown';
+    }
+
+    switch (rentingType!) {
       case RentingType.daily:
         return 'Daily Rental';
       case RentingType.monthly:
@@ -160,16 +174,66 @@ class PropertyDetailProvider extends DetailProvider<Property> {
     }
   }
 
+  /// Get renting type display name for UI consistency
+  String get rentingTypeDisplayName {
+    return rentingType?.displayName ?? 'Unknown';
+  }
+
   // Enhanced loading methods
 
-  /// Load property by ID with enhanced error handling
+  /// Load property by ID with enhanced error handling and debugging
   Future<void> loadPropertyById(int id) async {
+    debugPrint('🏠 PropertyDetailProvider: Loading property ID: $id');
+
+    // Reset previous data
+    reviews = [];
+
+    // Load property and then reviews
     await loadItem(id.toString());
+
+    // Debug logging
+    if (item != null) {
+      debugPrint('🏠 PropertyDetailProvider: Property loaded successfully');
+      debugPrint('🏠 PropertyDetailProvider: Property name: ${item!.name}');
+      debugPrint(
+        '🏠 PropertyDetailProvider: Renting type: ${item!.rentingType}',
+      );
+      debugPrint(
+        '🏠 PropertyDetailProvider: Renting type display: ${item!.rentingType.displayName}',
+      );
+
+      await _loadReviews(id.toString());
+    } else {
+      debugPrint(
+        '🏠 PropertyDetailProvider: Failed to load property or property is null',
+      );
+    }
+  }
+
+  /// Load reviews for a given property ID
+  Future<void> _loadReviews(String propertyId) async {
+    areReviewsLoading = true;
+    reviewsError = null;
+    safeNotifyListeners();
+
+    try {
+      reviews = await reviewService.getPropertyReviews(propertyId);
+      debugPrint('🏠 PropertyDetailProvider: Loaded ${reviews.length} reviews');
+    } catch (e, stackTrace) {
+      reviewsError = AppError.fromException(e, stackTrace);
+      debugPrint('🏠 PropertyDetailProvider: Failed to load reviews: $e');
+    } finally {
+      areReviewsLoading = false;
+      safeNotifyListeners();
+    }
   }
 
   /// Refresh property data from server
   Future<void> refreshProperty() async {
     if (property != null) {
+      debugPrint(
+        '🏠 PropertyDetailProvider: Refreshing property ${property!.propertyId}',
+      );
       await loadPropertyById(property!.propertyId);
     }
   }
@@ -177,6 +241,9 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   /// Force reload property from server (bypass cache)
   Future<void> forceReloadProperty() async {
     if (property != null) {
+      debugPrint(
+        '🏠 PropertyDetailProvider: Force reloading property ${property!.propertyId}',
+      );
       await propertyRepository.clearCache();
       await loadPropertyById(property!.propertyId);
     }
@@ -192,7 +259,9 @@ class PropertyDetailProvider extends DetailProvider<Property> {
         price > 0 &&
         bedrooms > 0 &&
         bathrooms > 0 &&
-        area > 0;
+        area > 0 &&
+        propertyType != null &&
+        rentingType != null;
   }
 
   /// Get validation errors for property data
@@ -210,6 +279,8 @@ class PropertyDetailProvider extends DetailProvider<Property> {
     if (bedrooms <= 0) errors.add('Property must have at least 1 bedroom');
     if (bathrooms <= 0) errors.add('Property must have at least 1 bathroom');
     if (area <= 0) errors.add('Property area must be greater than 0');
+    if (propertyType == null) errors.add('Property type is missing');
+    if (rentingType == null) errors.add('Renting type is missing');
 
     return errors;
   }
@@ -219,19 +290,18 @@ class PropertyDetailProvider extends DetailProvider<Property> {
 
   // Helper methods for UI
 
-  /// Get formatted price string
+  /// Get formatted price string with proper handling
   String getFormattedPrice() {
     if (property == null) return 'N/A';
+    if (rentingType == null) return '${price.toStringAsFixed(0)} $currency';
 
     final priceText = '${price.toStringAsFixed(0)} $currency';
 
-    switch (rentingType) {
+    switch (rentingType!) {
       case RentingType.daily:
         return '$priceText/day';
       case RentingType.monthly:
         return '$priceText/month';
-      default:
-        return priceText;
     }
   }
 
@@ -251,5 +321,28 @@ class PropertyDetailProvider extends DetailProvider<Property> {
     if (property == null) return 'Property information unavailable';
 
     return '${getBedroomBathroomInfo()}, ${getFormattedArea()}, ${getFormattedPrice()}';
+  }
+
+  /// Check if property has consistent data
+  bool get hasConsistentData {
+    return property != null &&
+        propertyType != null &&
+        rentingType != null &&
+        validationErrors.isEmpty;
+  }
+
+  /// Get debug information for troubleshooting
+  String get debugInfo {
+    if (property == null) return 'Property is null';
+
+    return '''
+Property ID: ${property!.propertyId}
+Property Name: ${property!.name}
+Property Type: ${propertyType?.toString() ?? 'NULL'}
+Renting Type: ${rentingType?.toString() ?? 'NULL'}
+Renting Type Display: ${rentingType?.displayName ?? 'NULL'}
+Price: ${property!.price} ${property!.currency}
+Status: ${property!.status}
+    ''';
   }
 }

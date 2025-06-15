@@ -68,6 +68,7 @@ class PropertyFormFields {
     required TextEditingController controller,
     required String labelText,
     String? suffixText,
+    TextInputType? keyboardType,
     int maxLines = 1,
     int? flex,
   }) {
@@ -75,6 +76,7 @@ class PropertyFormFields {
       controller: controller,
       labelText: labelText,
       suffixText: suffixText,
+      keyboardType: keyboardType,
       maxLines: maxLines,
       flex: flex,
       validator: (value) {

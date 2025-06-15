@@ -1,7 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/models/review.dart';
-import 'package:e_rents_desktop/models/booking_summary.dart'; // For PropertyReviewStats
+import 'package:e_rents_desktop/models/property_stats_data.dart';
 
 /// ✅ UNIVERSAL SYSTEM REVIEW SERVICE - Full Universal System Integration
 ///
@@ -74,19 +75,19 @@ class ReviewService extends ApiService {
   /// ✅ PROPERTY SPECIFIC: Get reviews for a specific property
   /// Uses Universal System filtering by propertyId
   Future<List<Review>> getPropertyReviews(String propertyId) async {
-    print(
+    debugPrint(
       'ReviewService: Attempting to fetch reviews for property $propertyId...',
     );
     try {
       // Use Universal System with propertyId filter and noPaging=true
       final reviews = await getAllReviews({'propertyId': propertyId});
 
-      print(
+      debugPrint(
         'ReviewService: Successfully fetched ${reviews.length} reviews for property $propertyId.',
       );
       return reviews;
     } catch (e) {
-      print(
+      debugPrint(
         'ReviewService: Error loading reviews for property $propertyId: $e',
       );
       return []; // Return empty list on error for backward compatibility
@@ -174,7 +175,7 @@ class ReviewService extends ApiService {
   /// ✅ SPECIALIZED: Get property review statistics
   /// Matches: GET /reviews/{propertyId}/average-rating (specialized endpoint)
   Future<double> getAverageRating(String propertyId) async {
-    print(
+    debugPrint(
       'ReviewService: Attempting to fetch average rating for property $propertyId...',
     );
     try {
@@ -186,7 +187,7 @@ class ReviewService extends ApiService {
 
       final ratingValue = data['averageRating'];
       if (ratingValue == null) {
-        print(
+        debugPrint(
           'ReviewService: Average rating for property $propertyId was null from backend.',
         );
         throw Exception(
@@ -202,7 +203,7 @@ class ReviewService extends ApiService {
             double.tryParse(ratingValue) ??
             -1.0; // Use -1 or throw to indicate parsing failure
         if (parsedRating == -1.0) {
-          print(
+          debugPrint(
             'ReviewService: Failed to parse average rating string "$ratingValue" for property $propertyId.',
           );
           throw Exception(
@@ -210,19 +211,19 @@ class ReviewService extends ApiService {
           );
         }
       } else {
-        print(
+        debugPrint(
           'ReviewService: Unexpected type for average rating "$ratingValue" for property $propertyId.',
         );
         throw Exception(
           'Unexpected data type for average rating for property $propertyId.',
         );
       }
-      print(
+      debugPrint(
         'ReviewService: Successfully fetched average rating $parsedRating for property $propertyId.',
       );
       return parsedRating;
     } catch (e) {
-      print(
+      debugPrint(
         'ReviewService: Error loading average rating for property $propertyId: $e',
       );
       throw Exception(
@@ -234,7 +235,7 @@ class ReviewService extends ApiService {
   /// ✅ SPECIALIZED: Get property review statistics
   /// Note: This endpoint may be moved to PropertiesController in the future
   Future<PropertyReviewStats> getPropertyReviewStats(String propertyId) async {
-    print(
+    debugPrint(
       'ReviewService: Attempting to fetch review stats for property $propertyId...',
     );
     try {
@@ -243,12 +244,12 @@ class ReviewService extends ApiService {
         authenticated: true,
       );
       final Map<String, dynamic> data = json.decode(response.body);
-      print(
+      debugPrint(
         'ReviewService: Successfully fetched review stats for property $propertyId.',
       );
       return PropertyReviewStats.fromJson(data);
     } catch (e) {
-      print(
+      debugPrint(
         'ReviewService: Error loading review stats for property $propertyId: $e',
       );
       throw Exception(
@@ -285,7 +286,7 @@ class ReviewService extends ApiService {
       final replies = await getAllReviews({'parentReviewId': parentReviewId});
       return replies;
     } catch (e) {
-      print(
+      debugPrint(
         'ReviewService: Error loading replies for review $parentReviewId: $e',
       );
       return [];

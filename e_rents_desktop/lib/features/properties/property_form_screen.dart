@@ -1,876 +1,361 @@
-import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/properties/models/property_form_state.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_form_fields.dart';
 import 'package:e_rents_desktop/models/lookup_data.dart';
-import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/models/property.dart';
+
+import 'package:e_rents_desktop/providers/lookup_provider.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
-import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
-import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/widgets/common/section_header.dart';
+import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
+import 'package:e_rents_desktop/widgets/inputs/address_input.dart';
 
-import './models/property_form_state.dart';
+class PropertyFormScreen extends StatelessWidget {
+  final Property? property;
 
-class PropertyFormScreen extends StatefulWidget {
-  final String? propertyId;
-
-  const PropertyFormScreen({super.key, this.propertyId});
+  const PropertyFormScreen({super.key, this.property});
 
   @override
-  State<PropertyFormScreen> createState() => _PropertyFormScreenState();
+  Widget build(BuildContext context) {
+    // Using a simple key for the provider to ensure it's recreated
+    // if we navigate to the form for a different property.
+    final key = ValueKey(property?.propertyId ?? 'new');
+
+    return ChangeNotifierProvider(
+      key: key,
+      create: (context) {
+        final lookupProvider = context.read<LookupProvider>();
+        final formState = PropertyFormState(lookupProvider: lookupProvider);
+        if (property != null) {
+          formState.populateFromProperty(property!);
+        }
+        return formState;
+      },
+      child: _PropertyFormScreenContent(
+        isEditMode: property != null,
+        initialProperty: property,
+      ),
+    );
+  }
 }
 
-class _PropertyFormScreenState extends State<PropertyFormScreen> {
+class _PropertyFormScreenContent extends StatefulWidget {
+  final bool isEditMode;
+  final Property? initialProperty;
+
+  const _PropertyFormScreenContent({
+    required this.isEditMode,
+    this.initialProperty,
+  });
+
+  @override
+  State<_PropertyFormScreenContent> createState() =>
+      _PropertyFormScreenContentState();
+}
+
+class _PropertyFormScreenContentState
+    extends State<_PropertyFormScreenContent> {
   final _formKey = GlobalKey<FormState>();
-  PropertyFormState? _formState;
-  Property? _initialProperty;
-  bool _isEditMode = false;
-  bool _formInitialized = false;
+  bool _isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _isEditMode = widget.propertyId != null;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Initialize form state with lookup provider once it's available
-    if (!_formInitialized && mounted) {
-      final lookupProvider = context.read<LookupProvider>();
-      _formState = PropertyFormState(lookupProvider: lookupProvider);
-      _formInitialized = true;
-
-      if (_isEditMode) {
-        _fetchPropertyData();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _formState?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _fetchPropertyData() async {
-    if (!mounted || _formState == null) return;
-    _formState!.setFetchingState(true);
-
-    try {
-      final detailProvider = context.read<PropertyDetailProvider>();
-      final propertyId = int.tryParse(widget.propertyId!);
-      if (propertyId == null) {
-        throw Exception('Invalid property ID: ${widget.propertyId}');
-      }
-
-      // PropertyDetailProvider should already have loaded the property via router factory
-      _initialProperty = detailProvider.property;
-
-      if (_initialProperty != null) {
-        _formState!.populateFromProperty(_initialProperty!);
-      } else {
-        _formState!.setFetchingState(
-          false,
-          'Property with ID ${widget.propertyId} not found.',
-        );
-      }
-    } catch (e) {
-      _formState!.setFetchingState(
-        false,
-        "Failed to fetch property data: ${e.toString()}",
-      );
-    } finally {
-      if (mounted) {
-        _formState!.setFetchingState(false);
-      }
-    }
-  }
-
-  Future<void> _saveProperty() async {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fix the validation errors before saving.'),
-          backgroundColor: Colors.orangeAccent,
+          content: Text('Please correct the errors in the form.'),
+          backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    if (!mounted) return;
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId = authProvider.currentUser?.id ?? 0;
+    _formKey.currentState!.save();
+    setState(() => _isLoading = true);
 
-    if (currentUserId == 0) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Error: User not authenticated. Cannot save property.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
+    final formState = context.read<PropertyFormState>();
+    final authProvider = context.read<AuthProvider>();
+    final collectionProvider = context.read<PropertyCollectionProvider>();
 
     try {
-      if (_formState == null) {
-        throw Exception('Form not initialized');
+      final user = authProvider.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated.');
       }
+      final currentUserId = user.id;
 
-      final propertyToSave = _formState!.createProperty(
+      final propertyToSave = formState.createProperty(
         currentUserId,
-        _initialProperty,
+        widget.initialProperty,
       );
 
-      if (!mounted) return;
-      final collectionProvider = context.read<PropertyCollectionProvider>();
-
-      if (_isEditMode) {
+      if (widget.isEditMode) {
         await collectionProvider.updateItem(
           propertyToSave.propertyId.toString(),
           propertyToSave,
         );
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Property "${propertyToSave.name}" updated successfully!',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
       } else {
         await collectionProvider.addItem(propertyToSave);
-        if (!mounted) return;
+      }
+
+      // Also update the detail provider if we are editing and it holds this item
+      if (widget.isEditMode && mounted) {
+        final detailProvider = context.read<PropertyDetailProvider>();
+        if (detailProvider.property?.propertyId == propertyToSave.propertyId) {
+          await detailProvider.forceReloadProperty();
+        }
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Property "${propertyToSave.name}" created successfully!',
-            ),
-            backgroundColor: Colors.green,
+            content: Text('Failed to save property: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
-
-      if (!mounted) return;
-      context.pop();
-    } catch (e) {
-      if (!mounted) return;
-      String errorMessage = 'Failed to save property: ';
-      if (e.toString().contains('401') ||
-          e.toString().contains('Unauthorized')) {
-        errorMessage += 'Authentication required. Please log in again.';
-      } else if (e.toString().contains('403') ||
-          e.toString().contains('Forbidden')) {
-        errorMessage += 'You do not have permission to perform this action.';
-      } else if (e.toString().contains('400') ||
-          e.toString().contains('Bad Request')) {
-        errorMessage += 'Invalid data provided. Please check your inputs.';
-      } else if (e.toString().contains('500') ||
-          e.toString().contains('Internal Server Error')) {
-        errorMessage += 'Server error. Please try again later.';
-      } else {
-        errorMessage += e.toString().replaceAll('Exception: ', '');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 5),
-        ),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final formState = context.watch<PropertyFormState>();
 
-    // Show loading while form is being initialized
-    if (_formState == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(_isEditMode ? 'Edit Property' : 'Add New Property'),
-          elevation: 1,
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Initializing form...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ChangeNotifierProvider.value(
-      value: _formState!,
-      child: Consumer<PropertyFormState>(
-        builder: (context, formState, child) {
-          return LoadingOrErrorWidget(
-            isLoading: formState.isFetchingData,
-            error: formState.fetchError,
-            onRetry: _isEditMode ? _fetchPropertyData : null,
-            errorTitle: 'Failed to Load Property Data',
-            child: Scaffold(
-              appBar: AppBar(
-                title: Text(_isEditMode ? 'Edit Property' : 'Add New Property'),
-                elevation: 1,
-              ),
-              body: _buildForm(formState, theme),
-              bottomNavigationBar: _buildBottomAppBar(theme),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildForm(PropertyFormState formState, ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SectionCard.withChildren(
-              title: 'Basic Information',
-              titleIcon: Icons.info_outline,
-              children: [
-                _buildTitleAndPriceRow(formState, theme),
-                const SizedBox(height: 16),
-                _buildDescriptionField(formState, theme),
-              ],
-            ),
-            SectionCard.withChildren(
-              title: 'Property Type & Status',
-              titleIcon: Icons.category_outlined,
-              children: [_buildSelectionSections(formState, theme)],
-            ),
-            SectionCard.withChildren(
-              title: 'Address Details',
-              titleIcon: Icons.location_on_outlined,
-              children: [_buildAddressSection(formState, theme)],
-            ),
-            SectionCard.withChildren(
-              title: 'Property Features',
-              titleIcon: Icons.construction_outlined,
-              children: [_buildPropertyDetailsRow(formState, theme)],
-            ),
-            SectionCard.withChildren(
-              title: 'Amenities',
-              titleIcon: Icons.deck_outlined,
-              children: [
-                AmenityManager(
-                  mode: AmenityManagerMode.edit,
-                  initialAmenityIds: formState.selectedAmenityIds,
-                  initialAmenityNames: formState.selectedAmenities,
-                  onAmenityIdsChanged: (amenityIds) {
-                    formState.selectedAmenityIds = amenityIds;
-                  },
-                  showTitle: false, // Title is already shown by section card
-                ),
-              ],
-            ),
-            SectionCard.withChildren(
-              title: 'Property Images',
-              titleIcon: Icons.image_outlined,
-              children: [
-                ImagePickerInput(
-                  initialImages: formState.images,
-                  onChanged: (images) => formState.images = images,
-                  maxImages: 15,
-                  allowReordering: true,
-                  allowCoverSelection: true,
-                  emptyStateText:
-                      'Add property images to showcase your rental. The first image will be the cover image.',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernTextField({
-    required TextEditingController controller,
-    required String labelText,
-    required ThemeData theme,
-    String? suffixText,
-    int? maxLines = 1,
-    TextInputType? keyboardType,
-    FormFieldValidator<String>? validator,
-    bool isRequired = true,
-    IconData? leadingIcon,
-    ValueChanged<String>? onChanged,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: isRequired ? '$labelText *' : labelText,
-        labelStyle: theme.textTheme.bodyLarge,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12.0,
-          vertical: 16.0,
-        ),
-        suffixText: suffixText,
-        prefixIcon:
-            leadingIcon != null
-                ? Icon(leadingIcon, color: theme.colorScheme.onSurfaceVariant)
-                : null,
-      ),
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      onChanged: onChanged,
-      validator:
-          validator ??
-          (value) {
-            if (isRequired && (value == null || value.isEmpty)) {
-              return 'Please enter $labelText';
-            }
-            return null;
-          },
-    );
-  }
-
-  Widget _buildModernNumberField({
-    required TextEditingController controller,
-    required String labelText,
-    required ThemeData theme,
-    String? suffixText,
-    String? errorMessage,
-    double? minValue,
-    bool isRequired = true,
-    TextInputType? keyboardType,
-    FormFieldValidator<String>? validator,
-    IconData? leadingIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: isRequired ? '$labelText *' : labelText,
-        labelStyle: theme.textTheme.bodyLarge,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12.0,
-          vertical: 16.0,
-        ),
-        suffixText: suffixText,
-        prefixIcon:
-            leadingIcon != null
-                ? Icon(leadingIcon, color: theme.colorScheme.onSurfaceVariant)
-                : null,
-      ),
-      keyboardType: keyboardType ?? TextInputType.number,
-      validator:
-          validator ??
-          (value) {
-            if (isRequired && (value == null || value.isEmpty)) {
-              return errorMessage ?? 'Please enter $labelText';
-            }
-            if (value != null && value.isNotEmpty) {
-              final number = double.tryParse(value);
-              if (number == null) {
-                return 'Please enter a valid number';
-              }
-              if (minValue != null && number < minValue) {
-                return '$labelText must be at least $minValue';
-              }
-            }
-            return null;
-          },
-    );
-  }
-
-  Widget _buildTitleAndPriceRow(PropertyFormState formState, ThemeData theme) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: _buildModernTextField(
-            controller: formState.titleController,
-            labelText: 'Property Title',
-            theme: theme,
-            isRequired: true,
-            leadingIcon: Icons.title,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          flex: 2,
-          child: _buildModernNumberField(
-            controller: formState.priceController,
-            labelText: 'Monthly Price',
-            suffixText: 'BAM',
-            errorMessage: 'Please enter a price',
-            theme: theme,
-            isRequired: true,
-            minValue: 0.01,
-            leadingIcon: Icons.attach_money,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescriptionField(PropertyFormState formState, ThemeData theme) {
-    return _buildModernTextField(
-      controller: formState.descriptionController,
-      labelText: 'Description',
-      maxLines: 4,
-      theme: theme,
-      isRequired: true,
-      leadingIcon: Icons.description,
-    );
-  }
-
-  Widget _buildSelectionSections(PropertyFormState formState, ThemeData theme) {
-    return Consumer<LookupProvider>(
-      builder: (context, lookupProvider, child) {
-        // Show loading while lookup data is being fetched
-        if (lookupProvider.isLoading && !lookupProvider.hasData) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32.0),
-              child: Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading form options...'),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // Show error if lookup data failed to load and no cached data
-        if (lookupProvider.error != null && !lookupProvider.hasData) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              border: Border.all(color: Colors.orange.shade200),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.warning_amber, color: Colors.orange.shade700),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Failed to load form options. Using cached data.',
-                        style: TextStyle(color: Colors.orange.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                  onPressed: () => lookupProvider.refreshLookupData(),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLookupDropdownSection<int>(
-              title: 'Renting Type *',
-              value: formState.rentingTypeId,
-              items: lookupProvider.rentingTypes,
-              onChanged: (id) => formState.rentingTypeId = id,
-              itemToString: (item) => item.name,
-              theme: theme,
-            ),
-            const SizedBox(height: 16),
-            _buildLookupDropdownSection<int>(
-              title: 'Property Type *',
-              value: formState.propertyTypeId,
-              items: lookupProvider.propertyTypes,
-              onChanged: (id) => formState.propertyTypeId = id,
-              itemToString: (item) => item.name,
-              theme: theme,
-            ),
-            const SizedBox(height: 16),
-            _buildLookupDropdownSection<int>(
-              title: 'Status *',
-              value: formState.propertyStatusId,
-              items: lookupProvider.propertyStatuses,
-              onChanged: (id) => formState.propertyStatusId = id,
-              itemToString: (item) => item.name,
-              theme: theme,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildLookupDropdownSection<T>({
-    required String title,
-    required T? value,
-    required List<LookupItem> items,
-    required ValueChanged<T?> onChanged,
-    required String Function(LookupItem) itemToString,
-    required ThemeData theme,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<T>(
-          value: value,
-          items:
-              items.map((item) {
-                return DropdownMenuItem<T>(
-                  value: item.id as T,
-                  child: Text(
-                    itemToString(item),
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                );
-              }).toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12.0,
-              vertical: 16.0,
-            ),
-          ),
-          validator: (val) => val == null ? 'Please select an option' : null,
-          style: theme.textTheme.bodyLarge,
-          hint: items.isEmpty ? Text('No options available') : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAddressSection(PropertyFormState formState, ThemeData theme) {
-    final bool hasGoogleApi =
-        dotenv.env['GOOGLE_MAPS_API_KEY']?.isNotEmpty == true;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasGoogleApi) ...[
-          Text(
-            'Search Address (Recommended)',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          GoogleAddressInput(
-            googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-            initialValue: formState.initialAddressString,
-            countries: const ["BA"],
-            onAddressSelected: (selectedAddress) {
-              formState.updateAddressFromGoogle(selectedAddress);
-            },
-            validator: (value) {
-              final hasManualAddress =
-                  formState.streetNameController.text.trim().isNotEmpty ||
-                  formState.cityController.text.trim().isNotEmpty;
-              if (!hasManualAddress && (value == null || value.isEmpty)) {
-                return 'Select an address or fill details manually';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: Text("OR", style: theme.textTheme.bodySmall),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Enter Address Manually',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ] else ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              border: Border.all(color: Colors.orange.shade200),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.orange.shade700),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Google Maps API key not configured. Please enter address manually.',
-                    style: TextStyle(color: Colors.orange.shade700),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Manual Address Details',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.isEditMode ? 'Edit Property' : 'Add New Property'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.save_outlined),
+              onPressed: _isLoading ? null : _save,
+              label: const Text('Save'),
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildModernTextField(
-                controller: formState.streetNameController,
-                labelText: 'Street Name',
-                theme: theme,
-                isRequired: !hasGoogleApi,
-                leadingIcon: Icons.maps_home_work_outlined,
-                onChanged: (value) => formState.updateAddressFromManualFields(),
-                validator: (value) {
-                  if (hasGoogleApi) {
-                    final hasGoogleAddress =
-                        formState.selectedFormattedAddress?.isNotEmpty == true;
-                    final hasManualEntry =
-                        value?.trim().isNotEmpty == true ||
-                        formState.cityController.text.trim().isNotEmpty;
-                    if (!hasGoogleAddress && !hasManualEntry) {
-                      return 'Enter street or use Google Address';
-                    }
-                  } else {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter street name';
-                    }
-                  }
-                  return null;
-                },
+      ),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildBasicInfoSection(theme, formState),
+                        PropertyFormFields.buildSpacer(),
+                        _buildDetailsSection(theme, formState),
+                        PropertyFormFields.buildSpacer(),
+                        _buildAddressSection(theme, formState),
+                        PropertyFormFields.buildSpacer(),
+                        _buildImagesSection(theme, formState),
+                        PropertyFormFields.buildSpacer(),
+                        _buildAmenitiesSection(theme, formState),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: _buildModernTextField(
-                controller: formState.streetNumberController,
-                labelText: 'Street No.',
-                theme: theme,
-                isRequired: false,
-                leadingIcon: Icons.format_list_numbered,
-                onChanged: (value) => formState.updateAddressFromManualFields(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildModernTextField(
-                controller: formState.cityController,
-                labelText: 'City',
-                theme: theme,
-                isRequired: !hasGoogleApi,
-                leadingIcon: Icons.location_city,
-                onChanged: (value) => formState.updateAddressFromManualFields(),
-                validator: (value) {
-                  if (hasGoogleApi) {
-                    final hasGoogleAddress =
-                        formState.selectedFormattedAddress?.isNotEmpty == true;
-                    final hasManualEntry =
-                        value?.trim().isNotEmpty == true ||
-                        formState.streetNameController.text.trim().isNotEmpty;
-                    if (!hasGoogleAddress && !hasManualEntry) {
-                      return 'Enter city or use Google Address';
-                    }
-                  } else {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter city';
-                    }
-                  }
-                  return null;
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildModernTextField(
-                controller: formState.postalCodeController,
-                labelText: 'Postal Code',
-                theme: theme,
-                isRequired: false,
-                leadingIcon: Icons.local_post_office_outlined,
-                onChanged: (value) => formState.updateAddressFromManualFields(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildModernTextField(
-                controller: formState.countryController,
-                labelText: 'Country',
-                theme: theme,
-                isRequired: false,
-                leadingIcon: Icons.public_outlined,
-                onChanged: (value) => formState.updateAddressFromManualFields(),
-                validator: (value) {
-                  if (!hasGoogleApi &&
-                      (value == null || value.isEmpty) &&
-                      (formState.cityController.text.isNotEmpty ||
-                          formState.streetNameController.text.isNotEmpty)) {
-                    return 'Country is required for manual entry';
-                  }
-                  return null;
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
-  Widget _buildPropertyDetailsRow(
-    PropertyFormState formState,
-    ThemeData theme,
-  ) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildModernNumberField(
-            controller: formState.bedroomsController,
-            labelText: 'Bedrooms',
-            errorMessage: 'Enter number of bedrooms',
-            theme: theme,
-            minValue: 1,
-            isRequired: true,
-            leadingIcon: Icons.bed_outlined,
+  Widget _buildBasicInfoSection(ThemeData theme, PropertyFormState formState) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Basic Information'),
+          PropertyFormFields.buildRequiredTextField(
+            controller: formState.titleController,
+            labelText: 'Property Title',
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildModernNumberField(
-            controller: formState.bathroomsController,
-            labelText: 'Bathrooms',
-            errorMessage: 'Enter number of bathrooms',
-            theme: theme,
-            minValue: 1,
-            isRequired: true,
-            leadingIcon: Icons.bathtub_outlined,
+          PropertyFormFields.buildSpacer(),
+          PropertyFormFields.buildTextField(
+            controller: formState.descriptionController,
+            labelText: 'Description',
+            maxLines: 4,
+            validator: (_) => null, // Optional field
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildModernNumberField(
-            controller: formState.areaController,
-            labelText: 'Area (sqft)',
-            theme: theme,
-            errorMessage: 'Please enter area',
-            minValue: 1,
-            isRequired: true,
-            leadingIcon: Icons.square_foot_outlined,
-            keyboardType: TextInputType.number,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter area';
-              }
-              final area = double.tryParse(value);
-              if (area == null) {
-                return 'Please enter a valid area';
-              }
-              if (area <= 0) {
-                return 'Area must be greater than 0';
-              }
-              return null;
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsSection(ThemeData theme, PropertyFormState formState) {
+    final lookup = context.watch<LookupProvider>();
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Property Details'),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PropertyFormFields.buildRequiredTextField(
+                controller: formState.priceController,
+                labelText: 'Price',
+                keyboardType: TextInputType.number,
+                flex: 1,
+              ),
+              const SizedBox(width: 12),
+              PropertyFormFields.buildRequiredTextField(
+                controller: formState.currencyController,
+                labelText: 'Currency',
+                flex: 1,
+              ),
+            ],
+          ),
+          PropertyFormFields.buildSpacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PropertyFormFields.buildNumberField(
+                controller: formState.bedroomsController,
+                labelText: 'Bedrooms',
+                errorMessage: 'Enter beds',
+              ),
+              const SizedBox(width: 12),
+              PropertyFormFields.buildNumberField(
+                controller: formState.bathroomsController,
+                labelText: 'Bathrooms',
+                errorMessage: 'Enter baths',
+              ),
+            ],
+          ),
+          PropertyFormFields.buildSpacer(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PropertyFormFields.buildNumberField(
+                controller: formState.areaController,
+                labelText: 'Area',
+                suffixText: 'm²',
+                errorMessage: 'Enter area',
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PropertyFormFields.buildTextField(
+                  controller: formState.minimumStayDaysController,
+                  labelText: 'Min. Stay',
+                  suffixText: 'days',
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value != null &&
+                        value.isNotEmpty &&
+                        int.tryParse(value) == null) {
+                      return 'Invalid number';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+            ],
+          ),
+          PropertyFormFields.buildSpacer(),
+          Row(
+            children: [
+              Expanded(
+                child: CustomDropdown<int>(
+                  label: 'Property Type',
+                  value: formState.propertyTypeId,
+                  items: lookup.propertyTypes,
+                  onChanged: (val) => formState.propertyTypeId = val,
+                  itemToString: (item) => (item as LookupItem).name,
+                  itemToValue: (item) => (item as LookupItem).id,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: CustomDropdown<int>(
+                  label: 'Renting Type',
+                  value: formState.rentingTypeId,
+                  items: lookup.rentingTypes,
+                  onChanged: (val) => formState.rentingTypeId = val,
+                  itemToString: (item) => (item as LookupItem).name,
+                  itemToValue: (item) => (item as LookupItem).id,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressSection(ThemeData theme, PropertyFormState formState) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Location & Address'),
+          AddressInput(
+            initialAddress: formState.selectedAddress,
+            initialAddressString: formState.initialAddressString,
+            onAddressSelected: formState.updateAddressFromGoogle,
+            streetNameController: formState.streetNameController,
+            streetNumberController: formState.streetNumberController,
+            cityController: formState.cityController,
+            postalCodeController: formState.postalCodeController,
+            countryController: formState.countryController,
+            onManualAddressChanged: formState.updateAddressFromManualFields,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagesSection(ThemeData theme, PropertyFormState formState) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Property Images'),
+          ImagePickerInput(
+            initialImages: formState.images,
+            onChanged: (images) {
+              formState.images = images;
             },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildBottomAppBar(ThemeData theme) {
-    return BottomAppBar(
-      elevation: 4.0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => context.pop(),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.textTheme.bodyLarge?.color,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              child: const Text('Cancel'),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save_alt_outlined),
-              onPressed: _saveProperty,
-              label: const Text('Save Property'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                textStyle: theme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _buildAmenitiesSection(ThemeData theme, PropertyFormState formState) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Amenities'),
+          AmenityManager(
+            mode: AmenityManagerMode.select,
+            initialAmenityIds: formState.selectedAmenityIds,
+            onAmenityIdsChanged: (ids) {
+              formState.selectedAmenityIds = ids;
+            },
+            showTitle: false, // We have a SectionHeader now
+          ),
+        ],
       ),
     );
   }
 }
-
-// Extensions removed - now using API-driven lookup data instead of hardcoded enum mappings

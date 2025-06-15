@@ -285,7 +285,7 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     // Set IDs based on property enums
     _propertyTypeId = _getPropertyTypeIdFromEnum(property.type);
     _rentingTypeId = _getRentingTypeIdFromEnum(property.rentingType);
-    _propertyStatusId = _getPropertyStatusIdFromEnum(property.status);
+    _propertyStatusId = _getPropertyStatusIdFromEnum(property.propertyStatus);
 
     // Populate address
     if (property.address != null) {
@@ -331,20 +331,17 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     final bathrooms = int.tryParse(bathroomsController.text) ?? 0;
 
     // Ensure we have the latest address data from manual fields
-    if (_selectedAddress == null) {
-      _selectedAddress = _createAddressFromManualFields();
-    }
+    _selectedAddress ??= _createAddressFromManualFields();
 
     return Property(
       propertyId: initialProperty?.propertyId ?? 0,
       ownerId: initialProperty?.ownerId ?? currentUserId,
       name: titleController.text,
       description: descriptionController.text,
-      type: type, // This will use the enum getter that converts from ID
+      propertyTypeId: _propertyTypeId,
       price: double.parse(priceController.text),
-      rentingType:
-          rentingType, // This will use the enum getter that converts from ID
-      status: status, // This will use the enum getter that converts from ID
+      rentingTypeId: _rentingTypeId,
+      status: _getPropertyStatusEnum().name,
       imageIds:
           _images.map((img) => img.id ?? 0).where((id) => id > 0).toList(),
       address: _selectedAddress,

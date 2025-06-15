@@ -169,7 +169,7 @@ class _AmenityManagerState extends State<AmenityManager> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.showTitle) ...[
+        if (widget.showTitle && widget.mode != AmenityManagerMode.select) ...[
           Row(
             children: [
               Icon(Icons.deck_outlined, color: theme.colorScheme.primary),
@@ -266,7 +266,7 @@ class _AmenityManagerState extends State<AmenityManager> {
     if (widget.mode == AmenityManagerMode.view) {
       return _buildViewMode();
     } else {
-      return _buildEditMode();
+      return _buildInteractiveMode();
     }
   }
 
@@ -317,7 +317,7 @@ class _AmenityManagerState extends State<AmenityManager> {
     );
   }
 
-  Widget _buildEditMode() {
+  Widget _buildInteractiveMode() {
     final filtered = _filteredAmenities;
 
     if (filtered.isEmpty) {
@@ -411,5 +411,6 @@ class _AmenityManagerState extends State<AmenityManager> {
 
 enum AmenityManagerMode {
   view, // Display-only mode (for property details)
-  edit, // Interactive mode (for property form)
+  edit, // Interactive mode with search and title (for property form)
+  select, // Interactive selection mode for filters (no title/search)
 }

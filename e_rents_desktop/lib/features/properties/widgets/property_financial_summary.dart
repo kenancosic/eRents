@@ -1,95 +1,140 @@
+import 'package:e_rents_desktop/models/property_stats_data.dart';
+import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/booking_summary.dart';
 
 class PropertyFinancialSummary extends StatelessWidget {
-  final PropertyBookingStats? bookingStats;
+  final PropertyStatsData? stats;
 
-  const PropertyFinancialSummary({super.key, this.bookingStats});
+  const PropertyFinancialSummary({super.key, this.stats});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    // Helper method to create formatted strings from stats, with fallback
+    String getFormattedRevenue() {
+      if (stats?.financialStats == null) return 'N/A';
+      return '${kCurrencyFormat.format(stats!.financialStats!.yearlyRevenue)}';
+    }
+
+    String getFormattedRating() {
+      if (stats?.reviewStats == null || stats!.reviewStats!.totalReviews == 0) {
+        return 'No reviews';
+      }
+      final reviewStats = stats!.reviewStats!;
+      return '${reviewStats.averageRating.toStringAsFixed(1)} (${reviewStats.totalReviews} reviews)';
+    }
+
+    String getFormattedOccupancy() {
+      if (stats?.occupancyStats == null) return 'N/A';
+      final occupancy = stats!.occupancyStats!.currentOccupancyRate * 100;
+      return '${occupancy.toStringAsFixed(1)}%';
+    }
+
+    String getPerformanceIndicator() {
+      if (stats == null) return 'N/A';
+      final occupancyRate = stats?.occupancyStats?.currentOccupancyRate ?? 0.0;
+      final averageRating = stats?.reviewStats?.averageRating ?? 0.0;
+
+      if (occupancyRate > 0.8 && averageRating > 4.5) return 'Excellent';
+      if (occupancyRate > 0.6 && averageRating > 4.0) return 'Good';
+      if (occupancyRate > 0.4 && averageRating > 3.5) return 'Average';
+      return 'Needs Improvement';
+    }
+
+    return Column(
+      children: [
+        Row(
           children: [
-            const Text(
-              'Financial Summary',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Expanded(
+              child: _StatCard(
+                label: 'Total Revenue',
+                value: getFormattedRevenue(),
+                icon: Icons.monetization_on_outlined,
+                color: Colors.green,
+              ),
             ),
-            const SizedBox(height: 16),
-            _buildFinancialMetric(
-              'Total Revenue',
-              '${bookingStats?.totalRevenue.toStringAsFixed(0) ?? '0'} BAM',
-              Icons.attach_money,
-              Colors.green,
-            ),
-            const Divider(),
-            _buildFinancialMetric(
-              'Total Bookings',
-              '${bookingStats?.totalBookings ?? 0}',
-              Icons.calendar_month,
-              Colors.blue,
-            ),
-            const Divider(),
-            _buildFinancialMetric(
-              'Average Booking',
-              '${bookingStats?.averageBookingValue.toStringAsFixed(0) ?? '0'} BAM',
-              Icons.trending_up,
-              Colors.orange,
-            ),
-            const Divider(),
-            _buildFinancialMetric(
-              'Occupancy Rate',
-              '${((bookingStats?.occupancyRate ?? 0) * 100).toStringAsFixed(1)}%',
-              Icons.home,
-              Colors.purple,
+            const SizedBox(width: 16),
+            Expanded(
+              child: _StatCard(
+                label: 'Avg. Rating',
+                value: getFormattedRating(),
+                icon: Icons.star_border,
+                color: Colors.amber,
+              ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'Occupancy',
+                value: getFormattedOccupancy(),
+                icon: Icons.pie_chart_outline,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _StatCard(
+                label: 'Performance',
+                value: getPerformanceIndicator(),
+                icon: Icons.show_chart,
+                color: Colors.purple,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
+}
 
-  Widget _buildFinancialMetric(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 2.0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
                   ),
                 ),
+                Icon(icon, color: color),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

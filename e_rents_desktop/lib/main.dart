@@ -27,6 +27,7 @@ import 'services/report_service.dart';
 import 'services/profile_service.dart';
 import 'services/image_service.dart';
 import 'services/lookup_service.dart';
+import 'services/api_service.dart';
 
 // Provider imports (only essential ones loaded at startup)
 import 'features/auth/providers/auth_provider.dart';
@@ -66,6 +67,10 @@ Future<void> _setupServices(String baseUrl) async {
   locator.registerSingleton<UserPreferencesService>(prefsService);
 
   // API services
+  locator.registerSingleton<ApiService>(
+    ApiService(baseUrl, secureStorageService),
+  );
+
   locator.registerSingleton<AuthService>(
     AuthService(baseUrl, secureStorageService),
   );

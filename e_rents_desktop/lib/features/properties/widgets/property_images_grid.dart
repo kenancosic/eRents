@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/base/service_locator.dart';
 
@@ -11,109 +10,123 @@ class PropertyImagesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Click on an image to view it in full size',
-          style: TextStyle(fontSize: 14, color: Colors.grey),
+    if (images.isEmpty) {
+      return Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.image_not_supported, size: 48, color: Colors.grey),
+              SizedBox(height: 8),
+              Text('No Images Available'),
+            ],
           ),
-          itemCount: images.length,
-          itemBuilder: (context, index) {
-            final image = images[index];
-            return GestureDetector(
-              onTap: () => _showImageDialog(context, image),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    getService<ApiService>().buildImage(
-                      '/Image/$image',
-                      fit: BoxFit.cover,
-                      errorWidget: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey[600],
-                          size: 48,
-                        ),
-                      ),
-                    ),
-                    if (index == 0)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Cover',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+        ),
+      );
+    }
+
+    final primaryImage = images.first;
+    final otherImages = images.skip(1).toList();
+
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: _buildImageTile(context, primaryImage, isPrimary: true),
+          ),
+          if (otherImages.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: Column(
+                children:
+                    otherImages
+                        .take(3)
+                        .map(
+                          (id) => Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 4.0),
+                              child: _buildImageTile(context, id),
                             ),
                           ),
-                        ),
-                      ),
-                  ],
-                ),
+                        )
+                        .toList(),
               ),
-            );
-          },
-        ),
-      ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  void _showImageDialog(BuildContext context, int image) {
+  Widget _buildImageTile(
+    BuildContext context,
+    int imageId, {
+    bool isPrimary = false,
+  }) {
+    return GestureDetector(
+      onTap: () => _showImageDialog(context, imageId),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            getService<ApiService>().buildImage(
+              '/Image/$imageId',
+              fit: BoxFit.cover,
+            ),
+            if (isPrimary)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Chip(
+                  label: const Text('Cover'),
+                  backgroundColor: Colors.black.withValues(alpha: 0.5),
+                  labelStyle: const TextStyle(color: Colors.white),
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.2),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, int imageId) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder:
           (context) => Dialog(
-            child: Stack(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                getService<ApiService>().buildImage(
-                  '/Image/$image',
-                  fit: BoxFit.contain,
-                  errorWidget: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey[600],
-                      size: 64,
-                    ),
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: getService<ApiService>().buildImage(
+                    '/Image/$imageId',
+                    fit: BoxFit.contain,
                   ),
                 ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => context.pop(),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ],

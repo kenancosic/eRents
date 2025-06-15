@@ -1,324 +1,469 @@
+import 'package:flutter/foundation.dart';
 import '../../../base/base.dart';
-import '../../../base/providers/base_collection_provider_mixin.dart';
 import '../../../models/property.dart';
 import '../../../models/renting_type.dart';
-import '../../../widgets/table/core/table_query.dart';
 
-/// Collection provider for managing property data
+/// Comprehensive Property Collection Provider
 ///
-/// Replaces the old PropertyProvider with a cleaner, more focused implementation
-/// that separates concerns and uses the repository pattern for data access.
-///
-/// ✅ UNIVERSAL SYSTEM INTEGRATION - Updated for Universal System pagination
-class PropertyCollectionProvider extends CollectionProvider<Property>
-    with PaginationProviderMixin<Property> {
+/// Provides collection-level operations for properties with:
+/// - Frontend caching (10 minutes default TTL)
+/// - Advanced search and filtering capabilities
+/// - Universal System pagination support
+/// - Statistics and analytics
+/// - Property type and rental type filtering
+/// - Owner-specific property management
+/// - Smart cache invalidation
+class PropertyCollectionProvider extends CollectionProvider<Property> {
   PropertyCollectionProvider(PropertyRepository super.repository);
+
+  @override
+  String _getItemId(Property item) => item.propertyId.toString();
 
   /// Get the property repository with proper typing
   PropertyRepository get propertyRepository => repository as PropertyRepository;
 
-  // Implementation required by CollectionProvider
-  @override
-  String _getItemId(Property item) => item.propertyId.toString();
+  // ========================================
+  // PROPERTY-SPECIFIC FILTERS & SEARCHES
+  // ========================================
 
-  // ✅ UNIVERSAL SYSTEM - New pagination-first method using mixin
-  /// Get paged properties using Universal System
-  /// Default method for table components and large data sets
-  Future<Map<String, dynamic>> getPagedProperties([
-    Map<String, dynamic>? params,
-  ]) async {
-    return getPagedData(propertyRepository.getPagedProperties, params);
-  }
-
-  // Property-specific convenience getters
-
-  /// Get all properties (alias for items)
-  List<Property> get properties => items;
-
-  /// Get available properties
-  List<Property> get availableProperties {
-    return filterItems(
-      (property) => property.status == PropertyStatus.available,
-    );
-  }
-
-  /// Get occupied/rented properties
-  List<Property> get occupiedProperties {
-    return filterItems((property) => property.status == PropertyStatus.rented);
-  }
-
-  /// Get properties in maintenance
-  List<Property> get maintenanceProperties {
-    return filterItems(
-      (property) => property.status == PropertyStatus.maintenance,
-    );
-  }
-
-  /// Get properties by type
-  List<Property> getPropertiesByType(PropertyType type) {
-    return filterItems((property) => property.type == type);
-  }
-
-  /// Get properties by status
-  List<Property> getPropertiesByStatus(PropertyStatus status) {
-    return filterItems((property) => property.status == status);
-  }
-
-  // Property-specific business logic
-
-  /// Get total number of properties
-  int get totalProperties => length;
-
-  /// Get count of available properties
-  int get availablePropertiesCount => availableProperties.length;
-
-  /// Get count of occupied properties
-  int get occupiedPropertiesCount => occupiedProperties.length;
-
-  /// Calculate occupancy rate
-  double get occupancyRate {
-    if (totalProperties == 0) return 0.0;
-    return occupiedPropertiesCount / totalProperties;
-  }
-
-  /// Get a property by ID (returns null if not found)
-  Property? getPropertyById(int id) {
-    return getItemById(id.toString());
-  }
-
-  /// Check if a property exists in the current list
-  bool hasProperty(int id) {
-    return containsItem(id.toString());
-  }
-
-  // Advanced filtering and search
-
-  /// Filter properties by multiple criteria
-  List<Property> filterProperties({
-    PropertyStatus? status,
-    PropertyType? type,
-    String? searchQuery,
-    double? minPrice,
-    double? maxPrice,
-    int? minBedrooms,
-    int? maxBedrooms,
-    RentingType? rentingType,
-  }) {
-    return filterItems((property) {
-      // Status filter
-      if (status != null && property.status != status) return false;
-
-      // Type filter
-      if (type != null && property.type != type) return false;
-
-      // Renting type filter
-      if (rentingType != null && property.rentingType != rentingType) {
-        return false;
+  /// Filter properties by availability status
+  Future<void> loadAvailableProperties() async {
+    await executeAsync(() async {
+      final properties = await propertyRepository.getAvailableProperties();
+      clear();
+      for (final property in properties) {
+        await addItem(property);
       }
-
-      // Price range filter
-      if (minPrice != null && property.price < minPrice) return false;
-      if (maxPrice != null && property.price > maxPrice) return false;
-
-      // Bedrooms filter
-      if (minBedrooms != null && property.bedrooms < minBedrooms) return false;
-      if (maxBedrooms != null && property.bedrooms > maxBedrooms) return false;
-
-      // Search query filter (title and description)
-      if (searchQuery != null && searchQuery.isNotEmpty) {
-        final query = searchQuery.toLowerCase();
-        final matchesTitle = property.name.toLowerCase().contains(query);
-        final matchesDescription = property.description.toLowerCase().contains(
-          query,
-        );
-        if (!matchesTitle && !matchesDescription) return false;
-      }
-
-      return true;
     });
   }
 
-  /// Search properties by query string
-  List<Property> searchProperties(String query) {
-    if (query.isEmpty) return properties;
-
-    return filterProperties(searchQuery: query);
+  /// Filter properties by rental type
+  Future<void> loadPropertiesByRentalType(String rentalType) async {
+    await executeAsync(() async {
+      final properties = await propertyRepository.getPropertiesByRentalType(
+        rentalType,
+      );
+      clear();
+      for (final property in properties) {
+        await addItem(property);
+      }
+    });
   }
 
-  // Repository-backed methods (use caching and proper error handling)
-
-  /// Fetch available properties with caching
-  Future<List<Property>> fetchAvailableProperties() async {
-    try {
-      final availableProps = await propertyRepository.getAvailableProperties();
-      // Update local cache with available properties
-      // Note: This doesn't replace all items, just provides filtered data
-      return availableProps;
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+  /// Load properties owned by specific user
+  Future<void> loadPropertiesByOwner(int ownerId) async {
+    await executeAsync(() async {
+      final properties = await propertyRepository.getPropertiesByOwner(ownerId);
+      clear();
+      for (final property in properties) {
+        await addItem(property);
+      }
+    });
   }
 
-  /// Fetch properties by type with caching
-  Future<List<Property>> fetchPropertiesByType(PropertyType type) async {
-    try {
-      return await propertyRepository.getPropertiesByType(type);
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+  /// Load popular properties for analytics
+  Future<void> loadPopularProperties({int limit = 10}) async {
+    await executeAsync(() async {
+      final properties = await propertyRepository.getPopularProperties(
+        limit: limit,
+      );
+      clear();
+      for (final property in properties) {
+        await addItem(property);
+      }
+    });
   }
 
-  /// Fetch properties by owner with caching
-  Future<List<Property>> fetchPropertiesByOwner(int ownerId) async {
-    try {
-      return await propertyRepository.getPropertiesByOwner(ownerId);
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+  /// Load property recommendations for a user
+  Future<void> loadPropertyRecommendations(int userId) async {
+    await executeAsync(() async {
+      final recommendations = await propertyRepository
+          .getPropertyRecommendations(userId);
+      clear();
+      for (final property in recommendations) {
+        await addItem(property);
+      }
+    });
   }
 
-  /// Get real-time occupancy rate from repository
-  Future<double> fetchOccupancyRate() async {
-    try {
-      return await propertyRepository.getOccupancyRate();
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+  // ========================================
+  // ADVANCED SEARCH FUNCTIONALITY
+  // ========================================
+
+  /// Perform comprehensive property search
+  Future<void> searchProperties({
+    String? name,
+    int? ownerId,
+    String? description,
+    String? status,
+    String? currency,
+    int? propertyTypeId,
+    int? rentingTypeId,
+    int? bedrooms,
+    int? bathrooms,
+    int? minimumStayDays,
+    double? minPrice,
+    double? maxPrice,
+    double? minArea,
+    double? maxArea,
+    DateTime? availableFrom,
+    DateTime? availableTo,
+    String? cityName,
+    String? stateName,
+    String? countryName,
+    List<int>? amenityIds,
+    double? minRating,
+    double? maxRating,
+    double? latitude,
+    double? longitude,
+    double? radius,
+  }) async {
+    await executeAsync(() async {
+      final results = await propertyRepository.searchProperties(
+        name: name,
+        ownerId: ownerId,
+        description: description,
+        status: status,
+        currency: currency,
+        propertyTypeId: propertyTypeId,
+        rentingTypeId: rentingTypeId,
+        bedrooms: bedrooms,
+        bathrooms: bathrooms,
+        minimumStayDays: minimumStayDays,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        minArea: minArea,
+        maxArea: maxArea,
+        availableFrom: availableFrom,
+        availableTo: availableTo,
+        cityName: cityName,
+        stateName: stateName,
+        countryName: countryName,
+        amenityIds: amenityIds,
+        minRating: minRating,
+        maxRating: maxRating,
+        latitude: latitude,
+        longitude: longitude,
+        radius: radius,
+      );
+      clear();
+      for (final property in results) {
+        await addItem(property);
+      }
+    });
   }
 
-  /// Fetch a specific property by ID from server
-  Future<Property> fetchPropertyById(int id) async {
-    try {
-      return await propertyRepository.getById(id.toString());
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+  /// Search properties by price range
+  Future<void> searchByPriceRange(double minPrice, double maxPrice) async {
+    await searchProperties(minPrice: minPrice, maxPrice: maxPrice);
   }
 
-  // CRUD operations (inherited from CollectionProvider but with type safety)
-
-  /// Add a new property
-  Future<void> addProperty(Property property) async {
-    await addItem(property);
+  /// Search properties by location
+  Future<void> searchByLocation({
+    String? cityName,
+    String? stateName,
+    String? countryName,
+    double? latitude,
+    double? longitude,
+    double? radius,
+  }) async {
+    await searchProperties(
+      cityName: cityName,
+      stateName: stateName,
+      countryName: countryName,
+      latitude: latitude,
+      longitude: longitude,
+      radius: radius,
+    );
   }
 
-  /// Update an existing property
-  Future<void> updateProperty(Property property) async {
-    await updateItem(property.propertyId.toString(), property);
+  /// Search properties by amenities
+  Future<void> searchByAmenities(List<int> amenityIds) async {
+    await searchProperties(amenityIds: amenityIds);
   }
 
-  /// Delete a property
-  Future<void> deleteProperty(int id) async {
-    await removeItem(id.toString());
+  /// Search properties by bedrooms and bathrooms
+  Future<void> searchByRoomCount(int? bedrooms, int? bathrooms) async {
+    await searchProperties(bedrooms: bedrooms, bathrooms: bathrooms);
   }
 
-  // Sorting and organization
+  // ========================================
+  // UNIVERSAL SYSTEM PAGINATION
+  // ========================================
 
-  /// Sort properties by price (ascending)
-  List<Property> sortByPriceAsc() {
-    return sortItems((a, b) => a.price.compareTo(b.price));
+  /// Current page for pagination (0-based)
+  int _currentPage = 0;
+
+  /// Page size for pagination
+  int _pageSize = 25;
+
+  /// Total count of items available
+  int _totalCount = 0;
+
+  /// Whether there are more pages available
+  bool _hasNextPage = false;
+
+  /// Whether there is a previous page available
+  bool _hasPreviousPage = false;
+
+  /// Current pagination parameters
+  Map<String, dynamic> _currentParams = {};
+
+  // Pagination getters
+  int get currentPage => _currentPage;
+  int get pageSize => _pageSize;
+  @override
+  int get totalCount => _totalCount;
+  bool get hasNextPage => _hasNextPage;
+  bool get hasPreviousPage => _hasPreviousPage;
+  int get totalPages => _totalCount > 0 ? (_totalCount / _pageSize).ceil() : 0;
+
+  /// Load paginated properties
+  Future<void> loadPaginatedProperties({
+    int page = 0,
+    int pageSize = 25,
+    Map<String, dynamic>? params,
+  }) async {
+    await executeAsync(() async {
+      final paginationParams = <String, dynamic>{
+        'page': page + 1, // Convert to 1-based for backend
+        'pageSize': pageSize,
+        ...?params,
+      };
+
+      final pagedResult = await propertyRepository.getPagedProperties(
+        paginationParams,
+      );
+
+      // Update pagination state
+      _currentPage = page;
+      _pageSize = pageSize;
+      _totalCount = pagedResult.totalCount;
+      _hasNextPage = pagedResult.hasNextPage;
+      _hasPreviousPage = pagedResult.hasPreviousPage;
+      _currentParams = paginationParams;
+
+      // Clear and update items directly from paged result
+      clear();
+      for (final property in pagedResult.items) {
+        await addItem(property);
+      }
+    });
   }
 
-  /// Sort properties by price (descending)
-  List<Property> sortByPriceDesc() {
-    return sortItems((a, b) => b.price.compareTo(a.price));
+  /// Load next page
+  Future<void> loadNextPage() async {
+    if (!hasNextPage) return;
+    await loadPaginatedProperties(
+      page: _currentPage + 1,
+      pageSize: _pageSize,
+      params: _currentParams,
+    );
   }
 
-  /// Sort properties by date added (newest first)
-  List<Property> sortByDateDesc() {
-    return sortItems((a, b) => b.dateAdded.compareTo(a.dateAdded));
+  /// Load previous page
+  Future<void> loadPreviousPage() async {
+    if (!hasPreviousPage) return;
+    await loadPaginatedProperties(
+      page: _currentPage - 1,
+      pageSize: _pageSize,
+      params: _currentParams,
+    );
   }
 
-  /// Sort properties by title alphabetically
-  List<Property> sortByTitle() {
-    return sortItems((a, b) => a.name.compareTo(b.name));
+  /// Go to specific page
+  Future<void> goToPage(int page) async {
+    if (page < 0 || page >= totalPages) return;
+    await loadPaginatedProperties(
+      page: page,
+      pageSize: _pageSize,
+      params: _currentParams,
+    );
   }
 
-  /// Sort properties by area (largest first)
-  List<Property> sortByAreaDesc() {
-    return sortItems((a, b) => b.area.compareTo(a.area));
+  /// Refresh current page
+  Future<void> refreshCurrentPage() async {
+    await loadPaginatedProperties(
+      page: _currentPage,
+      pageSize: _pageSize,
+      params: _currentParams,
+    );
   }
 
-  // Statistics and insights
+  // ========================================
+  // STATISTICS & ANALYTICS
+  // ========================================
 
-  /// Get property count by status
-  Map<PropertyStatus, int> getPropertyCountByStatus() {
-    final Map<PropertyStatus, int> counts = {};
-
-    for (final status in PropertyStatus.values) {
-      counts[status] = getPropertiesByStatus(status).length;
-    }
-
-    return counts;
+  /// Calculate occupancy rate
+  Future<double> getOccupancyRate() async {
+    return await propertyRepository.getOccupancyRate();
   }
 
-  /// Get property count by type
-  Map<PropertyType, int> getPropertyCountByType() {
-    final Map<PropertyType, int> counts = {};
+  /// Get count of available properties
+  int get availablePropertiesCount {
+    return items.where((p) => p.isAvailable).length;
+  }
 
-    for (final type in PropertyType.values) {
-      counts[type] = getPropertiesByType(type).length;
-    }
+  /// Get count of rented properties
+  int get rentedPropertiesCount {
+    return items.where((p) => p.isRented).length;
+  }
 
-    return counts;
+  /// Get count of properties under maintenance
+  int get maintenancePropertiesCount {
+    return items.where((p) => p.inMaintenance).length;
   }
 
   /// Get average property price
   double get averagePrice {
-    if (properties.isEmpty) return 0.0;
-
-    final totalPrice = properties.fold<double>(
+    if (items.isEmpty) return 0.0;
+    final totalPrice = items.fold<double>(
       0.0,
       (sum, property) => sum + property.price,
     );
-    return totalPrice / properties.length;
+    return totalPrice / items.length;
   }
 
-  /// Get average property area
-  double get averageArea {
-    if (properties.isEmpty) return 0.0;
-
-    final totalArea = properties.fold<double>(
-      0.0,
-      (sum, property) => sum + property.area,
-    );
-    return totalArea / properties.length;
-  }
-
-  /// Get total rental value (sum of all property prices)
-  double get totalRentalValue {
-    return properties.fold<double>(
-      0.0,
-      (sum, property) => sum + property.price,
-    );
-  }
-
-  // Special fetching methods for UI needs
-
-  /// Fetch properties with filtering and sorting
-  Future<void> fetchFilteredProperties({
-    PropertyStatus? status,
-    PropertyType? type,
-    String? searchQuery,
-    Map<String, dynamic>? additionalParams,
-  }) async {
-    final Map<String, dynamic> params = additionalParams ?? {};
-
-    if (status != null) {
-      params['status'] = status.toString().split('.').last;
+  /// Get properties grouped by type
+  Map<String, List<Property>> get propertiesByType {
+    final grouped = <String, List<Property>>{};
+    for (final property in items) {
+      final typeName = property.type.displayName;
+      grouped.putIfAbsent(typeName, () => []).add(property);
     }
-    if (type != null) {
-      params['type'] = type.toString().split('.').last;
-    }
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      params['search'] = searchQuery;
-    }
-
-    await fetchItems(params.isNotEmpty ? params : null);
+    return grouped;
   }
 
-  /// Refresh all properties
-  Future<void> refreshProperties() async {
-    await refreshItems();
+  /// Get properties grouped by rental type
+  Map<String, List<Property>> get propertiesByRentalType {
+    final grouped = <String, List<Property>>{};
+    for (final property in items) {
+      final rentalTypeName = property.rentingType.displayName;
+      grouped.putIfAbsent(rentalTypeName, () => []).add(property);
+    }
+    return grouped;
+  }
+
+  // ========================================
+  // AMENITY MANAGEMENT
+  // ========================================
+
+  /// List of all available amenities
+  List<Map<String, dynamic>> _amenities = [];
+  bool _areAmenitiesLoading = false;
+  AppError? _amenitiesError;
+
+  List<Map<String, dynamic>> get amenities => _amenities;
+  bool get areAmenitiesLoading => _areAmenitiesLoading;
+  AppError? get amenitiesError => _amenitiesError;
+
+  /// Load all available amenities
+  Future<void> loadAmenities() async {
+    await executeAsync(() async {
+      _areAmenitiesLoading = true;
+      _amenitiesError = null;
+      safeNotifyListeners();
+
+      try {
+        _amenities = await propertyRepository.getAmenities();
+        _amenitiesError = null;
+      } catch (e, stackTrace) {
+        _amenitiesError = AppError.fromException(e, stackTrace);
+        rethrow; // Re-throw to be handled by executeAsync
+      } finally {
+        _areAmenitiesLoading = false;
+        safeNotifyListeners();
+      }
+    });
+  }
+
+  /// Add new amenity
+  Future<Map<String, dynamic>?> addAmenity(String amenityName) async {
+    return await executeAsync(() async {
+      try {
+        final result = await propertyRepository.addAmenity(amenityName);
+        await loadAmenities(); // Refresh amenities list
+        return result;
+      } catch (e, stackTrace) {
+        _amenitiesError = AppError.fromException(e, stackTrace);
+        safeNotifyListeners();
+        return null;
+      }
+    });
+  }
+
+  // ========================================
+  // FILTER HELPERS
+  // ========================================
+
+  /// Filter current items by property type
+  List<Property> filterByPropertyType(PropertyType propertyType) {
+    return items.where((p) => p.type == propertyType).toList();
+  }
+
+  /// Filter current items by rental type
+  List<Property> filterByRentalType(RentingType rentalType) {
+    return items.where((p) => p.rentingType == rentalType).toList();
+  }
+
+  /// Filter current items by status
+  List<Property> filterByStatus(PropertyStatus status) {
+    return items.where((p) => p.propertyStatus == status).toList();
+  }
+
+  /// Filter current items by price range
+  List<Property> filterByPriceRange(double minPrice, double maxPrice) {
+    return items
+        .where((p) => p.price >= minPrice && p.price <= maxPrice)
+        .toList();
+  }
+
+  /// Filter current items by bedroom count
+  List<Property> filterByBedrooms(int bedrooms) {
+    return items.where((p) => p.bedrooms == bedrooms).toList();
+  }
+
+  /// Filter current items by minimum bedroom count
+  List<Property> filterByMinBedrooms(int minBedrooms) {
+    return items.where((p) => p.bedrooms >= minBedrooms).toList();
+  }
+
+  /// Sort current items by price (ascending)
+  List<Property> sortByPriceAscending() {
+    final sorted = List<Property>.from(items);
+    sorted.sort((a, b) => a.price.compareTo(b.price));
+    return sorted;
+  }
+
+  /// Sort current items by price (descending)
+  List<Property> sortByPriceDescending() {
+    final sorted = List<Property>.from(items);
+    sorted.sort((a, b) => b.price.compareTo(a.price));
+    return sorted;
+  }
+
+  /// Sort current items by date added (newest first)
+  List<Property> sortByDateAddedDescending() {
+    final sorted = List<Property>.from(items);
+    sorted.sort((a, b) {
+      final dateA = a.dateAdded ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = b.dateAdded ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return dateB.compareTo(dateA);
+    });
+    return sorted;
+  }
+
+  // ========================================
+  // CACHE MANAGEMENT
+  // ========================================
+
+  /// Clear all property-related caches
+  Future<void> clearAllCaches() async {
+    await repository.clearCache();
+  }
+
+  /// Refresh current data by clearing cache and reloading
+  Future<void> refreshData() async {
+    await clearCacheAndRefresh();
   }
 }

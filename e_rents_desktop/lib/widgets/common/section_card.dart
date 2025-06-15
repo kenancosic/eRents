@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 /// Reusable section card widget to eliminate duplication across screens
 /// Used by: PropertyFormScreen, ProfileScreen, HomeScreen, etc.
 class SectionCard extends StatelessWidget {
-  final String title;
+  final String? title;
+  final Widget? header;
   final Widget child;
   final IconData? titleIcon;
   final List<Widget>? children;
@@ -14,25 +15,35 @@ class SectionCard extends StatelessWidget {
 
   const SectionCard({
     super.key,
-    required this.title,
+    this.title,
+    this.header,
     required this.child,
     this.titleIcon,
     this.elevation,
     this.padding,
     this.margin,
     this.backgroundColor,
-  }) : children = null;
+  }) : children = null,
+       assert(
+         title != null || header != null,
+         'Either title or header must be provided.',
+       );
 
   const SectionCard.withChildren({
     super.key,
-    required this.title,
+    this.title,
+    this.header,
     required this.children,
     this.titleIcon,
     this.elevation,
     this.padding,
     this.margin,
     this.backgroundColor,
-  }) : child = const SizedBox.shrink();
+  }) : child = const SizedBox.shrink(),
+       assert(
+         title != null || header != null,
+         'Either title or header must be provided.',
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +59,7 @@ class SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(theme),
+            header ?? _buildHeader(theme),
             const Divider(height: 24, thickness: 1),
             if (children != null) ...children! else child,
           ],
@@ -66,7 +77,7 @@ class SectionCard extends StatelessWidget {
             child: Icon(titleIcon, color: theme.colorScheme.primary),
           ),
         Text(
-          title,
+          title!,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
             color: theme.colorScheme.primary,

@@ -285,3 +285,69 @@ class MaintenanceIssue {
     }
   }
 }
+
+extension IssueStatusExtension on IssueStatus {
+  String get displayName {
+    switch (this) {
+      case IssueStatus.pending:
+        return 'Pending';
+      case IssueStatus.inProgress:
+        return 'In Progress';
+      case IssueStatus.completed:
+        return 'Completed';
+      case IssueStatus.cancelled:
+        return 'Cancelled';
+      default:
+        final name = toString().split('.').last;
+        return name[0].toUpperCase() + name.substring(1);
+    }
+  }
+
+  Color get statusColor {
+    switch (this) {
+      case IssueStatus.pending:
+        return Colors.orange;
+      case IssueStatus.inProgress:
+        return Colors.blue;
+      case IssueStatus.completed:
+        return Colors.green;
+      case IssueStatus.cancelled:
+        return Colors.grey;
+      default:
+        return Colors.black;
+    }
+  }
+}
+
+extension IssuePriorityExtension on IssuePriority {
+  String get displayName {
+    switch (this) {
+      case IssuePriority.low:
+        return 'Low';
+      case IssuePriority.medium:
+        return 'Medium';
+      case IssuePriority.high:
+        return 'High';
+      case IssuePriority.emergency:
+        return 'Emergency';
+      default:
+        final name = toString().split('.').last;
+        return name[0].toUpperCase() + name.substring(1);
+    }
+  }
+
+  Color get priorityColor {
+    switch (this) {
+      case IssuePriority.low:
+        return Colors.green;
+      case IssuePriority.medium:
+        return Colors.amber;
+      case IssuePriority.high:
+        return Colors.orange;
+      case IssuePriority.emergency:
+        return Colors.red;
+      default:
+        return Colors.black;
+    }
+  }
+}

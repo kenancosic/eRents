@@ -1,269 +1,88 @@
+import 'booking.dart';
+
+/// Summarized booking information for display in lists
 class BookingSummary {
   final int bookingId;
   final int propertyId;
   final String propertyName;
-  final int? propertyImageId;
-  final List<int>?
-  propertyImageData; // Changed from byte[] to List<int> for Dart
+  final int tenantId;
+  final String? tenantName;
+  final String? tenantEmail;
   final DateTime startDate;
-  final DateTime? endDate;
+  final DateTime endDate;
   final double totalPrice;
   final String currency;
   final String bookingStatus;
-  final String? tenantName;
-  final String? tenantEmail;
-
-  // New Payment Information fields (matching backend)
-  final String paymentMethod;
-  final String? paymentStatus; // "Pending", "Completed", "Failed"
-  final String? paymentReference; // PayPal Transaction ID
-
-  // New Booking Info fields (matching backend)
+  final String paymentStatus;
   final int numberOfGuests;
   final String? specialRequests;
+  final bool isArchived;
 
   BookingSummary({
     required this.bookingId,
     required this.propertyId,
     required this.propertyName,
-    this.propertyImageId,
-    this.propertyImageData,
+    required this.tenantId,
+    this.tenantName,
+    this.tenantEmail,
     required this.startDate,
-    this.endDate,
+    required this.endDate,
     required this.totalPrice,
     this.currency = 'BAM',
     required this.bookingStatus,
-    this.tenantName,
-    this.tenantEmail,
-    this.paymentMethod = 'PayPal',
-    this.paymentStatus,
-    this.paymentReference,
-    this.numberOfGuests = 1,
+    required this.paymentStatus,
+    required this.numberOfGuests,
     this.specialRequests,
+    this.isArchived = false,
   });
 
   factory BookingSummary.fromJson(Map<String, dynamic> json) {
     return BookingSummary(
-      bookingId: json['bookingId'] as int? ?? 0,
-      propertyId: json['propertyId'] as int? ?? 0,
-      propertyName: json['propertyName'] as String? ?? '',
-      propertyImageId: json['propertyImageId'] as int?,
-      propertyImageData:
-          json['propertyImageData'] != null
-              ? List<int>.from(json['propertyImageData'])
-              : null,
-      startDate:
-          json['startDate'] != null
-              ? DateTime.parse(json['startDate'].toString())
-              : DateTime.now(),
-      endDate:
-          json['endDate'] != null
-              ? DateTime.parse(json['endDate'].toString())
-              : null,
+      bookingId: json['bookingId'] ?? 0,
+      propertyId: json['propertyId'] ?? 0,
+      propertyName: json['propertyName'] ?? 'N/A',
+      tenantId: json['tenantId'] ?? 0,
+      tenantName: json['tenantName'],
+      tenantEmail: json['tenantEmail'],
+      startDate: DateTime.tryParse(json['startDate'] ?? '') ?? DateTime.now(),
+      endDate: DateTime.tryParse(json['endDate'] ?? '') ?? DateTime.now(),
       totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'BAM',
-      bookingStatus:
-          json['bookingStatusStatusName'] as String? ??
-          json['status'] as String? ??
-          json['bookingStatus'] as String? ??
-          '',
-      tenantName:
-          json['tenantName'] as String? ??
-          _buildTenantName(json['userFirstName'], json['userLastName']),
-      tenantEmail:
-          json['tenantEmail'] as String? ?? json['userEmail'] as String?,
-      paymentMethod: json['paymentMethod'] as String? ?? 'PayPal',
-      paymentStatus: json['paymentStatus'] as String?,
-      paymentReference: json['paymentReference'] as String?,
-      numberOfGuests: json['numberOfGuests'] as int? ?? 1,
-      specialRequests: json['specialRequests'] as String?,
+      currency: json['currency'] ?? 'BAM',
+      bookingStatus: json['bookingStatus'] ?? 'Unknown',
+      paymentStatus: json['paymentStatus'] ?? 'Unknown',
+      numberOfGuests: json['numberOfGuests'] ?? 1,
+      specialRequests: json['specialRequests'],
+      isArchived: json['isArchived'] ?? false,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'bookingId': bookingId,
-      'propertyId': propertyId,
-      'propertyName': propertyName,
-      'propertyImageId': propertyImageId,
-      'propertyImageData': propertyImageData,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
-      'totalPrice': totalPrice,
-      'currency': currency,
-      'bookingStatus': bookingStatus,
-      'status':
-          bookingStatus, // Also include as 'status' for backend compatibility
-      'tenantName': tenantName,
-      'tenantEmail': tenantEmail,
-      // New fields
-      'paymentMethod': paymentMethod,
-      'paymentStatus': paymentStatus,
-      'paymentReference': paymentReference,
-      'numberOfGuests': numberOfGuests,
-      'specialRequests': specialRequests,
-    };
+  /// Create BookingSummary from a full Booking object
+  factory BookingSummary.fromBooking(Booking booking) {
+    return BookingSummary(
+      bookingId: booking.bookingId,
+      propertyId: booking.propertyId ?? 0,
+      propertyName: booking.propertyName ?? 'N/A',
+      tenantId: booking.userId ?? 0,
+      tenantName: booking.tenantName ?? booking.userName,
+      tenantEmail: booking.tenantEmail ?? booking.userEmail,
+      startDate: booking.startDate,
+      endDate: booking.endDate ?? booking.startDate,
+      totalPrice: booking.totalPrice,
+      currency: booking.currency,
+      bookingStatus: booking.status.displayName,
+      paymentStatus: booking.paymentStatus ?? 'Unknown',
+      numberOfGuests: booking.numberOfGuests,
+      specialRequests: booking.specialRequests,
+      isArchived: false,
+    );
   }
 
-  // Helper methods for payment status
-  bool get isPaymentCompleted => paymentStatus?.toLowerCase() == 'completed';
-  bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
-  bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
-
-  // Helper methods for booking management
+  // Helper getters for UI
+  bool get isPaymentCompleted => paymentStatus.toLowerCase() == 'completed';
+  bool get isPaymentPending => paymentStatus.toLowerCase() == 'pending';
+  bool get isPaymentFailed => paymentStatus.toLowerCase() == 'failed';
+  bool get hasSpecialRequests =>
+      specialRequests != null && specialRequests!.isNotEmpty;
   String get guestCountDisplay =>
-      numberOfGuests == 1 ? '1 Guest' : '$numberOfGuests Guests';
-  bool get hasSpecialRequests => specialRequests?.isNotEmpty == true;
-
-  /// Create BookingSummary from Booking model
-  factory BookingSummary.fromBooking(dynamic booking) {
-    try {
-      return BookingSummary(
-        bookingId: booking.bookingId ?? 0,
-        propertyId: booking.propertyId ?? 0,
-        propertyName: booking.propertyName ?? '',
-        propertyImageId: booking.propertyImageId,
-        propertyImageData: null, // Not available in new DTO structure
-        startDate: booking.startDate ?? DateTime.now(),
-        endDate: booking.endDate,
-        totalPrice: booking.totalPrice ?? 0.0,
-        currency: booking.currency ?? 'BAM',
-        bookingStatus: booking.status?.toString() ?? '',
-        tenantName: booking.tenantName ?? booking.userName,
-        tenantEmail: booking.tenantEmail ?? booking.userEmail,
-        paymentMethod: booking.paymentMethod ?? 'PayPal',
-        paymentStatus: booking.paymentStatus,
-        paymentReference: booking.paymentReference,
-        numberOfGuests: booking.numberOfGuests ?? 1,
-        specialRequests: booking.specialRequests,
-      );
-    } catch (e) {
-      print('❌ BookingSummary.fromBooking error: $e');
-      print('❌ Booking object type: ${booking.runtimeType}');
-      print('❌ Available properties: ${booking.toString()}');
-      rethrow;
-    }
-  }
-
-  // Helper method to build tenant name from separate fields
-  static String? _buildTenantName(dynamic firstName, dynamic lastName) {
-    final first = firstName as String? ?? '';
-    final last = lastName as String? ?? '';
-    final combined = '$first $last'.trim();
-    return combined.isEmpty ? null : combined;
-  }
-}
-
-// Stats classes for property details
-class PropertyBookingStats {
-  final int totalBookings;
-  final double totalRevenue;
-  final double averageBookingValue;
-  final int currentOccupancy;
-  final double occupancyRate;
-
-  PropertyBookingStats({
-    required this.totalBookings,
-    required this.totalRevenue,
-    required this.averageBookingValue,
-    required this.currentOccupancy,
-    required this.occupancyRate,
-  });
-
-  factory PropertyBookingStats.fromJson(Map<String, dynamic> json) {
-    return PropertyBookingStats(
-      totalBookings: json['totalBookings'] as int? ?? 0,
-      totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0.0,
-      averageBookingValue:
-          (json['averageBookingValue'] as num?)?.toDouble() ?? 0.0,
-      currentOccupancy: json['currentOccupancy'] as int? ?? 0,
-      occupancyRate: (json['occupancyRate'] as num?)?.toDouble() ?? 0.0,
-    );
-  }
-}
-
-class PropertyReviewStats {
-  final double averageRating;
-  final int totalReviews;
-  final Map<String, int> ratingDistribution;
-  final List<Map<String, dynamic>>
-  recentReviews; // Keep as Map for now since Review import causes circular dependency
-
-  PropertyReviewStats({
-    required this.averageRating,
-    required this.totalReviews,
-    required this.ratingDistribution,
-    required this.recentReviews,
-  });
-
-  factory PropertyReviewStats.fromJson(Map<String, dynamic> json) {
-    try {
-      // Safely parse averageRating
-      double avgRating = 0.0;
-      final ratingValue = json['averageRating'];
-      if (ratingValue is num) {
-        avgRating = ratingValue.toDouble();
-      } else if (ratingValue is String) {
-        avgRating = double.tryParse(ratingValue) ?? 0.0;
-      }
-
-      // Safely parse totalReviews
-      int totalReviewsCount = 0;
-      final reviewsValue = json['totalReviews'];
-      if (reviewsValue is int) {
-        totalReviewsCount = reviewsValue;
-      } else if (reviewsValue is String) {
-        totalReviewsCount = int.tryParse(reviewsValue) ?? 0;
-      }
-
-      // Safely parse ratingDistribution - convert to Map<String, int>
-      Map<String, int> distribution = {};
-      try {
-        final distributionData = json['ratingDistribution'];
-        if (distributionData is Map) {
-          distributionData.forEach((key, value) {
-            final stringKey = key.toString();
-            final intValue =
-                value is int ? value : (int.tryParse(value.toString()) ?? 0);
-            distribution[stringKey] = intValue;
-          });
-        }
-      } catch (e) {
-        print('Error parsing rating distribution: $e');
-      }
-
-      // Safely parse recentReviews as List<Map<String, dynamic>>
-      List<Map<String, dynamic>> reviews = [];
-      try {
-        final reviewsData = json['recentReviews'];
-        if (reviewsData is List) {
-          reviews =
-              reviewsData.map((reviewJson) {
-                if (reviewJson is Map<String, dynamic>) {
-                  return reviewJson;
-                } else {
-                  return <String, dynamic>{};
-                }
-              }).toList();
-        }
-      } catch (e) {
-        print('Error parsing recent reviews: $e');
-      }
-
-      return PropertyReviewStats(
-        averageRating: avgRating,
-        totalReviews: totalReviewsCount,
-        ratingDistribution: distribution,
-        recentReviews: reviews,
-      );
-    } catch (e) {
-      print('Error parsing PropertyReviewStats: $e');
-      return PropertyReviewStats(
-        averageRating: 0.0,
-        totalReviews: 0,
-        ratingDistribution: {},
-        recentReviews: [],
-      );
-    }
-  }
+      '$numberOfGuests ${numberOfGuests > 1 ? 'guests' : 'guest'}';
 }

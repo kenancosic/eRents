@@ -1,13 +1,14 @@
-enum RentingType { monthly, daily }
+/// Renting type enum matching backend RentingType values
+enum RentingType { daily, monthly }
 
-// Helper extension for display names (optional but useful)
+/// Extension for RentingType to provide display names
 extension RentingTypeExtension on RentingType {
   String get displayName {
     switch (this) {
-      case RentingType.monthly:
-        return 'Monthly';
       case RentingType.daily:
         return 'Daily';
+      case RentingType.monthly:
+        return 'Monthly';
     }
   }
 }

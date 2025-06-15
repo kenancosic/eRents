@@ -2,143 +2,327 @@ import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import './address.dart';
 
+/// Property status enum matching backend PropertyStatus values
 enum PropertyStatus { available, rented, maintenance, unavailable }
 
+/// Property type enum matching backend PropertyType values
 enum PropertyType { apartment, house, condo, townhouse, studio }
 
+/// Property entity model matching the comprehensive analysis
+///
+/// This model aligns with the PropertyResponse DTO from the backend
+/// and includes all fields from the Property table analysis.
 class Property {
+  // Core identifiers
   final int propertyId;
   final int ownerId;
+
+  // Basic information
   final String name;
   final String description;
-  final PropertyType type;
   final double price;
-  final RentingType rentingType;
-  final PropertyStatus status;
-  final List<int> imageIds;
+  final String currency;
+  final String? status; // Raw status from backend for debugging
+  final DateTime? dateAdded;
+
+  // Property characteristics
+  final int? propertyTypeId;
+  final int? rentingTypeId;
   final int bedrooms;
   final int bathrooms;
   final double area;
-  final List<MaintenanceIssue> maintenanceIssues;
-  final List<int> amenityIds;
-  final String currency;
   final int? minimumStayDays;
-  final DateTime dateAdded;
+  final bool requiresApproval;
+
+  // Embedded value object
   final Address? address;
 
-  // Fields from other entities - use "EntityName + FieldName" pattern
+  // Related data as IDs (frontend fetches full objects when needed)
+  final List<int> amenityIds;
+  final List<int> imageIds;
+
+  // Computed fields from related entities
   final String? propertyTypeName;
   final String? rentingTypeName;
-  final String? userFirstName; // Owner's first name
-  final String? userLastName; // Owner's last name
-  final double? averageRating; // Computed from reviews
+  final String? userFirstName;
+  final String? userLastName;
+  final double? averageRating;
+
+  // Relationships (for local data only, not persisted)
+  final List<MaintenanceIssue> maintenanceIssues;
 
   Property({
     required this.propertyId,
     required this.ownerId,
     required this.name,
     required this.description,
-    required this.type,
     required this.price,
-    required this.rentingType,
-    required this.status,
-    required this.imageIds,
-    required this.bedrooms,
-    required this.bathrooms,
-    required this.area,
-    required this.maintenanceIssues,
-    required this.amenityIds,
     this.currency = "BAM",
+    this.status,
+    this.dateAdded,
+    this.propertyTypeId,
+    this.rentingTypeId,
+    this.bedrooms = 0,
+    this.bathrooms = 0,
+    this.area = 0.0,
     this.minimumStayDays,
-    required this.dateAdded,
+    this.requiresApproval = false,
     this.address,
+    this.amenityIds = const [],
+    this.imageIds = const [],
     this.propertyTypeName,
     this.rentingTypeName,
     this.userFirstName,
     this.userLastName,
     this.averageRating,
+    this.maintenanceIssues = const [],
   });
 
+  /// Factory constructor from backend PropertyResponse DTO
   factory Property.fromJson(Map<String, dynamic> json) {
-    print('Property.fromJson: Parsing property data: ${json.keys.toList()}');
-
     return Property(
-      // Handle both propertyId and id field names from backend
-      propertyId: json['propertyId'] as int? ?? json['id'] as int? ?? 0,
-      ownerId: json['ownerId'] as int? ?? 0,
-      // Handle both name and title field names
-      name: json['name'] as String? ?? json['title'] as String? ?? '',
+      // Core identifiers
+      propertyId: _parseInt(json['propertyId'] ?? json['id'], 0),
+      ownerId: _parseInt(json['ownerId'], 0),
+
+      // Basic information
+      name: json['name'] as String? ?? '',
       description: json['description'] as String? ?? '',
-      // Prefer display names, fallback to ID conversion
-      type: _parsePropertyType(
-        json['propertyTypeName'] ??
-            json['type'] ??
-            json['propertyType'] ??
-            json['propertyTypeId'],
-      ),
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      rentingType: _parseRentingType(
-        json['rentingTypeName'] ?? json['rentingType'] ?? json['rentingTypeId'],
-      ),
-      // ✅ DOMAIN-ALIGNED: Backend now sends string status directly
-      status: _parsePropertyStatus(json['status']),
-      imageIds: _parseImageIds(json['imageIds']),
-      bedrooms: json['bedrooms'] as int? ?? 0,
-      bathrooms: json['bathrooms'] as int? ?? 0,
-      area: (json['area'] as num?)?.toDouble() ?? 0.0,
-      maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
-      amenityIds: _parseAmenityIds(json['amenityIds']),
+      price: _parseDecimal(json['price'], 0.0),
       currency: json['currency'] as String? ?? "BAM",
-      minimumStayDays: json['minimumStayDays'] as int?,
-      // Handle date field name differences
-      dateAdded:
-          json['dateAdded'] != null
-              ? DateTime.parse(json['dateAdded'] as String)
-              : (json['createdAt'] != null
-                  ? DateTime.parse(json['createdAt'] as String)
-                  : DateTime.now()),
+      status: json['status'] as String?,
+      dateAdded: _parseDateTime(json['dateAdded']),
+
+      // Property characteristics
+      propertyTypeId: _parseInt(json['propertyTypeId'], null),
+      rentingTypeId: _parseInt(json['rentingTypeId'], null),
+      bedrooms: _parseInt(json['bedrooms'], 0),
+      bathrooms: _parseInt(json['bathrooms'], 0),
+      area: _parseDecimal(json['area'], 0.0),
+      minimumStayDays: _parseInt(json['minimumStayDays'], null),
+      requiresApproval: json['requiresApproval'] as bool? ?? false,
+
+      // Embedded value object
       address:
           json['address'] != null
               ? Address.fromJson(json['address'] as Map<String, dynamic>)
               : null,
-      // Fields from other entities - use "EntityName + FieldName" pattern
+
+      // Related data as IDs
+      amenityIds: _parseIntList(json['amenityIds']),
+      imageIds: _parseIntList(json['imageIds']),
+
+      // Computed fields from related entities
       propertyTypeName: json['propertyTypeName'] as String?,
       rentingTypeName: json['rentingTypeName'] as String?,
       userFirstName: json['userFirstName'] as String?,
       userLastName: json['userLastName'] as String?,
-      averageRating: (json['averageRating'] as num?)?.toDouble(),
+      averageRating: _parseDecimal(json['averageRating'], null),
+
+      // Local relationships
+      maintenanceIssues: _parseMaintenanceIssues(json['maintenanceIssues']),
     );
   }
 
-  static PropertyType _parsePropertyType(dynamic typeValue) {
-    if (typeValue == null) return PropertyType.apartment;
+  /// Convert to JSON for backend requests
+  Map<String, dynamic> toJson() {
+    return {
+      'propertyId': propertyId,
+      'ownerId': ownerId,
+      'name': name,
+      'description': description,
+      'price': price,
+      'currency': currency,
+      'status': status,
+      'propertyTypeId': propertyTypeId,
+      'rentingTypeId': rentingTypeId,
+      'bedrooms': bedrooms,
+      'bathrooms': bathrooms,
+      'area': area,
+      'minimumStayDays': minimumStayDays,
+      'requiresApproval': requiresApproval,
+      'address': address?.toJson(),
+      'amenityIds': amenityIds,
+      'imageIds': imageIds,
+      if (dateAdded != null) 'dateAdded': dateAdded!.toIso8601String(),
+    };
+  }
 
-    // Handle numeric IDs from backend
-    if (typeValue is int) {
-      switch (typeValue) {
-        case 1:
-          return PropertyType.apartment;
-        case 2:
-          return PropertyType.house;
-        case 3:
-          return PropertyType.condo;
-        case 4:
-          return PropertyType.townhouse;
-        case 5:
-          return PropertyType.studio;
-        default:
-          return PropertyType.apartment;
+  /// Create copy with updated fields
+  Property copyWith({
+    int? propertyId,
+    int? ownerId,
+    String? name,
+    String? description,
+    double? price,
+    String? currency,
+    String? status,
+    DateTime? dateAdded,
+    int? propertyTypeId,
+    int? rentingTypeId,
+    int? bedrooms,
+    int? bathrooms,
+    double? area,
+    int? minimumStayDays,
+    bool? requiresApproval,
+    Address? address,
+    List<int>? amenityIds,
+    List<int>? imageIds,
+    String? propertyTypeName,
+    String? rentingTypeName,
+    String? userFirstName,
+    String? userLastName,
+    double? averageRating,
+    List<MaintenanceIssue>? maintenanceIssues,
+  }) {
+    return Property(
+      propertyId: propertyId ?? this.propertyId,
+      ownerId: ownerId ?? this.ownerId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      currency: currency ?? this.currency,
+      status: status ?? this.status,
+      dateAdded: dateAdded ?? this.dateAdded,
+      propertyTypeId: propertyTypeId ?? this.propertyTypeId,
+      rentingTypeId: rentingTypeId ?? this.rentingTypeId,
+      bedrooms: bedrooms ?? this.bedrooms,
+      bathrooms: bathrooms ?? this.bathrooms,
+      area: area ?? this.area,
+      minimumStayDays: minimumStayDays ?? this.minimumStayDays,
+      requiresApproval: requiresApproval ?? this.requiresApproval,
+      address: address ?? this.address,
+      amenityIds: amenityIds ?? this.amenityIds,
+      imageIds: imageIds ?? this.imageIds,
+      propertyTypeName: propertyTypeName ?? this.propertyTypeName,
+      rentingTypeName: rentingTypeName ?? this.rentingTypeName,
+      userFirstName: userFirstName ?? this.userFirstName,
+      userLastName: userLastName ?? this.userLastName,
+      averageRating: averageRating ?? this.averageRating,
+      maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
+    );
+  }
+
+  /// Empty property factory for initialization
+  factory Property.empty() => Property(
+    propertyId: 0,
+    ownerId: 0,
+    name: '',
+    description: '',
+    price: 0.0,
+  );
+
+  // Computed getters for backwards compatibility and UI convenience
+
+  /// Get property type enum from computed field or type ID
+  PropertyType get type {
+    if (propertyTypeName != null) {
+      return _parsePropertyTypeFromName(propertyTypeName!);
+    }
+    if (propertyTypeId != null) {
+      return _parsePropertyTypeFromId(propertyTypeId!);
+    }
+    return PropertyType.apartment;
+  }
+
+  /// Get renting type enum from computed field or type ID
+  RentingType get rentingType {
+    if (rentingTypeName != null) {
+      return _parseRentingTypeFromName(rentingTypeName!);
+    }
+    if (rentingTypeId != null) {
+      return _parseRentingTypeFromId(rentingTypeId!);
+    }
+    return RentingType.monthly;
+  }
+
+  /// Get property status enum from status string
+  PropertyStatus get propertyStatus {
+    if (status == null) return PropertyStatus.available;
+    return _parsePropertyStatusFromString(status!);
+  }
+
+  /// Get owner name from user fields
+  String? get ownerName {
+    if (userFirstName?.isEmpty == false || userLastName?.isEmpty == false) {
+      return '${userFirstName ?? ''} ${userLastName ?? ''}'.trim();
+    }
+    return null;
+  }
+
+  /// Check if property has images
+  bool get hasImages => imageIds.isNotEmpty;
+
+  /// Check if property has amenities
+  bool get hasAmenities => amenityIds.isNotEmpty;
+
+  /// Check if property is available
+  bool get isAvailable => propertyStatus == PropertyStatus.available;
+
+  /// Check if property is rented
+  bool get isRented => propertyStatus == PropertyStatus.rented;
+
+  /// Check if property is under maintenance
+  bool get inMaintenance => propertyStatus == PropertyStatus.maintenance;
+
+  // Helper parsing methods
+
+  static int _parseInt(dynamic value, int? defaultValue) {
+    if (value == null) return defaultValue ?? 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? (defaultValue ?? 0);
+    return defaultValue ?? 0;
+  }
+
+  static double _parseDecimal(dynamic value, double? defaultValue) {
+    if (value == null) return defaultValue ?? 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? (defaultValue ?? 0.0);
+    return defaultValue ?? 0.0;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
       }
     }
+    return null;
+  }
 
-    // Handle string values
-    String typeString = typeValue.toString().toLowerCase();
-    switch (typeString) {
+  static List<int> _parseIntList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => _parseInt(e, 0)).where((id) => id > 0).toList();
+    }
+    return [];
+  }
+
+  static List<MaintenanceIssue> _parseMaintenanceIssues(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      try {
+        return value
+            .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  static PropertyType _parsePropertyTypeFromName(String name) {
+    switch (name.toLowerCase()) {
       case 'apartment':
         return PropertyType.apartment;
       case 'house':
         return PropertyType.house;
       case 'condo':
+      case 'condominium':
         return PropertyType.condo;
       case 'townhouse':
         return PropertyType.townhouse;
@@ -149,24 +333,25 @@ class Property {
     }
   }
 
-  static RentingType _parseRentingType(dynamic rentingTypeValue) {
-    if (rentingTypeValue == null) return RentingType.monthly;
-
-    // Handle numeric IDs from backend
-    if (rentingTypeValue is int) {
-      switch (rentingTypeValue) {
-        case 1:
-          return RentingType.monthly;
-        case 2:
-          return RentingType.daily;
-        default:
-          return RentingType.monthly;
-      }
+  static PropertyType _parsePropertyTypeFromId(int id) {
+    switch (id) {
+      case 1:
+        return PropertyType.apartment;
+      case 2:
+        return PropertyType.house;
+      case 3:
+        return PropertyType.condo;
+      case 4:
+        return PropertyType.townhouse;
+      case 5:
+        return PropertyType.studio;
+      default:
+        return PropertyType.apartment;
     }
+  }
 
-    // Handle string values
-    String rentingTypeString = rentingTypeValue.toString().toLowerCase();
-    switch (rentingTypeString) {
+  static RentingType _parseRentingTypeFromName(String name) {
+    switch (name.toLowerCase()) {
       case 'daily':
         return RentingType.daily;
       case 'monthly':
@@ -176,28 +361,19 @@ class Property {
     }
   }
 
-  static PropertyStatus _parsePropertyStatus(dynamic statusValue) {
-    if (statusValue == null) return PropertyStatus.available;
-
-    // Handle numeric IDs from backend
-    if (statusValue is int) {
-      switch (statusValue) {
-        case 1:
-          return PropertyStatus.available;
-        case 2:
-          return PropertyStatus.rented;
-        case 3:
-          return PropertyStatus.maintenance;
-        case 4:
-          return PropertyStatus.unavailable;
-        default:
-          return PropertyStatus.available;
-      }
+  static RentingType _parseRentingTypeFromId(int id) {
+    switch (id) {
+      case 1:
+        return RentingType.monthly;
+      case 2:
+        return RentingType.daily;
+      default:
+        return RentingType.monthly;
     }
+  }
 
-    // Handle string values
-    String statusString = statusValue.toString().toLowerCase();
-    switch (statusString) {
+  static PropertyStatus _parsePropertyStatusFromString(String status) {
+    switch (status.toLowerCase()) {
       case 'available':
         return PropertyStatus.available;
       case 'rented':
@@ -212,144 +388,6 @@ class Property {
     }
   }
 
-  static List<int> _parseImageIds(dynamic imageIdsValue) {
-    if (imageIdsValue == null) return [];
-
-    try {
-      if (imageIdsValue is List) {
-        return imageIdsValue
-            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
-            .where((id) => id > 0)
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error parsing imageIds: $e');
-      return [];
-    }
-  }
-
-  static List<MaintenanceIssue> _parseMaintenanceIssues(
-    dynamic maintenanceValue,
-  ) {
-    if (maintenanceValue == null) return [];
-
-    try {
-      final List<dynamic> maintenanceList = maintenanceValue as List;
-      return maintenanceList
-          .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  static List<int> _parseAmenityIds(dynamic amenityIdsValue) {
-    if (amenityIdsValue == null) return [];
-
-    try {
-      if (amenityIdsValue is List) {
-        return amenityIdsValue
-            .map((id) => id is int ? id : int.tryParse(id.toString()) ?? 0)
-            .where((id) => id > 0)
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error parsing amenityIds: $e');
-      return [];
-    }
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'propertyId': propertyId,
-      'ownerId': ownerId,
-      'name': name,
-      'description': description,
-      'type': type.toString().split('.').last,
-      'price': price,
-      'rentingType': rentingType.name,
-      'status': status.toString().split('.').last,
-      'imageIds': imageIds,
-      'bedrooms': bedrooms,
-      'bathrooms': bathrooms,
-      'area': area,
-      'currency': currency,
-      'minimumStayDays': minimumStayDays,
-      'dateAdded': dateAdded.toIso8601String(),
-      'address': address?.toJson(),
-      'amenityIds': amenityIds,
-    };
-  }
-
-  Property copyWith({
-    int? propertyId,
-    int? ownerId,
-    String? name,
-    String? description,
-    PropertyType? type,
-    double? price,
-    RentingType? rentingType,
-    PropertyStatus? status,
-    List<int>? imageIds,
-    int? bedrooms,
-    int? bathrooms,
-    double? area,
-    List<MaintenanceIssue>? maintenanceIssues,
-    List<int>? amenityIds,
-    String? currency,
-    int? minimumStayDays,
-    DateTime? dateAdded,
-    Address? address,
-  }) {
-    return Property(
-      propertyId: propertyId ?? this.propertyId,
-      ownerId: ownerId ?? this.ownerId,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      type: type ?? this.type,
-      price: price ?? this.price,
-      rentingType: rentingType ?? this.rentingType,
-      status: status ?? this.status,
-      imageIds: imageIds ?? this.imageIds,
-      bedrooms: bedrooms ?? this.bedrooms,
-      bathrooms: bathrooms ?? this.bathrooms,
-      area: area ?? this.area,
-      maintenanceIssues: maintenanceIssues ?? this.maintenanceIssues,
-      amenityIds: amenityIds ?? this.amenityIds,
-      currency: currency ?? this.currency,
-      minimumStayDays: minimumStayDays ?? this.minimumStayDays,
-      dateAdded: dateAdded ?? this.dateAdded,
-      address: address ?? this.address,
-    );
-  }
-
-  factory Property.empty() => Property(
-    propertyId: 0,
-    ownerId: 0,
-    name: 'N/A',
-    description: '',
-    type: PropertyType.apartment,
-    price: 0.0,
-    rentingType: RentingType.monthly,
-    status: PropertyStatus.available,
-    imageIds: [],
-    bedrooms: 0,
-    bathrooms: 0,
-    area: 0.0,
-    maintenanceIssues: [],
-    amenityIds: [],
-    dateAdded: DateTime.now(),
-    address: null,
-  );
-
-  // Computed properties for UI convenience (for backward compatibility)
-  String? get ownerName =>
-      !((userFirstName?.isEmpty ?? true) && (userLastName?.isEmpty ?? true))
-          ? '${userFirstName ?? ''} ${userLastName ?? ''}'.trim()
-          : null;
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -362,6 +400,39 @@ class Property {
 
   @override
   String toString() {
-    return 'Property(id: $propertyId, name: $name, status: $status, price: $price)';
+    return 'Property(id: $propertyId, name: $name, status: $status, price: $price $currency)';
+  }
+}
+
+/// Extensions for enum display names
+extension PropertyStatusExtension on PropertyStatus {
+  String get displayName {
+    switch (this) {
+      case PropertyStatus.available:
+        return 'Available';
+      case PropertyStatus.rented:
+        return 'Rented';
+      case PropertyStatus.maintenance:
+        return 'Maintenance';
+      case PropertyStatus.unavailable:
+        return 'Unavailable';
+    }
+  }
+}
+
+extension PropertyTypeExtension on PropertyType {
+  String get displayName {
+    switch (this) {
+      case PropertyType.apartment:
+        return 'Apartment';
+      case PropertyType.house:
+        return 'House';
+      case PropertyType.condo:
+        return 'Condominium';
+      case PropertyType.townhouse:
+        return 'Townhouse';
+      case PropertyType.studio:
+        return 'Studio';
+    }
   }
 }
