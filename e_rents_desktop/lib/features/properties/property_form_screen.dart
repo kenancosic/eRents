@@ -179,10 +179,10 @@ class _PropertyFormScreenContentState
 
   Widget _buildBasicInfoSection(ThemeData theme, PropertyFormState formState) {
     return SectionCard(
+      title: 'Basic Information',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(title: 'Basic Information'),
           PropertyFormFields.buildRequiredTextField(
             controller: formState.titleController,
             labelText: 'Property Title',
@@ -203,10 +203,10 @@ class _PropertyFormScreenContentState
     final lookup = context.watch<LookupProvider>();
 
     return SectionCard(
+      title: 'Property Details',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(title: 'Property Details'),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -303,58 +303,43 @@ class _PropertyFormScreenContentState
 
   Widget _buildAddressSection(ThemeData theme, PropertyFormState formState) {
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Location & Address'),
-          AddressInput(
-            initialAddress: formState.selectedAddress,
-            initialAddressString: formState.initialAddressString,
-            onAddressSelected: formState.updateAddressFromGoogle,
-            streetNameController: formState.streetNameController,
-            streetNumberController: formState.streetNumberController,
-            cityController: formState.cityController,
-            postalCodeController: formState.postalCodeController,
-            countryController: formState.countryController,
-            onManualAddressChanged: formState.updateAddressFromManualFields,
-          ),
-        ],
+      title: 'Location & Address',
+      child: AddressInput(
+        initialAddress: formState.selectedAddress,
+        initialAddressString: formState.initialAddressString,
+        onAddressSelected: formState.updateAddressFromGoogle,
+        streetNameController: formState.streetNameController,
+        streetNumberController: formState.streetNumberController,
+        cityController: formState.cityController,
+        postalCodeController: formState.postalCodeController,
+        countryController: formState.countryController,
+        onManualAddressChanged: formState.updateAddressFromManualFields,
       ),
     );
   }
 
   Widget _buildImagesSection(ThemeData theme, PropertyFormState formState) {
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Property Images'),
-          ImagePickerInput(
-            initialImages: formState.images,
-            onChanged: (images) {
-              formState.images = images;
-            },
-          ),
-        ],
+      title: 'Property Images',
+      child: ImagePickerInput(
+        initialImages: formState.images,
+        onChanged: (images) {
+          formState.images = images;
+        },
       ),
     );
   }
 
   Widget _buildAmenitiesSection(ThemeData theme, PropertyFormState formState) {
     return SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Amenities'),
-          AmenityManager(
-            mode: AmenityManagerMode.select,
-            initialAmenityIds: formState.selectedAmenityIds,
-            onAmenityIdsChanged: (ids) {
-              formState.selectedAmenityIds = ids;
-            },
-            showTitle: false, // We have a SectionHeader now
-          ),
-        ],
+      title: 'Amenities',
+      child: AmenityManager(
+        mode: AmenityManagerMode.select,
+        initialAmenityIds: formState.selectedAmenityIds,
+        onAmenityIdsChanged: (ids) {
+          formState.selectedAmenityIds = ids;
+        },
+        showTitle: false, // We have a SectionCard title now
       ),
     );
   }

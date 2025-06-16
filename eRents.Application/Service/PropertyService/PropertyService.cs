@@ -38,6 +38,16 @@ namespace eRents.Application.Service.PropertyService
 		
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
+			// Set audit fields
+			var currentUserId = _currentUserService.UserId;
+			if (!string.IsNullOrEmpty(currentUserId))
+			{
+				entity.CreatedBy = currentUserId;
+				entity.ModifiedBy = currentUserId;
+			}
+			entity.CreatedAt = DateTime.UtcNow;
+			entity.UpdatedAt = DateTime.UtcNow;
+
 			if (insert.PropertyTypeId.HasValue)
 			{
 				var isValidPropertyType = await _propertyRepository.IsValidPropertyTypeIdAsync(insert.PropertyTypeId.Value);
@@ -84,6 +94,14 @@ namespace eRents.Application.Service.PropertyService
 		
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
+			// Set audit fields for updates
+			var currentUserId = _currentUserService.UserId;
+			if (!string.IsNullOrEmpty(currentUserId))
+			{
+				entity.ModifiedBy = currentUserId;
+			}
+			entity.UpdatedAt = DateTime.UtcNow;
+
 			if (update.PropertyTypeId.HasValue)
 			{
 				var isValidPropertyType = await _propertyRepository.IsValidPropertyTypeIdAsync(update.PropertyTypeId.Value);

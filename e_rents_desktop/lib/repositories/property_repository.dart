@@ -245,6 +245,7 @@ class PropertyRepository extends BaseRepository<Property, PropertyService> {
     double? latitude,
     double? longitude,
     double? radius,
+    bool noPaging = false, // Add pagination control
   }) async {
     final searchParams = <String, dynamic>{
       if (name != null) 'name': name,
@@ -308,6 +309,7 @@ class PropertyRepository extends BaseRepository<Property, PropertyService> {
       latitude: latitude,
       longitude: longitude,
       radius: radius,
+      noPaging: noPaging,
     );
 
     if (enableCaching) {

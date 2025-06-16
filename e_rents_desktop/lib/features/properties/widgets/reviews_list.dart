@@ -23,11 +23,20 @@ class ReviewsList extends StatelessWidget {
     }
 
     if (error != null) {
-      return Center(child: Text('Error: $error'));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red),
+            SizedBox(height: 8),
+            Text('Error: $error'),
+          ],
+        ),
+      );
     }
 
     if (reviews.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -39,14 +48,27 @@ class ReviewsList extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
-      itemCount: reviews.length,
-      itemBuilder: (context, index) {
-        return _ReviewItem(
-          review: reviews[index],
-          onReplySubmitted: onReplySubmitted,
-        );
-      },
+    return Column(
+      children:
+          reviews.map((review) {
+            try {
+              return _ReviewItem(
+                review: review,
+                onReplySubmitted: onReplySubmitted,
+              );
+            } catch (e) {
+              debugPrint(
+                'Error building review item for review ${review.id}: $e',
+              );
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text('Error loading review: ${e.toString()}'),
+                ),
+              );
+            }
+          }).toList(),
     );
   }
 }

@@ -27,13 +27,13 @@ class PropertyService extends ApiService {
   // ========================================
 
   /// Get all properties with optional filtering
-  /// Uses Universal System with noPaging=true for collection operations
+  /// Uses Universal System with pagination by default for better performance
   Future<List<Property>> getProperties({
     Map<String, String>? queryParams,
+    bool noPaging = false,
   }) async {
     try {
       final params = <String, dynamic>{
-        'noPaging': 'true',
         'IncludeImages': 'true',
         'IncludeAmenities': 'true',
         'IncludeOwner': 'true',
@@ -41,6 +41,11 @@ class PropertyService extends ApiService {
         'IncludeRentingType': 'true',
         ...?queryParams,
       };
+
+      // Only add noPaging if explicitly requested
+      if (noPaging) {
+        params['noPaging'] = 'true';
+      }
 
       final response = await get(_buildEndpoint(params), authenticated: true);
       final responseData = json.decode(response.body);
@@ -59,6 +64,13 @@ class PropertyService extends ApiService {
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
+  }
+
+  /// Get ALL properties without pagination (use sparingly)
+  Future<List<Property>> getAllProperties({
+    Map<String, String>? queryParams,
+  }) async {
+    return await getProperties(queryParams: queryParams, noPaging: true);
   }
 
   /// Get paginated properties for Universal System table support
@@ -139,7 +151,7 @@ class PropertyService extends ApiService {
   // PROPERTY SEARCH & FILTERING
   // ========================================
 
-  /// Search properties with advanced filtering
+  /// Perform comprehensive property search
   Future<List<Property>> searchProperties({
     String? name,
     int? ownerId,
@@ -166,16 +178,21 @@ class PropertyService extends ApiService {
     double? latitude,
     double? longitude,
     double? radius,
+    bool noPaging = false, // Add pagination control
   }) async {
     try {
       final searchParams = <String, String>{
-        'noPaging': 'true',
         'IncludeImages': 'true',
         'IncludeAmenities': 'true',
         'IncludeOwner': 'true',
         'IncludePropertyType': 'true',
         'IncludeRentingType': 'true',
       };
+
+      // Only disable pagination if explicitly requested
+      if (noPaging) {
+        searchParams['noPaging'] = 'true';
+      }
 
       // Add search parameters
       if (name != null) searchParams['name'] = name;
@@ -211,7 +228,7 @@ class PropertyService extends ApiService {
       if (longitude != null) searchParams['longitude'] = longitude.toString();
       if (radius != null) searchParams['radius'] = radius.toString();
 
-      return await getProperties(queryParams: searchParams);
+      return await getProperties(queryParams: searchParams, noPaging: noPaging);
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }

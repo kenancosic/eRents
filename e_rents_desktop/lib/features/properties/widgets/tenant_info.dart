@@ -19,6 +19,8 @@ class TenantInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!_isOccupied) {
       return SectionCard(
+        title: 'Current Tenant',
+        titleIcon: Icons.person_outline,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -33,6 +35,8 @@ class TenantInfo extends StatelessWidget {
     }
 
     return SectionCard(
+      title: 'Current Tenant',
+      titleIcon: Icons.person,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

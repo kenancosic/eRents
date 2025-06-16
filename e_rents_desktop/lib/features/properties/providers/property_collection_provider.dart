@@ -27,38 +27,68 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
   // ========================================
 
   /// Filter properties by availability status
-  Future<void> loadAvailableProperties() async {
-    await executeAsync(() async {
-      final properties = await propertyRepository.getAvailableProperties();
-      clear();
-      for (final property in properties) {
-        await addItem(property);
-      }
-    });
+  /// Now uses pagination for better performance
+  Future<void> loadAvailableProperties({bool loadAll = false}) async {
+    if (loadAll) {
+      await executeAsync(() async {
+        final properties = await propertyRepository.searchProperties(
+          status: 'Available',
+          noPaging: true,
+        );
+        clear();
+        for (final property in properties) {
+          await addItem(property);
+        }
+      });
+    } else {
+      // Use pagination by default
+      await loadPaginatedProperties(params: {'status': 'Available'});
+    }
   }
 
   /// Filter properties by rental type
-  Future<void> loadPropertiesByRentalType(String rentalType) async {
-    await executeAsync(() async {
-      final properties = await propertyRepository.getPropertiesByRentalType(
-        rentalType,
-      );
-      clear();
-      for (final property in properties) {
-        await addItem(property);
-      }
-    });
+  /// Now uses pagination for better performance
+  Future<void> loadPropertiesByRentalType(
+    String rentalType, {
+    bool loadAll = false,
+  }) async {
+    if (loadAll) {
+      await executeAsync(() async {
+        final properties = await propertyRepository.getPropertiesByRentalType(
+          rentalType,
+        );
+        clear();
+        for (final property in properties) {
+          await addItem(property);
+        }
+      });
+    } else {
+      // Use pagination by default - convert rental type to ID
+      await loadPaginatedProperties(params: {'rentalType': rentalType});
+    }
   }
 
   /// Load properties owned by specific user
-  Future<void> loadPropertiesByOwner(int ownerId) async {
-    await executeAsync(() async {
-      final properties = await propertyRepository.getPropertiesByOwner(ownerId);
-      clear();
-      for (final property in properties) {
-        await addItem(property);
-      }
-    });
+  /// Uses pagination for better performance
+  Future<void> loadPropertiesByOwner(
+    int ownerId, {
+    bool loadAll = false,
+  }) async {
+    if (loadAll) {
+      await executeAsync(() async {
+        final properties = await propertyRepository.searchProperties(
+          ownerId: ownerId,
+          noPaging: true,
+        );
+        clear();
+        for (final property in properties) {
+          await addItem(property);
+        }
+      });
+    } else {
+      // Use pagination by default
+      await loadPaginatedProperties(params: {'ownerId': ownerId.toString()});
+    }
   }
 
   /// Load popular properties for analytics
@@ -91,6 +121,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
   // ========================================
 
   /// Perform comprehensive property search
+  /// Now uses pagination by default for better performance
   Future<void> searchProperties({
     String? name,
     int? ownerId,
@@ -117,40 +148,80 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
     double? latitude,
     double? longitude,
     double? radius,
+    bool loadAll = false, // Add pagination control
   }) async {
-    await executeAsync(() async {
-      final results = await propertyRepository.searchProperties(
-        name: name,
-        ownerId: ownerId,
-        description: description,
-        status: status,
-        currency: currency,
-        propertyTypeId: propertyTypeId,
-        rentingTypeId: rentingTypeId,
-        bedrooms: bedrooms,
-        bathrooms: bathrooms,
-        minimumStayDays: minimumStayDays,
-        minPrice: minPrice,
-        maxPrice: maxPrice,
-        minArea: minArea,
-        maxArea: maxArea,
-        availableFrom: availableFrom,
-        availableTo: availableTo,
-        cityName: cityName,
-        stateName: stateName,
-        countryName: countryName,
-        amenityIds: amenityIds,
-        minRating: minRating,
-        maxRating: maxRating,
-        latitude: latitude,
-        longitude: longitude,
-        radius: radius,
-      );
-      clear();
-      for (final property in results) {
-        await addItem(property);
-      }
-    });
+    if (loadAll) {
+      await executeAsync(() async {
+        final results = await propertyRepository.searchProperties(
+          name: name,
+          ownerId: ownerId,
+          description: description,
+          status: status,
+          currency: currency,
+          propertyTypeId: propertyTypeId,
+          rentingTypeId: rentingTypeId,
+          bedrooms: bedrooms,
+          bathrooms: bathrooms,
+          minimumStayDays: minimumStayDays,
+          minPrice: minPrice,
+          maxPrice: maxPrice,
+          minArea: minArea,
+          maxArea: maxArea,
+          availableFrom: availableFrom,
+          availableTo: availableTo,
+          cityName: cityName,
+          stateName: stateName,
+          countryName: countryName,
+          amenityIds: amenityIds,
+          minRating: minRating,
+          maxRating: maxRating,
+          latitude: latitude,
+          longitude: longitude,
+          radius: radius,
+          noPaging: true,
+        );
+        clear();
+        for (final property in results) {
+          await addItem(property);
+        }
+      });
+    } else {
+      // Use pagination by default - convert parameters to map
+      final searchParams = <String, dynamic>{};
+      if (name != null) searchParams['name'] = name;
+      if (ownerId != null) searchParams['ownerId'] = ownerId.toString();
+      if (description != null) searchParams['description'] = description;
+      if (status != null) searchParams['status'] = status;
+      if (currency != null) searchParams['currency'] = currency;
+      if (propertyTypeId != null)
+        searchParams['propertyTypeId'] = propertyTypeId.toString();
+      if (rentingTypeId != null)
+        searchParams['rentingTypeId'] = rentingTypeId.toString();
+      if (bedrooms != null) searchParams['bedrooms'] = bedrooms.toString();
+      if (bathrooms != null) searchParams['bathrooms'] = bathrooms.toString();
+      if (minimumStayDays != null)
+        searchParams['minimumStayDays'] = minimumStayDays.toString();
+      if (minPrice != null) searchParams['minPrice'] = minPrice.toString();
+      if (maxPrice != null) searchParams['maxPrice'] = maxPrice.toString();
+      if (minArea != null) searchParams['minArea'] = minArea.toString();
+      if (maxArea != null) searchParams['maxArea'] = maxArea.toString();
+      if (availableFrom != null)
+        searchParams['availableFrom'] = availableFrom.toIso8601String();
+      if (availableTo != null)
+        searchParams['availableTo'] = availableTo.toIso8601String();
+      if (cityName != null) searchParams['cityName'] = cityName;
+      if (stateName != null) searchParams['stateName'] = stateName;
+      if (countryName != null) searchParams['countryName'] = countryName;
+      if (amenityIds != null && amenityIds.isNotEmpty)
+        searchParams['amenityIds'] = amenityIds.join(',');
+      if (minRating != null) searchParams['minRating'] = minRating.toString();
+      if (maxRating != null) searchParams['maxRating'] = maxRating.toString();
+      if (latitude != null) searchParams['latitude'] = latitude.toString();
+      if (longitude != null) searchParams['longitude'] = longitude.toString();
+      if (radius != null) searchParams['radius'] = radius.toString();
+
+      await loadPaginatedProperties(params: searchParams);
+    }
   }
 
   /// Search properties by price range
