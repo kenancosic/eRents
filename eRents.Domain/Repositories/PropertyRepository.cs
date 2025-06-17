@@ -274,6 +274,27 @@ namespace eRents.Domain.Repositories
 			return await _context.Reviews.AsNoTracking().ToListAsync();
 		}
 
+
+		public async Task<PagedList<Review>> GetRatingsPagedAsync(int? propertyId = null, int page = 1, int pageSize = 10)
+		{
+			var query = _context.Reviews.AsNoTracking().AsQueryable();
+			
+			if (propertyId.HasValue)
+			{
+				query = query.Where(r => r.PropertyId == propertyId.Value);
+			}
+			
+			query = query.OrderByDescending(r => r.DateCreated);
+			
+			var totalCount = await query.CountAsync();
+			var items = await query
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+				
+			return new PagedList<Review>(items, page, pageSize, totalCount);
+		}
+
 		// User-scoped methods for security
 		public async Task<List<Property>> GetByOwnerIdAsync(string ownerId)
 		{

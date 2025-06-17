@@ -56,6 +56,25 @@ namespace eRents.Application.Service.ReviewService
 			var pagedResult = await GetPagedAsync(search);
 			return pagedResult.Items;
 		}
+		
+		/// <summary>
+		/// Get paginated reviews for a specific property - optimized for UI display
+		/// Uses the new PropertyRepository.GetRatingsPagedAsync method for better performance
+		/// </summary>
+		public async Task<PagedList<ReviewResponse>> GetPagedReviewsForPropertyAsync(int propertyId, int page = 1, int pageSize = 10)
+		{
+			var search = new ReviewSearchObject
+			{
+				PropertyId = propertyId,
+				Page = page,
+				PageSize = pageSize,
+				SortBy = "DateCreated",
+				SortDescending = true // Show newest reviews first
+			};
+			
+			return await GetPagedAsync(search);
+		}
+
 		public async Task<bool> DeleteReviewAsync(int reviewId)
 		{
 			var review = await _repository.GetByIdAsync(reviewId);

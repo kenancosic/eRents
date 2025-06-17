@@ -254,10 +254,15 @@ namespace eRents.Application.Service.PropertyService
 				if (_mlContext == null)
 				{
 					_mlContext = new MLContext();
-					var allRatings = _propertyRepository.GetAllRatings().Result;
+				}
+			}
 
-					if (!allRatings.Any()) return new List<PropertyResponse>();
-
+			var allRatings = await _propertyRepository.GetAllRatings();
+			
+			lock (_lock)
+			{
+				if (_model == null && allRatings.Any())
+				{
 					var mlData = allRatings.Select(r => new PropertyRating
 					{
 						UserId = (float)r.ReviewerId,
@@ -280,6 +285,8 @@ namespace eRents.Application.Service.PropertyService
 					_model = trainer.Fit(dataView);
 				}
 			}
+
+			if (_model == null) return new List<PropertyResponse>();
 
 			var predictionEngine = _mlContext.Model.CreatePredictionEngine<PropertyRating, PropertyRatingPrediction>(_model);
 			var allProperties = await _propertyRepository.GetAvailablePropertiesAsync();

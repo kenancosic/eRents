@@ -19,6 +19,11 @@ namespace eRents.Domain.Repositories
 		Task<decimal> GetAverageRatingAsync(int propertyId);
 		Task<int> GetNumberOfReviewsAsync(int propertyId);
 		public Task<IEnumerable<Review>> GetAllRatings();
+		
+		/// <summary>
+		/// Get paginated ratings for UI display purposes
+		/// </summary>
+		Task<PagedList<Review>> GetRatingsPagedAsync(int? propertyId = null, int page = 1, int pageSize = 10);
 
 		// User-scoped methods for security
 		Task<List<Property>> GetByOwnerIdAsync(string ownerId);

@@ -3,7 +3,6 @@ using eRents.Application.Service.PaymentService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
-using eRents.Domain.Shared;
 using eRents.Shared.Messaging;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
@@ -11,10 +10,6 @@ using eRents.Shared.SearchObjects;
 using eRents.Shared.Services;
 using eRents.Shared.Enums;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using eRents.Application.Service.AvailabilityService;
 using eRents.Application.Service.LeaseCalculationService;
@@ -37,11 +32,11 @@ namespace eRents.Application.Service.BookingService
 		private readonly ILeaseCalculationService _leaseCalculationService;
 
 		public BookingService(
-			IBookingRepository repository, 
-			IMapper mapper, 
-			ICurrentUserService currentUserService, 
-			ILogger<BookingService> logger, 
-			IPaymentService paymentService, 
+			IBookingRepository repository,
+			IMapper mapper,
+			ICurrentUserService currentUserService,
+			ILogger<BookingService> logger,
+			IPaymentService paymentService,
 			IRabbitMQService rabbitMqService,
 			IPropertyRepository propertyRepository,
 			ITenantRepository tenantRepository,
@@ -122,7 +117,7 @@ namespace eRents.Application.Service.BookingService
 
 			// Proceed with creating the booking - ensure proper type conversions
 			var bookingEntity = _mapper.Map<Booking>(request);
-			
+
 			// Set default currency
 			if (string.IsNullOrEmpty(request.Currency))
 			{
@@ -351,7 +346,7 @@ namespace eRents.Application.Service.BookingService
 				if (string.IsNullOrWhiteSpace(request.CancellationReason))
 					throw new InvalidOperationException("Landlords must provide a cancellation reason");
 
-				var validReasons = new[] { 
+				var validReasons = new[] {
 					"emergency", "maintenance", "property damage", "force majeure",
 					"overbooking", "scheduling conflict", "health and safety concerns", "legal issues"
 				};
@@ -469,7 +464,7 @@ namespace eRents.Application.Service.BookingService
 
 			var currentUserRole = _currentUserService.UserRole;
 			var cancellationPolicy = DetermineCancellationPolicy(currentUserRole, "Standard");
-			
+
 			return await CalculateRoleBasedRefundAsync(booking, cancellationDate, currentUserRole, cancellationPolicy);
 		}
 
@@ -478,10 +473,10 @@ namespace eRents.Application.Service.BookingService
 			// INLINE simple refund calculation - no service needed!
 			var bookingStart = booking.StartDate.ToDateTime(TimeOnly.MinValue);
 			var hoursUntilStart = (bookingStart - cancellationDate).TotalHours;
-			
+
 			// Simple policy: 24 hours = full refund, otherwise 50%
 			var refundPercentage = hoursUntilStart >= 72 ? 1.0m : hoursUntilStart >= 48 ? 0.50m : 0.0m;
-			
+
 			return Math.Round(booking.TotalPrice * refundPercentage, 2);
 		}
 
@@ -550,17 +545,17 @@ namespace eRents.Application.Service.BookingService
 					Reason = "Booking Cancellation",
 					BookingId = booking.BookingId
 				};
-				
+
 				var refundResponse = await _paymentService.ProcessRefundAsync(refundRequest);
 
 				// Log successful refund
-				_logger.LogInformation("Refund processed successfully for booking {BookingId}. Amount: {RefundAmount}. Reference: {RefundReference}", 
+				_logger.LogInformation("Refund processed successfully for booking {BookingId}. Amount: {RefundAmount}. Reference: {RefundReference}",
 					booking.BookingId, refundAmount, refundResponse.PaymentReference);
 			}
 			catch (Exception ex)
 			{
 				// Log error but don't fail the cancellation
-				_logger.LogError(ex, "Refund processing failed for booking {BookingId}. Amount: {RefundAmount}", 
+				_logger.LogError(ex, "Refund processing failed for booking {BookingId}. Amount: {RefundAmount}",
 					booking.BookingId, refundAmount);
 				throw new InvalidOperationException($"Booking cancelled successfully, but refund processing failed: {ex.Message}");
 			}
@@ -586,14 +581,14 @@ namespace eRents.Application.Service.BookingService
 			{
 				var conflicts = await _availabilityService.GetConflicts(propertyId, startDate, endDate);
 				var hasLeaseConflict = conflicts.Any(c => c.ConflictType == "Lease");
-				
+
 				if (hasLeaseConflict)
 				{
 					var leaseConflict = conflicts.First(c => c.ConflictType == "Lease");
-					_logger.LogInformation("Daily booking conflict detected for property {PropertyId}: {Description} overlaps with requested dates {RequestStart} to {RequestEnd}", 
+					_logger.LogInformation("Daily booking conflict detected for property {PropertyId}: {Description} overlaps with requested dates {RequestStart} to {RequestEnd}",
 						propertyId, leaseConflict.Description, startDate, endDate);
 				}
-				
+
 				return hasLeaseConflict;
 			}
 			catch (Exception ex)

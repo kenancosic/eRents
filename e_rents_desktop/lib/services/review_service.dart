@@ -94,6 +94,58 @@ class ReviewService extends ApiService {
     }
   }
 
+  /// ✅ PROPERTY SPECIFIC: Get paginated reviews for a specific property (NEW)
+  /// Uses the new backend paginated endpoint for better performance
+  Future<Map<String, dynamic>> getPagedPropertyReviews(
+    String propertyId, {
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    debugPrint(
+      'ReviewService: Fetching page $page of reviews for property $propertyId (pageSize: $pageSize)...',
+    );
+    try {
+      final response = await get(
+        '$endpoint/property/$propertyId/paged?page=$page&pageSize=$pageSize',
+        authenticated: true,
+      );
+      final responseData = json.decode(response.body);
+
+      // Transform backend PagedList to frontend format
+      final reviews =
+          (responseData['items'] as List<dynamic>)
+              .map((json) => Review.fromJson(json))
+              .toList();
+
+      debugPrint(
+        'ReviewService: Successfully fetched page $page with ${reviews.length} reviews for property $propertyId.',
+      );
+
+      return {
+        'reviews': reviews,
+        'page': responseData['page'] ?? page,
+        'pageSize': responseData['pageSize'] ?? pageSize,
+        'totalCount': responseData['totalCount'] ?? 0,
+        'totalPages': responseData['totalPages'] ?? 0,
+        'hasNextPage': responseData['hasNextPage'] ?? false,
+        'hasPreviousPage': responseData['hasPreviousPage'] ?? false,
+      };
+    } catch (e) {
+      debugPrint(
+        'ReviewService: Error loading paginated reviews for property $propertyId: $e',
+      );
+      return {
+        'reviews': <Review>[],
+        'page': page,
+        'pageSize': pageSize,
+        'totalCount': 0,
+        'totalPages': 0,
+        'hasNextPage': false,
+        'hasPreviousPage': false,
+      };
+    }
+  }
+
   /// ✅ UNIVERSAL SYSTEM: Get review count
   /// Uses Universal System count or extracts from paged response
   Future<int> getReviewCount([Map<String, dynamic>? params]) async {

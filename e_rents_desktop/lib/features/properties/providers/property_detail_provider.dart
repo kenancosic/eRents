@@ -27,6 +27,18 @@ class PropertyDetailProvider extends DetailProvider<Property> {
   bool areReviewsLoading = false;
   AppError? reviewsError;
 
+  // Review pagination state
+  int _currentReviewPage = 1;
+  int _reviewPageSize = 5; // Show 5 reviews initially for property details
+  int _totalReviewCount = 0;
+  bool _hasMoreReviews = false;
+
+  // Review pagination getters
+  int get currentReviewPage => _currentReviewPage;
+  int get reviewPageSize => _reviewPageSize;
+  int get totalReviewCount => _totalReviewCount;
+  bool get hasMoreReviews => _hasMoreReviews;
+
   // Property-specific convenience getters
 
   /// Get the current property (alias for item)
@@ -217,8 +229,24 @@ class PropertyDetailProvider extends DetailProvider<Property> {
     safeNotifyListeners();
 
     try {
-      reviews = await reviewService.getPropertyReviews(propertyId);
-      debugPrint('🏠 PropertyDetailProvider: Loaded ${reviews.length} reviews');
+      // Reset pagination state
+      _currentReviewPage = 1;
+      reviews = [];
+
+      // Load first page of reviews using new paginated method
+      final reviewData = await reviewService.getPagedPropertyReviews(
+        propertyId,
+        page: _currentReviewPage,
+        pageSize: _reviewPageSize,
+      );
+
+      reviews = reviewData['reviews'] as List<Review>;
+      _totalReviewCount = reviewData['totalCount'] as int;
+      _hasMoreReviews = reviewData['hasNextPage'] as bool;
+
+      debugPrint(
+        '🏠 PropertyDetailProvider: Loaded ${reviews.length} reviews (page $_currentReviewPage of ${reviewData['totalPages']})',
+      );
     } catch (e, stackTrace) {
       reviewsError = AppError.fromException(e, stackTrace);
       debugPrint('🏠 PropertyDetailProvider: Failed to load reviews: $e');
@@ -226,6 +254,82 @@ class PropertyDetailProvider extends DetailProvider<Property> {
       areReviewsLoading = false;
       safeNotifyListeners();
     }
+  }
+
+  /// Load more reviews (next page)
+  Future<void> loadMoreReviews() async {
+    if (!_hasMoreReviews || areReviewsLoading || property == null) return;
+
+    areReviewsLoading = true;
+    safeNotifyListeners();
+
+    try {
+      _currentReviewPage++;
+
+      final reviewData = await reviewService.getPagedPropertyReviews(
+        property!.propertyId.toString(),
+        page: _currentReviewPage,
+        pageSize: _reviewPageSize,
+      );
+
+      final newReviews = reviewData['reviews'] as List<Review>;
+      reviews.addAll(newReviews);
+      _hasMoreReviews = reviewData['hasNextPage'] as bool;
+
+      debugPrint(
+        '🏠 PropertyDetailProvider: Loaded ${newReviews.length} more reviews (page $_currentReviewPage)',
+      );
+    } catch (e, stackTrace) {
+      reviewsError = AppError.fromException(e, stackTrace);
+      debugPrint('🏠 PropertyDetailProvider: Failed to load more reviews: $e');
+      _currentReviewPage--; // Revert page increment on error
+    } finally {
+      areReviewsLoading = false;
+      safeNotifyListeners();
+    }
+  }
+
+  /// Refresh reviews (reload first page)
+  Future<void> refreshReviews() async {
+    if (property != null) {
+      await _loadReviews(property!.propertyId.toString());
+    }
+  }
+
+  /// Submit a reply to a review
+  Future<bool> submitReply(int parentReviewId, String replyText) async {
+    if (property == null || replyText.trim().isEmpty) return false;
+
+    try {
+      debugPrint(
+        '🏠 PropertyDetailProvider: Submitting reply to review $parentReviewId',
+      );
+
+      // Submit the reply using the review service
+      final reply = await reviewService.createReply(
+        parentReviewId: parentReviewId,
+        description: replyText.trim(),
+      );
+
+      debugPrint(
+        '🏠 PropertyDetailProvider: Reply submitted successfully with ID ${reply.id}',
+      );
+
+      // Refresh reviews to show the new reply
+      await refreshReviews();
+
+      return true;
+    } catch (e, stackTrace) {
+      reviewsError = AppError.fromException(e, stackTrace);
+      debugPrint('🏠 PropertyDetailProvider: Failed to submit reply: $e');
+      safeNotifyListeners();
+      return false;
+    }
+  }
+
+  /// Check if current user can reply to reviews (property owner)
+  bool get canReplyToReviews {
+    return property != null;
   }
 
   /// Refresh property data from server

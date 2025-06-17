@@ -141,6 +141,30 @@ namespace eRents.WebApi.Controllers
 			}
 		}
 
+		/// <summary>
+		/// Get paginated reviews for a specific property - optimized for UI display
+		/// </summary>
+		[HttpGet("property/{propertyId}/paged")]
+		public async Task<IActionResult> GetPagedReviewsForProperty(
+			int propertyId, 
+			[FromQuery] int page = 1, 
+			[FromQuery] int pageSize = 10)
+		{
+			try
+			{
+				var result = await _reviewService.GetPagedReviewsForPropertyAsync(propertyId, page, pageSize);
+				
+				_logger.LogInformation("User {UserId} retrieved page {Page} of reviews for property {PropertyId} ({PageSize} per page)", 
+					_currentUserService.UserId ?? "unknown", page, propertyId, pageSize);
+					
+				return Ok(result);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Paginated property reviews retrieval (PropertyID: {propertyId})");
+			}
+		}
+
 		[HttpGet("{propertyId}/average-rating")]
 		public async Task<IActionResult> GetAverageRating(int propertyId)
 		{

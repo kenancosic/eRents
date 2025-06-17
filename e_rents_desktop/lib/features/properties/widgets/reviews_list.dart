@@ -7,6 +7,10 @@ class ReviewsList extends StatelessWidget {
   final bool isLoading;
   final String? error;
   final Function(int, String) onReplySubmitted;
+  final VoidCallback? onLoadMore;
+  final bool hasMoreReviews;
+  final int totalCount;
+  final bool canReply;
 
   const ReviewsList({
     super.key,
@@ -14,11 +18,15 @@ class ReviewsList extends StatelessWidget {
     this.isLoading = false,
     this.error,
     required this.onReplySubmitted,
+    this.onLoadMore,
+    this.hasMoreReviews = false,
+    this.totalCount = 0,
+    this.canReply = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (isLoading && reviews.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -48,13 +56,29 @@ class ReviewsList extends StatelessWidget {
       );
     }
 
-    return Column(
-      children:
-          reviews.map((review) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Review count header
+          if (totalCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Text(
+                'Showing ${reviews.length} of $totalCount reviews',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+              ),
+            ),
+
+          // Reviews list
+          ...reviews.map((review) {
             try {
               return _ReviewItem(
                 review: review,
                 onReplySubmitted: onReplySubmitted,
+                canReply: canReply,
               );
             } catch (e) {
               debugPrint(
@@ -69,6 +93,28 @@ class ReviewsList extends StatelessWidget {
               );
             }
           }).toList(),
+
+          // Load more button
+          if (hasMoreReviews && onLoadMore != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Center(
+                child: ElevatedButton.icon(
+                  onPressed: isLoading ? null : onLoadMore,
+                  icon:
+                      isLoading
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.expand_more),
+                  label: Text(isLoading ? 'Loading...' : 'Load More Reviews'),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -76,8 +122,13 @@ class ReviewsList extends StatelessWidget {
 class _ReviewItem extends StatefulWidget {
   final Review review;
   final Function(int, String) onReplySubmitted;
+  final bool canReply;
 
-  const _ReviewItem({required this.review, required this.onReplySubmitted});
+  const _ReviewItem({
+    required this.review,
+    required this.onReplySubmitted,
+    required this.canReply,
+  });
 
   @override
   State<_ReviewItem> createState() => _ReviewItemState();
@@ -85,6 +136,7 @@ class _ReviewItem extends StatefulWidget {
 
 class _ReviewItemState extends State<_ReviewItem> {
   bool _isReplying = false;
+  bool _isSubmittingReply = false;
   final TextEditingController _replyController = TextEditingController();
 
   @override
@@ -158,13 +210,14 @@ class _ReviewItemState extends State<_ReviewItem> {
     return Column(
       children: [
         for (var reply in widget.review.replies) _ReplyItem(reply: reply),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () => setState(() => _isReplying = !_isReplying),
-            child: Text(_isReplying ? 'Cancel' : 'Reply'),
+        if (widget.canReply && widget.review.isOriginalReview)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => setState(() => _isReplying = !_isReplying),
+              child: Text(_isReplying ? 'Cancel' : 'Reply'),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -177,6 +230,7 @@ class _ReviewItemState extends State<_ReviewItem> {
           Expanded(
             child: TextField(
               controller: _replyController,
+              enabled: !_isSubmittingReply,
               decoration: const InputDecoration(
                 hintText: 'Write a reply...',
                 border: OutlineInputBorder(),
@@ -185,21 +239,42 @@ class _ReviewItemState extends State<_ReviewItem> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: () {
-              if (_replyController.text.isNotEmpty) {
-                widget.onReplySubmitted(
-                  widget.review.id,
-                  _replyController.text,
-                );
-                _replyController.clear();
-                setState(() => _isReplying = false);
-              }
-            },
+            icon:
+                _isSubmittingReply
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.send),
+            onPressed: _isSubmittingReply ? null : _submitReply,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _submitReply() async {
+    if (_replyController.text.isEmpty) return;
+
+    setState(() => _isSubmittingReply = true);
+
+    try {
+      await widget.onReplySubmitted(widget.review.id, _replyController.text);
+
+      if (mounted) {
+        _replyController.clear();
+        setState(() {
+          _isReplying = false;
+          _isSubmittingReply = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmittingReply = false);
+        // Error handling is done in the parent widget
+      }
+    }
   }
 }
 

@@ -130,9 +130,37 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   context.watch<PropertyDetailProvider>().areReviewsLoading,
               error:
                   context.watch<PropertyDetailProvider>().reviewsError?.message,
-              onReplySubmitted: (reviewId, reply) {
-                // TODO: Implement reply submission logic
+              onReplySubmitted: (reviewId, replyText) async {
+                final provider = context.read<PropertyDetailProvider>();
+                final success = await provider.submitReply(reviewId, replyText);
+
+                if (!success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Failed to submit reply. Please try again.',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                } else if (success && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reply submitted successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               },
+              onLoadMore: () {
+                context.read<PropertyDetailProvider>().loadMoreReviews();
+              },
+              hasMoreReviews:
+                  context.watch<PropertyDetailProvider>().hasMoreReviews,
+              totalCount:
+                  context.watch<PropertyDetailProvider>().totalReviewCount,
+              canReply:
+                  context.watch<PropertyDetailProvider>().canReplyToReviews,
             ),
           ],
         ),
