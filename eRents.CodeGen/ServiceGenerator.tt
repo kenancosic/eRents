@@ -9,7 +9,7 @@
 <#
     // Input parameter 'entityName' is now passed by the T4 host (Program.cs)
     string dbSetName = entityName + "s"; // Simple pluralization for DbSet, e.g., Propertys, Bookings
-    string serviceNamespace = $"eRents.Application.Service.{entityName}Service";
+    string serviceNamespace = $"eRents.Application.Services.{entityName}Service";
     string interfaceName = $"I{entityName}Service";
 
     // Namespaces needed by the service

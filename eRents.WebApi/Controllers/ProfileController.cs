@@ -1,4 +1,4 @@
-using eRents.Application.Service.UserService;
+using eRents.Application.Services.UserService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.WebApi.Shared;

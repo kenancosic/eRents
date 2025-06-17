@@ -58,7 +58,8 @@ namespace eRents.Domain.Shared
                 var entry = _context.Entry(existingEntity);
                 entry.CurrentValues.SetValues(entity);
 
-                await _context.SaveChangesAsync();
+                // REMOVED: await _context.SaveChangesAsync();
+                // Unit of Work will handle the save operation
                 return existingEntity;
             }
             catch (DbUpdateConcurrencyException ex)
@@ -184,6 +185,7 @@ namespace eRents.Domain.Shared
 
         /// <summary>
         /// Bulk update with transaction safety
+        /// NOTE: This method still uses internal transaction management for specialized scenarios
         /// </summary>
         public virtual async Task BulkUpdateAsync(IEnumerable<TEntity> entities)
         {

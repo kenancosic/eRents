@@ -295,7 +295,21 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     }
 
     _selectedAmenityIds = property.amenityIds;
-    // Note: property.images no longer exists, images are fetched via imageIds from ImageController
+
+    // Load existing images when editing
+    if (property.imageIds.isNotEmpty) {
+      _images =
+          property.imageIds
+              .map(
+                (id) => picker.ImageInfo(
+                  id: id,
+                  url: '/Image/$id', // Provide the API endpoint URL
+                  fileName: 'Property Image $id.jpg',
+                  isNew: false,
+                ),
+              )
+              .toList();
+    }
 
     safeNotifyListeners();
   }

@@ -63,6 +63,42 @@ class PropertyFormFields {
     );
   }
 
+  /// Builds a decimal number field with validation
+  static Widget buildDecimalField({
+    required TextEditingController controller,
+    required String labelText,
+    required String errorMessage,
+    int flex = 1,
+    String? suffixText,
+    double minValue = 0.0,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: labelText,
+          suffixText: suffixText,
+          border: const OutlineInputBorder(),
+        ),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return errorMessage;
+          }
+          final number = double.tryParse(value);
+          if (number == null) {
+            return 'Please enter a valid number';
+          }
+          if (number < minValue) {
+            return 'Minimum value is $minValue';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
   /// Builds a required text field
   static Widget buildRequiredTextField({
     required TextEditingController controller,

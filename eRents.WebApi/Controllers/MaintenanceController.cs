@@ -1,5 +1,5 @@
-using eRents.Application.Service.ImageService;
-using eRents.Application.Service.MaintenanceService;
+using eRents.Application.Services.ImageService;
+using eRents.Application.Services.MaintenanceService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;

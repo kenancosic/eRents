@@ -30,6 +30,9 @@ namespace eRents.Domain.Repositories
 		Task<List<Property>> GetAvailablePropertiesAsync();
 		Task<bool> IsOwnerAsync(int propertyId, string userId);
 		Task<Property> GetByIdWithOwnerCheckAsync(int propertyId, string currentUserId, string currentUserRole);
+		
+		// Get tracked entity for updates
+		Task<Property> GetByIdForUpdateAsync(int propertyId);
 
 		// Validation methods for related entities
 		Task<bool> IsValidPropertyTypeIdAsync(int propertyTypeId);

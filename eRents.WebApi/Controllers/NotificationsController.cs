@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using eRents.WebApi.Hubs;
-using eRents.Application.Service.MessagingService;
+using eRents.Application.Services.MessagingService;
 using Microsoft.Extensions.Logging;
 
 namespace eRents.WebApi.Controllers

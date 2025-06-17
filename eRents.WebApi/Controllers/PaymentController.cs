@@ -1,4 +1,4 @@
-﻿using eRents.Application.Service.PaymentService;
+﻿using eRents.Application.Services.PaymentService;
 using Microsoft.AspNetCore.Mvc;
 using eRents.Shared.Services;
 using eRents.Shared.DTO.Response;

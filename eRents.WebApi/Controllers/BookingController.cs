@@ -1,4 +1,4 @@
-﻿using eRents.Application.Service.BookingService;
+﻿using eRents.Application.Services.BookingService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;

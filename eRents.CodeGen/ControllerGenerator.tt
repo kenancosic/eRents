@@ -11,7 +11,7 @@
     string pluralizedEntityName = entityName + "s"; // Simple pluralization for controller name
 
     string controllerNamespace = "eRents.WebApi.Controllers";
-    string serviceFullInterfaceName = $"eRents.Application.Service.{entityName}Service.I{entityName}Service";
+    string serviceFullInterfaceName = $"eRents.Application.Services.{entityName}Service.I{entityName}Service";
     string applicationSharedNamespace = "eRents.Application.Shared";
     string dtoRequestsNamespace = "eRents.Shared.DTO.Requests";
     string dtoResponseNamespace = "eRents.Shared.DTO.Response";

@@ -109,6 +109,12 @@ class _PropertyFormScreenContentState
         if (detailProvider.property?.propertyId == propertyToSave.propertyId) {
           await detailProvider.forceReloadProperty();
         }
+
+        // Clear collection provider cache to ensure list view shows updated data
+        await collectionProvider.clearCacheAndRefresh();
+      } else {
+        // For new properties, just refresh the collection
+        await collectionProvider.refreshItems();
       }
 
       if (mounted) {
@@ -245,7 +251,7 @@ class _PropertyFormScreenContentState
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              PropertyFormFields.buildNumberField(
+              PropertyFormFields.buildDecimalField(
                 controller: formState.areaController,
                 labelText: 'Area',
                 suffixText: 'm²',

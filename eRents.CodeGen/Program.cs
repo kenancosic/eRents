@@ -152,7 +152,7 @@ namespace eRents.CodeGen
             string interfaceFileName = Path.Combine(serviceDirectoryPath, $"{interfaceName}.cs");
             
             // Construct namespaces based on known project structure
-            string serviceNamespace = $"eRents.Application.Service.{entityName}Service";
+            string serviceNamespace = $"eRents.Application.Services.{entityName}Service";
             string sharedDtoRequestsNamespace = "eRents.Shared.DTO.Requests";
             string sharedDtoResponseNamespace = "eRents.Shared.DTO.Response";
             string sharedSearchObjectsNamespace = "eRents.Shared.SearchObjects";

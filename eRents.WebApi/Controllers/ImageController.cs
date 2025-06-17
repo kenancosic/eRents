@@ -1,4 +1,4 @@
-﻿using eRents.Application.Service.ImageService;
+﻿using eRents.Application.Services.ImageService;
 using eRents.Shared.DTO.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;

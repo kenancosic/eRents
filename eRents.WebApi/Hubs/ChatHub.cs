@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using eRents.Shared.Services;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using eRents.Application.Service.MessagingService;
+using eRents.Application.Services.MessagingService;
 using eRents.Shared.Messaging;
 
 namespace eRents.WebApi.Hubs

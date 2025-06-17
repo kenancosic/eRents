@@ -1,4 +1,4 @@
-﻿using eRents.Application.Service.MessagingService;
+﻿using eRents.Application.Services.MessagingService;
 using eRents.Shared.Messaging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -30,7 +30,7 @@ namespace eRents.Domain.Shared
 		public virtual async Task AddAsync(TEntity entity)
 		{
 			await _context.Set<TEntity>().AddAsync(entity);
-			await _context.SaveChangesAsync();
+			// Let the service layer control when to save
 		}
 
 		public virtual async Task UpdateAsync(TEntity entity)
@@ -56,8 +56,8 @@ namespace eRents.Domain.Shared
 
 				// For collection navigation properties, we need special handling
 				// This is handled in the service layer's BeforeUpdateAsync method
-
-				await _context.SaveChangesAsync();
+				
+				// Let the service layer control when to save
 			}
 			catch (DbUpdateException ex)
 			{
@@ -98,20 +98,34 @@ namespace eRents.Domain.Shared
 			}
 		}
 
+		/// <summary>
+		/// Marks entity for deletion without saving - Unit of Work handles save
+		/// Enhanced: No longer calls SaveChangesAsync automatically
+		/// </summary>
 		public virtual async Task DeleteAsync(TEntity entity)
 		{
 			_context.Set<TEntity>().Remove(entity);
-			await _context.SaveChangesAsync();
+			// REMOVED: await _context.SaveChangesAsync();
+			// Unit of Work will handle the save operation
+			await Task.CompletedTask; // Maintain async interface
 		}
 		
+		/// <summary>
+		/// DEPRECATED: Use IUnitOfWork.SaveChangesAsync() for proper transaction management
+		/// This method now throws to prevent scattered save calls
+		/// </summary>
 		public async Task SaveChangesAsync()
 		{
-			await _context.SaveChangesAsync();
+			throw new InvalidOperationException(
+				"SaveChangesAsync should not be called on repositories. " +
+				"Use IUnitOfWork.SaveChangesAsync() for proper transaction management. " +
+				"If you need legacy behavior temporarily, call _context.SaveChangesAsync() directly in the service.");
 		}
 
 		// NEW: Standardized pagination implementation
 		/// <summary>
-		/// Gets paginated results with filtering and sorting applied
+		/// Enhanced pagination with performance optimizations and proper async patterns
+		/// Automatically uses AsNoTracking for read operations to prevent memory leaks
 		/// </summary>
 		public virtual async Task<PagedList<TEntity>> GetPagedAsync<TSearch>(TSearch search) 
 			where TSearch : BaseSearchObject
@@ -126,7 +140,7 @@ namespace eRents.Domain.Shared
 			// Apply filtering (override in derived classes)
 			query = ApplyFilters(query, search);
 			
-			// Get total count before sorting and pagination
+			// Get total count before sorting and pagination (with proper async)
 			var totalCount = await query.CountAsync();
 			
 			// Apply sorting (override in derived classes)  
@@ -135,14 +149,17 @@ namespace eRents.Domain.Shared
 			// Apply pagination if requested
 			if (search.NoPaging)
 			{
-				var allItems = await query.ToListAsync();
+				// ENHANCED: Use AsNoTracking for performance and memory optimization
+				var allItems = await query.AsNoTracking().ToListAsync();
 				return new PagedList<TEntity>(allItems, 1, allItems.Count, allItems.Count);
 			}
 
 			var page = search.PageNumber;
 			var pageSize = search.PageSizeValue;
 			
+			// ENHANCED: Use AsNoTracking for read operations to prevent memory tracking overhead
 			var items = await query
+				.AsNoTracking()  // Performance optimization - prevents EF tracking
 				.Skip((page - 1) * pageSize)
 				.Take(pageSize)
 				.ToListAsync();
@@ -151,7 +168,8 @@ namespace eRents.Domain.Shared
 		}
 		
 		/// <summary>
-		/// Gets paginated results with projection for optimized queries
+		/// Enhanced projection with performance optimizations
+		/// Automatically uses AsNoTracking for read operations to prevent memory leaks
 		/// </summary>
 		public virtual async Task<PagedList<TProjection>> GetPagedAsync<TSearch, TProjection>(
 			TSearch search, 
@@ -168,23 +186,26 @@ namespace eRents.Domain.Shared
 			// Apply filtering
 			query = ApplyFilters(query, search);
 			
-			// Get total count before projection
+			// Get total count before projection (with proper async)
 			var totalCount = await query.CountAsync();
 			
 			// Apply sorting
 			query = ApplyOrdering(query, search);
 			
-			// Apply projection and pagination
+			// Apply projection and pagination with performance optimization
 			if (search.NoPaging)
 			{
-				var allItems = await query.Select(projection).ToListAsync();
+				// ENHANCED: Use AsNoTracking for performance optimization
+				var allItems = await query.AsNoTracking().Select(projection).ToListAsync();
 				return new PagedList<TProjection>(allItems, 1, allItems.Count, allItems.Count);
 			}
 
 			var page = search.PageNumber;
 			var pageSize = search.PageSizeValue;
 			
+			// ENHANCED: Use AsNoTracking for read operations to prevent memory tracking overhead
 			var items = await query
+				.AsNoTracking()  // Performance optimization - prevents EF tracking
 				.Skip((page - 1) * pageSize)
 				.Take(pageSize)
 				.Select(projection)

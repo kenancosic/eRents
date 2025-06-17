@@ -1,4 +1,4 @@
-﻿using eRents.Application.Service.ReviewService;
+﻿using eRents.Application.Services.ReviewService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;

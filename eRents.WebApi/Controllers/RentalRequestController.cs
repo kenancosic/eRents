@@ -1,5 +1,5 @@
-using eRents.Application.Service.RentalRequestService;
-using eRents.Application.Service.RentalCoordinatorService;
+using eRents.Application.Services.RentalRequestService;
+using eRents.Application.Services.RentalCoordinatorService;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;

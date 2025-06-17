@@ -228,6 +228,16 @@ namespace eRents.Domain.Repositories
 							.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 		}
 
+		/// <summary>
+		/// Get a tracked entity for updates (EF will monitor changes)
+		/// </summary>
+		public async Task<Property> GetByIdForUpdateAsync(int propertyId)
+		{
+			return await _context.Properties
+							.Include(p => p.Images)
+							.Include(p => p.Amenities)  // Include amenities for editing
+							.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+		}
 
 		public async Task<decimal> GetTotalRevenueAsync(int propertyId)
 		{
