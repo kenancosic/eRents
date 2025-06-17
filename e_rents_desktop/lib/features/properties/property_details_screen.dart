@@ -53,6 +53,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return Consumer2<PropertyDetailProvider, PropertyStatsProvider>(
       builder: (context, detailProvider, statsProvider, child) {
         final property = detailProvider.property;
+        final isInitialLoading = detailProvider.isLoading && property == null;
+        final isRefreshing = detailProvider.isLoading && property != null;
 
         return Scaffold(
           appBar: AppBar(
@@ -67,19 +69,49 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                 ),
               IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: _refreshData,
+                icon:
+                    isRefreshing
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.refresh),
+                onPressed: isRefreshing ? null : _refreshData,
               ),
             ],
           ),
           body: LoadingOrErrorWidget(
-            isLoading: detailProvider.isLoading && property == null,
+            isLoading: isInitialLoading,
             error: detailProvider.error?.message,
             onRetry: _refreshData,
             child:
                 property == null
                     ? const Center(child: Text('Property not found.'))
-                    : _buildContent(context, property, statsProvider),
+                    : Stack(
+                      children: [
+                        _buildContent(context, property, statsProvider),
+                        if (isRefreshing)
+                          Container(
+                            color: Colors.black.withOpacity(0.1),
+                            child: const Center(
+                              child: Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CircularProgressIndicator(),
+                                      SizedBox(height: 8),
+                                      Text('Refreshing data...'),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
           ),
         );
       },

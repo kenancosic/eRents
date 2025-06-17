@@ -9,5 +9,6 @@ namespace eRents.Shared.DTO.Requests
         public decimal? StarRating { get; set; } // Required for original reviews, optional for replies
         public string Description { get; set; } = null!;
         public int? ParentReviewId { get; set; } // null for original reviews, set for replies
+        public List<int>? ImageIds { get; set; } // IDs of uploaded images
     }
 } 

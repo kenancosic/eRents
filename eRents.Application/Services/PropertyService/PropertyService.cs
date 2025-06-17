@@ -2,6 +2,7 @@ using AutoMapper;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
+using eRents.Domain.Shared;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.SearchObjects;
@@ -13,38 +14,50 @@ using eRents.Shared.Services;
 using System.Linq;
 using Microsoft.ML.Trainers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Application.Services.PropertyService
 {
 	public class PropertyService : BaseCRUDService<PropertyResponse, Property, PropertySearchObject, PropertyInsertRequest, PropertyUpdateRequest>, IPropertyService
 	{
 		private readonly IPropertyRepository _propertyRepository;
-		private readonly ICurrentUserService _currentUserService;
-		private readonly IMapper _mapper;
+		private readonly IImageRepository _imageRepository;
 		private static MLContext? _mlContext = null;
 		private static ITransformer? _model = null;
 		private static object _lock = new object();
 
 		public PropertyService(
 			IPropertyRepository propertyRepository,
+			IImageRepository imageRepository,
 			ICurrentUserService currentUserService,
-			IMapper mapper)
-				: base(propertyRepository, mapper)
+			IMapper mapper,
+			IUnitOfWork unitOfWork,
+			ILogger<PropertyService> logger)
+			: base(propertyRepository, mapper, unitOfWork, currentUserService, logger)
 		{
 			_propertyRepository = propertyRepository;
-			_currentUserService = currentUserService;
-			_mapper = mapper;
+			_imageRepository = imageRepository;
 		}
 		
 		protected override async Task BeforeInsertAsync(PropertyInsertRequest insert, Property entity)
 		{
-			// Set audit fields
-			var currentUserId = _currentUserService.UserId;
-			if (!string.IsNullOrEmpty(currentUserId))
-			{
-				entity.CreatedBy = currentUserId;
-				entity.ModifiedBy = currentUserId;
-			}
+			// ✅ ENHANCED: Add authorization and ownership validation
+			var currentUserId = _currentUserService!.UserId;
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
+				throw new System.UnauthorizedAccessException("User not authenticated or user ID is invalid.");
+
+			// Additional validation for property creation
+			if (string.IsNullOrWhiteSpace(insert.Name))
+				throw new ArgumentException("Property name is required.");
+			if (insert.Price <= 0)
+				throw new ArgumentException("Property price must be greater than zero.");
+			if (string.IsNullOrWhiteSpace(insert.Status))
+				insert.Status = "Available"; // Default status
+
+			// Set audit fields and ownership
+			entity.OwnerId = userIdInt;
+			entity.CreatedBy = currentUserId;
+			entity.ModifiedBy = currentUserId;
 			entity.CreatedAt = DateTime.UtcNow;
 			entity.UpdatedAt = DateTime.UtcNow;
 
@@ -94,12 +107,17 @@ namespace eRents.Application.Services.PropertyService
 		
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
-			// Set audit fields for updates
-			var currentUserId = _currentUserService.UserId;
-			if (!string.IsNullOrEmpty(currentUserId))
+			System.Console.WriteLine($"PropertyService.BeforeUpdateAsync: CALLED for property {entity.PropertyId}");
+			
+			// ✅ ENHANCED: Add authorization validation
+			var currentUserId = _currentUserService!.UserId;
+			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt) || entity.OwnerId != userIdInt)
 			{
-				entity.ModifiedBy = currentUserId;
+				throw new System.UnauthorizedAccessException("User is not authorized to update this property.");
 			}
+
+			// Set audit fields for updates
+			entity.ModifiedBy = currentUserId;
 			entity.UpdatedAt = DateTime.UtcNow;
 
 			if (update.PropertyTypeId.HasValue)
@@ -160,7 +178,26 @@ namespace eRents.Application.Services.PropertyService
 			
 			if (update.ImageIds != null)
 			{
-				System.Console.WriteLine($"Property {entity.PropertyId} should be associated with images: [{string.Join(", ", update.ImageIds)}]");
+				System.Console.WriteLine($"PropertyService.BeforeUpdateAsync: Processing ImageIds for property {entity.PropertyId}: [{string.Join(", ", update.ImageIds)}]");
+				
+				// Get the current images associated with this property
+				var currentImages = await _imageRepository.GetImagesByPropertyIdAsync(entity.PropertyId);
+				var currentImageIds = currentImages.Select(i => i.ImageId).ToHashSet();
+				var newImageIds = update.ImageIds.ToHashSet();
+
+				// Remove images that are no longer associated
+				var imageIdsToRemove = currentImageIds.Except(newImageIds);
+				if (imageIdsToRemove.Any())
+				{
+					await _imageRepository.DisassociateImagesFromPropertyAsync(imageIdsToRemove);
+				}
+				
+				// Associate new images with the property
+				var imageIdsToAdd = newImageIds.Except(currentImageIds);
+				if (imageIdsToAdd.Any())
+				{
+					await _imageRepository.AssociateImagesWithPropertyAsync(imageIdsToAdd, entity.PropertyId);
+				}
 			}
 
 			await base.BeforeUpdateAsync(update, entity);
@@ -175,72 +212,18 @@ namespace eRents.Application.Services.PropertyService
 			return _mapper.Map<PropertyResponse>(property);
 		}
 		
-		public override async Task<PropertyResponse> InsertAsync(PropertyInsertRequest insert)
-		{
-			var currentUserId = _currentUserService.UserId;
+		// ✅ REMOVED: Now uses BaseCRUDService enhanced implementation with Unit of Work
+		// Custom logic moved to BeforeInsertAsync hook
 
-			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-				throw new System.UnauthorizedAccessException("User not authenticated or user ID is invalid.");
-			
-			var entity = _mapper.Map<Property>(insert);
-			entity.OwnerId = userIdInt;
-
-			// Set audit fields directly (EF will track these changes)
-			entity.CreatedBy = currentUserId;
-			entity.ModifiedBy = currentUserId;
-			entity.CreatedAt = DateTime.UtcNow;
-			entity.UpdatedAt = DateTime.UtcNow;
-
-			// Validate and set up relationships
-			await SetupPropertyRelationships(entity, insert.PropertyTypeId, insert.RentingTypeId, insert.Address, insert.AmenityIds);
-
-			// Add to context (EF tracks this)
-			await _propertyRepository.AddAsync(entity);
-			
-			// Single save at the end
-			await _propertyRepository.SaveChangesAsync();
-			
-			return _mapper.Map<PropertyResponse>(entity);
-		}
-
-		public override async Task<PropertyResponse> UpdateAsync(int id, PropertyUpdateRequest update)
-		{
-			// Load with tracking enabled for updates
-			var entity = await _propertyRepository.GetByIdForUpdateAsync(id);
-
-			if (entity == null)
-			{
-				throw new KeyNotFoundException($"Property with ID {id} not found.");
-			}
-			
-			var currentUserId = _currentUserService.UserId;
-			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt) || entity.OwnerId != userIdInt)
-			{
-				throw new System.UnauthorizedAccessException("User is not authorized to update this property.");
-			}
-
-			// Set audit fields (EF will track these changes)
-			entity.ModifiedBy = currentUserId;
-			entity.UpdatedAt = DateTime.UtcNow;
-
-			// Map scalar properties (EF tracks these changes automatically)
-			_mapper.Map(update, entity);
-
-			// Update relationships
-			await SetupPropertyRelationships(entity, update.PropertyTypeId, update.RentingTypeId, update.Address, update.AmenityIds);
-
-			// EF automatically detects changes, just save
-			await _propertyRepository.SaveChangesAsync();
-			
-			return _mapper.Map<PropertyResponse>(entity);
-		}
+		// ✅ REMOVED: Now uses BaseCRUDService enhanced implementation with Unit of Work
+		// Custom logic moved to BeforeUpdateAsync hook
 		
 		public override async Task<bool> DeleteAsync(int id)
 		{
 			var entity = await _propertyRepository.GetByIdAsync(id);
 			if (entity == null) return false;
 
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt) || entity.OwnerId != userIdInt)
 			{
 				throw new System.UnauthorizedAccessException("User is not authorized to delete this property.");

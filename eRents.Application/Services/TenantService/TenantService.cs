@@ -1,10 +1,13 @@
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
+using eRents.Domain.Shared;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.Enums;
 using eRents.Shared.Services;
+using Microsoft.Extensions.Logging;
+using AutoMapper;
 
 namespace eRents.Application.Services.TenantService
 {
@@ -16,15 +19,19 @@ namespace eRents.Application.Services.TenantService
 		private readonly IReviewRepository _reviewRepository;
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ICurrentUserService _currentUserService;
+		private readonly IUnitOfWork _unitOfWork;
+		private readonly ILogger<TenantService> _logger;
 		// TODO: Future Enhancement - Add ITenantMatchingService for ML-based matching
 
 		public TenantService(
-				ITenantRepository tenantRepository,
-				ITenantPreferenceRepository tenantPreferenceRepository,
-				IUserRepository userRepository,
-				IReviewRepository reviewRepository,
-				IPropertyRepository propertyRepository,
-				ICurrentUserService currentUserService)
+			ITenantRepository tenantRepository,
+			ITenantPreferenceRepository tenantPreferenceRepository,
+			IUserRepository userRepository,
+			IReviewRepository reviewRepository,
+			IPropertyRepository propertyRepository,
+			ICurrentUserService currentUserService,
+			IUnitOfWork unitOfWork,
+			ILogger<TenantService> logger)
 		{
 			_tenantRepository = tenantRepository;
 			_tenantPreferenceRepository = tenantPreferenceRepository;
@@ -32,6 +39,8 @@ namespace eRents.Application.Services.TenantService
 			_reviewRepository = reviewRepository;
 			_propertyRepository = propertyRepository;
 			_currentUserService = currentUserService;
+			_unitOfWork = unitOfWork;
+			_logger = logger;
 		}
 
 		public async Task<List<UserResponse>> GetCurrentTenantsAsync(Dictionary<string, string>? queryParams = null)
@@ -159,9 +168,14 @@ namespace eRents.Application.Services.TenantService
 				BookingId = request.BookingId // Optional, for linking to specific booking
 			};
 
-			await _reviewRepository.AddAsync(review);
-			await _reviewRepository.SaveChangesAsync();
-			return MapReviewToResponseDto(review);
+			// ✅ ENHANCED: Use Unit of Work for transaction management
+			return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+			{
+				await _reviewRepository.AddAsync(review);
+				await _unitOfWork.SaveChangesAsync();
+				
+				return MapReviewToResponseDto(review);
+			});
 		}
 
 		public async Task RecordPropertyOfferedToTenantAsync(int tenantId, int propertyId)

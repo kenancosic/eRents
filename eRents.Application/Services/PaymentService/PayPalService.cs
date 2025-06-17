@@ -193,7 +193,7 @@ public class PayPalService : IPayPalGateway
 	/// <summary>
 	/// Processes a refund for a captured PayPal payment
 	/// </summary>
-	public async Task<PayPalRefundResponse> ProcessRefundAsync(string captureId, decimal amount, string currency, string reason = null)
+			public async Task<PayPalRefundResponse> ProcessRefundAsync(string captureId, decimal amount, string currency, string? reason = null)
 	{
 		try
 		{

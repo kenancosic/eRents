@@ -402,13 +402,15 @@ namespace eRents.Domain.Repositories
 		{
 			var savedProperty = new UserSavedProperty { PropertyId = propertyId, UserId = userId };
 			_context.UserSavedProperties.Add(savedProperty);
-			return await _context.SaveChangesAsync() > 0;
+			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
+			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
 		}
 
 		public async Task AddImageAsync(Image image)
 		{
 			_context.Images.Add(image);
-			await _context.SaveChangesAsync();
+			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
+			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
 		}
 
 		public async Task<PropertyAvailabilityResponse> GetPropertyAvailability(int propertyId, DateTime? start, DateTime? end)
@@ -532,7 +534,8 @@ namespace eRents.Domain.Repositories
 					property.Amenities.Add(amenity);
 				}
 			}
-			await _context.SaveChangesAsync();
+			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
+			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
 		}
 
 		public async Task UpdatePropertyImages(int propertyId, List<int> imageIds)
@@ -544,7 +547,8 @@ namespace eRents.Domain.Repositories
 			
 			var newImages = imageIds.Select(id => new Image { ImageId = id, PropertyId = propertyId }).ToList();
 			await _context.Images.AddRangeAsync(newImages);
-			await _context.SaveChangesAsync();
+			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
+			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
 		}
 
 		private DateOnly? GetLeaseEndDateForTenant(Tenant tenant)

@@ -3,6 +3,7 @@ using eRents.Application.Services.PaymentService;
 using eRents.Application.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
+using eRents.Domain.Shared;
 using eRents.Shared.Messaging;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
@@ -20,11 +21,8 @@ namespace eRents.Application.Services.BookingService
 	{
 		#region Dependencies
 		private readonly IBookingRepository _bookingRepository;
-		private readonly ICurrentUserService _currentUserService;
 		private readonly IPaymentService _paymentService;
 		private readonly IRabbitMQService _rabbitMqService;
-		private readonly IMapper _mapper;
-		private readonly ILogger<BookingService> _logger;
 		private readonly IPropertyRepository _propertyRepository;
 		private readonly ITenantRepository _tenantRepository;
 		// ✅ Phase 2: New centralized services
@@ -41,15 +39,13 @@ namespace eRents.Application.Services.BookingService
 			IPropertyRepository propertyRepository,
 			ITenantRepository tenantRepository,
 			IAvailabilityService availabilityService,
-			ILeaseCalculationService leaseCalculationService)
-			: base(repository, mapper)
+			ILeaseCalculationService leaseCalculationService,
+			IUnitOfWork unitOfWork)
+			: base(repository, mapper, unitOfWork, currentUserService, logger)
 		{
 			_bookingRepository = repository;
-			_currentUserService = currentUserService;
 			_paymentService = paymentService;
 			_rabbitMqService = rabbitMqService;
-			_mapper = mapper;
-			_logger = logger;
 			_propertyRepository = propertyRepository;
 			_tenantRepository = tenantRepository;
 			_availabilityService = availabilityService;
@@ -60,7 +56,7 @@ namespace eRents.Application.Services.BookingService
 		// Override GetByIdAsync to implement user-scoped access
 		public override async Task<BookingResponse> GetByIdAsync(int id)
 		{
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentUserRole))
@@ -76,7 +72,7 @@ namespace eRents.Application.Services.BookingService
 		// Override InsertAsync to set UserId to current user
 		public override async Task<BookingResponse> InsertAsync(BookingInsertRequest request)
 		{
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId) || (currentUserRole != "User" && currentUserRole != "Tenant"))
@@ -160,7 +156,7 @@ namespace eRents.Application.Services.BookingService
 		// Override UpdateAsync to validate ownership
 		public override async Task<BookingResponse> UpdateAsync(int id, BookingUpdateRequest update)
 		{
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId))
@@ -186,7 +182,7 @@ namespace eRents.Application.Services.BookingService
 		// Override DeleteAsync to validate ownership
 		public override async Task<bool> DeleteAsync(int id)
 		{
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId))
@@ -201,7 +197,7 @@ namespace eRents.Application.Services.BookingService
 				throw new KeyNotFoundException("Booking not found");
 
 			await _bookingRepository.DeleteAsync(entity);
-			await _bookingRepository.SaveChangesAsync();
+			// ✅ REMOVED: SaveChangesAsync now handled by BaseCRUDService Unit of Work
 
 			return true;
 		}
@@ -209,7 +205,7 @@ namespace eRents.Application.Services.BookingService
 		public async Task<List<BookingSummaryResponse>> GetCurrentStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId))
@@ -246,7 +242,7 @@ namespace eRents.Application.Services.BookingService
 		public async Task<List<BookingSummaryResponse>> GetUpcomingStaysAsync(string userId)
 		{
 			// This method still takes userId for backward compatibility but uses current user
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId))
@@ -397,7 +393,7 @@ namespace eRents.Application.Services.BookingService
 
 		public async Task<BookingResponse> CancelBookingAsync(BookingCancellationRequest request)
 		{
-			var currentUserId = _currentUserService.UserId;
+			var currentUserId = _currentUserService!.UserId;
 			var currentUserRole = _currentUserService.UserRole;
 
 			if (string.IsNullOrEmpty(currentUserId))
@@ -462,7 +458,7 @@ namespace eRents.Application.Services.BookingService
 			if (booking == null)
 				throw new KeyNotFoundException("Booking not found");
 
-			var currentUserRole = _currentUserService.UserRole;
+			var currentUserRole = _currentUserService!.UserRole;
 			var cancellationPolicy = DetermineCancellationPolicy(currentUserRole, "Standard");
 
 			return await CalculateRoleBasedRefundAsync(booking, cancellationDate, currentUserRole, cancellationPolicy);
@@ -549,13 +545,13 @@ namespace eRents.Application.Services.BookingService
 				var refundResponse = await _paymentService.ProcessRefundAsync(refundRequest);
 
 				// Log successful refund
-				_logger.LogInformation("Refund processed successfully for booking {BookingId}. Amount: {RefundAmount}. Reference: {RefundReference}",
+				_logger?.LogInformation("Refund processed successfully for booking {BookingId}. Amount: {RefundAmount}. Reference: {RefundReference}",
 					booking.BookingId, refundAmount, refundResponse.PaymentReference);
 			}
 			catch (Exception ex)
 			{
 				// Log error but don't fail the cancellation
-				_logger.LogError(ex, "Refund processing failed for booking {BookingId}. Amount: {RefundAmount}",
+				_logger?.LogError(ex, "Refund processing failed for booking {BookingId}. Amount: {RefundAmount}",
 					booking.BookingId, refundAmount);
 				throw new InvalidOperationException($"Booking cancelled successfully, but refund processing failed: {ex.Message}");
 			}
@@ -585,7 +581,7 @@ namespace eRents.Application.Services.BookingService
 				if (hasLeaseConflict)
 				{
 					var leaseConflict = conflicts.First(c => c.ConflictType == "Lease");
-					_logger.LogInformation("Daily booking conflict detected for property {PropertyId}: {Description} overlaps with requested dates {RequestStart} to {RequestEnd}",
+					_logger?.LogInformation("Daily booking conflict detected for property {PropertyId}: {Description} overlaps with requested dates {RequestStart} to {RequestEnd}",
 						propertyId, leaseConflict.Description, startDate, endDate);
 				}
 
@@ -593,7 +589,7 @@ namespace eRents.Application.Services.BookingService
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error checking for annual rental conflicts for property {PropertyId}", propertyId);
+				_logger?.LogError(ex, "Error checking for annual rental conflicts for property {PropertyId}", propertyId);
 				return true; // Fail safe - prevent booking if we can't verify
 			}
 		}

@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Application.Services.UserService
 {
@@ -30,8 +31,11 @@ namespace eRents.Application.Services.UserService
 			IMapper mapper,
 			IRabbitMQService rabbitMqService,
 			IBaseRepository<UserType> userTypeRepository,
-			IConfiguration configuration)
-				: base(userRepository, mapper)
+			IConfiguration configuration,
+			IUnitOfWork unitOfWork,
+			ICurrentUserService currentUserService,
+			ILogger<UserService> logger)
+			: base(userRepository, mapper, unitOfWork, currentUserService, logger)
 		{
 			_userRepository = userRepository;
 			_rabbitMqService = rabbitMqService;
@@ -98,90 +102,109 @@ namespace eRents.Application.Services.UserService
 
 		public async Task<UserResponse> RegisterAsync(UserInsertRequest request)
 		{
-			if (string.IsNullOrWhiteSpace(request.Username))
-				throw new ValidationException("Username is required.");
-			if (string.IsNullOrWhiteSpace(request.FirstName))
-				throw new ValidationException("First name is required.");
-			if (string.IsNullOrWhiteSpace(request.LastName))
-				throw new ValidationException("Last name is required.");
-			if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
-				throw new ValidationException("A valid email address is required.");
-			if (string.IsNullOrWhiteSpace(request.Password))
-				throw new ValidationException("Password is required.");
-			if (request.Password != request.ConfirmPassword)
-				throw new ValidationException("Passwords do not match.");
-			if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
-				throw new ValidationException("A user with this username or email already exists.");
-			var userTypeEntity = _userTypeRepository.GetQueryable().FirstOrDefault(ut => ut.TypeName == request.Role);
-			if (userTypeEntity == null)
-				throw new ValidationException($"Invalid role selected: {request.Role}. Valid roles must be predefined in UserTypes table.");
-			var salt = GenerateSalt();
-			var hash = GenerateHash(salt, request.Password);
-			var user = _mapper.Map<User>(request);
-			user.PasswordSalt = salt;
-			user.PasswordHash = hash;
-			user.UserTypeId = userTypeEntity.UserTypeId;
-			user.CreatedAt = DateTime.UtcNow;
-			user.UpdatedAt = DateTime.UtcNow;
-			await _userRepository.AddAsync(user);
-			await _userRepository.SaveChangesAsync();
-			var response = _mapper.Map<UserResponse>(user);
-			if (string.IsNullOrEmpty(response.Role))
-				response.Role = userTypeEntity.TypeName;
-			return response;
+			// ✅ ENHANCED: Use Unit of Work transaction management
+			return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+			{
+				// Validation logic
+				if (string.IsNullOrWhiteSpace(request.Username))
+					throw new ValidationException("Username is required.");
+				if (string.IsNullOrWhiteSpace(request.FirstName))
+					throw new ValidationException("First name is required.");
+				if (string.IsNullOrWhiteSpace(request.LastName))
+					throw new ValidationException("Last name is required.");
+				if (string.IsNullOrWhiteSpace(request.Email) || !IsValidEmail(request.Email))
+					throw new ValidationException("A valid email address is required.");
+				if (string.IsNullOrWhiteSpace(request.Password))
+					throw new ValidationException("Password is required.");
+				if (request.Password != request.ConfirmPassword)
+					throw new ValidationException("Passwords do not match.");
+				if (await _userRepository.IsUserAlreadyRegisteredAsync(request.Username, request.Email))
+					throw new ValidationException("A user with this username or email already exists.");
+				
+				var userTypeEntity = _userTypeRepository.GetQueryable().FirstOrDefault(ut => ut.TypeName == request.Role);
+				if (userTypeEntity == null)
+					throw new ValidationException($"Invalid role selected: {request.Role}. Valid roles must be predefined in UserTypes table.");
+				
+				// Create user with encrypted password
+				var salt = GenerateSalt();
+				var hash = GenerateHash(salt, request.Password);
+				var user = _mapper.Map<User>(request);
+				user.PasswordSalt = salt;
+				user.PasswordHash = hash;
+				user.UserTypeId = userTypeEntity.UserTypeId;
+				user.CreatedAt = DateTime.UtcNow;
+				user.UpdatedAt = DateTime.UtcNow;
+				
+				await _userRepository.AddAsync(user);
+				await _unitOfWork.SaveChangesAsync();
+				
+				var response = _mapper.Map<UserResponse>(user);
+				if (string.IsNullOrEmpty(response.Role))
+					response.Role = userTypeEntity.TypeName;
+				
+				return response;
+			});
 		}
 
 		public async Task ResetPasswordAsync(ResetPasswordRequest request)
 		{
-			var user = await _userRepository.GetUserByResetTokenAsync(request.Token);
-			if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
+			// ✅ ENHANCED: Use Unit of Work transaction management
+			await _unitOfWork.ExecuteInTransactionAsync(async () =>
 			{
-				throw new UserException("Invalid or expired reset token.");
-			}
+				var user = await _userRepository.GetUserByResetTokenAsync(request.Token);
+				if (user == null || user.ResetTokenExpiration < DateTime.UtcNow)
+				{
+					throw new UserException("Invalid or expired reset token.");
+				}
 
-			if (string.IsNullOrWhiteSpace(request.NewPassword))
-			{
-				throw new ValidationException("New password cannot be empty.");
-			}
+				if (string.IsNullOrWhiteSpace(request.NewPassword))
+				{
+					throw new ValidationException("New password cannot be empty.");
+				}
 
-			if (request.NewPassword != request.ConfirmPassword)
-			{
-				throw new ValidationException("New password and confirmation password do not match.");
-			}
+				if (request.NewPassword != request.ConfirmPassword)
+				{
+					throw new ValidationException("New password and confirmation password do not match.");
+				}
 
-			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			user.ResetToken = null;
-			user.ResetTokenExpiration = null;
-			await _userRepository.UpdateAsync(user);
-			await _userRepository.SaveChangesAsync();
+				user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+				user.ResetToken = null;
+				user.ResetTokenExpiration = null;
+				await _userRepository.UpdateAsync(user);
+				await _unitOfWork.SaveChangesAsync();
+			});
 		}
 
 		public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
 		{
-			var user = await _userRepository.GetByIdAsync(userId);
-			if (user == null)
+			// ✅ ENHANCED: Use Unit of Work transaction management
+			await _unitOfWork.ExecuteInTransactionAsync(async () =>
 			{
-				throw new UserNotFoundException("User not found.");
-			}
+				var user = await _userRepository.GetByIdAsync(userId);
+				if (user == null)
+				{
+					throw new UserNotFoundException("User not found.");
+				}
 
-			if (!ValidatePassword(request.OldPassword, user.PasswordSalt, user.PasswordHash))
-			{
-				throw new InvalidPasswordException("Invalid old password.");
-			}
-			
-			if (string.IsNullOrWhiteSpace(request.NewPassword))
-			{
-				throw new ValidationException("New password cannot be empty.");
-			}
+				if (!ValidatePassword(request.OldPassword, user.PasswordSalt, user.PasswordHash))
+				{
+					throw new InvalidPasswordException("Invalid old password.");
+				}
+				
+				if (string.IsNullOrWhiteSpace(request.NewPassword))
+				{
+					throw new ValidationException("New password cannot be empty.");
+				}
 
-			if (request.NewPassword != request.ConfirmPassword)
-			{
-				throw new ValidationException("New password and confirmation password do not match.");
-			}
+				if (request.NewPassword != request.ConfirmPassword)
+				{
+					throw new ValidationException("New password and confirmation password do not match.");
+				}
 
-			user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
-			await _userRepository.UpdateAsync(user);
-			await _userRepository.SaveChangesAsync();
+				user.PasswordHash = GenerateHash(user.PasswordSalt, request.NewPassword);
+				await _userRepository.UpdateAsync(user);
+				await _unitOfWork.SaveChangesAsync();
+			});
 		}
 
 		public async Task ForgotPasswordAsync(string email)
@@ -189,11 +212,17 @@ namespace eRents.Application.Services.UserService
 			var user = await _userRepository.GetByEmailAsync(email);
 			if (user != null)
 			{
-				var token = Guid.NewGuid().ToString();
-				user.ResetToken = token;
-				user.ResetTokenExpiration = DateTime.UtcNow.AddHours(1);
-				await _userRepository.UpdateAsync(user);
-				await _userRepository.SaveChangesAsync();
+				string token = "";
+				// ✅ ENHANCED: Use Unit of Work transaction management
+				await _unitOfWork.ExecuteInTransactionAsync(async () =>
+				{
+					token = Guid.NewGuid().ToString();
+					user.ResetToken = token;
+					user.ResetTokenExpiration = DateTime.UtcNow.AddHours(1);
+					await _userRepository.UpdateAsync(user);
+					await _unitOfWork.SaveChangesAsync();
+				});
+				
 				await SendResetEmailAsync(email, token);
 			}
 		}

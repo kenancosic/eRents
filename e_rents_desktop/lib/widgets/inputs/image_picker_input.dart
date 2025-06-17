@@ -291,7 +291,10 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                image.fileName ?? 'image.jpg',
+                image.fileName ??
+                    (image.id != null
+                        ? 'Property Image ${image.id}'
+                        : 'image.jpg'),
                 style: const TextStyle(color: Colors.white, fontSize: 10),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -317,12 +320,12 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
       );
     } else if (image.url != null) {
       // Existing image with URL - use ApiService for proper handling
+      return getService<ApiService>().buildImage(image.url!, fit: BoxFit.cover);
+    } else if (image.id != null) {
+      // Existing image with ID - construct URL and use ApiService
       return getService<ApiService>().buildImage(
-        image.url,
+        '/Image/${image.id}',
         fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        errorWidget: _buildErrorWidget(),
       );
     } else {
       return _buildErrorWidget();

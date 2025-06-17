@@ -6,6 +6,10 @@ import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart'
     as picker;
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
 import 'package:e_rents_desktop/base/lifecycle_mixin.dart';
+import 'package:e_rents_desktop/repositories/property_repository.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
+import 'package:e_rents_desktop/services/property_service.dart';
+import 'package:e_rents_desktop/services/image_service.dart';
 
 class PropertyFormState extends ChangeNotifier with LifecycleMixin {
   final LookupProvider? lookupProvider;
@@ -372,6 +376,72 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
               : null,
       dateAdded: initialProperty?.dateAdded ?? DateTime.now(),
     );
+  }
+
+  /// Get images that need to be uploaded (new images with data but no ID)
+  List<picker.ImageInfo> get imagesToUpload {
+    return _images
+        .where((img) => img.isNew && img.data != null && img.id == null)
+        .toList();
+  }
+
+  /// Get images that already have IDs (uploaded or existing)
+  List<int> get uploadedImageIds {
+    return _images
+        .where((img) => img.id != null && img.id! > 0)
+        .map((img) => img.id!)
+        .toList();
+  }
+
+  /// Update an image with a new ID after upload
+  void updateImageId(picker.ImageInfo oldImage, int newId) {
+    final index = _images.indexOf(oldImage);
+    if (index != -1) {
+      _images[index] = oldImage.copyWith(id: newId, isNew: false);
+      safeNotifyListeners();
+    }
+  }
+
+  /// Upload all new images for a property
+  /// Returns a list of image IDs (including both uploaded and existing)
+  Future<List<int>> uploadNewImages({int? propertyId}) async {
+    final imageService = ServiceLocator().get<ImageService>();
+    final imagesToUpload = this.imagesToUpload;
+    final uploadedIds = <int>[];
+
+    // Add existing image IDs first
+    uploadedIds.addAll(uploadedImageIds);
+
+    // Upload new images
+    for (final image in imagesToUpload) {
+      if (image.data != null) {
+        try {
+          print(
+            'PropertyFormState: Uploading image ${image.fileName} for property ID: $propertyId',
+          );
+          final response = await imageService.uploadPropertyImage(
+            imageData: image.data!,
+            fileName: image.fileName ?? 'image.jpg',
+            propertyId: propertyId,
+            isCover: image.isCover,
+          );
+          print('PropertyFormState: Upload response: $response');
+
+          final uploadedImageId = response['imageId'] as int?;
+          if (uploadedImageId != null) {
+            uploadedIds.add(uploadedImageId);
+            // Update the image in our list with the new ID
+            updateImageId(image, uploadedImageId);
+          }
+        } catch (e) {
+          print('Failed to upload image ${image.fileName}: $e');
+          // Don't throw here - we want to continue uploading other images
+          // The caller can check which images failed by comparing counts
+        }
+      }
+    }
+
+    return uploadedIds;
   }
 
   // Helper methods for enum conversions

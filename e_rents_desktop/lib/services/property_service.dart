@@ -442,7 +442,13 @@ class PropertyService extends ApiService {
 
   /// Build PropertyUpdateRequest DTO
   Future<Map<String, dynamic>> _buildUpdateRequest(Property property) async {
-    return await _buildInsertRequest(property); // Same structure for updates
+    final request = await _buildInsertRequest(
+      property,
+    ); // Same structure for updates
+    print(
+      'PropertyService: Built update request for property ${property.propertyId} with imageIds: ${request['imageIds']}',
+    );
+    return request;
   }
 
   /// Transform address for backend compatibility

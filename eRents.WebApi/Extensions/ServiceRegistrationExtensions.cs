@@ -43,6 +43,9 @@ namespace eRents.WebApi.Extensions
         /// </summary>
         public static IServiceCollection AddERentsRepositories(this IServiceCollection services)
         {
+            // ✅ CRITICAL: Register Unit of Work for proper transaction management
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+            
             // Core entity repositories with concurrency control
             services.AddTransient<IUserRepository, UserRepository>();
             services.AddTransient<IPropertyRepository, PropertyRepository>();
@@ -50,6 +53,7 @@ namespace eRents.WebApi.Extensions
             services.AddTransient<IReviewRepository, ReviewRepository>();
             services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
             services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
+            services.AddTransient<IImageRepository, ImageRepository>();
             
             // Register concurrent repository interfaces ONLY for entities that actually implement IConcurrentRepository
             // These repositories inherit from ConcurrentBaseRepository
@@ -89,10 +93,9 @@ namespace eRents.WebApi.Extensions
         /// </summary>
         public static IServiceCollection AddERentsBusinessServices(this IServiceCollection services)
         {
-            // Core business services
+            // ✅ ENHANCED: Core business services with Unit of Work support
             services.AddTransient<IUserService, UserService>();
             services.AddTransient<IPropertyService, PropertyService>();
-            // Updated BookingService with PropertyRepository and TenantRepository dependencies for dual rental system
             services.AddTransient<IBookingService, BookingService>();
             services.AddTransient<IReviewService, ReviewService>();
             services.AddTransient<IMaintenanceService, MaintenanceService>();

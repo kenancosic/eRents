@@ -94,13 +94,78 @@ class _PropertyFormScreenContentState
         widget.initialProperty,
       );
 
+      Property savedProperty;
+
       if (widget.isEditMode) {
-        await collectionProvider.updateItem(
-          propertyToSave.propertyId.toString(),
-          propertyToSave,
+        // For existing properties, upload images first
+        final uploadedImageIds = await formState.uploadNewImages(
+          propertyId: propertyToSave.propertyId,
         );
+
+        // Update the property with all image IDs (existing + newly uploaded)
+        final updatedProperty = propertyToSave.copyWith(
+          imageIds: uploadedImageIds,
+        );
+
+        await collectionProvider.updateItem(
+          updatedProperty.propertyId.toString(),
+          updatedProperty,
+        );
+        savedProperty = updatedProperty;
       } else {
+        // For new properties, create first, then upload images
         await collectionProvider.addItem(propertyToSave);
+
+        // Find the newly created property in the collection
+        // Note: This assumes the property was successfully created and added to the collection
+        savedProperty =
+            collectionProvider.items.isNotEmpty
+                ? collectionProvider.items.last
+                : propertyToSave;
+
+        // Upload images after property creation if we have a valid property ID
+        print(
+          'PropertyFormScreen: Created property ID: ${savedProperty.propertyId}',
+        );
+        if (savedProperty.propertyId > 0) {
+          final uploadedImageIds = await formState.uploadNewImages(
+            propertyId: savedProperty.propertyId,
+          );
+
+          // Update the property with uploaded image IDs if any were uploaded
+          if (uploadedImageIds.isNotEmpty) {
+            print(
+              'PropertyFormScreen: Updating property ${savedProperty.propertyId} with image IDs: $uploadedImageIds',
+            );
+            final updatedProperty = savedProperty.copyWith(
+              imageIds: uploadedImageIds,
+            );
+
+            await collectionProvider.updateItem(
+              updatedProperty.propertyId.toString(),
+              updatedProperty,
+            );
+            savedProperty = updatedProperty;
+          }
+        }
+      }
+
+      // Show success message with upload status
+      final totalImages = formState.images.length;
+      final uploadedCount = formState.uploadedImageIds.length;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.isEditMode
+                  ? 'Property updated successfully! Images: $uploadedCount/$totalImages uploaded.'
+                  : 'Property created successfully! Images: $uploadedCount/$totalImages uploaded.',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
 
       // Also update the detail provider if we are editing and it holds this item
