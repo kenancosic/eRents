@@ -33,8 +33,13 @@ class PropertyFormScreen extends StatelessWidget {
     return ChangeNotifierProvider(
       key: key,
       create: (context) {
-        final lookupProvider = context.read<LookupProvider>();
-        final formState = PropertyFormState(lookupProvider: lookupProvider);
+        // ✅ NEW: Dependencies are now explicitly passed to the FormState.
+        final formState = PropertyFormState(
+          lookupProvider: context.read<LookupProvider>(),
+          propertyService: context.read<PropertyService>(),
+          authProvider: context.read<AuthProvider>(),
+          collectionProvider: context.read<PropertyCollectionProvider>(),
+        );
         if (property != null) {
           formState.populateFromProperty(property!);
         }
@@ -65,107 +70,51 @@ class _PropertyFormScreenContent extends StatefulWidget {
 class _PropertyFormScreenContentState
     extends State<_PropertyFormScreenContent> {
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
-  /// ✅ NEW: Transactional save method that ensures data consistency
-  /// If property validation fails, images are automatically rolled back
-  Future<void> _saveTransactional() async {
+  /// ✅ NEW: UI-level save method that calls the encapsulated logic in the FormState.
+  /// This keeps the UI clean and focused on presentation.
+  Future<void> _saveProperty() async {
     if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please correct the errors before saving.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
 
-    setState(() => _isLoading = true);
-
     final formState = context.read<PropertyFormState>();
-    final authProvider = context.read<AuthProvider>();
-    final propertyService = context.read<PropertyService>();
+    final success = await formState.saveProperty(
+      isEditMode: widget.isEditMode,
+      initialProperty: widget.initialProperty,
+    );
 
-    try {
-      final user = authProvider.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated.');
-      }
-
-      final propertyToSave = formState.createProperty(
-        user.id,
-        widget.initialProperty,
-      );
-
-      // Get images to upload
-      final imagesToUpload = formState.imagesToUpload;
-      final imageData = <Uint8List>[];
-      final imageFileNames = <String>[];
-      final imageCoverFlags = <bool>[];
-
-      // Process images from form state
-      for (final image in imagesToUpload) {
-        if (image.data != null) {
-          imageData.add(image.data!);
-          imageFileNames.add(image.fileName ?? 'image.jpg');
-          imageCoverFlags.add(image.isCover);
-        }
-      }
-
-      Property savedProperty;
-
-      if (widget.isEditMode) {
-        // ✅ NEW: Use transactional update method with image upload
-        final existingImageIds = formState.uploadedImageIds;
-
-        savedProperty = await propertyService.updateProperty(
-          propertyToSave.propertyId,
-          propertyToSave,
-          newImageData: imageData.isNotEmpty ? imageData : null,
-          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
-          existingImageIds:
-              existingImageIds.isNotEmpty ? existingImageIds : null,
-        );
-      } else {
-        // For new properties, use the new transactional method
-        savedProperty = await propertyService.createProperty(
-          propertyToSave,
-          newImageData: imageData.isNotEmpty ? imageData : null,
-          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
-        );
-      }
-
-      // Success - refresh the collections
-      final collectionProvider = context.read<PropertyCollectionProvider>();
-      await collectionProvider.clearCacheAndRefresh();
-
-      if (mounted) {
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isEditMode
-                  ? 'Property updated successfully! All images saved atomically.'
-                  : 'Property created successfully! All images saved atomically.',
+                  ? 'Property updated successfully!'
+                  : 'Property created successfully!',
             ),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
           ),
         );
-
         context.pop();
-      }
-    } catch (e) {
-      if (mounted) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save property: $e'),
+            content: Text(
+              formState.errorMessage ?? 'An unknown error occurred.',
+            ),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }
-
-  // Legacy save method removed - now using transactional approach for all operations
 
   @override
   Widget build(BuildContext context) {
@@ -180,14 +129,14 @@ class _PropertyFormScreenContentState
             padding: const EdgeInsets.only(right: 8.0),
             child: ElevatedButton.icon(
               icon: const Icon(Icons.save_outlined),
-              onPressed: _isLoading ? null : _saveTransactional,
+              onPressed: formState.isLoading ? null : _saveProperty,
               label: const Text('Save'),
             ),
           ),
         ],
       ),
       body:
-          _isLoading
+          formState.isLoading
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
                 child: Padding(

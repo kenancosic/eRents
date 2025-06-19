@@ -1,7 +1,7 @@
 import '../base/base.dart';
 import '../models/maintenance_issue.dart';
+import '../models/paged_result.dart';
 import '../services/maintenance_service.dart';
-import '../widgets/table/custom_table.dart';
 
 /// Repository for managing maintenance issues with caching and business logic.
 ///
@@ -71,26 +71,47 @@ class MaintenanceRepository
   String? extractIdFromItem(MaintenanceIssue item) =>
       item.maintenanceIssueId.toString();
 
-  // Business Logic Methods
+  @override
+  MaintenanceIssue fromJson(Map<String, dynamic> json) =>
+      MaintenanceIssue.fromJson(json);
 
-  /// Get issues filtered by status
-  Future<List<MaintenanceIssue>> getIssuesByStatus(IssueStatus status) async {
-    final issues = await getAll();
-    return issues.where((issue) => issue.status == status).toList();
+  @override
+  Future<PagedResult<MaintenanceIssue>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    // Use Universal System pagination from service
+    final pagedData = await service.getPagedMaintenanceIssues(params ?? {});
+
+    // Parse Universal System PagedList<MaintenanceIssueResponse>
+    final List<dynamic> items = pagedData['items'] ?? [];
+    final issues =
+        items.map((json) => MaintenanceIssue.fromJson(json)).toList();
+
+    return PagedResult<MaintenanceIssue>(
+      items: issues,
+      totalCount: pagedData['totalCount'] ?? 0,
+      page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
+      pageSize: pagedData['pageSize'] ?? 25,
+    );
   }
 
-  /// Get issues filtered by priority
+  // Business Logic Methods
+
+  /// Get issues filtered by status (delegates to backend)
+  Future<List<MaintenanceIssue>> getIssuesByStatus(IssueStatus status) async {
+    return await getAll({'status': status.name});
+  }
+
+  /// Get issues filtered by priority (delegates to backend)
   Future<List<MaintenanceIssue>> getIssuesByPriority(
     IssuePriority priority,
   ) async {
-    final issues = await getAll();
-    return issues.where((issue) => issue.priority == priority).toList();
+    return await getAll({'priority': priority.name});
   }
 
-  /// Get issues for a specific property
+  /// Get issues for a specific property (delegates to backend)
   Future<List<MaintenanceIssue>> getIssuesByProperty(int propertyId) async {
-    final issues = await getAll();
-    return issues.where((issue) => issue.propertyId == propertyId).toList();
+    return await getAll({'propertyId': propertyId.toString()});
   }
 
   /// Get pending issues (most common filter)
@@ -172,19 +193,12 @@ class MaintenanceRepository
     );
   }
 
-  /// Search issues by title or description
+  /// Search issues by title or description (delegates to backend)
   Future<List<MaintenanceIssue>> searchIssues(String query) async {
-    final issues = await getAll();
-    final lowercaseQuery = query.toLowerCase();
-
-    return issues
-        .where(
-          (issue) =>
-              issue.title.toLowerCase().contains(lowercaseQuery) ||
-              issue.description.toLowerCase().contains(lowercaseQuery) ||
-              (issue.category?.toLowerCase().contains(lowercaseQuery) ?? false),
-        )
-        .toList();
+    if (query.isEmpty) {
+      return await getAll();
+    }
+    return await getAll({'searchTerm': query});
   }
 
   /// Get recent issues (last 30 days)
@@ -195,125 +209,6 @@ class MaintenanceRepository
     return issues
         .where((issue) => issue.createdAt.isAfter(thirtyDaysAgo))
         .toList();
-  }
-
-  /// ✅ UNIVERSAL SYSTEM: Get paginated maintenance issues from backend Universal System
-  Future<PagedResult<MaintenanceIssue>> getPagedMaintenanceIssues(
-    Map<String, dynamic> params,
-  ) async {
-    try {
-      final cacheKey = _buildSpecialCacheKey('paged', params);
-
-      // Try cache first (shorter TTL for paginated data)
-      if (enableCaching) {
-        final cached = await cacheManager.get<PagedResult<MaintenanceIssue>>(
-          cacheKey,
-        );
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      // Use Universal System pagination from service
-      final pagedData = await service.getPagedMaintenanceIssues(params);
-
-      // Parse Universal System PagedList<MaintenanceIssueResponse>
-      final List<dynamic> items = pagedData['items'] ?? [];
-      final issues =
-          items.map((json) => MaintenanceIssue.fromJson(json)).toList();
-
-      final pagedResult = PagedResult<MaintenanceIssue>(
-        items: issues,
-        totalCount: pagedData['totalCount'] ?? 0,
-        page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
-        pageSize: pagedData['pageSize'] ?? 25,
-        totalPages: pagedData['totalPages'] ?? 0,
-      );
-
-      // Cache the result (shorter TTL for paginated data)
-      if (enableCaching) {
-        await cacheManager.set(
-          cacheKey,
-          pagedResult,
-          duration: const Duration(minutes: 2),
-        );
-      }
-
-      return pagedResult;
-    } catch (e, stackTrace) {
-      // Fallback to local pagination if backend doesn't support it yet
-      final allIssues = await getAll();
-
-      final page = (params['page'] ?? 1) - 1; // Convert to 0-based
-      final pageSize = params['pageSize'] ?? 25;
-      final searchTerm = params['searchTerm'] as String?;
-
-      // Apply search filter
-      List<MaintenanceIssue> filteredIssues = List.from(allIssues);
-      if (searchTerm != null && searchTerm.isNotEmpty) {
-        final lowercaseQuery = searchTerm.toLowerCase();
-        filteredIssues =
-            filteredIssues
-                .where(
-                  (issue) =>
-                      issue.title.toLowerCase().contains(lowercaseQuery) ||
-                      issue.description.toLowerCase().contains(
-                        lowercaseQuery,
-                      ) ||
-                      (issue.category?.toLowerCase().contains(lowercaseQuery) ??
-                          false),
-                )
-                .toList();
-      }
-
-      // Apply sorting
-      final sortBy = params['sortBy'] as String?;
-      final sortDesc = params['sortDesc'] as bool? ?? false;
-
-      if (sortBy != null) {
-        filteredIssues.sort((a, b) {
-          int comparison = 0;
-          switch (sortBy) {
-            case 'priority':
-              comparison = a.priority.index.compareTo(b.priority.index);
-              break;
-            case 'status':
-              comparison = a.status.index.compareTo(b.status.index);
-              break;
-            case 'title':
-              comparison = a.title.compareTo(b.title);
-              break;
-            case 'createdAt':
-              comparison = a.createdAt.compareTo(b.createdAt);
-              break;
-            default:
-              comparison = 0;
-          }
-          return sortDesc ? -comparison : comparison;
-        });
-      }
-
-      // Apply pagination
-      final totalCount = filteredIssues.length;
-      final totalPages = (totalCount / pageSize).ceil();
-      final startIndex = page * pageSize;
-      final endIndex = (startIndex + pageSize).clamp(0, totalCount);
-
-      final pageItems =
-          startIndex < totalCount
-              ? filteredIssues.sublist(startIndex, endIndex)
-              : <MaintenanceIssue>[];
-
-      return PagedResult<MaintenanceIssue>(
-        items: pageItems,
-        totalCount: totalCount,
-        page: page,
-        pageSize: pageSize,
-        totalPages: totalPages,
-      );
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
   }
 }
 

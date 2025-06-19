@@ -19,7 +19,11 @@ class TenantUniversalTableProvider extends TableProvider<User> {
     required TenantRepository repository,
     required UniversalTableConfig<User> config,
     required this.context,
-  }) : super(fetchDataFunction: repository.getPagedTenants, config: config);
+  }) : super(
+         fetchDataFunction:
+             (params) => repository.fetchPagedFromService(params),
+         config: config,
+       );
 
   @override
   List<TableColumnConfig<User>> get columns => [

@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
@@ -189,7 +190,6 @@ class _FinancialReportUniversalTable extends StatelessWidget {
           totalCount: filteredItems.length,
           page: page,
           pageSize: pageSize,
-          totalPages: (filteredItems.length / pageSize).ceil(),
         );
       },
       columns: [
@@ -324,7 +324,6 @@ class _TenantReportUniversalTable extends StatelessWidget {
           totalCount: filteredItems.length,
           page: page,
           pageSize: pageSize,
-          totalPages: (filteredItems.length / pageSize).ceil(),
         );
       },
       columns: [

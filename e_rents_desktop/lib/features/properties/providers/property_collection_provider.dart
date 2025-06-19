@@ -277,7 +277,7 @@ class PropertyCollectionProvider extends CollectionProvider<Property> {
         ...?params,
       };
 
-      final pagedResult = await propertyRepository.getPagedProperties(
+      final pagedResult = await propertyRepository.fetchPagedFromService(
         paginationParams,
       );
 

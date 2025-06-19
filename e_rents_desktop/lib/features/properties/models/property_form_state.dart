@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
@@ -10,9 +12,14 @@ import 'package:e_rents_desktop/repositories/property_repository.dart';
 import 'package:e_rents_desktop/base/service_locator.dart';
 import 'package:e_rents_desktop/services/property_service.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
 
 class PropertyFormState extends ChangeNotifier with LifecycleMixin {
   final LookupProvider? lookupProvider;
+  final PropertyService _propertyService;
+  final AuthProvider _authProvider;
+  final PropertyCollectionProvider _collectionProvider;
 
   // Text controllers
   final TextEditingController titleController = TextEditingController();
@@ -47,12 +54,18 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
   Address? _selectedAddress;
   String? _initialAddressString;
 
-  // Loading and error state
-  bool _isFetchingData = false;
-  String? _fetchError;
+  // Loading and error state is now managed here
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  PropertyFormState({this.lookupProvider}) {
-    // Initialize with default values if lookup data is available
+  PropertyFormState({
+    required this.lookupProvider,
+    required PropertyService propertyService,
+    required AuthProvider authProvider,
+    required PropertyCollectionProvider collectionProvider,
+  }) : _propertyService = propertyService,
+       _authProvider = authProvider,
+       _collectionProvider = collectionProvider {
     _initializeWithDefaults();
   }
 
@@ -94,8 +107,10 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
   String? get initialAddressString => _initialAddressString;
   double? get latitude => _selectedAddress?.latitude;
   double? get longitude => _selectedAddress?.longitude;
-  bool get isFetchingData => _isFetchingData;
-  String? get fetchError => _fetchError;
+
+  // Public getters for UI state
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   // Setters for database IDs
   set propertyTypeId(int? value) {
@@ -151,6 +166,66 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     if (disposed) return;
     _selectedAmenityIds = List.from(value);
     safeNotifyListeners();
+  }
+
+  /// ✅ NEW: Centralized save method with explicit dependencies.
+  /// This encapsulates all logic for creating or updating a property.
+  Future<bool> saveProperty({
+    required bool isEditMode,
+    Property? initialProperty,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    safeNotifyListeners();
+
+    try {
+      final user = _authProvider.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated.');
+      }
+
+      final propertyToSave = createProperty(user.id, initialProperty);
+
+      final imagesToUpload = this.imagesToUpload;
+      final imageData = <Uint8List>[];
+      final imageFileNames = <String>[];
+
+      for (final image in imagesToUpload) {
+        if (image.data != null) {
+          imageData.add(image.data!);
+          imageFileNames.add(image.fileName ?? 'image.jpg');
+        }
+      }
+
+      if (isEditMode) {
+        final existingImageIds = this.uploadedImageIds;
+        await _propertyService.updateProperty(
+          propertyToSave.propertyId,
+          propertyToSave,
+          newImageData: imageData.isNotEmpty ? imageData : null,
+          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
+          existingImageIds:
+              existingImageIds.isNotEmpty ? existingImageIds : null,
+        );
+      } else {
+        await _propertyService.createProperty(
+          propertyToSave,
+          newImageData: imageData.isNotEmpty ? imageData : null,
+          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
+        );
+      }
+
+      // After a successful save, tell the collection provider to refresh its data.
+      await _collectionProvider.clearCacheAndRefresh();
+
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to save property: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      safeNotifyListeners();
+    }
   }
 
   /// Update address from Google Places API selection
@@ -260,14 +335,6 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     if (disposed) return;
 
     _selectedAddress = _createAddressFromManualFields();
-    safeNotifyListeners();
-  }
-
-  void setFetchingState(bool loading, [String? error]) {
-    if (disposed) return;
-
-    _isFetchingData = loading;
-    _fetchError = error;
     safeNotifyListeners();
   }
 

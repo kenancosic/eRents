@@ -13,10 +13,13 @@ import 'package:e_rents_desktop/models/rental_status.dart';
 /// Central service that orchestrates both booking and rental request data sources
 /// This is the key component that unifies the dual rental system in the frontend
 class RentalManagementService {
-  final BookingRepository _bookingRepo;
-  final RentalRequestRepository _rentalRequestRepo;
+  final BookingRepository _bookingRepository;
+  final RentalRequestRepository _rentalRequestRepository;
 
-  RentalManagementService(this._bookingRepo, this._rentalRequestRepo);
+  RentalManagementService(
+    this._bookingRepository,
+    this._rentalRequestRepository,
+  );
 
   // ===================================================================
   // PAGINATED DATA FETCHING FOR TABLES
@@ -26,7 +29,7 @@ class RentalManagementService {
     Map<String, dynamic> params,
   ) async {
     try {
-      return await _bookingRepo.getPagedBookings(params);
+      return await _bookingRepository.fetchPagedFromService(params);
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -36,11 +39,7 @@ class RentalManagementService {
     Map<String, dynamic> params,
   ) async {
     try {
-      final result = await _rentalRequestRepo.getPagedRentalRequests(params);
-      return PagedResult.fromJson(
-        result,
-        (json) => RentalRequest.fromJson(json),
-      );
+      return await _rentalRequestRepository.fetchPagedFromService(params);
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -60,8 +59,8 @@ class RentalManagementService {
 
       // Fetch from both services in parallel
       final results = await Future.wait([
-        _bookingRepo.getAllBookings(params),
-        _rentalRequestRepo.getAll(params),
+        _bookingRepository.fetchAllFromService(params),
+        _rentalRequestRepository.fetchAllFromService(params),
       ]);
 
       final List<Booking> bookings =
@@ -96,7 +95,11 @@ class RentalManagementService {
     bool requestRefund = true,
   }) async {
     try {
-      await _bookingRepo.cancelBooking(int.parse(id), reason, requestRefund);
+      await _bookingRepository.cancelBooking(
+        int.parse(id),
+        reason,
+        requestRefund,
+      );
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -105,7 +108,7 @@ class RentalManagementService {
   /// Approve a lease request
   Future<void> approveLeaseRequest(String id, String response) async {
     try {
-      await _rentalRequestRepo.approveRentalRequest(
+      await _rentalRequestRepository.approveRentalRequest(
         int.parse(id),
         true,
         response,
@@ -118,7 +121,7 @@ class RentalManagementService {
   /// Reject a lease request
   Future<void> rejectLeaseRequest(String id, String reason) async {
     try {
-      await _rentalRequestRepo.approveRentalRequest(
+      await _rentalRequestRepository.approveRentalRequest(
         int.parse(id),
         false,
         reason,
@@ -131,7 +134,7 @@ class RentalManagementService {
   /// Withdraw a lease request
   Future<void> withdrawLeaseRequest(String id) async {
     try {
-      await _rentalRequestRepo.withdrawRentalRequest(int.parse(id));
+      await _rentalRequestRepository.withdrawRentalRequest(int.parse(id));
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -144,7 +147,7 @@ class RentalManagementService {
   /// Get active stays only
   Future<List<RentalDisplayItem>> getActiveStays([int? propertyId]) async {
     try {
-      final bookings = await _bookingRepo.getCurrentStays(propertyId);
+      final bookings = await _bookingRepository.getCurrentStays(propertyId);
       return bookings.map((b) => RentalDisplayItem.fromBooking(b)).toList();
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
@@ -154,7 +157,7 @@ class RentalManagementService {
   /// Get pending lease requests only
   Future<List<RentalDisplayItem>> getPendingLeaseRequests() async {
     try {
-      final requests = await _rentalRequestRepo.getPendingRequests();
+      final requests = await _rentalRequestRepository.getPendingRequests();
       return requests
           .map((r) => RentalDisplayItem.fromRentalRequest(r))
           .toList();
@@ -166,7 +169,7 @@ class RentalManagementService {
   /// Get upcoming stays only
   Future<List<RentalDisplayItem>> getUpcomingStays([int? propertyId]) async {
     try {
-      final bookings = await _bookingRepo.getUpcomingStays(propertyId);
+      final bookings = await _bookingRepository.getUpcomingStays(propertyId);
       return bookings.map((b) => RentalDisplayItem.fromBooking(b)).toList();
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
@@ -176,7 +179,7 @@ class RentalManagementService {
   /// Get expiring lease contracts
   Future<List<RentalDisplayItem>> getExpiringLeases({int? daysAhead}) async {
     try {
-      final requests = await _rentalRequestRepo.getExpiringContracts(
+      final requests = await _rentalRequestRepository.getExpiringContracts(
         daysAhead: daysAhead,
       );
       return requests
@@ -197,7 +200,7 @@ class RentalManagementService {
       // Fetch statistics from both repositories in parallel
       final results = await Future.wait([
         _getBookingStatistics(),
-        _rentalRequestRepo.getRentalRequestStatistics(),
+        _rentalRequestRepository.getRentalRequestStatistics(),
       ]);
 
       final bookingStats = results[0];
@@ -214,7 +217,7 @@ class RentalManagementService {
     try {
       // Since BookingRepository doesn't have a statistics method yet,
       // we'll calculate basic statistics from the data
-      final allBookings = await _bookingRepo.getAllBookings();
+      final allBookings = await _bookingRepository.getAll();
 
       final totalBookings = allBookings.length;
       final activeBookings =
@@ -250,8 +253,8 @@ class RentalManagementService {
   /// Clear all caches for both data sources
   Future<void> clearAllCaches() async {
     await Future.wait([
-      _bookingRepo.clearCache(),
-      _rentalRequestRepo.clearCache(),
+      _bookingRepository.clearCache(),
+      _rentalRequestRepository.clearCache(),
     ]);
   }
 

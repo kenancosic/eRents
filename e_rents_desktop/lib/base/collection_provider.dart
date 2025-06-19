@@ -32,6 +32,12 @@ abstract class CollectionProvider<T> extends ChangeNotifier
   /// Total count of items (if supported by the repository)
   int? _totalCount;
 
+  // Pagination state
+  int _currentPage = 0;
+  bool _hasNextPage = false;
+  bool _hasPreviousPage = false;
+  int _pageSize = 25; // Default page size
+
   CollectionProvider(this.repository);
 
   // Public getters
@@ -72,6 +78,16 @@ abstract class CollectionProvider<T> extends ChangeNotifier
   /// Get total count if available
   int? get totalCount => _totalCount;
 
+  // Pagination getters
+  int get currentPage => _currentPage;
+  bool get hasNextPage => _hasNextPage;
+  bool get hasPreviousPage => _hasPreviousPage;
+  int get pageSize => _pageSize;
+  int get totalPages =>
+      (_totalCount != null && _totalCount! > 0 && _pageSize > 0)
+          ? (_totalCount! / _pageSize).ceil()
+          : 0;
+
   /// Get current filter parameters
   Map<String, dynamic>? get currentParams =>
       _currentParams != null ? Map.unmodifiable(_currentParams!) : null;
@@ -90,6 +106,51 @@ abstract class CollectionProvider<T> extends ChangeNotifier
     });
   }
 
+  /// Fetches paginated items from the repository.
+  /// This is the new primary method for loading data for tables/lists.
+  Future<void> fetchPaginated({
+    int page = 0,
+    int? pageSize,
+    Map<String, dynamic>? params,
+  }) async {
+    if (_state.isLoading) return;
+
+    await _execute(() async {
+      _currentParams = params;
+      _pageSize = pageSize ?? _pageSize;
+      await _fetchPaginatedData(page: page);
+      _initialized = true;
+    });
+  }
+
+  /// Load the next page of data.
+  Future<void> loadNextPage() async {
+    if (!_hasNextPage || _state.isLoading) return;
+    await _execute(() async {
+      await _fetchPaginatedData(page: _currentPage + 1);
+    });
+  }
+
+  /// Load the previous page of data.
+  Future<void> loadPreviousPage() async {
+    if (!_hasPreviousPage || _state.isLoading) return;
+    await _execute(() async {
+      await _fetchPaginatedData(page: _currentPage - 1);
+    });
+  }
+
+  /// Jump to a specific page.
+  Future<void> goToPage(int page) async {
+    if (page < 0 ||
+        (totalPages > 0 && page >= totalPages) ||
+        _state.isLoading) {
+      return;
+    }
+    await _execute(() async {
+      await _fetchPaginatedData(page: page);
+    });
+  }
+
   /// Refresh items (for pull-to-refresh)
   Future<void> refreshItems([Map<String, dynamic>? params]) async {
     if (_isRefreshing) return; // Prevent concurrent refreshing
@@ -99,9 +160,14 @@ abstract class CollectionProvider<T> extends ChangeNotifier
 
     try {
       _currentParams = params ?? _currentParams;
-      final fetchedItems = await repository.getAll(_currentParams);
+      // If we are using pagination, refresh the current page, otherwise fetch all.
+      if (_totalCount != null) {
+        await _fetchPaginatedData(page: _currentPage, force: true);
+      } else {
+        final fetchedItems = await repository.getAll(_currentParams);
+        _items = fetchedItems;
+      }
 
-      _items = fetchedItems;
       _clearError();
       _setState(ProviderState.success);
     } catch (e, stackTrace) {
@@ -190,6 +256,9 @@ abstract class CollectionProvider<T> extends ChangeNotifier
     _currentParams = null;
     _totalCount = null;
     _initialized = false;
+    _currentPage = 0;
+    _hasNextPage = false;
+    _hasPreviousPage = false;
     _clearError();
     _setState(ProviderState.idle);
   }
@@ -237,7 +306,9 @@ abstract class CollectionProvider<T> extends ChangeNotifier
     // if the provider is reused and already loaded data previously.
     if (!_initialized || (_state == ProviderState.idle && _items.isEmpty)) {
       // fetchItems is now safe to call directly as its internal notifyListeners calls are deferred.
-      fetchItems(params ?? _currentParams); // Use provided or existing params
+      fetchPaginated(
+        params: params ?? _currentParams,
+      ); // Use paginated fetch by default
     }
   }
 
@@ -291,6 +362,31 @@ abstract class CollectionProvider<T> extends ChangeNotifier
       }
     }
     return -1;
+  }
+
+  /// Internal helper to fetch and update paginated data.
+  Future<void> _fetchPaginatedData({
+    required int page,
+    bool force = false,
+  }) async {
+    // Construct params for repository call
+    final paginatedParams = {
+      'pageNumber':
+          page, // Backend might expect 0-based or 1-based. Assuming 0-based for now.
+      'pageSize': _pageSize,
+      ...?_currentParams,
+    };
+
+    final pagedResult = await repository.getPaged(paginatedParams);
+
+    // This is the correct way to update the internal list for reads
+    _items = pagedResult.items;
+
+    // Update pagination state from the result
+    _currentPage = pagedResult.page;
+    _totalCount = pagedResult.totalCount;
+    _hasNextPage = pagedResult.hasNextPage;
+    _hasPreviousPage = pagedResult.hasPreviousPage;
   }
 
   // Abstract methods that concrete providers must implement

@@ -457,6 +457,33 @@ namespace eRents.Application.Services.PropertyService
 			return _mapper.Map<List<PropertyResponse>>(availableProperties);
 		}
 
+		public async Task<bool> IsPropertyVisibleInMarketAsync(int propertyId)
+		{
+			var property = await _propertyRepository.GetByIdAsync(propertyId);
+			return property != null && property.Status.Equals("Available", StringComparison.OrdinalIgnoreCase);
+		}
+
+		public async Task<bool> IsPropertyAvailableForRentalTypeAsync(int propertyId, string rentalType, DateOnly? startDate = null, DateOnly? endDate = null)
+		{
+			var property = await _propertyRepository.GetQueryable()
+				.Include(p => p.RentingType)
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+			if (property == null || !property.Status.Equals("Available", StringComparison.OrdinalIgnoreCase))
+			{
+				return false;
+			}
+
+			if (!property.RentingType.TypeName.Equals(rentalType, StringComparison.OrdinalIgnoreCase))
+			{
+				return false;
+			}
+			
+			// TODO: Add logic to check for booking conflicts using startDate and endDate
+			
+			return true;
+		}
+
 		/// <summary>
 		/// Set up property relationships using EF's change tracking
 		/// </summary>

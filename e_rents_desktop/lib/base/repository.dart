@@ -1,5 +1,6 @@
 import 'app_error.dart';
 import 'cache_manager.dart';
+import '../models/paged_result.dart';
 
 /// Abstract repository interface for data access
 abstract class Repository<T> {
@@ -17,6 +18,9 @@ abstract class Repository<T> {
 
   /// Delete an item by ID
   Future<void> delete(String id);
+
+  /// Get paginated items
+  Future<PagedResult<T>> getPaged([Map<String, dynamic>? params]);
 
   /// Check if an item exists
   Future<bool> exists(String id);
@@ -275,10 +279,39 @@ abstract class BaseRepository<T, TService> implements Repository<T> {
     await cacheManager.clearByRegex(RegExp('^${resourceName}_(all|count)'));
   }
 
+  /// Get paginated items
+  @override
+  Future<PagedResult<T>> getPaged([Map<String, dynamic>? params]) async {
+    try {
+      // Caching for paginated results is often disabled to ensure freshness,
+      // but can be enabled if the data is static.
+      final cacheKey = _buildCacheKey('paged', params);
+      if (enableCaching) {
+        final cached = await cacheManager.get<PagedResult<T>>(cacheKey);
+        if (cached != null) {
+          return cached;
+        }
+      }
+
+      final result = await fetchPagedFromService(params);
+
+      if (enableCaching) {
+        await cacheManager.set(cacheKey, result, duration: defaultCacheTtl);
+      }
+
+      return result;
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
   // Abstract methods that concrete repositories must implement
 
   /// Fetch all items from the service layer
   Future<List<T>> fetchAllFromService([Map<String, dynamic>? params]);
+
+  /// Fetch a paginated list of items from the service layer
+  Future<PagedResult<T>> fetchPagedFromService([Map<String, dynamic>? params]);
 
   /// Fetch a single item by ID from the service layer
   Future<T> fetchByIdFromService(String id);

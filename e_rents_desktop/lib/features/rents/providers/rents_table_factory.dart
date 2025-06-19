@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/models/booking.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/models/rental_request.dart';
 import 'package:e_rents_desktop/services/rental_management_service.dart';
 import 'package:e_rents_desktop/widgets/table/config/table_config.dart';
@@ -48,7 +49,7 @@ class StaysTableProvider extends TableProvider<RentalDisplayItem> {
           final result = await rentalManagementService.getPaginatedStays(
             params,
           );
-          return table.PagedResult(
+          return PagedResult(
             items:
                 result.items
                     .map((e) => RentalDisplayItem.fromBooking(e as Booking))
@@ -56,7 +57,6 @@ class StaysTableProvider extends TableProvider<RentalDisplayItem> {
             page: result.page - 1,
             pageSize: result.pageSize,
             totalCount: result.totalCount,
-            totalPages: (result.totalCount / result.pageSize).ceil(),
           );
         },
         config: const UniversalTableConfig(
@@ -137,7 +137,7 @@ class LeasesTableProvider extends TableProvider<RentalDisplayItem> {
           final result = await rentalManagementService.getPaginatedLeases(
             params,
           );
-          return table.PagedResult(
+          return PagedResult(
             items:
                 result.items
                     .map(
@@ -149,7 +149,6 @@ class LeasesTableProvider extends TableProvider<RentalDisplayItem> {
             page: result.page - 1,
             pageSize: result.pageSize,
             totalCount: result.totalCount,
-            totalPages: (result.totalCount / result.pageSize).ceil(),
           );
         },
         config: const UniversalTableConfig(

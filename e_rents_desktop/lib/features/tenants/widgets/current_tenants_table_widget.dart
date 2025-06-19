@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/property.dart';
@@ -110,7 +111,6 @@ class CurrentTenantsTableWidget extends StatelessWidget {
               totalCount: filteredTenants.length,
               page: page,
               pageSize: pageSize,
-              totalPages: (filteredTenants.length / pageSize).ceil(),
             );
           },
           columns: [

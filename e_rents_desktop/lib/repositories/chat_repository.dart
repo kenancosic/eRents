@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/base/base.dart';
 import 'package:e_rents_desktop/models/message.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/chat_service.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
@@ -378,5 +379,23 @@ class ChatRepository extends BaseRepository<Message, ChatService> {
   @override
   String? extractIdFromItem(Message item) {
     return item.id.toString();
+  }
+
+  @override
+  Message fromJson(Map<String, dynamic> json) => Message.fromJson(json);
+
+  @override
+  Future<PagedResult<Message>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    // Chat messages are always scoped to a contact.
+    // A generic paginated fetch doesn't apply. Return an empty result.
+    // Use getMessages(contactId) for actual message fetching.
+    return PagedResult(
+      items: [],
+      totalCount: 0,
+      page: 0,
+      pageSize: params?['pageSize'] ?? 25,
+    );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/user.dart';
@@ -110,7 +111,6 @@ class TenantsAdvertisementTableWidget extends StatelessWidget {
           totalCount: filteredPreferences.length,
           page: page,
           pageSize: pageSize,
-          totalPages: (filteredPreferences.length / pageSize).ceil(),
         );
       },
       columns: [

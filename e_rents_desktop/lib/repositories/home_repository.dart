@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/services/statistics_service.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/base/app_error.dart';
 import 'package:e_rents_desktop/base/cache_manager.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 
 /// Repository for managing home dashboard data with intelligent caching
 /// Provides landlord dashboard statistics and performance metrics
@@ -77,6 +78,18 @@ class HomeRepository
   @override
   String? extractIdFromItem(DashboardStatistics item) {
     return 'dashboard'; // Dashboard has a fixed ID
+  }
+
+  @override
+  DashboardStatistics fromJson(Map<String, dynamic> json) =>
+      DashboardStatistics.fromJson(json);
+
+  @override
+  Future<PagedResult<DashboardStatistics>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    final stats = await service.getDashboardStatistics();
+    return PagedResult(items: [stats], totalCount: 1, page: 0, pageSize: 1);
   }
 
   /// Load complete dashboard statistics with caching

@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import '../core/table_query.dart';
 import '../core/table_columns.dart';

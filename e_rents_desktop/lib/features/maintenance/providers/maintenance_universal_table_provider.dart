@@ -21,7 +21,7 @@ class MaintenanceUniversalTableProvider
     required UniversalTableConfig<MaintenanceIssue> config,
     required this.context,
   }) : super(
-         fetchDataFunction: repository.getPagedMaintenanceIssues,
+         fetchDataFunction: (params) => repository.getPaged(params),
          config: config,
        );
 

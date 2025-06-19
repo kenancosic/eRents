@@ -80,6 +80,28 @@ class PropertyRepository extends BaseRepository<Property, PropertyService> {
   @override
   String? extractIdFromItem(Property item) => item.propertyId.toString();
 
+  @override
+  Property fromJson(Map<String, dynamic> json) => Property.fromJson(json);
+
+  @override
+  Future<PagedResult<Property>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    // Use Universal System pagination from service
+    final pagedData = await service.getPagedProperties(params ?? {});
+
+    // Parse Universal System PagedList<PropertyResponse>
+    final List<dynamic> items = pagedData['items'] ?? [];
+    final properties = items.map((json) => Property.fromJson(json)).toList();
+
+    return PagedResult<Property>(
+      items: properties,
+      totalCount: pagedData['totalCount'] ?? 0,
+      page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
+      pageSize: pagedData['pageSize'] ?? 25,
+    );
+  }
+
   // ========================================
   // PROPERTY-SPECIFIC BUSINESS LOGIC
   // ========================================
@@ -166,52 +188,6 @@ class PropertyRepository extends BaseRepository<Property, PropertyService> {
     }
 
     return rate;
-  }
-
-  // ========================================
-  // UNIVERSAL SYSTEM PAGINATION
-  // ========================================
-
-  /// Get paginated properties using Universal System
-  Future<PagedResult<Property>> getPagedProperties(
-    Map<String, dynamic> params,
-  ) async {
-    try {
-      final cacheKey = _buildSpecialCacheKey('paged', params);
-
-      // Try cache first (shorter TTL for paginated data)
-      if (enableCaching) {
-        final cached = await cacheManager.get<PagedResult<Property>>(cacheKey);
-        if (cached != null) return cached;
-      }
-
-      // Use Universal System pagination from service
-      final pagedData = await service.getPagedProperties(params);
-
-      // Parse Universal System PagedList<PropertyResponse>
-      final List<dynamic> items = pagedData['items'] ?? [];
-      final properties = items.map((json) => Property.fromJson(json)).toList();
-
-      final pagedResult = PagedResult<Property>(
-        items: properties,
-        totalCount: pagedData['totalCount'] ?? 0,
-        page: (pagedData['page'] ?? 1) - 1, // Convert to 0-based for frontend
-        pageSize: pagedData['pageSize'] ?? 25,
-      );
-
-      // Cache the result (shorter TTL for paginated data)
-      if (enableCaching) {
-        await cacheManager.set(
-          cacheKey,
-          pagedResult,
-          duration: const Duration(minutes: 2),
-        );
-      }
-
-      return pagedResult;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
   }
 
   // ========================================

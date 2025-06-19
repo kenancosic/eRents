@@ -378,7 +378,7 @@ class AppRouter {
     final provider = registry.getOrCreate<MaintenanceDetailProvider>(
       () => MaintenanceDetailProvider(getService<MaintenanceRepository>()),
     );
-    provider.loadMaintenanceIssueById(int.parse(issueId));
+    provider.loadItem(issueId);
 
     return ChangeNotifierProvider.value(
       value: provider,

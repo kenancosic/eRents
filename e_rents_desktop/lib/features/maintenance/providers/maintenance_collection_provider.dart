@@ -1,33 +1,20 @@
 import '../../../base/base.dart';
-import '../../../base/providers/base_collection_provider_mixin.dart';
 import '../../../models/maintenance_issue.dart';
-import '../../../widgets/table/core/table_query.dart';
+import '../../../repositories/maintenance_repository.dart';
 
 /// Collection provider for managing maintenance issues
 ///
 /// Replaces the old MaintenanceProvider with a cleaner, more focused implementation
 /// that separates concerns and uses the repository pattern for data access.
 ///
-/// ✅ UNIVERSAL SYSTEM INTEGRATION - Updated for Universal System pagination
-class MaintenanceCollectionProvider extends CollectionProvider<MaintenanceIssue>
-    with PaginationProviderMixin<MaintenanceIssue> {
+/// ✅ Uses new built-in pagination from CollectionProvider.
+class MaintenanceCollectionProvider
+    extends CollectionProvider<MaintenanceIssue> {
   MaintenanceCollectionProvider(super.repository);
 
   /// Get the maintenance repository with proper typing
   MaintenanceRepository get maintenanceRepository =>
       repository as MaintenanceRepository;
-
-  // ✅ UNIVERSAL SYSTEM - New pagination-first method using mixin
-  /// Get paged maintenance issues using Universal System
-  /// Default method for table components and large data sets
-  Future<Map<String, dynamic>> getPagedMaintenanceIssues([
-    Map<String, dynamic>? params,
-  ]) async {
-    return getPagedData(
-      maintenanceRepository.getPagedMaintenanceIssues,
-      params,
-    );
-  }
 
   // Maintenance-specific convenience getters
 
@@ -149,46 +136,16 @@ class MaintenanceCollectionProvider extends CollectionProvider<MaintenanceIssue>
 
   // Repository-backed methods (use repository for server operations)
 
-  /// Fetch issues for a specific property from server
-  Future<List<MaintenanceIssue>> fetchIssuesByProperty(int propertyId) async {
+  /// Fetch issues for a specific property from server using pagination
+  Future<void> fetchIssuesByProperty(int propertyId, {int page = 0}) async {
     final params = {'propertyId': propertyId.toString()};
-    await fetchItems(params);
-    return getIssuesByProperty(propertyId);
+    await fetchPaginated(params: params, page: page);
   }
 
-  /// Fetch issues by status from server
-  Future<List<MaintenanceIssue>> fetchIssuesByStatus(IssueStatus status) async {
+  /// Fetch issues by status from server using pagination
+  Future<void> fetchIssuesByStatus(IssueStatus status, {int page = 0}) async {
     final params = {'status': status.name};
-    await fetchItems(params);
-    return getIssuesByStatus(status);
-  }
-
-  /// Update issue status with additional data
-  Future<void> updateIssueStatus(
-    String issueId,
-    IssueStatus newStatus, {
-    String? resolutionNotes,
-    double? cost,
-  }) async {
-    // Find the issue in current list
-    final currentIssue = getItemById(issueId);
-    if (currentIssue == null) {
-      throw AppError(
-        type: ErrorType.notFound,
-        message: 'Maintenance issue not found: $issueId',
-      );
-    }
-
-    // Use repository method for status update
-    await maintenanceRepository.updateIssueStatus(
-      issueId,
-      newStatus,
-      resolutionNotes: resolutionNotes,
-      cost: cost,
-    );
-
-    // Refresh the item to get updated data
-    await refreshItems();
+    await fetchPaginated(params: params, page: page);
   }
 
   /// Search issues by title, description, or category

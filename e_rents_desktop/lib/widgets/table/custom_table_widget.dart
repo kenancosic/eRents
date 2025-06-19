@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'core/table_query.dart';
@@ -330,7 +331,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
   }
 
   Widget _buildTableContent() {
-    if (_isLoading && (_currentData?.isEmpty ?? true)) {
+    if (_isLoading && (_currentData?.items.isEmpty ?? true)) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -349,7 +350,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
       );
     }
 
-    if (_currentData?.isEmpty ?? true) {
+    if (_currentData?.items.isEmpty ?? true) {
       return Center(child: Text(widget.dataProvider.emptyStateMessage));
     }
 
@@ -370,7 +371,7 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
             children: [
               _buildTableBody(visibleColumns),
               // Show subtle loading overlay during sorting/filtering
-              if (_isLoading && _currentData?.isNotEmpty == true)
+              if (_isLoading && _currentData?.items.isNotEmpty == true)
                 Container(
                   color: Colors.white.withValues(alpha: 0.7),
                   child: const Center(

@@ -1,3 +1,4 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 import 'package:flutter/material.dart';
 import '../core/table_query.dart';

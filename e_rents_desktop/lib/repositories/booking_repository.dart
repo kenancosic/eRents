@@ -1,7 +1,6 @@
 import '../base/base.dart';
 import '../services/booking_service.dart';
 import '../models/booking.dart';
-import '../widgets/table/custom_table.dart' hide PagedResult;
 import '../models/paged_result.dart';
 
 /// Repository for booking data management with caching support
@@ -88,37 +87,18 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     return item.bookingId.toString();
   }
 
-  // ✅ BOOKING-SPECIFIC METHODS
+  @override
+  Booking fromJson(Map<String, dynamic> json) => Booking.fromJson(json);
 
-  /// Get bookings by landlord with caching
-  /// UPDATED: Uses new Universal System method
-  Future<List<Booking>> getBookingsByLandlord([
+  @override
+  Future<PagedResult<Booking>> fetchPagedFromService([
     Map<String, dynamic>? params,
   ]) async {
-    try {
-      final cacheKey = _buildSpecialCacheKey('landlord', params);
-
-      // Try cache first
-      if (enableCaching) {
-        final cached = await cacheManager.get<List<Booking>>(cacheKey);
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      // Use new Universal System method
-      final bookings = await service.getAllBookings(params);
-
-      // Cache the result
-      if (enableCaching) {
-        await cacheManager.set(cacheKey, bookings, duration: defaultCacheTtl);
-      }
-
-      return bookings;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
+    final result = await service.getPagedBookings(params ?? {});
+    return PagedResult.fromJson(result, (json) => Booking.fromJson(json));
   }
+
+  // ✅ BOOKING-SPECIFIC METHODS
 
   /// Cancel a booking
   Future<void> cancelBooking(
@@ -271,30 +251,6 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     );
   }
 
-  /// Get paginated bookings with full Universal System filtering
-  Future<PagedResult<Booking>> getPagedBookings(
-    Map<String, dynamic> params,
-  ) async {
-    try {
-      final cacheKey = _buildCacheKey('paged_bookings', params);
-      if (enableCaching) {
-        final cached = await cacheManager.get<Map<String, dynamic>>(cacheKey);
-        if (cached != null) {
-          return PagedResult.fromJson(cached, (json) => Booking.fromJson(json));
-        }
-      }
-
-      final result = await service.getPagedBookings(params);
-      if (enableCaching) {
-        await cacheManager.set(cacheKey, result, duration: defaultCacheTtl);
-      }
-
-      return PagedResult.fromJson(result, (json) => Booking.fromJson(json));
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
   /// ✅ LANDLORD SPECIFIC: Get current stays for landlord's properties
   /// Matches: GET /bookings/current?propertyId=123
   Future<List<Booking>> getCurrentStaysForProperty(int? propertyId) async {
@@ -355,13 +311,6 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
-  }
-
-  /// Convenience wrapper for fetching ALL bookings with optional filters (no paging).
-  /// This simply delegates to [fetchAllFromService] and preserves caching logic via [getAll].
-  Future<List<Booking>> getAllBookings([Map<String, dynamic>? params]) async {
-    // Expose the base [getAll] for outward callers (e.g. RentalManagementService)
-    return await getAll(params);
   }
 
   /// Convenience wrapper that aligns with RentalManagementService expectations.

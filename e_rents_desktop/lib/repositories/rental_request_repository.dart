@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/base/base.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/models/rental_request.dart';
 import 'package:e_rents_desktop/services/rental_request_service.dart';
 
@@ -15,66 +16,6 @@ class RentalRequestRepository
 
   @override
   Duration get defaultCacheTtl => const Duration(minutes: 10);
-
-  // ===================================================================
-  // UNIVERSAL SYSTEM INTEGRATION (Primary Methods)
-  // ===================================================================
-
-  /// Get paginated rental requests (Universal System)
-  Future<Map<String, dynamic>> getPagedRentalRequests([
-    Map<String, dynamic>? params,
-  ]) async {
-    try {
-      final cacheKey = _buildCacheKey('paged', params);
-
-      // Try cache first if enabled
-      if (enableCaching) {
-        final cached = await cacheManager.get<Map<String, dynamic>>(cacheKey);
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      // Fetch from service
-      final result = await service.getPagedRentalRequests(params);
-
-      // Cache the result if enabled
-      if (enableCaching) {
-        await cacheManager.set(cacheKey, result, duration: defaultCacheTtl);
-      }
-
-      return result;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Get all rental requests without pagination (for RentalManagementService)
-  Future<List<RentalRequest>> getAll([Map<String, dynamic>? params]) async {
-    try {
-      final cacheKey = _buildCacheKey('all', params);
-
-      // Try cache first if enabled
-      if (enableCaching) {
-        final cached = await cacheManager.get<List<RentalRequest>>(cacheKey);
-        if (cached != null) {
-          return cached;
-        }
-      }
-
-      // Fetch from service
-      final result = await service.getAllRentalRequests(params);
-
-      // Cache the result
-      if (enableCaching) {
-        await cacheManager.set(cacheKey, result, duration: defaultCacheTtl);
-      }
-
-      return result;
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
 
   // ===================================================================
   // SPECIALIZED RENTAL REQUEST METHODS
@@ -324,6 +265,18 @@ class RentalRequestRepository
   @override
   String? extractIdFromItem(RentalRequest item) {
     return item.requestId.toString();
+  }
+
+  @override
+  RentalRequest fromJson(Map<String, dynamic> json) =>
+      RentalRequest.fromJson(json);
+
+  @override
+  Future<PagedResult<RentalRequest>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    final result = await service.getPagedRentalRequests(params);
+    return PagedResult.fromJson(result, (json) => RentalRequest.fromJson(json));
   }
 
   // ===================================================================

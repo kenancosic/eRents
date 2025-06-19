@@ -26,10 +26,6 @@ namespace eRents.Application.Services.PropertyService
 		Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request);
 		Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum);
 		Task<PropertyAvailabilityResponse> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
-		Task<List<AmenityResponse>> GetAmenitiesAsync();
-		Task<AmenityResponse> AddAmenityAsync(string amenityName);
-		Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName);
-		Task DeleteAmenityAsync(int id);
 
 		// 🆕 NEW: Dual Rental System Support
 		Task<bool> IsPropertyAvailableForRentalTypeAsync(int propertyId, string rentalType, DateOnly? startDate = null, DateOnly? endDate = null);

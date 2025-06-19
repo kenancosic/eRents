@@ -1,10 +1,10 @@
 import 'package:e_rents_desktop/base/repository.dart';
 import 'package:e_rents_desktop/base/cache_manager.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/tenant_preference.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/services/tenant_service.dart';
-import '../widgets/table/core/table_query.dart';
 
 /// Repository for tenant data management with intelligent caching
 /// Handles both current tenants and prospective tenants (searching)
@@ -41,7 +41,6 @@ class TenantRepository extends BaseRepository<User, TenantService> {
       totalCount: result['totalCount'] as int,
       page: (result['pageNumber'] as int) - 1, // Convert to 0-based
       pageSize: result['pageSize'] as int,
-      totalPages: result['totalPages'] as int,
     );
 
     if (enableCaching) {
@@ -373,5 +372,25 @@ class TenantRepository extends BaseRepository<User, TenantService> {
     // For tenants, count would typically be the number of current tenants
     final tenants = await fetchAllFromService(params);
     return tenants.length;
+  }
+
+  @override
+  User fromJson(Map<String, dynamic> json) => User.fromJson(json);
+
+  @override
+  Future<PagedResult<User>> fetchPagedFromService([
+    Map<String, dynamic>? params,
+  ]) async {
+    // Call service pagination method
+    final result = await service.getPagedTenants(params ?? {});
+
+    // Convert service response to PagedResult
+    final pagedData = PagedResult<User>(
+      items: (result['data'] as List).map((i) => User.fromJson(i)).toList(),
+      totalCount: result['totalCount'] as int,
+      page: (result['pageNumber'] as int) - 1, // Convert to 0-based
+      pageSize: result['pageSize'] as int,
+    );
+    return pagedData;
   }
 }

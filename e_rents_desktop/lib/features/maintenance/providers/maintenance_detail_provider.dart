@@ -159,41 +159,38 @@ class MaintenanceDetailProvider extends DetailProvider<MaintenanceIssue> {
 
   // Repository-backed methods
 
-  /// Load maintenance issue by ID
-  Future<void> loadMaintenanceIssueById(int issueId) async {
-    await loadItem(issueId.toString());
-  }
-
   /// Update issue status with additional data
   Future<void> updateIssueStatus(
     IssueStatus newStatus, {
     String? resolutionNotes,
     double? cost,
   }) async {
-    if (issue == null) {
-      throw AppError(
-        type: ErrorType.notFound,
-        message: 'No maintenance issue loaded',
+    await executeAsync(() async {
+      if (item == null) {
+        throw AppError(
+          type: ErrorType.notFound,
+          message: 'No maintenance issue loaded',
+        );
+      }
+
+      // Use repository method for status update
+      final updatedIssue = await maintenanceRepository.updateIssueStatus(
+        item!.maintenanceIssueId.toString(),
+        newStatus,
+        resolutionNotes: resolutionNotes,
+        cost: cost,
       );
-    }
 
-    // Use repository method for status update
-    final updatedIssue = await maintenanceRepository.updateIssueStatus(
-      issue!.maintenanceIssueId.toString(),
-      newStatus,
-      resolutionNotes: resolutionNotes,
-      cost: cost,
-    );
-
-    // Update the current item
-    updateItem(updatedIssue);
+      // Update the current item
+      updateItem(updatedIssue);
+    });
   }
 
   /// Force reload issue from server (bypass cache)
   Future<void> forceReloadIssue() async {
-    if (issue != null) {
-      await maintenanceRepository.clearCache();
-      await loadMaintenanceIssueById(issue!.maintenanceIssueId);
+    if (item != null) {
+      await repository.clearCache();
+      await loadItem(item!.maintenanceIssueId.toString());
     }
   }
 

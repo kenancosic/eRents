@@ -4,6 +4,8 @@
 /// with the backend Universal System for paginated, filtered, and sorted data.
 library;
 
+import '../../../models/paged_result.dart';
+
 /// Query parameters for server-side data fetching
 class TableQuery {
   final int page;
@@ -64,26 +66,4 @@ class TableQuery {
       sortDescending: sortDescending ?? this.sortDescending,
     );
   }
-}
-
-/// Server response containing paginated data
-class PagedResult<T> {
-  final List<T> items;
-  final int totalCount;
-  final int page;
-  final int pageSize;
-  final int totalPages;
-
-  const PagedResult({
-    required this.items,
-    required this.totalCount,
-    required this.page,
-    required this.pageSize,
-    required this.totalPages,
-  });
-
-  bool get isEmpty => items.isEmpty;
-  bool get isNotEmpty => items.isNotEmpty;
-  bool get hasNextPage => page < totalPages - 1;
-  bool get hasPreviousPage => page > 0;
 }
