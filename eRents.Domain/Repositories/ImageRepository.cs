@@ -316,5 +316,14 @@ namespace eRents.Domain.Repositories
 				})
 				.ToListAsync();
 		}
+
+		/// <summary>
+		/// Save changes directly to database - used for immediate operations like image upload
+		/// that require the database-generated ID immediately
+		/// </summary>
+		public async Task SaveChangesDirectAsync()
+		{
+			await _context.SaveChangesAsync();
+		}
 	}
 }

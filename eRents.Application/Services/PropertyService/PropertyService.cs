@@ -105,6 +105,14 @@ namespace eRents.Application.Services.PropertyService
 			await base.BeforeInsertAsync(insert, entity);
 		}
 		
+		protected override async Task AfterInsertAsync(PropertyInsertRequest insert, Property entity)
+		{
+			// ✅ NEW: Handle image uploads after property is created but within same transaction
+			await ProcessImageUploadsAsync(entity.PropertyId, insert.ExistingImageIds, insert.NewImages, insert.ImageFileNames, insert.ImageIsCoverFlags);
+			
+			await base.AfterInsertAsync(insert, entity);
+		}
+		
 		protected override async Task BeforeUpdateAsync(PropertyUpdateRequest update, Property entity)
 		{
 			System.Console.WriteLine($"PropertyService.BeforeUpdateAsync: CALLED for property {entity.PropertyId}");
@@ -175,32 +183,104 @@ namespace eRents.Application.Services.PropertyService
 					}
 				}
 			}
-			
-			if (update.ImageIds != null)
-			{
-				System.Console.WriteLine($"PropertyService.BeforeUpdateAsync: Processing ImageIds for property {entity.PropertyId}: [{string.Join(", ", update.ImageIds)}]");
-				
-				// Get the current images associated with this property
-				var currentImages = await _imageRepository.GetImagesByPropertyIdAsync(entity.PropertyId);
-				var currentImageIds = currentImages.Select(i => i.ImageId).ToHashSet();
-				var newImageIds = update.ImageIds.ToHashSet();
-
-				// Remove images that are no longer associated
-				var imageIdsToRemove = currentImageIds.Except(newImageIds);
-				if (imageIdsToRemove.Any())
-				{
-					await _imageRepository.DisassociateImagesFromPropertyAsync(imageIdsToRemove);
-				}
-				
-				// Associate new images with the property
-				var imageIdsToAdd = newImageIds.Except(currentImageIds);
-				if (imageIdsToAdd.Any())
-				{
-					await _imageRepository.AssociateImagesWithPropertyAsync(imageIdsToAdd, entity.PropertyId);
-				}
-			}
 
 			await base.BeforeUpdateAsync(update, entity);
+		}
+		
+		protected override async Task AfterUpdateAsync(PropertyUpdateRequest update, Property entity)
+		{
+			// ✅ NEW: Handle image uploads and associations after property is updated but within same transaction
+			await ProcessImageUploadsAsync(entity.PropertyId, update.ExistingImageIds, update.NewImages, update.ImageFileNames, update.ImageIsCoverFlags);
+			
+			await base.AfterUpdateAsync(update, entity);
+		}
+		
+		/// <summary>
+		/// ✅ NEW: Process image uploads and associations within the same transaction as property operations
+		/// This ensures atomicity - either all succeed or all fail together
+		/// </summary>
+		private async Task ProcessImageUploadsAsync(
+			int propertyId, 
+			List<int>? existingImageIds, 
+			List<Microsoft.AspNetCore.Http.IFormFile>? newImages, 
+			List<string>? imageFileNames, 
+			List<bool>? imageCoverFlags)
+		{
+			var finalImageIds = new List<int>();
+			
+			// 1. Keep existing images that should be retained
+			if (existingImageIds?.Any() == true)
+			{
+				finalImageIds.AddRange(existingImageIds);
+			}
+			
+			// 2. Upload new images within the same transaction
+			if (newImages?.Any() == true)
+			{
+				for (int i = 0; i < newImages.Count; i++)
+				{
+					var newImage = newImages[i];
+					var fileName = imageFileNames?.ElementAtOrDefault(i) ?? newImage.FileName;
+					var isCover = imageCoverFlags?.ElementAtOrDefault(i) ?? false;
+					
+					// Create image entity within the transaction (no separate SaveChanges call)
+					using var memoryStream = new MemoryStream();
+					await newImage.CopyToAsync(memoryStream);
+					var imageData = memoryStream.ToArray();
+
+					var image = new Image
+					{
+						FileName = fileName,
+						ImageData = imageData,
+						PropertyId = propertyId, // Associate with property immediately
+						ContentType = newImage.ContentType,
+						FileSizeBytes = newImage.Length,
+						DateUploaded = DateTime.UtcNow,
+						IsCover = isCover,
+						CreatedBy = _currentUserService!.UserId,
+						ModifiedBy = _currentUserService!.UserId,
+						CreatedAt = DateTime.UtcNow,
+						UpdatedAt = DateTime.UtcNow
+					};
+
+					// Generate thumbnail if it's an image
+					if (newImage.ContentType?.StartsWith("image/") == true)
+					{
+						image.ThumbnailData = GenerateThumbnail(imageData);
+					}
+
+					await _imageRepository.AddAsync(image);
+					// Note: No SaveChanges here - will be saved with the property in the same transaction
+				}
+			}
+			
+			// 3. Handle image associations and removals
+			var currentImages = await _imageRepository.GetImagesByPropertyIdAsync(propertyId);
+			var currentImageIds = currentImages.Select(i => i.ImageId).ToHashSet();
+			var newImageIds = finalImageIds.ToHashSet();
+
+			// Remove images that are no longer associated
+			var imageIdsToRemove = currentImageIds.Except(newImageIds);
+			if (imageIdsToRemove.Any())
+			{
+				await _imageRepository.DisassociateImagesFromPropertyAsync(imageIdsToRemove);
+			}
+			
+			// Associate existing images that weren't previously associated
+			var imageIdsToAdd = newImageIds.Except(currentImageIds);
+			if (imageIdsToAdd.Any())
+			{
+				await _imageRepository.AssociateImagesWithPropertyAsync(imageIdsToAdd, propertyId);
+			}
+		}
+		
+		/// <summary>
+		/// Simple thumbnail generation - in production, use a proper image processing library
+		/// </summary>
+		private byte[] GenerateThumbnail(byte[] imageData)
+		{
+			// TODO: Implement proper thumbnail generation using ImageSharp or similar
+			return imageData; // For now, return original data
 		}
 		
 		public override async Task<PropertyResponse> GetByIdAsync(int id)
@@ -331,43 +411,6 @@ namespace eRents.Application.Services.PropertyService
 			}
 		}
 
-		public async Task<List<AmenityResponse>> GetAmenitiesAsync()
-		{
-			var amenities = await _propertyRepository.GetAllAmenitiesAsync();
-			return _mapper.Map<List<AmenityResponse>>(amenities);
-		}
-
-		public Task<AmenityResponse> AddAmenityAsync(string amenityName)
-		{
-			throw new System.NotImplementedException();
-		}
-
-		public Task<AmenityResponse> UpdateAmenityAsync(int id, string amenityName)
-		{
-			throw new System.NotImplementedException();
-		}
-
-		public Task DeleteAmenityAsync(int id)
-		{
-			throw new System.NotImplementedException();
-		}
-
-		public async Task<bool> IsPropertyAvailableForRentalTypeAsync(int propertyId, string rentalType, System.DateOnly? startDate = null, System.DateOnly? endDate = null)
-		{
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
-			if (property == null || property.RentingType.TypeName != rentalType)
-			{
-				return false;
-			}
-			return true;
-		}
-
-		public async Task<bool> IsPropertyVisibleInMarketAsync(int propertyId)
-		{
-			var property = await _propertyRepository.GetByIdAsync(propertyId);
-			return property != null && property.Status == "Available";
-		}
-
 		public async Task<List<PropertyResponse>> GetPropertiesByRentalTypeAsync(string rentalType)
 		{
 			var properties = await _propertyRepository.GetPropertiesByRentalType(rentalType);
@@ -385,7 +428,6 @@ namespace eRents.Application.Services.PropertyService
 			return await _propertyRepository.HasActiveLease(propertyId);
 		}
 
-		// ✅ Phase 3: Property Management Methods (moved from SimpleRentalService)
 		public async Task<bool> UpdatePropertyAvailabilityAsync(int propertyId, bool isAvailable)
 		{
 			var property = await _propertyRepository.GetByIdAsync(propertyId);

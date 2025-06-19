@@ -150,7 +150,7 @@ namespace eRents.WebApi.Controllers
 
 		[HttpPost]
 		[Authorize(Roles = "Landlord")]
-		public override async Task<PropertyResponse> Insert([FromBody] PropertyInsertRequest insert)
+		public override async Task<PropertyResponse> Insert([FromForm] PropertyInsertRequest insert)
 		{
 			try
 			{
@@ -158,41 +158,51 @@ namespace eRents.WebApi.Controllers
 				if (!ValidatePlatform("desktop", out var platformError))
 					throw new UnauthorizedAccessException("Property creation is only available on desktop platform");
 
+				_logger.LogInformation("Property creation attempt with {ImageCount} new images by user {UserId}", 
+					insert.NewImages?.Count ?? 0, _currentUserService.UserId ?? "unknown");
+
 				var result = await base.Insert(insert);
 
-				_logger.LogInformation("Property created successfully: {PropertyId} by user {UserId}", 
+				_logger.LogInformation("Property created successfully: {PropertyId} with transactional image upload by user {UserId}", 
 					result.Id, _currentUserService.UserId ?? "unknown");
 
 				return result;
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Property creation failed by user {UserId}", 
+				_logger.LogError(ex, "Property creation failed (transaction rolled back) by user {UserId}", 
 					_currentUserService.UserId ?? "unknown");
 				throw; // Let the base controller handle the error response
 			}
 		}
 
+
+
 		[HttpPut("{id}")]
 		[Authorize(Roles = "Landlord")]
-		public override async Task<PropertyResponse> Update(int id, [FromBody] PropertyUpdateRequest update)
+		public override async Task<PropertyResponse> Update(int id, [FromForm] PropertyUpdateRequest update)
 		{
 			try
 			{
+				_logger.LogInformation("Property update attempt {PropertyId} with {ImageCount} new images by user {UserId}", 
+					id, update.NewImages?.Count ?? 0, _currentUserService.UserId ?? "unknown");
+
 				var result = await base.Update(id, update);
 
-				_logger.LogInformation("Property updated successfully: {PropertyId} by user {UserId}", 
+				_logger.LogInformation("Property updated successfully: {PropertyId} with transactional image upload by user {UserId}", 
 					id, _currentUserService.UserId ?? "unknown");
 
 				return result;
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Property update failed for ID {PropertyId} by user {UserId}", 
+				_logger.LogError(ex, "Property update failed (transaction rolled back) for ID {PropertyId} by user {UserId}", 
 					id, _currentUserService.UserId ?? "unknown");
 				throw; // Let the base controller handle the error response
 			}
 		}
+
+
 
 		[HttpDelete("{id}")]
 		[Authorize(Roles = "Landlord")]

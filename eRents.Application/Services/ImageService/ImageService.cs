@@ -66,6 +66,10 @@ namespace eRents.Application.Services.ImageService
 			}
 
 			await _imageRepository.AddAsync(image);
+			
+			// Save changes immediately to get the database-generated ImageId
+			// Since this is a single operation upload, we need the ID immediately
+			await _imageRepository.SaveChangesDirectAsync();
 
 			// Use AutoMapper but include the URL for frontend convenience
 			var response = _mapper.Map<ImageResponse>(image);

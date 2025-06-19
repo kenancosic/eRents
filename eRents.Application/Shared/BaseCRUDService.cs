@@ -65,7 +65,10 @@ namespace eRents.Application.Shared
 						await BeforeInsertAsync(insert, entity);
 
 						await _repository.AddAsync(entity);
-						await _unitOfWork.SaveChangesAsync();
+						await _unitOfWork.SaveChangesAsync(); // First save to generate the entity ID
+
+						await AfterInsertAsync(insert, entity); // Hook to process related data like images
+						await _unitOfWork.SaveChangesAsync(); // Second save to commit changes from AfterInsertAsync
 
 						var result = _mapper.Map<TDto>(entity);
 
@@ -119,9 +122,12 @@ namespace eRents.Application.Shared
 
 						_mapper.Map(update, entity);
 						await BeforeUpdateAsync(update, entity);
+						
+						await _repository.UpdateAsync(entity); // This marks the entity as Modified
+						
+						await AfterUpdateAsync(update, entity); // Hook to process related data like images
 
-						await _repository.UpdateAsync(entity);
-						await _unitOfWork.SaveChangesAsync();
+						await _unitOfWork.SaveChangesAsync(); // Single save to commit all changes atomically
 
 						var result = _mapper.Map<TDto>(entity);
 
@@ -242,9 +248,19 @@ namespace eRents.Application.Shared
 			return Task.CompletedTask; // Override in derived classes for custom insert logic
 		}
 
+		protected virtual Task AfterInsertAsync(TInsert insert, TEntity entity)
+		{
+			return Task.CompletedTask; // Override in derived classes for post-insert logic
+		}
+
 		protected virtual Task BeforeUpdateAsync(TUpdate update, TEntity entity)
 		{
 			return Task.CompletedTask; // Override in derived classes for custom update logic
+		}
+
+		protected virtual Task AfterUpdateAsync(TUpdate update, TEntity entity)
+		{
+			return Task.CompletedTask; // Override in derived classes for post-update logic
 		}
 
 		/// <summary>

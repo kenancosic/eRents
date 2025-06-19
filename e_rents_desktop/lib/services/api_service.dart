@@ -172,6 +172,50 @@ class ApiService {
     }
   }
 
+  Future<http.Response> multipartRequest(
+    String endpoint,
+    String method, {
+    Map<String, String>? fields,
+    List<http.MultipartFile>? files,
+    bool authenticated = true,
+    Map<String, String>? customHeaders,
+  }) async {
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        final url = Uri.parse('$baseUrl$endpoint');
+        final request = http.MultipartRequest(method, url);
+        final headers = await getHeaders(customHeaders: customHeaders);
+
+        request.headers.addAll(headers);
+
+        if (fields != null) {
+          request.fields.addAll(fields);
+        }
+
+        if (files != null) {
+          request.files.addAll(files);
+        }
+
+        final response = await http.Response.fromStream(await request.send());
+        _handleResponse(response);
+        return response;
+      } catch (e) {
+        print(
+          'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries): $e',
+        );
+        retryCount++;
+        if (retryCount == maxRetries) {
+          rethrow;
+        }
+        await Future.delayed(retryDelay);
+      }
+    }
+    throw Exception(
+      'Failed to complete multipart request after $maxRetries attempts',
+    );
+  }
+
   // ======================================
   // CENTRALIZED IMAGE HANDLING UTILITIES
   // ======================================

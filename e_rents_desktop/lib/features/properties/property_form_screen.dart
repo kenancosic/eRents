@@ -11,10 +11,13 @@ import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/widgets/common/section_header.dart';
 import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
 import 'package:e_rents_desktop/widgets/inputs/address_input.dart';
+import 'package:e_rents_desktop/services/property_service.dart';
+import 'dart:typed_data';
 
 class PropertyFormScreen extends StatelessWidget {
   final Property? property;
@@ -64,126 +67,86 @@ class _PropertyFormScreenContentState
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  Future<void> _save() async {
+  /// ✅ NEW: Transactional save method that ensures data consistency
+  /// If property validation fails, images are automatically rolled back
+  Future<void> _saveTransactional() async {
     if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please correct the errors in the form.'),
-          backgroundColor: Colors.red,
-        ),
-      );
       return;
     }
 
-    _formKey.currentState!.save();
     setState(() => _isLoading = true);
 
     final formState = context.read<PropertyFormState>();
     final authProvider = context.read<AuthProvider>();
-    final collectionProvider = context.read<PropertyCollectionProvider>();
+    final propertyService = context.read<PropertyService>();
 
     try {
       final user = authProvider.currentUser;
       if (user == null) {
         throw Exception('User not authenticated.');
       }
-      final currentUserId = user.id;
 
       final propertyToSave = formState.createProperty(
-        currentUserId,
+        user.id,
         widget.initialProperty,
       );
+
+      // Get images to upload
+      final imagesToUpload = formState.imagesToUpload;
+      final imageData = <Uint8List>[];
+      final imageFileNames = <String>[];
+      final imageCoverFlags = <bool>[];
+
+      // Process images from form state
+      for (final image in imagesToUpload) {
+        if (image.data != null) {
+          imageData.add(image.data!);
+          imageFileNames.add(image.fileName ?? 'image.jpg');
+          imageCoverFlags.add(image.isCover);
+        }
+      }
 
       Property savedProperty;
 
       if (widget.isEditMode) {
-        // For existing properties, upload images first
-        final uploadedImageIds = await formState.uploadNewImages(
-          propertyId: propertyToSave.propertyId,
-        );
+        // ✅ NEW: Use transactional update method with image upload
+        final existingImageIds = formState.uploadedImageIds;
 
-        // Update the property with all image IDs (existing + newly uploaded)
-        final updatedProperty = propertyToSave.copyWith(
-          imageIds: uploadedImageIds,
+        savedProperty = await propertyService.updateProperty(
+          propertyToSave.propertyId,
+          propertyToSave,
+          newImageData: imageData.isNotEmpty ? imageData : null,
+          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
+          existingImageIds:
+              existingImageIds.isNotEmpty ? existingImageIds : null,
         );
-
-        await collectionProvider.updateItem(
-          updatedProperty.propertyId.toString(),
-          updatedProperty,
-        );
-        savedProperty = updatedProperty;
       } else {
-        // For new properties, create first, then upload images
-        await collectionProvider.addItem(propertyToSave);
-
-        // Find the newly created property in the collection
-        // Note: This assumes the property was successfully created and added to the collection
-        savedProperty =
-            collectionProvider.items.isNotEmpty
-                ? collectionProvider.items.last
-                : propertyToSave;
-
-        // Upload images after property creation if we have a valid property ID
-        print(
-          'PropertyFormScreen: Created property ID: ${savedProperty.propertyId}',
+        // For new properties, use the new transactional method
+        savedProperty = await propertyService.createProperty(
+          propertyToSave,
+          newImageData: imageData.isNotEmpty ? imageData : null,
+          newImageFileNames: imageFileNames.isNotEmpty ? imageFileNames : null,
         );
-        if (savedProperty.propertyId > 0) {
-          final uploadedImageIds = await formState.uploadNewImages(
-            propertyId: savedProperty.propertyId,
-          );
-
-          // Update the property with uploaded image IDs if any were uploaded
-          if (uploadedImageIds.isNotEmpty) {
-            print(
-              'PropertyFormScreen: Updating property ${savedProperty.propertyId} with image IDs: $uploadedImageIds',
-            );
-            final updatedProperty = savedProperty.copyWith(
-              imageIds: uploadedImageIds,
-            );
-
-            await collectionProvider.updateItem(
-              updatedProperty.propertyId.toString(),
-              updatedProperty,
-            );
-            savedProperty = updatedProperty;
-          }
-        }
       }
 
-      // Show success message with upload status
-      final totalImages = formState.images.length;
-      final uploadedCount = formState.uploadedImageIds.length;
+      // Success - refresh the collections
+      final collectionProvider = context.read<PropertyCollectionProvider>();
+      await collectionProvider.clearCacheAndRefresh();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isEditMode
-                  ? 'Property updated successfully! Images: $uploadedCount/$totalImages uploaded.'
-                  : 'Property created successfully! Images: $uploadedCount/$totalImages uploaded.',
+                  ? 'Property updated successfully! All images saved atomically.'
+                  : 'Property created successfully! All images saved atomically.',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
         );
-      }
 
-      // Also update the detail provider if we are editing and it holds this item
-      if (widget.isEditMode && mounted) {
-        final detailProvider = context.read<PropertyDetailProvider>();
-        if (detailProvider.property?.propertyId == propertyToSave.propertyId) {
-          await detailProvider.forceReloadProperty();
-        }
-
-        // Clear collection provider cache to ensure list view shows updated data
-        await collectionProvider.clearCacheAndRefresh();
-      } else {
-        // For new properties, just refresh the collection
-        await collectionProvider.refreshItems();
-      }
-
-      if (mounted) {
-        Navigator.of(context).pop();
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
@@ -191,6 +154,7 @@ class _PropertyFormScreenContentState
           SnackBar(
             content: Text('Failed to save property: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -200,6 +164,8 @@ class _PropertyFormScreenContentState
       }
     }
   }
+
+  // Legacy save method removed - now using transactional approach for all operations
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +180,7 @@ class _PropertyFormScreenContentState
             padding: const EdgeInsets.only(right: 8.0),
             child: ElevatedButton.icon(
               icon: const Icon(Icons.save_outlined),
-              onPressed: _isLoading ? null : _save,
+              onPressed: _isLoading ? null : _saveTransactional,
               label: const Text('Save'),
             ),
           ),

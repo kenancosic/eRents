@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using eRents.Shared.DTO.Base;
+using Microsoft.AspNetCore.Http;
 
 namespace eRents.Shared.DTO.Requests
 {
@@ -25,5 +26,26 @@ namespace eRents.Shared.DTO.Requests
 		public AddressRequest? Address { get; set; }
 		public List<int>? AmenityIds { get; set; }
 		public List<int>? ImageIds { get; set; }
+		
+		// ✅ NEW: Transactional Image Upload Support
+		/// <summary>
+		/// Existing image IDs to associate with the property (for updates)
+		/// </summary>
+		public List<int>? ExistingImageIds { get; set; }
+		
+		/// <summary>
+		/// New image files to upload within the same transaction
+		/// </summary>
+		public List<IFormFile>? NewImages { get; set; }
+		
+		/// <summary>
+		/// Custom file names for new images (optional)
+		/// </summary>
+		public List<string>? ImageFileNames { get; set; }
+		
+		/// <summary>
+		/// Cover image flags for new images (optional)
+		/// </summary>
+		public List<bool>? ImageIsCoverFlags { get; set; }
 	}
 }

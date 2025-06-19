@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/lookup_service.dart';
 import 'package:e_rents_desktop/base/app_error.dart';
+import 'package:http/http.dart' as http;
 
 /// Property Service - Clean Architecture Implementation
 ///
@@ -108,31 +110,57 @@ class PropertyService extends ApiService {
     }
   }
 
-  /// Create new property
-  Future<Property> createProperty(Property property) async {
+  /// ✅ Creates a new property with optional images in a single transactional request.
+  Future<Property> createProperty(
+    Property property, {
+    List<Uint8List>? newImageData,
+    List<String>? newImageFileNames,
+  }) async {
     try {
-      final createRequest = await _buildInsertRequest(property);
+      final fields = await _buildPropertyFields(property);
+      final files = _buildImageFiles(newImageData, newImageFileNames);
 
-      final response = await post(endpoint, createRequest, authenticated: true);
-      final jsonResponse = json.decode(response.body);
-      return Property.fromJson(jsonResponse);
+      final response = await multipartRequest(
+        endpoint,
+        'POST',
+        fields: fields,
+        files: files,
+      );
+
+      return Property.fromJson(json.decode(response.body));
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
   }
 
-  /// Update existing property
-  Future<Property> updateProperty(int propertyId, Property property) async {
+  /// ✅ Updates an existing property with optional new and/or existing images in a single transactional request.
+  Future<Property> updateProperty(
+    int propertyId,
+    Property property, {
+    List<int>? existingImageIds,
+    List<Uint8List>? newImageData,
+    List<String>? newImageFileNames,
+  }) async {
     try {
-      final updateRequest = await _buildUpdateRequest(property);
+      final fields = await _buildPropertyFields(property);
 
-      final response = await put(
+      // Add existing image IDs for the update
+      if (existingImageIds != null) {
+        for (int i = 0; i < existingImageIds.length; i++) {
+          fields['ExistingImageIds[$i]'] = existingImageIds[i].toString();
+        }
+      }
+
+      final files = _buildImageFiles(newImageData, newImageFileNames);
+
+      final response = await multipartRequest(
         '$endpoint/$propertyId',
-        updateRequest,
-        authenticated: true,
+        'PUT',
+        fields: fields,
+        files: files,
       );
-      final jsonResponse = json.decode(response.body);
-      return Property.fromJson(jsonResponse);
+
+      return Property.fromJson(json.decode(response.body));
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
     }
@@ -268,193 +296,119 @@ class PropertyService extends ApiService {
   }
 
   // ========================================
-  // AMENITY MANAGEMENT
-  // ========================================
-
-  /// Get all amenities
-  Future<List<Map<String, dynamic>>> getAmenities() async {
-    try {
-      final response = await get('/amenities', authenticated: true);
-      final List<dynamic> data = json.decode(response.body);
-      return data.cast<Map<String, dynamic>>();
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Add new amenity
-  Future<Map<String, dynamic>> addAmenity(String amenityName) async {
-    try {
-      final response = await post('/amenities', {
-        'amenityName': amenityName,
-      }, authenticated: true);
-      return json.decode(response.body);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Update property amenities
-  Future<void> updatePropertyAmenities(
-    int propertyId,
-    List<int> amenityIds,
-  ) async {
-    try {
-      await put('$endpoint/$propertyId/amenities', {
-        'amenityIds': amenityIds,
-      }, authenticated: true);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  // ========================================
-  // IMAGE MANAGEMENT
-  // ========================================
-
-  /// Upload property image
-  Future<Map<String, dynamic>> uploadPropertyImage(
-    int propertyId,
-    Map<String, dynamic> imageRequest,
-  ) async {
-    try {
-      final response = await post(
-        '$endpoint/$propertyId/images',
-        imageRequest,
-        authenticated: true,
-      );
-      return json.decode(response.body);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Update property images
-  Future<void> updatePropertyImages(int propertyId, List<int> imageIds) async {
-    try {
-      await put('$endpoint/$propertyId/images', {
-        'imageIds': imageIds,
-      }, authenticated: true);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  // ========================================
-  // AVAILABILITY & BUSINESS LOGIC
-  // ========================================
-
-  /// Check property availability
-  Future<Map<String, dynamic>> getPropertyAvailability(
-    int propertyId,
-    DateTime? start,
-    DateTime? end,
-  ) async {
-    try {
-      final params = <String, String>{};
-      if (start != null) params['start'] = start.toIso8601String();
-      if (end != null) params['end'] = end.toIso8601String();
-
-      final queryString =
-          params.isNotEmpty ? '?${_buildQueryString(params)}' : '';
-      final response = await get(
-        '$endpoint/$propertyId/availability$queryString',
-        authenticated: true,
-      );
-      return json.decode(response.body);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Update property status
-  Future<void> updatePropertyStatus(int propertyId, String status) async {
-    try {
-      await put('$endpoint/$propertyId/status', {
-        'status': status,
-      }, authenticated: true);
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  // ========================================
-  // STATISTICS & ANALYTICS
-  // ========================================
-
-  /// Get popular properties
-  Future<List<Property>> getPopularProperties({int limit = 10}) async {
-    try {
-      final response = await get(
-        '$endpoint/popular?limit=$limit',
-        authenticated: true,
-      );
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Property.fromJson(json)).toList();
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  /// Get property recommendations for user
-  Future<List<Property>> getPropertyRecommendations(int userId) async {
-    try {
-      final response = await get(
-        '$endpoint/recommend?userId=$userId',
-        authenticated: true,
-      );
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Property.fromJson(json)).toList();
-    } catch (e, stackTrace) {
-      throw AppError.fromException(e, stackTrace);
-    }
-  }
-
-  // ========================================
   // PRIVATE HELPER METHODS
   // ========================================
 
-  /// Build PropertyInsertRequest DTO
-  Future<Map<String, dynamic>> _buildInsertRequest(Property property) async {
-    return {
-      'name': property.name,
-      'description': property.description,
-      'price': property.price,
-      'currency': property.currency,
-      'bedrooms': property.bedrooms > 0 ? property.bedrooms : 1,
-      'bathrooms': property.bathrooms > 0 ? property.bathrooms : 1,
-      'area': property.area,
-      'minimumStayDays': property.minimumStayDays,
-      'requiresApproval': property.requiresApproval,
-      'propertyTypeId':
-          property.propertyTypeId ??
-          await _lookupService.getPropertyTypeId(property.type),
-      'rentingTypeId':
-          property.rentingTypeId ??
-          await _lookupService.getRentingTypeId(property.rentingType),
-      'status': property.status ?? 'Available',
-      'amenityIds': property.amenityIds,
-      'imageIds': property.imageIds,
-      if (property.address != null)
-        'address': _transformAddressForBackend(property.address!),
-    };
+  /// Helper to build the list of MultipartFile objects from image data.
+  List<http.MultipartFile> _buildImageFiles(
+    List<Uint8List>? imageData,
+    List<String>? imageFileNames,
+  ) {
+    final files = <http.MultipartFile>[];
+    if (imageData != null && imageData.isNotEmpty) {
+      for (int i = 0; i < imageData.length; i++) {
+        final fileName =
+            (imageFileNames != null && i < imageFileNames.length)
+                ? imageFileNames[i]
+                : 'image_$i.jpg';
+
+        files.add(
+          http.MultipartFile.fromBytes(
+            'NewImages',
+            imageData[i],
+            filename: fileName,
+          ),
+        );
+      }
+    }
+    return files;
   }
 
-  /// Build PropertyUpdateRequest DTO
-  Future<Map<String, dynamic>> _buildUpdateRequest(Property property) async {
-    final request = await _buildInsertRequest(
-      property,
-    ); // Same structure for updates
-    print(
-      'PropertyService: Built update request for property ${property.propertyId} with imageIds: ${request['imageIds']}',
-    );
-    return request;
-  }
+  /// Builds a map of property fields for the multipart request.
+  Future<Map<String, String>> _buildPropertyFields(Property property) async {
+    final fields = <String, String>{};
 
-  /// Transform address for backend compatibility
-  Map<String, dynamic>? _transformAddressForBackend(Address address) {
-    if (address.isEmpty) return null;
-    return address.toJson();
+    // Add basic property fields
+    if (property.name.isNotEmpty) fields['Name'] = property.name;
+    fields['Price'] = property.price.toString();
+    fields['Currency'] = property.currency;
+
+    if (property.description.isNotEmpty) {
+      fields['Description'] = property.description;
+    }
+
+    fields['Bedrooms'] = property.bedrooms.toString();
+    fields['Bathrooms'] = property.bathrooms.toString();
+
+    if (property.area > 0) {
+      fields['Area'] = property.area.toString();
+    }
+
+    if (property.minimumStayDays != null && property.minimumStayDays! > 0) {
+      fields['MinimumStayDays'] = property.minimumStayDays.toString();
+    }
+
+    if (property.status != null && property.status!.isNotEmpty) {
+      fields['Status'] = property.status!;
+    }
+
+    // Add lookup IDs
+    if (property.propertyTypeId != null) {
+      fields['PropertyTypeId'] = property.propertyTypeId.toString();
+    } else {
+      final propertyTypeId = await _lookupService.getPropertyTypeId(
+        property.type,
+      );
+      fields['PropertyTypeId'] = propertyTypeId.toString();
+    }
+
+    if (property.rentingTypeId != null) {
+      fields['RentingTypeId'] = property.rentingTypeId.toString();
+    } else {
+      final rentingTypeId = await _lookupService.getRentingTypeId(
+        property.rentingType,
+      );
+      fields['RentingTypeId'] = rentingTypeId.toString();
+    }
+
+    // Add address if present
+    if (property.address != null && !property.address!.isEmpty) {
+      final address = property.address!;
+      if (address.streetLine1?.isNotEmpty == true) {
+        fields['Address.StreetLine1'] = address.streetLine1!;
+      }
+      if (address.streetLine2?.isNotEmpty == true) {
+        fields['Address.StreetLine2'] = address.streetLine2!;
+      }
+      if (address.city?.isNotEmpty == true) {
+        fields['Address.City'] = address.city!;
+      }
+      if (address.state?.isNotEmpty == true) {
+        fields['Address.State'] = address.state!;
+      }
+      if (address.country?.isNotEmpty == true) {
+        fields['Address.Country'] = address.country!;
+      }
+      if (address.postalCode?.isNotEmpty == true) {
+        fields['Address.PostalCode'] = address.postalCode!;
+      }
+      if (address.latitude != null) {
+        fields['Address.Latitude'] = address.latitude.toString();
+      }
+      if (address.longitude != null) {
+        fields['Address.Longitude'] = address.longitude.toString();
+      }
+    }
+
+    // Add amenity IDs
+    if (property.amenityIds.isNotEmpty) {
+      for (int i = 0; i < property.amenityIds.length; i++) {
+        fields['AmenityIds[$i]'] = property.amenityIds[i].toString();
+      }
+    }
+
+    // NOTE: ExistingImageIds are handled in the updateProperty method directly.
+    return fields;
   }
 
   /// Build endpoint URL with query parameters
