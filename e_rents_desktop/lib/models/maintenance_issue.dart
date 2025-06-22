@@ -105,6 +105,19 @@ class MaintenanceIssue {
     );
   }
 
+  factory MaintenanceIssue.empty() {
+    return MaintenanceIssue(
+      maintenanceIssueId: 0,
+      propertyId: 0,
+      tenantId: 0,
+      title: '',
+      description: '',
+      priority: IssuePriority.medium,
+      createdAt: DateTime.now(),
+      category: '',
+    );
+  }
+
   static IssuePriority _parsePriority(dynamic priority) {
     if (priority == null) return IssuePriority.medium;
 
@@ -200,7 +213,7 @@ class MaintenanceIssue {
     DateTime? landlordResponseDate,
     String? category,
     bool? requiresInspection,
-    bool? isTenantCompliant,
+    bool? isTenantComplaint,
     double? cost,
     String? resolutionNotes,
     String? propertyName,
@@ -226,7 +239,7 @@ class MaintenanceIssue {
       landlordResponseDate: landlordResponseDate ?? this.landlordResponseDate,
       category: category ?? this.category,
       requiresInspection: requiresInspection ?? this.requiresInspection,
-      isTenantComplaint: isTenantCompliant ?? this.isTenantComplaint,
+      isTenantComplaint: isTenantComplaint ?? this.isTenantComplaint,
       cost: cost ?? this.cost,
       resolutionNotes: resolutionNotes ?? this.resolutionNotes,
       propertyName: propertyName ?? this.propertyName,

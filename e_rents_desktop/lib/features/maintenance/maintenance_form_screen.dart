@@ -1,109 +1,71 @@
+import 'package:e_rents_desktop/features/maintenance/state/maintenance_form_state.dart';
+import 'package:e_rents_desktop/repositories/maintenance_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_collection_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
-class MaintenanceFormScreen extends StatefulWidget {
+class MaintenanceFormScreen extends StatelessWidget {
   final int? propertyId;
   final MaintenanceIssue? issue;
+  final int? tenantId;
 
-  const MaintenanceFormScreen({super.key, this.propertyId, this.issue});
-
-  @override
-  State<MaintenanceFormScreen> createState() => _MaintenanceFormScreenState();
-}
-
-class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _titleController;
-  late final TextEditingController _descriptionController;
-  late final TextEditingController _categoryController;
-  late IssuePriority _priority;
-  late bool _isTenantComplaint;
-  List<erents.ImageInfo> _images = [];
-  int _currentUserId = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentUserId =
-        Provider.of<AuthProvider>(context, listen: false).currentUser?.id ?? 0;
-    _titleController = TextEditingController(text: widget.issue?.title ?? '');
-    _descriptionController = TextEditingController(
-      text: widget.issue?.description ?? '',
-    );
-    _categoryController = TextEditingController(
-      text: widget.issue?.category ?? '',
-    );
-    _priority = widget.issue?.priority ?? IssuePriority.medium;
-    _isTenantComplaint = widget.issue?.isTenantComplaint ?? false;
-    // Convert imageIds to ImageInfo objects for UI compatibility
-    _images =
-        widget.issue?.imageIds
-            .map(
-              (id) => erents.ImageInfo(
-                id: id,
-                url: '/Image/$id', // Construct URL from ID
-                fileName: 'image_$id.jpg',
-              ),
-            )
-            .toList() ??
-        [];
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _categoryController.dispose();
-    super.dispose();
-  }
-
-  MaintenanceIssue _createIssue() {
-    return MaintenanceIssue(
-      maintenanceIssueId: widget.issue?.maintenanceIssueId ?? 0,
-      propertyId: widget.propertyId ?? widget.issue?.propertyId ?? 0,
-      title: _titleController.text,
-      description: _descriptionController.text,
-      priority: _priority,
-      status: widget.issue?.status ?? IssueStatus.pending,
-      createdAt: widget.issue?.createdAt ?? DateTime.now(),
-      resolvedAt: widget.issue?.resolvedAt,
-      cost: widget.issue?.cost,
-      imageIds:
-          _images
-              .map((img) => img.id)
-              .where((id) => id != null && id > 0)
-              .cast<int>()
-              .toList(),
-      tenantId: _currentUserId,
-      resolutionNotes: widget.issue?.resolutionNotes,
-      category: _categoryController.text,
-      requiresInspection: widget.issue?.requiresInspection ?? false,
-      isTenantComplaint: _isTenantComplaint,
-    );
-  }
+  const MaintenanceFormScreen({
+    super.key,
+    this.propertyId,
+    this.issue,
+    this.tenantId,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create:
+          (context) => MaintenanceFormState(
+            context.read<MaintenanceRepository>(),
+            issue,
+            propertyId: propertyId,
+            tenantId: tenantId,
+          ),
+      child: const _MaintenanceFormView(),
+    );
+  }
+}
+
+class _MaintenanceFormView extends StatelessWidget {
+  const _MaintenanceFormView();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<MaintenanceFormState>();
+
+    if (state.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
-        key: _formKey,
+        key: state.formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (state.errorMessage != null) ...[
+              Text(
+                state.errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: 16),
+            ],
             Text(
               'Issue Details',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 24),
             TextFormField(
-              controller: _titleController,
+              controller: state.titleController,
               decoration: const InputDecoration(
                 labelText: 'Title',
                 border: OutlineInputBorder(),
@@ -117,7 +79,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             ),
             const SizedBox(height: 16),
             TextFormField(
-              controller: _descriptionController,
+              controller: state.descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Description',
                 border: OutlineInputBorder(),
@@ -135,7 +97,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<IssuePriority>(
-                    value: _priority,
+                    value: state.issue.priority,
                     decoration: const InputDecoration(
                       labelText: 'Priority',
                       border: OutlineInputBorder(),
@@ -153,7 +115,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                             .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        setState(() => _priority = value);
+                        state.updatePriority(value);
                       }
                     },
                   ),
@@ -161,7 +123,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: TextFormField(
-                    controller: _categoryController,
+                    controller: state.categoryController,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
@@ -179,9 +141,9 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Tenant Complaint'),
-              value: _isTenantComplaint,
+              value: state.issue.isTenantComplaint,
               onChanged: (value) {
-                setState(() => _isTenantComplaint = value);
+                state.updateIsTenantComplaint(value);
               },
             ),
             const SizedBox(height: 32),
@@ -191,20 +153,20 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             ),
             const SizedBox(height: 16),
             ImagePickerInput(
-              initialImages: _images,
+              initialImages: state.images,
               onChanged: (updatedImages) {
-                setState(() {
-                  _images =
-                      updatedImages
-                          .map(
-                            (imgInfo) => erents.ImageInfo(
-                              id: imgInfo.id ?? 0,
-                              url: imgInfo.url,
-                              fileName: imgInfo.fileName,
-                            ),
-                          )
-                          .toList();
-                });
+                state.updateImages(
+                  updatedImages
+                      .map(
+                        (img) => erents.ImageInfo(
+                          id: img.id,
+                          url: img.url,
+                          fileName: img.fileName,
+                          // No 'path' property available on the picker's ImageInfo
+                        ),
+                      )
+                      .toList(),
+                );
               },
             ),
             const SizedBox(height: 32),
@@ -212,72 +174,33 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () {
-                    if (widget.propertyId != null) {
-                      context.go('/properties/${widget.propertyId}');
-                    } else {
-                      context.go('/maintenance');
-                    }
-                  },
+                  onPressed:
+                      state.isLoading
+                          ? null
+                          : () {
+                            final propertyId = state.issue.propertyId;
+                            if (propertyId > 0) {
+                              context.go('/properties/$propertyId');
+                            } else {
+                              context.go('/maintenance');
+                            }
+                          },
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      final issue = _createIssue();
-                      final provider =
-                          context.read<MaintenanceCollectionProvider>();
-                      try {
-                        // Loading state will be managed by provider
-                        if (widget.issue == null) {
-                          await provider.addItem(issue);
-                          final newIssues =
-                              provider.items
-                                  .where(
-                                    (i) =>
-                                        i.title == issue.title &&
-                                        i.propertyId == issue.propertyId &&
-                                        i.maintenanceIssueId != 0,
-                                  )
-                                  .toList();
-
-                          if (mounted && newIssues.isNotEmpty) {
-                            final newIssue = newIssues.last;
-                            context.go(
-                              '/maintenance/${newIssue.maintenanceIssueId}',
-                            );
-                            return;
-                          }
-                        } else {
-                          await provider.updateItem(
-                            issue.maintenanceIssueId.toString(),
-                            issue,
-                          );
-                        }
-                        if (mounted) {
-                          if (widget.propertyId != null) {
-                            context.go('/properties/${widget.propertyId}');
-                          } else {
-                            context.go('/maintenance');
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error: ${e.toString()}'),
-                              backgroundColor: Colors.red,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      } finally {
-                        // Loading state managed by provider
-                      }
-                    }
-                  },
-                  child: Text(widget.issue == null ? 'Create' : 'Save'),
+                  onPressed:
+                      state.isLoading
+                          ? null
+                          : () async {
+                            final savedIssue = await state.save();
+                            if (savedIssue != null && context.mounted) {
+                              context.go(
+                                '/maintenance/${savedIssue.maintenanceIssueId}',
+                              );
+                            }
+                          },
+                  child: const Text('Save Issue'),
                 ),
               ],
             ),

@@ -159,58 +159,12 @@ class MaintenanceDetailProvider extends DetailProvider<MaintenanceIssue> {
 
   // Repository-backed methods
 
-  /// Update issue status with additional data
-  Future<void> updateIssueStatus(
-    IssueStatus newStatus, {
-    String? resolutionNotes,
-    double? cost,
-  }) async {
-    await executeAsync(() async {
-      if (item == null) {
-        throw AppError(
-          type: ErrorType.notFound,
-          message: 'No maintenance issue loaded',
-        );
-      }
-
-      // Use repository method for status update
-      final updatedIssue = await maintenanceRepository.updateIssueStatus(
-        item!.maintenanceIssueId.toString(),
-        newStatus,
-        resolutionNotes: resolutionNotes,
-        cost: cost,
-      );
-
-      // Update the current item
-      updateItem(updatedIssue);
-    });
-  }
-
   /// Force reload issue from server (bypass cache)
   Future<void> forceReloadIssue() async {
     if (item != null) {
       await repository.clearCache();
       await loadItem(item!.maintenanceIssueId.toString());
     }
-  }
-
-  /// Mark issue as completed
-  Future<void> markAsCompleted({String? resolutionNotes, double? cost}) async {
-    await updateIssueStatus(
-      IssueStatus.completed,
-      resolutionNotes: resolutionNotes,
-      cost: cost,
-    );
-  }
-
-  /// Mark issue as in progress
-  Future<void> markAsInProgress() async {
-    await updateIssueStatus(IssueStatus.inProgress);
-  }
-
-  /// Mark issue as pending
-  Future<void> markAsPending() async {
-    await updateIssueStatus(IssueStatus.pending);
   }
 
   // Validation methods

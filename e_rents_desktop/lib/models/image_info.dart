@@ -2,6 +2,7 @@ class ImageInfo {
   final int? id;
   final String? url;
   final String? fileName;
+  final String? path;
   final int? width;
   final int? height;
   final int? sizeBytes;
@@ -9,9 +10,10 @@ class ImageInfo {
   final bool isCover;
 
   ImageInfo({
-    required this.id,
-    required this.url,
+    this.id,
+    this.url,
     this.fileName,
+    this.path,
     this.width,
     this.height,
     this.sizeBytes,

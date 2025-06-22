@@ -4,18 +4,19 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
 
 class ProfileHeaderWidget extends StatefulWidget {
   final bool isEditing;
   final VoidCallback onEditPressed;
   final VoidCallback? onCancelPressed;
+  final Future<void> Function(String path)? onImageUploaded;
 
   const ProfileHeaderWidget({
     super.key,
     required this.isEditing,
     required this.onEditPressed,
     this.onCancelPressed,
+    this.onImageUploaded,
   });
 
   @override
@@ -24,7 +25,6 @@ class ProfileHeaderWidget extends StatefulWidget {
 
 class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
   final ImagePicker _picker = ImagePicker();
-  erents.ImageInfo? _tempProfileImage;
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -35,23 +35,12 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
         imageQuality: 85,
       );
 
-      if (pickedFile != null) {
-        setState(() {
-          _tempProfileImage = erents.ImageInfo(id: 0, url: pickedFile.path);
-        });
-
-        if (!mounted) return;
-
-        // Update profile image in provider
-        final profileProvider = Provider.of<ProfileStateProvider>(
-          context,
-          listen: false,
-        );
-        await profileProvider.uploadProfileImage(pickedFile.path);
+      if (pickedFile != null && widget.onImageUploaded != null) {
+        // Let the parent handle the upload logic
+        await widget.onImageUploaded!(pickedFile.path);
       }
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));

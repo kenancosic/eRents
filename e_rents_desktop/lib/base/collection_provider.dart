@@ -178,25 +178,36 @@ abstract class CollectionProvider<T> extends ChangeNotifier
   }
 
   /// Add a new item
-  Future<void> addItem(T item) async {
-    if (_state.isLoading) return;
+  Future<T> addItem(T item) async {
+    if (_state.isLoading) {
+      throw AppError(type: ErrorType.unknown, message: 'Provider is busy');
+    }
 
-    await _execute(() async {
+    _setState(ProviderState.loading);
+    try {
       final createdItem = await repository.create(item);
       _items.add(createdItem);
 
-      // Update total count if we have it
       if (_totalCount != null) {
         _totalCount = _totalCount! + 1;
       }
-    });
+      _setState(ProviderState.success);
+      safeNotifyListeners();
+      return createdItem;
+    } catch (e, stackTrace) {
+      _setError(AppError.fromException(e, stackTrace));
+      rethrow;
+    }
   }
 
   /// Update an existing item
-  Future<void> updateItem(String id, T item) async {
-    if (_state.isLoading) return;
+  Future<T> updateItem(String id, T item) async {
+    if (_state.isLoading) {
+      throw AppError(type: ErrorType.unknown, message: 'Provider is busy');
+    }
 
-    await _execute(() async {
+    _setState(ProviderState.loading);
+    try {
       final updatedItem = await repository.update(id, item);
       final index = _findItemIndex(id);
 
@@ -207,7 +218,13 @@ abstract class CollectionProvider<T> extends ChangeNotifier
           'CollectionProvider: Item with id $id updated in repository but not found in local list. Local list not modified.',
         );
       }
-    });
+      _setState(ProviderState.success);
+      safeNotifyListeners();
+      return updatedItem;
+    } catch (e, stackTrace) {
+      _setError(AppError.fromException(e, stackTrace));
+      rethrow;
+    }
   }
 
   /// Remove an item

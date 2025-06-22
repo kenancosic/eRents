@@ -1,54 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:e_rents_desktop/features/profile/state/paypal_settings_form_state.dart';
 import 'package:go_router/go_router.dart';
 
-class PaypalSettingsWidget extends StatefulWidget {
-  final bool isEditing; // To control button visibility/activity
+class PaypalSettingsWidget extends StatelessWidget {
+  final bool isEditing;
 
   const PaypalSettingsWidget({super.key, required this.isEditing});
 
   @override
-  State<PaypalSettingsWidget> createState() => _PaypalSettingsWidgetState();
-}
-
-class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _paypalEmailController = TextEditingController();
-
-  @override
-  void dispose() {
-    _paypalEmailController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Consumer<ProfileStateProvider>(
-      builder: (context, provider, child) {
-        final user = provider.currentUser;
-        final bool isPaypalLinked = user?.isPaypalLinked ?? false;
-        final String? paypalIdentifier = user?.paypalUserIdentifier;
-
-        // If already linked, and we are viewing (not editing), show the identifier in the controller
-        // Or, if we just linked, this will update too.
-        if (isPaypalLinked &&
-            paypalIdentifier != null &&
-            _paypalEmailController.text.isEmpty) {
-          // _paypalEmailController.text = paypalIdentifier; // Optionally prefill if needed for some UX
-        }
-
+    return Consumer<PaypalSettingsFormState>(
+      builder: (context, state, child) {
         return Form(
-          key: _formKey,
+          key: state.formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Status Display
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color:
-                      isPaypalLinked
+                      state.isPaypalLinked
                           ? Theme.of(
                             context,
                           ).colorScheme.primaryContainer.withOpacity(0.3)
@@ -59,7 +32,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color:
-                        isPaypalLinked
+                        state.isPaypalLinked
                             ? Theme.of(
                               context,
                             ).colorScheme.primary.withOpacity(0.3)
@@ -71,11 +44,11 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                 child: Row(
                   children: [
                     Icon(
-                      isPaypalLinked
+                      state.isPaypalLinked
                           ? Icons.check_circle
                           : Icons.account_balance_wallet,
                       color:
-                          isPaypalLinked
+                          state.isPaypalLinked
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(
                                 context,
@@ -88,7 +61,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isPaypalLinked
+                            state.isPaypalLinked
                                 ? 'PayPal Linked'
                                 : 'PayPal Not Linked',
                             style: Theme.of(
@@ -96,15 +69,16 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                             ).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w500,
                               color:
-                                  isPaypalLinked
+                                  state.isPaypalLinked
                                       ? Theme.of(context).colorScheme.primary
                                       : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
-                          if (isPaypalLinked && paypalIdentifier != null) ...[
+                          if (state.isPaypalLinked &&
+                              state.paypalIdentifier != null) ...[
                             const SizedBox(height: 2),
                             Text(
-                              paypalIdentifier,
+                              state.paypalIdentifier!,
                               style: Theme.of(
                                 context,
                               ).textTheme.bodySmall?.copyWith(
@@ -114,7 +88,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                               ),
                             ),
                           ],
-                          if (!isPaypalLinked) ...[
+                          if (!state.isPaypalLinked) ...[
                             const SizedBox(height: 2),
                             Text(
                               'Link your PayPal account for secure transactions',
@@ -133,22 +107,16 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                   ],
                 ),
               ),
-
-              if (provider.isLinkingPayPal || provider.isUnlinkingPayPal)
+              if (state.isLinking || state.isUnlinking)
                 const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Center(child: CircularProgressIndicator()),
                 ),
-
-              if (!provider.isLinkingPayPal &&
-                  !provider.isUnlinkingPayPal &&
-                  widget.isEditing) ...[
+              if (!state.isLinking && !state.isUnlinking && isEditing) ...[
                 const SizedBox(height: 16),
-
-                // Email Input (only show if not linked)
-                if (!isPaypalLinked) ...[
+                if (!state.isPaypalLinked) ...[
                   TextFormField(
-                    controller: _paypalEmailController,
+                    controller: state.paypalEmailController,
                     decoration: InputDecoration(
                       labelText: 'PayPal Email',
                       hintText: 'Enter your PayPal email address',
@@ -176,37 +144,33 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Action Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      if (isPaypalLinked) {
-                        // Unlink action
-                        _showUnlinkDialog(context, provider);
+                      if (state.isPaypalLinked) {
+                        _showUnlinkDialog(context, state);
                       } else {
-                        // Link action
-                        _linkPaypalAccount(provider);
+                        state.linkPaypalAccount();
                       }
                     },
                     icon: Icon(
-                      isPaypalLinked ? Icons.link_off : Icons.link,
+                      state.isPaypalLinked ? Icons.link_off : Icons.link,
                       size: 18,
                     ),
                     label: Text(
-                      isPaypalLinked
+                      state.isPaypalLinked
                           ? 'Unlink PayPal Account'
                           : 'Link PayPal Account',
                     ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       backgroundColor:
-                          isPaypalLinked
+                          state.isPaypalLinked
                               ? Theme.of(context).colorScheme.errorContainer
                               : Theme.of(context).colorScheme.primary,
                       foregroundColor:
-                          isPaypalLinked
+                          state.isPaypalLinked
                               ? Theme.of(context).colorScheme.onErrorContainer
                               : Theme.of(context).colorScheme.onPrimary,
                     ),
@@ -220,14 +184,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
     );
   }
 
-  void _linkPaypalAccount(ProfileStateProvider provider) {
-    if (_formKey.currentState!.validate()) {
-      provider.linkPayPalAccount(_paypalEmailController.text.trim());
-      _paypalEmailController.clear();
-    }
-  }
-
-  void _showUnlinkDialog(BuildContext context, ProfileStateProvider provider) {
+  void _showUnlinkDialog(BuildContext context, PaypalSettingsFormState state) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -244,7 +201,7 @@ class _PaypalSettingsWidgetState extends State<PaypalSettingsWidget> {
             TextButton(
               onPressed: () {
                 dialogContext.pop();
-                provider.unlinkPayPalAccount();
+                state.unlinkPaypalAccount();
               },
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.error,

@@ -255,6 +255,10 @@ class Booking {
     return status == BookingStatus.upcoming || status == BookingStatus.active;
   }
 
+  bool get isCompleted => status == BookingStatus.completed;
+  bool get isCancelled => status == BookingStatus.cancelled;
+  bool get isUpcoming => status == BookingStatus.upcoming;
+
   /// Get booking duration in days
   int? get durationInDays {
     if (endDate == null) return null;

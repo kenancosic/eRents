@@ -1,5 +1,5 @@
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:e_rents_desktop/features/properties/models/property_form_state.dart';
+import 'package:e_rents_desktop/features/properties/state/property_form_state.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_form_fields.dart';
@@ -26,41 +26,24 @@ class PropertyFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Using a simple key for the provider to ensure it's recreated
-    // if we navigate to the form for a different property.
-    final key = ValueKey(property?.propertyId ?? 'new');
-
     return ChangeNotifierProvider(
-      key: key,
-      create: (context) {
-        // ✅ NEW: Dependencies are now explicitly passed to the FormState.
-        final formState = PropertyFormState(
-          lookupProvider: context.read<LookupProvider>(),
-          propertyService: context.read<PropertyService>(),
-          authProvider: context.read<AuthProvider>(),
-          collectionProvider: context.read<PropertyCollectionProvider>(),
-        );
-        if (property != null) {
-          formState.populateFromProperty(property!);
-        }
-        return formState;
-      },
-      child: _PropertyFormScreenContent(
-        isEditMode: property != null,
-        initialProperty: property,
-      ),
+      create:
+          (context) => PropertyFormState(
+            lookupProvider: context.read<LookupProvider>(),
+            propertyService: context.read<PropertyService>(),
+            authProvider: context.read<AuthProvider>(),
+            collectionProvider: context.read<PropertyCollectionProvider>(),
+            initialProperty: property,
+          ),
+      child: _PropertyFormScreenContent(isEditMode: property != null),
     );
   }
 }
 
 class _PropertyFormScreenContent extends StatefulWidget {
   final bool isEditMode;
-  final Property? initialProperty;
 
-  const _PropertyFormScreenContent({
-    required this.isEditMode,
-    this.initialProperty,
-  });
+  const _PropertyFormScreenContent({required this.isEditMode});
 
   @override
   State<_PropertyFormScreenContent> createState() =>
@@ -69,26 +52,11 @@ class _PropertyFormScreenContent extends StatefulWidget {
 
 class _PropertyFormScreenContentState
     extends State<_PropertyFormScreenContent> {
-  final _formKey = GlobalKey<FormState>();
-
-  /// ✅ NEW: UI-level save method that calls the encapsulated logic in the FormState.
-  /// This keeps the UI clean and focused on presentation.
   Future<void> _saveProperty() async {
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please correct the errors before saving.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
     final formState = context.read<PropertyFormState>();
-    final success = await formState.saveProperty(
-      isEditMode: widget.isEditMode,
-      initialProperty: widget.initialProperty,
-    );
+    // No need to check form validity here, it's done in saveProperty()
+
+    final success = await formState.saveProperty();
 
     if (mounted) {
       if (success) {
@@ -142,7 +110,7 @@ class _PropertyFormScreenContentState
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Form(
-                    key: _formKey,
+                    key: formState.formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -170,8 +138,8 @@ class _PropertyFormScreenContentState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PropertyFormFields.buildRequiredTextField(
-            controller: formState.titleController,
-            labelText: 'Property Title',
+            controller: formState.nameController,
+            labelText: 'Property Name',
           ),
           PropertyFormFields.buildSpacer(),
           PropertyFormFields.buildTextField(
@@ -262,9 +230,9 @@ class _PropertyFormScreenContentState
               Expanded(
                 child: CustomDropdown<int>(
                   label: 'Property Type',
-                  value: formState.propertyTypeId,
+                  value: formState.property.propertyTypeId,
                   items: lookup.propertyTypes,
-                  onChanged: (val) => formState.propertyTypeId = val,
+                  onChanged: (val) => formState.setPropertyTypeId(val),
                   itemToString: (item) => (item as LookupItem).name,
                   itemToValue: (item) => (item as LookupItem).id,
                 ),
@@ -273,9 +241,9 @@ class _PropertyFormScreenContentState
               Expanded(
                 child: CustomDropdown<int>(
                   label: 'Renting Type',
-                  value: formState.rentingTypeId,
+                  value: formState.property.rentingTypeId,
                   items: lookup.rentingTypes,
-                  onChanged: (val) => formState.rentingTypeId = val,
+                  onChanged: (val) => formState.setRentingTypeId(val),
                   itemToString: (item) => (item as LookupItem).name,
                   itemToValue: (item) => (item as LookupItem).id,
                 ),
@@ -291,7 +259,7 @@ class _PropertyFormScreenContentState
     return SectionCard(
       title: 'Location & Address',
       child: AddressInput(
-        initialAddress: formState.selectedAddress,
+        initialAddress: formState.property.address,
         initialAddressString: formState.initialAddressString,
         onAddressSelected: formState.updateAddressFromGoogle,
         streetNameController: formState.streetNameController,
@@ -299,7 +267,7 @@ class _PropertyFormScreenContentState
         cityController: formState.cityController,
         postalCodeController: formState.postalCodeController,
         countryController: formState.countryController,
-        onManualAddressChanged: formState.updateAddressFromManualFields,
+        onManualAddressChanged: () {},
       ),
     );
   }
@@ -310,7 +278,7 @@ class _PropertyFormScreenContentState
       child: ImagePickerInput(
         initialImages: formState.images,
         onChanged: (images) {
-          formState.images = images;
+          formState.setImages(images);
         },
       ),
     );
@@ -321,9 +289,9 @@ class _PropertyFormScreenContentState
       title: 'Amenities',
       child: AmenityManager(
         mode: AmenityManagerMode.select,
-        initialAmenityIds: formState.selectedAmenityIds,
+        initialAmenityIds: formState.property.amenityIds,
         onAmenityIdsChanged: (ids) {
-          formState.selectedAmenityIds = ids;
+          formState.setAmenityIds(ids);
         },
         showTitle: false, // We have a SectionCard title now
       ),

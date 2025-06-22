@@ -107,17 +107,17 @@ class BookingRepository extends BaseRepository<Booking, BookingService> {
     bool requestRefund, {
     String? additionalNotes,
     bool isEmergency = false,
+    String? refundMethod,
   }) async {
     try {
-      final requestBody = {
-        'bookingId': bookingId,
-        'cancellationReason': reason,
-        'requestRefund': requestRefund,
-        'additionalNotes': additionalNotes,
-        'isEmergency': isEmergency,
-      };
-
-      await service.cancelBooking(bookingId, reason, requestRefund);
+      await service.cancelBooking(
+        bookingId,
+        reason,
+        requestRefund,
+        additionalNotes: additionalNotes,
+        isEmergency: isEmergency,
+        refundMethod: refundMethod,
+      );
 
       if (enableCaching) {
         // Invalidate cache for the specific booking and lists

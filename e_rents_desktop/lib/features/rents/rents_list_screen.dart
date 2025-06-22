@@ -1,11 +1,15 @@
 import 'package:e_rents_desktop/base/service_locator.dart';
+import 'package:e_rents_desktop/features/rents/lease_detail_screen.dart';
+import 'package:e_rents_desktop/features/rents/stay_detail_screen.dart';
 import 'package:e_rents_desktop/features/rents/widgets/leases_table_widget.dart';
 import 'package:e_rents_desktop/features/rents/widgets/stays_table_widget.dart';
-import 'package:e_rents_desktop/services/rental_management_service.dart';
+import 'package:e_rents_desktop/repositories/booking_repository.dart';
+import 'package:e_rents_desktop/repositories/rental_request_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class RentsListScreen extends StatefulWidget {
-  const RentsListScreen({Key? key}) : super(key: key);
+  const RentsListScreen({super.key});
 
   @override
   State<RentsListScreen> createState() => _RentsListScreenState();
@@ -14,8 +18,10 @@ class RentsListScreen extends StatefulWidget {
 class _RentsListScreenState extends State<RentsListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final RentalManagementService _rentalManagementService =
-      ServiceLocator().get<RentalManagementService>();
+  final BookingRepository _bookingRepository =
+      ServiceLocator().get<BookingRepository>();
+  final RentalRequestRepository _rentalRequestRepository =
+      ServiceLocator().get<RentalRequestRepository>();
 
   @override
   void initState() {
@@ -45,8 +51,18 @@ class _RentsListScreenState extends State<RentsListScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          StaysTableWidget(rentalManagementService: _rentalManagementService),
-          LeasesTableWidget(rentalManagementService: _rentalManagementService),
+          StaysTableWidget(
+            bookingRepository: _bookingRepository,
+            onItemTap: (item) {
+              context.push('/stays/${item.id}');
+            },
+          ),
+          LeasesTableWidget(
+            rentalRequestRepository: _rentalRequestRepository,
+            onItemTap: (item) {
+              context.push('/leases/${item.id}');
+            },
+          ),
         ],
       ),
     );

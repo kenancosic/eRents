@@ -8,8 +8,6 @@ import 'package:e_rents_desktop/widgets/table/providers/table_provider.dart';
 import 'package:e_rents_desktop/widgets/table/core/table_filters.dart';
 import 'package:e_rents_desktop/models/rental_display_item.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/features/rents/stay_detail_screen.dart';
 
 class RentsTableFactory {
   static CustomTableWidget<RentalDisplayItem> createStaysTable(

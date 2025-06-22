@@ -1,85 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:e_rents_desktop/features/profile/state/change_password_form_state.dart';
 
-class ChangePasswordWidget extends StatefulWidget {
+class ChangePasswordWidget extends StatelessWidget {
   final bool isEditing;
-  final GlobalKey<FormState> formKey;
 
-  const ChangePasswordWidget({
-    super.key,
-    required this.isEditing,
-    required this.formKey,
-  });
-
-  @override
-  State<ChangePasswordWidget> createState() => _ChangePasswordWidgetState();
-}
-
-class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
-  final TextEditingController _currentPasswordController =
-      TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
-
-  @override
-  void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _updatePassword() async {
-    if (widget.formKey.currentState!.validate()) {
-      final profileProvider = Provider.of<ProfileStateProvider>(
-        context,
-        listen: false,
-      );
-
-      final success = await profileProvider.changePassword(
-        currentPassword: _currentPasswordController.text,
-        newPassword: _newPasswordController.text,
-        confirmPassword: _confirmPasswordController.text,
-      );
-
-      if (mounted) {
-        if (success) {
-          _currentPasswordController.clear();
-          _newPasswordController.clear();
-          _confirmPasswordController.clear();
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Password updated successfully'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                profileProvider.error?.message ?? 'Failed to update password',
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    }
-  }
+  const ChangePasswordWidget({super.key, required this.isEditing});
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<ChangePasswordFormState>();
+
     return Form(
-      key: widget.formKey,
+      key: state.formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!widget.isEditing)
+          if (!isEditing)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -127,12 +64,13 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
                 ],
               ),
             ),
-
-          if (widget.isEditing) ...[
+          if (isEditing) ...[
             _buildCompactTextField(
-              controller: _currentPasswordController,
+              context,
+              controller: state.currentPasswordController,
               label: 'Current Password',
               isPassword: true,
+              enabled: !state.isLoading,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Current password is required';
@@ -145,9 +83,11 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
               children: [
                 Expanded(
                   child: _buildCompactTextField(
-                    controller: _newPasswordController,
+                    context,
+                    controller: state.newPasswordController,
                     label: 'New Password',
                     isPassword: true,
+                    enabled: !state.isLoading,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'New password is required';
@@ -162,14 +102,16 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildCompactTextField(
-                    controller: _confirmPasswordController,
+                    context,
+                    controller: state.confirmPasswordController,
                     label: 'Confirm Password',
                     isPassword: true,
+                    enabled: !state.isLoading,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please confirm password';
                       }
-                      if (value != _newPasswordController.text) {
+                      if (value != state.newPasswordController.text) {
                         return 'Passwords do not match';
                       }
                       return null;
@@ -179,12 +121,48 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
               ],
             ),
             const SizedBox(height: 16),
+            if (state.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  state.errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _updatePassword,
-                icon: const Icon(Icons.key),
-                label: const Text('Update Password'),
+                onPressed:
+                    state.isLoading
+                        ? null
+                        : () async {
+                          final success = await state.changePassword();
+                          if (success && context.mounted) {
+                            FocusScope.of(context).unfocus();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password updated successfully'),
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                icon:
+                    state.isLoading
+                        ? Container(
+                          width: 16,
+                          height: 16,
+                          margin: const EdgeInsets.only(right: 8),
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.key),
+                label: Text(
+                  state.isLoading ? 'Updating...' : 'Update Password',
+                ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -198,15 +176,18 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
     );
   }
 
-  Widget _buildCompactTextField({
+  Widget _buildCompactTextField(
+    BuildContext context, {
     required TextEditingController controller,
     required String label,
     required bool isPassword,
+    required bool enabled,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
+      enabled: enabled,
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

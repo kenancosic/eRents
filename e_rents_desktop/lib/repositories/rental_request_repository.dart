@@ -38,23 +38,35 @@ class RentalRequestRepository
   }
 
   /// Approve rental request
-  Future<void> approveRentalRequest(
-    int requestId,
-    bool approved,
-    String response,
-  ) async {
+  Future<void> approveRequest(int requestId, {String? response}) async {
     try {
-      if (approved) {
-        await service.approveRentalRequest(requestId, response);
-      } else {
-        await service.rejectRentalRequest(requestId, response);
-      }
-
-      // Invalidate cache for this specific request and lists
-      if (enableCaching) {
-        final cacheKey = _buildCacheKey('item', {'id': requestId.toString()});
-        await cacheManager.remove(cacheKey);
+      final success = await service.approveRentalRequest(
+        requestId,
+        response ?? 'Approved',
+      );
+      if (success) {
+        await _invalidateSingleItemCache(requestId.toString());
         await _invalidateListCaches();
+      } else {
+        throw Exception('Failed to approve rental request on the server.');
+      }
+    } catch (e, stackTrace) {
+      throw AppError.fromException(e, stackTrace);
+    }
+  }
+
+  /// Reject rental request
+  Future<void> rejectRequest(int requestId, {String? response}) async {
+    try {
+      final success = await service.rejectRentalRequest(
+        requestId,
+        response ?? 'Rejected',
+      );
+      if (success) {
+        await _invalidateSingleItemCache(requestId.toString());
+        await _invalidateListCaches();
+      } else {
+        throw Exception('Failed to reject rental request on the server.');
       }
     } catch (e, stackTrace) {
       throw AppError.fromException(e, stackTrace);
@@ -126,8 +138,7 @@ class RentalRequestRepository
 
       // Invalidate cache for this specific request and lists
       if (enableCaching) {
-        final cacheKey = _buildCacheKey('item', {'id': requestId.toString()});
-        await cacheManager.remove(cacheKey);
+        await _invalidateSingleItemCache(requestId.toString());
         await _invalidateListCaches();
       }
     } catch (e, stackTrace) {
@@ -308,10 +319,20 @@ class RentalRequestRepository
 
   /// Invalidate only list-related cache entries
   Future<void> _invalidateListCaches() async {
-    await cacheManager.clearByRegex(
-      RegExp(
-        '^${resourceName}_(all|count|paged|pending|my_properties|expiring)',
-      ),
-    );
+    if (enableCaching) {
+      // This is a bit of a brute-force approach. A more sophisticated
+      // system might update the cached list directly.
+      await cacheManager.clearByRegex(
+        RegExp('^$resourceName:(list|paged|pending|my_properties)'),
+      );
+    }
+  }
+
+  /// Invalidate a single item cache
+  Future<void> _invalidateSingleItemCache(String id) async {
+    if (enableCaching) {
+      final cacheKey = _buildCacheKey('item', {'id': id});
+      await cacheManager.remove(cacheKey);
+    }
   }
 }
