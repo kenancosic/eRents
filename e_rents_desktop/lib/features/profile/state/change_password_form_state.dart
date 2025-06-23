@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 class ChangePasswordFormState extends ChangeNotifier {
-  final ProfileRepository _repository;
+  final ProfileRepository _repository = getService<ProfileRepository>();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
 
   final TextEditingController currentPasswordController =
@@ -14,7 +15,7 @@ class ChangePasswordFormState extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  ChangePasswordFormState(this._repository);
+  ChangePasswordFormState();
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;

@@ -1,9 +1,10 @@
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 class PaypalSettingsFormState extends ChangeNotifier {
-  final ProfileRepository _repository;
+  final ProfileRepository _repository = getService<ProfileRepository>();
   User _user;
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
@@ -13,8 +14,7 @@ class PaypalSettingsFormState extends ChangeNotifier {
   bool _isUnlinking = false;
   String? _errorMessage;
 
-  PaypalSettingsFormState(this._repository, User initialUser)
-    : _user = initialUser;
+  PaypalSettingsFormState(User initialUser) : _user = initialUser;
 
   bool get isLinking => _isLinking;
   bool get isUnlinking => _isUnlinking;

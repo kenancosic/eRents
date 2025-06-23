@@ -320,12 +320,19 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
       );
     } else if (image.url != null) {
       // Existing image with URL - use ApiService for proper handling
-      return getService<ApiService>().buildImage(image.url!, fit: BoxFit.cover);
+      return Image.network(
+        getService<ApiService>().makeAbsoluteUrl(image.url!),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: 120,
+      );
     } else if (image.id != null) {
       // Existing image with ID - construct URL and use ApiService
-      return getService<ApiService>().buildImage(
-        '/Image/${image.id}',
+      return Image.network(
+        getService<ApiService>().makeAbsoluteUrl('/Image/${image.id}'),
         fit: BoxFit.cover,
+        width: double.infinity,
+        height: 120,
       );
     } else {
       return _buildErrorWidget();
@@ -342,11 +349,9 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
   }
 
   Widget _buildAddImageButton() {
-    return Card(
-      margin: const EdgeInsets.all(4.0),
-      child: InkWell(
-        onTap: _images.length < widget.maxImages ? _pickImages : null,
-        borderRadius: BorderRadius.circular(8.0),
+    if (_images.length < widget.maxImages) {
+      return GestureDetector(
+        onTap: _pickImages,
         child: Container(
           width: 120,
           height: 120,
@@ -357,10 +362,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
               style: BorderStyle.solid,
               width: 2,
             ),
-            color:
-                _images.length < widget.maxImages
-                    ? Colors.grey[50]
-                    : Colors.grey[200],
+            color: Colors.grey[50],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -368,30 +370,21 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
               Icon(
                 Icons.add_photo_alternate_outlined,
                 size: 32,
-                color:
-                    _images.length < widget.maxImages
-                        ? Colors.grey[600]
-                        : Colors.grey[400],
+                color: Colors.grey[600],
               ),
               const SizedBox(height: 8),
               Text(
-                _images.length < widget.maxImages
-                    ? 'Add Images'
-                    : 'Max ${widget.maxImages}',
-                style: TextStyle(
-                  color:
-                      _images.length < widget.maxImages
-                          ? Colors.grey[600]
-                          : Colors.grey[400],
-                  fontSize: 12,
-                ),
+                'Add Images',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      return const SizedBox.shrink();
+    }
   }
 
   @override

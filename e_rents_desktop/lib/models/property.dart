@@ -40,6 +40,7 @@ class Property {
   // Related data as IDs (frontend fetches full objects when needed)
   final List<int> amenityIds;
   final List<int> imageIds;
+  final int? coverImageId;
 
   // Computed fields from related entities
   final String? propertyTypeName;
@@ -70,6 +71,7 @@ class Property {
     this.address,
     this.amenityIds = const [],
     this.imageIds = const [],
+    this.coverImageId,
     this.propertyTypeName,
     this.rentingTypeName,
     this.userFirstName,
@@ -111,6 +113,7 @@ class Property {
       // Related data as IDs
       amenityIds: _parseIntList(json['amenityIds']),
       imageIds: _parseIntList(json['imageIds']),
+      coverImageId: json['coverImageId'] as int?,
 
       // Computed fields from related entities
       propertyTypeName: json['propertyTypeName'] as String?,
@@ -168,6 +171,7 @@ class Property {
     Address? address,
     List<int>? amenityIds,
     List<int>? imageIds,
+    int? coverImageId,
     String? propertyTypeName,
     String? rentingTypeName,
     String? userFirstName,
@@ -194,6 +198,7 @@ class Property {
       address: address ?? this.address,
       amenityIds: amenityIds ?? this.amenityIds,
       imageIds: imageIds ?? this.imageIds,
+      coverImageId: coverImageId ?? this.coverImageId,
       propertyTypeName: propertyTypeName ?? this.propertyTypeName,
       rentingTypeName: rentingTypeName ?? this.rentingTypeName,
       userFirstName: userFirstName ?? this.userFirstName,
@@ -210,6 +215,7 @@ class Property {
     name: '',
     description: '',
     price: 0.0,
+    address: Address.empty(),
   );
 
   // Computed getters for backwards compatibility and UI convenience

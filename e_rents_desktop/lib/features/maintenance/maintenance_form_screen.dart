@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:e_rents_desktop/models/image_info.dart' as erents;
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 class MaintenanceFormScreen extends StatelessWidget {
   final int? propertyId;
@@ -24,7 +25,7 @@ class MaintenanceFormScreen extends StatelessWidget {
     return ChangeNotifierProvider(
       create:
           (context) => MaintenanceFormState(
-            context.read<MaintenanceRepository>(),
+            getService<MaintenanceRepository>(),
             issue,
             propertyId: propertyId,
             tenantId: tenantId,

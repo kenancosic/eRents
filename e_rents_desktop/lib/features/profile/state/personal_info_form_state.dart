@@ -2,9 +2,10 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/repositories/profile_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 
 class PersonalInfoFormState extends ChangeNotifier {
-  final ProfileRepository _repository;
+  final ProfileRepository _repository = getService<ProfileRepository>();
   User _user;
 
   bool _isLoading = false;
@@ -16,7 +17,7 @@ class PersonalInfoFormState extends ChangeNotifier {
   final TextEditingController phoneController;
   final TextEditingController addressController;
 
-  PersonalInfoFormState(this._repository, User initialUser)
+  PersonalInfoFormState(User initialUser)
     : _user = initialUser.copyWith(),
       firstNameController = TextEditingController(text: initialUser.firstName),
       lastNameController = TextEditingController(text: initialUser.lastName),

@@ -25,7 +25,6 @@ class ProfileScreen extends StatelessWidget {
     return Consumer<ProfileStateProvider>(
       builder: (context, profileState, child) {
         final user = profileState.currentUser;
-        final profileRepository = context.read<ProfileRepository>();
 
         if (profileState.isLoading && user == null) {
           return const Center(child: CircularProgressIndicator());
@@ -46,14 +45,10 @@ class ProfileScreen extends StatelessWidget {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(create: (_) => ProfileScreenState()),
+            ChangeNotifierProvider(create: (_) => PersonalInfoFormState(user)),
+            ChangeNotifierProvider(create: (_) => ChangePasswordFormState()),
             ChangeNotifierProvider(
-              create: (_) => PersonalInfoFormState(profileRepository, user),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => ChangePasswordFormState(profileRepository),
-            ),
-            ChangeNotifierProvider(
-              create: (_) => PaypalSettingsFormState(profileRepository, user),
+              create: (_) => PaypalSettingsFormState(user),
             ),
           ],
           child: const _ProfileScreenContent(),

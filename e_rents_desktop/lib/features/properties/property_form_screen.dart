@@ -11,13 +11,15 @@ import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/widgets/common/section_header.dart';
 import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
-import 'package:e_rents_desktop/widgets/inputs/address_input.dart';
-import 'package:e_rents_desktop/services/property_service.dart';
+import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
+import 'package:e_rents_desktop/base/service_locator.dart';
 import 'dart:typed_data';
+import 'package:e_rents_desktop/services/property_service.dart';
 
 class PropertyFormScreen extends StatelessWidget {
   final Property? property;
@@ -30,7 +32,7 @@ class PropertyFormScreen extends StatelessWidget {
       create:
           (context) => PropertyFormState(
             lookupProvider: context.read<LookupProvider>(),
-            propertyService: context.read<PropertyService>(),
+            propertyService: getService<PropertyService>(),
             authProvider: context.read<AuthProvider>(),
             collectionProvider: context.read<PropertyCollectionProvider>(),
             initialProperty: property,
@@ -258,16 +260,61 @@ class _PropertyFormScreenContentState
   Widget _buildAddressSection(ThemeData theme, PropertyFormState formState) {
     return SectionCard(
       title: 'Location & Address',
-      child: AddressInput(
-        initialAddress: formState.property.address,
-        initialAddressString: formState.initialAddressString,
-        onAddressSelected: formState.updateAddressFromGoogle,
-        streetNameController: formState.streetNameController,
-        streetNumberController: formState.streetNumberController,
-        cityController: formState.cityController,
-        postalCodeController: formState.postalCodeController,
-        countryController: formState.countryController,
-        onManualAddressChanged: () {},
+      child: Column(
+        children: [
+          GoogleAddressInput(
+            googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '',
+            onAddressSelected: (address) {
+              if (address != null) {
+                formState.updateAddressFromGoogle(address);
+              }
+            },
+            initialValue: formState.initialAddressString,
+            labelText: 'Search for an address',
+          ),
+          const SizedBox(height: 16),
+          PropertyFormFields.buildRequiredTextField(
+            controller: formState.streetNameController,
+            labelText: 'Street Name',
+          ),
+          PropertyFormFields.buildSpacer(),
+          Row(
+            children: [
+              Expanded(
+                child: PropertyFormFields.buildTextField(
+                  controller: formState.streetNumberController,
+                  labelText: 'Street No.',
+                  validator: (_) => null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PropertyFormFields.buildRequiredTextField(
+                  controller: formState.cityController,
+                  labelText: 'City',
+                ),
+              ),
+            ],
+          ),
+          PropertyFormFields.buildSpacer(),
+          Row(
+            children: [
+              Expanded(
+                child: PropertyFormFields.buildRequiredTextField(
+                  controller: formState.postalCodeController,
+                  labelText: 'Postal Code',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PropertyFormFields.buildRequiredTextField(
+                  controller: formState.countryController,
+                  labelText: 'Country',
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

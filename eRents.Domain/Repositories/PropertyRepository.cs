@@ -49,8 +49,8 @@ namespace eRents.Domain.Repositories
 
 		protected override IQueryable<Property> ApplyIncludes<TSearch>(IQueryable<Property> query, TSearch search)
 		{
-			if (search is PropertySearchObject { IncludeImages: true })
-				query = query.Include(p => p.Images);
+			// Always include images for summary views to get the cover image
+			query = query.Include(p => p.Images);
 
 			if (search is PropertySearchObject { IncludeAmenities: true })
 				query = query.Include(p => p.Amenities);

@@ -1,5 +1,4 @@
 import 'package:e_rents_desktop/features/maintenance/state/maintenance_status_update_state.dart';
-import 'package:e_rents_desktop/repositories/maintenance_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_detail_provider.dart';
@@ -7,6 +6,7 @@ import 'package:e_rents_desktop/base/base.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 
 class MaintenanceIssueDetailsScreen extends StatelessWidget {
   final MaintenanceIssue? issue;
@@ -87,7 +87,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
           ChangeNotifierProvider(
             create:
                 (_) => MaintenanceStatusUpdateState(
-                  context.read<MaintenanceRepository>(),
+                  getService<MaintenanceRepository>(),
                   issue,
                 ),
             child: _ActionCard(
@@ -214,19 +214,11 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
-                          'http://localhost:5000/Image/$imageId',
+                          getService<ApiService>().makeAbsoluteUrl(
+                            'Image/$imageId',
+                          ),
                           width: 200,
                           fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) => Container(
-                                width: 200,
-                                color: Colors.grey[300],
-                                child: Icon(
-                                  Icons.broken_image,
-                                  color: Colors.grey[600],
-                                  size: 40,
-                                ),
-                              ),
                         ),
                       ),
                     );

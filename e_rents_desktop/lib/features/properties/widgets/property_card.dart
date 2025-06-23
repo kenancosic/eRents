@@ -146,7 +146,12 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildImage({double? width, double? height}) {
     final imageId =
-        property.imageIds.isNotEmpty ? property.imageIds.first : null;
+        (property.coverImageId != null && property.coverImageId! > 0)
+            ? property.coverImageId
+            : property.imageIds.isNotEmpty
+            ? property.imageIds.first
+            : null;
+
     if (imageId == null) {
       return Container(
         width: width,
@@ -160,8 +165,8 @@ class PropertyCard extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(8.0),
-      child: getService<ApiService>().buildImage(
-        '/Image/$imageId',
+      child: Image.network(
+        getService<ApiService>().makeAbsoluteUrl('Image/$imageId'),
         width: width,
         height: height,
         fit: BoxFit.cover,

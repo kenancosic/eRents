@@ -15,12 +15,16 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
   final BookingService _bookingService;
   final ReviewService _reviewService;
   final MaintenanceService _maintenanceService;
+  bool _isLoading = false;
 
   PropertyStatsProvider(
     this._bookingService,
     this._reviewService,
     this._maintenanceService,
   ) : super(null);
+
+  /// Get loading status
+  bool get isLoading => _isLoading;
 
   /// Current property ID being tracked
   String? _currentPropertyId;
@@ -44,9 +48,16 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
     String propertyId, {
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && state != null && _currentPropertyId == propertyId) {
+    if (!forceRefresh &&
+        !_isLoading &&
+        state != null &&
+        _currentPropertyId == propertyId) {
       return;
     }
+
+    _isLoading = true;
+    notifyListeners();
+
     await executeAsync(() async {
       _currentPropertyId = propertyId;
 
@@ -93,6 +104,9 @@ class PropertyStatsProvider extends StateProvider<PropertyStatsData?> {
         '🏠 PropertyStatsProvider: Successfully loaded stats for property $propertyId',
       );
     });
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Refresh stats for current property

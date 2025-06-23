@@ -62,13 +62,22 @@ class PropertyFormState extends ChangeNotifier with LifecycleMixin {
     if (initialProperty != null) {
       _property = initialProperty;
       _initialAddressString = initialProperty.address?.getFullAddress();
+      _images =
+          initialProperty.imageIds
+              .map(
+                (id) => picker.ImageInfo(
+                  id: id,
+                  url: 'http://localhost:5000/Image/$id',
+                ),
+              )
+              .toList();
     } else {
       _property = Property.empty().copyWith(
         propertyTypeId: lookupProvider?.propertyTypes.first.id,
         rentingTypeId: lookupProvider?.rentingTypes.first.id,
       );
+      _images = [];
     }
-    _images = [];
     _initializeControllers();
     _addListeners();
   }

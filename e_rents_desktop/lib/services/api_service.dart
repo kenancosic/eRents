@@ -234,21 +234,20 @@ class ApiService {
   String makeAbsoluteUrl(String url) {
     if (url.isEmpty) return url;
 
-    // If already absolute, return as-is
+    // If already absolute or an asset, return as-is
     if (isNetworkUrl(url) || isAssetPath(url)) {
       return url;
     }
 
-    // If it's a relative API URL (starts with /), make it absolute
-    if (url.startsWith('/')) {
-      final absoluteUrl = '$baseUrl$url';
-      debugPrint(
-        'ApiService: Converting relative URL "$url" to absolute: "$absoluteUrl"',
-      );
-      return absoluteUrl;
-    }
+    // It's a relative API path, so construct the full URL
+    // Use Uri.parse().resolve() to correctly handle slashes.
+    final absoluteUri = Uri.parse(baseUrl).resolve(url);
+    final absoluteUrl = absoluteUri.toString();
 
-    return url;
+    debugPrint(
+      'ApiService: Converting relative URL "$url" to absolute: "$absoluteUrl"',
+    );
+    return absoluteUrl;
   }
 
   /// Creates the appropriate image widget based on the URL type

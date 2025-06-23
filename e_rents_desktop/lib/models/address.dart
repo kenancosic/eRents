@@ -19,6 +19,19 @@ class Address {
     this.longitude,
   });
 
+  factory Address.empty() {
+    return Address(
+      streetLine1: '',
+      streetLine2: '',
+      city: '',
+      state: '',
+      country: '',
+      postalCode: '',
+      latitude: 0.0,
+      longitude: 0.0,
+    );
+  }
+
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
       streetLine1: json['streetLine1'] as String?,

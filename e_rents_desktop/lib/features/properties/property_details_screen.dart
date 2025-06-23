@@ -136,23 +136,32 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             const SizedBox(height: 24),
             const SectionHeader(title: 'Financial Summary'),
             const SizedBox(height: 16),
-            PropertyFinancialSummary(stats: statsProvider.stats),
+            if (statsProvider.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              PropertyFinancialSummary(stats: statsProvider.stats),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Current Tenant'),
             const SizedBox(height: 16),
-            TenantInfo(
-              property: property,
-              currentTenant: statsProvider.currentTenant,
-            ),
+            if (statsProvider.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              TenantInfo(
+                property: property,
+                currentTenant: statsProvider.currentTenant,
+              ),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Upcoming Bookings'),
             const SizedBox(height: 16),
-            BookingList(
-              title: '',
-              bookings: statsProvider.upcomingBookings,
-              isEmpty: statsProvider.upcomingBookings.isEmpty,
-              emptyMessage: 'No upcoming bookings.',
-            ),
+            if (statsProvider.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else
+              BookingList(
+                title: '',
+                bookings: statsProvider.upcomingBookings,
+                isEmpty: statsProvider.upcomingBookings.isEmpty,
+                emptyMessage: 'No upcoming bookings.',
+              ),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Recent Reviews'),
             const SizedBox(height: 16),
