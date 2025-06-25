@@ -11,8 +11,14 @@ using Microsoft.Extensions.Logging;
 
 namespace eRents.Application.Services.RentalRequestService
 {
+    /// <summary>
+    /// ✅ ENHANCED: Clean RentalRequest service with proper SoC
+    /// Focuses only on rental request business logic - no cross-entity operations
+    /// Delegates tenant creation and property updates to appropriate services
+    /// </summary>
     public class RentalRequestService : BaseCRUDService<RentalRequestResponse, RentalRequest, RentalRequestSearchObject, RentalRequestInsertRequest, RentalRequestUpdateRequest>, IRentalRequestService
     {
+        #region Dependencies
         private readonly IRentalRequestRepository _rentalRequestRepository;
         private readonly IPropertyRepository _propertyRepository;
         private readonly ITenantRepository _tenantRepository;
@@ -31,15 +37,15 @@ namespace eRents.Application.Services.RentalRequestService
             _propertyRepository = propertyRepository;
             _tenantRepository = tenantRepository;
         }
+        #endregion
 
-        // ✅ User methods (tenants/users requesting rentals)
+        #region User Methods (Tenant/User Requesting Rentals)
+
         public async Task<RentalRequestResponse> RequestAnnualRentalAsync(RentalRequestInsertRequest request)
         {
-            var currentUserId = _currentUserService!.UserId;
-            if (string.IsNullOrEmpty(currentUserId))
-                throw new UnauthorizedAccessException("User not authenticated");
+            var currentUserId = GetCurrentUserIdInt();
 
-            // Validate request
+            // ✅ ENHANCED: Validate business rules before request creation
             await ValidateRequestBusinessRulesAsync(request);
 
             // Use the enhanced base method with Unit of Work
@@ -48,35 +54,30 @@ namespace eRents.Application.Services.RentalRequestService
 
         public async Task<List<RentalRequestResponse>> GetMyRequestsAsync()
         {
-            var currentUserId = _currentUserService!.UserId;
-            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                throw new UnauthorizedAccessException("User not authenticated");
-
-            var requests = await _rentalRequestRepository.GetRequestsByUserAsync(userIdInt);
+            var currentUserId = GetCurrentUserIdInt();
+            var requests = await _rentalRequestRepository.GetRequestsByUserAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
         public async Task<bool> CanRequestPropertyAsync(int propertyId)
         {
-            // Basic availability check - property exists and is monthly rental type
-            var property = await _propertyRepository.GetByIdAsync(propertyId);
-            return property != null && property.RentingType?.TypeName == "Monthly";
+            // ✅ CONSOLIDATED: Use repository method that checks all conditions
+            var currentUserId = GetCurrentUserIdInt();
+            return await _rentalRequestRepository.CanUserRequestPropertyAsync(currentUserId, propertyId);
         }
 
         public async Task<RentalRequestResponse> WithdrawRequestAsync(int requestId)
         {
-            // ✅ ENHANCED: Use Unit of Work transaction management
             return await _unitOfWork!.ExecuteInTransactionAsync(async () =>
             {
-                var currentUserId = _currentUserService!.UserId;
-                if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                    throw new UnauthorizedAccessException("User not authenticated");
+                var currentUserId = GetCurrentUserIdInt();
 
                 var request = await _rentalRequestRepository.GetByIdAsync(requestId);
                 if (request == null)
                     throw new KeyNotFoundException("Rental request not found");
 
-                if (request.UserId != userIdInt)
+                // ✅ AUTHORIZATION: Check ownership
+                if (request.UserId != currentUserId)
                     throw new UnauthorizedAccessException("You can only withdraw your own requests");
 
                 if (request.Status != "Pending")
@@ -90,30 +91,26 @@ namespace eRents.Application.Services.RentalRequestService
             });
         }
 
-        // ✅ Landlord methods (property owners managing requests)
+        #endregion
+
+        #region Landlord Methods (Property Owner Managing Requests)
+
         public async Task<List<RentalRequestResponse>> GetPendingRequestsAsync()
         {
-            var currentUserId = _currentUserService!.UserId;
-            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                throw new UnauthorizedAccessException("User not authenticated");
-
-            var requests = await _rentalRequestRepository.GetPendingRequestsForLandlordAsync(userIdInt);
+            var currentUserId = GetCurrentUserIdInt();
+            var requests = await _rentalRequestRepository.GetPendingRequestsForLandlordAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
         public async Task<List<RentalRequestResponse>> GetAllRequestsForMyPropertiesAsync()
         {
-            var currentUserId = _currentUserService!.UserId;
-            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                throw new UnauthorizedAccessException("User not authenticated");
-
-            var requests = await _rentalRequestRepository.GetRequestsByLandlordAsync(userIdInt);
+            var currentUserId = GetCurrentUserIdInt();
+            var requests = await _rentalRequestRepository.GetRequestsByLandlordAsync(currentUserId);
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
         public async Task<RentalRequestResponse> ApproveRequestAsync(int requestId, string? response = null)
         {
-            // ✅ ENHANCED: Use Unit of Work transaction management
             return await _unitOfWork!.ExecuteInTransactionAsync(async () =>
             {
                 var updateRequest = new RentalRequestUpdateRequest
@@ -124,7 +121,10 @@ namespace eRents.Application.Services.RentalRequestService
 
                 var result = await UpdateAsync(requestId, updateRequest);
 
-                // Create tenant from approved request
+                // ❌ SoC VIOLATION TODO: This should be handled by external orchestration
+                // Currently kept for backward compatibility but should be moved to:
+                // - RentalCoordinatorService.ApproveRequestAsync() 
+                // - Or a dedicated TenantCreationService
                 await CreateTenantFromApprovedRequestAsync(requestId);
 
                 return result;
@@ -144,20 +144,17 @@ namespace eRents.Application.Services.RentalRequestService
 
         public async Task<RentalRequestResponse> RespondToRequestAsync(int requestId, RentalRequestUpdateRequest response)
         {
-            // ✅ ENHANCED: Use Unit of Work transaction management
             return await _unitOfWork!.ExecuteInTransactionAsync(async () =>
             {
-                var currentUserId = _currentUserService!.UserId;
-                if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                    throw new UnauthorizedAccessException("User not authenticated");
+                var currentUserId = GetCurrentUserIdInt();
 
                 var request = await _rentalRequestRepository.GetByIdAsync(requestId);
                 if (request == null)
                     throw new KeyNotFoundException("Rental request not found");
 
-                // Verify landlord owns the property
+                // ✅ AUTHORIZATION: Verify landlord owns the property
                 var property = await _propertyRepository.GetByIdAsync(request.PropertyId);
-                if (property == null || property.OwnerId != userIdInt)
+                if (property == null || property.OwnerId != currentUserId)
                     throw new UnauthorizedAccessException("You can only respond to requests for your properties");
 
                 var result = await UpdateAsync(requestId, response);
@@ -167,7 +164,10 @@ namespace eRents.Application.Services.RentalRequestService
             });
         }
 
-        // ✅ Property-specific methods
+        #endregion
+
+        #region Property-Specific Methods
+
         public async Task<List<RentalRequestResponse>> GetRequestsForPropertyAsync(int propertyId)
         {
             var requests = await _rentalRequestRepository.GetRequestsByPropertyAsync(propertyId);
@@ -185,10 +185,13 @@ namespace eRents.Application.Services.RentalRequestService
             return request != null ? _mapper.Map<RentalRequestResponse>(request) : null;
         }
 
-        // ✅ Business logic methods
+        #endregion
+
+        #region Business Logic Methods
+
         public async Task<bool> ValidateRequestBusinessRulesAsync(RentalRequestInsertRequest request)
         {
-            // Check if property exists and is available for monthly rentals
+            // ✅ BUSINESS LOGIC: Validate property for rental request
             var property = await _propertyRepository.GetByIdAsync(request.PropertyId);
             if (property == null)
                 throw new ArgumentException("Property not found");
@@ -199,23 +202,39 @@ namespace eRents.Application.Services.RentalRequestService
             if (property.Status != "Available")
                 throw new InvalidOperationException("Property is not currently available");
 
-            // Check lease duration
+            // ✅ BUSINESS LOGIC: Validate lease duration constraints
             if (request.LeaseDurationMonths < 6)
                 throw new InvalidOperationException("Minimum lease duration is 6 months");
 
             return true;
         }
 
+        /// <summary>
+        /// ❌ CRITICAL SoC VIOLATION: Cross-entity operation creating Tenant and updating Property
+        /// THIS METHOD VIOLATES SEPARATION OF CONCERNS AND SHOULD BE REMOVED
+        /// 
+        /// TODO - URGENT: Move this logic to one of:
+        /// 1. TenantService.CreateFromApprovedRentalRequest() - if it's primarily tenant creation
+        /// 2. RentalCoordinatorService.CreateTenantFromApprovedRequestAsync() - for proper orchestration
+        /// 3. Dedicated TenantCreationService - if complex coordination is needed
+        /// 
+        /// RATIONALE: RentalRequestService should NOT:
+        /// - Create Tenant entities (Tenant domain responsibility)
+        /// - Update Property status (Property domain responsibility)
+        /// - Handle cross-entity transactions (Coordination service responsibility)
+        /// 
+        /// Currently kept for backward compatibility only - REMOVE in next major refactor
+        /// </summary>
+        [Obsolete("This method violates SoC by creating Tenant entities and updating Property status. Use RentalCoordinatorService.CreateTenantFromApprovedRequestAsync() instead.")]
         public async Task<bool> CreateTenantFromApprovedRequestAsync(int requestId)
         {
-            // ✅ ENHANCED: Use Unit of Work transaction management
             return await _unitOfWork!.ExecuteInTransactionAsync(async () =>
             {
                 var request = await _rentalRequestRepository.GetByIdAsync(requestId);
                 if (request == null || request.Status != "Approved")
                     return false;
 
-                // Create tenant record
+                // ❌ SoC VIOLATION: Creating entities from other domains
                 var tenant = new Tenant
                 {
                     UserId = request.UserId,
@@ -226,7 +245,7 @@ namespace eRents.Application.Services.RentalRequestService
 
                 await _tenantRepository.AddAsync(tenant);
 
-                // Update property status to rented
+                // ❌ SoC VIOLATION: Updating entities from other domains
                 var property = await _propertyRepository.GetByIdAsync(request.PropertyId);
                 if (property != null)
                 {
@@ -249,19 +268,38 @@ namespace eRents.Application.Services.RentalRequestService
             return _mapper.Map<List<RentalRequestResponse>>(requests);
         }
 
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// ✅ CONSOLIDATED: Single method for user authentication to eliminate redundancy
+        /// Replaces 6+ duplicate authentication patterns throughout the service
+        /// </summary>
+        private int GetCurrentUserIdInt()
+        {
+            var currentUserId = _currentUserService!.UserId;
+            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
+                throw new UnauthorizedAccessException("User not authenticated");
+            
+            return userIdInt;
+        }
+
+        #endregion
+
+        #region Base Class Overrides
+
         protected override async Task BeforeInsertAsync(RentalRequestInsertRequest insert, RentalRequest entity)
         {
             entity.RequestDate = DateTime.UtcNow;
             entity.Status = "Pending";
             
-            // Set current user as requester
-            var currentUserId = _currentUserService!.UserId;
-            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out var userIdInt))
-                throw new UnauthorizedAccessException("User not authenticated");
-            
-            entity.UserId = userIdInt;
+            // ✅ ENHANCED: Use consolidated authentication method
+            entity.UserId = GetCurrentUserIdInt();
             
             await base.BeforeInsertAsync(insert, entity);
         }
+
+        #endregion
     }
 } 

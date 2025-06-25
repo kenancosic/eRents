@@ -8,11 +8,13 @@ namespace eRents.Domain.Repositories
 {
     public interface IMaintenanceRepository : IBaseRepository<MaintenanceIssue>
     {
-        Task<int> GetOpenIssuesCountAsync(IEnumerable<int> propertyIds);
-        Task<int> GetPendingIssuesCountAsync(IEnumerable<int> propertyIds);
-        Task<int> GetHighPriorityIssuesCountAsync(IEnumerable<int> propertyIds);
-        Task<int> GetTenantComplaintsCountAsync(IEnumerable<int> propertyIds);
+        // ✅ PROPER REPOSITORY METHODS: Entity-specific operations only
+        Task<int?> GetStatusIdByNameAsync(string statusName);
         Task<IEnumerable<MaintenanceIssue>> GetAllAsync(MaintenanceIssueSearchObject searchObject);
-        // Add more as needed for statistics
+        
+        // ✅ CONSOLIDATED: Clean counting methods for StatisticsService
+        Task<int> CountByStatusAsync(IEnumerable<int> propertyIds, string statusName);
+        Task<int> CountByPriorityAsync(IEnumerable<int> propertyIds, params string[] priorityNames);
+        Task<int> CountTenantComplaintsAsync(IEnumerable<int> propertyIds);
     }
 } 

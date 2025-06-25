@@ -25,9 +25,21 @@ namespace eRents.Application.Services.LeaseCalculationService
         Task<List<Tenant>> GetExpiringTenants(int daysAhead);
 
         /// <summary>
+        /// Get tenants with leases expiring within the specified number of days (with navigation properties for notifications)
+        /// Eliminates double-query pattern in ContractExpirationService
+        /// </summary>
+        Task<List<Tenant>> GetExpiringTenantsWithIncludes(int daysAhead);
+
+        /// <summary>
         /// Get tenants with expired leases
         /// </summary>
         Task<List<Tenant>> GetExpiredTenants();
+
+        /// <summary>
+        /// Get tenants with expired leases (with navigation properties for processing)
+        /// Eliminates double-query pattern in ContractExpirationService
+        /// </summary>
+        Task<List<Tenant>> GetExpiredTenantsWithIncludes();
 
         /// <summary>
         /// Get all active tenants with their calculated lease end dates

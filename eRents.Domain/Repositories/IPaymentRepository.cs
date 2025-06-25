@@ -7,7 +7,6 @@ namespace eRents.Domain.Repositories
     {
         Task<IEnumerable<Payment>> GetPaymentsByTenantIdAsync(int tenantId);
         Task<IEnumerable<Payment>> GetPaymentsByPropertyIdAsync(int propertyId);
-        Task<Payment?> GetPaymentByReferenceAsync(string paymentReference);
         Task<Payment?> GetByPaymentReferenceAsync(string paymentReference);
         Task<decimal> GetTotalPaymentsByTenantAsync(int tenantId);
         Task<decimal> GetTotalPaymentsByPropertyAsync(int propertyId);

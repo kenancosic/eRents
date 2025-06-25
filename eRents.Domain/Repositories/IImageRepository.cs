@@ -43,8 +43,5 @@ namespace eRents.Domain.Repositories
 		// Optimization methods
 		Task<IEnumerable<Image>> GetImagesWithMetadataOnlyAsync(IEnumerable<int> imageIds); // Excludes binary data for performance
 		Task<IEnumerable<Image>> GetThumbnailOnlyImagesAsync(IEnumerable<int> imageIds); // Returns only thumbnail data
-		
-		// Direct save method for immediate operations
-		Task SaveChangesDirectAsync(); // Save changes directly to database when DB-generated ID is needed immediately
 	}
 }

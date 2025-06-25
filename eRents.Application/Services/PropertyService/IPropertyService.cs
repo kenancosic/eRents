@@ -15,7 +15,7 @@ namespace eRents.Application.Services.PropertyService
 
 		// Additional custom methods
 		Task<bool> SavePropertyAsync(int propertyId, int userId);
-		Task<List<PropertyResponse>> RecommendPropertiesAsync(int userId);
+		// ❌ MOVED TO RECOMMENDATION SERVICE: ML logic violates SoC
 
 		// Methods from a potential ICRUDService (example)
 		// Task<PropertyResponse> GetByIdAsync(string id);
@@ -23,7 +23,7 @@ namespace eRents.Application.Services.PropertyService
 		// Task<PropertyResponse> InsertAsync(PropertyInsertRequest insert);
 		// Task<PropertyResponse> UpdateAsync(string id, PropertyUpdateRequest update);
 		// Task<PropertyResponse> DeleteAsync(string id);
-		Task<ImageResponse> UploadImageAsync(int propertyId, ImageUploadRequest request);
+		// ❌ REMOVED UploadImageAsync - image operations are handled by ImageService
 		Task UpdateStatusAsync(int propertyId, PropertyStatusEnum statusEnum);
 		Task<PropertyAvailabilityResponse> GetAvailabilityAsync(int propertyId, DateTime? start, DateTime? end);
 
@@ -35,7 +35,7 @@ namespace eRents.Application.Services.PropertyService
 		Task<bool> HasActiveAnnualTenantAsync(int propertyId);
 
 		// ✅ Phase 3: Property Management Methods (moved from SimpleRentalService)
-		Task<bool> UpdatePropertyAvailabilityAsync(int propertyId, bool isAvailable);
+		// ❌ REMOVED UpdatePropertyAvailabilityAsync - use UpdateStatusAsync instead
 		Task<string> GetPropertyRentalTypeAsync(int propertyId);
 		Task<List<PropertyResponse>> GetAvailablePropertiesForRentalTypeAsync(string rentalType);
 	}

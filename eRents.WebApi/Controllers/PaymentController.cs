@@ -135,7 +135,7 @@ namespace eRents.WebApi.Controllers
 					});
 				}
 
-				var payment = await _paymentService.CreatePaymentAsync(amount, "USD", 
+				var payment = await _paymentService.CreatePaymentAsync(amount, "BAM", 
 					"https://yourdomain.com/return", "https://yourdomain.com/cancel");
 				
 				var paymentId = payment.PaymentId.ToString();

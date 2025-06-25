@@ -6,6 +6,10 @@ using eRents.Application.Services.MessagingService;
 using eRents.Application.Services.NotificationService;
 using eRents.Application.Services.PaymentService;
 using eRents.Application.Services.PropertyService;
+using eRents.Application.Services.PropertyService.PropertyOfferService;
+using eRents.Application.Services.UserService.AuthorizationService;
+using eRents.Application.Services.PropertyService.UserSavedPropertiesService;
+using eRents.Application.Services.RecommendationService;
 using eRents.Application.Services.RentalRequestService;
 using eRents.Application.Services.ReportService;
 using eRents.Application.Services.ReviewService;
@@ -77,6 +81,7 @@ namespace eRents.WebApi.Extensions
             // Repository interfaces for Phase 4 entities
             services.AddTransient<IPaymentRepository, PaymentRepository>();
             services.AddTransient<IAmenityRepository, AmenityRepository>();
+            services.AddTransient<IPropertyAvailabilityRepository, PropertyAvailabilityRepository>();
             
             // ✅ NEW: RentalRequest repository for dual rental system
             services.AddTransient<IRentalRequestRepository, RentalRequestRepository>();
@@ -103,6 +108,7 @@ namespace eRents.WebApi.Extensions
             
             // Specialized services
             services.AddTransient<IImageService, ImageService>();
+            services.AddTransient<IRecommendationService, RecommendationService>();
             services.AddTransient<IUserLookupService, UserLookupService>();
             services.AddTransient<IMessageHandlerService, MessageHandlerService>();
             services.AddTransient<IStatisticsService, StatisticsService>();
@@ -128,6 +134,11 @@ namespace eRents.WebApi.Extensions
             // ✅ Phase 2: Centralized availability and lease calculation services
             services.AddTransient<IAvailabilityService, AvailabilityService>();
             services.AddTransient<ILeaseCalculationService, LeaseCalculationService>();
+            
+            // ✅ NEW: SoC Refactoring - Extracted services for proper separation of concerns
+            services.AddTransient<IPropertyOfferService, PropertyOfferService>();
+            services.AddTransient<IAuthorizationService, AuthorizationService>();
+            services.AddTransient<IUserSavedPropertiesService, UserSavedPropertiesService>();
             
             // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
             

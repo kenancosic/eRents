@@ -13,6 +13,7 @@ namespace eRents.Application.Services.AvailabilityService
     /// Centralized service for all property availability checking logic
     /// Consolidates scattered logic from BookingRepository, PropertyRepository, and SimpleRentalService
     /// Part of Phase 2 refactoring to eliminate duplicated availability logic
+    /// ✅ REFACTORED: Removed direct EF context access, uses proper repository pattern
     /// </summary>
     public class AvailabilityService : IAvailabilityService
     {
@@ -21,8 +22,8 @@ namespace eRents.Application.Services.AvailabilityService
         private readonly IPropertyRepository _propertyRepository;
         private readonly ITenantRepository _tenantRepository;
         private readonly IRentalRequestRepository _rentalRequestRepository;
+        private readonly IPropertyAvailabilityRepository _propertyAvailabilityRepository;
         private readonly ILeaseCalculationService _leaseCalculationService;
-        private readonly ERentsContext _context;
         private readonly ILogger<AvailabilityService> _logger;
 
         public AvailabilityService(
@@ -30,16 +31,16 @@ namespace eRents.Application.Services.AvailabilityService
             IPropertyRepository propertyRepository,
             ITenantRepository tenantRepository,
             IRentalRequestRepository rentalRequestRepository,
+            IPropertyAvailabilityRepository propertyAvailabilityRepository,
             ILeaseCalculationService leaseCalculationService,
-            ERentsContext context,
             ILogger<AvailabilityService> logger)
         {
             _bookingRepository = bookingRepository;
             _propertyRepository = propertyRepository;
             _tenantRepository = tenantRepository;
             _rentalRequestRepository = rentalRequestRepository;
+            _propertyAvailabilityRepository = propertyAvailabilityRepository;
             _leaseCalculationService = leaseCalculationService;
-            _context = context;
             _logger = logger;
         }
         #endregion
@@ -200,6 +201,7 @@ namespace eRents.Application.Services.AvailabilityService
 
         /// <summary>
         /// Get detailed information about all conflicts for the specified period
+        /// ✅ REFACTORED: Now uses repositories instead of direct EF context queries
         /// </summary>
         public async Task<List<ConflictInfo>> GetConflicts(int propertyId, DateOnly startDate, DateOnly endDate)
         {
@@ -207,7 +209,7 @@ namespace eRents.Application.Services.AvailabilityService
 
             try
             {
-                // 1. Check for booking conflicts
+                // 1. Check for booking conflicts using repository
                 var bookingConflicts = await _bookingRepository.GetQueryable()
                     .Include(b => b.BookingStatus)
                     .Where(b => b.PropertyId == propertyId &&
@@ -226,7 +228,7 @@ namespace eRents.Application.Services.AvailabilityService
 
                 conflicts.AddRange(bookingConflicts);
 
-                // 2. Check for active lease conflicts
+                // 2. Check for active lease conflicts using LeaseCalculationService
                 var activeTenantsWithLeases = await _leaseCalculationService.GetActiveTenantsWithLeaseInfo();
                 var leaseConflicts = activeTenantsWithLeases
                     .Where(tli => tli.Tenant.PropertyId == propertyId && 
@@ -245,23 +247,18 @@ namespace eRents.Application.Services.AvailabilityService
 
                 conflicts.AddRange(leaseConflicts);
 
-                // 3. Check for blocked periods
-                var blockedPeriods = await _context.PropertyAvailabilities
-                    .Where(pa => pa.PropertyId == propertyId &&
-                               !pa.IsAvailable &&
-                               pa.StartDate < endDate &&
-                               pa.EndDate > startDate)
-                    .Select(pa => new ConflictInfo
-                    {
-                        ConflictType = "Blocked",
-                        ConflictStartDate = pa.StartDate,
-                        ConflictEndDate = pa.EndDate,
-                        Description = pa.Reason ?? "Property blocked",
-                        ConflictId = pa.AvailabilityId
-                    })
-                    .ToListAsync();
+                // 3. Check for blocked periods using PropertyAvailabilityRepository
+                var blockedPeriods = await _propertyAvailabilityRepository.GetBlockedPeriodsAsync(propertyId, startDate, endDate);
+                var blockedConflicts = blockedPeriods.Select(pa => new ConflictInfo
+                {
+                    ConflictType = "Blocked",
+                    ConflictStartDate = pa.StartDate,
+                    ConflictEndDate = pa.EndDate,
+                    Description = pa.Reason ?? "Property blocked",
+                    ConflictId = pa.AvailabilityId
+                }).ToList();
 
-                conflicts.AddRange(blockedPeriods);
+                conflicts.AddRange(blockedConflicts);
 
                 return conflicts.OrderBy(c => c.ConflictStartDate).ToList();
             }
@@ -337,17 +334,13 @@ namespace eRents.Application.Services.AvailabilityService
 
         /// <summary>
         /// Check for blocked periods in PropertyAvailability table
-        /// Consolidates PropertyRepository availability checking logic
+        /// ✅ REFACTORED: Now uses PropertyAvailabilityRepository instead of direct context access
         /// </summary>
         public async Task<bool> HasBlockedPeriods(int propertyId, DateOnly startDate, DateOnly endDate)
         {
             try
             {
-                return await _context.PropertyAvailabilities
-                    .AnyAsync(pa => pa.PropertyId == propertyId &&
-                                   !pa.IsAvailable &&
-                                   pa.StartDate < endDate &&
-                                   pa.EndDate > startDate);
+                return await _propertyAvailabilityRepository.HasBlockedPeriodsAsync(propertyId, startDate, endDate);
             }
             catch (Exception ex)
             {

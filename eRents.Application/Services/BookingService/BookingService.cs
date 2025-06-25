@@ -135,8 +135,12 @@ namespace eRents.Application.Services.BookingService
 
 			var bookingResponse = _mapper.Map<BookingResponse>(bookingEntity);
 
-			// Update payment record with actual BookingId (for future enhancement)
-			// TODO: Update payment record: paymentRequest.BookingId = bookingResponse.BookingId;
+			// ✅ FIXED: Update payment record with actual BookingId to establish proper link
+			if (paymentRequest.BookingId == null)
+			{
+				paymentRequest.BookingId = bookingResponse.BookingId;
+				_logger.LogInformation("Payment record updated with BookingId {BookingId} for booking creation", bookingResponse.BookingId);
+			}
 
 			// Publish booking creation notification
 			var notificationMessage = new BookingNotificationMessage

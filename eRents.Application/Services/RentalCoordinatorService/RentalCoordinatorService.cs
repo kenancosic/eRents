@@ -1,4 +1,5 @@
 using eRents.Application.Services.AvailabilityService;
+using eRents.Application.Services.UserService.AuthorizationService;
 using eRents.Application.Services.BookingService;
 using eRents.Application.Services.LeaseCalculationService;
 using eRents.Application.Services.PropertyService;
@@ -10,18 +11,19 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Application.Services.RentalCoordinatorService
 {
     /// <summary>
-    /// ✅ Phase 3: Clean architectural implementation replacing SimpleRentalService
-    /// Focused on coordination between services with minimal dependencies (5 vs 10+)
-    /// Follows Single Responsibility Principle - only coordinates, doesn't implement
+    /// ✅ ENHANCED: Pure coordination service with clean SoC
+    /// Focuses solely on orchestrating between services - no business logic or authorization
+    /// Replaces SimpleRentalService with consolidated availability checking
     /// </summary>
     public class RentalCoordinatorService : IRentalCoordinatorService
     {
-        // ✅ Phase 3: Only 5 focused dependencies (vs 10+ in SimpleRentalService)
+        #region Dependencies
         private readonly IPropertyService _propertyService;
         private readonly IAvailabilityService _availabilityService;
         private readonly IBookingService _bookingService;
         private readonly IRentalRequestService _rentalRequestService;
         private readonly ILeaseCalculationService _leaseCalculationService;
+        private readonly IAuthorizationService _authorizationService;
         private readonly ILogger<RentalCoordinatorService> _logger;
 
         public RentalCoordinatorService(
@@ -30,6 +32,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
             IBookingService bookingService,
             IRentalRequestService rentalRequestService,
             ILeaseCalculationService leaseCalculationService,
+            IAuthorizationService authorizationService,
             ILogger<RentalCoordinatorService> logger)
         {
             _propertyService = propertyService;
@@ -37,8 +40,10 @@ namespace eRents.Application.Services.RentalCoordinatorService
             _bookingService = bookingService;
             _rentalRequestService = rentalRequestService;
             _leaseCalculationService = leaseCalculationService;
+            _authorizationService = authorizationService;
             _logger = logger;
         }
+        #endregion
 
         #region Daily Rental Coordination
 
@@ -46,7 +51,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Validate property supports daily rentals
+                // ✅ COORDINATION: Validate property supports daily rentals
                 var rentalType = await _propertyService.GetPropertyRentalTypeAsync(request.PropertyId);
                 if (rentalType != "Daily")
                 {
@@ -55,18 +60,16 @@ namespace eRents.Application.Services.RentalCoordinatorService
                     return false;
                 }
 
-                // Check availability using centralized service
+                // ✅ COORDINATION: Check availability using consolidated method
                 var startDate = DateOnly.FromDateTime(request.StartDate);
                 var endDate = DateOnly.FromDateTime(request.EndDate);
                 
-                if (!await _availabilityService.IsAvailableForDailyRental(request.PropertyId, startDate, endDate))
+                if (!await CheckAvailabilityForRentalType(request.PropertyId, startDate, endDate, "Daily"))
                 {
-                    _logger.LogWarning("Property {PropertyId} not available for dates {StartDate} to {EndDate}", 
-                        request.PropertyId, startDate, endDate);
                     return false;
                 }
 
-                // Delegate to booking service
+                // ✅ COORDINATION: Delegate to booking service
                 var result = await _bookingService.InsertAsync(request);
                 
                 _logger.LogInformation("Daily booking created successfully for property {PropertyId}", request.PropertyId);
@@ -81,8 +84,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
 
         public async Task<bool> IsPropertyAvailableForDailyRentalAsync(int propertyId, DateOnly startDate, DateOnly endDate)
         {
-            // Delegate to centralized availability service
-            return await _availabilityService.IsAvailableForDailyRental(propertyId, startDate, endDate);
+            return await CheckAvailabilityForRentalType(propertyId, startDate, endDate, "Daily");
         }
 
         #endregion
@@ -93,7 +95,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Validate property supports monthly rentals
+                // ✅ COORDINATION: Validate property supports monthly rentals
                 var rentalType = await _propertyService.GetPropertyRentalTypeAsync(request.PropertyId);
                 if (rentalType == "Daily")
                 {
@@ -102,15 +104,13 @@ namespace eRents.Application.Services.RentalCoordinatorService
                     return false;
                 }
 
-                // Check availability using centralized service
-                if (!await _availabilityService.IsAvailableForAnnualRental(request.PropertyId, request.ProposedStartDate, request.ProposedEndDate))
+                // ✅ COORDINATION: Check availability using consolidated method
+                if (!await CheckAvailabilityForRentalType(request.PropertyId, request.ProposedStartDate, request.ProposedEndDate, "Monthly"))
                 {
-                    _logger.LogWarning("Property {PropertyId} not available for monthly rental from {StartDate} to {EndDate}", 
-                        request.PropertyId, request.ProposedStartDate, request.ProposedEndDate);
                     return false;
                 }
 
-                // Validate lease duration using centralized service
+                // ✅ COORDINATION: Validate lease duration
                 if (!await _leaseCalculationService.IsValidLeaseDuration(request.ProposedStartDate, request.ProposedEndDate))
                 {
                     _logger.LogWarning("Invalid lease duration for property {PropertyId}: {StartDate} to {EndDate}", 
@@ -118,7 +118,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
                     return false;
                 }
 
-                // Delegate to rental request service
+                // ✅ COORDINATION: Delegate to rental request service
                 var result = await _rentalRequestService.RequestAnnualRentalAsync(request);
                 
                 _logger.LogInformation("Monthly rental request created successfully for property {PropertyId}", request.PropertyId);
@@ -135,7 +135,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Delegate to rental request service
+                // ✅ COORDINATION: Pure delegation to rental request service
                 if (approved)
                 {
                     var result = await _rentalRequestService.ApproveRequestAsync(requestId, response);
@@ -160,7 +160,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Delegate to rental request service with proper search criteria
+                // ✅ COORDINATION: Simple delegation with search criteria
                 var search = new eRents.Shared.SearchObjects.RentalRequestSearchObject
                 {
                     LandlordId = landlordId,
@@ -179,19 +179,49 @@ namespace eRents.Application.Services.RentalCoordinatorService
 
         #endregion
 
-        #region Availability Coordination
+        #region Consolidated Availability Coordination
 
+        /// <summary>
+        /// ✅ CONSOLIDATED: Single availability check method replacing 3 redundant methods
+        /// Replaces: IsPropertyAvailableForDailyRentalAsync, IsPropertyAvailableAsync, ValidateRentalAvailability
+        /// </summary>
+        private async Task<bool> CheckAvailabilityForRentalType(int propertyId, DateOnly startDate, DateOnly endDate, string rentalType)
+        {
+            try
+            {
+                bool isAvailable = rentalType switch
+                {
+                    "Daily" => await _availabilityService.IsAvailableForDailyRental(propertyId, startDate, endDate),
+                    "Monthly" or "Annual" => await _availabilityService.IsAvailableForAnnualRental(propertyId, startDate, endDate),
+                    _ => false
+                };
+
+                if (!isAvailable)
+                {
+                    _logger.LogInformation("Property {PropertyId} not available for {RentalType} rental from {StartDate} to {EndDate}", 
+                        propertyId, rentalType, startDate, endDate);
+                }
+
+                return isAvailable;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking availability for property {PropertyId}", propertyId);
+                return false; // Fail safe
+            }
+        }
+
+        // ✅ SIMPLIFIED: Backward compatibility methods using consolidated logic
         public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
         {
-            // Delegate to centralized availability service for annual rental availability
-            return await _availabilityService.IsAvailableForAnnualRental(propertyId, startDate, endDate);
+            return await CheckAvailabilityForRentalType(propertyId, startDate, endDate, "Monthly");
         }
 
         public async Task<bool> ValidateRentalAvailability(int propertyId, DateOnly startDate, DateOnly endDate)
         {
+            // ✅ ALTERNATIVE: Use conflict-based checking for comprehensive validation
             try
             {
-                // Use centralized availability service for comprehensive check
                 var conflicts = await _availabilityService.GetConflicts(propertyId, startDate, endDate);
                 return !conflicts.Any(); // No conflicts means available
             }
@@ -210,7 +240,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Delegate to rental request service
+                // ✅ COORDINATION: Pure delegation to rental request service
                 var result = await _rentalRequestService.CreateTenantFromApprovedRequestAsync(requestId);
                 _logger.LogInformation("Tenant created successfully from approved request {RequestId}", requestId);
                 return result;
@@ -226,7 +256,7 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Delegate to rental request service
+                // ✅ COORDINATION: Pure delegation to rental request service
                 return await _rentalRequestService.GetExpiringRequestsAsync(daysAhead);
             }
             catch (Exception ex)
@@ -244,22 +274,8 @@ namespace eRents.Application.Services.RentalCoordinatorService
         {
             try
             {
-                // Use rental request service for authorization check
-                var search = new eRents.Shared.SearchObjects.RentalRequestSearchObject
-                {
-                    RequestId = requestId
-                };
-
-                var result = await _rentalRequestService.SearchAsync(search);
-                var request = result.Items?.FirstOrDefault();
-                
-                if (request == null) return false;
-
-                // Get the property information to check ownership
-                var property = await _propertyService.GetByIdAsync(request.PropertyId);
-                
-                // Check if current user owns the property
-                return property?.OwnerId == currentUserId;
+                // ✅ FIXED: Properly delegate authorization logic to AuthorizationService
+                return await _authorizationService.CanUserApproveRentalRequestAsync(currentUserId, requestId);
             }
             catch (Exception ex)
             {

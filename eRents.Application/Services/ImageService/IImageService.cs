@@ -19,5 +19,11 @@ namespace eRents.Application.Services.ImageService
 		// Utility methods
 		Task<bool> UserCanAccessImageAsync(int imageId, string userId, string userRole);
 		Task<bool> DeleteImagesByPropertyIdAsync(int propertyId);
+		Task ProcessPropertyImageUpdateAsync(
+			int propertyId, 
+			List<int>? existingImageIds, 
+			List<Microsoft.AspNetCore.Http.IFormFile>? newImages, 
+			List<string>? imageFileNames, 
+			List<bool>? imageIsCoverFlags);
 	}
 }

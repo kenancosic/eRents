@@ -92,48 +92,21 @@ namespace eRents.Domain.Repositories
 				}
 			}
 
+			// ✅ SIMPLIFIED: Basic availability filtering only - complex date range logic moved to AvailabilityService
 			if (propertySearch.AvailableFrom.HasValue && propertySearch.AvailableTo.HasValue)
 			{
 				var fromDate = DateOnly.FromDateTime(propertySearch.AvailableFrom.Value);
 				var toDate = DateOnly.FromDateTime(propertySearch.AvailableTo.Value);
 
-				// Exclude properties with conflicting daily bookings
+				// Exclude properties with conflicting daily bookings (simple query)
 				query = query.Where(p => !p.Bookings.Any(b =>
 					b.BookingStatus.StatusName != "Cancelled" &&
 					b.StartDate < toDate && b.EndDate > fromDate
 				));
 
-				// Refactored to be cleaner, though it pulls active tenants into memory for the final check.
-				// This is an acceptable trade-off as a property typically has 0 or 1 active tenants.
-				var potentiallyConflictingProperties = query
-					.Where(p => p.Tenants.Any(t => t.TenantStatus == "Active" && t.LeaseStartDate.HasValue))
-					.Select(p => p.PropertyId)
-					.ToList();
-
-				if (potentiallyConflictingProperties.Any())
-				{
-					var conflictingPropertyIds = new HashSet<int>();
-					var tenants = _context.Tenants
-						.Where(t => t.PropertyId.HasValue && 
-								   potentiallyConflictingProperties.Contains(t.PropertyId.Value) && 
-								   t.TenantStatus == "Active")
-						.ToList();
-
-					foreach (var tenant in tenants)
-					{
-						var leaseEndDate = GetLeaseEndDateForTenant(tenant);
-						if (leaseEndDate.HasValue && tenant.LeaseStartDate.HasValue && 
-							tenant.LeaseStartDate.Value < toDate && leaseEndDate.Value > fromDate)
-						{
-							conflictingPropertyIds.Add(tenant.PropertyId!.Value);
-						}
-					}
-					
-					if (conflictingPropertyIds.Any())
-					{
-						query = query.Where(p => !conflictingPropertyIds.Contains(p.PropertyId));
-					}
-				}
+				// ❌ REMOVED: Complex lease calculation logic - this belongs in AvailabilityService
+				// Note: For complex availability checking with lease calculations, 
+				// use AvailabilityService.CheckPropertyAvailabilityAsync() instead
 			}
 
 			if (propertySearch.Latitude.HasValue && propertySearch.Longitude.HasValue && propertySearch.Radius.HasValue)
@@ -160,63 +133,9 @@ namespace eRents.Domain.Repositories
 			return base.ApplyCustomOrdering<TSearch>(query, sortBy, descending);
 		}
 
-		public async Task<IEnumerable<Property>> SearchPropertiesAsync(PropertySearchObject searchObject)
-		{
-			var query = _context.Properties
-											.Include(p => p.Images)  // Include related images
-											.AsNoTracking()
-											.AsQueryable();
-
-			if (!string.IsNullOrWhiteSpace(searchObject.Name))
-			{
-				query = query.Where(p => p.Name.Contains(searchObject.Name));
-			}
-
-			if (!string.IsNullOrWhiteSpace(searchObject.CityName))
-			{
-				query = query.Where(p => p.Address != null && p.Address.City != null && p.Address.City.Contains(searchObject.CityName));
-			}
-
-			if (!string.IsNullOrWhiteSpace(searchObject.StateName))
-			{
-				query = query.Where(p => p.Address != null && p.Address.State != null && p.Address.State.Contains(searchObject.StateName));
-			}
-
-			if (!string.IsNullOrWhiteSpace(searchObject.CountryName))
-			{
-				query = query.Where(p => p.Address != null && p.Address.Country != null && p.Address.Country.Contains(searchObject.CountryName));
-			}
-
-			if (searchObject.Latitude.HasValue && searchObject.Longitude.HasValue && searchObject.Radius.HasValue)
-			{
-				decimal radiusInDegrees = searchObject.Radius.Value / 111; // Approximate conversion from km to degrees
-				query = query.Where(p =>
-						p.Address != null && p.Address.Latitude.HasValue && p.Address.Longitude.HasValue &&
-						((p.Address.Latitude.Value - searchObject.Latitude.Value) * (p.Address.Latitude.Value - searchObject.Latitude.Value) +
-						(p.Address.Longitude.Value - searchObject.Longitude.Value) * (p.Address.Longitude.Value - searchObject.Longitude.Value)) <= radiusInDegrees * radiusInDegrees);
-			}
-
-			// Add other filters as needed...
-
-			return await query.ToListAsync();
-		}
-
-
-		public async Task<IEnumerable<Amenity>> GetAmenitiesByIdsAsync(IEnumerable<int> amenityIds)
-		{
-			return await _context.Amenities
-							.AsNoTracking()
-							.Where(a => amenityIds.Contains(a.AmenityId))
-							.ToListAsync();
-		}
-
-		public async Task<IEnumerable<Amenity>> GetAllAmenitiesAsync()
-		{
-			return await _context.Amenities
-							.AsNoTracking()
-							.OrderBy(a => a.AmenityName)
-							.ToListAsync();
-		}
+		// ❌ MOVED TO AMENITY REPOSITORY: Amenity operations violate SoC
+		// - GetAmenitiesByIdsAsync -> AmenityRepository
+		// - GetAllAmenitiesAsync -> AmenityRepository  
 
 		public override async Task<Property> GetByIdAsync(int propertyId)
 		{
@@ -239,71 +158,14 @@ namespace eRents.Domain.Repositories
 							.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 		}
 
-		public async Task<decimal> GetTotalRevenueAsync(int propertyId)
-		{
-			return await _context.Bookings
-							.AsNoTracking()
-							.Where(b => b.PropertyId == propertyId)
-							.SumAsync(b => b.TotalPrice);
-		}
-
-		public async Task<int> GetNumberOfBookingsAsync(int propertyId)
-		{
-			return await _context.Bookings
-							.AsNoTracking()
-							.Where(b => b.PropertyId == propertyId)
-							.CountAsync();
-		}
-
-		public async Task<int> GetNumberOfTenantsAsync(int propertyId)
-		{
-			return await _context.Tenants
-							.AsNoTracking()
-							.Where(t => t.PropertyId == propertyId)
-							.CountAsync();
-		}
-
-		public async Task<decimal> GetAverageRatingAsync(int propertyId)
-		{
-			return await _context.Reviews
-							.AsNoTracking()
-							.Where(r => r.PropertyId == propertyId)
-							.AverageAsync(r => r.StarRating.Value);
-		}
-
-		public async Task<int> GetNumberOfReviewsAsync(int propertyId)
-		{
-			return await _context.Reviews
-							.AsNoTracking()
-							.Where(r => r.PropertyId == propertyId)
-							.CountAsync();
-		}
-
-		public async Task<IEnumerable<Review>> GetAllRatings()
-		{
-			return await _context.Reviews.AsNoTracking().ToListAsync();
-		}
-
-
-		public async Task<PagedList<Review>> GetRatingsPagedAsync(int? propertyId = null, int page = 1, int pageSize = 10)
-		{
-			var query = _context.Reviews.AsNoTracking().AsQueryable();
-			
-			if (propertyId.HasValue)
-			{
-				query = query.Where(r => r.PropertyId == propertyId.Value);
-			}
-			
-			query = query.OrderByDescending(r => r.DateCreated);
-			
-			var totalCount = await query.CountAsync();
-			var items = await query
-				.Skip((page - 1) * pageSize)
-				.Take(pageSize)
-				.ToListAsync();
-				
-			return new PagedList<Review>(items, page, pageSize, totalCount);
-		}
+		// ❌ MOVED TO DEDICATED SERVICES: Cross-entity statistics violate SoC
+		// - GetTotalRevenueAsync -> BookingStatisticsService  
+		// - GetNumberOfBookingsAsync -> BookingStatisticsService
+		// - GetNumberOfTenantsAsync -> TenantStatisticsService
+		// - GetAverageRatingAsync -> ReviewStatisticsService  
+		// - GetNumberOfReviewsAsync -> ReviewStatisticsService
+		// - GetAllRatings -> ReviewService
+		// - GetRatingsPagedAsync -> ReviewService
 
 		// User-scoped methods for security
 		public async Task<List<Property>> GetByOwnerIdAsync(string ownerId)
@@ -343,37 +205,6 @@ namespace eRents.Domain.Repositories
 				.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == userIdInt);
 		}
 
-		public async Task<Property> GetByIdWithOwnerCheckAsync(int propertyId, string currentUserId, string currentUserRole)
-		{
-			var property = await _context.Properties
-				.Include(p => p.Images)
-				.Include(p => p.Reviews)
-				.Include(p => p.Owner)
-				.Include(p => p.Amenities)
-				.AsNoTracking()
-				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-
-			if (property == null)
-				return null;
-
-			// Apply role-based access control
-			if (currentUserRole == "Landlord")
-			{
-				// Landlords can only see their own properties
-				if (int.TryParse(currentUserId, out int userId) && property.OwnerId != userId)
-					return null;
-			}
-			else if (currentUserRole == "Tenant" || currentUserRole == "User")
-			{
-				// Tenants and Regular Users can only see available properties
-				// TODO: Tenants should also see properties they have bookings for
-				if (property.Status != "Available") // Using string value for Status
-					return null;
-			}
-
-			return property;
-		}
-
 		// Validation methods for related entities
 		public async Task<bool> IsValidPropertyTypeIdAsync(int propertyTypeId)
 		{
@@ -398,20 +229,9 @@ namespace eRents.Domain.Repositories
 				.ToListAsync();
 		}
 
-		public async Task<bool> AddSavedProperty(int propertyId, int userId)
-		{
-			var savedProperty = new UserSavedProperty { PropertyId = propertyId, UserId = userId };
-			_context.UserSavedProperties.Add(savedProperty);
-			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
-			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
-		}
-
-		public async Task AddImageAsync(Image image)
-		{
-			_context.Images.Add(image);
-			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
-			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
-		}
+		// ❌ REMOVED: Legacy methods that throw exceptions
+		// - AddSavedProperty: Should be implemented in a dedicated UserSavedPropertiesService
+		// - AddImageAsync: Image operations are now handled by ImageService with proper Unit of Work
 
 		public async Task<PropertyAvailabilityResponse> GetPropertyAvailability(int propertyId, DateTime? start, DateTime? end)
 		{
@@ -475,22 +295,16 @@ namespace eRents.Domain.Repositories
 
 		private async Task<bool> HasActiveLeaseInRange(int propertyId, DateOnly startDate, DateOnly endDate)
 		{
-			var tenants = await _context.Tenants
-				.Where(t => t.PropertyId == propertyId && t.TenantStatus == "Active" && t.LeaseStartDate.HasValue)
-				.ToListAsync();
-
-			foreach (var tenant in tenants)
-			{
-				var leaseEndDate = GetLeaseEndDateForTenant(tenant);
-				if (leaseEndDate.HasValue && tenant.LeaseStartDate.HasValue)
-				{
-					if (tenant.LeaseStartDate.Value < endDate && leaseEndDate.Value > startDate)
-					{
-						return true;
-					}
-				}
-			}
-			return false;
+			// ✅ SIMPLIFIED: Use approved rental requests directly instead of complex lease calculation
+			// This avoids the deprecated CalculateLeaseEndDateLocally method
+			var activeLeases = await _context.RentalRequests
+				.Where(r => r.PropertyId == propertyId && 
+				           r.Status == "Approved" &&
+				           r.ProposedStartDate < endDate && 
+				           r.ProposedEndDate > startDate)
+				.AnyAsync();
+				
+			return activeLeases;
 		}
 
 		public async Task<IEnumerable<Property>> GetPropertiesByRentalType(string rentalType)
@@ -512,59 +326,7 @@ namespace eRents.Domain.Repositories
 			return approvedRequests.Any(r => r.ProposedEndDate >= today);
 		}
 
-		public async Task UpdatePropertyAmenities(int propertyId, List<int> amenityIds)
-		{
-			var property = await _context.Properties.Include(p => p.Amenities).FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-			if (property == null) return;
-
-			var currentAmenityIds = property.Amenities.Select(a => a.AmenityId).ToHashSet();
-			var amenitiesToRemove = property.Amenities.Where(a => !amenityIds.Contains(a.AmenityId)).ToList();
-			var amenityIdsToAdd = amenityIds.Where(id => !currentAmenityIds.Contains(id)).ToList();
-
-			foreach (var amenity in amenitiesToRemove)
-			{
-				property.Amenities.Remove(amenity);
-			}
-
-			if (amenityIdsToAdd.Any())
-			{
-				var amenitiesToAdd = await _context.Amenities.Where(a => amenityIdsToAdd.Contains(a.AmenityId)).ToListAsync();
-				foreach (var amenity in amenitiesToAdd)
-				{
-					property.Amenities.Add(amenity);
-				}
-			}
-			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
-			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
-		}
-
-		public async Task UpdatePropertyImages(int propertyId, List<int> imageIds)
-		{
-			var images = await _context.Images.Where(i => i.PropertyId == propertyId).ToListAsync();
-			
-			// This is a simplified implementation. A real one would handle adding/removing specific images.
-			_context.Images.RemoveRange(images);
-			
-			var newImages = imageIds.Select(id => new Image { ImageId = id, PropertyId = propertyId }).ToList();
-			await _context.Images.AddRangeAsync(newImages);
-			// ✅ ARCHITECTURAL COMPLIANCE: SaveChangesAsync removed - must be called through Unit of Work
-			throw new InvalidOperationException("SaveChangesAsync must be called through Unit of Work in the service layer");
-		}
-
-		private DateOnly? GetLeaseEndDateForTenant(Tenant tenant)
-		{
-			if (!tenant.LeaseStartDate.HasValue || !tenant.PropertyId.HasValue) return null;
-
-			var rentalRequest = _context.RentalRequests
-				.Where(r => r.UserId == tenant.UserId &&
-							r.PropertyId == tenant.PropertyId.Value &&
-							r.Status == "Approved")
-				.OrderByDescending(r => r.RequestDate)
-				.FirstOrDefault();
-
-			return rentalRequest != null
-				? tenant.LeaseStartDate.Value.AddMonths(rentalRequest.LeaseDurationMonths)
-				: null;
-		}
+		// ✅ PURGED: Removed deprecated CalculateLeaseEndDateLocally method
+		// All lease calculations now delegated to LeaseCalculationService
 	}
 }

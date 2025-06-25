@@ -56,7 +56,6 @@ namespace eRents.Application.Services.ContractExpirationService
 
         private async Task CheckContractsExpiringIn60Days(IServiceProvider serviceProvider)
         {
-            var tenantRepository = serviceProvider.GetRequiredService<ITenantRepository>();
             var notificationService = serviceProvider.GetRequiredService<INotificationService>();
             // ✅ Phase 2: Use centralized LeaseCalculationService instead of duplicated logic
             var leaseCalculationService = serviceProvider.GetRequiredService<ILeaseCalculationService>();
@@ -65,16 +64,8 @@ namespace eRents.Application.Services.ContractExpirationService
             
             _logger.LogInformation("Checking for contracts expiring on {TargetDate}", targetDate);
 
-            // ✅ Phase 2: Use centralized service to get expiring tenants
-            var expiringTenants = await leaseCalculationService.GetExpiringTenants(60);
-            
-            // Get additional data needed for notifications
-            var expiringContracts = await tenantRepository.GetQueryable()
-                .Include(t => t.User)
-                .Include(t => t.Property)
-                    .ThenInclude(p => p.Owner)
-                .Where(t => expiringTenants.Select(et => et.TenantId).Contains(t.TenantId))
-                .ToListAsync();
+            // ✅ OPTIMIZED: Single query with navigation properties instead of double-query pattern
+            var expiringContracts = await leaseCalculationService.GetExpiringTenantsWithIncludes(60);
                 
             foreach (var tenant in expiringContracts)
             {
@@ -105,7 +96,6 @@ namespace eRents.Application.Services.ContractExpirationService
         
         private async Task ProcessExpiredContracts(IServiceProvider serviceProvider)
         {
-            var tenantRepository = serviceProvider.GetRequiredService<ITenantRepository>();
             var propertyRepository = serviceProvider.GetRequiredService<IPropertyRepository>();
             var notificationService = serviceProvider.GetRequiredService<INotificationService>();
             // ✅ Phase 2: Use centralized LeaseCalculationService instead of duplicated logic
@@ -115,14 +105,8 @@ namespace eRents.Application.Services.ContractExpirationService
             
             _logger.LogInformation("Processing expired contracts as of {Today}", today);
             
-            // ✅ Phase 2: Use centralized service to get expired tenants
-            var expiredTenants = await leaseCalculationService.GetExpiredTenants();
-            
-            // Get additional data needed for processing
-            var expiredContracts = await tenantRepository.GetQueryable()
-                .Include(t => t.Property)
-                .Where(t => expiredTenants.Select(et => et.TenantId).Contains(t.TenantId))
-                .ToListAsync();
+            // ✅ OPTIMIZED: Single query with navigation properties instead of double-query pattern
+            var expiredContracts = await leaseCalculationService.GetExpiredTenantsWithIncludes();
                 
             foreach (var tenant in expiredContracts)
             {

@@ -25,7 +25,6 @@ namespace eRents.Shared.DTO.Requests
 		public int? MinimumStayDays { get; set; }
 		public AddressRequest? Address { get; set; }
 		public List<int>? AmenityIds { get; set; }
-		public List<int>? ImageIds { get; set; }
 		
 		// ✅ NEW: Transactional Image Upload Support
 		/// <summary>

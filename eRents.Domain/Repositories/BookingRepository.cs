@@ -22,30 +22,6 @@ namespace eRents.Domain.Repositories
 			_currentUserService = currentUserService;
 		}
 
-		public async Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate)
-		{
-			// Check for conflicting bookings (excluding cancelled bookings)
-			var conflictingBookings = await _context.Bookings
-				.Where(b => b.PropertyId == propertyId &&
-							 b.BookingStatus.StatusName != "Cancelled" &&  // Exclude cancelled bookings
-							 b.StartDate < endDate &&
-							 (b.EndDate == null || b.EndDate > startDate))  // Handle null end dates
-				.AnyAsync();
-
-			if (conflictingBookings)
-				return false;
-
-			// Check PropertyAvailability table for blocked periods
-			var unavailablePeriods = await _context.PropertyAvailabilities
-				.Where(pa => pa.PropertyId == propertyId &&
-							!pa.IsAvailable &&
-							pa.StartDate < endDate &&
-							pa.EndDate > startDate)
-				.AnyAsync();
-
-			return !unavailablePeriods;
-		}
-
 		public async Task<IEnumerable<Booking>> GetBookingsByUserAsync(int userId)
 		{
 			return await _context.Bookings

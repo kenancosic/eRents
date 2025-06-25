@@ -17,14 +17,12 @@ namespace eRents.Application.Services.MaintenanceService
     {
         private readonly IMaintenanceRepository _maintenanceRepository;
         private readonly IImageRepository _imageRepository;
-        private readonly ERentsContext _context;
 
-        // ✅ ENHANCED: Constructor with Unit of Work support and ImageRepository
+        // ✅ ENHANCED: Clean constructor - removed ERentsContext dependency (SoC violation)
         public MaintenanceService(
             IMaintenanceRepository repository, 
             IImageRepository imageRepository,
             IMapper mapper, 
-            ERentsContext context,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             ILogger<MaintenanceService> logger)
@@ -32,7 +30,6 @@ namespace eRents.Application.Services.MaintenanceService
         {
             _maintenanceRepository = repository;
             _imageRepository = imageRepository;
-            _context = context;
         }
 
         // ✅ ENHANCED: Handle image associations during maintenance issue updates
@@ -87,9 +84,7 @@ namespace eRents.Application.Services.MaintenanceService
             return result;
         }
 
-        // ✅ REMOVED: Sync methods (use async pattern throughout)
-        // ✅ REMOVED: Manual method implementations (now use base class with Unit of Work)
-
+        // ✅ ENHANCED: Fixed SoC violation - now uses repository pattern for status lookup
         public async Task UpdateStatusAsync(int issueId, string status, string? resolutionNotes, decimal? cost, System.DateTime? resolvedAt)
         {
             // ✅ ENHANCED: Use Unit of Work transaction management
@@ -99,13 +94,16 @@ namespace eRents.Application.Services.MaintenanceService
                 if (entity == null) 
                     throw new KeyNotFoundException($"Maintenance issue with ID {issueId} not found");
                 
-                // Since status names are now unified, we can use them directly
-                var statusEntity = await _context.IssueStatuses
-                    .FirstOrDefaultAsync(s => s.StatusName == status);
-                    
-                if (statusEntity != null)
+                // ✅ FIXED: Use repository method instead of direct context access
+                var statusId = await _maintenanceRepository.GetStatusIdByNameAsync(status);
+                if (statusId.HasValue)
                 {
-                    entity.StatusId = statusEntity.StatusId;
+                    entity.StatusId = statusId.Value;
+                }
+                else
+                {
+                    _logger?.LogWarning("Status '{Status}' not found for maintenance issue {IssueId}", status, issueId);
+                    throw new ArgumentException($"Invalid status: {status}");
                 }
                 
                 if (resolutionNotes != null) entity.ResolutionNotes = resolutionNotes;

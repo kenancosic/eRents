@@ -230,6 +230,18 @@ namespace eRents.Domain.Repositories
 			return false;
 		}
 
+		public async Task DeleteImagesByIdsAsync(IEnumerable<int> imageIds)
+		{
+			var imagesToRemove = await _context.Images
+				.Where(i => imageIds.Contains(i.ImageId))
+				.ToListAsync();
+				
+			if (imagesToRemove.Any())
+			{
+				_context.Images.RemoveRange(imagesToRemove);
+			}
+		}
+
 		// Utility methods
 		public async Task<bool> IsImageAssociatedWithPropertyAsync(int imageId, int propertyId)
 		{
@@ -315,15 +327,6 @@ namespace eRents.Domain.Repositories
 					ThumbnailData = i.ThumbnailData // Include only thumbnail, not full ImageData
 				})
 				.ToListAsync();
-		}
-
-		/// <summary>
-		/// Save changes directly to database - used for immediate operations like image upload
-		/// that require the database-generated ID immediately
-		/// </summary>
-		public async Task SaveChangesDirectAsync()
-		{
-			await _context.SaveChangesAsync();
 		}
 	}
 }

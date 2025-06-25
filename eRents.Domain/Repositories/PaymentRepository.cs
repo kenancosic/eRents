@@ -25,12 +25,6 @@ namespace eRents.Domain.Repositories
                             .ToListAsync();
         }
 
-        public async Task<Payment?> GetPaymentByReferenceAsync(string paymentReference)
-        {
-            return await _context.Payments
-                            .FirstOrDefaultAsync(p => p.PaymentReference == paymentReference);
-        }
-
         public async Task<Payment?> GetByPaymentReferenceAsync(string paymentReference)
         {
             return await _context.Payments

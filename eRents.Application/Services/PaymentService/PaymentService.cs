@@ -1,9 +1,11 @@
 using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Domain.Repositories;
+using eRents.Domain.Shared;
 using eRents.Shared.DTO.Requests;
 using eRents.Shared.DTO.Response;
 using eRents.Shared.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
@@ -11,30 +13,45 @@ using System.Threading.Tasks;
 namespace eRents.Application.Services.PaymentService
 {
 	/// <summary>
-	/// Integrated Payment Service that orchestrates PayPal processing with database Payment records
-	/// This service ensures all payments are tracked in the database while using PayPal gateway for processing
+	/// Enhanced Payment Service with Unit of Work pattern and proper audit field management
+	/// Orchestrates PayPal processing with database Payment records ensuring all payments are tracked
 	/// </summary>
 	public class PaymentService : IPaymentService
 	{
 		private readonly IPayPalGateway _payPalGateway;
 		private readonly IPaymentRepository _paymentRepository;
+		private readonly IUnitOfWork _unitOfWork;
 		private readonly ICurrentUserService _currentUserService;
-		private readonly IMapper _mapper;
+		private readonly IConfiguration _configuration;
 		private readonly ILogger<PaymentService> _logger;
+
+		// Configuration properties
+		private readonly string _paymentSuccessUrl;
+		private readonly string _paymentCancelUrl;
+		private readonly string _defaultCurrency;
 
 		public PaymentService(
 			IPayPalGateway payPalGateway,
 			IPaymentRepository paymentRepository,
+			IUnitOfWork unitOfWork,
 			ICurrentUserService currentUserService,
-			IMapper mapper,
+			IConfiguration configuration,
 			ILogger<PaymentService> logger)
 		{
 			_payPalGateway = payPalGateway;
 			_paymentRepository = paymentRepository;
+			_unitOfWork = unitOfWork;
 			_currentUserService = currentUserService;
-			_mapper = mapper;
+			_configuration = configuration;
 			_logger = logger;
+
+			// Load configuration values
+			_paymentSuccessUrl = _configuration["Payment:SuccessUrl"] ?? "https://yourdomain.com/payment/success";
+			_paymentCancelUrl = _configuration["Payment:CancelUrl"] ?? "https://yourdomain.com/payment/cancel";
+			_defaultCurrency = _configuration["Payment:DefaultCurrency"] ?? "BAM";
 		}
+
+		#region Public Payment Operations
 
 		/// <summary>
 		/// Process a payment for a booking - creates database record and processes via PayPal
@@ -43,28 +60,32 @@ namespace eRents.Application.Services.PaymentService
 		{
 			try
 			{
-							// 1. Create PayPal order
-			var paypalResponse = await _payPalGateway.CreateOrderAsync(
-				request.Amount, 
-				request.Currency, 
-				"https://yourdomain.com/payment/success", 
-				"https://yourdomain.com/payment/cancel"
-			);
+				// 1. Create PayPal order
+				var paypalResponse = await _payPalGateway.CreateOrderAsync(
+					request.Amount, 
+					request.Currency, 
+					_paymentSuccessUrl, 
+					_paymentCancelUrl
+				);
 
-				// 2. Create database payment record
+				// 2. Create database payment record with proper audit fields
 				var payment = new Payment
 				{
-					TenantId = GetCurrentTenantId(),
+					TenantId = GetCurrentUserIdInt(),
 					PropertyId = request.PropertyId,
 					Amount = request.Amount,
 					DatePaid = null, // Will be set when payment is completed
 					PaymentMethod = request.PaymentMethod,
 					PaymentStatus = "Pending",
 					PaymentReference = paypalResponse.Id,
-					CreatedAt = DateTime.UtcNow
+					CreatedAt = DateTime.UtcNow,
+					CreatedBy = _currentUserService.UserId ?? "system",
+					ModifiedBy = _currentUserService.UserId ?? "system",
+					UpdatedAt = DateTime.UtcNow
 				};
 
 				await _paymentRepository.AddAsync(payment);
+				await _unitOfWork.SaveChangesAsync();
 
 				// 3. Return combined response
 				return new PaymentResponse
@@ -92,8 +113,8 @@ namespace eRents.Application.Services.PaymentService
 		{
 			try
 			{
-							// 1. Capture PayPal order
-			var paypalResponse = await _payPalGateway.CaptureOrderAsync(paymentId);
+				// 1. Capture PayPal order
+				var paypalResponse = await _payPalGateway.CaptureOrderAsync(paymentId);
 
 				// 2. Update database payment record
 				var payment = await _paymentRepository.GetByPaymentReferenceAsync(paymentId);
@@ -102,8 +123,10 @@ namespace eRents.Application.Services.PaymentService
 					payment.PaymentStatus = paypalResponse.Status == "COMPLETED" ? "Completed" : "Failed";
 					payment.DatePaid = paypalResponse.Status == "COMPLETED" ? DateOnly.FromDateTime(DateTime.UtcNow) : null;
 					payment.UpdatedAt = DateTime.UtcNow;
+					payment.ModifiedBy = _currentUserService.UserId ?? "system";
 
 					await _paymentRepository.UpdateAsync(payment);
+					await _unitOfWork.SaveChangesAsync();
 
 					return new PaymentResponse
 					{
@@ -111,7 +134,7 @@ namespace eRents.Application.Services.PaymentService
 						Status = payment.PaymentStatus,
 						PaymentReference = payment.PaymentReference,
 						Amount = payment.Amount,
-						Currency = "BAM" // Default currency
+						Currency = _defaultCurrency
 					};
 				}
 
@@ -167,7 +190,7 @@ namespace eRents.Application.Services.PaymentService
 						Status = payment.PaymentStatus,
 						PaymentReference = payment.PaymentReference,
 						Amount = payment.Amount,
-						Currency = "BAM"
+						Currency = _defaultCurrency
 					};
 				}
 
@@ -210,7 +233,7 @@ namespace eRents.Application.Services.PaymentService
 					request.Reason
 				);
 
-				// 3. Create refund payment record
+				// 3. Create refund payment record with proper audit fields
 				var refundPayment = new Payment
 				{
 					TenantId = originalPayment.TenantId,
@@ -220,10 +243,14 @@ namespace eRents.Application.Services.PaymentService
 					PaymentMethod = "Refund",
 					PaymentStatus = "Completed",
 					PaymentReference = paypalRefundResponse.Id,
-					CreatedAt = DateTime.UtcNow
+					CreatedAt = DateTime.UtcNow,
+					CreatedBy = _currentUserService.UserId ?? "system",
+					ModifiedBy = _currentUserService.UserId ?? "system",
+					UpdatedAt = DateTime.UtcNow
 				};
 
 				await _paymentRepository.AddAsync(refundPayment);
+				await _unitOfWork.SaveChangesAsync();
 
 				return new PaymentResponse
 				{
@@ -241,10 +268,19 @@ namespace eRents.Application.Services.PaymentService
 			}
 		}
 
-		private int? GetCurrentTenantId()
+		#endregion
+
+		#region Helper Methods
+
+		/// <summary>
+		/// Get current user ID as integer, following established pattern from other enhanced services
+		/// </summary>
+		private int? GetCurrentUserIdInt()
 		{
 			var userId = _currentUserService.UserId;
 			return int.TryParse(userId, out int id) ? id : null;
 		}
+
+		#endregion
 	}
 } 
