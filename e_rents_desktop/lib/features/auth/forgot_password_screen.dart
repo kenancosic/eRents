@@ -2,7 +2,7 @@ import 'package:e_rents_desktop/features/auth/state/forgot_password_form_state.d
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/status_dialog.dart';
-import 'package:e_rents_desktop/widgets/auth/auth_screen_layout.dart';
+import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -55,31 +55,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
   @override
   Widget build(BuildContext context) {
-    return AuthScreenLayout(
-      formWidget: _buildForgotPasswordForm(context),
-      customSideContent: _buildDefaultSideContent(context),
-    );
-  }
-
-  Widget _buildDefaultSideContent(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.apartment, size: 120, color: Colors.black54),
-          const SizedBox(height: 24),
-          Text(
-            'eRents Property Management',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Manage your properties with ease',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ],
-      ),
-    );
+    return AuthScreenLayout(formWidget: _buildForgotPasswordForm(context));
   }
 
   Widget _buildForgotPasswordForm(BuildContext context) {

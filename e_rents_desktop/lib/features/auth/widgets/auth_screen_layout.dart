@@ -71,10 +71,7 @@ class AuthScreenLayout extends StatelessWidget {
         // Side content column - takes 60% of screen width
         Expanded(
           flex: 6,
-          child: SizedBox(
-            height: double.infinity,
-            child: customSideContent ?? _buildDefaultSideContent(context),
-          ),
+          child: SizedBox(height: double.infinity, child: customSideContent),
         ),
       ],
     );
@@ -101,27 +98,6 @@ class AuthScreenLayout extends StatelessWidget {
             child: formWidget,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultSideContent(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.apartment, size: 120, color: Colors.black54),
-          const SizedBox(height: 24),
-          Text(
-            'eRents Property Management',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Manage your properties with ease',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ],
       ),
     );
   }
