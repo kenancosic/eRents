@@ -1,9 +1,11 @@
-﻿using eRents.Application.Exceptions;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using eRents.Shared.DTOs;
+using FluentValidation;
+using eRents.Shared.Exceptions;
 
 namespace eRents.WebAPI.Filters
 {

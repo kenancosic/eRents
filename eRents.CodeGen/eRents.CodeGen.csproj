@@ -16,6 +16,10 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>DTOGenerator.cs</LastGenOutput>
     </None>
+    <None Update="MapperGenerator.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MapperGenerator.cs</LastGenOutput>
+    </None>
     <None Update="ServiceGenerator.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>ServiceGenerator.cs</LastGenOutput>

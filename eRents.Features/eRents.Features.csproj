@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\eRents.Domain\eRents.Domain.csproj" />
+		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.6" />
+		<PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.6" />
+		<PackageReference Include="FluentValidation" Version="11.9.0" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
+		<PackageReference Include="Microsoft.ML" Version="3.0.1" />
+		<PackageReference Include="Microsoft.ML.Recommender" Version="0.21.1" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.7" />
+	</ItemGroup>
+
+</Project>

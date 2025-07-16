@@ -21,12 +21,12 @@ public partial class RentalRequest : BaseEntity
 
     public decimal ProposedMonthlyRent { get; set; }
 
+    public int NumberOfGuests { get; set; } = 1;
+
     public string? Message { get; set; }
 
     [Required]
     public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
-
-    public DateTime RequestDate { get; set; } = DateTime.UtcNow;
 
     public DateTime? ResponseDate { get; set; }
 

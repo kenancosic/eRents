@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using RabbitMQ.Client.Events;
 using Newtonsoft.Json;
-using eRents.Shared.Messaging;
+using eRents.Shared.DTOs;
 
 namespace eRents.RabbitMQMicroservice
 {

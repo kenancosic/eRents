@@ -1,13 +1,34 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using eRents.Shared.DTOs;
 
-namespace eRents.Shared.Services
+namespace eRents.Shared.Services;
+
+/// <summary>
+/// RabbitMQ service interface for message publishing and handling
+/// </summary>
+public interface IRabbitMQService
 {
-    public interface IRabbitMQService : IDisposable
-    {
-        Task PublishMessageAsync(string queueName, object message);
-        Task SubscribeAsync(string queueName, Func<string, Task> onMessageReceived);
-        void DeclareQueue(string queueName, bool durable = true, bool exclusive = false, bool autoDelete = false, IDictionary<string, object>? arguments = null);
-    }
+    /// <summary>
+    /// Publish a user message to the message queue
+    /// </summary>
+    Task PublishUserMessageAsync(UserMessage message);
+
+    /// <summary>
+    /// Publish a booking notification message to the queue
+    /// </summary>
+    Task PublishBookingNotificationAsync(BookingNotificationMessage message);
+
+    /// <summary>
+    /// Generic message publishing method
+    /// </summary>
+    Task PublishMessageAsync<T>(T message, string queueName) where T : class;
+
+    /// <summary>
+    /// Check if the RabbitMQ service is connected
+    /// </summary>
+    bool IsConnected { get; }
+
+    /// <summary>
+    /// Get health status of the RabbitMQ connection
+    /// </summary>
+    Task<bool> HealthCheckAsync();
 } 

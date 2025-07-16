@@ -36,44 +36,55 @@ namespace eRents.CodeGen
 
                 string codeGenProjectDirectory = Path.Combine(solutionDirectory, "eRents.CodeGen"); 
 
-                // Define target base paths
-                string sharedProjectPath = Path.Combine(solutionDirectory, "eRents.Shared");
-                string applicationProjectPath = Path.Combine(solutionDirectory, "eRents.Application");
-                string webapiProjectPath = Path.Combine(solutionDirectory, "eRents.WebApi");
+                // Define target base paths for NEW FEATURE ARCHITECTURE
+                string featuresProjectPath = Path.Combine(solutionDirectory, "eRents.Features");
+                string featureManagementPath = Path.Combine(featuresProjectPath, $"{entityName}Management");
 
-                // --- DTO Generation ---
-                string dtoOutputDirectory = Path.Combine(sharedProjectPath, "DTO");
-                Directory.CreateDirectory(dtoOutputDirectory); // Ensure directory exists
+                // Create feature directory structure
+                Directory.CreateDirectory(featureManagementPath);
+                string dtoOutputDirectory = Path.Combine(featureManagementPath, "DTOs");
+                string serviceOutputDirectory = Path.Combine(featureManagementPath, "Services");
+                string controllerOutputDirectory = Path.Combine(featureManagementPath, "Controllers");
+                string mapperOutputDirectory = Path.Combine(featureManagementPath, "Mappers");
+                
+                Directory.CreateDirectory(dtoOutputDirectory);
+                Directory.CreateDirectory(serviceOutputDirectory);
+                Directory.CreateDirectory(controllerOutputDirectory);
+                Directory.CreateDirectory(mapperOutputDirectory);
+
+                // --- DTO Generation (Feature-based) ---
                 string dtoTemplateName = "DTOGenerator.tt";
-                // Output DTOs (Requests, Response, SearchObjects) into a single file for simplicity of generation management
-                // It's common to have them as separate files, but T4 typically generates one output file per template.
-                // For multiple files from one template, more advanced T4 or a post-processing step would be needed.
-                string dtoOutputFileName = $"{entityName}DTOs.cs"; 
+                string dtoOutputFileName = $"{entityName}Dtos.cs"; 
                 GenerateFromTemplate(dtoTemplateName, entityName, dtoOutputDirectory, dtoOutputFileName, codeGenProjectDirectory);
 
-                // --- Service and Interface Generation ---
-                string serviceDirectory = Path.Combine(applicationProjectPath, "Service", $"{entityName}Service");
-                Directory.CreateDirectory(serviceDirectory); // Ensure directory exists
+                // --- Mapper Generation (NEW) ---
+                string mapperTemplateName = "MapperGenerator.tt";
+                string mapperOutputFileName = $"{entityName}Mapper.cs";
+                GenerateFromTemplate(mapperTemplateName, entityName, mapperOutputDirectory, mapperOutputFileName, codeGenProjectDirectory);
+
+                // --- Service Generation (Feature-based, no repositories) ---
                 string serviceTemplateName = "ServiceGenerator.tt";
                 string serviceOutputFileName = $"{entityName}Service.cs";
-                GenerateFromTemplate(serviceTemplateName, entityName, serviceDirectory, serviceOutputFileName, codeGenProjectDirectory);
-                GenerateServiceInterface(entityName, serviceDirectory, applicationProjectPath);
+                GenerateFromTemplate(serviceTemplateName, entityName, serviceOutputDirectory, serviceOutputFileName, codeGenProjectDirectory);
 
-                // --- Controller Generation ---
-                string controllerOutputDirectory = Path.Combine(webapiProjectPath, "Controllers");
-                Directory.CreateDirectory(controllerOutputDirectory); // Ensure directory exists
+                // --- Controller Generation (Feature-based) ---
                 string controllerTemplateName = "ControllerGenerator.tt";
-                // Conventionally, controller names are plural (e.g., PropertiesController for Property entity)
                 string controllerOutputFileName = $"{entityName}sController.cs"; 
                 GenerateFromTemplate(controllerTemplateName, entityName, controllerOutputDirectory, controllerOutputFileName, codeGenProjectDirectory);
 
                 Console.WriteLine("--- Code generation complete. ---");
-                Console.WriteLine("Please check the respective project folders for the generated files:");
+                Console.WriteLine("NEW FEATURE ARCHITECTURE - Generated files:");
+                Console.WriteLine($"  Feature: {featureManagementPath}");
                 Console.WriteLine($"  DTOs: {Path.Combine(dtoOutputDirectory, dtoOutputFileName)}");
-                Console.WriteLine($"  Service Interface: {Path.Combine(serviceDirectory, $"I{entityName}Service.cs")}");
-                Console.WriteLine($"  Service: {Path.Combine(serviceDirectory, serviceOutputFileName)}");
+                Console.WriteLine($"  Mapper: {Path.Combine(mapperOutputDirectory, mapperOutputFileName)}");
+                Console.WriteLine($"  Service: {Path.Combine(serviceOutputDirectory, serviceOutputFileName)}");
                 Console.WriteLine($"  Controller: {Path.Combine(controllerOutputDirectory, controllerOutputFileName)}");
-                Console.WriteLine("You may need to include these new files in your .csproj files if they aren't automatically picked up (especially for non-SDK style projects or if using specific ItemGroups).");
+                Console.WriteLine("");
+                Console.WriteLine("NEXT STEPS:");
+                Console.WriteLine("1. Register the service in ServiceRegistrationExtensions.cs");
+                Console.WriteLine("2. Add feature reference to eRents.WebApi project if needed");
+                Console.WriteLine("3. Test the new endpoints");
+                Console.WriteLine("4. Update any existing references to use the new feature structure");
             }
             catch (Exception ex)
             {
@@ -146,49 +157,7 @@ namespace eRents.CodeGen
             return null; 
         }
 
-        static void GenerateServiceInterface(string entityName, string serviceDirectoryPath, string applicationProjectBasePath)
-        {
-            string interfaceName = $"I{entityName}Service";
-            string interfaceFileName = Path.Combine(serviceDirectoryPath, $"{interfaceName}.cs");
-            
-            // Construct namespaces based on known project structure
-            string serviceNamespace = $"eRents.Application.Services.{entityName}Service";
-            string sharedDtoRequestsNamespace = "eRents.Shared.DTO.Requests";
-            string sharedDtoResponseNamespace = "eRents.Shared.DTO.Response";
-            string sharedSearchObjectsNamespace = "eRents.Shared.SearchObjects";
-            string applicationSharedNamespace = "eRents.Application.Shared";
 
-            Console.WriteLine($"Generating Interface {interfaceName} in {interfaceFileName}...");
-
-            // Ensure all DTOs (Request, Response, SearchObject) are referenced correctly
-            string interfaceContent = $@"// <auto-generated>
-// This code was generated by a T4 template.
-// Changes to this file may cause incorrect behavior and will be lost if the code is regenerated.
-// </auto-generated>
-
-using {applicationSharedNamespace};
-using {sharedDtoRequestsNamespace}; // For InsertRequest, UpdateRequest
-using {sharedDtoResponseNamespace}; // For Response
-using {sharedSearchObjectsNamespace}; // For SearchObject
-
-namespace {serviceNamespace}
-{{
-    /// <summary>
-    /// Service interface for {entityName} entity operations
-    /// </summary>
-    public interface {interfaceName} : ICRUDService<{entityName}Response, {entityName}SearchObject, {entityName}InsertRequest, {entityName}UpdateRequest>
-    {{
-        // TODO: Add any entity-specific methods here if needed in the future
-        // Examples:
-        // Task<IEnumerable<{entityName}Response>> GetActive{entityName}sAsync();
-        // Task<{entityName}Response> GetByNameAsync(string name);
-        // Task<bool> ExistsAsync(int id);
-    }}
-}}
-";
-            File.WriteAllText(interfaceFileName, interfaceContent);
-            Console.WriteLine($"Generated: {interfaceFileName}");
-        }
 
         static void GenerateFromTemplate(string templateFileName, string entityName, string outputDirectoryPath, string outputFileNameWithExtension, string codeGenProjectRootPath)
         {

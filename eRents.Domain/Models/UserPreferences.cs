@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class UserPreferences
+public partial class UserPreferences : BaseEntity
 {
     public int UserId { get; set; }  // Primary key and foreign key
 
@@ -13,9 +14,6 @@ public partial class UserPreferences
 
     public string? NotificationSettings { get; set; }  // JSON string for notification preferences
 
-    public DateTime DateCreated { get; set; } = DateTime.UtcNow;
-
-    public DateTime DateUpdated { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     public virtual User User { get; set; } = null!;

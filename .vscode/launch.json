@@ -23,6 +23,46 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
+        },
+        {
+            "name": "e_rents_desktop",
+            "cwd": "e_rents_desktop",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "eRents.WebApi",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/eRents.WebApi/bin/Debug/net8.0/eRents.WebApi.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/eRents.WebApi",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            }
+        },
+        {
+            "name": "eRents.WebApi (Production)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/eRents.WebApi/bin/Debug/net8.0/eRents.WebApi.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/eRents.WebApi",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Production",
+                "ASPNETCORE_URLS": "https://localhost:5001;http://localhost:5000"
+            }
         }
     ]
 }

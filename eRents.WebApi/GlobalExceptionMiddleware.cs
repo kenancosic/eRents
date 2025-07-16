@@ -1,8 +1,12 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
-using eRents.Application.Exceptions;
+using System.Threading.Tasks;
+using eRents.WebApi.Models;
+using FluentValidation;
+using eRents.Shared.DTOs;
+using eRents.Shared.Exceptions;
 
-namespace eRents.WebApi
+namespace eRents.WebApi.Middleware
 {
 	public class GlobalExceptionMiddleware
 	{

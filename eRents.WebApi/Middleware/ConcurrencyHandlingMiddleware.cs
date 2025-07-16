@@ -1,4 +1,4 @@
-using eRents.Shared.Exceptions;
+using eRents.Features.Shared.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text.Json;

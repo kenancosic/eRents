@@ -1,169 +1,95 @@
-using eRents.Application.Services.BookingService;
-using eRents.Application.Services.ContractExpirationService;
-using eRents.Application.Services.ImageService;
-using eRents.Application.Services.MaintenanceService;
-using eRents.Application.Services.MessagingService;
-using eRents.Application.Services.NotificationService;
-using eRents.Application.Services.PaymentService;
-using eRents.Application.Services.PropertyService;
-using eRents.Application.Services.PropertyService.PropertyOfferService;
-using eRents.Application.Services.UserService.AuthorizationService;
-using eRents.Application.Services.PropertyService.UserSavedPropertiesService;
-using eRents.Application.Services.RecommendationService;
-using eRents.Application.Services.RentalRequestService;
-using eRents.Application.Services.ReportService;
-using eRents.Application.Services.ReviewService;
-using eRents.Application.Services.RentalCoordinatorService;
-using eRents.Application.Services.StatisticsService;
-using eRents.Application.Services.TenantService;
-using eRents.Application.Services.UserService;
-using eRents.Application.Services.AvailabilityService;
-using eRents.Application.Services.LeaseCalculationService;
-using eRents.Domain.Models;
-using eRents.Domain.Repositories;
 using eRents.Domain.Shared;
-using eRents.RabbitMQMicroservice.Services;
-using eRents.Shared.Services;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using eRents.WebApi.Extensions;
-using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using Microsoft.Extensions.Logging;
-using eRents.WebApi.Hubs;
+using eRents.Domain.Models;
+using eRents.Domain.Shared.Interfaces;
+using eRents.WebApi.Services;
+using eRents.Features.Shared.Services;
 
-namespace eRents.WebApi.Extensions
+// Features Services Registration
+using eRents.Features.UserManagement.Services;
+using eRents.Features.PropertyManagement.Services;
+using eRents.Features.BookingManagement.Services;
+using eRents.Features.FinancialManagement.Services;
+using eRents.Features.MaintenanceManagement.Services;
+using eRents.Features.RentalManagement.Services;
+using eRents.Features.TenantManagement.Services;
+using eRents.Features.ReviewManagement.Services;
+
+namespace eRents.WebApi.Extensions;
+
+public static class ServiceRegistrationExtensions
 {
-    /// <summary>
-    /// Extension methods for organizing service registration in a clean, maintainable way
-    /// Part of Phase 2 enhancement to reduce Program.cs complexity
-    /// </summary>
-    public static class ServiceRegistrationExtensions
+    public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        /// <summary>
-        /// Registers all repository dependencies for the eRents application
-        /// Organized by architectural layer for better maintainability
-        /// </summary>
-        public static IServiceCollection AddERentsRepositories(this IServiceCollection services)
-        {
-            // ✅ CRITICAL: Register Unit of Work for proper transaction management
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-            
-            // Core entity repositories with concurrency control
-            services.AddTransient<IUserRepository, UserRepository>();
-            services.AddTransient<IPropertyRepository, PropertyRepository>();
-            services.AddTransient<IBookingRepository, BookingRepository>();
-            services.AddTransient<IReviewRepository, ReviewRepository>();
-            services.AddTransient<IMaintenanceRepository, MaintenanceRepository>();
-            services.AddTransient<ITenantPreferenceRepository, TenantPreferenceRepository>();
-            services.AddTransient<IImageRepository, ImageRepository>();
-            
-            // Register concurrent repository interfaces ONLY for entities that actually implement IConcurrentRepository
-            // These repositories inherit from ConcurrentBaseRepository
-            services.AddTransient<IConcurrentRepository<MaintenanceIssue>, MaintenanceRepository>();
-            services.AddTransient<IConcurrentRepository<TenantPreference>, TenantPreferenceRepository>();
-            
-            // Phase 3 concurrent repositories
-            services.AddTransient<IConcurrentRepository<Message>, MessageRepository>();
-            services.AddTransient<IConcurrentRepository<Tenant>, TenantRepository>();
-            services.AddTransient<IConcurrentRepository<Image>, ImageRepository>();
-            
-            // Phase 4 concurrent repositories
-            services.AddTransient<IConcurrentRepository<Payment>, PaymentRepository>();
-            services.AddTransient<IConcurrentRepository<Amenity>, AmenityRepository>();
-            
-            // Repository interfaces for Phase 3 entities
-            services.AddTransient<IImageRepository, ImageRepository>();
-            services.AddTransient<ITenantRepository, TenantRepository>();
-            services.AddTransient<IMessageRepository, MessageRepository>();
-            
-            // Repository interfaces for Phase 4 entities
-            services.AddTransient<IPaymentRepository, PaymentRepository>();
-            services.AddTransient<IAmenityRepository, AmenityRepository>();
-            services.AddTransient<IPropertyAvailabilityRepository, PropertyAvailabilityRepository>();
-            
-            // ✅ NEW: RentalRequest repository for dual rental system
-            services.AddTransient<IRentalRequestRepository, RentalRequestRepository>();
-            
-            // Generic base repository for UserType (existing pattern)
-            services.AddTransient<IBaseRepository<UserType>, BaseRepository<UserType>>();
-            
-            return services;
-        }
-        
-        /// <summary>
-        /// Registers all business service dependencies for the eRents application
-        /// Grouped by functional domain for logical organization
-        /// </summary>
-        public static IServiceCollection AddERentsBusinessServices(this IServiceCollection services)
-        {
-            // ✅ ENHANCED: Core business services with Unit of Work support
-            services.AddTransient<IUserService, UserService>();
-            services.AddTransient<IPropertyService, PropertyService>();
-            services.AddTransient<IBookingService, BookingService>();
-            services.AddTransient<IReviewService, ReviewService>();
-            services.AddTransient<IMaintenanceService, MaintenanceService>();
-            services.AddTransient<ITenantService, TenantService>();
-            
-            // Specialized services
-            services.AddTransient<IImageService, ImageService>();
-            services.AddTransient<IRecommendationService, RecommendationService>();
-            services.AddTransient<IUserLookupService, UserLookupService>();
-            services.AddTransient<IMessageHandlerService, MessageHandlerService>();
-            services.AddTransient<IStatisticsService, StatisticsService>();
-            services.AddTransient<IReportService, ReportService>();
-            
-            			// ✅ BookingCalculationService removed - calculations now done inline
-            
-            // Real-time messaging service
-            services.AddTransient<IRealTimeMessagingService, RealTimeMessagingService<ChatHub>>();
-            
-            // ✅ NEW: RentalRequest service for dual rental system
-            services.AddTransient<IRentalRequestService, RentalRequestService>();
-            
-            // ✅ Phase 3: RentalCoordinatorService - Clean architecture replacing SimpleRentalService
-            services.AddTransient<IRentalCoordinatorService, RentalCoordinatorService>();
-            
-            // ✅ NEW: Notification service for contract expiration notifications
-            services.AddTransient<INotificationService, NotificationService>();
-            
-            // ✅ NEW: Contract expiration background service
-            services.AddHostedService<ContractExpirationService>();
-            
-            // ✅ Phase 2: Centralized availability and lease calculation services
-            services.AddTransient<IAvailabilityService, AvailabilityService>();
-            services.AddTransient<ILeaseCalculationService, LeaseCalculationService>();
-            
-            // ✅ NEW: SoC Refactoring - Extracted services for proper separation of concerns
-            services.AddTransient<IPropertyOfferService, PropertyOfferService>();
-            services.AddTransient<IAuthorizationService, AuthorizationService>();
-            services.AddTransient<IUserSavedPropertiesService, UserSavedPropertiesService>();
-            
-            // TODO: Future Enhancement - Add ITenantMatchingService for ML-based recommendations
-            
-            return services;
-        }
-        
-        /// <summary>
-        /// Registers all infrastructure and external service dependencies
-        /// Includes HTTP services, message queues, and payment processing
-        /// </summary>
-        public static IServiceCollection AddERentsInfrastructure(this IServiceCollection services, IConfiguration configuration)
-        {
-            // Core infrastructure services
-            services.AddHttpContextAccessor();
-            services.AddScoped<eRents.Shared.Services.ICurrentUserService, eRents.WebApi.Shared.CurrentUserService>();
-            services.AddSingleton<HttpClient>();
-            
-            // Message queue services
-            services.AddSingleton<IRabbitMQService, RabbitMQService>();
-            
-            // Payment services with refactored architecture (Phase 1 refactoring)
-            services.AddScoped<IPayPalGateway, PayPalService>();
-            services.AddScoped<IPaymentService, PaymentService>();
-            
-            return services;
-        }
+        // Database Configuration
+        services.AddDbContext<ERentsContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+        // Unit of Work and Core Services
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Shared Feature Services (cross-cutting concerns)
+        services.AddScoped<IAvailabilityService, AvailabilityService>();
+        services.AddScoped<IContractExpirationService, ContractExpirationService>();
+        services.AddScoped<IImageService, ImageService>();
+        services.AddScoped<ILeaseCalculationService, LeaseCalculationService>();
+        services.AddScoped<IMessagingService, MessagingService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IRecommendationService, RecommendationService>();
+
+        // Feature-Specific Services
+        RegisterUserManagementServices(services);
+        RegisterPropertyManagementServices(services);
+        RegisterBookingManagementServices(services);
+        RegisterFinancialManagementServices(services);
+        RegisterMaintenanceManagementServices(services);
+        RegisterRentalManagementServices(services);
+        RegisterTenantManagementServices(services);
+        RegisterReviewManagementServices(services);
+    }
+
+    private static void RegisterUserManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAuthorizationService, AuthorizationService>();
+    }
+
+    private static void RegisterPropertyManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IPropertyManagementService, PropertyService>();
+        services.AddScoped<IUserSavedPropertiesService, UserSavedPropertiesService>();
+    }
+
+    private static void RegisterBookingManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IBookingService, BookingService>();
+    }
+
+    private static void RegisterFinancialManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IReportService, ReportService>();
+    }
+
+    private static void RegisterMaintenanceManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IMaintenanceService, MaintenanceService>();
+    }
+
+    private static void RegisterRentalManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IRentalRequestService, RentalRequestService>();
+    }
+
+    private static void RegisterTenantManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<ITenantService, TenantService>();
+    }
+
+    private static void RegisterReviewManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<IReviewService, ReviewService>();
     }
 } 

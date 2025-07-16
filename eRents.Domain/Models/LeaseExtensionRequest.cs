@@ -1,9 +1,10 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
 
-public partial class LeaseExtensionRequest
+public partial class LeaseExtensionRequest : BaseEntity
 {
     public int RequestId { get; set; }
 
@@ -23,7 +24,6 @@ public partial class LeaseExtensionRequest
     [Required]
     public string Status { get; set; } = "Pending";  // Pending, Approved, Rejected, Cancelled
 
-    public DateTime DateRequested { get; set; }
 
     public DateTime? DateResponded { get; set; }
 

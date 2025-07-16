@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using eRents.Shared.Services;
+using eRents.Shared.DTOs;
 
 namespace eRents.RabbitMQMicroservice.Services
 {
@@ -53,6 +54,28 @@ namespace eRents.RabbitMQMicroservice.Services
 													 body: body);
 			Console.WriteLine($" [x] Sent {jsonMessage} to queue '{queueName}'");
 			return Task.CompletedTask;
+		}
+
+		public Task PublishUserMessageAsync(UserMessage message)
+		{
+			return PublishMessageAsync("messageQueue", message);
+		}
+
+		public Task PublishBookingNotificationAsync(BookingNotificationMessage message)
+		{
+			return PublishMessageAsync("bookingQueue", message);
+		}
+
+		public Task PublishMessageAsync<T>(T message, string queueName) where T : class
+		{
+			return PublishMessageAsync(queueName, message);
+		}
+
+		public bool IsConnected => _connection?.IsOpen ?? false;
+
+		public Task<bool> HealthCheckAsync()
+		{
+			return Task.FromResult(IsConnected);
 		}
 
 		public Task SubscribeAsync(string queueName, Func<string, Task> onMessageReceived)

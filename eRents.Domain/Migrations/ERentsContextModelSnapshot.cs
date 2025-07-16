@@ -18,37 +18,47 @@ namespace eRents.Domain.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .UseCollation("Croatian_CI_AS")
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "9.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("AmenityTenantPreference", b =>
+                {
+                    b.Property<int>("AmenitiesAmenityId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TenantPreferencesTenantPreferenceId")
+                        .HasColumnType("int");
+
+                    b.HasKey("AmenitiesAmenityId", "TenantPreferencesTenantPreferenceId");
+
+                    b.HasIndex("TenantPreferencesTenantPreferenceId");
+
+                    b.ToTable("AmenityTenantPreference");
+                });
 
             modelBuilder.Entity("eRents.Domain.Models.Amenity", b =>
                 {
                     b.Property<int>("AmenityId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("amenity_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AmenityId"));
 
                     b.Property<string>("AmenityName")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("amenity_name");
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -59,60 +69,40 @@ namespace eRents.Domain.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("AmenityId")
-                        .HasName("PK__Amenitie__E908452DD87B33D9");
+                    b.HasKey("AmenityId");
 
-                    b.HasIndex(new[] { "AmenityName" }, "UQ__Amenitie__E1B33D18C14BC270")
-                        .IsUnique();
-
-                    b.ToTable("Amenities", (string)null);
+                    b.ToTable("Amenities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
                 {
                     b.Property<int>("BookingId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("booking_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingId"));
 
-                    b.Property<DateOnly?>("BookingDate")
-                        .HasColumnType("date")
-                        .HasColumnName("booking_date");
-
                     b.Property<int>("BookingStatusId")
-                        .HasColumnType("int")
-                        .HasColumnName("booking_status_id");
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateOnly?>("EndDate")
-                        .HasColumnType("date")
-                        .HasColumnName("end_date");
+                        .HasColumnType("date");
 
                     b.Property<DateOnly?>("MinimumStayEndDate")
                         .HasColumnType("date");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int>("NumberOfGuests")
                         .HasColumnType("int");
@@ -127,37 +117,29 @@ namespace eRents.Domain.Migrations
                     b.Property<string>("PaymentStatus")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("SpecialRequests")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date")
-                        .HasColumnName("start_date");
+                        .HasColumnType("date");
 
                     b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(10, 2)")
-                        .HasColumnName("total_price");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
 
                     b.HasKey("BookingId");
 
@@ -167,27 +149,25 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Booking", (string)null);
+                    b.ToTable("Bookings");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.BookingStatus", b =>
                 {
                     b.Property<int>("BookingStatusId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("booking_status_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingStatusId"));
 
                     b.Property<string>("StatusName")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status_name");
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("BookingStatusId");
 
-                    b.ToTable("BookingStatus", (string)null);
+                    b.ToTable("BookingStatuses");
 
                     b.HasData(
                         new
@@ -221,52 +201,38 @@ namespace eRents.Domain.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImageId"));
 
                     b.Property<string>("ContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("content_type");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DateUploaded")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasDefaultValueSql("(getdate())");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("FileName")
-                        .HasMaxLength(255)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("file_name");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<long?>("FileSizeBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("file_size_bytes");
+                        .HasColumnType("bigint");
 
                     b.Property<int?>("Height")
-                        .HasColumnType("int")
-                        .HasColumnName("height");
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("ImageData")
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
                     b.Property<bool>("IsCover")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_cover");
+                        .HasColumnType("bit");
 
                     b.Property<int?>("MaintenanceIssueId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int");
@@ -287,11 +253,9 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("Width")
-                        .HasColumnType("int")
-                        .HasColumnName("width");
+                        .HasColumnType("int");
 
-                    b.HasKey("ImageId")
-                        .HasName("PK__Images__7516F70C62BBC63F");
+                    b.HasKey("ImageId");
 
                     b.HasIndex("MaintenanceIssueId");
 
@@ -299,7 +263,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("ReviewId");
 
-                    b.ToTable("Images", (string)null);
+                    b.ToTable("Images");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.IssuePriority", b =>
@@ -317,7 +281,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("PriorityId");
 
-                    b.ToTable("IssuePriorities", (string)null);
+                    b.ToTable("IssuePriorities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.IssueStatus", b =>
@@ -335,7 +299,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("StatusId");
 
-                    b.ToTable("IssueStatuses", (string)null);
+                    b.ToTable("IssueStatuses");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.LeaseExtensionRequest", b =>
@@ -349,10 +313,11 @@ namespace eRents.Domain.Migrations
                     b.Property<int>("BookingId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("DateRequested")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getdate())");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("DateResponded")
                         .HasColumnType("datetime2");
@@ -364,6 +329,9 @@ namespace eRents.Domain.Migrations
                     b.Property<string>("LandlordResponse")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("NewEndDate")
                         .HasColumnType("datetime2");
@@ -379,6 +347,12 @@ namespace eRents.Domain.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -386,6 +360,9 @@ namespace eRents.Domain.Migrations
 
                     b.Property<int>("TenantId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("RequestId");
 
@@ -395,7 +372,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("LeaseExtensionRequests", (string)null);
+                    b.ToTable("LeaseExtensionRequests");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
@@ -410,24 +387,16 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Category")
-                        .HasMaxLength(100)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("Cost")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at_maintenance")
-                        .HasDefaultValueSql("(getdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
@@ -435,11 +404,8 @@ namespace eRents.Domain.Migrations
                     b.Property<bool>("IsTenantComplaint")
                         .HasColumnType("bit");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int>("PriorityId")
                         .HasColumnType("int");
@@ -463,8 +429,7 @@ namespace eRents.Domain.Migrations
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("StatusId")
                         .HasColumnType("int");
@@ -472,14 +437,10 @@ namespace eRents.Domain.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .IsUnicode(true)
                         .HasColumnType("nvarchar(255)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at_maintenance")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
                     b.HasKey("MaintenanceIssueId");
 
@@ -493,52 +454,38 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("StatusId");
 
-                    b.ToTable("MaintenanceIssues", (string)null);
+                    b.ToTable("MaintenanceIssues");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Message", b =>
                 {
                     b.Property<int>("MessageId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("message_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("DateSent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("date_sent")
-                        .HasDefaultValueSql("(getdate())");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool?>("IsRead")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_read");
+                        .HasColumnType("bit");
 
                     b.Property<string>("MessageText")
                         .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("message_text");
-
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
                     b.Property<int>("ReceiverId")
-                        .HasColumnType("int")
-                        .HasColumnName("receiver_id");
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -547,20 +494,18 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<int>("SenderId")
-                        .HasColumnType("int")
-                        .HasColumnName("sender_id");
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("MessageId")
-                        .HasName("PK__Messages__0BBF6EE695058BE7");
+                    b.HasKey("MessageId");
 
                     b.HasIndex("ReceiverId");
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Messages", (string)null);
+                    b.ToTable("Messages");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Notification", b =>
@@ -571,10 +516,11 @@ namespace eRents.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
 
-                    b.Property<DateTime>("DateCreated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getutcdate())");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsRead")
                         .ValueGeneratedOnAdd()
@@ -585,8 +531,17 @@ namespace eRents.Domain.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
                     b.Property<int?>("ReferenceId")
                         .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -598,6 +553,9 @@ namespace eRents.Domain.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -605,60 +563,55 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Payment", b =>
                 {
                     b.Property<int>("PaymentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("payment_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PaymentId"));
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(10, 2)")
-                        .HasColumnName("amount");
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Currency")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateOnly?>("DatePaid")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("date")
-                        .HasColumnName("date_paid")
-                        .HasDefaultValueSql("(getdate())");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("OriginalPaymentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PaymentMethod")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("payment_method");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PaymentReference")
-                        .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("payment_reference");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PaymentStatus")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("payment_status");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentType")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                        .HasColumnType("int");
+
+                    b.Property<string>("RefundReason")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -667,103 +620,73 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<int?>("TenantId")
-                        .HasColumnType("int")
-                        .HasColumnName("tenant_id");
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("PaymentId")
-                        .HasName("PK__Payments__ED1FC9EA3D8D2E81");
+                    b.HasKey("PaymentId");
+
+                    b.HasIndex("BookingId");
+
+                    b.HasIndex("OriginalPaymentId");
 
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Payments", (string)null);
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Property", b =>
                 {
                     b.Property<int>("PropertyId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PropertyId"));
 
                     b.Property<decimal?>("Area")
-                        .HasColumnType("decimal(10, 2)")
-                        .HasColumnName("area");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("Bathrooms")
-                        .HasColumnType("int")
-                        .HasColumnName("bathrooms");
+                        .HasColumnType("int");
 
                     b.Property<int?>("Bedrooms")
-                        .HasColumnType("int")
-                        .HasColumnName("bedrooms");
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(10)")
-                        .HasDefaultValue("BAM")
-                        .HasColumnName("currency");
-
-                    b.Property<DateTime?>("DateAdded")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("date_added")
-                        .HasDefaultValueSql("(getdate())");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("description");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Facilities")
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(max)")
-                        .HasColumnName("facilities");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("MinimumStayDays")
-                        .HasColumnType("int")
-                        .HasColumnName("minimum_stay_days");
+                        .HasColumnType("int");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("name");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("OwnerId")
-                        .HasColumnType("int")
-                        .HasColumnName("owner_id");
+                        .HasColumnType("int");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(10, 2)")
-                        .HasColumnName("price");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<int?>("PropertyStatusStatusId")
                         .HasColumnType("int");
@@ -775,32 +698,21 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("RequiresApproval")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("requires_approval");
+                        .HasColumnType("bit");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("status");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.HasKey("PropertyId")
-                        .HasName("PK__Properti__735BA4633A94E7C3");
+                    b.HasKey("PropertyId");
 
                     b.HasIndex("OwnerId");
 
@@ -810,7 +722,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("RentingTypeId");
 
-                    b.ToTable("Properties", (string)null);
+                    b.ToTable("Properties");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyAmenity", b =>
@@ -823,12 +735,11 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int")
                         .HasColumnName("amenity_id");
 
-                    b.HasKey("PropertyId", "AmenityId")
-                        .HasName("PK__Property__BDCB20312E16270C");
+                    b.HasKey("PropertyId", "AmenityId");
 
                     b.HasIndex("AmenityId");
 
-                    b.ToTable("PropertyAmenities", (string)null);
+                    b.ToTable("PropertyAmenities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyAvailability", b =>
@@ -839,16 +750,20 @@ namespace eRents.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AvailabilityId"));
 
-                    b.Property<DateTime>("DateCreated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getutcdate())");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date");
 
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("bit");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int>("PropertyId")
                         .HasColumnType("int");
@@ -857,14 +772,23 @@ namespace eRents.Domain.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("AvailabilityId");
 
                     b.HasIndex("PropertyId");
 
-                    b.ToTable("PropertyAvailabilities", (string)null);
+                    b.ToTable("PropertyAvailabilities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyStatus", b =>
@@ -882,7 +806,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("StatusId");
 
-                    b.ToTable("PropertyStatuses", (string)null);
+                    b.ToTable("PropertyStatuses");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyType", b =>
@@ -900,7 +824,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("TypeId");
 
-                    b.ToTable("PropertyTypes", (string)null);
+                    b.ToTable("PropertyTypes");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.RentalRequest", b =>
@@ -912,71 +836,66 @@ namespace eRents.Domain.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("LandlordResponse")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("landlord_response");
 
                     b.Property<int>("LeaseDurationMonths")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("lease_duration_months");
 
                     b.Property<string>("Message")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("message");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
-
-                    b.Property<int>("PropertyId")
+                    b.Property<int?>("ModifiedBy")
                         .HasColumnType("int");
 
+                    b.Property<int>("NumberOfGuests")
+                        .HasColumnType("int")
+                        .HasColumnName("number_of_guests");
+
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int")
+                        .HasColumnName("property_id");
+
                     b.Property<decimal>("ProposedMonthlyRent")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("proposed_monthly_rent");
 
                     b.Property<DateOnly>("ProposedStartDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("RequestDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_start_date");
 
                     b.Property<DateTime?>("ResponseDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime2")
+                        .HasColumnName("response_date");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("status");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
 
                     b.HasKey("RequestId");
 
@@ -984,7 +903,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RentalRequests", (string)null);
+                    b.ToTable("RentalRequests");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.RentingType", b =>
@@ -1002,77 +921,53 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("RentingTypeId");
 
-                    b.ToTable("RentingTypes", (string)null);
+                    b.ToTable("RentingTypes");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
                 {
                     b.Property<int>("ReviewId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("review_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReviewId"));
 
                     b.Property<int?>("BookingId")
-                        .HasColumnType("int")
-                        .HasColumnName("booking_id");
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at_review")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime>("DateCreated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("date_created")
-                        .HasDefaultValueSql("(getdate())");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("description");
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int?>("ParentReviewId")
-                        .HasColumnType("int")
-                        .HasColumnName("parent_review_id");
+                        .HasColumnType("int");
 
                     b.Property<int?>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                        .HasColumnType("int");
 
                     b.Property<string>("ReviewType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("review_type");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("RevieweeId")
-                        .HasColumnType("int")
-                        .HasColumnName("reviewee_id");
+                        .HasColumnType("int");
 
                     b.Property<int?>("ReviewerId")
-                        .HasColumnType("int")
-                        .HasColumnName("reviewer_id");
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<decimal?>("StarRating")
                         .HasColumnType("decimal(2, 1)");
@@ -1081,13 +976,9 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at_review")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.HasKey("ReviewId")
-                        .HasName("PK__Complain__A771F61C85B78CAA");
+                    b.HasKey("ReviewId");
 
                     b.HasIndex("BookingId");
 
@@ -1101,36 +992,34 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Reviews", (string)null);
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
                 {
                     b.Property<int>("TenantId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("tenant_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TenantId"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("LeaseEndDate")
+                        .HasColumnType("date");
 
                     b.Property<DateOnly?>("LeaseStartDate")
-                        .HasColumnType("date")
-                        .HasColumnName("lease_start_date");
+                        .HasColumnType("date");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<int?>("PropertyId")
-                        .HasColumnType("int")
-                        .HasColumnName("property_id");
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -1139,26 +1028,21 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<string>("TenantStatus")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("tenant_status");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
+                        .HasColumnType("int");
 
-                    b.HasKey("TenantId")
-                        .HasName("PK__Tenants__E3F9F43B311A209A");
+                    b.HasKey("TenantId");
 
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Tenants", (string)null);
+                    b.ToTable("Tenants");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.TenantPreference", b =>
@@ -1171,48 +1055,34 @@ namespace eRents.Domain.Migrations
 
                     b.Property<string>("City")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
+                        .HasColumnType("bit");
 
                     b.Property<decimal?>("MaxPrice")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("MinPrice")
-                        .HasColumnType("decimal(10, 2)");
+                        .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTime?>("SearchEndDate")
                         .HasColumnType("datetime2");
@@ -1221,10 +1091,7 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("(getutcdate())");
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -1233,7 +1100,7 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TenantPreferences", (string)null);
+                    b.ToTable("TenantPreferences");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.TenantPreferenceAmenity", b =>
@@ -1248,139 +1115,103 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("AmenityId");
 
-                    b.ToTable("TenantPreferenceAmenities", (string)null);
+                    b.ToTable("TenantPreferenceAmenities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
                 {
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
+                        .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("(getdate())");
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("created_by");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<DateOnly?>("DateOfBirth")
-                        .HasColumnType("date")
-                        .HasColumnName("date_of_birth");
+                        .HasColumnType("date");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("email");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(100)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("first_name");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsPaypalLinked")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_paypal_linked");
+                        .HasColumnType("bit");
 
                     b.Property<bool?>("IsPublic")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_public");
+                        .HasColumnType("bit");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(100)
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("last_name");
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("ModifiedBy")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("modified_by");
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
 
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varbinary(64)");
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<byte[]>("PasswordSalt")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varbinary(64)");
+                        .HasColumnType("varbinary(max)");
 
                     b.Property<string>("PaypalUserIdentifier")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .HasColumnName("paypal_user_identifier");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasMaxLength(20)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("phone_number");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ProfileImageId")
-                        .HasColumnType("int")
-                        .HasColumnName("profile_image_id");
+                        .HasColumnType("int");
 
                     b.Property<string>("ResetToken")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)")
-                        .HasColumnName("reset_token");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ResetTokenExpiration")
-                        .HasColumnType("datetime")
-                        .HasColumnName("reset_token_expiration");
+                        .HasColumnType("datetime2");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion")
-                        .HasColumnName("row_version");
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("(getdate())");
+                        .HasColumnType("datetime2");
 
                     b.Property<int?>("UserTypeId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_type_id");
+                        .HasColumnType("int");
 
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("username");
+                        .HasColumnType("nvarchar(50)");
 
-                    b.HasKey("UserId")
-                        .HasName("PK__Users__B9BE370FCB53D7B9");
+                    b.HasKey("UserId");
 
-                    b.HasIndex("ProfileImageId");
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("ProfileImageId")
+                        .IsUnique()
+                        .HasFilter("[ProfileImageId] IS NOT NULL");
 
                     b.HasIndex("UserTypeId");
 
-                    b.HasIndex(new[] { "Email" }, "UQ__Users__AB6E61648C818EE9")
+                    b.HasIndex("Username")
                         .IsUnique();
 
-                    b.HasIndex(new[] { "Username" }, "UQ__Users__F3DBC5724649C4DE")
-                        .IsUnique();
-
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserPreferences", b =>
@@ -1388,15 +1219,11 @@ namespace eRents.Domain.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("DateCreated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getutcdate())");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("DateUpdated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("(getutcdate())");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
 
                     b.Property<string>("Language")
                         .IsRequired()
@@ -1405,8 +1232,17 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("nvarchar(10)")
                         .HasDefaultValue("en");
 
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
                     b.Property<string>("NotificationSettings")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("Theme")
                         .IsRequired()
@@ -1415,9 +1251,12 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("light");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("UserId");
 
-                    b.ToTable("UserPreferences", (string)null);
+                    b.ToTable("UserPreferences");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserSavedProperty", b =>
@@ -1428,17 +1267,29 @@ namespace eRents.Domain.Migrations
                     b.Property<int>("PropertyId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("DateSaved")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasDefaultValueSql("(getdate())");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
-                    b.HasKey("UserId", "PropertyId")
-                        .HasName("PK__UserSave__5084563F82C7AD6A");
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("UserId", "PropertyId");
 
                     b.HasIndex("PropertyId");
 
-                    b.ToTable("UserSavedProperties", (string)null);
+                    b.ToTable("UserSavedProperties");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserType", b =>
@@ -1456,7 +1307,22 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("UserTypeId");
 
-                    b.ToTable("UserTypes", (string)null);
+                    b.ToTable("UserTypes");
+                });
+
+            modelBuilder.Entity("AmenityTenantPreference", b =>
+                {
+                    b.HasOne("eRents.Domain.Models.Amenity", null)
+                        .WithMany()
+                        .HasForeignKey("AmenitiesAmenityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("eRents.Domain.Models.TenantPreference", null)
+                        .WithMany()
+                        .HasForeignKey("TenantPreferencesTenantPreferenceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
@@ -1464,18 +1330,20 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.BookingStatus", "BookingStatus")
                         .WithMany("Bookings")
                         .HasForeignKey("BookingStatusId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Booking_BookingStatus");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Bookings")
                         .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Booking__Propert__4F7CD00D");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.User", "User")
                         .WithMany("Bookings")
                         .HasForeignKey("UserId")
-                        .HasConstraintName("FK__Booking__UserId__5070F446");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("BookingStatus");
 
@@ -1488,18 +1356,15 @@ namespace eRents.Domain.Migrations
                 {
                     b.HasOne("eRents.Domain.Models.MaintenanceIssue", "MaintenanceIssue")
                         .WithMany("Images")
-                        .HasForeignKey("MaintenanceIssueId")
-                        .HasConstraintName("FK__Images__Maintenance__MaintenanceIssueId");
+                        .HasForeignKey("MaintenanceIssueId");
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Images")
-                        .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Images__Property__02FC7413");
+                        .HasForeignKey("PropertyId");
 
                     b.HasOne("eRents.Domain.Models.Review", "Review")
                         .WithMany("Images")
-                        .HasForeignKey("ReviewId")
-                        .HasConstraintName("FK__Images__ReviewId__02084FDA");
+                        .HasForeignKey("ReviewId");
 
                     b.Navigation("MaintenanceIssue");
 
@@ -1556,7 +1421,7 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.User", "ReportedByUser")
                         .WithMany("ReportedMaintenanceIssues")
                         .HasForeignKey("ReportedByUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.IssueStatus", "Status")
@@ -1581,14 +1446,14 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.User", "Receiver")
                         .WithMany("MessageReceivers")
                         .HasForeignKey("ReceiverId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Messages__receiv__6EF57B66");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.User", "Sender")
                         .WithMany("MessageSenders")
                         .HasForeignKey("SenderId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Messages__sender__6E01572D");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Receiver");
 
@@ -1608,15 +1473,26 @@ namespace eRents.Domain.Migrations
 
             modelBuilder.Entity("eRents.Domain.Models.Payment", b =>
                 {
+                    b.HasOne("eRents.Domain.Models.Booking", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId");
+
+                    b.HasOne("eRents.Domain.Models.Payment", "OriginalPayment")
+                        .WithMany("Refunds")
+                        .HasForeignKey("OriginalPaymentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Payments")
-                        .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Payments__proper__656C112C");
+                        .HasForeignKey("PropertyId");
 
                     b.HasOne("eRents.Domain.Models.Tenant", "Tenant")
                         .WithMany("Payments")
-                        .HasForeignKey("TenantId")
-                        .HasConstraintName("FK__Payments__tenant__6477ECF3");
+                        .HasForeignKey("TenantId");
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("OriginalPayment");
 
                     b.Navigation("Property");
 
@@ -1628,8 +1504,8 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.User", "Owner")
                         .WithMany("Properties")
                         .HasForeignKey("OwnerId")
-                        .IsRequired()
-                        .HasConstraintName("FK__Propertie__owner__4AB81AF0");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.PropertyStatus", null)
                         .WithMany("Properties")
@@ -1650,45 +1526,37 @@ namespace eRents.Domain.Migrations
 
                             b1.Property<string>("City")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_City");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("Country")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_Country");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<decimal?>("Latitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Latitude");
+                                .HasColumnType("decimal(9, 6)");
 
                             b1.Property<decimal?>("Longitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Longitude");
+                                .HasColumnType("decimal(9, 6)");
 
                             b1.Property<string>("PostalCode")
                                 .HasMaxLength(20)
-                                .HasColumnType("nvarchar(20)")
-                                .HasColumnName("Address_PostalCode");
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("State")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_State");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("StreetLine1")
                                 .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine1");
+                                .HasColumnType("nvarchar(255)");
 
                             b1.Property<string>("StreetLine2")
                                 .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine2");
+                                .HasColumnType("nvarchar(255)");
 
                             b1.HasKey("PropertyId");
 
-                            b1.ToTable("Properties", (string)null);
+                            b1.ToTable("Properties");
 
                             b1.WithOwner()
                                 .HasForeignKey("PropertyId");
@@ -1708,14 +1576,14 @@ namespace eRents.Domain.Migrations
                     b.HasOne("eRents.Domain.Models.Amenity", "Amenity")
                         .WithMany()
                         .HasForeignKey("AmenityId")
-                        .IsRequired()
-                        .HasConstraintName("FK__PropertyA__ameni__5165187F");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany()
                         .HasForeignKey("PropertyId")
-                        .IsRequired()
-                        .HasConstraintName("FK__PropertyA__prope__5070F446");
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Amenity");
 
@@ -1756,28 +1624,25 @@ namespace eRents.Domain.Migrations
                 {
                     b.HasOne("eRents.Domain.Models.Booking", "Booking")
                         .WithMany()
-                        .HasForeignKey("BookingId")
-                        .HasConstraintName("FK__Review__booking_id");
+                        .HasForeignKey("BookingId");
 
                     b.HasOne("eRents.Domain.Models.Review", "ParentReview")
                         .WithMany("Replies")
-                        .HasForeignKey("ParentReviewId")
-                        .HasConstraintName("FK__Review__parent_review_id");
+                        .HasForeignKey("ParentReviewId");
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Reviews")
-                        .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Review__property_id");
+                        .HasForeignKey("PropertyId");
 
                     b.HasOne("eRents.Domain.Models.User", "Reviewee")
                         .WithMany()
                         .HasForeignKey("RevieweeId")
-                        .HasConstraintName("FK__Review__reviewee_id");
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("eRents.Domain.Models.User", "Reviewer")
                         .WithMany()
                         .HasForeignKey("ReviewerId")
-                        .HasConstraintName("FK__Review__reviewer_id");
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("eRents.Domain.Models.Tenant", null)
                         .WithMany("Reviews")
@@ -1798,14 +1663,13 @@ namespace eRents.Domain.Migrations
                 {
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Tenants")
-                        .HasForeignKey("PropertyId")
-                        .HasConstraintName("FK__Tenants__propert__619B8048");
+                        .HasForeignKey("PropertyId");
 
                     b.HasOne("eRents.Domain.Models.User", "User")
                         .WithMany("Tenancies")
                         .HasForeignKey("UserId")
-                        .IsRequired()
-                        .HasConstraintName("FK_Tenants_Users_UserId");
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Property");
 
@@ -1845,8 +1709,8 @@ namespace eRents.Domain.Migrations
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
                 {
                     b.HasOne("eRents.Domain.Models.Image", "ProfileImage")
-                        .WithMany()
-                        .HasForeignKey("ProfileImageId")
+                        .WithOne()
+                        .HasForeignKey("eRents.Domain.Models.User", "ProfileImageId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("eRents.Domain.Models.UserType", "UserTypeNavigation")
@@ -1860,45 +1724,37 @@ namespace eRents.Domain.Migrations
 
                             b1.Property<string>("City")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_City");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("Country")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_Country");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<decimal?>("Latitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Latitude");
+                                .HasColumnType("decimal(9, 6)");
 
                             b1.Property<decimal?>("Longitude")
-                                .HasColumnType("decimal(9, 6)")
-                                .HasColumnName("Address_Longitude");
+                                .HasColumnType("decimal(9, 6)");
 
                             b1.Property<string>("PostalCode")
                                 .HasMaxLength(20)
-                                .HasColumnType("nvarchar(20)")
-                                .HasColumnName("Address_PostalCode");
+                                .HasColumnType("nvarchar(20)");
 
                             b1.Property<string>("State")
                                 .HasMaxLength(100)
-                                .HasColumnType("nvarchar(100)")
-                                .HasColumnName("Address_State");
+                                .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("StreetLine1")
                                 .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine1");
+                                .HasColumnType("nvarchar(255)");
 
                             b1.Property<string>("StreetLine2")
                                 .HasMaxLength(255)
-                                .HasColumnType("nvarchar(255)")
-                                .HasColumnName("Address_StreetLine2");
+                                .HasColumnType("nvarchar(255)");
 
                             b1.HasKey("UserId");
 
-                            b1.ToTable("Users", (string)null);
+                            b1.ToTable("Users");
 
                             b1.WithOwner()
                                 .HasForeignKey("UserId");
@@ -1928,15 +1784,13 @@ namespace eRents.Domain.Migrations
                         .WithMany("UserSavedProperties")
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK__UserSaved__Prope__51300E55");
+                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.User", "User")
                         .WithMany("UserSavedProperties")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK__UserSaved__UserI__503BEA1C");
+                        .IsRequired();
 
                     b.Navigation("Property");
 
@@ -1961,6 +1815,11 @@ namespace eRents.Domain.Migrations
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("eRents.Domain.Models.Payment", b =>
+                {
+                    b.Navigation("Refunds");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Property", b =>

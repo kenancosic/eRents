@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 
@@ -8,9 +8,9 @@ public partial class Booking : BaseEntity
 {
     public int BookingId { get; set; }
 
-    public int? PropertyId { get; set; }
+    public int PropertyId { get; set; }
 
-    public int? UserId { get; set; }
+    public int UserId { get; set; }
 
     public DateOnly StartDate { get; set; }
 
@@ -19,8 +19,6 @@ public partial class Booking : BaseEntity
     public DateOnly? MinimumStayEndDate { get; set; }
 
     public decimal TotalPrice { get; set; }
-
-    public DateOnly? BookingDate { get; set; }
 
     public int BookingStatusId { get; set; }
 
@@ -35,7 +33,7 @@ public partial class Booking : BaseEntity
     public string? SpecialRequests { get; set; }
 
     // Navigation Properties
-    public virtual Property? Property { get; set; }
-    public virtual User? User { get; set; }
+    public virtual Property Property { get; set; } = null!;
+    public virtual User User { get; set; } = null!;
     public virtual BookingStatus BookingStatus { get; set; } = null!;
 }

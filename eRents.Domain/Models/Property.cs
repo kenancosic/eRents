@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 
@@ -20,7 +20,6 @@ public partial class Property : BaseEntity
 
     public string? Status { get; set; }
 
-    public DateTime? DateAdded { get; set; }
 
     public string Name { get; set; } = null!;
 

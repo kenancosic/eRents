@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 
@@ -13,6 +13,8 @@ public partial class Tenant : BaseEntity
     public int? PropertyId { get; set; }
 
     public DateOnly? LeaseStartDate { get; set; }
+
+    public DateOnly? LeaseEndDate { get; set; }
 
     public string? TenantStatus { get; set; }
 

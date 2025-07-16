@@ -20,9 +20,9 @@
 		<PackageReference Include="AutoMapper" Version="14.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.14" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.4" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.4">
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.6" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.6">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
@@ -31,7 +31,8 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.7.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\eRents.Application\eRents.Application.csproj" />
+		<ProjectReference Include="..\eRents.Domain\eRents.Domain.csproj" />
+		<ProjectReference Include="..\eRents.Features\eRents.Features.csproj" />
 		<ProjectReference Include="..\eRents.RabbitMQMicroservice\eRents.RabbitMQMicroservice.csproj" />
 		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>

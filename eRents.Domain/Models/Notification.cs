@@ -1,9 +1,11 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
+using eRents.Domain.Shared;
+
 namespace eRents.Domain.Models;
 
-public partial class Notification
+public partial class Notification : BaseEntity
 {
     public int NotificationId { get; set; }
 
@@ -22,7 +24,7 @@ public partial class Notification
 
     public bool IsRead { get; set; } = false;
 
-    public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+
 
     // Navigation properties
     public virtual User User { get; set; } = null!;

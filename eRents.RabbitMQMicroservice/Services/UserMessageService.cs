@@ -1,4 +1,4 @@
-﻿using eRents.Shared.Messaging;
+﻿using eRents.Shared.DTOs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;

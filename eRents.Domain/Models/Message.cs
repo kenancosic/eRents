@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 
@@ -14,7 +14,6 @@ public partial class Message : BaseEntity
 
     public string MessageText { get; set; } = null!;
 
-    public DateTime? DateSent { get; set; }
 
     public bool? IsRead { get; set; }
 

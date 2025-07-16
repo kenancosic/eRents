@@ -1,7 +1,7 @@
-using eRents.Application.Shared;
+using eRents.Features.Shared;
 using eRents.Domain.Models;
 using eRents.Domain.Shared;
-using eRents.WebApi;
+using eRents.WebApi.Data.Seeding;
 using eRents.WebApi.Extensions;
 using eRents.WebAPI.Filters;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +15,7 @@ using eRents.WebApi.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
 	.AddJsonOptions(options =>
@@ -24,7 +25,11 @@ builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
 		options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 		options.JsonSerializerOptions.PropertyNameCaseInsensitive = true; // Fix: Add case-insensitive deserialization
 	});
-builder.Services.AddLogging();
+builder.Services.AddLogging(loggingBuilder =>
+{
+    loggingBuilder.AddConsole();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
+});
 
 // Add SignalR
 builder.Services.AddSignalR(options =>
@@ -82,13 +87,8 @@ builder.Services.AddSwaggerGen(c =>
 		});
 });
 
-builder.Services.AddAutoMapper(typeof(MappingProfile));
-
-// ✅ PHASE 2 ENHANCEMENT: Clean, organized service registration
-builder.Services
-    .AddERentsRepositories()
-    .AddERentsBusinessServices()
-    .AddERentsInfrastructure(builder.Configuration);
+// Configure eRents services using the new modular architecture
+builder.Services.ConfigureServices(builder.Configuration);
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
@@ -113,6 +113,7 @@ var app = builder.Build();
 // Wrap in a function to allow async/await
 async Task SeedDatabaseAsync(IServiceProvider services)
 {
+    Console.WriteLine("--- Starting Database Seeding ---");
 	using var scope = services.CreateScope();
 	try
 	{
