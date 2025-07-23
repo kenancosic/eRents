@@ -27,8 +27,10 @@ class Address {
       state: '',
       country: '',
       postalCode: '',
-      latitude: 0.0,
-      longitude: 0.0,
+      // ✅ FIXED: Keep coordinates as null for empty addresses
+      // to avoid sending invalid default coordinates to backend
+      latitude: null,
+      longitude: null,
     );
   }
 
@@ -40,8 +42,10 @@ class Address {
       state: json['state'] as String?,
       country: json['country'] as String?,
       postalCode: json['postalCode'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      // ✅ FIXED: Keep coordinates as null instead of defaulting to 0.0
+      // Only set real coordinate values, not defaults that could cause validation errors
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 

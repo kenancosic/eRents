@@ -1,18 +1,12 @@
-import 'package:e_rents_desktop/features/profile/state/profile_screen_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
-import 'package:e_rents_desktop/features/profile/state/change_password_form_state.dart';
-import 'package:e_rents_desktop/features/profile/state/personal_info_form_state.dart';
-import 'package:e_rents_desktop/features/profile/state/paypal_settings_form_state.dart';
-import 'package:e_rents_desktop/repositories/profile_repository.dart';
-import 'package:e_rents_desktop/providers/app_state_providers.dart'; // To get repository provider
 import 'package:e_rents_desktop/models/user.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -20,18 +14,18 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We use a Consumer here to get the initial user data and the repository.
+    // We use a Consumer here to get the initial user data and the provider.
     // This also triggers a rebuild if the user data changes.
-    return Consumer<ProfileStateProvider>(
-      builder: (context, profileState, child) {
-        final user = profileState.currentUser;
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
+        final user = profileProvider.currentUser;
 
-        if (profileState.isLoading && user == null) {
+        if (profileProvider.isLoading && user == null) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (profileState.error != null && user == null) {
-          return Center(child: Text('Error: ${profileState.error?.message}'));
+        if (profileProvider.error != null && user == null) {
+          return Center(child: Text('Error: ${profileProvider.error}'));
         }
 
         if (user == null) {
@@ -40,19 +34,7 @@ class ProfileScreen extends StatelessWidget {
           return const Center(child: Text('No user data found.'));
         }
 
-        // We use MultiProvider to set up the form-specific states,
-        // which are local to the profile screen.
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => ProfileScreenState()),
-            ChangeNotifierProvider(create: (_) => PersonalInfoFormState(user)),
-            ChangeNotifierProvider(create: (_) => ChangePasswordFormState()),
-            ChangeNotifierProvider(
-              create: (_) => PaypalSettingsFormState(user),
-            ),
-          ],
-          child: const _ProfileScreenContent(),
-        );
+        return const _ProfileScreenContent();
       },
     );
   }
@@ -63,10 +45,9 @@ class _ProfileScreenContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenState = context.watch<ProfileScreenState>();
-    final isEditing = screenState.isEditing;
+    final profileProvider = context.watch<ProfileProvider>();
+    final isEditing = profileProvider.isEditing;
 
-    final personalInfoFormState = context.read<PersonalInfoFormState>();
     final personalInfoFormKey = GlobalKey<FormState>();
 
     return Scaffold(
@@ -77,38 +58,8 @@ class _ProfileScreenContent extends StatelessWidget {
           children: [
             // Profile Header Section
             ProfileHeaderWidget(
-              isEditing: isEditing,
-              onEditPressed: screenState.toggleEditing,
-              onCancelPressed: isEditing ? screenState.cancelEditing : null,
               onImageUploaded: (path) async {
-                final personalInfoState = context.read<PersonalInfoFormState>();
-                final updatedUser = await personalInfoState.uploadProfileImage(
-                  path,
-                );
-                if (updatedUser != null && context.mounted) {
-                  // Update all providers with the new user data
-                  context.read<ProfileStateProvider>().updateUserState(
-                    updatedUser,
-                  );
-                  context.read<PaypalSettingsFormState>().updateUser(
-                    updatedUser,
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Profile image updated!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Failed to upload image: ${personalInfoState.errorMessage ?? 'Unknown error'}',
-                      ),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                await context.read<ProfileProvider>().uploadProfileImage(path);
               },
             ),
 
@@ -164,93 +115,60 @@ class _ProfileScreenContent extends StatelessWidget {
             // Action Buttons
             if (isEditing)
               Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          screenState.isSaving
-                              ? null
-                              : () async {
-                                if (personalInfoFormKey.currentState
-                                        ?.validate() ==
-                                    true) {
-                                  screenState.setSaving(true);
-                                  final updatedUser =
-                                      await personalInfoFormState.saveChanges();
-                                  screenState.setSaving(false);
-
-                                  if (context.mounted) {
-                                    if (updatedUser != null) {
-                                      // Update the main profile provider
-                                      context
-                                          .read<ProfileStateProvider>()
-                                          .updateUserState(updatedUser);
-
-                                      // Update the other form states with the new user data
-                                      context
-                                          .read<PaypalSettingsFormState>()
-                                          .updateUser(updatedUser);
-
-                                      screenState.onSaveCompleted();
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Profile updated successfully!',
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to update profile: ${personalInfoFormState.errorMessage ?? 'Unknown error'}',
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              },
-                      icon:
-                          screenState.isSaving
-                              ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : const Icon(Icons.save),
-                      label: Text(
-                        screenState.isSaving ? 'Saving...' : 'Save Changes',
-                      ),
-                      style: ElevatedButton.styleFrom(
+                    child: OutlinedButton(
+                      onPressed: profileProvider.toggleEditing,
+                      style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
+                      child: const Text('Cancel'),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          screenState.isSaving
+                    child: Consumer<ProfileProvider>(
+                      builder: (context, provider, child) {
+                        return ElevatedButton(
+                          onPressed: provider.isUpdatingProfile
                               ? null
-                              : screenState.cancelEditing,
-                      icon: const Icon(Icons.cancel),
-                      label: const Text('Cancel'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade200,
-                        foregroundColor: Colors.grey.shade700,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
+                              : () async {
+                                  if (personalInfoFormKey.currentState?.validate() ?? false) {
+                                    final success = await provider.saveChanges();
+                                    if (context.mounted) {
+                                      if (success) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Profile updated successfully!'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(provider.profileUpdateError ?? 'Failed to update profile.'),
+                                            backgroundColor: Theme.of(context).colorScheme.error,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: provider.isUpdatingProfile
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Text('Save Changes'),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -309,7 +227,7 @@ class _ProfileScreenContent extends StatelessWidget {
   }
 
   Widget _buildAccountSummaryCard(BuildContext context) {
-    final user = context.watch<ProfileStateProvider>().currentUser;
+    final user = context.watch<ProfileProvider>().currentUser;
     if (user == null) {
       return const Center(child: Text('Profile information not available'));
     }

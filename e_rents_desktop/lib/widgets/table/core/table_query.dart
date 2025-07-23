@@ -4,7 +4,7 @@
 /// with the backend Universal System for paginated, filtered, and sorted data.
 library;
 
-import '../../../models/paged_result.dart';
+
 
 /// Query parameters for server-side data fetching
 class TableQuery {

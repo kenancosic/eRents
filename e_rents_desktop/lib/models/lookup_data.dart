@@ -8,7 +8,29 @@ class LookupItem {
   const LookupItem({required this.id, required this.name});
 
   factory LookupItem.fromJson(Map<String, dynamic> json) {
-    return LookupItem(id: json['id'] as int, name: json['name'] as String);
+    // Handle different ID field names from backend
+    int id;
+    if (json.containsKey('id')) {
+      id = json['id'] as int;
+    } else if (json.containsKey('typeId')) {
+      id = json['typeId'] as int;
+    } else if (json.containsKey('rentingTypeId')) {
+      id = json['rentingTypeId'] as int;
+    } else if (json.containsKey('userTypeId')) {
+      id = json['userTypeId'] as int;
+    } else if (json.containsKey('bookingStatusId')) {
+      id = json['bookingStatusId'] as int;
+    } else if (json.containsKey('priorityId')) {
+      id = json['priorityId'] as int;
+    } else if (json.containsKey('statusId')) {
+      id = json['statusId'] as int;
+    } else if (json.containsKey('amenityId')) {
+      id = json['amenityId'] as int;
+    } else {
+      throw ArgumentError('No valid ID field found in JSON: ${json.keys}');
+    }
+
+    return LookupItem(id: id, name: json['name'] as String);
   }
 
   Map<String, dynamic> toJson() {

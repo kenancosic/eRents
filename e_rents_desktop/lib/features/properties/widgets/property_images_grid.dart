@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/base/service_locator.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<int> images;
@@ -102,15 +100,19 @@ class PropertyImagesGrid extends StatelessWidget {
       onTap: () => _showImageCarousel(context, imageIndex),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Container(
+        child: SizedBox(
           width: double.infinity,
           height: double.infinity,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              getService<ApiService>().buildImage(
-                '/Image/$imageId',
+              Image.network(
+                'http://localhost:5000/Image/$imageId',
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.shade200,
+                  child: Icon(Icons.broken_image, size: 48, color: Colors.grey.shade400),
+                ),
               ),
 
               // Primary image badge
@@ -124,7 +126,7 @@ class PropertyImagesGrid extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
+                      color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Text(
@@ -144,7 +146,7 @@ class PropertyImagesGrid extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.1)],
+                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.1)],
                   ),
                 ),
               ),
@@ -164,18 +166,22 @@ class PropertyImagesGrid extends StatelessWidget {
       onTap: () => _showImageCarousel(context, 2),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Container(
+        child: SizedBox(
           width: double.infinity,
           height: double.infinity,
           child: Stack(
             fit: StackFit.expand,
             children: [
-              getService<ApiService>().buildImage(
-                '/Image/$imageId',
+              Image.network(
+                'http://localhost:5000/Image/$imageId',
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.shade200,
+                  child: Icon(Icons.broken_image, size: 48, color: Colors.grey.shade400),
+                ),
               ),
               Container(
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.6)),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6)),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -209,7 +215,7 @@ class PropertyImagesGrid extends StatelessWidget {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black.withOpacity(0.8),
+        barrierColor: Colors.black.withValues(alpha: 0.8),
         pageBuilder: (context, animation, secondaryAnimation) {
           return FadeTransition(
             opacity: animation,
@@ -279,9 +285,15 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
                     margin: const EdgeInsets.all(8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: getService<ApiService>().buildImage(
-                        '/Image/${widget.images[index]}',
+                      child: Image.network(
+                        'http://localhost:5000/Image/${widget.images[index]}',
                         fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey.shade200,
+                          child: const Center(
+                            child: Icon(Icons.broken_image, size: 64, color: Colors.grey),
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -309,7 +321,7 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -339,7 +351,7 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -362,7 +374,7 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.close, color: Colors.white, size: 24),
@@ -382,7 +394,7 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
+                  color: Colors.black.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

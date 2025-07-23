@@ -1,8 +1,7 @@
-import 'package:e_rents_desktop/features/maintenance/state/maintenance_status_update_state.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_detail_provider.dart';
-import 'package:e_rents_desktop/base/base.dart';
+
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
@@ -20,9 +19,9 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MaintenanceDetailProvider>(
+    return Consumer<MaintenanceProvider>(
       builder: (context, provider, child) {
-        if (provider.state == ProviderState.loading) {
+        if (provider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -32,12 +31,12 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  provider.error!.message,
+                  provider.error!,
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => provider.loadItem(issueId),
+                  onPressed: () => provider.getById(issueId),
                   child: const Text('Retry'),
                 ),
               ],
@@ -45,21 +44,12 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
           );
         }
 
-        final issue = provider.item;
+        final issue = provider.selectedIssue;
         if (issue == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Maintenance issue not found'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => context.go('/maintenance'),
-                  child: const Text('Back to Maintenance'),
-                ),
-              ],
-            ),
-          );
+          // Trigger a fetch if the issue is not in the provider
+          // This can happen if the user navigates directly to the page
+          Future.microtask(() => provider.getById(issueId));
+          return const Center(child: CircularProgressIndicator());
         }
 
         return _MaintenanceIssueDetailsView(issue: issue);
@@ -84,21 +74,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
           const SizedBox(height: 24),
           _buildIssueDetails(),
           const SizedBox(height: 24),
-          ChangeNotifierProvider(
-            create:
-                (_) => MaintenanceStatusUpdateState(
-                  getService<MaintenanceRepository>(),
-                  issue,
-                ),
-            child: _ActionCard(
-              onStatusUpdated: (updatedIssue) {
-                // Refresh the details provider with the new data
-                context.read<MaintenanceDetailProvider>().updateItem(
-                  updatedIssue,
-                );
-              },
-            ),
-          ),
+          _ActionCard(issue: issue), // Pass the issue directly
           const SizedBox(height: 16),
           Row(
             children: [
@@ -150,8 +126,12 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
 
   Widget _buildIssueDetails() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -214,7 +194,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
-                          getService<ApiService>().makeAbsoluteUrl(
+                          context.read<ApiService>().makeAbsoluteUrl(
                             'Image/$imageId',
                           ),
                           width: 200,
@@ -248,83 +228,176 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
   }
 }
 
-class _ActionCard extends StatelessWidget {
-  final Function(MaintenanceIssue) onStatusUpdated;
-  const _ActionCard({required this.onStatusUpdated});
+// Converted to StatefulWidget to manage its own state
+class _ActionCard extends StatefulWidget {
+  final MaintenanceIssue issue;
+  const _ActionCard({required this.issue});
+
+  @override
+  State<_ActionCard> createState() => _ActionCardState();
+}
+
+class _ActionCardState extends State<_ActionCard> {
+  late IssueStatus _selectedStatus;
+  final TextEditingController costController = TextEditingController();
+  final TextEditingController notesController = TextEditingController();
+
+  bool _isLoading = false;
+  String? _errorMessage;
+  bool _hasChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedStatus = widget.issue.status;
+    costController.text = widget.issue.cost?.toString() ?? '';
+    notesController.text = widget.issue.resolutionNotes ?? '';
+
+    costController.addListener(_checkForChanges);
+    notesController.addListener(_checkForChanges);
+  }
+
+  @override
+  void dispose() {
+    costController.removeListener(_checkForChanges);
+    notesController.removeListener(_checkForChanges);
+    costController.dispose();
+    notesController.dispose();
+    super.dispose();
+  }
+
+  void _checkForChanges() {
+    final costChanged = (double.tryParse(costController.text) ?? 0) != (widget.issue.cost ?? 0);
+    final notesChanged = notesController.text != (widget.issue.resolutionNotes ?? '');
+    final statusChanged = _selectedStatus != widget.issue.status;
+
+    if (mounted) {
+      setState(() {
+        _hasChanges = costChanged || notesChanged || statusChanged;
+      });
+    }
+  }
+
+  void _updateStatus(IssueStatus newStatus) {
+    if (mounted) {
+      setState(() {
+        _selectedStatus = newStatus;
+        _checkForChanges();
+      });
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
+
+    try {
+      final success = await context.read<MaintenanceProvider>().updateStatus(
+            widget.issue.maintenanceIssueId.toString(),
+            _selectedStatus,
+            resolutionNotes: notesController.text.isNotEmpty ? notesController.text : null,
+            cost: double.tryParse(costController.text),
+          );
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Status updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          setState(() {
+            _hasChanges = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to update status.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage!),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<MaintenanceStatusUpdateState>();
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Change Status',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildStatusSelection(context, state),
+            _buildStatusSelection(context),
             const SizedBox(height: 16),
-            if (state.selectedStatus == IssueStatus.completed) ...[
-              TextField(
-                controller: state.costController,
-                decoration: const InputDecoration(
-                  labelText: 'Resolution Cost',
-                  prefixText: '\$',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-                onChanged: (_) => (context as Element).markNeedsBuild(),
+            if (_selectedStatus == IssueStatus.completed)
+              Column(
+                children: [
+                  TextFormField(
+                    controller: costController,
+                    decoration: const InputDecoration(
+                      labelText: 'Resolution Cost',
+                      prefixText: '\$',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Resolution Notes',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: state.notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Resolution Notes',
-                  border: OutlineInputBorder(),
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red),
                 ),
-                maxLines: 3,
-                onChanged: (_) => (context as Element).markNeedsBuild(),
               ),
-              const SizedBox(height: 16),
-            ],
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(
-                  onPressed:
-                      state.isLoading || !state.hasChanges
-                          ? null
-                          : () async {
-                            final updatedIssue = await state.saveChanges();
-                            if (updatedIssue != null) {
-                              onStatusUpdated(updatedIssue);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Status updated successfully!'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } else if (state.errorMessage != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(state.errorMessage!),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                  icon:
-                      state.isLoading
-                          ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                          : const Icon(Icons.save),
+                  onPressed: _isLoading || !_hasChanges ? null : _saveChanges,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save),
                   label: const Text('Save Changes'),
                 ),
               ],
@@ -335,38 +408,34 @@ class _ActionCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusSelection(
-    BuildContext context,
-    MaintenanceStatusUpdateState state,
-  ) {
+  Widget _buildStatusSelection(BuildContext context) {
     return Column(
-      children:
-          IssueStatus.values.map((status) {
-            return Card(
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              child: RadioListTile<IssueStatus>(
-                title: Row(
-                  children: [
-                    Icon(
-                      _getStatusIcon(status),
-                      color: _getStatusColor(status),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(_getStatusDisplayName(status)),
-                  ],
+      children: IssueStatus.values.map((status) {
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: RadioListTile<IssueStatus>(
+            title: Row(
+              children: [
+                Icon(
+                  _getStatusIcon(status),
+                  color: _getStatusColor(status),
+                  size: 20,
                 ),
-                subtitle: Text(_getStatusDescription(status)),
-                value: status,
-                groupValue: state.selectedStatus,
-                onChanged: (IssueStatus? value) {
-                  if (value != null) {
-                    state.updateStatus(value);
-                  }
-                },
-              ),
-            );
-          }).toList(),
+                const SizedBox(width: 8),
+                Text(_getStatusDisplayName(status)),
+              ],
+            ),
+            subtitle: Text(_getStatusDescription(status)),
+            value: status,
+            groupValue: _selectedStatus,
+            onChanged: (IssueStatus? value) {
+              if (value != null) {
+                _updateStatus(value);
+              }
+            },
+          ),
+        );
+      }).toList(),
     );
   }
 

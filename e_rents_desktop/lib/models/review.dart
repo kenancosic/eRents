@@ -1,3 +1,5 @@
+import 'package:e_rents_desktop/utils/logger.dart';
+
 class Review {
   final int id;
   final ReviewType reviewType;
@@ -77,8 +79,8 @@ class Review {
         userLastNameReviewee: json['userLastNameReviewee'] as String?,
         propertyName: json['propertyName'] as String?,
       );
-    } catch (e) {
-      print('Error parsing Review from JSON: $e');
+    } catch (e, stackTrace) {
+      log.severe('Error parsing Review from JSON', e, stackTrace);
       // Return a default review if parsing fails
       return Review(
         id: 0,

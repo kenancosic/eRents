@@ -1,5 +1,4 @@
-import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_stats_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
 import 'package:e_rents_desktop/features/properties/widgets/booking_list.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_financial_summary.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
@@ -26,35 +25,37 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    // Initial data load is handled by the router.
+    // We might still want to load stats here if they aren't loaded yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData(initialLoad: true);
     });
   }
 
   Future<void> _refreshData({bool initialLoad = false}) async {
-    final detailProvider = context.read<PropertyDetailProvider>();
-    final statsProvider = context.read<PropertyStatsProvider>();
-    if (initialLoad ||
-        detailProvider.property?.propertyId.toString() != widget.propertyId) {
-      await detailProvider.loadPropertyById(int.parse(widget.propertyId));
-    } else {
-      await detailProvider.forceReloadProperty();
-    }
+    final propertiesProvider = context.read<PropertiesProvider>();
 
-    if (initialLoad || !statsProvider.isStatsFor(widget.propertyId)) {
-      await statsProvider.loadPropertyStats(widget.propertyId);
-    } else {
-      await statsProvider.refreshStats();
+    // The router handles the initial load for property details.
+    // We only need to force a refresh on user action.
+    if (!initialLoad) {
+      await propertiesProvider.getPropertyById(
+        widget.propertyId,
+        forceRefresh: true,
+      );
+      await propertiesProvider.loadPropertyStats(
+        widget.propertyId,
+        forceRefresh: true,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<PropertyDetailProvider, PropertyStatsProvider>(
-      builder: (context, detailProvider, statsProvider, child) {
-        final property = detailProvider.property;
-        final isInitialLoading = detailProvider.isLoading && property == null;
-        final isRefreshing = detailProvider.isLoading && property != null;
+    return Consumer<PropertiesProvider>(
+      builder: (context, propertiesProvider, child) {
+        final property = propertiesProvider.selectedProperty;
+        final isInitialLoading = propertiesProvider.isLoading && property == null;
+        final isRefreshing = propertiesProvider.isLoading && property != null;
 
         return Scaffold(
           appBar: AppBar(
@@ -63,55 +64,57 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               if (property != null)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
-                  onPressed:
-                      () => context.push(
-                        '/properties/${property.propertyId}/edit',
-                      ),
+                  onPressed: () =>
+                      context.push('/properties/${property.propertyId}/edit'),
                 ),
               IconButton(
-                icon:
-                    isRefreshing
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.refresh),
-                onPressed: isRefreshing ? null : _refreshData,
+                icon: isRefreshing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh),
+                onPressed: isRefreshing ? null : () => _refreshData(),
               ),
             ],
           ),
           body: LoadingOrErrorWidget(
             isLoading: isInitialLoading,
-            error: detailProvider.error?.message,
-            onRetry: _refreshData,
-            child:
-                property == null
-                    ? const Center(child: Text('Property not found.'))
-                    : Stack(
-                      children: [
-                        _buildContent(context, property, statsProvider),
-                        if (isRefreshing)
-                          Container(
-                            color: Colors.black.withOpacity(0.1),
-                            child: const Center(
-                              child: Card(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CircularProgressIndicator(),
-                                      SizedBox(height: 8),
-                                      Text('Refreshing data...'),
-                                    ],
-                                  ),
+            error: propertiesProvider.error,
+            onRetry: () => _refreshData(),
+            child: property == null
+                ? const Center(child: Text('Property not found.'))
+                : Stack(
+                    children: [
+                      _buildContent(context, property, propertiesProvider),
+                      if (isRefreshing)
+                        Container(
+                          color: Colors.black.withAlpha(26),
+                          child: const Center(
+                            child: Card(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 16),
+                                    Text('Refreshing...'),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
+                  ),
           ),
         );
       },
@@ -121,10 +124,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget _buildContent(
     BuildContext context,
     Property property,
-    PropertyStatsProvider statsProvider,
+    PropertiesProvider propertiesProvider,
   ) {
     return RefreshIndicator(
-      onRefresh: _refreshData,
+      onRefresh: () => _refreshData(),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -136,55 +139,51 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             const SizedBox(height: 24),
             const SectionHeader(title: 'Financial Summary'),
             const SizedBox(height: 16),
-            if (statsProvider.isLoading)
+            if (propertiesProvider.isStatsLoading)
               const Center(child: CircularProgressIndicator())
             else
-              PropertyFinancialSummary(stats: statsProvider.stats),
+              PropertyFinancialSummary(stats: propertiesProvider.statsData),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Current Tenant'),
             const SizedBox(height: 16),
-            if (statsProvider.isLoading)
+            if (propertiesProvider.isStatsLoading)
               const Center(child: CircularProgressIndicator())
             else
               TenantInfo(
                 property: property,
-                currentTenant: statsProvider.currentTenant,
+                currentTenant: propertiesProvider.currentBookings.isNotEmpty ? propertiesProvider.currentBookings.first : null,
               ),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Upcoming Bookings'),
             const SizedBox(height: 16),
-            if (statsProvider.isLoading)
+            if (propertiesProvider.isStatsLoading)
               const Center(child: CircularProgressIndicator())
             else
               BookingList(
                 title: '',
-                bookings: statsProvider.upcomingBookings,
-                isEmpty: statsProvider.upcomingBookings.isEmpty,
+                bookings: propertiesProvider.upcomingBookings,
+                isEmpty: propertiesProvider.upcomingBookings.isEmpty,
                 emptyMessage: 'No upcoming bookings.',
               ),
             const SizedBox(height: 24),
             const SectionHeader(title: 'Recent Reviews'),
             const SizedBox(height: 16),
             ReviewsList(
-              reviews: context.watch<PropertyDetailProvider>().reviews,
-              isLoading:
-                  context.watch<PropertyDetailProvider>().areReviewsLoading,
-              error:
-                  context.watch<PropertyDetailProvider>().reviewsError?.message,
+              reviews: propertiesProvider.reviews,
+              isLoading: propertiesProvider.areReviewsLoading,
+              error: propertiesProvider.reviewsError,
               onReplySubmitted: (reviewId, replyText) async {
-                final provider = context.read<PropertyDetailProvider>();
-                final success = await provider.submitReply(reviewId, replyText);
+                await propertiesProvider.submitReply(reviewId.toString(), replyText);
 
-                if (!success && context.mounted) {
+                if (propertiesProvider.error != null && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Failed to submit reply. Please try again.',
-                      ),
+                    SnackBar(
+                      content: Text(propertiesProvider.error ??
+                          'Failed to submit reply. Please try again.'),
                       backgroundColor: Colors.red,
                     ),
                   );
-                } else if (success && context.mounted) {
+                } else if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Reply submitted successfully!'),
@@ -194,14 +193,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 }
               },
               onLoadMore: () {
-                context.read<PropertyDetailProvider>().loadMoreReviews();
+                propertiesProvider.loadMoreReviews();
               },
-              hasMoreReviews:
-                  context.watch<PropertyDetailProvider>().hasMoreReviews,
-              totalCount:
-                  context.watch<PropertyDetailProvider>().totalReviewCount,
-              canReply:
-                  context.watch<PropertyDetailProvider>().canReplyToReviews,
+              hasMoreReviews: propertiesProvider.hasMoreReviews,
+              totalCount: propertiesProvider.totalReviewCount,
+              canReply: propertiesProvider.canReplyToReviews,
             ),
           ],
         ),

@@ -1,10 +1,5 @@
-import 'package:e_rents_desktop/base/service_locator.dart';
-import 'package:e_rents_desktop/features/rents/lease_detail_screen.dart';
-import 'package:e_rents_desktop/features/rents/stay_detail_screen.dart';
-import 'package:e_rents_desktop/features/rents/widgets/leases_table_widget.dart';
-import 'package:e_rents_desktop/features/rents/widgets/stays_table_widget.dart';
-import 'package:e_rents_desktop/repositories/booking_repository.dart';
-import 'package:e_rents_desktop/repositories/rental_request_repository.dart';
+import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
+import 'package:e_rents_desktop/features/rents/widgets/rents_table_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,10 +13,6 @@ class RentsListScreen extends StatefulWidget {
 class _RentsListScreenState extends State<RentsListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final BookingRepository _bookingRepository =
-      ServiceLocator().get<BookingRepository>();
-  final RentalRequestRepository _rentalRequestRepository =
-      ServiceLocator().get<RentalRequestRepository>();
 
   @override
   void initState() {
@@ -51,16 +42,22 @@ class _RentsListScreenState extends State<RentsListScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          StaysTableWidget(
-            bookingRepository: _bookingRepository,
+          // Unified RentsTableWidget for Stays
+          RentsTableWidget(
+            rentalType: RentalType.stay,
             onItemTap: (item) {
-              context.push('/stays/${item.id}');
+              if (context.mounted) {
+                context.push('/stays/${item.bookingId}');
+              }
             },
           ),
-          LeasesTableWidget(
-            rentalRequestRepository: _rentalRequestRepository,
+          // Unified RentsTableWidget for Leases
+          RentsTableWidget(
+            rentalType: RentalType.lease,
             onItemTap: (item) {
-              context.push('/leases/${item.id}');
+              if (context.mounted) {
+                context.push('/leases/${item.requestId}');
+              }
             },
           ),
         ],

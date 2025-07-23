@@ -1,21 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_state_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileHeaderWidget extends StatefulWidget {
-  final bool isEditing;
-  final VoidCallback onEditPressed;
-  final VoidCallback? onCancelPressed;
   final Future<void> Function(String path)? onImageUploaded;
 
   const ProfileHeaderWidget({
     super.key,
-    required this.isEditing,
-    required this.onEditPressed,
-    this.onCancelPressed,
     this.onImageUploaded,
   });
 
@@ -36,7 +30,6 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
       );
 
       if (pickedFile != null && widget.onImageUploaded != null) {
-        // Let the parent handle the upload logic
         await widget.onImageUploaded!(pickedFile.path);
       }
     } catch (e) {
@@ -49,7 +42,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final profileProvider = Provider.of<ProfileStateProvider>(context);
+    final profileProvider = context.watch<ProfileProvider>();
     final user = profileProvider.currentUser;
 
     // Determine which image to show
@@ -65,8 +58,8 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-            Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.1),
+            Theme.of(context).colorScheme.primaryContainer.withAlpha(77),
+            Theme.of(context).colorScheme.secondaryContainer.withAlpha(26),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
@@ -81,7 +74,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                 size: 80,
                 borderWidth: 3,
               ),
-              if (widget.isEditing)
+              if (profileProvider.isEditing)
                 Positioned(
                   right: 0,
                   bottom: 0,
@@ -153,7 +146,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                       size: 14,
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withAlpha(153),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -161,7 +154,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
+                        ).colorScheme.onSurface.withAlpha(179),
                       ),
                     ),
                   ],
@@ -177,19 +170,19 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(26),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: IconButton(
-              onPressed: widget.onEditPressed,
+              onPressed: profileProvider.toggleEditing,
               icon: Icon(
-                widget.isEditing ? Icons.edit_off : Icons.edit,
+                profileProvider.isEditing ? Icons.edit_off : Icons.edit,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              tooltip: widget.isEditing ? 'Stop Editing' : 'Edit Profile',
+              tooltip: profileProvider.isEditing ? 'Stop Editing' : 'Edit Profile',
             ),
           ),
         ],

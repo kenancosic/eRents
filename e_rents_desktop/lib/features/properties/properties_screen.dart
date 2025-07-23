@@ -1,13 +1,11 @@
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
 import 'package:e_rents_desktop/widgets/confirmation_dialog.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:flutter/foundation.dart';
-import 'package:e_rents_desktop/base/provider_state.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_card.dart';
 
@@ -26,21 +24,10 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   @override
   void initState() {
     super.initState();
+    // The initial fetch is now triggered by the router.
+    // We just need to listen for search changes.
     _searchController.addListener(() {
       _filterProperties(_searchController.text);
-    });
-
-    // Initialize filtered properties with current data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<PropertyCollectionProvider>();
-      setState(() {
-        _filteredProperties = provider.items;
-      });
-
-      // If provider is idle and has no data, trigger initial paginated load
-      if (provider.state == ProviderState.idle && provider.items.isEmpty) {
-        provider.loadPaginatedProperties(pageSize: 25);
-      }
     });
   }
 
@@ -51,19 +38,19 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   void _filterProperties(String query) {
-    final provider = context.read<PropertyCollectionProvider>();
+    final provider = context.read<PropertiesProvider>();
     final lowerCaseQuery = query.toLowerCase();
 
     List<Property> newlyFiltered;
     if (query.isEmpty) {
-      newlyFiltered = provider.items;
+      newlyFiltered = provider.properties;
     } else {
-      newlyFiltered =
-          provider.items.where((property) {
-            return property.name.toLowerCase().contains(lowerCaseQuery);
-          }).toList();
+      newlyFiltered = provider.properties.where((property) {
+        return property.name.toLowerCase().contains(lowerCaseQuery);
+      }).toList();
     }
 
+    // Use foundation's listEquals for efficient comparison
     if (!listEquals(_filteredProperties, newlyFiltered)) {
       setState(() {
         _filteredProperties = newlyFiltered;
@@ -73,38 +60,31 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<PropertyCollectionProvider>(
+    return Consumer<PropertiesProvider>(
       builder: (context, provider, child) {
-        // Update _filteredProperties when provider.items changes
+        // Synchronize local filtered list with provider's list
         if (_searchController.text.isEmpty &&
-            !listEquals(_filteredProperties, provider.items)) {
-          _filteredProperties = provider.items;
+            !listEquals(_filteredProperties, provider.properties)) {
+          _filteredProperties = provider.properties;
         }
 
         return LoadingOrErrorWidget(
-          isLoading:
-              provider.state == ProviderState.loading &&
-              _filteredProperties.isEmpty,
-          error: provider.error?.message,
-          onRetry: () async {
-            await provider.loadPaginatedProperties(pageSize: 25);
-            // After fetching, ensure to update _filteredProperties
-            if (mounted) {
-              _filterProperties(_searchController.text);
-            }
-          },
+          isLoading: provider.isLoading && _filteredProperties.isEmpty,
+          error: provider.error,
+          onRetry: () => provider.getPagedProperties(),
           child: Column(
             children: [
-              _buildHeaderSection(context, _filteredProperties),
+              _buildHeaderSection(context),
               Expanded(
-                child:
-                    _filteredProperties.isEmpty
-                        ? _buildEmptyListMessage()
-                        : _isListView
+                child: _filteredProperties.isEmpty
+                    ? _buildEmptyListMessage()
+                    : _isListView
                         ? _buildListView(_filteredProperties)
                         : _buildGridView(_filteredProperties),
               ),
-              if (provider.totalPages > 1) _buildPaginationControls(provider),
+              if (provider.pagedResult != null &&
+                  provider.pagedResult!.totalCount > provider.pagedResult!.pageSize)
+                _buildPaginationControls(provider),
             ],
           ),
         );
@@ -112,105 +92,43 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     );
   }
 
-  Widget _buildHeaderSection(BuildContext context, List<Property> properties) {
-    return Consumer<PropertyCollectionProvider>(
-      builder: (context, provider, _) {
-        // Build count text with pagination info
-        String countText;
-        if (provider.totalCount > 0) {
-          final startItem = (provider.currentPage * provider.pageSize) + 1;
-          final endItem = ((provider.currentPage + 1) * provider.pageSize)
-              .clamp(0, provider.totalCount);
-          countText =
-              'Showing $startItem-$endItem of ${provider.totalCount} properties';
-        } else {
-          countText = 'No properties found';
-        }
-
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHeaderSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: CustomSearchBar(
+              controller: _searchController,
+              hintText: 'Search by property name...',
+            ),
+          ),
+          const SizedBox(width: 16),
+          Row(
             children: [
-              CustomSearchBar(
-                controller: _searchController,
-                hintText: 'Search Properties by Name...',
-                onChanged: _filterProperties,
+              IconButton(
+                icon: Icon(_isListView ? Icons.grid_view : Icons.view_list),
+                onPressed: () => setState(() => _isListView = !_isListView),
+                tooltip: _isListView ? 'Grid View' : 'List View',
               ),
-              const SizedBox(height: 16),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth < 600) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          countText,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                _isListView ? Icons.grid_view : Icons.list,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isListView = !_isListView;
-                                });
-                              },
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => _navigateToAddProperty(context),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Property'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  } else {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          countText,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                _isListView ? Icons.grid_view : Icons.list,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isListView = !_isListView;
-                                });
-                              },
-                            ),
-                            ElevatedButton.icon(
-                              onPressed: () => _navigateToAddProperty(context),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Property'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }
-                },
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => _navigateToAddProperty(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Property'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -221,6 +139,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
         final property = properties[index];
         return PropertyCard(
           property: property,
+          isGridView: false,
           onTap: () => _navigateToPropertyDetails(context, property),
           onEdit: () => context.push('/properties/${property.propertyId}/edit'),
           onDelete: () => _showDeleteDialog(context, property),
@@ -234,9 +153,9 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 400,
-        mainAxisSpacing: 16,
+        childAspectRatio: 3 / 2,
         crossAxisSpacing: 16,
-        mainAxisExtent: 320,
+        mainAxisSpacing: 16,
       ),
       itemCount: properties.length,
       itemBuilder: (context, index) {
@@ -278,16 +197,15 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     );
 
     if (confirmed == true) {
-      try {
-        await context.read<PropertyCollectionProvider>().removeItem(
-          property.propertyId.toString(),
+      final success = await context
+          .read<PropertiesProvider>()
+          .deleteProperty(property.propertyId.toString());
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(context.read<PropertiesProvider>().error ??
+                  'Failed to delete property.')),
         );
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete property: $e')),
-          );
-        }
       }
     }
   }
@@ -297,20 +215,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   }
 
   void _navigateToPropertyDetails(BuildContext context, Property property) {
-    // Debug logging to track data consistency
-    debugPrint(
-      '🏠 PropertiesScreen: Navigating to property ${property.propertyId}',
-    );
-    debugPrint('🏠 PropertiesScreen: Property name: ${property.name}');
-    debugPrint('🏠 PropertiesScreen: Renting type: ${property.rentingType}');
-    debugPrint(
-      '🏠 PropertiesScreen: Renting type display: ${property.rentingType.displayName}',
-    );
-
     context.push('/properties/${property.propertyId}');
   }
 
-  Widget _buildPaginationControls(PropertyCollectionProvider provider) {
+  Widget _buildPaginationControls(PropertiesProvider provider) {
+    final pagedResult = provider.pagedResult!;
+    final bool hasPreviousPage = pagedResult.page > 0;
+    final bool hasNextPage = (pagedResult.page + 1) * pagedResult.pageSize < pagedResult.totalCount;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -322,15 +234,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
         children: [
           // Previous button
           ElevatedButton.icon(
-            onPressed:
-                provider.hasPreviousPage
-                    ? () => provider.loadPreviousPage()
-                    : null,
+            onPressed: hasPreviousPage
+                ? () => provider.getPagedProperties(params: {'page': pagedResult.page})
+                : null,
             icon: const Icon(Icons.chevron_left),
             label: const Text('Previous'),
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  provider.hasPreviousPage ? null : Colors.grey.shade300,
+                  hasPreviousPage ? null : Colors.grey.shade300,
             ),
           ),
 
@@ -343,7 +254,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
-              'Page ${provider.currentPage + 1} of ${provider.totalPages}',
+              'Page ${pagedResult.page + 1} of ${pagedResult.totalPages}',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
@@ -352,13 +263,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
 
           // Next button
           ElevatedButton.icon(
-            onPressed:
-                provider.hasNextPage ? () => provider.loadNextPage() : null,
+            onPressed: hasNextPage
+                ? () => provider.getPagedProperties(params: {'page': pagedResult.page + 2})
+                : null,
             icon: const Icon(Icons.chevron_right),
             label: const Text('Next'),
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  provider.hasNextPage ? null : Colors.grey.shade300,
+                  hasNextPage ? null : Colors.grey.shade300,
             ),
           ),
         ],

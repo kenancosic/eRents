@@ -59,11 +59,11 @@ class AppError {
   }) : timestamp = timestamp ?? DateTime.now();
 
   /// Creates an AppError from various exception types
-  factory AppError.fromException(dynamic exception, [StackTrace? stackTrace]) {
+  factory AppError.fromException(dynamic exception, [StackTrace? stackTrace, String? message]) {
     if (exception is SocketException) {
       return AppError(
         type: ErrorType.network,
-        message: 'Network connection failed',
+        message: message ?? 'Network connection failed',
         details: exception.message,
         stackTrace: stackTrace,
       );

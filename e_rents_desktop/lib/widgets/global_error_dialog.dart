@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_state_providers.dart';
+import '../base/app_error.dart';
+import '../base/app_state_providers.dart';
 
 class GlobalErrorDialog extends StatelessWidget {
   const GlobalErrorDialog({super.key});

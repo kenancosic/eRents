@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:e_rents_desktop/utils/logger.dart';
 
 class ApiService {
   final String baseUrl;
@@ -67,9 +69,9 @@ class ApiService {
 
         _handleResponse(response);
         return response;
-      } catch (e) {
-        print(
-          'ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries): $e',
+      } catch (e, stackTrace) {
+        log.warning(
+          'ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries)', e, stackTrace
         );
         retryCount++;
         if (retryCount == maxRetries) {
@@ -144,30 +146,26 @@ class ApiService {
       String errorMessage;
 
       // Log the error details for debugging
-      print('ApiService: Error response status: ${response.statusCode}');
-      print('ApiService: Error response body: ${response.body}');
+      log.severe('ApiService: Error response status: ${response.statusCode}');
+      log.severe('ApiService: Error response body: ${response.body}');
 
       // Handle concurrency conflicts (HTTP 409) with user-friendly message
       if (response.statusCode == 409) {
-        print('ApiService: Concurrency conflict detected');
+        log.warning('ApiService: Concurrency conflict detected');
         throw Exception(
           'This item has been modified by another user. Please refresh and try again.',
         );
       }
 
       try {
-        final errorJson = json.decode(response.body);
-        errorMessage =
-            errorJson['message'] ??
-            errorJson['title'] ??
-            errorJson['error'] ??
-            'Server returned error ${response.statusCode}';
-      } catch (e) {
-        errorMessage =
-            'Error: ${response.statusCode}. Response: ${response.body}';
+        final decodedBody = jsonDecode(response.body);
+        errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? 'An unknown error occurred.';
+      } catch (e, stackTrace) {
+        log.severe('ApiService: Failed to decode error response body', e, stackTrace);
+        errorMessage = 'Failed to process server error response.';
       }
 
-      print('ApiService: Parsed error message: $errorMessage');
+      log.severe('ApiService: Parsed error message: $errorMessage');
       throw Exception(errorMessage);
     }
   }
@@ -194,21 +192,32 @@ class ApiService {
         }
 
         if (files != null) {
+          // ✅ FIXED: Create fresh MultipartFile instances for each retry attempt
+          // to avoid "Can't finalize a finalized MultipartFile" errors
           request.files.addAll(files);
         }
 
         final response = await http.Response.fromStream(await request.send());
         _handleResponse(response);
         return response;
-      } catch (e) {
-        print(
-          'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries): $e',
+      } catch (e, stackTrace) {
+        log.warning(
+          'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries)', e, stackTrace
         );
         retryCount++;
         if (retryCount == maxRetries) {
           rethrow;
         }
         await Future.delayed(retryDelay);
+
+        // ✅ IMPORTANT: Do not retry multipart requests with files
+        // MultipartFile objects can only be used once and cannot be finalized again
+        if (files != null && files.isNotEmpty) {
+          log.warning(
+            'ApiService: Skipping retry for multipart request with files to avoid finalization error',
+          );
+          rethrow;
+        }
       }
     }
     throw Exception(
@@ -442,14 +451,21 @@ class ApiService {
     final fullUrl = makeAbsoluteUrl(imageUrl);
     debugPrint('ApiService: Testing image URL: "$fullUrl"');
 
-    try {
-      final image = NetworkImage(fullUrl);
-      final completer = await image.resolve(const ImageConfiguration());
-      debugPrint('ApiService: Image URL test successful: "$fullUrl"');
-      return true;
-    } catch (e) {
-      debugPrint('ApiService: Image URL test failed: "$fullUrl" - Error: $e');
-      return false;
-    }
+    final completer = Completer<bool>();
+    final image = NetworkImage(fullUrl);
+    final stream = image.resolve(const ImageConfiguration());
+
+    stream.addListener(ImageStreamListener(
+      (ImageInfo image, bool synchronousCall) {
+        debugPrint('ApiService: Image URL test successful: "$fullUrl"');
+        if (!completer.isCompleted) completer.complete(true);
+      },
+      onError: (dynamic exception, StackTrace? stackTrace) {
+        debugPrint('ApiService: Image URL test failed: "$fullUrl" - Error: $exception');
+        if (!completer.isCompleted) completer.complete(false);
+      },
+    ));
+
+    return completer.future;
   }
 }

@@ -12,23 +12,27 @@ import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:e_rents_desktop/router.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
+    // Setup dependencies for the test environment
+    final secureStorage = SecureStorageService();
+    final apiService = ApiService('http://localhost:5000', secureStorage);
+    final authProvider = AuthProvider(apiService: apiService, storage: secureStorage);
+    final appRouter = AppRouter(authProvider);
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          Provider<ApiService>(
-            create:
-                (_) =>
-                    ApiService('http://localhost:5000', SecureStorageService()),
-          ),
+          ChangeNotifierProvider.value(value: authProvider),
+          // Add other necessary providers for the smoke test here
         ],
         child: MaterialApp.router(
           title: 'eRents Desktop',
           debugShowCheckedModeBanner: false,
-          routerConfig: AppRouter().router,
+          routerConfig: appRouter.router,
           theme: appTheme,
         ),
       ),

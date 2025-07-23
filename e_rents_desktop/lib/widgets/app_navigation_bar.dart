@@ -111,7 +111,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
         children: [
           // Dark overlay for better readability
           Positioned.fill(
-            child: Container(color: Colors.black.withOpacity(0.4)),
+            child: Container(color: Colors.black.withAlpha(102)),
           ),
 
           // Navigation Rail
@@ -134,7 +134,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Divider(color: Colors.white.withOpacity(0.2), thickness: 1),
+                    Divider(color: Colors.white.withValues(alpha: 0.2), thickness: 1),
                     _buildProfile(context),
                     _buildLogoutButton(context),
                   ],
@@ -177,7 +177,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
         decoration: BoxDecoration(
           color:
               isSelected
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
+                  ? Theme.of(context).colorScheme.primary.withAlpha(179)
                   : Colors.transparent,
         ),
         child: Column(
@@ -185,7 +185,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
           children: [
             Icon(
               item.icon,
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
               size: 20,
             ),
             const SizedBox(height: 4),
@@ -193,7 +193,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
               item.label,
               style: TextStyle(
                 color:
-                    isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                    isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -214,14 +214,14 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
           children: [
             Icon(
               Icons.logout_rounded,
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               size: 20,
             ),
             const SizedBox(height: 4),
             Text(
               'Logout',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -260,8 +260,8 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
           decoration: BoxDecoration(
             color:
                 widget.currentPath == '/profile'
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.7)
-                    : Colors.black.withOpacity(0.3),
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)
+                    : Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),

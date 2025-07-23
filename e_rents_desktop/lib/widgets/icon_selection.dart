@@ -43,7 +43,7 @@ class IconSelection<T> extends StatelessWidget {
                   width: isSelected ? 2 : 1,
                 ),
                 borderRadius: BorderRadius.circular(8),
-                color: isSelected ? color.withOpacity(0.1) : null,
+                color: isSelected ? color.withValues(alpha: 0.1) : null,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

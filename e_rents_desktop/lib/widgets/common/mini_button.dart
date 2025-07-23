@@ -35,7 +35,7 @@ class MiniButton extends StatelessWidget {
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: buttonColor.withOpacity(0.1),
+        backgroundColor: buttonColor.withValues(alpha: 0.1),
         foregroundColor: buttonColor,
       ),
     );

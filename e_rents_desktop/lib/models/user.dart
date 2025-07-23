@@ -1,6 +1,6 @@
 import './address.dart';
 
-enum UserType { admin, landlord, tenant }
+enum UserType { landlord, tenant }
 
 class User {
   final int id;
@@ -77,7 +77,8 @@ class User {
     String roleStr = role.toString().toLowerCase();
     switch (roleStr) {
       case 'admin':
-        return UserType.admin;
+        // Admin users are now converted to Landlord role
+        return UserType.landlord;
       case 'landlord':
         return UserType.landlord;
       case 'tenant':

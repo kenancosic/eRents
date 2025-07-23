@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/home/providers/home_state_provider.dart';
+import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
 import 'package:e_rents_desktop/features/home/widgets/financial_summary_card.dart';
 import 'package:e_rents_desktop/features/home/widgets/kpi_card.dart';
 import 'package:go_router/go_router.dart';
@@ -25,13 +25,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<HomeStateProvider, AuthProvider>(
-      builder: (context, homeProvider, authProvider, _) {
+        return Consumer2<HomeProvider, AuthProvider>(
+            builder: (context, homeProvider, authProvider, _) {
         final user = authProvider.currentUser;
         final theme = Theme.of(context);
 
         // If not authenticated, show login prompt
-        if (!authProvider.isAuthenticatedState) {
+        if (!authProvider.isAuthenticated) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -58,8 +58,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final Widget mainContent = RefreshIndicator(
           onRefresh: () async {
-            if (authProvider.isAuthenticatedState) {
-              await homeProvider.refreshDashboard();
+            if (authProvider.isAuthenticated) {
+              await homeProvider.fetchDashboardStatistics(forceRefresh: true);
             }
           },
           child: SingleChildScrollView(
@@ -93,10 +93,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return LoadingOrErrorWidget(
           isLoading: homeProvider.isLoading,
-          error: homeProvider.error?.message,
+          error: homeProvider.error,
           onRetry: () {
-            if (authProvider.isAuthenticatedState) {
-              homeProvider.refreshDashboard();
+            if (authProvider.isAuthenticated) {
+              homeProvider.fetchDashboardStatistics(forceRefresh: true);
             }
           },
           child: mainContent,
@@ -107,8 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildKPISection(
     BuildContext context,
-    HomeStateProvider homeProvider,
+    HomeProvider homeProvider,
   ) {
+    final stats = homeProvider.stats;
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount =
@@ -134,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => context.go('/properties'),
               child: KpiCard(
                 title: 'Total Properties',
-                value: homeProvider.propertyCount.toString(),
+                value: stats?.totalProperties.toString() ?? '0',
                 icon: Icons.business_outlined,
                 color: Colors.blue,
               ),
@@ -143,8 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => context.go('/properties'),
               child: KpiCard(
                 title: 'Occupancy Rate',
-                value:
-                    '${(homeProvider.occupancyRate * 100).toStringAsFixed(1)}%',
+                value: '${((stats?.occupancyRate ?? 0.0) * 100).toStringAsFixed(1)}%',
                 icon: Icons.people_alt_outlined,
                 color: Colors.green,
               ),
@@ -153,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => context.go('/maintenance'),
               child: KpiCard(
                 title: 'Pending Issues',
-                value: homeProvider.openIssuesCount.toString(),
+                value: stats?.pendingMaintenanceIssues.toString() ?? '0',
                 icon: Icons.build_outlined,
                 color: Colors.orange,
               ),
@@ -162,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () => context.go('/reports'),
               child: KpiCard(
                 title: 'Monthly Revenue',
-                value: kCurrencyFormat.format(homeProvider.monthlyRevenue),
+                value: kCurrencyFormat.format(stats?.monthlyRevenue ?? 0.0),
                 icon: Icons.attach_money_outlined,
                 color: Colors.purple,
               ),
@@ -175,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDashboardContent(
     BuildContext context,
-    HomeStateProvider homeProvider,
+    HomeProvider homeProvider,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -229,8 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPortfolioOverviewCard(
     BuildContext context,
-    HomeStateProvider homeProvider,
+    HomeProvider homeProvider,
   ) {
+    final stats = homeProvider.stats;
+    final available = (stats?.totalProperties ?? 0) - (stats?.occupiedProperties ?? 0);
     final theme = Theme.of(context);
 
     return Card(
@@ -261,17 +263,17 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildStatColumn(
                   'Occupied',
-                  homeProvider.occupiedProperties.toString(),
+                  stats?.occupiedProperties.toString() ?? '0',
                   Colors.green,
                 ),
                 _buildStatColumn(
                   'Available',
-                  homeProvider.availableProperties.toString(),
+                  available.toString(),
                   Colors.blue,
                 ),
                 _buildStatColumn(
                   'Avg. Rating',
-                  homeProvider.averageRating.toStringAsFixed(1),
+                  stats?.averageRating.toStringAsFixed(1) ?? '0.0',
                   Colors.amber,
                 ),
               ],
@@ -306,10 +308,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopPropertiesCard(
     BuildContext context,
-    HomeStateProvider homeProvider,
+    HomeProvider homeProvider,
   ) {
     final theme = Theme.of(context);
-    final topProperties = homeProvider.topProperties;
+    final topProperties = homeProvider.stats?.topProperties ?? [];
 
     return Card(
       elevation: 2,
@@ -369,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFinancialSummaryCard(
     BuildContext context,
-    HomeStateProvider homeProvider,
+    HomeProvider homeProvider,
   ) {
     return Card(
       elevation: 2,
@@ -386,9 +388,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SizedBox(height: kDefaultPadding),
             FinancialSummaryCard(
-              income: homeProvider.totalRentIncome,
-              expenses: homeProvider.totalMaintenanceCosts,
-              netProfit: homeProvider.netIncome,
+              income: homeProvider.stats?.totalRentIncome ?? 0.0,
+              expenses: homeProvider.stats?.totalMaintenanceCosts ?? 0.0,
+              netProfit: homeProvider.stats?.netTotal ?? 0.0,
               currencyFormat: kCurrencyFormat,
             ),
           ],

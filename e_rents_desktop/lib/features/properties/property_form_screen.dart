@@ -1,25 +1,23 @@
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:e_rents_desktop/features/properties/state/property_form_state.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_detail_provider.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
+
 import 'package:e_rents_desktop/features/properties/widgets/property_form_fields.dart';
 import 'package:e_rents_desktop/models/lookup_data.dart';
+import 'dart:typed_data';
+import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/property.dart';
-
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
-import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
-import 'package:flutter/material.dart';
+
+import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
+import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
+import 'package:flutter/material.dart' hide ImageInfo;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/widgets/common/section_header.dart';
-import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
-import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
-import 'package:e_rents_desktop/base/service_locator.dart';
-import 'dart:typed_data';
-import 'package:e_rents_desktop/services/property_service.dart';
 
 class PropertyFormScreen extends StatelessWidget {
   final Property? property;
@@ -28,60 +26,199 @@ class PropertyFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create:
-          (context) => PropertyFormState(
-            lookupProvider: context.read<LookupProvider>(),
-            propertyService: getService<PropertyService>(),
-            authProvider: context.read<AuthProvider>(),
-            collectionProvider: context.read<PropertyCollectionProvider>(),
-            initialProperty: property,
+    final lookupProvider = context.watch<LookupProvider>();
+
+    if (lookupProvider.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (lookupProvider.error != null) {
+      return Scaffold(
+        body: Center(
+          child: Text('Error loading lookup data: ${lookupProvider.error}'),
+        ),
+      );
+    }
+
+    if (!lookupProvider.hasData) {
+      // This should ideally not happen if initialized properly, but as a fallback
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Lookup data not available. Please try again.'),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed:
+                    () => context.read<LookupProvider>().loadLookupData(),
+                child: const Text('Reload'),
+              ),
+            ],
           ),
-      child: _PropertyFormScreenContent(isEditMode: property != null),
+        ),
+      );
+    }
+
+    return _PropertyFormScreenContent(
+      property: property,
+      lookupData: lookupProvider.lookupData!,
     );
   }
 }
 
 class _PropertyFormScreenContent extends StatefulWidget {
-  final bool isEditMode;
+  final Property? property;
+  final LookupData lookupData;
 
-  const _PropertyFormScreenContent({required this.isEditMode});
+  const _PropertyFormScreenContent({this.property, required this.lookupData});
 
   @override
   State<_PropertyFormScreenContent> createState() =>
       _PropertyFormScreenContentState();
 }
 
-class _PropertyFormScreenContentState
-    extends State<_PropertyFormScreenContent> {
+class _PropertyFormScreenContentState extends State<_PropertyFormScreenContent> {
+  bool get isEditMode => widget.property != null;
+  final _formKey = GlobalKey<FormState>();
+  late Property _property;
+  late List<ImageInfo> _images;
+
+  final List<Uint8List> _newImageData = [];
+  final List<String> _newImageFileNames = [];
+
+  // Text editing controllers
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _bedroomsController = TextEditingController();
+  final _bathroomsController = TextEditingController();
+  final _areaController = TextEditingController();
+  final _minimumStayDaysController = TextEditingController();
+  final _streetNameController = TextEditingController();
+  final _streetNumberController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _countryController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _property = widget.property?.copyWith() ??
+        Property(
+          propertyId: 0,
+          ownerId: context.read<AuthProvider>().currentUser!.id,
+          name: '',
+          description: '',
+          price: 0.0,
+        );
+
+    _images = [];
+
+    if (isEditMode) {
+      final apiService = context.read<ApiService>();
+      _images = _property.imageIds.map((id) {
+        return ImageInfo(
+          id: id,
+          url: apiService.makeAbsoluteUrl('Images/$id'),
+          isCover: id == _property.coverImageId,
+          isNew: false,
+        );
+      }).toList();
+    }
+
+    // Initialize controllers
+    _nameController.text = _property.name;
+    _descriptionController.text = _property.description;
+    _priceController.text = _property.price.toString();
+    _bedroomsController.text = _property.bedrooms.toString();
+    _bathroomsController.text = _property.bathrooms.toString();
+    _areaController.text = _property.area.toString();
+    _minimumStayDaysController.text = _property.minimumStayDays?.toString() ?? '';
+
+    final address = _property.address;
+    if (address != null) {
+      _streetNameController.text = address.streetLine1 ?? '';
+      _streetNumberController.text = address.streetLine2 ?? '';
+      _cityController.text = address.city ?? '';
+      _postalCodeController.text = address.postalCode ?? '';
+      _countryController.text = address.country ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    _bedroomsController.dispose();
+    _bathroomsController.dispose();
+    _areaController.dispose();
+    _minimumStayDaysController.dispose();
+    _streetNameController.dispose();
+    _streetNumberController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _countryController.dispose();
+    super.dispose();
+  }
+
   Future<void> _saveProperty() async {
-    final formState = context.read<PropertyFormState>();
-    // No need to check form validity here, it's done in saveProperty()
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
 
-    final success = await formState.saveProperty();
+      final currentImageIds = _images
+          .where((img) => !img.isNew && img.id != null)
+          .map((img) => img.id!)
+          .toList();
 
-    if (mounted) {
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.isEditMode
-                  ? 'Property updated successfully!'
-                  : 'Property created successfully!',
+      final coverImage = _images.firstWhere(
+        (img) => img.isCover,
+        orElse: () => _images.isNotEmpty ? _images.first : ImageInfo(),
+      );
+
+      final int? coverId = coverImage.isNew ? null : coverImage.id;
+
+      final propertyToSave = _property.copyWith(
+        name: _nameController.text,
+        description: _descriptionController.text,
+        price: double.tryParse(_priceController.text) ?? 0.0,
+        bedrooms: int.tryParse(_bedroomsController.text) ?? 0,
+        bathrooms: int.tryParse(_bathroomsController.text) ?? 0,
+        area: double.tryParse(_areaController.text) ?? 0.0,
+        minimumStayDays: int.tryParse(_minimumStayDaysController.text),
+        coverImageId: coverId,
+        address: (_property.address ?? Address(latitude: null, longitude: null))
+            .copyWith(
+          streetLine1: _streetNameController.text,
+          streetLine2: _streetNumberController.text,
+          city: _cityController.text,
+          postalCode: _postalCodeController.text,
+          country: _countryController.text,
+        ),
+      );
+
+      final success = await context.read<PropertiesProvider>().saveProperty(
+            propertyToSave,
+            newImageData: _newImageData,
+            newImageFileNames: _newImageFileNames,
+            existingImageIds: currentImageIds,
+          );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Property saved successfully')),
+          );
+          context.pop();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Failed to save property: ${context.read<PropertiesProvider>().error}'),
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        context.pop();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              formState.errorMessage ?? 'An unknown error occurred.',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
+          );
+        }
       }
     }
   }
@@ -89,142 +226,106 @@ class _PropertyFormScreenContentState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final formState = context.watch<PropertyFormState>();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEditMode ? 'Edit Property' : 'Add New Property'),
+        title: Text(isEditMode ? 'Edit Property' : 'Add New Property'),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.save_outlined),
-              onPressed: formState.isLoading ? null : _saveProperty,
+              onPressed: _saveProperty,
+              icon: const Icon(Icons.save),
               label: const Text('Save'),
             ),
           ),
         ],
       ),
-      body:
-          formState.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Form(
-                    key: formState.formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBasicInfoSection(theme, formState),
-                        PropertyFormFields.buildSpacer(),
-                        _buildDetailsSection(theme, formState),
-                        PropertyFormFields.buildSpacer(),
-                        _buildAddressSection(theme, formState),
-                        PropertyFormFields.buildSpacer(),
-                        _buildImagesSection(theme, formState),
-                        PropertyFormFields.buildSpacer(),
-                        _buildAmenitiesSection(theme, formState),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildBasicInfoSection(theme),
+              const SizedBox(height: 24),
+              _buildDetailsSection(theme),
+              const SizedBox(height: 24),
+              _buildAddressSection(theme),
+              const SizedBox(height: 24),
+              _buildImagesSection(context, theme),
+              const SizedBox(height: 24),
+              _buildAmenitiesSection(theme),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildBasicInfoSection(ThemeData theme, PropertyFormState formState) {
+  Widget _buildBasicInfoSection(ThemeData theme) {
     return SectionCard(
       title: 'Basic Information',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           PropertyFormFields.buildRequiredTextField(
-            controller: formState.nameController,
+            controller: _nameController,
             labelText: 'Property Name',
           ),
           PropertyFormFields.buildSpacer(),
+          PropertyFormFields.buildRequiredTextField(
+            controller: _priceController,
+            labelText: 'Price per Night',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          PropertyFormFields.buildSpacer(),
           PropertyFormFields.buildTextField(
-            controller: formState.descriptionController,
+            controller: _descriptionController,
             labelText: 'Description',
-            maxLines: 4,
-            validator: (_) => null, // Optional field
+            maxLines: 5,
+            validator: (_) => null,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailsSection(ThemeData theme, PropertyFormState formState) {
-    final lookup = context.watch<LookupProvider>();
-
+  Widget _buildDetailsSection(ThemeData theme) {
     return SectionCard(
       title: 'Property Details',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PropertyFormFields.buildRequiredTextField(
-                controller: formState.priceController,
-                labelText: 'Price',
-                keyboardType: TextInputType.number,
-                flex: 1,
-              ),
-              const SizedBox(width: 12),
-              PropertyFormFields.buildRequiredTextField(
-                controller: formState.currencyController,
-                labelText: 'Currency',
-                flex: 1,
-              ),
-            ],
+          PropertyFormFields.buildRequiredTextField(
+            controller: _bedroomsController,
+            labelText: 'Bedrooms',
+            keyboardType: TextInputType.number,
           ),
           PropertyFormFields.buildSpacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PropertyFormFields.buildNumberField(
-                controller: formState.bedroomsController,
-                labelText: 'Bedrooms',
-                errorMessage: 'Enter beds',
-              ),
-              const SizedBox(width: 12),
-              PropertyFormFields.buildNumberField(
-                controller: formState.bathroomsController,
-                labelText: 'Bathrooms',
-                errorMessage: 'Enter baths',
-              ),
-            ],
+          PropertyFormFields.buildRequiredTextField(
+            controller: _bathroomsController,
+            labelText: 'Bathrooms',
+            keyboardType: TextInputType.number,
           ),
           PropertyFormFields.buildSpacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              PropertyFormFields.buildDecimalField(
-                controller: formState.areaController,
-                labelText: 'Area',
-                suffixText: 'm²',
-                errorMessage: 'Enter area',
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PropertyFormFields.buildTextField(
-                  controller: formState.minimumStayDaysController,
-                  labelText: 'Min. Stay',
-                  suffixText: 'days',
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value != null &&
-                        value.isNotEmpty &&
-                        int.tryParse(value) == null) {
-                      return 'Invalid number';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ],
+          PropertyFormFields.buildRequiredTextField(
+            controller: _areaController,
+            labelText: 'Area (sq ft)',
+            keyboardType: TextInputType.number,
+          ),
+          PropertyFormFields.buildSpacer(),
+          PropertyFormFields.buildTextField(
+            controller: _minimumStayDaysController,
+            labelText: 'Minimum Stay (days)',
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value != null &&
+                  value.isNotEmpty &&
+                  int.tryParse(value) == null) {
+                return 'Please enter a valid number';
+              }
+              return null;
+            },
           ),
           PropertyFormFields.buildSpacer(),
           Row(
@@ -232,9 +333,15 @@ class _PropertyFormScreenContentState
               Expanded(
                 child: CustomDropdown<int>(
                   label: 'Property Type',
-                  value: formState.property.propertyTypeId,
-                  items: lookup.propertyTypes,
-                  onChanged: (val) => formState.setPropertyTypeId(val),
+                  value: _property.propertyTypeId,
+                  items: widget.lookupData.propertyTypes,
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _property = _property.copyWith(propertyTypeId: val);
+                      });
+                    }
+                  },
                   itemToString: (item) => (item as LookupItem).name,
                   itemToValue: (item) => (item as LookupItem).id,
                 ),
@@ -243,9 +350,15 @@ class _PropertyFormScreenContentState
               Expanded(
                 child: CustomDropdown<int>(
                   label: 'Renting Type',
-                  value: formState.property.rentingTypeId,
-                  items: lookup.rentingTypes,
-                  onChanged: (val) => formState.setRentingTypeId(val),
+                  value: _property.rentingTypeId,
+                  items: widget.lookupData.rentingTypes,
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _property = _property.copyWith(rentingTypeId: val);
+                      });
+                    }
+                  },
                   itemToString: (item) => (item as LookupItem).name,
                   itemToValue: (item) => (item as LookupItem).id,
                 ),
@@ -257,7 +370,7 @@ class _PropertyFormScreenContentState
     );
   }
 
-  Widget _buildAddressSection(ThemeData theme, PropertyFormState formState) {
+  Widget _buildAddressSection(ThemeData theme) {
     return SectionCard(
       title: 'Location & Address',
       child: Column(
@@ -266,15 +379,22 @@ class _PropertyFormScreenContentState
             googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '',
             onAddressSelected: (address) {
               if (address != null) {
-                formState.updateAddressFromGoogle(address);
+                setState(() {
+                  _property = _property.copyWith(address: address);
+                  _streetNameController.text = address.streetLine1 ?? '';
+                  _streetNumberController.text = address.streetLine2 ?? '';
+                  _cityController.text = address.city ?? '';
+                  _postalCodeController.text = address.postalCode ?? '';
+                  _countryController.text = address.country ?? '';
+                });
               }
             },
-            initialValue: formState.initialAddressString,
+            initialValue: _property.address?.getFullAddress() ?? '',
             labelText: 'Search for an address',
           ),
           const SizedBox(height: 16),
           PropertyFormFields.buildRequiredTextField(
-            controller: formState.streetNameController,
+            controller: _streetNameController,
             labelText: 'Street Name',
           ),
           PropertyFormFields.buildSpacer(),
@@ -282,7 +402,7 @@ class _PropertyFormScreenContentState
             children: [
               Expanded(
                 child: PropertyFormFields.buildTextField(
-                  controller: formState.streetNumberController,
+                  controller: _streetNumberController,
                   labelText: 'Street No.',
                   validator: (_) => null,
                 ),
@@ -290,7 +410,7 @@ class _PropertyFormScreenContentState
               const SizedBox(width: 12),
               Expanded(
                 child: PropertyFormFields.buildRequiredTextField(
-                  controller: formState.cityController,
+                  controller: _cityController,
                   labelText: 'City',
                 ),
               ),
@@ -301,14 +421,14 @@ class _PropertyFormScreenContentState
             children: [
               Expanded(
                 child: PropertyFormFields.buildRequiredTextField(
-                  controller: formState.postalCodeController,
+                  controller: _postalCodeController,
                   labelText: 'Postal Code',
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: PropertyFormFields.buildRequiredTextField(
-                  controller: formState.countryController,
+                  controller: _countryController,
                   labelText: 'Country',
                 ),
               ),
@@ -319,26 +439,39 @@ class _PropertyFormScreenContentState
     );
   }
 
-  Widget _buildImagesSection(ThemeData theme, PropertyFormState formState) {
+  Widget _buildImagesSection(BuildContext context, ThemeData theme) {
     return SectionCard(
       title: 'Property Images',
       child: ImagePickerInput(
-        initialImages: formState.images,
+        apiService: context.read<ApiService>(),
+        initialImages: _images,
         onChanged: (images) {
-          formState.setImages(images);
+          setState(() {
+            _images = images;
+            _newImageData.clear();
+            _newImageFileNames.clear();
+            for (var img in images) {
+              if (img.isNew && img.data != null) {
+                _newImageData.add(img.data!);
+                _newImageFileNames.add(img.fileName ?? 'image.jpg');
+              }
+            }
+          });
         },
       ),
     );
   }
 
-  Widget _buildAmenitiesSection(ThemeData theme, PropertyFormState formState) {
+  Widget _buildAmenitiesSection(ThemeData theme) {
     return SectionCard(
       title: 'Amenities',
       child: AmenityManager(
         mode: AmenityManagerMode.select,
-        initialAmenityIds: formState.property.amenityIds,
+        initialAmenityIds: _property.amenityIds,
         onAmenityIdsChanged: (ids) {
-          formState.setAmenityIds(ids);
+          setState(() {
+            _property = _property.copyWith(amenityIds: ids);
+          });
         },
         showTitle: false, // We have a SectionCard title now
       ),

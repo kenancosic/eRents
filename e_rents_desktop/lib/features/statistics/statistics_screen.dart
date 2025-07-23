@@ -2,7 +2,7 @@ import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:e_rents_desktop/features/statistics/providers/statistics_state_provider.dart';
+import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
@@ -23,8 +23,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     // Load statistics data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticatedState) {
-        final statisticsProvider = Provider.of<StatisticsStateProvider>(
+      if (authProvider.isAuthenticated) {
+        final statisticsProvider = Provider.of<StatisticsProvider>(
           context,
           listen: false,
         );
@@ -41,7 +41,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     debugPrint(
       'StatisticsScreen: Date range changed to ${DateFormat('dd/MM/yyyy').format(start)} - ${DateFormat('dd/MM/yyyy').format(end)}',
     );
-    final provider = Provider.of<StatisticsStateProvider>(
+    final provider = Provider.of<StatisticsProvider>(
       context,
       listen: false,
     );
@@ -53,7 +53,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
         // If not authenticated, show login prompt
-        if (!authProvider.isAuthenticatedState) {
+        if (!authProvider.isAuthenticated) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -66,10 +66,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           );
         }
 
-        return Consumer<StatisticsStateProvider>(
+        return Consumer<StatisticsProvider>(
           builder: (context, statisticsProvider, child) {
             debugPrint(
-              'StatisticsScreen: Consumer rebuild - provider state=${statisticsProvider.state}, hasData=${statisticsProvider.statisticsUiModel != null}',
+              'StatisticsScreen: Consumer rebuild - hasData=${statisticsProvider.financialStats != null}',
             );
 
             return Column(
@@ -99,13 +99,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildStatisticsContent(
     BuildContext context,
-    StatisticsStateProvider provider,
+    StatisticsProvider provider,
   ) {
     debugPrint(
-      'StatisticsScreen._buildStatisticsContent: state=${provider.state}, hasModel=${provider.statisticsUiModel != null}',
+      'StatisticsScreen._buildStatisticsContent: hasModel=${provider.financialStats != null}',
     );
 
-    if (provider.isLoading && provider.statisticsUiModel == null) {
+    if (provider.isLoading && provider.financialStats == null) {
       debugPrint('StatisticsScreen: Showing loading indicator');
       return const Center(child: CircularProgressIndicator());
     }
@@ -118,7 +118,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             const Icon(Icons.error_outline, color: Colors.red, size: 48),
             const SizedBox(height: 16),
             Text(
-              'Error loading statistics: ${provider.error?.message ?? "Unknown error"}',
+              'Error loading statistics: ${provider.error ?? "Unknown error"}',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -132,14 +132,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       );
     }
 
-    if (provider.statisticsUiModel == null) {
+    if (provider.financialStats == null) {
       debugPrint('StatisticsScreen: No statistics data available');
       return const Center(
         child: Text('No statistics data available for the selected period.'),
       );
     }
 
-    final stats = provider.statisticsUiModel!;
+    final stats = provider.financialStats!;
     debugPrint(
       'StatisticsScreen: Displaying statistics data - totalRent=${stats.totalRent}, monthlyBreakdown=${stats.monthlyBreakdown.length} items',
     );
@@ -400,7 +400,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         (maxY / 5).ceil().toDouble(), // Match label interval
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Colors.grey.withOpacity(0.2),
+                        color: Colors.grey.withAlpha(51),
                         strokeWidth: 1,
                       );
                     },

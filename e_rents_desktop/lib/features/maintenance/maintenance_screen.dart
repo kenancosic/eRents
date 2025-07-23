@@ -1,10 +1,10 @@
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../repositories/maintenance_repository.dart';
 import '../../models/maintenance_issue.dart';
-import '../../base/service_locator.dart';
-import 'providers/maintenance_universal_table_provider.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
+import 'package:provider/provider.dart';
+import '../../widgets/table/custom_table.dart';
 
 class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
@@ -14,22 +14,14 @@ class MaintenanceScreen extends StatefulWidget {
 }
 
 class _MaintenanceScreenState extends State<MaintenanceScreen> {
-  late MaintenanceRepository _maintenanceRepository;
-
-  @override
-  void initState() {
-    super.initState();
-    // ✅ CLEAN: Use service locator to get repository dependency
-    _maintenanceRepository = getService<MaintenanceRepository>();
-  }
-
   @override
   Widget build(BuildContext context) {
-    // ✅ CLEAN: Remove redundant Scaffold - ContentWrapper handles layout
-    return MaintenanceTableFactory.create(
-      repository: _maintenanceRepository,
-      context: context,
-      title: '', // Remove title - ContentWrapper provides it
+    // Use the new MaintenanceProvider
+    final maintenanceProvider = context.watch<MaintenanceProvider>();
+
+    return CustomTableWidget<MaintenanceIssue>(
+      dataProvider: maintenanceProvider,
+      title: 'Maintenance Issues',
       headerActions: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -69,10 +61,10 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+        color: Theme.of(context).colorScheme.primaryContainer.withAlpha(179),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          color: Theme.of(context).colorScheme.primary.withAlpha(51),
         ),
       ),
       child: Row(

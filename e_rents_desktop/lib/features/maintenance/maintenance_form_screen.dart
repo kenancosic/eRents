@@ -1,14 +1,13 @@
-import 'package:e_rents_desktop/features/maintenance/state/maintenance_form_state.dart';
-import 'package:e_rents_desktop/repositories/maintenance_repository.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart';
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
-import 'package:e_rents_desktop/base/service_locator.dart';
 
-class MaintenanceFormScreen extends StatelessWidget {
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as picker;
+import 'package:e_rents_desktop/models/image_info.dart' as erents;
+
+class MaintenanceFormScreen extends StatefulWidget {
   final int? propertyId;
   final MaintenanceIssue? issue;
   final int? tenantId;
@@ -21,41 +20,141 @@ class MaintenanceFormScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create:
-          (context) => MaintenanceFormState(
-            getService<MaintenanceRepository>(),
-            issue,
-            propertyId: propertyId,
-            tenantId: tenantId,
-          ),
-      child: const _MaintenanceFormView(),
-    );
-  }
+  State<MaintenanceFormScreen> createState() => _MaintenanceFormScreenState();
 }
 
-class _MaintenanceFormView extends StatelessWidget {
-  const _MaintenanceFormView();
+class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late MaintenanceProvider _provider;
+
+  late MaintenanceIssue _issue;
+  List<erents.ImageInfo> _images = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _categoryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _provider = context.read<MaintenanceProvider>();
+
+    if (widget.issue != null) {
+      _issue = widget.issue!.copyWith();
+      _images = widget.issue!.imageIds
+          .map((id) => erents.ImageInfo(id: id, url: '/Image/$id'))
+          .toList();
+    } else {
+      _issue = MaintenanceIssue.empty().copyWith(
+        propertyId: widget.propertyId,
+        tenantId: widget.tenantId,
+        createdAt: DateTime.now(),
+      );
+    }
+
+    _titleController = TextEditingController(text: _issue.title);
+    _descriptionController = TextEditingController(text: _issue.description);
+    _categoryController = TextEditingController(text: _issue.category);
+
+    _addListeners();
+  }
+
+  void _addListeners() {
+    _titleController.addListener(() {
+      _issue = _issue.copyWith(title: _titleController.text);
+    });
+    _descriptionController.addListener(() {
+      _issue = _issue.copyWith(description: _descriptionController.text);
+    });
+    _categoryController.addListener(() {
+      _issue = _issue.copyWith(category: _categoryController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
+
+  void _updatePriority(IssuePriority priority) {
+    setState(() {
+      _issue = _issue.copyWith(priority: priority);
+    });
+  }
+
+  void _updateIsTenantComplaint(bool isComplaint) {
+    setState(() {
+      _issue = _issue.copyWith(isTenantComplaint: isComplaint);
+    });
+  }
+
+  void _updateImages(List<erents.ImageInfo> updatedImages) {
+    final imageIds = updatedImages
+        .map((img) => img.id)
+        .where((id) => id != null && id > 0)
+        .cast<int>()
+        .toList();
+    setState(() {
+      _images = updatedImages;
+      _issue = _issue.copyWith(imageIds: imageIds);
+    });
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) {
+      setState(() {
+        _errorMessage = 'Please fix the errors before saving.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final success = await _provider.save(_issue);
+      if (success && mounted) {
+        final savedIssue = _provider.issues.firstWhere(
+          (i) => i.propertyId == _issue.propertyId && i.title == _issue.title,
+        );
+        context.go('/maintenance/${savedIssue.maintenanceIssueId}');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<MaintenanceFormState>();
-
-    if (state.isLoading) {
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
-        key: state.formKey,
+        key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (state.errorMessage != null) ...[
+            if (_errorMessage != null) ...[
               Text(
-                state.errorMessage!,
+                _errorMessage!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
               const SizedBox(height: 16),
@@ -66,7 +165,7 @@ class _MaintenanceFormView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             TextFormField(
-              controller: state.titleController,
+              controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Title',
                 border: OutlineInputBorder(),
@@ -80,7 +179,7 @@ class _MaintenanceFormView extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             TextFormField(
-              controller: state.descriptionController,
+              controller: _descriptionController,
               decoration: const InputDecoration(
                 labelText: 'Description',
                 border: OutlineInputBorder(),
@@ -98,25 +197,24 @@ class _MaintenanceFormView extends StatelessWidget {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<IssuePriority>(
-                    value: state.issue.priority,
+                    value: _issue.priority,
                     decoration: const InputDecoration(
                       labelText: 'Priority',
                       border: OutlineInputBorder(),
                     ),
-                    items:
-                        IssuePriority.values
-                            .map(
-                              (priority) => DropdownMenuItem(
-                                value: priority,
-                                child: Text(
-                                  priority.toString().split('.').last,
-                                ),
-                              ),
-                            )
-                            .toList(),
+                    items: IssuePriority.values
+                        .map(
+                          (priority) => DropdownMenuItem(
+                            value: priority,
+                            child: Text(
+                              priority.toString().split('.').last,
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        state.updatePriority(value);
+                        _updatePriority(value);
                       }
                     },
                   ),
@@ -124,7 +222,7 @@ class _MaintenanceFormView extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: TextFormField(
-                    controller: state.categoryController,
+                    controller: _categoryController,
                     decoration: const InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(),
@@ -142,10 +240,8 @@ class _MaintenanceFormView extends StatelessWidget {
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Tenant Complaint'),
-              value: state.issue.isTenantComplaint,
-              onChanged: (value) {
-                state.updateIsTenantComplaint(value);
-              },
+              value: _issue.isTenantComplaint,
+              onChanged: _updateIsTenantComplaint,
             ),
             const SizedBox(height: 32),
             Text(
@@ -153,54 +249,43 @@ class _MaintenanceFormView extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            ImagePickerInput(
-              initialImages: state.images,
-              onChanged: (updatedImages) {
-                state.updateImages(
-                  updatedImages
-                      .map(
-                        (img) => erents.ImageInfo(
-                          id: img.id,
-                          url: img.url,
-                          fileName: img.fileName,
-                          // No 'path' property available on the picker's ImageInfo
-                        ),
-                      )
-                      .toList(),
-                );
-              },
+            picker.ImagePickerInput(
+              initialImages: _images
+                  .map((img) => picker.ImageInfo(
+                        id: img.id,
+                        url: img.url,
+                        fileName: img.fileName,
+                      ))
+                  .toList(),
+              apiService: _provider.apiService,
+              onChanged: (images) => _updateImages(images
+                  .map((img) => erents.ImageInfo(
+                        id: img.id,
+                        url: img.url,
+                        fileName: img.fileName,
+                      ))
+                  .toList()),
             ),
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed:
-                      state.isLoading
-                          ? null
-                          : () {
-                            final propertyId = state.issue.propertyId;
-                            if (propertyId > 0) {
-                              context.go('/properties/$propertyId');
-                            } else {
-                              context.go('/maintenance');
-                            }
-                          },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          final propertyId = _issue.propertyId;
+                          if (propertyId > 0) {
+                            context.go('/properties/$propertyId');
+                          } else {
+                            context.go('/maintenance');
+                          }
+                        },
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
-                  onPressed:
-                      state.isLoading
-                          ? null
-                          : () async {
-                            final savedIssue = await state.save();
-                            if (savedIssue != null && context.mounted) {
-                              context.go(
-                                '/maintenance/${savedIssue.maintenanceIssueId}',
-                              );
-                            }
-                          },
+                  onPressed: _isLoading ? null : _save,
                   child: const Text('Save Issue'),
                 ),
               ],

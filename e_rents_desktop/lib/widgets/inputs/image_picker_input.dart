@@ -1,11 +1,9 @@
-import 'dart:io'; // Required for File operations if using actual file paths
 import 'dart:typed_data';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/base/service_locator.dart';
+
 
 /// A widget for picking, displaying, and managing a list of image paths.
 class ImageInfo {
@@ -51,11 +49,13 @@ class ImagePickerInput extends StatefulWidget {
   final bool allowReordering;
   final bool allowCoverSelection;
   final String emptyStateText;
+  final ApiService apiService;
 
   const ImagePickerInput({
     super.key,
     this.initialImages = const [],
     required this.onChanged,
+    required this.apiService,
     this.maxImages = 10,
     this.allowReordering = true,
     this.allowCoverSelection = true,
@@ -133,12 +133,14 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
         widget.onChanged(_images);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking images: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking images: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -321,7 +323,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
     } else if (image.url != null) {
       // Existing image with URL - use ApiService for proper handling
       return Image.network(
-        getService<ApiService>().makeAbsoluteUrl(image.url!),
+        widget.apiService.makeAbsoluteUrl(image.url!),
         fit: BoxFit.cover,
         width: double.infinity,
         height: 120,
@@ -329,7 +331,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
     } else if (image.id != null) {
       // Existing image with ID - construct URL and use ApiService
       return Image.network(
-        getService<ApiService>().makeAbsoluteUrl('/Image/${image.id}'),
+        widget.apiService.makeAbsoluteUrl('/Image/${image.id}'),
         fit: BoxFit.cover,
         width: double.infinity,
         height: 120,

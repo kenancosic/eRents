@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
-import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart' hide log;
 import 'package:flutter/services.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -21,22 +22,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
     // Load reports data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.isAuthenticatedState) {
-        final reportsProvider = Provider.of<ReportsStateProvider>(
+      if (authProvider.isAuthenticated) {
+        final reportsProvider = Provider.of<ReportsProvider>(
           context,
           listen: false,
         );
-        reportsProvider.loadCurrentReportData();
+        reportsProvider.fetchCurrentReports();
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<ReportsStateProvider, AuthProvider>(
+    return Consumer2<ReportsProvider, AuthProvider>(
       builder: (context, reportsProvider, authProvider, _) {
         // If not authenticated, show login prompt
-        if (!authProvider.isAuthenticatedState) {
+        if (!authProvider.isAuthenticated) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -56,7 +57,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 }
 
 class _ReportsScreenContent extends StatelessWidget {
-  final ReportsStateProvider reportsProvider;
+  final ReportsProvider reportsProvider;
 
   const _ReportsScreenContent({required this.reportsProvider});
 
@@ -269,7 +270,7 @@ class _ReportsScreenContent extends StatelessWidget {
               (start, end) => _handleDateRangeChanged(context, start, end),
           onPropertyFilterChanged: (selectedProps) {
             // TODO: Implement property filter logic if needed by reports
-            print('Property filter changed: $selectedProps');
+            log.info('Property filter changed: $selectedProps');
           },
         ),
 

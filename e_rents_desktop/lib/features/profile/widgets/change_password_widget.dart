@@ -1,31 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/profile/state/change_password_form_state.dart';
 
-class ChangePasswordWidget extends StatelessWidget {
+class ChangePasswordWidget extends StatefulWidget {
   final bool isEditing;
 
   const ChangePasswordWidget({super.key, required this.isEditing});
 
   @override
+  State<ChangePasswordWidget> createState() => _ChangePasswordWidgetState();
+}
+
+class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _currentPasswordController;
+  late final TextEditingController _newPasswordController;
+  late final TextEditingController _confirmPasswordController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final state = context.watch<ChangePasswordFormState>();
+    final profileProvider = context.watch<ProfileProvider>();
 
     return Form(
-      key: state.formKey,
+      key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isEditing)
+          if (!widget.isEditing)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withAlpha(77),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.outline.withAlpha(51),
                 ),
               ),
               child: Row(
@@ -34,7 +60,7 @@ class ChangePasswordWidget extends StatelessWidget {
                     Icons.lock,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
+                    ).colorScheme.onSurface.withAlpha(153),
                     size: 20,
                   ),
                   const SizedBox(width: 12),
@@ -55,7 +81,7 @@ class ChangePasswordWidget extends StatelessWidget {
                           ).textTheme.bodySmall?.copyWith(
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.6),
+                            ).colorScheme.onSurface.withAlpha(153),
                           ),
                         ),
                       ],
@@ -64,13 +90,13 @@ class ChangePasswordWidget extends StatelessWidget {
                 ],
               ),
             ),
-          if (isEditing) ...[
+          if (widget.isEditing) ...[
             _buildCompactTextField(
               context,
-              controller: state.currentPasswordController,
+              controller: _currentPasswordController,
               label: 'Current Password',
               isPassword: true,
-              enabled: !state.isLoading,
+              enabled: !profileProvider.isChangingPassword,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Current password is required';
@@ -84,10 +110,10 @@ class ChangePasswordWidget extends StatelessWidget {
                 Expanded(
                   child: _buildCompactTextField(
                     context,
-                    controller: state.newPasswordController,
+                    controller: _newPasswordController,
                     label: 'New Password',
                     isPassword: true,
-                    enabled: !state.isLoading,
+                    enabled: !profileProvider.isChangingPassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'New password is required';
@@ -103,15 +129,15 @@ class ChangePasswordWidget extends StatelessWidget {
                 Expanded(
                   child: _buildCompactTextField(
                     context,
-                    controller: state.confirmPasswordController,
+                    controller: _confirmPasswordController,
                     label: 'Confirm Password',
                     isPassword: true,
-                    enabled: !state.isLoading,
+                    enabled: !profileProvider.isChangingPassword,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please confirm password';
                       }
-                      if (value != state.newPasswordController.text) {
+                      if (value != _newPasswordController.text) {
                         return 'Passwords do not match';
                       }
                       return null;
@@ -121,23 +147,30 @@ class ChangePasswordWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            if (state.errorMessage != null)
+            if (profileProvider.passwordChangeError != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(
-                  state.errorMessage!,
+                  profileProvider.passwordChangeError!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed:
-                    state.isLoading
-                        ? null
-                        : () async {
-                          final success = await state.changePassword();
+                onPressed: profileProvider.isChangingPassword
+                    ? null
+                    : () async {
+                        if (_formKey.currentState?.validate() ?? false) {
+                          final success = await context.read<ProfileProvider>().changePassword(
+                                currentPassword: _currentPasswordController.text,
+                                newPassword: _newPasswordController.text,
+                                confirmPassword: _confirmPasswordController.text,
+                              );
                           if (success && context.mounted) {
+                            _currentPasswordController.clear();
+                            _newPasswordController.clear();
+                            _confirmPasswordController.clear();
                             FocusScope.of(context).unfocus();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -147,21 +180,21 @@ class ChangePasswordWidget extends StatelessWidget {
                               ),
                             );
                           }
-                        },
-                icon:
-                    state.isLoading
-                        ? Container(
-                          width: 16,
-                          height: 16,
-                          margin: const EdgeInsets.only(right: 8),
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                        : const Icon(Icons.key),
+                        }
+                      },
+                icon: profileProvider.isChangingPassword
+                    ? Container(
+                        width: 16,
+                        height: 16,
+                        margin: const EdgeInsets.only(right: 8),
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.key),
                 label: Text(
-                  state.isLoading ? 'Updating...' : 'Update Password',
+                  profileProvider.isChangingPassword ? 'Updating...' : 'Update Password',
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),

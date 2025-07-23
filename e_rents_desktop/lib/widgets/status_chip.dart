@@ -30,11 +30,11 @@ class StatusChip extends StatelessWidget {
         vertical: 4,
       ), // Adjusted padding slightly
       decoration: BoxDecoration(
-        color: backgroundColor.withOpacity(0.9), // Consistent opacity
+        color: backgroundColor.withValues(alpha: 0.9), // Consistent opacity
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08), // Softer shadow
+            color: Colors.black.withValues(alpha: 0.08), // Softer shadow
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

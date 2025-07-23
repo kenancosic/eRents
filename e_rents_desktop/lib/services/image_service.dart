@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:e_rents_desktop/base/app_error.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/services/secure_storage_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/widgets.dart';
 
@@ -101,7 +100,7 @@ class ImageService extends ApiService {
       final responseString = await response.stream.bytesToString();
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return json.decode(responseString);
+        return jsonDecode(responseString);
       } else {
         throw AppError.fromHttpResponse(response.statusCode, responseString);
       }

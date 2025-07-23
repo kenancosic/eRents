@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/index.dart';
 import 'package:e_rents_desktop/features/tenants/widgets/send_property_offer_dialog.dart';
-import 'package:e_rents_desktop/features/chat/providers/chat_collection_provider.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenant_collection_provider.dart';
+
+import 'package:e_rents_desktop/features/tenants/providers/tenants_provider.dart';
 
 class TenantsScreen extends StatefulWidget {
   const TenantsScreen({super.key});
@@ -26,7 +26,7 @@ class _TenantsScreenState extends State<TenantsScreen>
     _tabController = TabController(length: 2, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<TenantCollectionProvider>(
+      final provider = Provider.of<TenantsProvider>(
         context,
         listen: false,
       );
@@ -99,7 +99,7 @@ class _TenantsScreenState extends State<TenantsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TenantCollectionProvider>(
+    return Consumer<TenantsProvider>(
       builder: (context, provider, child) {
         // Show loading screen during initial data load
         if (provider.isLoading) {
@@ -133,7 +133,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  provider.error?.message ?? 'Unknown error occurred',
+                  provider.error ?? 'Unknown error occurred',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   textAlign: TextAlign.center,
                 ),

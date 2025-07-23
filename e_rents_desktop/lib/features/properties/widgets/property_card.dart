@@ -1,10 +1,8 @@
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/base/service_locator.dart';
 
 class PropertyCard extends StatelessWidget {
   final Property property;
@@ -166,10 +164,19 @@ class PropertyCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8.0),
       child: Image.network(
-        getService<ApiService>().makeAbsoluteUrl('Image/$imageId'),
+        'http://localhost:5000/Image/$imageId',
         width: width,
         height: height,
         fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.broken_image, size: 48, color: Colors.grey.shade400),
+        ),
       ),
     );
   }

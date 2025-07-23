@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:e_rents_desktop/services/lookup_service.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 class LookupProvider with ChangeNotifier {
   final LookupService _lookupService;
@@ -46,18 +47,18 @@ class LookupProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      print(
+      log.info(
         'LookupProvider: Loading lookup data (forceRefresh: $forceRefresh)',
       );
       _lookupData = await _lookupService.getAllLookupData(
         forceRefresh: forceRefresh,
       );
-      print(
+      log.info(
         'LookupProvider: Successfully loaded ${_lookupData?.propertyTypes.length} property types',
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = e.toString();
-      print('LookupProvider: Error loading lookup data: $e');
+      log.severe('LookupProvider: Error loading lookup data', e, stackTrace);
     } finally {
       _isLoading = false;
       notifyListeners();

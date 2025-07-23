@@ -148,7 +148,7 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
             _isSearching = false;
           });
         } else {
-          print("API Error: ${data['status']}");
+          // API Error: ${data['status']}
           setState(() {
             _predictions = [];
             _isSearching = false;
@@ -164,7 +164,7 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
         _showOverlay();
       }
     } catch (e) {
-      print("Error searching places: $e");
+      // Error searching places: $e
       setState(() {
         _isSearching = false;
         _predictions = [];
@@ -229,22 +229,20 @@ class _GoogleAddressInputState extends State<GoogleAddressInput> {
             longitude: (location['lng'] as num?)?.toDouble(),
           );
         } else {
-          print(
-            "Place Details API Error: ${data['status']} - ${data['error_message']}",
-          );
+          // Place Details API Error: ${data['status']} - ${data['error_message']}
         }
       } else {
         throw Exception('Failed to load place details: ${response.statusCode}');
       }
     } catch (e) {
-      print("Error fetching place details: $e");
+      // Error fetching place details: $e
     }
     return null;
   }
 
   void _selectPrediction(Prediction prediction) async {
     if (prediction.placeId == null || prediction.description == null) {
-      print("Prediction missing placeId or description");
+      // Prediction missing placeId or description
       return;
     }
 

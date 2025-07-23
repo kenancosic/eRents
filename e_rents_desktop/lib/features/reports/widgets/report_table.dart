@@ -1,7 +1,7 @@
 import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/reports_state_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/widgets/table/custom_table.dart';
@@ -12,7 +12,7 @@ class ReportTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ReportsStateProvider>(
+    return Consumer<ReportsProvider>(
       builder: (context, reportsProvider, child) {
         // Handle loading state
         if (reportsProvider.isLoading) {
@@ -37,7 +37,7 @@ class ReportTable extends StatelessWidget {
                 const Icon(Icons.error_outline, color: Colors.red, size: 48),
                 const SizedBox(height: 16),
                 Text(
-                  'Error loading data: ${reportsProvider.error?.message ?? "Unknown error"}',
+                  'Error loading data: ${reportsProvider.error ?? "Unknown error"}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16),
                 ),
@@ -46,7 +46,7 @@ class ReportTable extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
                   onPressed: () {
-                    reportsProvider.loadCurrentReportData(forceRefresh: true);
+                    reportsProvider.fetchCurrentReports(forceRefresh: true);
                   },
                 ),
               ],
@@ -55,8 +55,8 @@ class ReportTable extends StatelessWidget {
         }
 
         // Handle empty data state
-        final currentData = reportsProvider.currentReportData;
-        if (currentData == null || currentData.isEmpty) {
+        final currentData = reportsProvider.currentReports;
+        if (currentData.isEmpty) {
           final message =
               reportsProvider.currentReportType == ReportType.financial
                   ? 'No financial data available for the selected period'
@@ -78,7 +78,7 @@ class ReportTable extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   label: const Text('Refresh'),
                   onPressed: () {
-                    reportsProvider.loadCurrentReportData(forceRefresh: true);
+                    reportsProvider.fetchCurrentReports(forceRefresh: true);
                   },
                 ),
               ],
@@ -90,13 +90,13 @@ class ReportTable extends StatelessWidget {
         switch (reportsProvider.currentReportType) {
           case ReportType.financial:
             return _FinancialReportUniversalTable(
-              reportItems: reportsProvider.financialReportData!,
+              reportItems: reportsProvider.financialReports,
               dateRange:
                   '${reportsProvider.formattedStartDate} - ${reportsProvider.formattedEndDate}',
             );
           case ReportType.tenant:
             return _TenantReportUniversalTable(
-              reportItems: reportsProvider.tenantReportData!,
+              reportItems: reportsProvider.tenantReports,
               dateRange:
                   '${reportsProvider.formattedStartDate} - ${reportsProvider.formattedEndDate}',
             );

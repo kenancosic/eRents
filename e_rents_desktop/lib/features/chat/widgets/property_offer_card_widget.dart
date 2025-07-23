@@ -1,5 +1,5 @@
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_collection_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -16,14 +16,14 @@ class PropertyOfferCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final propertyProvider = Provider.of<PropertyCollectionProvider>(
+    final propertyProvider = Provider.of<PropertiesProvider>(
       context,
       listen: false,
     );
     Property? property;
     try {
       final propertyIdInt = int.tryParse(propertyId) ?? 0;
-      property = propertyProvider.items.firstWhere(
+      property = propertyProvider.properties.firstWhere(
         (p) => p.propertyId == propertyIdInt,
       );
     } catch (e) {

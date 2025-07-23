@@ -1,23 +1,26 @@
-import 'package:e_rents_desktop/features/auth/state/login_form_state.dart';
-import 'package:e_rents_desktop/models/auth/login_request_model.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:e_rents_desktop/base/app_error.dart';
-import 'package:e_rents_desktop/providers/app_state_providers.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/secure_storage_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+  LoginScreen({super.key});
+
+  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => LoginFormState(context.read<AuthProvider>()),
-      child: const LoginView(),
+      create: (_) => AuthProvider(
+        apiService: ApiService(baseUrl, SecureStorageService()),
+        storage: SecureStorageService(),
+      ),
+      child: LoginView(),
     );
   }
 }
@@ -32,17 +35,18 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LoginFormState>().loadRememberedCredentials(
-        _emailController,
-      );
-    });
+    _loadCredentials();
+  }
+
+  Future<void> _loadCredentials() async {
+    final email = await context.read<AuthProvider>().loadRememberedCredentials();
+    if (email != null) {
+      _emailController.text = email;
+    }
   }
 
   @override
@@ -52,33 +56,12 @@ class _LoginViewState extends State<LoginView> {
     super.dispose();
   }
 
-  void _login(BuildContext context) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final state = context.read<LoginFormState>();
-    final success = await state.login(
+  Future<void> _login(AuthProvider authProvider) async {
+    await authProvider.login(
       _emailController.text,
       _passwordController.text,
     );
-
-    if (success && mounted) {
-      if (state.rememberMe) {
-        await _storage.write(
-          key: 'remembered_email',
-          value: _emailController.text,
-        );
-      } else {
-        await _storage.delete(key: 'remembered_email');
-      }
-      context.go('/');
-    } else if (!success && mounted) {
-      context.read<AppErrorProvider>().setError(
-        AppError(
-          type: ErrorType.authentication,
-          message: state.errorMessage ?? 'Login failed.',
-        ),
-      );
-    }
+    // Navigation is handled by the root router based on auth state
   }
 
   @override
@@ -87,16 +70,16 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildLoginForm(BuildContext context) {
-    return Consumer<LoginFormState>(
-      builder: (context, state, child) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withAlpha(230),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withAlpha(26),
                 spreadRadius: 1,
                 blurRadius: 10,
               ),
@@ -104,7 +87,6 @@ class _LoginViewState extends State<LoginView> {
           ),
           child: SingleChildScrollView(
             child: Form(
-              key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,7 +105,7 @@ class _LoginViewState extends State<LoginView> {
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    enabled: !state.isLoading,
+                    enabled: !authProvider.isLoading,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
@@ -140,8 +122,8 @@ class _LoginViewState extends State<LoginView> {
                       prefixIcon: Icon(Icons.lock),
                     ),
                     textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _login(context),
-                    enabled: !state.isLoading,
+                    onFieldSubmitted: (_) => _login(authProvider),
+                    enabled: !authProvider.isLoading,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
@@ -153,9 +135,9 @@ class _LoginViewState extends State<LoginView> {
                   Row(
                     children: [
                       Checkbox(
-                        value: state.rememberMe,
+                        value: authProvider.rememberMe,
                         onChanged: (value) {
-                          context.read<LoginFormState>().setRememberMe(value);
+                          authProvider.setRememberMe(value);
                         },
                       ),
                       const Text('Remember Me'),
@@ -163,17 +145,16 @@ class _LoginViewState extends State<LoginView> {
                   ),
                   const SizedBox(height: 16),
                   CustomButton(
-                    onPressed: () => _login(context),
+                    onPressed: () => _login(authProvider),
                     label: 'Login',
-                    isLoading: state.isLoading,
+                    isLoading: authProvider.isLoading,
                   ),
-                  if (state.errorMessage != null)
+                  if (authProvider.errorMessage != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 16),
+                      padding: const EdgeInsets.only(top: 16.0),
                       child: Text(
-                        state.errorMessage!,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
+                        authProvider.errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 16),
                       ),
                     ),
                   const SizedBox(height: 16),

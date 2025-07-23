@@ -1,12 +1,10 @@
-import 'package:e_rents_desktop/base/service_locator.dart';
-import 'package:e_rents_desktop/features/rents/providers/booking_detail_provider.dart';
+
+import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/models/booking.dart';
-import 'package:e_rents_desktop/repositories/booking_repository.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-
-import 'state/stay_action_state.dart';
 
 class StayDetailScreen extends StatelessWidget {
   final String stayId;
@@ -15,12 +13,12 @@ class StayDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<BookingDetailProvider>(
-      create:
-          (_) =>
-              BookingDetailProvider(ServiceLocator().get<BookingRepository>())
-                ..loadItem(stayId),
-      child: Consumer<BookingDetailProvider>(
+    return ChangeNotifierProvider<RentsProvider>(
+      create: (_) => 
+          RentsProvider(context.read<ApiService>(), context: context)
+            ..setRentalType(RentalType.stay)
+            ..getStayById(stayId),
+      child: Consumer<RentsProvider>(
         builder: (context, provider, child) {
           return Scaffold(
             appBar: AppBar(title: const Text('Stay Details')),
@@ -31,32 +29,32 @@ class StayDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget buildBody(BuildContext context, BookingDetailProvider provider) {
+  Widget buildBody(BuildContext context, RentsProvider provider) {
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.hasError) {
+    if (provider.error != null) {
       return Center(
         child: Text(
-          'Error: ${provider.error?.message ?? 'Unknown error'}',
+          'Error: ${provider.error ?? 'Unknown error'}',
           style: const TextStyle(color: Colors.red),
         ),
       );
     }
 
-    if (provider.item == null) {
+    if (provider.selectedStay == null) {
       return const Center(child: Text('No data available.'));
     }
 
-    final booking = provider.item!;
+    final booking = provider.selectedStay!;
     return buildBookingDetails(context, booking, provider);
   }
 
   Widget buildBookingDetails(
     BuildContext context,
     Booking booking,
-    BookingDetailProvider provider,
+    RentsProvider provider,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -102,15 +100,10 @@ class StayDetailScreen extends StatelessWidget {
           ),
           if (booking.canBeCancelled) ...[
             const SizedBox(height: 16),
-            ChangeNotifierProvider(
-              create:
-                  (_) => StayActionState(
-                    ServiceLocator().get<BookingRepository>(),
-                    booking,
-                  ),
-              child: _StayActionsCard(
-                onActionCompleted: () => provider.loadItem(stayId),
-              ),
+            _StayActionsCard(
+              provider: provider,
+              booking: booking,
+              onActionCompleted: () => provider.getStayById(stayId),
             ),
           ],
         ],
@@ -155,12 +148,19 @@ class StayDetailScreen extends StatelessWidget {
 }
 
 class _StayActionsCard extends StatelessWidget {
+  final RentsProvider provider;
+  final Booking booking;
   final VoidCallback onActionCompleted;
-  const _StayActionsCard({required this.onActionCompleted});
+
+  const _StayActionsCard({
+    required this.provider,
+    required this.booking,
+    required this.onActionCompleted,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<StayActionState>();
+    final isLoading = provider.isActionInProgress;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -172,7 +172,7 @@ class _StayActionsCard extends StatelessWidget {
           children: [
             Text('Cancel Stay', style: Theme.of(context).textTheme.titleLarge),
             const Divider(height: 20, thickness: 1),
-            if (state.isLoading)
+            if (isLoading)
               const Center(child: CircularProgressIndicator())
             else ...[
               Text(
@@ -184,7 +184,7 @@ class _StayActionsCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   ElevatedButton(
-                    onPressed: () => _showCancellationDialog(context, state),
+                    onPressed: () => _showCancellationDialog(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                     ),
@@ -193,10 +193,10 @@ class _StayActionsCard extends StatelessWidget {
                 ],
               ),
             ],
-            if (state.error != null) ...[
+            if (provider.error != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Error: ${state.error!.message}',
+                'Error: ${provider.error}',
                 style: const TextStyle(color: Colors.red),
               ),
             ],
@@ -208,7 +208,6 @@ class _StayActionsCard extends StatelessWidget {
 
   Future<void> _showCancellationDialog(
     BuildContext context,
-    StayActionState state,
   ) async {
     final reasonController = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -267,7 +266,10 @@ class _StayActionsCard extends StatelessWidget {
 
     if (confirmed == true) {
       final reason = reasonController.text;
-      final success = await state.cancelStay(reason: reason);
+      final success = await provider.cancelStay(
+        bookingId: booking.bookingId.toString(),
+        reason: reason,
+      );
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(

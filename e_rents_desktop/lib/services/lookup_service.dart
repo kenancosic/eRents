@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 class LookupService extends ApiService {
   LookupService(super.baseUrl, super.storageService);
@@ -18,26 +19,26 @@ class LookupService extends ApiService {
   Future<LookupData> getAllLookupData({bool forceRefresh = false}) async {
     // Return cached data if available and not expired
     if (!forceRefresh && _cachedLookupData != null && _isCacheValid()) {
-      print('LookupService: Returning cached lookup data');
+      log.info('LookupService: Returning cached lookup data');
       return _cachedLookupData!;
     }
 
-    print('LookupService: Fetching fresh lookup data from backend');
+    log.info('LookupService: Fetching fresh lookup data from backend');
 
     try {
-      final response = await get('/Lookup/all', authenticated: false);
+      final response = await get('/Lookup/all', authenticated: true);
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
 
       _cachedLookupData = LookupData.fromJson(jsonResponse);
       _cacheTimestamp = DateTime.now();
 
-      print('LookupService: Successfully cached lookup data');
+      log.info('LookupService: Successfully cached lookup data');
       return _cachedLookupData!;
-    } catch (e) {
-      print('LookupService: Error fetching lookup data: $e');
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching lookup data', e, stackTrace);
       // If we have cached data, return it even if expired
       if (_cachedLookupData != null) {
-        print('LookupService: Returning expired cached data due to error');
+        log.warning('LookupService: Returning expired cached data due to error');
         return _cachedLookupData!;
       }
       rethrow;
@@ -114,8 +115,8 @@ class LookupService extends ApiService {
 
     final id = lookupData.getPropertyTypeIdByName(typeName);
     if (id == null) {
-      print(
-        'LookupService: Warning - PropertyType $typeName not found, defaulting to Apartment',
+      log.warning(
+        'LookupService: PropertyType $typeName not found, defaulting to Apartment',
       );
       return lookupData.getPropertyTypeIdByName('Apartment') ?? 1;
     }
@@ -134,8 +135,8 @@ class LookupService extends ApiService {
 
     final id = lookupData.getRentingTypeIdByName(typeName);
     if (id == null) {
-      print(
-        'LookupService: Warning - RentingType $typeName not found, defaulting to Monthly',
+      log.warning(
+        'LookupService: RentingType $typeName not found, defaulting to Monthly',
       );
       return lookupData.getRentingTypeIdByName('Monthly') ?? 1;
     }
@@ -156,8 +157,8 @@ class LookupService extends ApiService {
 
     final id = lookupData.getPropertyStatusIdByName(statusName);
     if (id == null) {
-      print(
-        'LookupService: Warning - PropertyStatus $statusName not found, defaulting to Available',
+      log.warning(
+        'LookupService: PropertyStatus $statusName not found, defaulting to Available',
       );
       return lookupData.getPropertyStatusIdByName('Available') ?? 1;
     }
@@ -171,8 +172,8 @@ class LookupService extends ApiService {
     final item = lookupData.getPropertyTypeById(id);
 
     if (item == null) {
-      print(
-        'LookupService: Warning - PropertyType ID $id not found, defaulting to apartment',
+      log.warning(
+        'LookupService: PropertyType ID $id not found, defaulting to apartment',
       );
       return PropertyType.apartment;
     }
@@ -193,8 +194,8 @@ class LookupService extends ApiService {
     final item = lookupData.getRentingTypeById(id);
 
     if (item == null) {
-      print(
-        'LookupService: Warning - RentingType ID $id not found, defaulting to monthly',
+      log.warning(
+        'LookupService: RentingType ID $id not found, defaulting to monthly',
       );
       return RentingType.monthly;
     }
@@ -212,8 +213,8 @@ class LookupService extends ApiService {
     final item = lookupData.getPropertyStatusById(id);
 
     if (item == null) {
-      print(
-        'LookupService: Warning - PropertyStatus ID $id not found, defaulting to available',
+      log.warning(
+        'LookupService: PropertyStatus ID $id not found, defaulting to available',
       );
       return PropertyStatus.available;
     }
@@ -247,6 +248,6 @@ class LookupService extends ApiService {
   void clearCache() {
     _cachedLookupData = null;
     _cacheTimestamp = null;
-    print('LookupService: Cache cleared');
+    log.info('LookupService: Cache cleared');
   }
 }

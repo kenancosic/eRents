@@ -50,15 +50,10 @@ class DateRangeFilter extends StatefulWidget {
 class _DateRangeFilterState extends State<DateRangeFilter> {
   late DateTime _startDate;
   late DateTime _endDate;
-  final List<String> _selectedProperties = [];
-
   // Date formatters and controllers
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy');
   late TextEditingController _startDateController;
   late TextEditingController _endDateController;
-
-  // TODO: Replace with actual property service call
-  List<String> _availableProperties = [];
 
   @override
   void initState() {
@@ -90,7 +85,7 @@ class _DateRangeFilterState extends State<DateRangeFilter> {
   /// TODO: Replace with actual API call to get properties
   void _loadAvailableProperties() {
     // Placeholder - replace with actual property service
-    _availableProperties = [];
+    // No properties loaded currently
   }
 
   @override

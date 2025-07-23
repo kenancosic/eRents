@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class CustomButton extends StatelessWidget {
   final dynamic label;
   final bool isLoading;
-  final VoidCallback onPressed;
+  final Future<void> Function()? onPressed;
   final Color backgroundColor;
   final double height;
   final double fontSize;
@@ -23,7 +23,7 @@ class CustomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      onPressed: isLoading ? null : onPressed, // Disable button if loading
+      onPressed: isLoading || onPressed == null ? null : () async => await onPressed!(), // Disable button if loading
       style: ElevatedButton.styleFrom(
         minimumSize: Size(double.infinity, height), // Full width, adjustable height
         backgroundColor: backgroundColor, // Customizable background color

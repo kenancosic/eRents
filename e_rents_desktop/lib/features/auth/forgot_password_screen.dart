@@ -1,32 +1,21 @@
-import 'package:e_rents_desktop/features/auth/state/forgot_password_form_state.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/status_dialog.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-class ForgotPasswordScreen extends StatelessWidget {
+class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ForgotPasswordFormState(),
-      child: const ForgotPasswordView(),
-    );
-  }
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class ForgotPasswordView extends StatefulWidget {
-  const ForgotPasswordView({super.key});
-
-  @override
-  State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
-}
-
-class _ForgotPasswordViewState extends State<ForgotPasswordView> {
-  final TextEditingController _emailController = TextEditingController();
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
 
   @override
   void dispose() {
@@ -34,80 +23,90 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     super.dispose();
   }
 
-  void _resetPassword(BuildContext context) async {
-    final state = context.read<ForgotPasswordFormState>();
-    await state.resetPassword(_emailController.text);
-
-    if (state.isEmailSent && mounted) {
-      // Show success dialog
-      StatusDialog.show(
-        context: context,
-        title: 'Reset Instructions Sent!',
-        message:
-            'We\'ve sent password reset instructions to your email address. Please check your inbox.',
-        actionLabel: 'Back to Login',
-        onActionPressed: () {
-          context.pop(); // Go back after dialog action
-        },
-      );
+  Future<void> _sendResetLink(AuthProvider authProvider) async {
+    if (_formKey.currentState?.validate() ?? false) {
+      await authProvider.forgotPassword(_emailController.text);
+      if (authProvider.emailSent && mounted) {
+        StatusDialog.show(
+          context: context,
+          title: 'Email Sent!',
+          message:
+              'A password reset link has been sent to your email address. Please check your inbox.',
+          actionLabel: 'Back to Login',
+          onActionPressed: () => context.go('/login'),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AuthScreenLayout(formWidget: _buildForgotPasswordForm(context));
+    return AuthScreenLayout(
+      formWidget: _buildForgotPasswordForm(context),
+    );
   }
 
   Widget _buildForgotPasswordForm(BuildContext context) {
-    return Consumer<ForgotPasswordFormState>(
-      builder: (context, state, child) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Forgot Password',
-              style: Theme.of(context).textTheme.headlineMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Enter your email address and we\'ll send you instructions to reset your password.',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Forgot Password',
+                style: Theme.of(context).textTheme.headlineMedium,
+                textAlign: TextAlign.center,
               ),
-              enabled: !state.isLoading,
-            ),
-            const SizedBox(height: 24),
-            CustomButton(
-              onPressed: () => _resetPassword(context),
-              label: 'Send Reset Instructions',
-              isLoading: state.isLoading,
-            ),
-            if (state.errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Text(
-                  state.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+              const SizedBox(height: 16),
+              Text(
+                'Enter your email address and we\'ll send you instructions to reset your password.',
+                style: Theme.of(context).textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty || !value.contains('@')) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
+                enabled: !authProvider.isLoading,
               ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                context.pop(); // Return to login screen
-              },
-              child: const Text('Back to Login'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              CustomButton(
+                onPressed: authProvider.isLoading
+                    ? null
+                    : () async {
+                        await _sendResetLink(authProvider);
+                      },
+                label: 'Send Reset Instructions',
+                isLoading: authProvider.isLoading,
+              ),
+              if (authProvider.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Text(
+                    authProvider.error!.message,
+                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => context.pop(),
+                child: const Text('Back to Login'),
+              ),
+            ],
+          ),
         );
       },
     );

@@ -1,214 +1,215 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/models/auth/login_request_model.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/services/auth_service.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/secure_storage_service.dart';
+import 'package:logging/logging.dart';
 import 'package:e_rents_desktop/base/app_error.dart';
-import 'package:e_rents_desktop/base/lifecycle_mixin.dart';
-import 'package:e_rents_desktop/utils/provider_registry.dart';
 
-class AuthProvider extends ChangeNotifier with LifecycleMixin {
-  final AuthService _authService;
+final log = Logger('AuthProvider');
+
+/// A consolidated provider for authentication and form state management.
+class AuthProvider extends ChangeNotifier {
+  // Dependencies
+  final ApiService _api;
+  final SecureStorageService _storage;
+
+  // --- State --------------------------------------------------------------
   User? _currentUser;
+  // Forgot Password State
   bool _isAuthenticated = false;
-  AppError? _error;
   bool _isLoading = false;
+  AppError? _error;
 
-  AuthProvider(this._authService) {
-    _initializeAuth();
+  // --- Form State ---------------------------------------------------------
+  bool _rememberMe = false;
+  bool _emailSent = false;
+
+  // Constructor
+  AuthProvider({required ApiService apiService, required SecureStorageService storage})
+      : _api = apiService,
+        _storage = storage {
+    _init();
   }
 
-  void _initializeAuth() async {
-    if (disposed) return;
+  // ---------------- Public Getters ---------------------------------------
+  User? get currentUser => _currentUser;
+  bool get isAuthenticated => _isAuthenticated;
+  bool get isLoading => _isLoading;
+  AppError? get error => _error;
+  String? get errorMessage => _error?.message;
+  bool get rememberMe => _rememberMe;
+  bool get emailSent => _emailSent;
 
-    _isLoading = true;
-    _error = null;
-    safeNotifyListeners();
-
+  // ---------------- Internal helpers -------------------------------------
+  Future<void> _init() async {
+    _setLoading(true);
     try {
-      _isAuthenticated = await _authService.isAuthenticated();
-      if (_isAuthenticated && !disposed) {
-        await _fetchCurrentUserDetails();
-        if (_currentUser == null) {
-          _isAuthenticated = false;
-        }
+      _isAuthenticated = await _checkToken();
+      if (_isAuthenticated) {
+        await _loadMe();
       }
-    } catch (e) {
-      if (!disposed) {
-        _error = AppError.fromException(e);
-        _isAuthenticated = false;
-      }
+    } catch (e, s) {
+      _setError(AppError.fromException(e, s));
+      _isAuthenticated = false;
     } finally {
-      if (!disposed) {
-        _isLoading = false;
-        safeNotifyListeners();
-      }
+      _setLoading(false);
     }
   }
 
-  // Getters
-  User? get currentUser => _currentUser;
-  bool get isAuthenticatedState => _isAuthenticated;
-  AppError? get error => _error;
-  bool get isLoading => _isLoading;
-  String? get errorMessage => _error?.message;
+  Future<bool> _checkToken() async => (await _storage.getToken()) != null;
 
-  // Helper methods
-  void _setError(String message) {
-    if (disposed) return;
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
 
-    _error = AppError(type: ErrorType.authentication, message: message);
-    safeNotifyListeners();
+
+
+
+
+  void _setError(AppError? err) {
+    _error = err;
+    notifyListeners();
   }
 
   void _clearError() {
-    if (disposed) return;
-
-    _error = null;
-    safeNotifyListeners();
-  }
-
-  Future<void> _fetchCurrentUserDetails() async {
-    if (disposed || !_isAuthenticated) return;
-
-    try {
-      final userResponse = await _authService.getMe();
-
-      if (!disposed) {
-        if (userResponse.containsKey('user')) {
-          _currentUser = User.fromJson(userResponse['user']);
-        } else {
-          _currentUser = null;
-          _isAuthenticated = false;
-          _setError(
-            'Failed to load user profile. Please try logging in again.',
-          );
-        }
-      }
-    } catch (e) {
-      if (!disposed) {
-        debugPrint('Error fetching user details: $e');
-        _currentUser = null;
-        _isAuthenticated = false;
-        _setError('Failed to load user profile. Please try logging in again.');
-      }
+    if (_error != null) {
+      _error = null;
+      notifyListeners();
     }
   }
 
-  Future<bool> login(LoginRequestModel request) async {
-    if (disposed) return false;
-
-    return await executeAsync(() async {
-      _isLoading = true;
-      _clearError();
-      safeNotifyListeners();
-
-      try {
-        await _authService.login(request);
-        _isAuthenticated = true;
-        await _fetchCurrentUserDetails();
-
-        // Verify we have a valid landlord user
-        if (_currentUser == null || _currentUser!.role != UserType.landlord) {
-          _isAuthenticated = false;
-          _currentUser = null;
-          await _authService.logout(); // Clear any stored data
-          throw Exception(
-            'Desktop application is for landlords only. Please use the mobile app to access your account.',
-          );
-        }
-
-        if (!disposed) {
-          _isLoading = false;
-          safeNotifyListeners();
-        }
-        return true;
-      } catch (e) {
-        if (!disposed) {
-          _isAuthenticated = false;
-          _currentUser = null;
-          _error = AppError.fromException(e);
-          _isLoading = false;
-          safeNotifyListeners();
-        }
-        return false;
-      }
-    });
+  // ---------------- API Calls --------------------------------------------
+  Future<Map<String, dynamic>> _post(String endpoint, Map<String, dynamic> body,
+      {bool authenticated = false}) async {
+    final response = await _api.post(
+      endpoint,
+      body,
+      authenticated: authenticated,
+      customHeaders: const {'Client-Type': 'Desktop'},
+    );
+    return json.decode(response.body) as Map<String, dynamic>;
   }
 
-  Future<User?> register(RegisterRequestModel request) async {
-    // Registration is not supported in desktop app as it's landlord-only
-    // Landlord accounts should be created through proper business processes
-    _setError(
-      'Account registration is not available in the desktop application. Please contact support for landlord account setup.',
+  Future<Map<String, dynamic>> _get(String endpoint,
+      {bool authenticated = false}) async {
+    final response = await _api.get(
+      endpoint,
+      authenticated: authenticated,
+      customHeaders: const {'Client-Type': 'Desktop'},
     );
-    return null;
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
+  // ---------------- Public API & Form Methods --------------------------------
+
+  void setRememberMe(bool? value) {
+    _rememberMe = value ?? false;
+    notifyListeners();
+  }
+
+  Future<String?> loadRememberedCredentials() async {
+    final rememberedEmail = await _storage.getData('remembered_email');
+    if (rememberedEmail != null) {
+      _rememberMe = true;
+      notifyListeners();
+    }
+    return rememberedEmail;
+  }
+
+  Future<bool> forgotPassword(String email) async {
+    _setLoading(true);
+    _clearError();
+    _emailSent = false;
+
+    try {
+      await _post('Auth/ForgotPassword', {'email': email});
+      _emailSent = true;
+      log.info('Password reset email sent successfully to $email.');
+      return true;
+    } catch (e, s) {
+      _setError(AppError.fromException(e, s, 'Failed to send password reset email.'));
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> login(String email, String password) async {
+    _setLoading(true);
+    _clearError();
+    try {
+      final request = LoginRequestModel(usernameOrEmail: email, password: password);
+      final result = await _post('/Auth/Login', request.toJson());
+      final token = result['token'] as String?;
+
+      if (token == null) throw Exception('Token not returned from API');
+
+      await _storage.storeToken(token);
+      await _loadMe();
+
+      if (_currentUser?.role != UserType.landlord) {
+        await logout();
+        throw AppError(
+          type: ErrorType.authentication,
+          message: 'Desktop application is for landlords only.',
+        );
+      }
+
+      if (_rememberMe) {
+        await _storage.storeData('remembered_email', email);
+      } else {
+        await _storage.clearData('remembered_email');
+      }
+
+      _isAuthenticated = true;
+      return true;
+    } catch (e, s) {
+      _setError(AppError.fromException(e, s));
+      _isAuthenticated = false;
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   Future<void> logout() async {
-    if (disposed) return;
-
-    await executeAsync(() async {
-      _isLoading = true;
-      _clearError();
-      safeNotifyListeners();
-
-      try {
-        await _authService.logout();
-        if (!disposed) {
-          _currentUser = null;
-          _isAuthenticated = false;
-
-          // Clear all cached providers on logout to free memory and ensure fresh data on next login
-          final registry = ProviderRegistry();
-          registry.clear();
-        }
-      } catch (e) {
-        if (!disposed) {
-          _error = AppError.fromException(e);
-        }
-      } finally {
-        if (!disposed) {
-          _isLoading = false;
-          safeNotifyListeners();
-        }
-      }
-    });
+    _setLoading(true);
+    try {
+      await _storage.clearToken();
+      _currentUser = null;
+      _isAuthenticated = false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  Future<bool> checkAndUpdateAuthStatus() async {
-    if (disposed) return false;
+  Future<void> register(RegisterRequestModel request) async {
+    _setError(
+      AppError(
+        type: ErrorType.validation,
+        message: 'Account registration is not available in the desktop application.',
+      ),
+    );
+  }
 
-    return await executeAsync(() async {
-      _isLoading = true;
-      _clearError();
-      safeNotifyListeners();
-
-      try {
-        _isAuthenticated = await _authService.isAuthenticated();
-        if (_isAuthenticated && !disposed) {
-          await _fetchCurrentUserDetails();
-          if (_currentUser == null) {
-            _isAuthenticated = false;
-          }
-        } else if (!disposed) {
-          _currentUser = null;
-        }
-
-        if (!disposed) {
-          _isLoading = false;
-          safeNotifyListeners();
-        }
-        return _isAuthenticated;
-      } catch (e) {
-        if (!disposed) {
-          _error = AppError.fromException(e);
-          _isAuthenticated = false;
-          _isLoading = false;
-          safeNotifyListeners();
-        }
-        return false;
+  // ---------------- Private helpers --------------------------------------
+  Future<void> _loadMe() async {
+    try {
+      final me = await _get('/Auth/Me', authenticated: true);
+      if (me.containsKey('user')) {
+        _currentUser = User.fromJson(me['user']);
+      } else {
+        throw Exception('Malformed user data');
       }
-    });
+    } catch (e, s) {
+      await _storage.clearToken();
+      _setError(AppError.fromException(e, s));
+      rethrow;
+    }
   }
 }

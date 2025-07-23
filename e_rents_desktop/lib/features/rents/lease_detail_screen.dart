@@ -1,11 +1,9 @@
-import 'package:e_rents_desktop/base/service_locator.dart';
-import 'package:e_rents_desktop/features/rents/providers/lease_detail_provider.dart';
+import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/models/rental_request.dart';
-import 'package:e_rents_desktop/repositories/rental_request_repository.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'state/lease_action_state.dart';
 
 class LeaseDetailScreen extends StatelessWidget {
   final String leaseId;
@@ -14,12 +12,12 @@ class LeaseDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<LeaseDetailProvider>(
-      create:
-          (_) => LeaseDetailProvider(
-            ServiceLocator().get<RentalRequestRepository>(),
-          )..loadItem(leaseId),
-      child: Consumer<LeaseDetailProvider>(
+    return ChangeNotifierProvider<RentsProvider>(
+      create: (_) => 
+          RentsProvider(context.read<ApiService>(), context: context)
+            ..setRentalType(RentalType.lease)
+            ..getLeaseById(leaseId),
+      child: Consumer<RentsProvider>(
         builder: (context, provider, child) {
           return Scaffold(
             appBar: AppBar(title: const Text('Lease Details')),
@@ -30,32 +28,32 @@ class LeaseDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget buildBody(BuildContext context, LeaseDetailProvider provider) {
+  Widget buildBody(BuildContext context, RentsProvider provider) {
     if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.hasError) {
+    if (provider.error != null) {
       return Center(
         child: Text(
-          'Error: ${provider.error?.message ?? 'Unknown error'}',
+          'Error: ${provider.error}',
           style: const TextStyle(color: Colors.red),
         ),
       );
     }
 
-    if (provider.item == null) {
+    if (provider.selectedLease == null) {
       return const Center(child: Text('No data available.'));
     }
 
-    final lease = provider.item!;
+    final lease = provider.selectedLease!;
     return buildLeaseDetails(context, lease, provider);
   }
 
   Widget buildLeaseDetails(
     BuildContext context,
     RentalRequest lease,
-    LeaseDetailProvider provider,
+    RentsProvider provider,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -119,17 +117,12 @@ class LeaseDetailScreen extends StatelessWidget {
               ],
             ),
           ],
-          if (provider.isPending) ...[
+          if (lease.status == 'Pending') ...[
             const SizedBox(height: 16),
-            ChangeNotifierProvider(
-              create:
-                  (_) => LeaseActionState(
-                    ServiceLocator().get<RentalRequestRepository>(),
-                    lease,
-                  ),
-              child: _LeaseActionsCard(
-                onActionCompleted: () => provider.loadItem(leaseId),
-              ),
+            _LeaseActionsCard(
+              provider: provider, 
+              lease: lease,
+              onActionCompleted: () => provider.getLeaseById(leaseId),
             ),
           ],
         ],
@@ -174,14 +167,19 @@ class LeaseDetailScreen extends StatelessWidget {
 }
 
 class _LeaseActionsCard extends StatelessWidget {
+  final RentsProvider provider;
+  final RentalRequest lease;
   final VoidCallback onActionCompleted;
 
-  const _LeaseActionsCard({required this.onActionCompleted});
+  const _LeaseActionsCard({
+    required this.provider,
+    required this.lease,
+    required this.onActionCompleted,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<LeaseActionState>();
-    final lease = context.read<LeaseDetailProvider>().item!;
+    final isLoading = provider.isActionInProgress;
 
     return Card(
       elevation: 2,
@@ -193,7 +191,7 @@ class _LeaseActionsCard extends StatelessWidget {
           children: [
             Text('Actions', style: Theme.of(context).textTheme.titleLarge),
             const Divider(height: 20, thickness: 1),
-            if (state.isLoading)
+            if (isLoading)
               const Center(child: CircularProgressIndicator())
             else ...[
               Text(
@@ -208,7 +206,6 @@ class _LeaseActionsCard extends StatelessWidget {
                     onPressed:
                         () => _showConfirmationDialog(
                           context,
-                          state,
                           isApproval: false,
                         ),
                     style: OutlinedButton.styleFrom(
@@ -222,7 +219,6 @@ class _LeaseActionsCard extends StatelessWidget {
                     onPressed:
                         () => _showConfirmationDialog(
                           context,
-                          state,
                           isApproval: true,
                         ),
                     child: const Text('Approve'),
@@ -230,10 +226,10 @@ class _LeaseActionsCard extends StatelessWidget {
                 ],
               ),
             ],
-            if (state.error != null) ...[
+            if (provider.error != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Error: ${state.error!.message}',
+                'Error: ${provider.error}',
                 style: const TextStyle(color: Colors.red),
               ),
             ],
@@ -244,8 +240,7 @@ class _LeaseActionsCard extends StatelessWidget {
   }
 
   Future<void> _showConfirmationDialog(
-    BuildContext context,
-    LeaseActionState state, {
+    BuildContext context, {
     required bool isApproval,
   }) async {
     final responseController = TextEditingController();
@@ -291,11 +286,13 @@ class _LeaseActionsCard extends StatelessWidget {
       final response = responseController.text;
       bool success;
       if (isApproval) {
-        success = await state.approveRequest(
+        success = await provider.approveLease(
+          requestId: lease.requestId.toString(),
           response: response.isNotEmpty ? response : null,
         );
       } else {
-        success = await state.rejectRequest(
+        success = await provider.rejectLease(
+          requestId: lease.requestId.toString(),
           response: response.isNotEmpty ? response : null,
         );
       }

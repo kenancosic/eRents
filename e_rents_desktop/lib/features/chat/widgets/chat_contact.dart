@@ -8,6 +8,7 @@ class ChatContact extends StatelessWidget {
   final bool isOnline;
   final bool hasUnread;
   final int unreadCount;
+  final bool isSelected;
   final VoidCallback onTap;
 
   const ChatContact({
@@ -15,9 +16,10 @@ class ChatContact extends StatelessWidget {
     required this.name,
     required this.lastMessage,
     required this.lastMessageTime,
-    required this.isOnline,
+    this.isOnline = false,
     required this.hasUnread,
     required this.unreadCount,
+    this.isSelected = false,
     required this.onTap,
   });
 
@@ -28,7 +30,7 @@ class ChatContact extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? Colors.blue.withAlpha(25) : Colors.white,
           border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
         ),
         child: Row(

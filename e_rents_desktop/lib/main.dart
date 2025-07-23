@@ -1,4 +1,3 @@
-import 'package:e_rents_desktop/app_service_registrations.dart';
 import 'package:e_rents_desktop/router.dart';
 import 'package:e_rents_desktop/theme/theme.dart';
 import 'package:flutter/material.dart';
@@ -6,17 +5,25 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // New imports from Phase 1
-import 'base/base.dart'; // Barrel file for all base imports
+import 'base/app_state_providers.dart';
 import 'widgets/global_error_dialog.dart';
 
 // Service imports
-import 'services/auth_service.dart';
+import 'services/api_service.dart';
+import 'services/secure_storage_service.dart';
 import 'services/user_preferences_service.dart';
 import 'services/lookup_service.dart';
 
 // Provider imports (only essential ones loaded at startup)
-import 'features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'providers/lookup_provider.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
+import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
+import 'package:e_rents_desktop/features/tenants/providers/tenants_provider.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,69 +32,94 @@ void main() async {
   try {
     await dotenv.load(fileName: "lib/.env");
   } catch (e) {
-    // Warning: .env file not found - disabled print for production
     dotenv.env.clear();
   }
 
   final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
-  // Using API Base URL: $baseUrl - disabled print for production
 
-  // Initialize ServiceLocator and register services
-  await _setupServices(baseUrl);
+  // Manually instantiate services
+  final secureStorage = SecureStorageService();
+  final apiService = ApiService(baseUrl, secureStorage);
+  final userPrefsService = UserPreferencesService();
+  final lookupService = LookupService(baseUrl, secureStorage);
 
-  runApp(const ERentsApp());
-}
-
-/// Setup all services using ServiceLocator
-Future<void> _setupServices(String baseUrl) async {
-  final locator = ServiceLocator();
-  locator.initialize();
-
-  // Register all services through the central registration hub
-  AppServiceRegistrations.registerServices(locator, baseUrl);
+  runApp(ERentsApp(
+    apiService: apiService,
+    secureStorage: secureStorage,
+    userPrefsService: userPrefsService,
+    lookupService: lookupService,
+  ));
 }
 
 class ERentsApp extends StatelessWidget {
-  const ERentsApp({super.key});
+  final ApiService apiService;
+  final SecureStorageService secureStorage;
+  final UserPreferencesService userPrefsService;
+  final LookupService lookupService;
+
+  const ERentsApp({
+    super.key,
+    required this.apiService,
+    required this.secureStorage,
+    required this.userPrefsService,
+    required this.lookupService,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // First, create the AuthProvider instance since AppRouter depends on it.
+    final authProvider = AuthProvider(
+      apiService: apiService,
+      storage: secureStorage,
+    );
+
+    // Now, create the AppRouter and pass the AuthProvider to it.
+    final appRouter = AppRouter(authProvider);
+
     return MultiProvider(
       providers: [
-        // ✅ Core providers needed at app level
+        // Provide the existing AuthProvider instance to the widget tree.
+        ChangeNotifierProvider.value(value: authProvider),
+
+        // Other providers
         ChangeNotifierProvider(create: (_) => AppErrorProvider()),
         ChangeNotifierProvider(create: (_) => NavigationStateProvider()),
         ChangeNotifierProvider(
-          create:
-              (_) => PreferencesStateProvider(
-                getService<UserPreferencesService>(),
-              ),
+          create: (_) => PreferencesStateProvider(userPrefsService),
         ),
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(getService<AuthService>()),
+
+        // Feature Providers - Order matters for dependencies
+        ChangeNotifierProvider(create: (context) => ProfileProvider(apiService)),
+        ChangeNotifierProvider(create: (context) => TenantsProvider(apiService)),
+        ChangeNotifierProvider(create: (context) => MaintenanceProvider(apiService)),
+        ChangeNotifierProvider(create: (context) => StatisticsProvider(apiService)),
+        ChangeNotifierProvider(create: (context) => ReportsProvider(apiService)),
+
+        // Dependent Feature Providers
+        ChangeNotifierProxyProvider<MaintenanceProvider, PropertiesProvider>(
+          create: (context) => PropertiesProvider(apiService, context.read<MaintenanceProvider>()),
+          update: (context, maintenanceProvider, previous) =>
+              PropertiesProvider(apiService, maintenanceProvider),
         ),
         ChangeNotifierProvider(
           create: (_) {
-            final lookupProvider = LookupProvider(getService<LookupService>());
-            // Initialize lookup data immediately (non-blocking)
+            final lookupProvider = LookupProvider(lookupService);
+            // Defer the initialization until after the first frame is built.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               lookupProvider.initializeLookupData();
             });
             return lookupProvider;
           },
         ),
-
-        // ✅ Feature providers are created lazily in routes using ProviderRegistry
-        // This maintains lazy loading while providing persistence across navigation
       ],
       child: MaterialApp.router(
         title: 'eRents Desktop',
         debugShowCheckedModeBanner: false,
-        routerConfig: AppRouter().router,
+        // Use the router from the AppRouter instance.
+        routerConfig: appRouter.router,
         theme: appTheme,
-        builder:
-            (context, child) =>
-                Stack(children: [child!, const GlobalErrorDialog()]),
+        builder: (context, child) =>
+            Stack(children: [child!, const GlobalErrorDialog()]),
       ),
     );
   }
