@@ -1,15 +1,12 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/models/address.dart';
 // import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
-import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/feature/explore/explore_provider.dart';
 
-import 'package:e_rents_mobile/core/models/image_model.dart';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -111,8 +108,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       builder: (context, provider, child) {
         final properties = provider.properties?.items ?? [];
         final isLoading = provider.isLoading;
-        final hasError = provider.hasError;
-        final errorMessage = provider.errorMessage;
+        final hasError = provider.error != null;
+        final errorMessage = provider.error;
 
         final searchBar = CustomSearchBar(
           onSearchChanged: (query) => provider.search(query),
@@ -160,7 +157,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 8)
                             ],
                           ),

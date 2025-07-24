@@ -1,17 +1,18 @@
-import 'package:e_rents_mobile/feature/property_detail/providers/property_collection_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class SortDialog extends StatefulWidget {
   const SortDialog({super.key});
 
   @override
-  _SortDialogState createState() => _SortDialogState();
+  SortDialogState createState() => SortDialogState();
 }
 
-class _SortDialogState extends State<SortDialog> {
+class SortDialogState extends State<SortDialog> {
   String? _selectedSort;
 
   @override
@@ -68,8 +69,8 @@ class _SortDialogState extends State<SortDialog> {
             if (_selectedSort != null) {
               bool descending = _selectedSort!.endsWith('_desc');
               String sortBy = _selectedSort!.replaceAll('_desc', '');
-              final provider = context.read<PropertyCollectionProvider>();
-              provider.applyFilters({
+              final provider = context.read<PropertyDetailProvider>();
+              provider.applyPropertyFilters({
                 'sortBy': sortBy,
                 'sortDescending': descending,
               });

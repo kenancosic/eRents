@@ -3,13 +3,12 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
-import 'package:e_rents_mobile/core/services/lease_service.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 
 class ManageBookingScreen extends StatefulWidget {
   final int propertyId;
@@ -50,13 +49,13 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
     });
 
     try {
-      final leaseService = LeaseService(context.read<ApiService>());
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
       // Load availability for a wider date range (12 months)
       final startDate = DateTime.now().subtract(const Duration(days: 30));
       final endDate = DateTime.now().add(const Duration(days: 365));
 
       // Fetch availability from service (currently using mock data below)
-      await leaseService.getPropertyAvailability(
+      await propertyDetailProvider.getPropertyAvailability(
         widget.propertyId,
         startDate: startDate,
         endDate: endDate,
@@ -169,14 +168,14 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
       final endExtension = sortedDates.last;
 
       // In a real app, you would call an API to extend the booking
-      final leaseService = LeaseService(context.read<ApiService>());
-
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      
       // Mock extension request - in reality this would be a separate endpoint
-      final success = await leaseService.requestLeaseExtension(
+      final success = await propertyDetailProvider.requestLeaseExtension(
         LeaseExtensionRequest(
           bookingId: widget.bookingId,
           propertyId: widget.propertyId,
-          tenantId: context.read<UserDetailProvider>().item?.userId ?? 1,
+          tenantId: context.read<ProfileProvider>().currentUser?.userId ?? 1,
           newEndDate: endExtension,
           reason:
               'Booking extension for additional ${_selectedExtensionDates.length} days',

@@ -5,7 +5,6 @@ import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
 import 'package:e_rents_mobile/feature/home/screens/modern_home_screen.dart';
-import 'package:e_rents_mobile/examples/integration_test_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/payment_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
@@ -99,14 +98,18 @@ class AppRouter {
                   builder: (context, state) => ChatRoomScreen(),
                   routes: [
                     GoRoute(
-                      path:
-                          'messages', // e.g. /chatRoom/messages - this makes chat a sub-route
-                      name: 'chatMessages', // Added name
+                      path: ':roomId',
+                      name: 'chatMessages',
                       builder: (context, state) {
-                        final chatDetails = state.extra as Map<String, dynamic>;
+                        final roomId = state.pathParameters['roomId']!;
+                        final extras = state.extra as Map<String, dynamic>?;
+                        final userName = extras?['userName'] as String? ?? 'Unknown';
+                        final userImage = extras?['userImage'] as String? ?? 'assets/images/user-image.png';
+
                         return ChatScreen(
-                          userName: chatDetails['name'],
-                          userImage: chatDetails['imageUrl'],
+                          roomId: roomId,
+                          userName: userName,
+                          userImage: userImage,
                         );
                       },
                     ),
@@ -191,12 +194,6 @@ class AppRouter {
         name: 'modern_home',
         builder: (context, state) => const ModernHomeScreen(),
       ),
-      // Integration test screen
-      GoRoute(
-        path: '/integration-test',
-        name: 'integration_test',
-        builder: (context, state) => const IntegrationTestScreen(),
-      ),
       GoRoute(
         path: '/property/:id', // Moved to be a top-level route
         name: 'property_detail',
@@ -270,7 +267,7 @@ class AppRouter {
           final onApplyFiltersCallback =
               arguments?['onApplyFilters'] as Function(Map<String, dynamic>)? ??
                   (filters) {
-                    print(
+                    debugPrint(
                         "Error: onApplyFilters not provided to /filter route. Filters: $filters");
                   };
           final initialFiltersData =

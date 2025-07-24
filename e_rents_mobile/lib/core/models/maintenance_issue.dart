@@ -4,6 +4,7 @@
 /// - MaintenanceIssueId, PropertyId, Title, Description, PriorityId, StatusId
 /// - CreatedAt, ResolvedAt, AssignedToUserId, ReportedByUserId, Cost, ResolutionNotes
 /// - Category, RequiresInspection, IsTenantComplaint
+library;
 
 import 'package:e_rents_mobile/core/models/image_model.dart';
 

@@ -1,5 +1,5 @@
 import 'dart:ui'; // For ImageFilter
-import 'package:e_rents_mobile/core/base/base_provider.dart';
+
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/services/google_places_service.dart'; // Added for PlaceDetails
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
@@ -566,13 +566,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 Expanded(
                                   child: Consumer<AuthProvider>(
                                     builder: (context, provider, child) {
-                                      if (provider.state == ViewState.busy) {
-                                        return const CircularProgressIndicator();
-                                      }
                                       return NextStepButton(
                                         label: _currentStep == 2
                                             ? "Sign Up"
                                             : "Next",
+                                        isLoading: provider.isLoading,
                                         onPressed: () async {
                                           if (_currentStep < 2) {
                                             // Optionally add validation before going to next step

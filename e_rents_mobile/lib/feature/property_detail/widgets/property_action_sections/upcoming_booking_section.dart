@@ -1,4 +1,3 @@
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -7,7 +6,7 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/cancel_stay_dialog.dart';
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 
 /// Section shown when user has an upcoming booking
 /// Shows booking details and management options
@@ -170,7 +169,7 @@ class UpcomingBookingSection extends StatelessWidget {
         booking: booking,
         onCancellationConfirmed: () {
           // Refresh the bookings to get updated data
-          context.read<BookingCollectionProvider>().loadUserBookings();
+          context.read<PropertyDetailProvider>().getBookingDetails(property.propertyId);
 
           // Navigate back to home or bookings screen
           context.go('/home');
@@ -224,7 +223,7 @@ class UpcomingBookingSection extends StatelessWidget {
           if (booking.paymentReference?.isNotEmpty == true) ...[
             const Spacer(),
             Text(
-              '${booking.paymentMethod}',
+              booking.paymentMethod,
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,

@@ -92,7 +92,7 @@ class ReviewsList extends StatelessWidget {
                 ),
               );
             }
-          }).toList(),
+          }),
 
           // Load more button
           if (hasMoreReviews && onLoadMore != null)

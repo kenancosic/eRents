@@ -1,11 +1,11 @@
-import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -32,7 +32,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _addPayPalAccount() async {
     if (_formKey.currentState!.validate()) {
-      final userProvider = context.read<UserDetailProvider>();
+      final profileProvider = context.read<ProfileProvider>();
 
       final paymentData = {
         'type': 'paypal',
@@ -40,7 +40,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'isDefault': true
       };
 
-      final success = await userProvider.addPaymentMethod(paymentData);
+      final success = await profileProvider.addPaymentMethod(paymentData);
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +54,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  userProvider.errorMessage ?? 'Failed to add PayPal account')),
+                  profileProvider.error ?? 'Failed to add PayPal account')),
         );
       }
     }
@@ -133,10 +133,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       showBackButton: true,
     );
 
-    return Consumer<UserDetailProvider>(
-      builder: (context, userProvider, _) {
-        final isLoading = userProvider.state == ViewState.busy;
-        final paymentMethods = userProvider.paymentMethods ?? [];
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, _) {
+        final isLoading = profileProvider.isLoading;
+        final paymentMethods = profileProvider.paymentMethods;
 
         return BaseScreen(
           appBar: appBar,

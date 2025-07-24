@@ -1,7 +1,8 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/service_locator.dart';
-import 'package:e_rents_mobile/feature/property_detail/property_details_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/property_action_sections/property_action_factory.dart';
@@ -16,12 +17,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
+
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
-import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -40,13 +41,13 @@ class PropertyDetailScreen extends StatefulWidget {
 }
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
-  int _currentImageIndex = 0;
+
   Booking? _currentBooking;
 
   @override
   void initState() {
     super.initState();
-    print(
+    debugPrint(
         "PropertyDetailsScreen initState: ViewContext: ${widget.viewContext}, BookingID: ${widget.bookingId}");
   }
 
@@ -54,11 +55,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (widget.bookingId != null) {
-      _currentBooking = context
-          .read<BookingCollectionProvider>()
-          .findById(widget.bookingId!.toString());
+      final propertyProvider = context.read<PropertyDetailProvider>();
+      _currentBooking = propertyProvider.booking;
       if (_currentBooking == null) {
-        print(
+        debugPrint(
             "Booking with ID ${widget.bookingId} not found during didChangeDependencies.");
       }
     }
@@ -66,12 +66,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Booking? displayedBooking = widget.bookingId != null
-        ? context
-            .watch<BookingCollectionProvider>()
-            .findById(widget.bookingId!.toString())
-        : null;
-
     final appBar = CustomAppBar(
       title: "Detail",
       showBackButton: true,
@@ -81,13 +75,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       providers: [
         ChangeNotifierProvider<PropertyDetailProvider>(
           create: (_) {
-            final provider = ServiceLocator.get<PropertyDetailProvider>();
-            provider.loadItem(widget.propertyId.toString());
+            final provider = PropertyDetailProvider(ServiceLocator.get<ApiService>());
+            provider.fetchPropertyDetails(widget.propertyId.toString(), bookingId: widget.bookingId?.toString());
             return provider;
           },
         ),
-        ChangeNotifierProvider<SavedCollectionProvider>.value(
-          value: context.read<SavedCollectionProvider>(),
+        ChangeNotifierProvider<SavedProvider>.value(
+          value: context.read<SavedProvider>(),
         ),
       ],
       child: BaseScreen(
@@ -96,29 +90,28 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           appBar: null,
           body: Consumer<PropertyDetailProvider>(
             builder: (context, propertyProvider, child) {
-              if (propertyProvider.isLoading) {
+              if (propertyProvider.isLoading && propertyProvider.property == null) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (propertyProvider.hasError) {
+              if (propertyProvider.error != null && propertyProvider.property == null) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      SizedBox(height: 16),
+                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
                       Text(
-                        propertyProvider.errorMessage ??
-                            'Failed to load property',
-                        style: TextStyle(fontSize: 16),
+                        propertyProvider.error ?? 'Failed to load property',
+                        style: const TextStyle(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       CustomButton(
                         label: 'Retry',
-                        onPressed: () => propertyProvider.refreshItem(),
+                        onPressed: () => propertyProvider.fetchPropertyDetails(widget.propertyId.toString()),
                         width: ButtonWidth.content,
-                        isLoading: false,
+                        isLoading: propertyProvider.isLoading,
                       ),
                     ],
                   ),
@@ -173,9 +166,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     PropertyImageSlider(
                       property: property,
                       onPageChanged: (index) {
-                        setState(() {
-                          _currentImageIndex = index;
-                        });
+                        // Image index changed - no action needed
                       },
                     ),
                     Padding(
@@ -185,38 +176,40 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         children: [
                           PropertyHeader(property: property),
                           const SizedBox(height: 16),
-                          PropertyDetails(
-                            averageRating:
-                                propertyProvider.averageRating ?? 0.0,
-                            numberOfReviews: 12,
-                            city: propertyProvider.city ?? 'Unknown City',
+                                                                              PropertyDetails(
+                            averageRating: property.averageRating ?? 0.0,
+                            numberOfReviews: propertyProvider.reviews.length,
+                            city: property.address?.city ?? 'Unknown City',
                             address: property.address?.streetLine1,
-                            rooms:
-                                propertyProvider.specificationsDisplay ?? 'N/A',
-                            area: (propertyProvider.area ?? 0) > 0
-                                ? '${(propertyProvider.area ?? 0).toStringAsFixed(0)} m²'
+                            rooms: property.specificationsDisplay,
+                            area: (property.area ?? 0) > 0
+                                ? '${(property.area!).toStringAsFixed(0)} m²'
                                 : 'N/A',
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          PropertyDescriptionSection(
-                            description: propertyProvider.description.isNotEmpty
-                                ? propertyProvider.description
-                                : 'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
+                                                    PropertyDescriptionSection(
+                            description: property.description ??
+                                'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          PropertyActionFactory.createActionSection(
+                                                    PropertyActionFactory.createActionSection(
                             property: property,
                             viewContext: widget.viewContext,
-                            booking: displayedBooking,
+                            booking: propertyProvider.booking,
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          const PropertyOwnerSection(),
+                          PropertyOwnerSection(
+                            propertyId: property.propertyId,
+                            ownerName: 'Property Owner', // Generic name for now
+                            ownerEmail:
+                                null, // Owner email not available in current model
+                          ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
@@ -248,10 +241,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ),
           bottomNavigationBar: Consumer<PropertyDetailProvider>(
             builder: (context, propertyProvider, child) {
-              final property = propertyProvider.property;
-
-              if (widget.viewContext == ViewContext.browsing &&
-                  property != null) {
+              final property = propertyProvider.property!;
+              if (widget.viewContext == ViewContext.browsing) {
                 return PropertyPriceFooter(
                   property: property,
                   onCheckoutPressed: () => checkoutPressed(propertyProvider),
@@ -353,16 +344,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               isLoading: false,
               onPressed: () {
                 if (commentController.text.isNotEmpty) {
-                  provider.addReview(Review(
-                    reviewId: DateTime.now().millisecondsSinceEpoch,
-                    reviewType: ReviewType.propertyReview,
-                    propertyId: provider.property?.propertyId ?? 0,
-                    revieweeId: provider.property?.ownerId ?? 0,
-                    reviewerId: 123, // Current user ID - would come from auth
-                    description: commentController.text,
-                    starRating: rating,
-                    dateCreated: DateTime.now(),
-                  ));
+                                    provider.addReview(
+                    widget.propertyId.toString(),
+                    commentController.text,
+                    rating,
+                  );
                   context.pop();
                 }
               },

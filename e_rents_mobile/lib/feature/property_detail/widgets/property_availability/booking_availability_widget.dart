@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/services/property_availability_service.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:e_rents_mobile/core/services/pricing_service.dart';
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +24,6 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 8));
   Map<DateTime, bool> _availability = {};
   bool _isLoading = true;
-  bool _isLoadingPricing = false;
   String? _errorMessage;
   Map<String, dynamic>? _pricingDetails;
 
@@ -55,21 +51,15 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     });
 
     try {
-      final availabilityService =
-          PropertyAvailabilityService(context.read<ApiService>());
-
-      final bookingsProvider = context.read<BookingCollectionProvider>();
-      final existingBookings = [
-        ...bookingsProvider.upcomingBookings,
-        ...bookingsProvider.pastBookings,
-        ...bookingsProvider.cancelledBookings,
-      ];
-
-      final availability = await availabilityService.getPropertyAvailability(
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      
+      // For availability checking, we don't need existing bookings from this method
+      // The PropertyDetailProvider will handle checking conflicts internally
+      final availability = await propertyDetailProvider.getPropertyAvailability(
         widget.property.propertyId,
         startDate: DateTime.now(),
         endDate: DateTime.now().add(const Duration(days: 90)),
-        existingBookings: existingBookings,
+        existingBookings: null, // Let the provider handle existing bookings
       );
 
       setState(() {
@@ -87,14 +77,12 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   }
 
   Future<void> _calculatePricing() async {
-    final pricingService = context.read<PricingService>();
+    final propertyDetailProvider = context.read<PropertyDetailProvider>();
 
-    setState(() {
-      _isLoadingPricing = true;
-    });
+    // Loading state managed by main _isLoading if needed
 
     try {
-      final pricing = await pricingService.getPricing(
+      final pricing = await propertyDetailProvider.getPricing(
         propertyId: widget.property.propertyId,
         startDate: _startDate,
         endDate: _endDate,
@@ -104,29 +92,26 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
 
       setState(() {
         _pricingDetails = pricing;
-        _isLoadingPricing = false;
       });
     } catch (e) {
       debugPrint('Error calculating pricing: $e');
       setState(() {
         _pricingDetails = null;
-        _isLoadingPricing = false;
       });
     }
   }
 
   void _validateCurrentSelection() {
-    final availabilityService =
-        PropertyAvailabilityService(context.read<ApiService>());
+    final propertyDetailProvider = context.read<PropertyDetailProvider>();
 
-    final isAvailable = availabilityService.isDateRangeAvailable(
+    final isAvailable = propertyDetailProvider.isDateRangeAvailable(
       _availability,
       _startDate,
       _endDate,
     );
 
     if (!isAvailable) {
-      final nextAvailable = availabilityService.getNextAvailableDate(
+      final nextAvailable = propertyDetailProvider.getNextAvailableDate(
         _availability,
         DateTime.now().add(const Duration(days: 1)),
       );
@@ -174,11 +159,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       },
     );
 
-    if (picked != null) {
-      final availabilityService =
-          PropertyAvailabilityService(context.read<ApiService>());
-
-      final isAvailable = availabilityService.isDateRangeAvailable(
+    if (picked != null && mounted) {
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      final isAvailable = propertyDetailProvider.isDateRangeAvailable(
         _availability,
         picked.start,
         picked.end,

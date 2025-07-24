@@ -3,6 +3,7 @@
 /// Backend Review Entity fields:
 /// - ReviewId, ReviewType (enum), PropertyId, RevieweeId, ReviewerId
 /// - Description, DateCreated, StarRating, BookingId, ParentReviewId
+library;
 
 enum ReviewType {
   propertyReview, // Review of a property by a tenant

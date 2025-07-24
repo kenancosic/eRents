@@ -1,78 +1,83 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-// import 'package:e_rents_mobile/core/base/app_bar_config.dart'; // Removed
-import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
+import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/feature/chat/chat_provider.dart';
+import 'package:e_rents_mobile/feature/chat/models/chat_room.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
-class ChatRoomScreen extends StatelessWidget {
-  // Sample data for chat rooms
-  final List<Map<String, dynamic>> _chatRooms = [
-    {
-      'name': 'Emir Kovačević',
-      'lastMessage': 'Thanks for contacting me!',
-      'time': '15:23',
-      'imageUrl': 'assets/images/user-image.png',
-      'unreadCount': 2,
-    },
-    {
-      'name': 'Tom Cruise',
-      'lastMessage': 'Your payment was accepted.',
-      'time': 'Yesterday',
-      'imageUrl': 'assets/images/user-image.png',
-      'unreadCount': 0,
-    },
-    // Add more chat rooms here...
-  ];
+class ChatRoomScreen extends StatefulWidget {
+  const ChatRoomScreen({super.key});
 
-  ChatRoomScreen({super.key});
+  @override
+  State<ChatRoomScreen> createState() => _ChatRoomScreenState();
+}
+
+class _ChatRoomScreenState extends State<ChatRoomScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch rooms when the screen loads
+    Future.microtask(() =>
+        Provider.of<ChatProvider>(context, listen: false).fetchChatRooms());
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Construct the CustomAppBar directly
     final appBar = CustomAppBar(
       title: 'Chat Room',
       showBackButton: false,
-      // userLocation: ' ', // Provide a default or fetch dynamically if needed -- Removed as it's now userLocationWidget
-      // No specific avatar or search for this screen's app bar
-      // No actions by default, but could add e.g. a search icon here if desired
-      // actions: [
-      //   IconButton(icon: Icon(Icons.search), onPressed: () {}),
-      // ],
     );
 
     return BaseScreen(
       showAppBar: true,
-      appBar: appBar, // Pass the constructed AppBar
-      // appBarConfig: const BaseScreenAppBarConfig( // Removed
-      //   mainContentType: AppBarMainContentType.title,
-      //   showBackButton: false,
-      //   titleText: 'Chat Room',
-      // ),
-      body: ListView.builder(
-        itemCount: _chatRooms.length,
-        itemBuilder: (context, index) {
-          final chatRoom = _chatRooms[index];
-          return _buildChatRoomTile(
-            name: chatRoom['name'],
-            lastMessage: chatRoom['lastMessage'],
-            time: chatRoom['time'],
-            imageUrl: chatRoom['imageUrl'],
-            unreadCount: chatRoom['unreadCount'],
-            context: context,
+      appBar: appBar,
+      body: Consumer<ChatProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoadingRooms && provider.chatRooms.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (provider.roomsError != null) {
+            return Center(
+              child: Text('Error: ${provider.roomsError}'),
+            );
+          }
+
+          if (provider.chatRooms.isEmpty) {
+            return const Center(
+              child: Text('No active chats.'),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchChatRooms(forceRefresh: true),
+            child: ListView.builder(
+              itemCount: provider.chatRooms.length,
+              itemBuilder: (context, index) {
+                final chatRoom = provider.chatRooms[index];
+                return _buildChatRoomTile(context, chatRoom);
+              },
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildChatRoomTile({
-    required String name,
-    required String lastMessage,
-    required String time,
-    required String imageUrl,
-    required int unreadCount,
-    required BuildContext context,
-  }) {
+  Widget _buildChatRoomTile(BuildContext context, ChatRoom chatRoom) {
+    final lastMessage = chatRoom.lastMessage;
+    final time = lastMessage != null
+        ? DateFormat('HH:mm').format(lastMessage.timestamp)
+        : '';
+
+    // Determine the other user's info
+    final currentUserId = 'user1'; // This should come from an auth provider
+    final otherUserId = chatRoom.userIds.firstWhere((id) => id != currentUserId, orElse: () => '');
+    final name = chatRoom.userNames[otherUserId] ?? 'Unknown User';
+    final imageUrl = chatRoom.userImages[otherUserId] ?? 'assets/images/user-image.png';
+
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: AssetImage(imageUrl),
@@ -85,7 +90,7 @@ class ChatRoomScreen extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        lastMessage,
+        lastMessage?.text ?? 'No messages yet',
         style: TextStyle(
           color: Colors.grey[600],
         ),
@@ -97,32 +102,19 @@ class ChatRoomScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(time, style: const TextStyle(color: Colors.grey)),
-          if (unreadCount > 0)
-            Container(
-              padding: const EdgeInsets.all(6.0),
-              decoration: const BoxDecoration(
-                color: Colors.purple,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                unreadCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
-              ),
-            ),
+          // Unread count logic would go here if available from the API
         ],
       ),
       onTap: () {
         context.push(
-          '/chat',
+          '/chat/${chatRoom.id}', // Pass room ID in path
           extra: {
-            'name': name,
-            'imageUrl': imageUrl,
+            'userName': name,
+            'userImage': imageUrl,
           },
         );
       },
     );
   }
 }
+

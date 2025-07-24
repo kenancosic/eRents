@@ -72,7 +72,7 @@ class MaintenanceProvider extends ChangeNotifier implements BaseTableProvider<Ma
       String queryString = '';
       if (params != null && params.isNotEmpty) {
         queryString =
-            '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+            '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
       }
       final fullEndpoint = '$_endpoint$queryString';
 
@@ -418,7 +418,7 @@ class MaintenanceProvider extends ChangeNotifier implements BaseTableProvider<Ma
     
     try {
       // Build endpoint with query parameters
-      final uri = Uri.parse('$_endpoint').replace(queryParameters: queryParams);
+      final uri = Uri.parse(_endpoint).replace(queryParameters: queryParams);
       final response = await _api.get(uri.toString(), authenticated: true);
       
       if (response.statusCode == 200) {
@@ -439,7 +439,7 @@ class MaintenanceProvider extends ChangeNotifier implements BaseTableProvider<Ma
       }
     } catch (e) {
       _setError(e.toString());
-      throw e;
+      rethrow;
     }
   }
   

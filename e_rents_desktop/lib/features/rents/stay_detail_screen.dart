@@ -251,13 +251,13 @@ class _StayActionsCard extends StatelessWidget {
               onPressed: () => Navigator.of(dialogContext).pop(false),
             ),
             ElevatedButton(
-              child: const Text('Confirm Cancellation'),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   Navigator.of(dialogContext).pop(true);
                 }
               },
+              child: const Text('Confirm Cancellation'),
             ),
           ],
         );

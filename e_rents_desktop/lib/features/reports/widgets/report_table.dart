@@ -5,7 +5,6 @@ import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/reports/tenant_report_item.dart';
 import 'package:e_rents_desktop/widgets/table/custom_table.dart';
-import 'package:e_rents_desktop/utils/formatters.dart';
 
 class ReportTable extends StatelessWidget {
   const ReportTable({super.key});

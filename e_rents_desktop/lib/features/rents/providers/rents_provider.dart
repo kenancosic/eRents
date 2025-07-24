@@ -93,7 +93,7 @@ class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic>
     try {
       String queryString = '';
       if (params != null && params.isNotEmpty) {
-        queryString = '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+        queryString = '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
       }
       final fullEndpoint = '$_bookingEndpoint$queryString';
 
@@ -117,7 +117,7 @@ class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic>
     try {
       String queryString = '';
       if (params != null && params.isNotEmpty) {
-        queryString = '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&');
+        queryString = '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
       }
       final fullEndpoint = '$_leaseEndpoint$queryString';
 
@@ -593,9 +593,9 @@ class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic>
       
       // Make API call based on current rental type
       if (_currentType == RentalType.stay) {
-        final url = '$_bookingEndpoint';
+        final url = _bookingEndpoint;
         final response = await _api.get(
-          url + '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&'),
+          '$url?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}',
           authenticated: true,
         );
         
@@ -616,9 +616,9 @@ class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic>
           throw Exception('Failed to fetch stays: ${response.statusCode}');
         }
       } else {
-        final url = '$_leaseEndpoint';
+        final url = _leaseEndpoint;
         final response = await _api.get(
-          url + '?' + params.entries.map((e) => '${e.key}=${e.value}').join('&'),
+          '$url?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}',
           authenticated: true,
         );
         
@@ -641,7 +641,7 @@ class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic>
       }
     } catch (e) {
       _setError(e.toString());
-      throw e;
+      rethrow;
     }
   }
 

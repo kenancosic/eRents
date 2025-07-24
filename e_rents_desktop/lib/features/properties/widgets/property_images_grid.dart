@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<int> images;

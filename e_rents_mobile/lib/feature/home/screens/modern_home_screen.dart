@@ -9,8 +9,8 @@ import '../../../core/widgets/custom_slider.dart';
 import '../../../core/widgets/location_widget.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/property_card.dart';
-import '../../../core/services/service_locator.dart';
-import '../providers/home_dashboard_provider.dart';
+
+import '../providers/home_provider.dart';
 import '../widgets/booking_stats_card.dart';
 import '../widgets/quick_actions_section.dart';
 
@@ -24,43 +24,31 @@ class ModernHomeScreen extends StatefulWidget {
 }
 
 class _ModernHomeScreenState extends State<ModernHomeScreen> {
-  late HomeDashboardProvider _dashboardProvider;
-
   @override
   void initState() {
     super.initState();
-    _initializeDashboard();
-  }
-
-  void _initializeDashboard() {
-    // Get provider from service locator
-    _dashboardProvider = ServiceLocator.instance.get<HomeDashboardProvider>();
-
-    // Initialize dashboard data
+    // Initialize dashboard data after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _dashboardProvider.initializeDashboard();
+      Provider.of<HomeProvider>(context, listen: false).initializeDashboard();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _dashboardProvider,
-      child: Consumer<HomeDashboardProvider>(
-        builder: (context, dashboard, child) {
-          return BaseScreen(
-            showAppBar: true,
-            useSlidingDrawer: true,
-            appBar: _buildAppBar(context, dashboard),
-            body: _buildBody(context, dashboard),
-          );
-        },
-      ),
+    return Consumer<HomeProvider>(
+      builder: (context, dashboard, child) {
+        return BaseScreen(
+          showAppBar: true,
+          useSlidingDrawer: true,
+          appBar: _buildAppBar(context, dashboard),
+          body: _buildBody(context, dashboard),
+        );
+      },
     );
   }
 
   CustomAppBar _buildAppBar(
-      BuildContext context, HomeDashboardProvider dashboard) {
+      BuildContext context, HomeProvider dashboard) {
     return CustomAppBar(
       showSearch: true,
       searchWidget: CustomSearchBar(
@@ -102,7 +90,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context, HomeDashboardProvider dashboard) {
+  Widget _buildBody(BuildContext context, HomeProvider dashboard) {
     // Show loading state during initial load
     if (dashboard.isLoading && dashboard.nearbyProperties.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -165,9 +153,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
     );
   }
 
-  Widget _buildBookingStatsSection(HomeDashboardProvider dashboard) {
+  Widget _buildBookingStatsSection(HomeProvider dashboard) {
     // Show stats only if user has bookings
-    if (!dashboard.hasActiveStays && !dashboard.hasUpcomingStays) {
+    if (dashboard.currentStays.isEmpty && dashboard.upcomingStays.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -214,92 +202,66 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
   }
 
   Widget _buildNearbyPropertiesSection(
-      BuildContext context, HomeDashboardProvider dashboard) {
-    return Consumer<HomeDashboardProvider>(
-      builder: (context, dashboard, child) {
-        final provider = dashboard.nearbyPropertiesProvider;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(
-              title: 'Near your location',
-              onSeeAll: provider.items.isNotEmpty
-                  ? () => context.push('/explore')
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            _buildPropertySlider(
-              context,
-              provider.items,
-              provider.isLoading,
-              provider.hasError,
-              provider.errorMessage,
-              onRetry: () => dashboard.initializeDashboard(),
-            ),
-          ],
-        );
-      },
+      BuildContext context, HomeProvider dashboard) {
+    return Column(
+      children: [
+        SectionHeader(
+          title: 'Near You',
+          onSeeAll: () => context.push('/explore'),
+        ),
+        const SizedBox(height: 12),
+        _buildPropertySlider(
+          context,
+          dashboard.nearbyProperties,
+          dashboard.isNearbyLoading,
+          dashboard.nearbyError != null,
+          dashboard.nearbyError,
+          onRetry: () => dashboard.initializeDashboard(),
+        ),
+      ],
     );
   }
 
   Widget _buildFeaturedPropertiesSection(
-      BuildContext context, HomeDashboardProvider dashboard) {
-    return Consumer<HomeDashboardProvider>(
-      builder: (context, dashboard, child) {
-        final provider = dashboard.featuredPropertiesProvider;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(
-              title: 'Featured Properties',
-              onSeeAll: provider.items.isNotEmpty
-                  ? () => context.push('/explore')
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            _buildPropertySlider(
-              context,
-              provider.items,
-              provider.isLoading,
-              provider.hasError,
-              provider.errorMessage,
-              onRetry: () => dashboard.initializeDashboard(),
-            ),
-          ],
-        );
-      },
+      BuildContext context, HomeProvider dashboard) {
+    return Column(
+      children: [
+        SectionHeader(
+          title: 'Featured Stays',
+          onSeeAll: () => context.push('/explore', extra: {'featured': true}),
+        ),
+        const SizedBox(height: 12),
+        _buildPropertySlider(
+          context,
+          dashboard.featuredProperties,
+          dashboard.isFeaturedLoading,
+          dashboard.featuredError != null,
+          dashboard.featuredError,
+          onRetry: () => dashboard.initializeDashboard(),
+        ),
+      ],
     );
   }
 
   Widget _buildRecommendedPropertiesSection(
-      BuildContext context, HomeDashboardProvider dashboard) {
-    return Consumer<HomeDashboardProvider>(
-      builder: (context, dashboard, child) {
-        final provider = dashboard.recommendedPropertiesProvider;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionHeader(
-              title: 'Recommended for you',
-              onSeeAll: provider.items.isNotEmpty
-                  ? () => context.push('/explore')
-                  : null,
-            ),
-            const SizedBox(height: 12),
-            _buildVerticalPropertyList(
-              context,
-              provider.items,
-              provider.isLoading,
-              provider.hasError,
-              provider.errorMessage,
-              onRetry: () => dashboard.initializeDashboard(),
-            ),
-          ],
-        );
-      },
+      BuildContext context, HomeProvider dashboard) {
+    return Column(
+      children: [
+        SectionHeader(
+          title: 'Just For You',
+          onSeeAll: () =>
+              context.push('/explore', extra: {'recommended': true}),
+        ),
+        const SizedBox(height: 12),
+        _buildVerticalPropertyList(
+          context,
+          dashboard.recommendedProperties,
+          dashboard.isRecommendedLoading,
+          dashboard.recommendedError != null,
+          dashboard.recommendedError,
+          onRetry: () => dashboard.initializeDashboard(),
+        ),
+      ],
     );
   }
 

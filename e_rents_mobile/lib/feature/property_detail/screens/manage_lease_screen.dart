@@ -4,13 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/services/lease_service.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 
 class ManageLeaseScreen extends StatefulWidget {
   final int propertyId;
@@ -106,15 +105,15 @@ class _ManageLeaseScreenState extends State<ManageLeaseScreen> {
       final request = LeaseExtensionRequest(
         bookingId: widget.bookingId,
         propertyId: widget.propertyId,
-        tenantId: context.read<UserDetailProvider>().item?.userId ?? 1,
+        tenantId: context.read<ProfileProvider>().currentUser?.userId ?? 1,
         newEndDate: _isIndefiniteExtension ? null : _newEndDate,
         newMinimumStayEndDate: _newMinimumStayEndDate,
         reason: _reasonController.text.trim(),
         dateRequested: DateTime.now(),
       );
 
-      final leaseService = LeaseService(context.read<ApiService>());
-      final success = await leaseService.requestLeaseExtension(request);
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      final success = await propertyDetailProvider.requestLeaseExtension(request);
 
       if (mounted) {
         if (success) {

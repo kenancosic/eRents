@@ -1,7 +1,7 @@
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -72,8 +72,8 @@ class CustomSlidingDrawer extends StatelessWidget {
   }
 
   Widget _buildCustomDrawerHeader(BuildContext context) {
-    final userProvider = Provider.of<UserDetailProvider>(context);
-    final user = userProvider.item;
+    final userProvider = Provider.of<ProfileProvider>(context);
+    final user = userProvider.user;
 
     return Container(
       padding: const EdgeInsets.only(

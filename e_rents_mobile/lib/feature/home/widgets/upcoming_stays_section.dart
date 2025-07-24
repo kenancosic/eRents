@@ -9,8 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:provider/provider.dart'; // Added import
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart'; // Added import
-import 'dart:typed_data';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 
 class UpcomingStaysSection extends StatelessWidget {
   const UpcomingStaysSection({super.key});
@@ -62,11 +61,10 @@ class UpcomingStaysSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<BookingCollectionProvider>(
-      builder: (context, bookingsProvider, child) {
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
         // Filter for bookings that are Upcoming and not Active
-        final List<Booking> upcomingDisplayBookings = bookingsProvider
-            .upcomingBookings
+        final List<Booking> upcomingDisplayBookings = profileProvider.bookings
             .where((b) => b.status == BookingStatus.upcoming)
             .toList();
 

@@ -1,13 +1,13 @@
 // lib/feature/saved/saved_screen.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/services/service_locator.dart';
-import 'package:e_rents_mobile/core/repositories/property_repository.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -17,83 +17,45 @@ class SavedScreen extends StatefulWidget {
 }
 
 class _SavedScreenState extends State<SavedScreen> {
-  List<Property> _savedProperties = [];
-  bool _isLoading = false;
-  String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
-    _loadSavedProperties();
+    // Load saved properties when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SavedProvider>().loadSavedProperties();
+    });
   }
 
-  @override
-  void dispose() {
-    // Clean up any resources here
-    super.dispose();
-  }
-
-  Future<void> _loadSavedProperties() async {
-    // In a real app, you would fetch this from a database or API
+  Future<void> _removeFromSaved(Property property) async {
     try {
+      final provider = context.read<SavedProvider>();
+      await provider.unsaveProperty(property);
+      
       if (mounted) {
-        setState(() {
-          _isLoading = true;
-          _errorMessage = null;
-        });
-      }
-
-      // Simulate network delay
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // Get properties from repository instead of mock
-      final propertyRepository = ServiceLocator.get<PropertyRepository>();
-      final allProperties = await propertyRepository.getAll();
-
-      // Simulate that some properties are saved (every other property)
-      final savedProperties =
-          allProperties.where((p) => p.propertyId % 2 == 0).toList();
-
-      if (mounted) {
-        setState(() {
-          _savedProperties = savedProperties;
-          _isLoading = false;
-        });
+        // Show a snackbar to confirm removal
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${property.name} removed from saved'),
+            action: SnackBarAction(
+              label: 'UNDO',
+              onPressed: () async {
+                // Add the property back if user taps UNDO
+                await provider.saveProperty(property);
+              },
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _errorMessage = 'Failed to load saved properties. Please try again.';
-          _isLoading = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to remove ${property.name}: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
-  }
-
-  void _removeFromSaved(Property property) {
-    // In a real app, you would update this in your database or API
-    setState(() {
-      _savedProperties.removeWhere((p) => p.propertyId == property.propertyId);
-    });
-
-    // Show a snackbar to confirm removal
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${property.name} removed from saved'),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () {
-            // Add the property back if user taps UNDO
-            setState(() {
-              _savedProperties.add(property);
-              // Re-sort by ID to maintain original order
-              _savedProperties
-                  .sort((a, b) => a.propertyId.compareTo(b.propertyId));
-            });
-          },
-        ),
-      ),
-    );
   }
 
   @override
@@ -101,37 +63,37 @@ class _SavedScreenState extends State<SavedScreen> {
     final appBar = CustomAppBar(
       title: 'Saved Properties',
       showBackButton: false,
-      // userLocation: ' ', // Or actual location if available -- Removed
-      // actions: [], // No filter button was shown before, so keeping actions empty
     );
 
     return BaseScreen(
       showAppBar: true,
       appBar: appBar,
-      body: _buildBody(),
+      body: Consumer<SavedProvider>(
+        builder: (context, provider, child) => _buildBody(provider),
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(SavedProvider provider) {
+    if (provider.isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
       );
     }
 
-    if (_errorMessage != null) {
+    if (provider.error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              _errorMessage!,
+              provider.error!,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadSavedProperties,
+              onPressed: () => provider.refreshSavedProperties(),
               child: const Text('Try Again'),
             ),
           ],
@@ -139,7 +101,7 @@ class _SavedScreenState extends State<SavedScreen> {
       );
     }
 
-    if (_savedProperties.isEmpty) {
+    if (provider.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -165,7 +127,7 @@ class _SavedScreenState extends State<SavedScreen> {
             ElevatedButton(
               onPressed: () {
                 // Navigate to explore screen
-                // You can use your navigation provider or context.go('/explore')
+                context.go('/explore');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7265F0),
@@ -191,12 +153,12 @@ class _SavedScreenState extends State<SavedScreen> {
                 text: 'Refresh',
                 icon: Icons.refresh,
                 isCompact: true,
-                onPressed: _loadSavedProperties,
+                onPressed: () => provider.refreshSavedProperties(),
               ),
             ),
           ),
           // Convert ListView.builder to direct list of widgets
-          ..._savedProperties.map((property) => Padding(
+          ...provider.items.map((property) => Padding(
                 padding: const EdgeInsets.only(bottom: 6.0),
                 child: Dismissible(
                   key: Key('saved_property_${property.propertyId}'),

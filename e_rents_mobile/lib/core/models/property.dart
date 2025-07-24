@@ -163,4 +163,13 @@ class Property {
       'rentingTypeId': rentingTypeId,
     };
   }
+
+  String get priceWithCurrency => '$price $currency';
+
+  String get specificationsDisplay {
+    List<String> parts = [];
+    if (bedrooms != null && bedrooms! > 0) parts.add('$bedrooms bed${bedrooms! > 1 ? 's' : ''}');
+    if (bathrooms != null && bathrooms! > 0) parts.add('$bathrooms bath${bathrooms! > 1 ? 's' : ''}');
+    return parts.join(' · ');
+  }
 }

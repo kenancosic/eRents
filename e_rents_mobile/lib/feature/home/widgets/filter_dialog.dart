@@ -1,9 +1,9 @@
-// Removed FilterModel import - using direct parameters instead
-import 'package:e_rents_mobile/feature/property_detail/providers/property_collection_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class FilterDialog extends StatefulWidget {
   const FilterDialog({super.key});
@@ -66,7 +66,7 @@ class FilterDialogState extends State<FilterDialog> {
           label: 'Apply',
           isLoading: false,
           onPressed: () {
-            context.read<PropertyCollectionProvider>().applyFilters({
+            context.read<PropertyDetailProvider>().applyPropertyFilters({
               if (_selectedCity != null) 'city': _selectedCity,
               if (_minPrice != null) 'minPrice': _minPrice,
               if (_maxPrice != null) 'maxPrice': _maxPrice,

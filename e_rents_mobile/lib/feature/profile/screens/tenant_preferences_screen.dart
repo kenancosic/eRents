@@ -1,7 +1,6 @@
-import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -32,8 +31,8 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
   @override
   void initState() {
     super.initState();
-    final userProvider = context.read<UserDetailProvider>();
-    final preferences = userProvider.tenantPreference;
+    final profileProvider = context.read<ProfileProvider>();
+    final preferences = profileProvider.tenantPreference;
 
     _cityController = TextEditingController(text: preferences?.city ?? '');
     _minPriceController =
@@ -88,8 +87,8 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final userProvider = context.read<UserDetailProvider>();
-      final User? currentUser = userProvider.user;
+      final profileProvider = context.read<ProfileProvider>();
+      final User? currentUser = profileProvider.user;
 
       if (currentUser == null || currentUser.userId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,7 +99,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
       }
 
       final preferences = TenantPreferenceModel(
-        id: userProvider.tenantPreference?.id, // Preserve existing ID if any
+        id: profileProvider.tenantPreference?.id, // Preserve existing ID if any
         userId: currentUser.userId!.toString(), // Ensure userId is a string
         city: _cityController.text.trim(),
         minPrice: double.tryParse(_minPriceController.text.trim()),
@@ -116,7 +115,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
         isPublic: _isPublic,
       );
 
-      final success = await userProvider.updateTenantPreferences(preferences);
+      final success = await profileProvider.updateTenantPreferences(preferences);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -127,7 +126,7 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
           ),
         );
         if (success) {
-          context.pop();
+          Navigator.of(context).pop();
         }
       }
     }
@@ -139,11 +138,11 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
       appBar: AppBar(
         title: const Text('Accommodation Preferences'),
       ),
-      body: Consumer<UserDetailProvider>(
-        builder: (context, userProvider, child) {
-          if (userProvider.isLoading &&
-              userProvider.tenantPreference == null &&
-              userProvider.user == null) {
+      body: Consumer<ProfileProvider>(
+        builder: (context, profileProvider, child) {
+          if (profileProvider.isLoading &&
+              profileProvider.tenantPreference == null &&
+              profileProvider.user == null) {
             // Initial loading state for both user and preferences
             return const Center(child: CircularProgressIndicator());
           }
@@ -266,11 +265,11 @@ class _TenantPreferencesScreenState extends State<TenantPreferencesScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: userProvider.isLoading ? null : _submitForm,
+                    onPressed: profileProvider.isLoading ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
                         padding: const EdgeInsets.symmetric(vertical: 16.0)),
-                    child: userProvider.isLoading
+                    child: profileProvider.isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('Save Preferences'),
                   ),

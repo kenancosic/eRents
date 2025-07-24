@@ -296,7 +296,7 @@ class ReportsProvider extends ChangeNotifier {
 
   Map<String, dynamic> _getFinancialExportData(List<FinancialReportItem> data) {
     return {
-      'title': 'Financial Report (${formattedStartDate} - ${formattedEndDate})',
+      'title': 'Financial Report ($formattedStartDate - $formattedEndDate)',
       'headers': ['Date From', 'Date To', 'Property', 'Total Rent', 'Maintenance Costs', 'Net Total'],
       'rows': data.map((item) => [item.dateFrom, item.dateTo, item.property, item.totalRent, item.maintenanceCosts, item.total]).toList(),
     };
@@ -304,7 +304,7 @@ class ReportsProvider extends ChangeNotifier {
 
   Map<String, dynamic> _getTenantExportData(List<TenantReportItem> data) {
     return {
-      'title': 'Tenant Report (${formattedStartDate} - ${formattedEndDate})',
+      'title': 'Tenant Report ($formattedStartDate - $formattedEndDate)',
       'headers': ['Tenant Name', 'Property', 'Cost of Rent', 'Total Paid Rent', 'Start Date', 'End Date'],
       'rows': data.map((item) => [item.tenantName, item.propertyName, item.costOfRent, item.totalPaidRent, item.dateFrom, item.dateTo]).toList(),
     };

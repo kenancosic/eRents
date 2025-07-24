@@ -3,12 +3,11 @@ import 'package:e_rents_mobile/core/models/address.dart';
 
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:typed_data';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 
 class CurrentlyResidingSection extends StatelessWidget {
@@ -16,13 +15,14 @@ class CurrentlyResidingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<BookingCollectionProvider>(
-      builder: (context, bookingsProvider, child) {
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
         // Find the first active booking
         Booking? activeBooking;
         try {
-          activeBooking = bookingsProvider.currentBookings.isNotEmpty
-              ? bookingsProvider.currentBookings.first
+          final currentBookings = profileProvider.bookings.where((b) => b.status == BookingStatus.active).toList();
+          activeBooking = currentBookings.isNotEmpty
+              ? currentBookings.first
               : null;
         } catch (e) {
           activeBooking = null; // No active booking found

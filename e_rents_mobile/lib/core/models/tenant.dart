@@ -5,6 +5,7 @@ class Tenant {
   final int userId;
   final int? propertyId;
   final DateTime? leaseStartDate;
+  final DateTime? leaseEndDate;
   final String? tenantStatus;
   final User? user; // Nested User object
 
@@ -13,6 +14,7 @@ class Tenant {
     required this.userId,
     this.propertyId,
     this.leaseStartDate,
+    this.leaseEndDate,
     this.tenantStatus,
     this.user,
   });
@@ -24,6 +26,9 @@ class Tenant {
       propertyId: json['propertyId'] as int?,
       leaseStartDate: json['leaseStartDate'] != null
           ? DateTime.tryParse(json['leaseStartDate'] as String)
+          : null,
+      leaseEndDate: json['leaseEndDate'] != null
+          ? DateTime.tryParse(json['leaseEndDate'] as String)
           : null,
       tenantStatus: json['tenantStatus'] as String?,
       user: json['user'] != null
@@ -38,6 +43,7 @@ class Tenant {
       'userId': userId,
       'propertyId': propertyId,
       'leaseStartDate': leaseStartDate?.toIso8601String(),
+      'leaseEndDate': leaseEndDate?.toIso8601String(),
       'tenantStatus': tenantStatus,
       'user': user?.toJson(),
     };

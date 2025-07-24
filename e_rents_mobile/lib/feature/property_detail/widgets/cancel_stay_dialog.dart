@@ -1,11 +1,11 @@
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/services/lease_service.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:go_router/go_router.dart';
 
 class CancelStayDialog extends StatefulWidget {
   final Booking booking;
@@ -42,8 +42,8 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
     });
 
     try {
-      final leaseService = LeaseService(context.read<ApiService>());
-      final success = await leaseService.cancelBooking(
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      final success = await propertyDetailProvider.cancelBooking(
         widget.booking.bookingId,
         _reasonController.text.trim(),
       );

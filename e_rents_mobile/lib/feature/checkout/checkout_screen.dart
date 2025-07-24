@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:go_router/go_router.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final Property property;
@@ -562,8 +563,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             label: 'OK',
             isLoading: false,
             onPressed: () {
-              Navigator.of(dialogContext).pop(); // Close dialog
-              navigator.pop(); // Go back to property details
+              dialogContext.pop(); // Close dialog
+              context.pop(); // Go back to property details
             },
           ),
         ],

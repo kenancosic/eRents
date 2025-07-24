@@ -1,6 +1,6 @@
 import 'dart:ui'; // Import this for ImageFilter
 
-import 'package:e_rents_mobile/core/base/base_provider.dart';
+
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
@@ -154,14 +154,33 @@ class LoginScreen extends StatelessWidget {
                             const SizedBox(height: 15),
                             Consumer<AuthProvider>(
                               builder: (context, provider, child) {
-                                if (provider.state == ViewState.busy) {
-                                  return const CircularProgressIndicator();
-                                }
                                 return CustomButton(
                                   label: "Login",
-                                  isLoading: provider.state == ViewState.busy,
+                                  isLoading: provider.isLoading,
                                   onPressed: () async {
-                                    context.go('/');
+                                    final email = _emailController.text.trim();
+                                    final password = _passwordController.text.trim();
+
+                                    if (email.isEmpty || password.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Please enter both email and password.')),
+                                      );
+                                      return;
+                                    }
+
+                                    final success = await provider.login(email, password);
+                                    if (context.mounted) {
+                                        if (success) {
+                                            context.go('/');
+                                        } else if (provider.errorMessage != null) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                                content: Text(provider.errorMessage!)),
+                                            );
+                                        }
+                                    }
                                   },
                                 );
                               },

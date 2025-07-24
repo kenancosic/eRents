@@ -1,11 +1,11 @@
-import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {
   const PersonalDetailsScreen({super.key});
@@ -28,7 +28,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final user = context.read<UserDetailProvider>().user;
+    final user = context.read<ProfileProvider>().user;
 
     _nameController = TextEditingController(text: user?.name ?? '');
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
@@ -55,8 +55,8 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
 
   Future<void> _saveDetails() async {
     if (_formKey.currentState!.validate()) {
-      final userProvider = context.read<UserDetailProvider>();
-      final currentUser = userProvider.user;
+      final profileProvider = context.read<ProfileProvider>();
+      final currentUser = profileProvider.user;
 
       if (currentUser != null) {
         final updatedUser = User(
@@ -73,7 +73,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
         );
 
         try {
-          await userProvider.updateCurrentUserProfile(updatedUser);
+          await profileProvider.updateUserProfile(updatedUser);
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +86,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                   content: Text(
-                      userProvider.errorMessage ?? 'Failed to update profile')),
+                      profileProvider.error ?? 'Failed to update profile')),
             );
           }
         }
@@ -101,9 +101,9 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
       showBackButton: true,
     );
 
-    return Consumer<UserDetailProvider>(
-      builder: (context, userProvider, _) {
-        final isLoading = userProvider.isLoading;
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, _) {
+        final isLoading = profileProvider.isLoading;
 
         return BaseScreen(
           appBar: appBar,

@@ -24,6 +24,7 @@
 /// code should prefer the strongly-typed [RentalStatus] API.
 ///
 /// See also: docs/eRents_Dual_Rental_Status.md
+library;
 
 // ... existing code ...
 enum RentalStatus {

@@ -86,7 +86,7 @@ class LookupData {
 
   static List<LookupItem> _parseItemList(dynamic jsonList) {
     if (jsonList == null || jsonList is! List) return [];
-    return (jsonList as List)
+    return (jsonList)
         .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
         .toList();
   }

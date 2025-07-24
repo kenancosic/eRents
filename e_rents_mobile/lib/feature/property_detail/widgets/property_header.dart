@@ -1,7 +1,7 @@
 // lib/feature/property_detail/widgets/property_header.dart
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
 import 'package:provider/provider.dart';
 
 class PropertyHeader extends StatelessWidget {
@@ -14,7 +14,7 @@ class PropertyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SavedCollectionProvider>(
+    return Consumer<SavedProvider>(
       builder: (context, savedProvider, child) {
         final isSaved = savedProvider.isPropertySaved(property.propertyId);
 

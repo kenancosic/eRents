@@ -1,13 +1,18 @@
+import 'package:e_rents_mobile/feature/chat/chat_provider.dart';
+import 'package:e_rents_mobile/feature/chat/models/chat_message.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
 class ChatScreen extends StatefulWidget {
+  final String roomId;
   final String userName;
   final String userImage;
 
   const ChatScreen({
     super.key,
+    required this.roomId,
     required this.userName,
     required this.userImage,
   });
@@ -17,19 +22,20 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final List<Map<String, dynamic>> _messages = [];
   final TextEditingController _controller = TextEditingController();
-  final String _currentUserId = 'user1';
+  final String _currentUserId = 'user1'; // Should come from an auth provider
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() =>
+        Provider.of<ChatProvider>(context, listen: false).fetchMessages(widget.roomId));
+  }
 
   void _sendMessage() {
     if (_controller.text.isNotEmpty) {
-      setState(() {
-        _messages.insert(0, {
-          'text': _controller.text,
-          'senderId': _currentUserId,
-          'time': DateTime.now(),
-        });
-      });
+      Provider.of<ChatProvider>(context, listen: false)
+          .sendMessage(widget.roomId, _controller.text);
       _controller.clear();
     }
   }
@@ -40,9 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            context.pop();  // Navigate back to the chat room
-          },
+          onPressed: () => context.pop(),
         ),
         title: Row(
           children: [
@@ -57,13 +61,29 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              reverse: true,
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                final isMe = message['senderId'] == _currentUserId;
-                return _buildMessageBubble(message['text'], isMe, message['time']);
+            child: Consumer<ChatProvider>(
+              builder: (context, provider, child) {
+                if (provider.isLoadingMessages(widget.roomId) && provider.messagesForRoom(widget.roomId).isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.messageErrorForRoom(widget.roomId) != null) {
+                  return Center(
+                    child: Text('Error: ${provider.messageErrorForRoom(widget.roomId)}'),
+                  );
+                }
+
+                final messages = provider.messagesForRoom(widget.roomId);
+
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final isMe = message.senderId == _currentUserId;
+                    return _buildMessageBubble(message, isMe);
+                  },
+                );
               },
             ),
           ),
@@ -73,8 +93,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(String message, bool isMe, DateTime time) {
-    final formattedTime = DateFormat('HH:mm').format(time);
+  Widget _buildMessageBubble(ChatMessage message, bool isMe) {
+    final formattedTime = DateFormat('HH:mm').format(message.timestamp);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -105,7 +125,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   child: Text(
-                    message,
+                    message.text,
                     style: TextStyle(
                       color: isMe ? Colors.white : Colors.black87,
                     ),
@@ -153,3 +173,4 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+

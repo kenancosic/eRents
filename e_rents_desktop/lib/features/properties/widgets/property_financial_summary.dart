@@ -12,7 +12,7 @@ class PropertyFinancialSummary extends StatelessWidget {
     // Helper method to create formatted strings from stats, with fallback
     String getFormattedRevenue() {
       if (stats?.financialStats == null) return 'N/A';
-      return '${kCurrencyFormat.format(stats!.financialStats!.yearlyRevenue)}';
+      return kCurrencyFormat.format(stats!.financialStats!.yearlyRevenue);
     }
 
     String getFormattedRating() {

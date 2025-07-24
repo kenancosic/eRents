@@ -1,88 +1,115 @@
-import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/feature/auth/auth_service.dart';
+import 'dart:convert';
+import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
+import 'package:flutter/material.dart';
 
-class AuthProvider extends BaseProvider {
-  final AuthService _authService;
+class AuthProvider extends ChangeNotifier {
+  final ApiService _apiService;
+  final SecureStorageService _secureStorageService;
 
-  AuthProvider(this._authService);
+  AuthProvider(this._apiService, this._secureStorageService);
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
+  }
+
+  void _setError(String? message) {
+    _errorMessage = message;
+    notifyListeners();
+  }
 
   Future<bool> login(String email, String password) async {
-    setState(ViewState.busy);
+    _setLoading(true);
+    _setError(null);
     try {
-      final success = await _authService.login(email, password);
-      if (success) {
-        setState(ViewState.idle);
+      final response = await _apiService.post('/auth/login', {
+        'email': email,
+        'password': password,
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await _secureStorageService.storeToken(data['token']);
+        _setLoading(false);
         return true;
-      } else {
-        setError('Login failed. Please check your credentials.');
-        setState(ViewState.idle);
-        return false;
       }
+      _setError('Login failed. Please check your credentials.');
+      _setLoading(false);
+      return false;
     } catch (e) {
-      setError('An error occurred during login.');
-      setState(ViewState.idle);
+      _setError('An error occurred during login.');
+      _setLoading(false);
       return false;
     }
   }
 
   Future<bool> register(Map<String, dynamic> userData) async {
-    setState(ViewState.busy);
+    _setLoading(true);
+    _setError(null);
     try {
-      final success = await _authService.register(userData);
-      if (success) {
-        setState(ViewState.idle);
+      final response = await _apiService.post('/auth/register', userData);
+      if (response.statusCode == 201) {
+        _setLoading(false);
         return true;
-      } else {
-        setError('Registration failed.');
-        setState(ViewState.idle);
-        return false;
       }
+      _setError('Registration failed.');
+      _setLoading(false);
+      return false;
     } catch (e) {
-      setError('An error occurred during registration.');
-      setState(ViewState.idle);
+      _setError('An error occurred during registration.');
+      _setLoading(false);
       return false;
     }
   }
 
   Future<void> logout() async {
-    await _authService.logout();
-    setState(ViewState.idle);
+    await _secureStorageService.clearToken();
   }
 
   Future<bool> forgotPassword(String email) async {
-    setState(ViewState.busy);
+    _setLoading(true);
+    _setError(null);
     try {
-      final success = await _authService.forgotPassword(email);
-      if (success) {
-        setState(ViewState.idle);
+      final response = await _apiService.post('/auth/forgot-password', {'email': email});
+      if (response.statusCode == 200) {
+        _setLoading(false);
         return true;
-      } else {
-        setError('Failed to send password reset email.');
-        setState(ViewState.idle);
-        return false;
       }
+      _setError('Failed to send password reset email.');
+      _setLoading(false);
+      return false;
     } catch (e) {
-      setError('An error occurred while sending the password reset email.');
-      setState(ViewState.idle);
+      _setError('An error occurred while sending the password reset email.');
+      _setLoading(false);
       return false;
     }
   }
 
   Future<bool> resetPassword(String token, String newPassword) async {
-    setState(ViewState.busy);
+    _setLoading(true);
+    _setError(null);
     try {
-      final success = await _authService.resetPassword(token, newPassword);
-      if (success) {
-        setState(ViewState.idle);
+      final response = await _apiService.post('/auth/reset-password', {
+        'token': token,
+        'password': newPassword,
+      });
+      if (response.statusCode == 200) {
+        _setLoading(false);
         return true;
-      } else {
-        setError('Failed to reset password.');
-        setState(ViewState.idle);
-        return false;
       }
+      _setError('Failed to reset password.');
+      _setLoading(false);
+      return false;
     } catch (e) {
-      setError('An error occurred during password reset.');
-      setState(ViewState.idle);
+      _setError('An error occurred during password reset.');
+      _setLoading(false);
       return false;
     }
   }

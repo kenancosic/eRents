@@ -2,21 +2,18 @@ import 'package:e_rents_mobile/core/services/service_locator.dart';
 import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
-import 'package:e_rents_mobile/feature/auth/auth_service.dart';
+
+import 'package:e_rents_mobile/feature/chat/chat_provider.dart';
+import 'package:e_rents_mobile/feature/explore/explore_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/home/providers/home_provider.dart';
+import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'core/base/error_provider.dart';
 import 'core/widgets/global_error_dialog.dart';
-import 'package:e_rents_mobile/feature/property_detail/providers/property_collection_provider.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
-import 'package:e_rents_mobile/feature/profile/providers/booking_collection_provider.dart';
-import 'package:e_rents_mobile/feature/property_detail/providers/review_collection_provider.dart';
-import 'package:e_rents_mobile/feature/property_detail/providers/maintenance_collection_provider.dart';
-import 'package:e_rents_mobile/feature/home/providers/home_dashboard_provider.dart';
-import 'package:e_rents_mobile/feature/saved/saved_collection_provider.dart';
-// PropertyDetailProvider import moved to where it's used
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,18 +35,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // 🚀 NEW REPOSITORY ARCHITECTURE - All providers use ServiceLocator
 
         // Essential providers that still need manual setup
-        Provider<AuthService>(
-          create: (context) => AuthService(
-            ServiceLocator.get(), // ApiService
-            ServiceLocator.get(), // SecureStorageService
-          ),
-        ),
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
-            context.read<AuthService>(),
+            ServiceLocator.get(), // ApiService
+            ServiceLocator.get(), // SecureStorageService
           ),
         ),
         ChangeNotifierProvider<NavigationProvider>(
@@ -58,26 +49,23 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ErrorProvider()),
 
         // 🎯 REPOSITORY-BASED PROVIDERS - Modern architecture with automatic features
-        ChangeNotifierProvider<PropertyCollectionProvider>(
-          create: (_) => ServiceLocator.get<PropertyCollectionProvider>(),
+        ChangeNotifierProvider<ExploreProvider>(
+          create: (_) => ExploreProvider(ServiceLocator.get()),
         ),
-        ChangeNotifierProvider<UserDetailProvider>(
-          create: (_) => ServiceLocator.get<UserDetailProvider>(),
+        ChangeNotifierProvider<ProfileProvider>(
+          create: (_) => ProfileProvider(ServiceLocator.get()),
         ),
-        ChangeNotifierProvider<BookingCollectionProvider>(
-          create: (_) => ServiceLocator.get<BookingCollectionProvider>(),
+        ChangeNotifierProvider<HomeProvider>(
+          create: (_) => HomeProvider(ServiceLocator.get()),
         ),
-        ChangeNotifierProvider<ReviewCollectionProvider>(
-          create: (_) => ServiceLocator.get<ReviewCollectionProvider>(),
+        ChangeNotifierProvider<SavedProvider>(
+          create: (context) => SavedProvider(
+            ServiceLocator.get(), // ApiService
+            ServiceLocator.get(), // SecureStorageService
+          ),
         ),
-        ChangeNotifierProvider<MaintenanceCollectionProvider>(
-          create: (_) => ServiceLocator.get<MaintenanceCollectionProvider>(),
-        ),
-        ChangeNotifierProvider<HomeDashboardProvider>(
-          create: (_) => ServiceLocator.get<HomeDashboardProvider>(),
-        ),
-        ChangeNotifierProvider<SavedCollectionProvider>(
-          create: (_) => ServiceLocator.get<SavedCollectionProvider>(),
+        ChangeNotifierProvider(
+          create: (context) => ChatProvider(ServiceLocator.get()),
         ),
 
         // 📝 USAGE EXAMPLES:

@@ -7,7 +7,6 @@ import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.
 import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
-import 'package:e_rents_desktop/models/user.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});

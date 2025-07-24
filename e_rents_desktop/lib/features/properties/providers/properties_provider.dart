@@ -698,7 +698,7 @@ class PropertiesProvider extends ChangeNotifier {
     }
 
     // Handle Address
-    if (property.address != null && !property.address!.isEmpty) {
+    if (property.address != null && property.address!.isNotEmpty) {
       final address = property.address!;
       if (address.streetLine1?.isNotEmpty == true) fields['Address.StreetLine1'] = address.streetLine1!;
       if (address.streetLine2?.isNotEmpty == true) fields['Address.StreetLine2'] = address.streetLine2!;

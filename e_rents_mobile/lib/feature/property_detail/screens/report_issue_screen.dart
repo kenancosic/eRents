@@ -4,13 +4,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
-import 'package:e_rents_mobile/core/services/maintenance_service.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
+
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_detail_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final int propertyId;
@@ -116,8 +116,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     try {
       // Get current user from provider
-      final userProvider = context.read<UserDetailProvider>();
-      final currentUser = userProvider.item;
+      final userProvider = context.read<ProfileProvider>();
+      final currentUser = userProvider.currentUser;
 
       if (currentUser == null || currentUser.userId == null) {
         if (mounted) {
@@ -131,26 +131,16 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         return;
       }
 
-      final issue = MaintenanceIssue(
-        propertyId: widget.propertyId,
-        reportedByUserId: currentUser.userId!,
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        priority: _selectedPriority,
-        createdAt: DateTime.now(),
-      );
+      final propertyDetailProvider = context.read<PropertyDetailProvider>();
 
-      final maintenanceService = MaintenanceService(
-        context.read<ApiService>(), // Assuming ApiService is available
-      );
-
-      final createdIssue = await maintenanceService.reportMaintenanceIssue(
-        issue,
-        _selectedImages,
+      final success = await propertyDetailProvider.reportMaintenanceIssue(
+        widget.propertyId.toString(),
+        _titleController.text.trim(),
+        _descriptionController.text.trim(),
       );
 
       if (mounted) {
-        if (createdIssue != null) {
+        if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(

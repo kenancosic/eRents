@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/review.dart';
+import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
 
 class ApiService {
   final String baseUrl;
@@ -192,12 +196,56 @@ class ApiService {
 
     try {
       final image = NetworkImage(fullUrl);
-      final completer = await image.resolve(const ImageConfiguration());
+      final completer = image.resolve(const ImageConfiguration());
       debugPrint('ApiService: Image URL test successful: "$fullUrl"');
       return true;
     } catch (e) {
       debugPrint('ApiService: Image URL test failed: "$fullUrl" - Error: $e');
       return false;
     }
+  }
+
+  // ======================================
+  // PROPERTY DETAIL METHODS
+  // ======================================
+
+  Future<Property> getPropertyById(String id) async {
+    // TODO: Implement API call
+    throw UnimplementedError('getPropertyById not implemented');
+  }
+
+  Future<List<Review>> getReviewsForProperty(String propertyId) async {
+    // TODO: Implement API call
+    throw UnimplementedError('getReviewsForProperty not implemented');
+  }
+
+  Future<List<MaintenanceIssue>> getMaintenanceIssuesForProperty(String propertyId) async {
+    // TODO: Implement API call
+    throw UnimplementedError('getMaintenanceIssuesForProperty not implemented');
+  }
+
+  Future<List<Property>> searchProperties(Map<String, dynamic> queryParams) async {
+    // TODO: Implement API call
+    throw UnimplementedError('searchProperties not implemented');
+  }
+
+  Future<Review> createReview(String propertyId, String comment, double rating) async {
+    // TODO: Implement API call
+    throw UnimplementedError('createReview not implemented');
+  }
+
+  Future<MaintenanceIssue> createMaintenanceIssue(String propertyId, String title, String description) {
+    // TODO: Implement actual API call
+    throw UnimplementedError();
+  }
+
+  Future<MaintenanceIssue> updateMaintenanceIssue(String issueId, Map<String, dynamic> updateData) {
+    // TODO: Implement actual API call
+    throw UnimplementedError();
+  }
+
+  Future<Booking> getBookingById(String bookingId) {
+    // TODO: Implement actual API call
+    throw UnimplementedError();
   }
 }
