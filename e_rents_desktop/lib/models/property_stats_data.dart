@@ -26,6 +26,34 @@ class PropertyStatsData {
     required this.lastUpdated,
   });
 
+  factory PropertyStatsData.fromJson(Map<String, dynamic> json) {
+    return PropertyStatsData(
+      propertyId: json['propertyId'] ?? '',
+      bookingStats: json['bookingStats'] != null
+          ? PropertyBookingStats.fromJson(json['bookingStats'])
+          : null,
+      reviewStats: json['reviewStats'] != null
+          ? PropertyReviewStats.fromJson(json['reviewStats'])
+          : null,
+      financialStats: json['financialStats'] != null
+          ? PropertyFinancialStats.fromJson(json['financialStats'])
+          : null,
+      occupancyStats: json['occupancyStats'] != null
+          ? PropertyOccupancyStats.fromJson(json['occupancyStats'])
+          : null,
+      currentBookings: (json['currentBookings'] as List<dynamic>? ?? [])
+          .map((item) => BookingSummary.fromJson(item))
+          .toList(),
+      upcomingBookings: (json['upcomingBookings'] as List<dynamic>? ?? [])
+          .map((item) => BookingSummary.fromJson(item))
+          .toList(),
+      maintenanceIssues: (json['maintenanceIssues'] as List<dynamic>? ?? [])
+          .map((item) => MaintenanceIssue.fromJson(item))
+          .toList(),
+      lastUpdated: DateTime.parse(json['lastUpdated'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+
   /// Check if stats are recent (less than 1 hour old)
   bool get isRecent {
     return DateTime.now().difference(lastUpdated).inHours < 1;
@@ -78,6 +106,16 @@ class PropertyBookingStats {
     required this.occupancyRate,
     required this.currentOccupancy,
   });
+
+  factory PropertyBookingStats.fromJson(Map<String, dynamic> json) {
+    return PropertyBookingStats(
+      totalBookings: json['totalBookings'] as int? ?? 0,
+      totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0.0,
+      averageBookingValue: (json['averageBookingValue'] as num?)?.toDouble() ?? 0.0,
+      occupancyRate: (json['occupancyRate'] as num?)?.toDouble() ?? 0.0,
+      currentOccupancy: json['currentOccupancy'] as int? ?? 0,
+    );
+  }
 }
 
 /// Review statistics for a property
@@ -128,6 +166,17 @@ class PropertyFinancialStats {
     required this.lastMonthRevenue,
     required this.revenueGrowth,
   });
+
+  factory PropertyFinancialStats.fromJson(Map<String, dynamic> json) {
+    return PropertyFinancialStats(
+      monthlyRevenue: (json['monthlyRevenue'] as num?)?.toDouble() ?? 0.0,
+      yearlyRevenue: (json['yearlyRevenue'] as num?)?.toDouble() ?? 0.0,
+      averageNightlyRate: (json['averageNightlyRate'] as num?)?.toDouble() ?? 0.0,
+      profitMargin: (json['profitMargin'] as num?)?.toDouble() ?? 0.0,
+      lastMonthRevenue: (json['lastMonthRevenue'] as num?)?.toDouble() ?? 0.0,
+      revenueGrowth: (json['revenueGrowth'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
 }
 
 /// Occupancy statistics for a property
@@ -147,6 +196,17 @@ class PropertyOccupancyStats {
     required this.totalNightsBooked,
     required this.totalNightsAvailable,
   });
+
+  factory PropertyOccupancyStats.fromJson(Map<String, dynamic> json) {
+    return PropertyOccupancyStats(
+      currentOccupancyRate: (json['currentOccupancyRate'] as num?)?.toDouble() ?? 0.0,
+      monthlyOccupancyRate: (json['monthlyOccupancyRate'] as num?)?.toDouble() ?? 0.0,
+      yearlyOccupancyRate: (json['yearlyOccupancyRate'] as num?)?.toDouble() ?? 0.0,
+      averageStayDuration: (json['averageStayDuration'] as num?)?.toDouble() ?? 0.0,
+      totalNightsBooked: json['totalNightsBooked'] as int? ?? 0,
+      totalNightsAvailable: json['totalNightsAvailable'] as int? ?? 0,
+    );
+  }
 
   /// Calculate utilization efficiency
   double get utilizationEfficiency {

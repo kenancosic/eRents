@@ -1,5 +1,6 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
+import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
 import 'package:e_rents_desktop/models/statistics/dashboard_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_statistics.dart';
 import 'package:e_rents_desktop/models/statistics/financial_summary_dto.dart';

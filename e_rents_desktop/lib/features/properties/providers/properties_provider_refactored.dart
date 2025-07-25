@@ -106,8 +106,8 @@ class PropertiesProviderRefactored extends BaseProvider {
     });
     
     if (result == true) {
-      _properties.removeWhere((p) => p.id == propertyId);
-      if (_selectedProperty?.id == propertyId) {
+      _properties.removeWhere((p) => p.propertyId == propertyId);
+      if (_selectedProperty?.propertyId == propertyId) {
         _selectedProperty = null;
       }
       invalidateCache('property_$propertyId');
@@ -133,10 +133,11 @@ class PropertiesProviderRefactored extends BaseProvider {
 
     try {
       final params = {'page': _reviewsPage, 'pageSize': _reviewsPageSize};
-      final result = await apiService.getPaged<Review>(
-        'properties/$propertyId/reviews',
-        params: params,
-        fromJson: Review.fromJson,
+      final endpoint = 'properties/$propertyId/reviews${api.buildQueryString(params)}';
+      final result = await api.getPagedAndDecode(
+        endpoint,
+        Review.fromJson,
+        authenticated: true,
       );
 
       _reviews.addAll(result.items);

@@ -70,7 +70,7 @@ extension ApiServiceExtensions on ApiService {
       customHeaders: customHeaders,
     );
     final data = json.decode(response.body) as Map<String, dynamic>;
-    return PagedResult<T>.fromJson(data, decoder);
+    return PagedResult<T>.fromJson(data, (item) => decoder(item as Map<String, dynamic>));
   }
   
   /// POST request with automatic JSON encoding/decoding

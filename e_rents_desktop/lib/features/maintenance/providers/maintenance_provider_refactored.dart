@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/widgets/table/custom_table.dart';
+import 'package:e_rents_desktop/widgets/table/core/table_types.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -36,7 +37,7 @@ class MaintenanceProviderRefactored extends BaseProvider {
   Future<PagedResult<MaintenanceIssue>> fetchData(TableQuery query) async {
     final result = await executeWithState<PagedResult<MaintenanceIssue>>(() async {
       return await api.getPagedAndDecode(
-        '/maintenance${api.buildQueryString(query.toQueryMap())}',
+        '/maintenance${api.buildQueryString(query.toQueryParams())}',
         MaintenanceIssue.fromJson,
         authenticated: true,
       );
@@ -64,7 +65,7 @@ class MaintenanceProviderRefactored extends BaseProvider {
 
   Future<bool> saveIssue(MaintenanceIssue issue) async {
     final result = await executeWithState<Map<String, dynamic>>(() async {
-      if (issue.maintenanceIssueId == null) {
+      if (issue.maintenanceIssueId == 0) {
         return await api.postJson('/maintenance', issue.toJson(), authenticated: true);
       } else {
         return await api.putAndDecode('/maintenance/${issue.maintenanceIssueId}', issue.toJson(), (json) => json, authenticated: true);
@@ -80,7 +81,7 @@ class MaintenanceProviderRefactored extends BaseProvider {
     });
     
     if (result == true) {
-      _issues.removeWhere((i) => i.maintenanceIssueId == id);
+      _issues.removeWhere((i) => i.maintenanceIssueId.toString() == id);
       notifyListeners();
       return true;
     }
@@ -161,7 +162,7 @@ class MaintenanceProviderRefactored extends BaseProvider {
         type: FilterType.dropdown,
         options:
             IssueStatus.values
-                .map((s) => DropdownOption(value: s.name, label: s.name))
+                .map((s) => FilterOption(value: s.name, label: s.name))
                 .toList(),
       ),
       TableFilter(
@@ -170,7 +171,7 @@ class MaintenanceProviderRefactored extends BaseProvider {
         type: FilterType.dropdown,
         options:
             IssuePriority.values
-                .map((p) => DropdownOption(value: p.name, label: p.name))
+                .map((p) => FilterOption(value: p.name, label: p.name))
                 .toList(),
       ),
     ];

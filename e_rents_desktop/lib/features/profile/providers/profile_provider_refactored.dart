@@ -86,12 +86,12 @@ class ProfileProviderRefactored extends BaseProvider {
   }
 
   Future<bool> changePassword({
-    required String currentPassword,
+    required String oldPassword,
     required String newPassword,
     required String confirmPassword,
   }) async {
     final request = ChangePasswordRequestModel(
-      currentPassword: currentPassword,
+      oldPassword: oldPassword,
       newPassword: newPassword,
       confirmPassword: confirmPassword,
     );

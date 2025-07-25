@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
-import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/reports/financial_report_item.dart';
@@ -55,28 +54,32 @@ class ReportsProviderRefactored extends BaseProvider {
     final cacheKey = _buildCacheKey(_currentReportType.name, _startDate, _endDate);
     final endpoint = _buildReportEndpoint(_currentReportType.name, _startDate, _endDate);
 
-    await executeOperation(() async {
+    await executeWithState(() async {
       if (_currentReportType == ReportType.financial) {
-        _financialReports = await getOrFetch<List<FinancialReportItem>>(
-          endpoint,
-          cacheKey: cacheKey,
-          forceRefresh: forceRefresh,
-          fromJson: (json) => (json as List).map((i) => FinancialReportItem.fromJson(i)).toList(),
-        ) ?? [];
+        if (forceRefresh) invalidateCache(cacheKey);
+        _financialReports = await getCachedOrExecute<List<FinancialReportItem>>(
+          cacheKey,
+          () async {
+            final json = await api.getAndDecode(endpoint, (data) => data, authenticated: true);
+            return (json as List).map((i) => FinancialReportItem.fromJson(i)).toList();
+          },
+        );
       } else {
-        _tenantReports = await getOrFetch<List<TenantReportItem>>(
-          endpoint,
-          cacheKey: cacheKey,
-          forceRefresh: forceRefresh,
-          fromJson: (json) => (json as List).map((i) => TenantReportItem.fromJson(i)).toList(),
-        ) ?? [];
+        if (forceRefresh) invalidateCache(cacheKey);
+        _tenantReports = await getCachedOrExecute<List<TenantReportItem>>(
+          cacheKey,
+          () async {
+            final json = await api.getAndDecode(endpoint, (data) => data, authenticated: true);
+            return (json as List).map((i) => TenantReportItem.fromJson(i)).toList();
+          },
+        );
       }
     });
   }
 
   Future<String?> exportReport(String format) async {
     String? path;
-    await executeOperation(
+    await executeWithState(
       () async {
         if (currentReports.isEmpty) {
           throw Exception('No data to export.');
@@ -97,7 +100,6 @@ class ReportsProviderRefactored extends BaseProvider {
           default: throw Exception('Unsupported format: $format');
         }
       },
-      operationKey: 'export',
     );
     return path;
   }
@@ -128,7 +130,7 @@ class ReportsProviderRefactored extends BaseProvider {
   }
 
   bool get hasData => currentReports.isNotEmpty;
-  bool get isExporting => isOperationBusy('export');
+  bool get isExporting => isLoading;
 
   Future<void> _createPdf(String path, String title, List<String> headers, List<List<dynamic>> rows) async {
     final pdf = pw.Document();

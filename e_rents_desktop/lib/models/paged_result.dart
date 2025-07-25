@@ -12,6 +12,13 @@ class PagedResult<T> {
     required this.pageSize,
   });
 
+  // Empty constructor for initialization
+  PagedResult.empty()
+      : items = [],
+        totalCount = 0,
+        page = 1,
+        pageSize = 10;
+
   factory PagedResult.fromJson(
     Map<String, dynamic> json,
     T Function(dynamic) fromJsonT,

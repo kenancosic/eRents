@@ -87,10 +87,10 @@ class RentsProviderRefactored extends BaseProvider {
     PagedResult<dynamic> result = PagedResult.empty();
     final fetchResult = await executeWithState<PagedResult<dynamic>>(() async {
       if (_currentType == RentalType.stay) {
-        _stayPagedResult = await api.getPagedAndDecode<Booking>('/bookings${api.buildQueryString(query.toMap())}', Booking.fromJson, authenticated: true);
+        _stayPagedResult = await api.getPagedAndDecode<Booking>('/bookings${api.buildQueryString(query.toQueryParams())}', Booking.fromJson, authenticated: true);
         return _stayPagedResult;
       } else {
-        _leasePagedResult = await api.getPagedAndDecode<RentalRequest>('/rental-requests${api.buildQueryString(query.toMap())}', RentalRequest.fromJson, authenticated: true);
+        _leasePagedResult = await api.getPagedAndDecode<RentalRequest>('/rental-requests${api.buildQueryString(query.toQueryParams())}', RentalRequest.fromJson, authenticated: true);
         return _leasePagedResult;
       }
     });
