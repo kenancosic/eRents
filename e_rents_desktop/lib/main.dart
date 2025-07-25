@@ -96,10 +96,8 @@ class ERentsApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => ReportsProvider(apiService)),
 
         // Dependent Feature Providers
-        ChangeNotifierProxyProvider<MaintenanceProvider, PropertiesProvider>(
-          create: (context) => PropertiesProvider(apiService, context.read<MaintenanceProvider>()),
-          update: (context, maintenanceProvider, previous) =>
-              PropertiesProvider(apiService, maintenanceProvider),
+        ChangeNotifierProvider<PropertiesProvider>(
+          create: (context) => PropertiesProvider(apiService),
         ),
         ChangeNotifierProvider(
           create: (_) {

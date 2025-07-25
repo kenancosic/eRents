@@ -1,95 +1,37 @@
-
-import 'dart:convert';
-
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:flutter/foundation.dart';
-import 'package:e_rents_desktop/utils/logger.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
 
-/// Consolidated provider for the Chat feature.
-///
-/// This provider manages all state and business logic for chat, including:
-/// - Fetching and caching contacts and messages.
-/// - Sending, deleting, and updating messages.
-/// - Managing UI state such as loading indicators, errors, and selected conversations.
-///
-/// This replaces `ChatCollectionProvider`, `ChatDetailProvider`, `ChatRepository`, and `ChatService`.
-class ChatProvider extends ChangeNotifier {
-  final ApiService _apiService;
+class ChatProvider extends BaseProvider {
+  ChatProvider(super.api);
 
-  // State
-  bool _isLoadingContacts = false;
-  bool _isLoadingMessages = false;
-  String? _error;
-
-  // Data
+  // ─── State ──────────────────────────────────────────────────────────────
   List<User> _contacts = [];
+  List<User> get contacts => _contacts;
+
   int? _selectedContactId;
+  int? get selectedContactId => _selectedContactId;
 
-  // Conversation messages, mapped by contact ID
   final Map<int, List<Message>> _conversations = {};
-  final Map<int, DateTime> _lastActivity = {};
-
-  // Pagination state, mapped by contact ID
   final Map<int, int> _currentPage = {};
   final Map<int, bool> _hasMoreMessages = {};
   static const int _pageSize = 50;
 
-  // Caching
-  DateTime? _contactsCacheTimestamp;
-  static const Duration _contactsCacheTtl = Duration(hours: 1);
+  // ─── Getters ────────────────────────────────────────────────────────────
+  bool get isLoadingContacts => isLoading;
+  bool get isLoadingMessages => isLoading;
 
-  ChatProvider(this._apiService);
+  User? get selectedContact => _selectedContactId == null
+      ? null
+      : _contacts.cast<User?>().firstWhere((c) => c?.id == _selectedContactId, orElse: () => null);
 
-  // --- Getters ---
-  bool get isLoading => _isLoadingContacts || _isLoadingMessages;
-  String? get error => _error;
-  List<User> get contacts => _contacts;
-  int? get selectedContactId => _selectedContactId;
-    User? get selectedContact {
-    if (_selectedContactId == null) return null;
-    try {
-      return _contacts.firstWhere((c) => c.id == _selectedContactId);
-    } catch (e) {
-      return null;
-    }
-  }
   List<Message> get activeConversationMessages => _conversations[_selectedContactId] ?? [];
   bool get hasMoreActiveConversationMessages => _hasMoreMessages[_selectedContactId] ?? true;
 
-  // --- Public API ---
+  // ─── Public API ─────────────────────────────────────────────────────────
 
-  int getUnreadCount(int contactId) {
-    final conversation = _conversations[contactId];
-    if (conversation == null) return 0;
-    return conversation.where((m) => !m.isRead && m.senderId == contactId).length;
-  }
-
-  DateTime? getLastActivity(int contactId) {
-    return _lastActivity[contactId];
-  }
-
-  String? getLastMessage(int contactId) {
-    final conversation = _conversations[contactId];
-    if (conversation == null || conversation.isEmpty) return null;
-    return conversation.first.messageText;
-  }
-
-  /// Searches contacts by name or email.
-  List<User> searchContacts(String query) {
-    if (query.isEmpty) return _contacts;
-
-    final lowercaseQuery = query.toLowerCase();
-    return _contacts.where((contact) {
-      return contact.fullName.toLowerCase().contains(lowercaseQuery) ||
-          contact.email.toLowerCase().contains(lowercaseQuery) ||
-          contact.username.toLowerCase().contains(lowercaseQuery);
-    }).toList();
-  }
-
-
-  /// Selects a contact and loads their conversation.
   void selectContact(int? contactId) {
     if (_selectedContactId == contactId) return;
     _selectedContactId = contactId;
@@ -100,36 +42,26 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetches the list of contacts, using a cache.
   Future<void> loadContacts({bool forceRefresh = false}) async {
-    if (_isLoadingContacts) return;
-
-    final isCacheValid = _contactsCacheTimestamp != null && DateTime.now().difference(_contactsCacheTimestamp!) < _contactsCacheTtl;
-    if (!forceRefresh && isCacheValid && _contacts.isNotEmpty) {
-      return;
+    const cacheKey = 'contacts';
+    
+    if (forceRefresh) {
+      invalidateCache(cacheKey);
     }
-
-    _isLoadingContacts = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final response = await _apiService.get('/Chat/Contacts', authenticated: true);
-      final jsonResponse = json.decode(response.body);
-      final List<dynamic> itemsJson = jsonResponse['items'] ?? jsonResponse;
-      _contacts = itemsJson.map((json) => User.fromJson(json)).toList();
-      _contactsCacheTimestamp = DateTime.now();
-    } catch (e) {
-      _error = 'Failed to load contacts: $e';
-    } finally {
-      _isLoadingContacts = false;
+    
+    final result = await executeWithCache<List<User>>(
+      cacheKey,
+      () => api.getListAndDecode('/Chat/Contacts', User.fromJson, authenticated: true),
+    );
+    
+    if (result != null) {
+      _contacts = result;
       notifyListeners();
     }
   }
 
-  /// Fetches messages for a given contact, with pagination.
   Future<void> loadMessages(int contactId, {bool forceRefresh = false}) async {
-    if (_isLoadingMessages && !forceRefresh) return;
+    if (isLoading && !forceRefresh) return;
 
     if (forceRefresh) {
       _conversations.remove(contactId);
@@ -137,19 +69,17 @@ class ChatProvider extends ChangeNotifier {
       _hasMoreMessages.remove(contactId);
     }
 
-    _isLoadingMessages = true;
-    _error = null;
-    notifyListeners();
+    final page = _currentPage[contactId] ?? 0;
+    final endpoint = '/Chat/$contactId/Messages';
+    final params = {'page': page + 1, 'pageSize': _pageSize};
 
-    try {
-      final page = _currentPage[contactId] ?? 0;
-      final endpoint = '/Chat/$contactId/Messages?page=${page + 1}&pageSize=$_pageSize';
-      final response = await _apiService.get(endpoint, authenticated: true);
+    final result = await executeWithState<PagedResult<Message>>(() async {
+      return await api.getPagedAndDecode('$endpoint${api.buildQueryString(params)}', Message.fromJson, authenticated: true);
+    });
 
-      final jsonResponse = json.decode(response.body);
-      final List<dynamic> itemsJson = jsonResponse['items'] ?? [];
-      final newMessages = itemsJson.map((json) => Message.fromJson(json)).toList();
-
+    if (result != null) {
+      final newMessages = result.items;
+      
       if (page == 0) {
         _conversations[contactId] = newMessages;
       } else {
@@ -158,77 +88,85 @@ class ChatProvider extends ChangeNotifier {
 
       _hasMoreMessages[contactId] = newMessages.length == _pageSize;
       _currentPage[contactId] = page + 1;
-
-    } catch (e) {
-      _error = 'Failed to load messages for contact $contactId: $e';
-    } finally {
-      _isLoadingMessages = false;
       notifyListeners();
     }
   }
 
-  /// Loads more messages for the currently active conversation.
   Future<void> loadMoreMessages() async {
-    if (_selectedContactId != null && (_hasMoreMessages[_selectedContactId] ?? true)) {
+    if (_selectedContactId != null && hasMoreActiveConversationMessages) {
       await loadMessages(_selectedContactId!);
     }
   }
 
-  /// Sends a text message to a receiver.
   Future<bool> sendMessage(int receiverId, String messageText) async {
-    _error = null;
-    notifyListeners();
-
-    try {
-      final response = await _apiService.post('/Chat/SendMessage', {
-        'receiverId': receiverId,
-        'messageText': messageText,
-      }, authenticated: true);
-
-      final newMessage = Message.fromJson(json.decode(response.body));
-      _conversations[receiverId]?.add(newMessage);
-      // Move contact to top
+    final result = await executeWithState<Message>(() async {
+      return await api.postAndDecode(
+        '/Chat/SendMessage',
+        {'receiverId': receiverId, 'messageText': messageText},
+        Message.fromJson,
+        authenticated: true,
+      );
+    });
+    
+    if (result != null) {
+      _conversations[receiverId]?.add(result);
       _updateContactActivity(receiverId);
       notifyListeners();
       return true;
-    } catch (e) {
-      _error = 'Failed to send message: $e';
-      notifyListeners();
-      return false;
     }
+    return false;
   }
 
-  /// Marks a message as read.
   Future<void> markMessageAsRead(int messageId, int contactId) async {
-    try {
-      await _apiService.put('/Chat/$messageId/read', {}, authenticated: true);
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      return await api.putAndDecode('/Chat/$messageId/read', {}, (json) => json, authenticated: true);
+    });
+    
+    if (result != null) {
       final conversation = _conversations[contactId];
       if (conversation != null) {
         final messageIndex = conversation.indexWhere((m) => m.id == messageId);
         if (messageIndex != -1) {
           conversation[messageIndex] = conversation[messageIndex].copyWith(isRead: true);
-          notifyListeners();
         }
       }
-    } catch (e, stackTrace) {
-      // Silently fail or log error
-      log.warning('Failed to mark message as read', e, stackTrace);
+      notifyListeners();
     }
   }
 
-  /// Clears all local data and caches.
   void clearAllData() {
     _contacts.clear();
     _conversations.clear();
     _currentPage.clear();
     _hasMoreMessages.clear();
     _selectedContactId = null;
-    _contactsCacheTimestamp = null;
-    _error = null;
+    invalidateCache('contacts');
+    clearError();
     notifyListeners();
   }
 
-  // --- Private Helpers ---
+  /// Get unread message count for a specific contact
+  int getUnreadCount(int contactId) {
+    final conversation = _conversations[contactId];
+    if (conversation == null) return 0;
+    return conversation.where((message) => !message.isRead && message.senderId != _selectedContactId).length;
+  }
+
+  /// Get the last message text for a specific contact
+  String? getLastMessage(int contactId) {
+    final conversation = _conversations[contactId];
+    if (conversation == null || conversation.isEmpty) return null;
+    return conversation.last.messageText;
+  }
+
+  /// Get the last activity timestamp for a specific contact
+  DateTime? getLastActivity(int contactId) {
+    final conversation = _conversations[contactId];
+    if (conversation == null || conversation.isEmpty) return null;
+    return conversation.last.dateSent;
+  }
+
+  // ─── Private Helpers ────────────────────────────────────────────────────
 
   void _updateContactActivity(int contactId) {
     final index = _contacts.indexWhere((c) => c.id == contactId);

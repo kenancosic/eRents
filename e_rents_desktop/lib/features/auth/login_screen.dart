@@ -149,11 +149,11 @@ class _LoginViewState extends State<LoginView> {
                     label: 'Login',
                     isLoading: authProvider.isLoading,
                   ),
-                  if (authProvider.errorMessage != null)
+                  if (authProvider.error != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 16.0),
                       child: Text(
-                        authProvider.errorMessage!,
+                        authProvider.error!,
                         style: const TextStyle(color: Colors.red, fontSize: 16),
                       ),
                     ),

@@ -1,741 +1,223 @@
-import 'dart:convert';
-
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/api_service_extensions.dart';
+import 'package:e_rents_desktop/models/booking.dart';
+import 'package:e_rents_desktop/models/paged_result.dart';
+import 'package:e_rents_desktop/models/rental_request.dart';
+import 'package:e_rents_desktop/widgets/table/custom_table.dart';
+import 'package:e_rents_desktop/widgets/table/providers/base_table_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../models/booking.dart';
-import '../../../models/paged_result.dart';
-import '../../../models/rental_request.dart';
-import '../../../services/api_service.dart';
-import '../../../widgets/table/custom_table.dart';
+enum RentalType { stay, lease }
 
-/// Consolidated provider for all rental types (short-term stays and long-term leases)
-/// following the canonical provider-only architecture
-class RentsProvider extends ChangeNotifier implements BaseTableProvider<dynamic> {
-  final ApiService _api;
+class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
+  RentsProvider(super.api, {required this.context});
+
   final BuildContext context;
-  
-  // API endpoints
-  final String _bookingEndpoint = '/bookings';
-  final String _leaseEndpoint = '/rental-requests';
-  
-  // Current state
-  bool _isLoading = false;
-  String? _error;
-  RentalType _currentType = RentalType.stay;
-  
-  // Table context and filters
-  BuildContext? _currentContext;
-  // Filter state managed via fetchData parameters
-  RentalType get currentType => _currentType;
-  
-  RentsProvider(this._api, {required this.context}) {
-    _currentContext = context;
-  }
 
   // ─── State ──────────────────────────────────────────────────────────────
-  bool get isLoading => _isLoading;
+  RentalType _currentType = RentalType.stay;
+  RentalType get currentType => _currentType;
 
-  String? get error => _error;
+  PagedResult<Booking> _stayPagedResult = PagedResult.empty();
+  PagedResult<Booking> get stayPagedResult => _stayPagedResult;
 
-  // Stay (booking) state
-  List<Booking> _stays = [];
-  List<Booking> get stays => _stays;
-  
+  PagedResult<RentalRequest> _leasePagedResult = PagedResult.empty();
+  PagedResult<RentalRequest> get leasePagedResult => _leasePagedResult;
+
+  // Compatibility getters for widgets
+  List<Booking> get stays => _stayPagedResult.items;
+  List<RentalRequest> get leases => _leasePagedResult.items;
+
   Booking? _selectedStay;
   Booking? get selectedStay => _selectedStay;
-  
-  PagedResult<Booking> _stayPagedResult = PagedResult(
-    items: [],
-    totalCount: 0,
-    page: 1,
-    pageSize: 10,
-  );
-  PagedResult<Booking> get stayPagedResult => _stayPagedResult;
-  
-  // Lease (rental request) state
-  List<RentalRequest> _leases = [];
-  List<RentalRequest> get leases => _leases;
-  
+
   RentalRequest? _selectedLease;
   RentalRequest? get selectedLease => _selectedLease;
-  
-  PagedResult<RentalRequest> _leasePagedResult = PagedResult(
-    items: [],
-    totalCount: 0,
-    page: 1,
-    pageSize: 10,
-  );
-  PagedResult<RentalRequest> get leasePagedResult => _leasePagedResult;
-  
-  // Action state (previously in separate StayActionState and LeaseActionState)
-  bool _isActionInProgress = false;
-  bool get isActionInProgress => _isActionInProgress;
-  
-  // Controllers for action dialogs
-  final TextEditingController cancelReasonController = TextEditingController();
-  final TextEditingController additionalNotesController = TextEditingController();
-  final TextEditingController responseController = TextEditingController();
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
-  /// Set the current rental type (stay or lease)
   void setRentalType(RentalType type) {
-    if (_currentType != type) {
-      _currentType = type;
-      notifyListeners();
-    }
-  }
-  
-  /// Get paged stays (bookings)
-  Future<void> getPagedStays({Map<String, dynamic>? params}) async {
-    _setLoading(true);
-    try {
-      String queryString = '';
-      if (params != null && params.isNotEmpty) {
-        queryString = '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
-      }
-      final fullEndpoint = '$_bookingEndpoint$queryString';
-
-      final response = await _api.get(fullEndpoint, authenticated: true);
-      final data = json.decode(response.body);
-      _stayPagedResult = PagedResult<Booking>.fromJson(
-        data, 
-        (json) => Booking.fromJson(json as Map<String, dynamic>)
-      );
-      _stays = _stayPagedResult.items;
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
-  }
-  
-  /// Get paged leases (rental requests)
-  Future<void> getPagedLeases({Map<String, dynamic>? params}) async {
-    _setLoading(true);
-    try {
-      String queryString = '';
-      if (params != null && params.isNotEmpty) {
-        queryString = '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}';
-      }
-      final fullEndpoint = '$_leaseEndpoint$queryString';
-
-      final response = await _api.get(fullEndpoint, authenticated: true);
-      final data = json.decode(response.body);
-      _leasePagedResult = PagedResult<RentalRequest>.fromJson(
-        data, 
-        (json) => RentalRequest.fromJson(json as Map<String, dynamic>)
-      );
-      _leases = _leasePagedResult.items;
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
-  }
-  
-  /// Get stay details by ID
-  Future<void> getStayById(String id) async {
-    _setLoading(true);
-    try {
-      final response = await _api.get('$_bookingEndpoint/$id', authenticated: true);
-      final data = json.decode(response.body);
-      _selectedStay = Booking.fromJson(data);
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
-  }
-  
-  /// Get lease details by ID
-  Future<void> getLeaseById(String id) async {
-    _setLoading(true);
-    try {
-      final response = await _api.get('$_leaseEndpoint/$id', authenticated: true);
-      final data = json.decode(response.body);
-      _selectedLease = RentalRequest.fromJson(data);
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
-  }
-  
-  /// Cancel a stay (booking)
-  Future<bool> cancelStay({
-    required String bookingId,
-    required String reason,
-    bool requestRefund = false,
-    String? additionalNotes,
-  }) async {
-    return _executeAction(() async {
-      final Map<String, dynamic> payload = {
-        'reason': reason,
-        'requestRefund': requestRefund,
-        'additionalNotes': additionalNotes,
-      };
-      
-      await _api.post(
-        '$_bookingEndpoint/$bookingId/cancel',
-        payload,
-        authenticated: true,
-      );
-      
-      // Refresh data after successful action
-      if (_selectedStay?.bookingId == bookingId) {
-        await getStayById(bookingId);
-      }
-    });
-  }
-  
-  /// Approve a lease (rental request)
-  Future<bool> approveLease({
-    required String requestId,
-    String? response,
-  }) async {
-    return _executeAction(() async {
-      final Map<String, dynamic> payload = {
-        'response': response,
-      };
-      
-      await _api.post(
-        '$_leaseEndpoint/$requestId/approve',
-        payload,
-        authenticated: true,
-      );
-      
-      // Refresh data after successful action
-      if (_selectedLease?.requestId == requestId) {
-        await getLeaseById(requestId);
-      }
-    });
-  }
-  
-  /// Reject a lease (rental request)
-  Future<bool> rejectLease({
-    required String requestId,
-    String? response,
-  }) async {
-    return _executeAction(() async {
-      final Map<String, dynamic> payload = {
-        'response': response,
-      };
-      
-      await _api.post(
-        '$_leaseEndpoint/$requestId/reject',
-        payload,
-        authenticated: true,
-      );
-      
-      // Refresh data after successful action
-      if (_selectedLease?.requestId == requestId) {
-        await getLeaseById(requestId);
-      }
-    });
-  }
-  
-  /// Execute an action with loading state and error handling
-  Future<bool> _executeAction(Future<void> Function() action) async {
-    _isActionInProgress = true;
-    _error = null;
+    if (_currentType == type) return;
+    _currentType = type;
     notifyListeners();
+  }
 
-    try {
-      await action();
-      _isActionInProgress = false;
+  Future<void> getStayById(int id) async {
+    final result = await executeWithState<Booking>(() async {
+      return await api.getAndDecode('/bookings/$id', Booking.fromJson, authenticated: true);
+    });
+    
+    if (result != null) {
+      _selectedStay = result;
       notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isActionInProgress = false;
+    }
+  }
+
+  Future<void> getLeaseById(int id) async {
+    final result = await executeWithState<RentalRequest>(() async {
+      return await api.getAndDecode('/rental-requests/$id', RentalRequest.fromJson, authenticated: true);
+    });
+    
+    if (result != null) {
+      _selectedLease = result;
       notifyListeners();
-      return false;
-    }
-  }
-  
-  // ─── Table Integration ───────────────────────────────────────────────────
-
-  /// Cell builders for table display
-  Widget _textCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Text(text),
-    );
-  }
-
-  Widget _dateCell(DateTime? date) {
-    final displayDate = date != null
-        ? '${date.day}/${date.month}/${date.year}'
-        : 'N/A';
-    return _textCell(displayDate);
-  }
-  
-  Widget _statusCell(String text, {Color? color}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color?.withAlpha(25),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color ?? Colors.grey),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: color),
-      ),
-    );
-  }
-  
-  Widget _actionCell(List<Widget> actions) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: actions,
-    );
-  }
-
-  Widget _iconActionCell({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return IconButton(
-      icon: Icon(icon),
-      tooltip: tooltip,
-      onPressed: onPressed,
-    );
-  }
-
-  Color _getStayStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return Colors.green;
-      case 'upcoming':
-        return Colors.blue;
-      case 'completed':
-        return Colors.purple;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
     }
   }
 
-  Color _getLeaseStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return Colors.orange;
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
+  Future<bool> cancelStay(int bookingId, String reason) async {
+    return await _performAction(
+      () => api.postJson('/bookings/$bookingId/cancel', {'reason': reason}, authenticated: true),
+      'cancelStay',
+    );
   }
-  
-  // Get stay (booking) table columns
-  List<TableColumnConfig<Booking>> _getStayTableColumns(BuildContext tableContext) {
-    return [
-      TableColumnConfig<Booking>(
-        key: 'propertyId',
-        label: 'Property',
-        cellBuilder: (booking) => _textCell('Property ${booking.propertyId}'),
-        width: const FlexColumnWidth(1.5),
-      ),
-      TableColumnConfig<Booking>(
-        key: 'guestName',
-        label: 'Guest',
-        cellBuilder: (booking) => _textCell(booking.userName ?? 'Guest'),
-        width: const FlexColumnWidth(1.5),
-      ),
-      TableColumnConfig<Booking>(
-        key: 'checkIn',
-        label: 'Check-in',
-        cellBuilder: (booking) => _dateCell(booking.startDate),
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<Booking>(
-        key: 'checkOut',
-        label: 'Check-out',
-        cellBuilder: (booking) => _dateCell(booking.endDate),
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<Booking>(
-        key: 'status',
-        label: 'Status',
-        cellBuilder: (booking) {
-          final statusText = booking.isActive
-              ? 'Active'
-              : booking.isUpcoming
-                  ? 'Upcoming'
-                  : booking.isCompleted
-                      ? 'Completed'
-                      : 'Cancelled';
-          return _statusCell(
-            statusText,
-            color: _getStayStatusColor(statusText),
-          );
-        },
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<Booking>(
-        key: 'actions',
-        label: 'Actions',
-        cellBuilder: (booking) => _actionCell([
-          if (tableContext.mounted)
-            _iconActionCell(
-              icon: Icons.visibility,
-              tooltip: 'View Details',
-              onPressed: () {
-                tableContext.push('/stays/${booking.bookingId}');
-              },
-            ),
-          if ((booking.isActive || booking.isUpcoming) && tableContext.mounted)
-            _iconActionCell(
-              icon: Icons.cancel,
-              tooltip: 'Cancel Booking',
-              onPressed: () {
-                // Show cancel dialog (to be implemented in UI)
-              },
-            ),
-        ]),
-        width: const FlexColumnWidth(0.8),
-      ),
-    ];
-  }
-  
-  // Get lease (rental request) table columns
-  List<TableColumnConfig<RentalRequest>> _getLeaseTableColumns(BuildContext tableContext) {
-    return [
-      TableColumnConfig<RentalRequest>(
-        key: 'propertyId',
-        label: 'Property',
-        cellBuilder: (lease) => _textCell('Property ${lease.propertyId}'),
-        width: const FlexColumnWidth(1.5),
-      ),
-      TableColumnConfig<RentalRequest>(
-        key: 'tenantName',
-        label: 'Tenant',
-        cellBuilder: (lease) => _textCell(lease.userName),
-        width: const FlexColumnWidth(1.5),
-      ),
-      TableColumnConfig<RentalRequest>(
-        key: 'startDate',
-        label: 'Start Date',
-        cellBuilder: (lease) => _dateCell(lease.proposedStartDate),
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<RentalRequest>(
-        key: 'endDate',
-        label: 'End Date',
-        cellBuilder: (lease) => _dateCell(lease.proposedEndDate),
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<RentalRequest>(
-        key: 'status',
-        label: 'Status',
-        cellBuilder: (lease) {
-          final statusText = lease.isPending
-              ? 'Pending'
-              : lease.isApproved
-                  ? 'Approved'
-                  : 'Rejected';
-          return _statusCell(
-            statusText,
-            color: _getLeaseStatusColor(statusText),
-          );
-        },
-        width: const FlexColumnWidth(1.0),
-      ),
-      TableColumnConfig<RentalRequest>(
-        key: 'actions',
-        label: 'Actions',
-        cellBuilder: (lease) => _actionCell([
-          if (tableContext.mounted)
-            _iconActionCell(
-              icon: Icons.visibility,
-              tooltip: 'View Details',
-              onPressed: () {
-                tableContext.push('/leases/${lease.requestId}');
-              },
-            ),
-          if (lease.isPending && tableContext.mounted)
-            _iconActionCell(
-              icon: Icons.check_circle,
-              tooltip: 'Approve',
-              onPressed: () {
-                // Show approve dialog (to be implemented in UI)
-              },
-            ),
-          if (lease.isPending && tableContext.mounted)
-            _iconActionCell(
-              icon: Icons.cancel,
-              tooltip: 'Reject',
-              onPressed: () {
-                // Show reject dialog (to be implemented in UI)
-              },
-            ),
-        ]),
-        width: const FlexColumnWidth(1.2),
-      ),
-    ];
-  }
-  
-  // Get table filters based on current rental type
-  List<TableFilter> _getStayTableFilters() {
-    return [
-      TableFilter(
-        key: 'status',
-        label: 'Status',
-        type: FilterType.dropdown,
-        options: [
-          FilterOption(label: 'All', value: ''),
-          FilterOption(label: 'Active', value: 'active'),
-          FilterOption(label: 'Upcoming', value: 'upcoming'),
-          FilterOption(label: 'Completed', value: 'completed'),
-          FilterOption(label: 'Cancelled', value: 'cancelled'),
-        ],
-      ),
-      TableFilter(
-        key: 'dateRange',
-        label: 'Date Range',
-        type: FilterType.dropdown,
-        options: [
-          FilterOption(label: 'All Time', value: ''),
-          FilterOption(label: 'This Month', value: 'this_month'),
-          FilterOption(label: 'Last 3 Months', value: 'last_3_months'),
-          FilterOption(label: 'Last 6 Months', value: 'last_6_months'),
-          FilterOption(label: 'This Year', value: 'this_year'),
-        ],
-      ),
-    ];
-  }
-  
-  List<TableFilter> _getLeaseTableFilters() {
-    return [
-      TableFilter(
-        key: 'status',
-        label: 'Status',
-        type: FilterType.dropdown,
-        options: [
-          FilterOption(label: 'All', value: ''),
-          FilterOption(label: 'Pending', value: 'pending'),
-          FilterOption(label: 'Approved', value: 'approved'),
-          FilterOption(label: 'Rejected', value: 'rejected'),
-        ],
-      ),
-      TableFilter(
-        key: 'dateRange',
-        label: 'Date Range',
-        type: FilterType.dropdown,
-        options: [
-          FilterOption(label: 'All Time', value: ''),
-          FilterOption(label: 'This Month', value: 'this_month'),
-          FilterOption(label: 'Last 3 Months', value: 'last_3_months'),
-          FilterOption(label: 'Last 6 Months', value: 'last_6_months'),
-          FilterOption(label: 'This Year', value: 'this_year'),
-        ],
-      ),
-    ];
-  }
-  
-  // ─── BaseTableProvider Implementation ─────────────────────────────────────
 
+  // Backward compatibility method for cancelStay without parameters
+  Future<bool> cancelSelectedStay() async {
+    if (_selectedStay?.bookingId == null) return false;
+    return await cancelStay(_selectedStay!.bookingId, 'Cancelled by admin');
+  }
+
+  Future<bool> approveLease(int requestId, String response) async {
+    return await _performAction(
+      () => api.postJson('/rental-requests/$requestId/approve', {'response': response}, authenticated: true),
+      'approveLease',
+    );
+  }
+
+  // Backward compatibility method for approveLease with named parameters
+  Future<bool> approveSelectedLease({String? response}) async {
+    if (_selectedLease?.requestId == null) return false;
+    return await approveLease(_selectedLease!.requestId, response ?? 'Approved');
+  }
+
+  Future<bool> rejectLease(int requestId, String response) async {
+    return await _performAction(
+      () => api.postJson('/rental-requests/$requestId/reject', {'response': response}, authenticated: true),
+      'rejectLease',
+    );
+  }
+
+  // ─── Compatibility Methods for Widgets ────────────────────────────────
+
+  Future<void> getPagedStays() async {
+    await fetchData(TableQuery(page: 1, pageSize: 20));
+  }
+
+  Future<void> getPagedLeases() async {
+    await fetchData(TableQuery(page: 1, pageSize: 20));
+  }
+
+  // ─── BaseTableProvider Interface Implementation ────────────────────────
+  
   @override
   List<TableColumnConfig<dynamic>> get columns {
-    // Return appropriate columns based on current rental type
-    if (_currentContext != null) {
-      return _currentType == RentalType.stay
-          ? _getStayTableColumns(_currentContext!)
-          : _getLeaseTableColumns(_currentContext!);
-    }
-    
-    // Return empty columns if context is null
-    return [];
+    final isStay = _currentType == RentalType.stay;
+    final columnLabels = _getColumnLabels(isStay);
+    return columnLabels.entries.map((entry) => 
+      TableColumnConfig<dynamic>(
+        key: entry.key,
+        label: entry.value,
+        cellBuilder: (item) => Text(item.toString()),
+      )
+    ).toList();
   }
   
   @override
   List<TableFilter> get availableFilters {
-    return _currentType == RentalType.stay
-        ? _getStayTableFilters()
-        : _getLeaseTableFilters();
+    return [
+      TableFilter(
+        key: 'status',
+        label: 'Status',
+        type: FilterType.dropdown,
+        options: [],
+      ),
+      TableFilter(
+        key: 'dates',
+        label: 'Date Range',
+        type: FilterType.dateRange,
+        options: [],
+      ),
+    ];
   }
   
   @override
-  String get emptyStateMessage => 
-      _currentType == RentalType.stay 
-          ? 'No stays found' 
-          : 'No leases found';
-          
-  @override
-  Future<PagedResult<dynamic>> fetchData(TableQuery query) async {
-    try {
-      // Convert query parameters to API parameters
-      final Map<String, dynamic> params = {
-        'page': query.page,
-        'pageSize': query.pageSize,
-      };
-      
-      // Add search term if present
-      final searchTerm = query.searchTerm;
-      if (searchTerm != null && searchTerm.isNotEmpty) {
-        params['search'] = searchTerm;
-      }
-      
-      // Add filters if present
-      final filters = query.filters;
-      if (filters.isNotEmpty) {
-        for (final filter in filters.entries) {
-          params[filter.key] = filter.value;
-        }
-      }
-      
-      // Make API call based on current rental type
-      if (_currentType == RentalType.stay) {
-        final url = _bookingEndpoint;
-        final response = await _api.get(
-          '$url?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}',
-          authenticated: true,
-        );
-        
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final pagedResult = PagedResult<Booking>.fromJson(
-            data,
-            (json) => Booking.fromJson(json),
-          );
-          
-          // Update internal state
-          _stays = pagedResult.items;
-          _stayPagedResult = pagedResult;
-          notifyListeners();
-          
-          return pagedResult;
-        } else {
-          throw Exception('Failed to fetch stays: ${response.statusCode}');
-        }
-      } else {
-        final url = _leaseEndpoint;
-        final response = await _api.get(
-          '$url?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}',
-          authenticated: true,
-        );
-        
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final pagedResult = PagedResult<RentalRequest>.fromJson(
-            data,
-            (json) => RentalRequest.fromJson(json),
-          );
-          
-          // Update internal state
-          _leases = pagedResult.items;
-          _leasePagedResult = pagedResult;
-          notifyListeners();
-          
-          return pagedResult;
-        } else {
-          throw Exception('Failed to fetch leases: ${response.statusCode}');
-        }
-      }
-    } catch (e) {
-      _setError(e.toString());
-      rethrow;
-    }
+  String get emptyStateMessage {
+    return _currentType == RentalType.stay ? 'No stays found.' : 'No leases found.';
   }
 
-  // Get table configuration for the current rental type
-  UniversalTableConfig getTableConfig(BuildContext tableContext) {
-    // Select columns based on current rental type
-    final tableColumns = _currentType == RentalType.stay
-        ? _getStayTableColumns(tableContext)
-        : _getLeaseTableColumns(tableContext);
+  // ─── Table Provider Methods ────────────────────────────────────────────
 
-    // Prepare column labels, cell builders, and column widths from column configs
-    final Map<String, String> columnLabels = {};
-    final Map<String, Widget Function(dynamic)> customCellBuilders = {};
-    final Map<String, TableColumnWidth> columnWidths = {};
+  Future<PagedResult<dynamic>> fetchData(TableQuery query) async {
+    PagedResult<dynamic> result = PagedResult.empty();
+    final fetchResult = await executeWithState<PagedResult<dynamic>>(() async {
+      if (_currentType == RentalType.stay) {
+        _stayPagedResult = await api.getPagedAndDecode<Booking>('/bookings${api.buildQueryString(query.toQueryParams())}', Booking.fromJson, authenticated: true);
+        return _stayPagedResult;
+      } else {
+        _leasePagedResult = await api.getPagedAndDecode<RentalRequest>('/rental-requests${api.buildQueryString(query.toQueryParams())}', RentalRequest.fromJson, authenticated: true);
+        return _leasePagedResult;
+      }
+    });
     
-    // Convert column configs to the format expected by UniversalTableConfig
-    for (var column in tableColumns) {
-      columnLabels[column.key] = column.label;
-      // Cast the function to the correct type
-      customCellBuilders[column.key] = (dynamic item) => column.cellBuilder(item);
-      columnWidths[column.key] = column.width;
+    if (fetchResult != null) {
+      result = fetchResult;
+      notifyListeners();
     }
-    
+    return result;
+  }
+
+  UniversalTableConfig getTableConfig(BuildContext tableContext) {
+    final isStay = _currentType == RentalType.stay;
     return UniversalTableConfig(
-      title: _currentType == RentalType.stay ? 'Stays' : 'Leases',
-      searchHint: _currentType == RentalType.stay ? 'Search stays...' : 'Search leases...',
-      emptyStateMessage: emptyStateMessage,
-      columnLabels: columnLabels,
-      customCellBuilders: customCellBuilders,
-      columnWidths: columnWidths,
-      customFilters: _currentType == RentalType.stay
-          ? _getStayTableFilters()
-          : _getLeaseTableFilters(),
-      onRowTap: (item) {
-        if (_currentContext?.mounted ?? false) {
-          final route = _currentType == RentalType.stay
-              ? '/stays/${item.bookingId}'
-              : '/leases/${item.requestId}';
-          _currentContext?.push(route);
-        }
-      },
+      title: isStay ? 'Stays' : 'Leases',
+      searchHint: isStay ? 'Search stays...' : 'Search leases...',
+      emptyStateMessage: isStay ? 'No stays found.' : 'No leases found.',
+      columnLabels: _getColumnLabels(isStay),
+      customCellBuilders: _getCellBuilders(isStay, tableContext),
+      onRowTap: (item) => navigateToDetail(tableContext, item),
     );
   }
 
-  void updateFilters(Map<String, String> filters) {
-    // Apply filters directly to fetchData
-    fetchData(TableQuery(
-      page: 1,
-      pageSize: 10,
-      searchTerm: '',
-      filters: filters,
-    ));
-  }
-  
   void navigateToDetail(BuildContext context, dynamic item) {
-    if (_currentType == RentalType.stay && item is Booking) {
-      if (context.mounted) {
-        context.push('/stays/${item.bookingId}');
-      }
-    } else if (_currentType == RentalType.lease && item is RentalRequest) {
-      if (context.mounted) {
-        context.push('/leases/${item.requestId}');
-      }
+    if (item is Booking) {
+      context.push('/stays/${item.bookingId}');
+    } else if (item is RentalRequest) {
+      context.push('/leases/${item.requestId}');
     }
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────────
+  // ─── Private Helpers ────────────────────────────────────────────────────
 
-  void clearError() {
-    _error = null;
-    notifyListeners();
+  Future<bool> _performAction(Future<dynamic> Function() apiCall, String key) async {
+    final result = await executeWithState<dynamic>(() async {
+      return await apiCall();
+    });
+    return result != null;
   }
 
-  void _setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
+  Map<String, String> _getColumnLabels(bool isStay) {
+    return isStay
+        ? {'property': 'Property', 'tenant': 'Tenant', 'dates': 'Dates', 'status': 'Status', 'total': 'Total'}
+        : {'property': 'Property', 'tenant': 'Tenant', 'dates': 'Dates', 'status': 'Status'};
   }
 
-  void _setError(String? message) {
-    _error = message;
-    notifyListeners();
+  Map<String, Widget Function(dynamic)> _getCellBuilders(bool isStay, BuildContext context) {
+    if (isStay) {
+      return {
+        'property': (item) => Text(item.property?.name ?? 'N/A'),
+        'tenant': (item) => Text(item.user?.fullName ?? 'N/A'),
+        'dates': (item) => Text('${item.checkInDate} - ${item.checkOutDate}'),
+        'status': (item) => Text(item.status ?? 'N/A'),
+        'total': (item) => Text('\$${item.totalPrice?.toStringAsFixed(2) ?? '0.00'}'),
+      };
+    } else {
+      return {
+        'property': (item) => Text(item.property?.name ?? 'N/A'),
+        'tenant': (item) => Text(item.user?.fullName ?? 'N/A'),
+        'dates': (item) => Text('${item.leaseStartDate} - ${item.leaseEndDate}'),
+        'status': (item) => Text(item.status ?? 'N/A'),
+      };
+    }
   }
-  
-  @override
-  void dispose() {
-    cancelReasonController.dispose();
-    additionalNotesController.dispose();
-    responseController.dispose();
-    super.dispose();
-  }
-}
-
-// Rental type enum to distinguish between stays and leases
-enum RentalType {
-  stay,
-  lease,
 }

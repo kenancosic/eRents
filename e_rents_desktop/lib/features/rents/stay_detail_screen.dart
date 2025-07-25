@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class StayDetailScreen extends StatelessWidget {
-  final String stayId;
+  final int stayId;
 
   const StayDetailScreen({super.key, required this.stayId});
 
@@ -160,7 +160,7 @@ class _StayActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = provider.isActionInProgress;
+    final isLoading = provider.isLoading;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -267,8 +267,8 @@ class _StayActionsCard extends StatelessWidget {
     if (confirmed == true) {
       final reason = reasonController.text;
       final success = await provider.cancelStay(
-        bookingId: booking.bookingId.toString(),
-        reason: reason,
+        booking.bookingId,
+        reason,
       );
 
       if (success) {

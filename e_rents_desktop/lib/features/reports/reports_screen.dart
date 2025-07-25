@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
 import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart' hide log;
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:e_rents_desktop/utils/logger.dart';
 
@@ -124,7 +124,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportPDF(BuildContext context) async {
     try {
-      final filePath = await reportsProvider.exportToPDF();
+      final filePath = await reportsProvider.exportReport('pdf');
       if (!context.mounted) return;
 
       if (filePath != null) {
@@ -144,7 +144,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportExcel(BuildContext context) async {
     try {
-      final filePath = await reportsProvider.exportToExcel();
+      final filePath = await reportsProvider.exportReport('excel');
       if (!context.mounted) return;
 
       if (filePath != null) {
@@ -164,7 +164,7 @@ class _ReportsScreenContent extends StatelessWidget {
 
   Future<void> _handleExportCSV(BuildContext context) async {
     try {
-      final filePath = await reportsProvider.exportToCSV();
+      final filePath = await reportsProvider.exportReport('csv');
       if (!context.mounted) return;
 
       if (filePath != null) {

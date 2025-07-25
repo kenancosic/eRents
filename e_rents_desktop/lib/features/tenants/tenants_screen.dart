@@ -159,7 +159,7 @@ class _TenantsScreenState extends State<TenantsScreen>
         }
 
         final currentTenants = provider.currentTenants;
-        final searchingTenants = provider.prospectiveTenants;
+        final tenantPreferences = provider.tenantPreferences;
 
         return RefreshIndicator(
           onRefresh: () => provider.refreshAllData(),
@@ -226,7 +226,7 @@ class _TenantsScreenState extends State<TenantsScreen>
                               _navigateToPropertyDetails(context, property),
                     ),
                     TenantsAdvertisementTableWidget(
-                      preferences: searchingTenants,
+                      preferences: tenantPreferences,
                       tenants: currentTenants,
                       searchTerm:
                           '', // No longer used - Universal Table handles search

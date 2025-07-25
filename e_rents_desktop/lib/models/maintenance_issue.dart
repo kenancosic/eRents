@@ -310,9 +310,6 @@ extension IssueStatusExtension on IssueStatus {
         return 'Completed';
       case IssueStatus.cancelled:
         return 'Cancelled';
-      default:
-        final name = toString().split('.').last;
-        return name[0].toUpperCase() + name.substring(1);
     }
   }
 
@@ -326,8 +323,6 @@ extension IssueStatusExtension on IssueStatus {
         return Colors.green;
       case IssueStatus.cancelled:
         return Colors.grey;
-      default:
-        return Colors.black;
     }
   }
 }

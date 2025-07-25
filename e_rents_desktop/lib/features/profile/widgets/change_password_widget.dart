@@ -163,7 +163,7 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
                     : () async {
                         if (_formKey.currentState?.validate() ?? false) {
                           final success = await context.read<ProfileProvider>().changePassword(
-                                currentPassword: _currentPasswordController.text,
+                                oldPassword: _currentPasswordController.text,
                                 newPassword: _newPasswordController.text,
                                 confirmPassword: _confirmPasswordController.text,
                               );

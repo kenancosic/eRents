@@ -6,9 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class LeaseDetailScreen extends StatelessWidget {
-  final String leaseId;
+  final int requestId;
 
-  const LeaseDetailScreen({super.key, required this.leaseId});
+  const LeaseDetailScreen({super.key, required this.requestId});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class LeaseDetailScreen extends StatelessWidget {
       create: (_) => 
           RentsProvider(context.read<ApiService>(), context: context)
             ..setRentalType(RentalType.lease)
-            ..getLeaseById(leaseId),
+            ..getLeaseById(requestId),
       child: Consumer<RentsProvider>(
         builder: (context, provider, child) {
           return Scaffold(
@@ -122,7 +122,7 @@ class LeaseDetailScreen extends StatelessWidget {
             _LeaseActionsCard(
               provider: provider, 
               lease: lease,
-              onActionCompleted: () => provider.getLeaseById(leaseId),
+              onActionCompleted: () => provider.getLeaseById(lease.requestId),
             ),
           ],
         ],
@@ -179,7 +179,7 @@ class _LeaseActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = provider.isActionInProgress;
+    final isLoading = provider.isLoading;
 
     return Card(
       elevation: 2,
@@ -287,13 +287,13 @@ class _LeaseActionsCard extends StatelessWidget {
       bool success;
       if (isApproval) {
         success = await provider.approveLease(
-          requestId: lease.requestId.toString(),
-          response: response.isNotEmpty ? response : null,
+          lease.requestId,
+          response.isNotEmpty ? response : '',
         );
       } else {
         success = await provider.rejectLease(
-          requestId: lease.requestId.toString(),
-          response: response.isNotEmpty ? response : null,
+          lease.requestId,
+          response.isNotEmpty ? response : '',
         );
       }
 

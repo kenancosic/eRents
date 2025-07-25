@@ -13,8 +13,6 @@ class AppNavigationBar extends StatefulWidget {
 }
 
 class _AppNavigationBarState extends State<AppNavigationBar> {
-  int _selectedIndex = 0;
-
   static const List<NavigationItem> navigationItems = [
     NavigationItem(label: 'Home', icon: Icons.home_rounded, path: '/'),
     NavigationItem(label: 'Chat', icon: Icons.chat_rounded, path: '/chat'),
@@ -50,33 +48,9 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
     ),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _updateSelectedIndex();
-  }
 
-  @override
-  void didUpdateWidget(AppNavigationBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentPath != widget.currentPath) {
-      _updateSelectedIndex();
-    }
-  }
 
-  void _updateSelectedIndex() {
-    for (int i = 0; i < navigationItems.length; i++) {
-      final item = navigationItems[i];
-      if (widget.currentPath == item.path ||
-          (item.path != '/' &&
-              widget.currentPath.startsWith('${item.path}/'))) {
-        setState(() {
-          _selectedIndex = i;
-        });
-        return;
-      }
-    }
-  }
+
 
   // Check if the current path is this item or a child path
   bool _isItemSelected(NavigationItem item) {
@@ -166,9 +140,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
 
     return InkWell(
       onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
         context.go(item.path);
       },
       child: Container(

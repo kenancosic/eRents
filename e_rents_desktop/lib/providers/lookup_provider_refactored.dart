@@ -1,5 +1,4 @@
 import 'package:e_rents_desktop/models/lookup_data.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 

@@ -1,620 +1,301 @@
-import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/user.dart';
-import 'package:e_rents_desktop/models/tenant_preference.dart';
-import 'package:e_rents_desktop/models/review.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
+import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/models/tenant_preference.dart';
 
-/// ✅ NEW PROVIDER-ONLY ARCHITECTURE
-/// Consolidated provider for all tenant management functionality
-/// Replaces: TenantCollectionProvider, TenantDetailProvider, TenantUniversalTableProvider
-/// Direct API calls via ApiService (no repository/service layers)
-class TenantsProvider extends ChangeNotifier {
-  final ApiService _api;
-  
-  TenantsProvider(this._api);
+/// Refactored Tenants Provider using the new base architecture.
+///
+/// This provider consolidates all tenant-related functionality and leverages
+/// [BaseProvider] for state management, caching, and simplified API calls.
+class TenantsProvider extends BaseProvider {
+  TenantsProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-  
-  String? _error;
-  String? get error => _error;
-  bool get hasError => _error != null;
+  List<User> _tenants = [];
+  List<User> get tenants => _tenants;
 
-  // Current tenants state
   List<User> _currentTenants = [];
   List<User> get currentTenants => _currentTenants;
 
-  // Prospective tenants state
-  List<TenantPreference> _prospectiveTenants = [];
-  List<TenantPreference> get prospectiveTenants => _prospectiveTenants;
-  bool _isLoadingProspective = false;
-  bool get isLoadingProspective => _isLoadingProspective;
+  List<User> _prospectiveTenants = [];
+  List<User> get prospectiveTenants => _prospectiveTenants;
 
-  // Selected tenant details state
-  User? _selectedTenant;
-  User? get selectedTenant => _selectedTenant;
-  List<Review> _tenantFeedbacks = [];
-  List<Review> get tenantFeedbacks => _tenantFeedbacks;
-  bool _isLoadingFeedbacks = false;
-  bool get isLoadingFeedbacks => _isLoadingFeedbacks;
-
-  // Property assignments state
-  Map<int, Map<String, dynamic>> _propertyAssignments = {};
-  Map<int, Map<String, dynamic>> get propertyAssignments => _propertyAssignments;
-  bool _isLoadingAssignments = false;
-  bool get isLoadingAssignments => _isLoadingAssignments;
-
-  // Pagination state for Universal System
   PagedResult<User>? _pagedResult;
   PagedResult<User>? get pagedResult => _pagedResult;
 
-  // Property offer functionality state
+  User? _selectedTenant;
+  User? get selectedTenant => _selectedTenant;
+
+  List<Review> _tenantFeedbacks = [];
+  List<Review> get tenantFeedbacks => _tenantFeedbacks;
+
   List<Property> _availableProperties = [];
   List<Property> get availableProperties => _availableProperties;
-  bool _isLoadingProperties = false;
-  bool get isLoadingProperties => _isLoadingProperties;
-  bool _isSendingOffer = false;
-  bool get isSendingOffer => _isSendingOffer;
 
-  // Simple in-memory caching with TTL
-  final Map<String, dynamic> _cache = {};
-  final Map<String, DateTime> _cacheTimestamps = {};
-  static const Duration _cacheTtl = Duration(minutes: 10);
-  static const Duration _feedbacksCacheTtl = Duration(minutes: 5);
+  Map<String, Map<String, dynamic>> _propertyAssignments = {};
+  Map<String, Map<String, dynamic>> get propertyAssignments => _propertyAssignments;
 
-  // ─── Statistics ─────────────────────────────────────────────────────────
-  int get totalCurrentTenants => _currentTenants.length;
-  int get totalProspectiveTenants => _prospectiveTenants.length;
-  int get recentProspectives => _prospectiveTenants
-      .where((p) => p.searchStartDate.isAfter(
-          DateTime.now().subtract(const Duration(days: 7))))
-      .length;
+  List<TenantPreference> _tenantPreferences = [];
+  List<TenantPreference> get tenantPreferences => _tenantPreferences;
 
-  double get averageRating {
-    if (_tenantFeedbacks.isEmpty) return 0.0;
-    final totalRating = _tenantFeedbacks.fold<double>(
-        0.0, (sum, review) => sum + (review.starRating ?? 0.0));
-    return totalRating / _tenantFeedbacks.length;
-  }
-
-  List<Review> get recentFeedbacks {
-    final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
-    return _tenantFeedbacks
-        .where((review) => review.dateCreated.isAfter(thirtyDaysAgo))
-        .toList();
-  }
+  bool _isLoadingProspective = false;
+  bool get isLoadingProspective => _isLoadingProspective;
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
-  /// Load all tenant data (current + prospective + assignments)
+  /// Load all tenant data (current tenants, prospective tenants, property assignments, tenant preferences)
   Future<void> loadAllData() async {
-    await loadCurrentTenants();
-    await loadProspectiveTenants();
+    await executeWithState(() async {
+      // Load current tenants
+      await _loadCurrentTenants();
+      // Load prospective tenants  
+      await _loadProspectiveTenants();
+      // Load property assignments
+      await _loadPropertyAssignments();
+      // Load tenant preferences (advertisements)
+      await _loadTenantPreferences();
+    });
+  }
+
+  /// Refresh all tenant data by invalidating caches and reloading
+  Future<void> refreshAllData() async {
+    // Clear all caches
+    clearAllTenantCaches();
+    // Reload all data
+    await loadAllData();
+  }
+
+  /// Load paginated tenants with filtering.
+  Future<void> loadPagedTenants(Map<String, dynamic> params) async {
+    final result = await executeWithState<PagedResult<User>>(() async {
+      return await api.getPagedAndDecode(
+        '/users/tenants${api.buildQueryString(params)}',
+        User.fromJson,
+        authenticated: true,
+      );
+    });
     
-    if (_currentTenants.isNotEmpty) {
-      await loadPropertyAssignments(_currentTenants.map((t) => t.id).toList());
+    if (result != null) {
+      _pagedResult = result;
+      _tenants = result.items;
+      notifyListeners();
     }
   }
 
-  /// Load current tenants with optional query parameters
-  Future<void> loadCurrentTenants({Map<String, String>? queryParams}) async {
-    if (_isLoading) return;
-
-    final cacheKey = 'current_tenants_${_hashParams(queryParams)}';
+  /// Load tenant details by ID, using cache first.
+  Future<void> loadTenantDetails(String tenantId, {bool forceRefresh = false}) async {
+    final cacheKey = 'tenant_$tenantId';
     
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _currentTenants = _cache[cacheKey] as List<User>;
-      notifyListeners();
-      return;
+    if (forceRefresh) {
+      invalidateCache(cacheKey);
     }
-
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final response = await _api.get('/tenant/current${_buildQueryString(queryParams)}', authenticated: true);
-      final List<dynamic> data = jsonDecode(response.body);
-      _currentTenants = data.map((json) => User.fromJson(json)).toList();
-      
-      // Cache the result
-      _cache[cacheKey] = _currentTenants;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
+    
+    final result = await executeWithCache<User>(
+      cacheKey,
+      () => api.getAndDecode('/users/$tenantId', User.fromJson, authenticated: true),
+    );
+    
+    if (result != null) {
+      _selectedTenant = result;
       notifyListeners();
-    } catch (e) {
-      _setError('Failed to load current tenants: $e');
-    } finally {
-      _setLoading(false);
     }
   }
 
-  /// Load prospective tenants with optional query parameters
-  Future<void> loadProspectiveTenants({Map<String, String>? queryParams}) async {
-    if (_isLoadingProspective) return;
-
-    final cacheKey = 'prospective_tenants_${_hashParams(queryParams)}';
+  /// Load tenant feedbacks, using cache first.
+  Future<void> loadTenantFeedbacks(String tenantId, {bool forceRefresh = false}) async {
+    final cacheKey = 'feedbacks_$tenantId';
     
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _prospectiveTenants = _cache[cacheKey] as List<TenantPreference>;
-      notifyListeners();
-      return;
+    if (forceRefresh) {
+      invalidateCache(cacheKey);
     }
+    
+    final result = await executeWithCache<List<Review>>(
+      cacheKey,
+      () => api.getListAndDecode('/users/$tenantId/reviews', Review.fromJson, authenticated: true),
+    );
+    
+    if (result != null) {
+      _tenantFeedbacks = result;
+      notifyListeners();
+    }
+  }
 
+  /// Submit a review for a tenant.
+  Future<bool> submitTenantReview({
+    required String tenantId,
+    required double rating,
+    required String description,
+  }) async {
+    final reviewData = {
+      'rating': rating,
+      'comment': description,
+    };
+    
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      return await api.postJson('/users/$tenantId/reviews', reviewData, authenticated: true);
+    });
+    
+    if (result != null) {
+      invalidateCache('feedbacks_$tenantId');
+      return true;
+    }
+    return false;
+  }
+
+  /// Load available properties for property offers, using cache first.
+  Future<void> loadAvailableProperties({bool forceRefresh = false}) async {
+    const cacheKey = 'available_properties';
+    
+    if (forceRefresh) {
+      invalidateCache(cacheKey);
+    }
+    
+    final result = await executeWithCache<List<Property>>(
+      cacheKey,
+      () => api.getListAndDecode('/properties?IsAvailable=true', Property.fromJson, authenticated: true),
+    );
+    
+    if (result != null) {
+      _availableProperties = result;
+      notifyListeners();
+    }
+  }
+
+  /// Send a property offer to a tenant.
+  Future<bool> sendPropertyOffer(String tenantId, String propertyId, {String? customMessage}) async {
+    final offerData = {
+      'tenantId': tenantId,
+      'propertyId': propertyId,
+      'message': customMessage ?? 'You have received a property offer.',
+    };
+    
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      return await api.postJson('/chat/send-property-offer', offerData, authenticated: true);
+    });
+    
+    return result != null;
+  }
+
+  /// Invalidate all tenant-related caches.
+  void clearAllTenantCaches() {
+    invalidateCache('tenant_');
+    invalidateCache('feedbacks_');
+    invalidateCache('paged_tenants');
+    invalidateCache('current_tenants');
+    invalidateCache('prospective_tenants');
+    invalidateCache('property_assignments');
+    invalidateCache('tenant_preferences');
+    _tenants.clear();
+    _currentTenants.clear();
+    _prospectiveTenants.clear();
+    _propertyAssignments.clear();
+    _tenantPreferences.clear();
+    _pagedResult = null;
+    _selectedTenant = null;
+    _tenantFeedbacks.clear();
+    _availableProperties.clear();
+    _isLoadingProspective = false;
+    notifyListeners();
+  }
+
+  // ─── Private Helper Methods ─────────────────────────────────────────────
+
+  /// Load current tenants (active tenants)
+  Future<void> _loadCurrentTenants() async {
+    const cacheKey = 'current_tenants';
+    
+    final result = await getCachedOrExecute<List<User>>(
+      cacheKey,
+      () => api.getListAndDecode(
+        '/users/tenants?status=current',
+        User.fromJson,
+        authenticated: true,
+      ),
+    );
+    
+    _currentTenants = result;
+  }
+
+  /// Load prospective tenants (users who applied but not yet tenants)
+  Future<void> _loadProspectiveTenants() async {
     _isLoadingProspective = true;
     notifyListeners();
-
+    
     try {
-      final response = await _api.get('/tenant/prospective${_buildQueryString(queryParams)}', authenticated: true);
-      final List<dynamic> data = jsonDecode(response.body);
-      _prospectiveTenants = data.map((json) => TenantPreference.fromJson(json)).toList();
+      const cacheKey = 'prospective_tenants';
       
-      // Cache the result
-      _cache[cacheKey] = _prospectiveTenants;
-      _cacheTimestamps[cacheKey] = DateTime.now();
+      final result = await getCachedOrExecute<List<User>>(
+        cacheKey,
+        () => api.getListAndDecode(
+          '/users/tenants?status=prospective',
+          User.fromJson,
+          authenticated: true,
+        ),
+      );
       
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load prospective tenants: $e');
+      _prospectiveTenants = result;
     } finally {
       _isLoadingProspective = false;
       notifyListeners();
     }
   }
 
-  /// Load paginated tenants using Universal System
-  Future<void> loadPagedTenants(Map<String, dynamic> params) async {
-    if (_isLoading) return;
-
-    final cacheKey = 'paged_tenants_${_hashParams(params)}';
+  /// Load property assignments (which tenants are assigned to which properties)
+  Future<void> _loadPropertyAssignments() async {
+    const cacheKey = 'property_assignments';
     
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _pagedResult = _cache[cacheKey] as PagedResult<User>;
-      notifyListeners();
-      return;
-    }
-
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final response = await _api.get('/tenant${_buildQueryString(params)}', authenticated: true);
-      final responseData = jsonDecode(response.body);
-      
-      _pagedResult = PagedResult<User>(
-        items: (responseData['data'] as List).map((json) => User.fromJson(json)).toList(),
-        totalCount: responseData['totalCount'] as int,
-        page: (responseData['pageNumber'] as int) - 1, // Convert to 0-based
-        pageSize: responseData['pageSize'] as int,
-      );
-      
-      // Cache the result
-      _cache[cacheKey] = _pagedResult;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load paged tenants: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  /// Load tenant details by ID
-  Future<void> loadTenantDetails(int tenantId) async {
-    final cacheKey = 'tenant_details_$tenantId';
+    final result = await getCachedOrExecute<Map<String, Map<String, dynamic>>>(
+      cacheKey,
+      () async {
+        final response = await api.getJson('/tenants/property-assignments', authenticated: true);
+        final assignments = (response['assignments'] as List).cast<Map<String, dynamic>>();
+        
+        // Convert list to map keyed by tenant ID for efficient lookup
+        final assignmentMap = <String, Map<String, dynamic>>{};
+        for (final assignment in assignments) {
+          final tenantId = assignment['tenantId']?.toString();
+          if (tenantId != null) {
+            assignmentMap[tenantId] = assignment;
+          }
+        }
+        
+        return assignmentMap;
+      },
+    );
     
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _selectedTenant = _cache[cacheKey] as User;
-      notifyListeners();
-      return;
-    }
-
-    _setLoading(true);
-    _clearError();
-
-    try {
-      final response = await _api.get('/tenant/current/$tenantId', authenticated: true);
-      _selectedTenant = User.fromJson(jsonDecode(response.body));
-      
-      // Cache the result
-      _cache[cacheKey] = _selectedTenant;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
-      // Also load feedbacks for this tenant
-      await loadTenantFeedbacks(tenantId);
-      
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load tenant details: $e');
-    } finally {
-      _setLoading(false);
-    }
+    _propertyAssignments = result;
   }
 
-  /// Load tenant feedbacks
-  Future<void> loadTenantFeedbacks(int tenantId) async {
-    if (_isLoadingFeedbacks) return;
-
-    final cacheKey = 'tenant_feedbacks_$tenantId';
+  /// Load tenant preferences (tenant advertisements/search criteria)
+  Future<void> _loadTenantPreferences() async {
+    const cacheKey = 'tenant_preferences';
     
-    // Check cache first (shorter TTL for feedbacks)
-    if (_isCacheValid(cacheKey, _feedbacksCacheTtl)) {
-      _tenantFeedbacks = _cache[cacheKey] as List<Review>;
-      notifyListeners();
-      return;
-    }
-
-    _isLoadingFeedbacks = true;
-    notifyListeners();
-
-    try {
-      final response = await _api.get('/tenant/feedback/$tenantId', authenticated: true);
-      final List<dynamic> data = jsonDecode(response.body);
-      _tenantFeedbacks = data.map((json) => Review.fromJson(json)).toList();
-      
-      // Cache the result with shorter TTL
-      _cache[cacheKey] = _tenantFeedbacks;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load tenant feedbacks: $e');
-      _tenantFeedbacks = []; // Reset on error
-    } finally {
-      _isLoadingFeedbacks = false;
-      notifyListeners();
-    }
-  }
-
-  /// Load property assignments for tenant IDs
-  Future<void> loadPropertyAssignments(List<int> tenantIds) async {
-    if (_isLoadingAssignments || tenantIds.isEmpty) return;
-
-    final cacheKey = 'property_assignments_${tenantIds.join('_')}';
+    final result = await getCachedOrExecute<List<TenantPreference>>(
+      cacheKey,
+      () => api.getListAndDecode(
+        '/tenant-preferences',
+        TenantPreference.fromJson,
+        authenticated: true,
+      ),
+    );
     
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _propertyAssignments = Map<int, Map<String, dynamic>>.from(_cache[cacheKey]);
-      notifyListeners();
-      return;
-    }
-
-    _isLoadingAssignments = true;
-    notifyListeners();
-
-    try {
-      final queryParts = tenantIds.map((id) => 'tenantIds=$id').toList();
-      final queryString = queryParts.join('&');
-      
-      final response = await _api.get('/tenant/assignments?$queryString', authenticated: true);
-      
-      if (response.body.isNotEmpty) {
-        final responseData = jsonDecode(response.body);
-        _propertyAssignments = Map<int, Map<String, dynamic>>.from(responseData);
-      } else {
-        _propertyAssignments = {};
-      }
-      
-      // Cache the result
-      _cache[cacheKey] = _propertyAssignments;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load property assignments: $e');
-      _propertyAssignments = {}; // Reset on error
-    } finally {
-      _isLoadingAssignments = false;
-      notifyListeners();
-    }
+    _tenantPreferences = result;
   }
 
-  /// Record property offer to tenant
-  Future<bool> recordPropertyOffer(int tenantId, int propertyId) async {
-    try {
-      await _api.post('/tenant/$tenantId/offer/$propertyId', {}, authenticated: true);
-      
-      // Invalidate relevant caches
-      _invalidateCache('current_tenants');
-      _invalidateCache('property_assignments');
-      
-      // Refresh data
-      await loadAllData();
-      
-      return true;
-    } catch (e) {
-      _setError('Failed to record property offer: $e');
-      return false;
-    }
-  }
+  // ─── Computed Properties and Getters ───────────────────────────────────
 
-  /// Submit tenant review
-  Future<bool> submitTenantReview({
-    required int tenantId,
-    required double rating,
-    required String description,
-  }) async {
-    try {
-      final reviewData = {
-        'rating': rating,
-        'description': description,
-      };
-      
-      await _api.post('/tenant/feedback/$tenantId', reviewData, authenticated: true);
-      
-      // Invalidate feedbacks cache and reload
-      _invalidateCache('tenant_feedbacks_$tenantId');
-      await loadTenantFeedbacks(tenantId);
-      
-      return true;
-    } catch (e) {
-      _setError('Failed to submit tenant review: $e');
-      return false;
-    }
-  }
+  bool get isDetailsLoading => isLoading;
+  String? get detailsError => error;
 
-  /// Add tenant feedback
-  Future<bool> addTenantFeedback(int tenantId, Review feedback) async {
-    try {
-      final response = await _api.post('/tenant/feedback/$tenantId', feedback.toJson(), authenticated: true);
-      final newFeedback = Review.fromJson(jsonDecode(response.body));
-      
-      _tenantFeedbacks.add(newFeedback);
-      
-      // Invalidate cache
-      _invalidateCache('tenant_feedbacks_$tenantId');
-      
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _setError('Failed to add tenant feedback: $e');
-      return false;
-    }
-  }
+  bool get areFeedbacksLoading => isLoading;
+  String? get feedbacksError => error;
 
-  /// Get tenant property assignment
-  Map<String, dynamic>? getTenantPropertyAssignment(int tenantId) {
-    return _propertyAssignments[tenantId];
-  }
+  bool get arePropertiesLoading => isLoading;
+  String? get propertiesError => error;
 
-  /// Get tenant statistics
-  Map<String, int> getStatistics() {
-    return {
-      'totalCurrentTenants': totalCurrentTenants,
-      'totalProspectiveTenants': totalProspectiveTenants,
-      'tenantsWithFeedback': _tenantFeedbacks.length,
-      'recentProspectives': recentProspectives,
-    };
-  }
-
-  /// Filter current tenants by search criteria
-  List<User> filterCurrentTenants({
-    String? searchQuery,
-    String? city,
-    String? status,
-  }) {
-    return _currentTenants.where((tenant) {
-      bool matchesSearch = searchQuery == null ||
-          searchQuery.isEmpty ||
-          tenant.fullName.toLowerCase().contains(searchQuery.toLowerCase()) ||
-          tenant.email.toLowerCase().contains(searchQuery.toLowerCase());
-
-      bool matchesCity = city == null ||
-          city.isEmpty ||
-          (tenant.address?.city?.toLowerCase() == city.toLowerCase());
-
-      bool matchesStatus = status == null ||
-          status.isEmpty ||
-          tenant.role.toString().split('.').last.toLowerCase() == status.toLowerCase();
-
-      return matchesSearch && matchesCity && matchesStatus;
-    }).toList();
-  }
-
-  /// Filter prospective tenants by search criteria
-  List<TenantPreference> filterProspectiveTenants({
-    String? searchQuery,
-    String? city,
-    double? minBudget,
-    double? maxBudget,
-    List<String>? amenities,
-  }) {
-    return _prospectiveTenants.where((pref) {
-      bool matchesSearch = searchQuery == null ||
-          searchQuery.isEmpty ||
-          (pref.city.toLowerCase().contains(searchQuery.toLowerCase()));
-
-      bool matchesCity = city == null ||
-          city.isEmpty ||
-          (pref.city.toLowerCase() == city.toLowerCase());
-
-      bool matchesBudget = (minBudget == null || (pref.maxPrice ?? 0) >= minBudget) &&
-          (maxBudget == null || (pref.maxPrice ?? double.infinity) <= maxBudget);
-
-      bool matchesAmenities = amenities == null ||
-          amenities.isEmpty ||
-          (pref.amenities.any((amenity) => amenities.contains(amenity)));
-
-      return matchesSearch && matchesCity && matchesBudget && matchesAmenities;
-    }).toList();
-  }
-
-  /// Get feedbacks by rating
-  List<Review> getFeedbacksByRating(double minRating) {
-    return _tenantFeedbacks
-        .where((review) => (review.starRating ?? 0.0) >= minRating)
-        .toList();
-  }
-
-  /// Refresh all data (for pull-to-refresh)
-  Future<void> refreshAllData() async {
-    _clearAllCaches();
-    await loadAllData();
-  }
-
-  /// Refresh current tenants only
-  Future<void> refreshCurrentTenants() async {
-    _invalidateCache('current_tenants');
-    await loadCurrentTenants();
-    
-    if (_currentTenants.isNotEmpty) {
-      await loadPropertyAssignments(_currentTenants.map((t) => t.id).toList());
-    }
-  }
-
-  /// Refresh prospective tenants only
-  Future<void> refreshProspectiveTenants() async {
-    _invalidateCache('prospective_tenants');
-    await loadProspectiveTenants();
-  }
-
-  // ─── Property Offer Functionality ──────────────────────────────────────
-
-  /// Load available properties for property offers
-  Future<void> loadAvailableProperties() async {
-    if (_isLoadingProperties) return;
-
-    final cacheKey = 'available_properties';
-    
-    // Check cache first
-    if (_isCacheValid(cacheKey)) {
-      _availableProperties.clear();
-      _availableProperties = _cache[cacheKey] as List<Property>;
-      notifyListeners();
-      return;
-    }
-
-    _isLoadingProperties = true;
-    notifyListeners();
-
-    try {
-      final response = await _api.get('/property?IsAvailable=true', authenticated: true);
-      final List<dynamic> data = jsonDecode(response.body);
-      _availableProperties = data.map((json) => Property.fromJson(json)).toList();
-      
-      // Cache the result
-      _cache[cacheKey] = _availableProperties;
-      _cacheTimestamps[cacheKey] = DateTime.now();
-      
-      notifyListeners();
-    } catch (e) {
-      _setError('Failed to load available properties: $e');
-      _availableProperties = []; // Reset on error
-    } finally {
-      _isLoadingProperties = false;
-      notifyListeners();
-    }
-  }
-
-  /// Send property offer to tenant
-  Future<bool> sendPropertyOffer(int tenantId, int propertyId, {String? customMessage}) async {
-    if (_isSendingOffer) return false;
-
-    _isSendingOffer = true;
-    _clearError();
-    notifyListeners();
-
-    try {
-      // Send the property offer via chat/messaging system
-      final offerData = {
-        'tenantId': tenantId,
-        'propertyId': propertyId,
-        'message': customMessage ?? 'Property offer sent',
-        'offerType': 'property_offer',
-      };
-      
-      await _api.post('/chat/send-property-offer', offerData, authenticated: true);
-      
-      // Also record the property offer in the tenant system
-      await recordPropertyOffer(tenantId, propertyId);
-      
-      return true;
-    } catch (e) {
-      _setError('Failed to send property offer: $e');
-      return false;
-    } finally {
-      _isSendingOffer = false;
-      notifyListeners();
-    }
-  }
-
-  /// Clear tenant-specific data
-  void clearTenantData() {
-    _selectedTenant = null;
-    _tenantFeedbacks.clear();
-    _isLoadingFeedbacks = false;
-    notifyListeners();
-  }
-
-  // ─── Private Helper Methods ────────────────────────────────────────────
-
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String error) {
-    _error = error;
-    notifyListeners();
-  }
-
-  void _clearError() {
-    _error = null;
-  }
-
-  bool _isCacheValid(String key, [Duration? ttl]) {
-    ttl ??= _cacheTtl;
-    if (!_cache.containsKey(key) || !_cacheTimestamps.containsKey(key)) {
-      return false;
-    }
-    
-    final timestamp = _cacheTimestamps[key]!;
-    return DateTime.now().difference(timestamp) < ttl;
-  }
-
-  void _invalidateCache(String keyPrefix) {
-    final keysToRemove = <String>[];
-    for (final key in _cache.keys) {
-      if (key.startsWith(keyPrefix)) {
-        keysToRemove.add(key);
-      }
-    }
-    
-    for (final key in keysToRemove) {
-      _cache.remove(key);
-      _cacheTimestamps.remove(key);
-    }
-  }
-
-  void _clearAllCaches() {
-    _cache.clear();
-    _cacheTimestamps.clear();
-  }
-
-  String _hashParams(Map<String, dynamic>? params) {
-    if (params == null || params.isEmpty) return 'default';
-    final sortedParams = Map.fromEntries(
-        params.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
-    return sortedParams.entries.map((e) => '${e.key}:${e.value}').join('_');
-  }
-
-  String _buildQueryString(Map<String, dynamic>? params) {
-    if (params == null || params.isEmpty) return '';
-    final queryString = params.entries.map((e) => '${e.key}=${e.value}').join('&');
-    return '?$queryString';
-  }
-
-  @override
-  void dispose() {
-    _clearAllCaches();
-    super.dispose();
-  }
+  bool get isSendingOffer => isLoading;
+  String? get offerError => error;
 }

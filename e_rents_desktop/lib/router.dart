@@ -128,7 +128,7 @@ class AppRouter {
   Widget _createPropertyDetailsScreen(BuildContext context, String propertyId) {
     return ChangeNotifierProvider(
       create: (_) =>
-          PropertiesProvider(context.read<ApiService>(), context.read<MaintenanceProvider>())..getPropertyById(propertyId),
+          PropertiesProvider(context.read<ApiService>())..getPropertyById(propertyId),
       child: PropertyDetailsScreen(propertyId: propertyId),
     );
   }
@@ -136,7 +136,7 @@ class AppRouter {
   Widget _createPropertiesScreen(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) =>
-          PropertiesProvider(context.read<ApiService>(), context.read<MaintenanceProvider>())..getPagedProperties(),
+          PropertiesProvider(context.read<ApiService>())..getPagedProperties(),
       child: const PropertiesScreen(),
     );
   }
@@ -150,7 +150,7 @@ class AppRouter {
 
   Widget _createPropertyFormScreen(BuildContext context, String? propertyId) {
     return ChangeNotifierProvider(
-      create: (_) => PropertiesProvider(context.read<ApiService>(), context.read<MaintenanceProvider>()),
+      create: (_) => PropertiesProvider(context.read<ApiService>()),
       child: Builder(builder: (context) {
         if (propertyId == null) {
           // Add mode

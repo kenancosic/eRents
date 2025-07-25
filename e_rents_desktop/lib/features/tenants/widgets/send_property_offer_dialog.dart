@@ -87,7 +87,7 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
   }
 
   Widget _buildContent(BuildContext context, TenantsProvider provider) {
-    if (provider.isLoadingProperties) {
+    if (provider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -124,8 +124,8 @@ class _SendPropertyOfferDialogState extends State<SendPropertyOfferDialog> {
                 ? null
                 : () async {
                     final success = await provider.sendPropertyOffer(
-                      widget.tenantPreference.userId,
-                      property.propertyId,
+                      widget.tenantPreference.userId.toString(),
+                      property.propertyId.toString(),
                       customMessage: _messageController.text.trim(),
                     );
                     if (success && context.mounted) {
