@@ -1,7 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:e_rents_mobile/core/services/service_locator.dart';
 import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/feature/property_detail/widgets/facilities.dart';
@@ -73,13 +71,6 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider<PropertyDetailProvider>(
-          create: (_) {
-            final provider = PropertyDetailProvider(ServiceLocator.get<ApiService>());
-            provider.fetchPropertyDetails(widget.propertyId.toString(), bookingId: widget.bookingId?.toString());
-            return provider;
-          },
-        ),
         ChangeNotifierProvider<SavedProvider>.value(
           value: context.read<SavedProvider>(),
         ),
@@ -87,9 +78,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       child: BaseScreen(
         appBar: appBar,
         body: Scaffold(
-          appBar: null,
           body: Consumer<PropertyDetailProvider>(
             builder: (context, propertyProvider, child) {
+              // Fetch property details when screen loads
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                propertyProvider.fetchPropertyDetails(widget.propertyId.toString(), bookingId: widget.bookingId?.toString());
+              });
+              
               if (propertyProvider.isLoading && propertyProvider.property == null) {
                 return const Center(child: CircularProgressIndicator());
               }

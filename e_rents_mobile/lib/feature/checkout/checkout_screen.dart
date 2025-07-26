@@ -1,13 +1,16 @@
 // lib/feature/checkout/checkout_screen.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'package:e_rents_mobile/feature/checkout/providers/checkout_provider.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:go_router/go_router.dart';
+
 
 class CheckoutScreen extends StatefulWidget {
   final Property property;
@@ -30,24 +33,33 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  String _selectedPaymentMethod = 'PayPal';
-  bool _showPriceBreakdown = false;
-
-  // New booking details fields
-  int _numberOfGuests = 1;
-  final TextEditingController _specialRequestsController =
-      TextEditingController();
-
+  late final TextEditingController _specialRequestsController;
+  
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
 
-  // Calculate price breakdown
-  double get _basePrice =>
-      widget.totalPrice / 1.1; // Remove 10% markup to get base
-  double get _serviceFee => _basePrice * 0.05; // 5% service fee
-  double get _taxes => _basePrice * 0.05; // 5% taxes
-  double get _cleaningFee => 25.0; // Fixed cleaning fee
-  int get _nights => widget.endDate.difference(widget.startDate).inDays;
+  @override
+  void initState() {
+    super.initState();
+    _specialRequestsController = TextEditingController();
+    
+    // Initialize checkout provider with widget data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CheckoutProvider>().initializeCheckout(
+        property: widget.property,
+        startDate: widget.startDate,
+        endDate: widget.endDate,
+        isDailyRental: widget.isDailyRental,
+        totalPrice: widget.totalPrice,
+      );
+    });
+  }
+  
+  @override
+  void dispose() {
+    _specialRequestsController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,51 +70,79 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return BaseScreen(
       appBar: appBar,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Property card using the existing PropertyCard widget
-              PropertyCard(
-                property: widget.property,
-              ),
-              const SizedBox(height: 24),
-              // Price details section
-              _buildPriceDetails(),
-              const SizedBox(height: 24),
-              // Booking details section
-              _buildBookingDetails(),
-              const SizedBox(height: 24),
-              // Payment methods section
-              _buildPaymentMethods(),
-              const SizedBox(height: 32),
-              // Pay button
-              SizedBox(
-                width: double.infinity,
-                child: CustomButton(
-                  isLoading: false,
-                  onPressed: _processPayment,
-                  label: Text(
-                    'Pay in Advance',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+      body: Consumer<CheckoutProvider>(
+        builder: (context, provider, child) {
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Property card using the existing PropertyCard widget
+                  PropertyCard(
+                    property: widget.property,
+                  ),
+                  const SizedBox(height: 24),
+                  // Price details section
+                  _buildPriceDetails(provider),
+                  const SizedBox(height: 24),
+                  // Booking details section
+                  _buildBookingDetails(provider),
+                  const SizedBox(height: 24),
+                  // Payment methods section
+                  _buildPaymentMethods(provider),
+                  const SizedBox(height: 32),
+                  // Pay button
+                  SizedBox(
+                    width: double.infinity,
+                    child: CustomButton(
+                      isLoading: provider.isLoading,
+                      onPressed: provider.isLoading ? null : () { _processPayment(provider); },
+                      label: Text(
+                        provider.isLoading ? 'Processing...' : 'Pay in Advance',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      height: 56,
                     ),
                   ),
-                  height: 56,
-                ),
+                  // Show error message if payment fails
+                  if (provider.hasError) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade600),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              provider.error ?? 'Payment failed. Please try again.',
+                              style: TextStyle(color: Colors.red.shade700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPriceDetails() {
+  Widget _buildPriceDetails(CheckoutProvider provider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -121,23 +161,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Price details',
+              Text(
+                provider.showPriceBreakdown ? 'Hide details' : 'Show details',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               CustomOutlinedButton.compact(
-                label: _showPriceBreakdown ? 'Less info' : 'More info',
+                label: provider.showPriceBreakdown ? 'Less info' : 'More info',
                 isLoading: false,
                 width: OutlinedButtonWidth.content,
                 textColor: accentColor,
                 borderColor: accentColor,
                 onPressed: () {
-                  setState(() {
-                    _showPriceBreakdown = !_showPriceBreakdown;
-                  });
+                  provider.togglePriceBreakdown();
                 },
               ),
             ],
@@ -147,13 +185,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // Price breakdown (expandable)
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            height: _showPriceBreakdown ? null : 0,
-            child: _showPriceBreakdown ? _buildExpandedPriceBreakdown() : null,
+            height: provider.showPriceBreakdown ? null : 0,
+            child: provider.showPriceBreakdown ? _buildExpandedPriceBreakdown(provider) : null,
           ),
 
           // Total price (always visible)
           Container(
-            margin: EdgeInsets.only(top: _showPriceBreakdown ? 16 : 0),
+            margin: EdgeInsets.only(top: provider.showPriceBreakdown ? 16 : 0),
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               border: Border(
@@ -189,17 +227,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildExpandedPriceBreakdown() {
+  Widget _buildExpandedPriceBreakdown(CheckoutProvider provider) {
     return Column(
       children: [
         const SizedBox(height: 16),
         _buildPriceRow(
-          '\$${(_basePrice / _nights).toStringAsFixed(0)} × $_nights night${_nights > 1 ? 's' : ''}',
-          _basePrice,
+          '\$${(provider.basePrice / provider.nights).toStringAsFixed(0)} × ${provider.nights} night${provider.nights > 1 ? 's' : ''}',
+          provider.basePrice,
         ),
-        _buildPriceRow('Cleaning fee', _cleaningFee),
-        _buildPriceRow('Service fee', _serviceFee),
-        _buildPriceRow('Taxes', _taxes),
+        _buildPriceRow('Cleaning fee', provider.cleaningFee),
+        _buildPriceRow('Service fee', provider.serviceFee),
+        _buildPriceRow('Taxes', provider.taxes),
       ],
     );
   }
@@ -229,7 +267,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildBookingDetails() {
+  Widget _buildBookingDetails(CheckoutProvider provider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -273,8 +311,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      onPressed: _numberOfGuests > 1
-                          ? () => setState(() => _numberOfGuests--)
+                      onPressed: provider.numberOfGuests > 1
+                          ? () => provider.updateNumberOfGuests(provider.numberOfGuests - 1)
                           : null,
                       icon: const Icon(Icons.remove),
                       constraints:
@@ -283,14 +321,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     SizedBox(
                       width: 40,
                       child: Text(
-                        '$_numberOfGuests',
+                        '${provider.numberOfGuests}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
-                      onPressed: _numberOfGuests < 10
-                          ? () => setState(() => _numberOfGuests++)
+                      onPressed: provider.numberOfGuests < 10
+                          ? () => provider.updateNumberOfGuests(provider.numberOfGuests + 1)
                           : null,
                       icon: const Icon(Icons.add),
                       constraints:
@@ -349,7 +387,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentMethods() {
+  Widget _buildPaymentMethods(CheckoutProvider provider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -377,6 +415,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
           // Only PayPal payment option
           _buildPaymentOption(
+            provider,
             'PayPal',
             Icons.account_balance_wallet,
             'Fast and secure payments',
@@ -385,7 +424,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               width: 24,
               height: 24,
             ),
-            isSelected: _selectedPaymentMethod == 'PayPal',
+            isSelected: provider.selectedPaymentMethod == 'PayPal',
           ),
 
           const SizedBox(height: 16),
@@ -434,13 +473,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentOption(
-      String title, IconData defaultIcon, String subtitle,
+      CheckoutProvider provider, String title, IconData defaultIcon, String subtitle,
       {Widget? icon, bool isSelected = false}) {
     return InkWell(
       onTap: () {
-        setState(() {
-          _selectedPaymentMethod = title;
-        });
+        provider.selectPaymentMethod(title);
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -519,56 +556,81 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Future<void> _processPayment() async {
-    // Store navigator to avoid async context usage issues
-    final navigator = context;
+  Future<void> _processPayment(CheckoutProvider provider) async {
+    try {
+      // Store navigator to avoid async context usage issues  
+      final navigator = context;
 
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-            ),
-            const SizedBox(height: 16),
-            const Text('Processing payment...'),
-          ],
-        ),
-      ),
-    );
-
-    // Simulate payment processing
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-
-    // Close loading dialog
-    navigator.pop();
-
-    // Show success dialog
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Payment Successful'),
-        content: const Text(
-            'Your booking has been confirmed. You will receive a confirmation email shortly.'),
-        actions: [
-          CustomButton.compact(
-            label: 'OK',
-            isLoading: false,
-            onPressed: () {
-              dialogContext.pop(); // Close dialog
-              context.pop(); // Go back to property details
-            },
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+              ),
+              const SizedBox(height: 16),
+              const Text('Processing payment...'),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+
+      // Process payment using provider
+      final success = await provider.processPayment();
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      navigator.pop();
+
+      if (success) {
+        // Show success dialog
+        if (!mounted) return;
+
+        showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Payment Successful'),
+            content: const Text(
+                'Your booking has been confirmed. You will receive a confirmation email shortly.'),
+            actions: [
+              CustomButton.compact(
+                label: 'OK',
+                isLoading: false,
+                onPressed: () {
+                  dialogContext.pop(); // Close dialog
+                  context.pop(); // Go back to property details
+                },
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Show error message (provider will handle state)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error ?? 'Payment failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Close loading dialog
+      context.pop();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

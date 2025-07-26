@@ -1,95 +1,38 @@
-import 'dart:async';
-import 'dart:convert';
-
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/models/paged_list.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 
-class HomeProvider extends ChangeNotifier {
-  final ApiService _apiService;
+class HomeProvider extends BaseProvider {
+  HomeProvider(super.api);
 
-  HomeProvider(this._apiService);
-
-  // Overall state
-  bool _isLoading = false;
-  String? _error;
-
-  // User state
+  // Data state
   User? _currentUser;
-  bool _isUserLoading = false;
-  String? _userError;
-
-  // Bookings state
   List<Booking> _currentStays = [];
   List<Booking> _upcomingStays = [];
-  bool _isBookingsLoading = false;
-  String? _bookingsError;
-
-  // Properties state
   List<Property> _nearbyProperties = [];
   List<Property> _recommendedProperties = [];
   List<Property> _featuredProperties = [];
 
-  bool _isNearbyLoading = false;
-  String? _nearbyError;
-
-  bool _isRecommendedLoading = false;
-  String? _recommendedError;
-
-  bool _isFeaturedLoading = false;
-  String? _featuredError;
-
-  // --- Getters ---
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-
-  bool get hasError =>
-      _userError != null ||
-      _bookingsError != null ||
-      _nearbyError != null ||
-      _recommendedError != null ||
-      _featuredError != null;
-
-  String? get errorMessage =>
-      _userError ??
-      _bookingsError ??
-      _nearbyError ??
-      _recommendedError ??
-      _featuredError;
-
+  // Getters
   User? get currentUser => _currentUser;
-  bool get isUserLoading => _isUserLoading;
-
   List<Booking> get currentStays => _currentStays;
   List<Booking> get upcomingStays => _upcomingStays;
-  bool get isBookingsLoading => _isBookingsLoading;
-
   List<Property> get nearbyProperties => _nearbyProperties;
   List<Property> get recommendedProperties => _recommendedProperties;
   List<Property> get featuredProperties => _featuredProperties;
 
-  bool get isNearbyLoading => _isNearbyLoading;
-  String? get nearbyError => _nearbyError;
-  bool get isRecommendedLoading => _isRecommendedLoading;
-  String? get recommendedError => _recommendedError;
-  bool get isFeaturedLoading => _isFeaturedLoading;
-  String? get featuredError => _featuredError;
-
   String get welcomeMessage {
-    final user = _currentUser;
-    if (user?.firstName != null) {
-      return 'Welcome back, ${user!.firstName}!';
+    if (_currentUser?.firstName != null) {
+      return 'Welcome back, ${_currentUser!.firstName}!';
     }
     return 'Welcome back!';
   }
 
   String get userLocation {
-    final user = _currentUser;
-    if (user?.address?.city != null) {
-      return user!.address!.city!;
+    if (_currentUser?.address?.city != null) {
+      return _currentUser!.address!.city!;
     }
     return 'Unknown Location';
   }
@@ -97,130 +40,95 @@ class HomeProvider extends ChangeNotifier {
   // --- Public Methods ---
 
   Future<void> initializeDashboard() async {
-    _isLoading = true;
-    notifyListeners();
-
-    await Future.wait([
-      _loadCurrentUser(),
-      _loadUserBookings(),
-      _loadNearbyProperties(),
-      _loadRecommendedProperties(),
-      _loadFeaturedProperties(),
-    ]);
-
-    _isLoading = false;
-    _error = errorMessage;
-    notifyListeners();
+    await executeWithState(() async {
+      await Future.wait([
+        _loadCurrentUser(),
+        _loadUserBookings(),
+        _loadNearbyProperties(),
+        _loadRecommendedProperties(),
+        _loadFeaturedProperties(),
+      ]);
+    });
   }
 
   Future<void> refreshDashboard() async {
+    // Invalidate all cache and reload
+    invalidateCache();
     await initializeDashboard();
   }
 
   Future<void> _loadCurrentUser() async {
-    _isUserLoading = true;
-    _userError = null;
-    notifyListeners();
-    try {
-      final response = await _apiService.get('profile/me');
-      _currentUser = User.fromJson(jsonDecode(response.body));
-    } catch (e) {
-      _userError = e.toString();
-    } finally {
-      _isUserLoading = false;
-      notifyListeners();
-    }
+    _currentUser = await executeWithCache(
+      'current_user',
+      () => api.getAndDecode('profile/me', User.fromJson),
+      cacheTtl: const Duration(minutes: 15),
+      errorMessage: 'Failed to load user profile',
+    );
   }
 
   Future<void> _loadUserBookings() async {
-    _isBookingsLoading = true;
-    _bookingsError = null;
-    notifyListeners();
-    try {
-      final currentResponse = await _apiService.get('bookings/current');
-      final upcomingResponse = await _apiService.get('bookings/upcoming');
-
-      final currentData = jsonDecode(currentResponse.body) as List;
-      final upcomingData = jsonDecode(upcomingResponse.body) as List;
-
-      _currentStays = currentData.map((item) => Booking.fromJson(item)).toList();
-      _upcomingStays = upcomingData.map((item) => Booking.fromJson(item)).toList();
-    } catch (e) {
-      _bookingsError = e.toString();
-    } finally {
-      _isBookingsLoading = false;
-      notifyListeners();
-    }
+    final results = await Future.wait([
+      executeWithCache(
+        'current_bookings',
+        () => api.getListAndDecode('bookings/current', Booking.fromJson),
+        cacheTtl: const Duration(minutes: 5),
+      ),
+      executeWithCache(
+        'upcoming_bookings',
+        () => api.getListAndDecode('bookings/upcoming', Booking.fromJson),
+        cacheTtl: const Duration(minutes: 5),
+      ),
+    ]);
+    
+    _currentStays = results[0] ?? [];
+    _upcomingStays = results[1] ?? [];
   }
 
   Future<void> _loadNearbyProperties() async {
-    _isNearbyLoading = true;
-    _nearbyError = null;
-    notifyListeners();
-
-    try {
-      final params = <String, String>{'PageSize': '5'};
-      if (_currentUser?.address?.city != null) {
-        params['City'] = _currentUser!.address!.city!;
-      }
-
-      final uri = Uri.parse('properties/search').replace(queryParameters: params);
-      final response = await _apiService.get(uri.toString());
-      final data = jsonDecode(response.body);
-      final pagedList = PagedList<Property>.fromJson(data, (json) => Property.fromJson(json));
-      _nearbyProperties = pagedList.items;
-    } catch (e) {
-      _nearbyError = e.toString();
-    } finally {
-      _isNearbyLoading = false;
-      notifyListeners();
+    final filters = <String, dynamic>{'PageSize': 5};
+    if (_currentUser?.address?.city != null) {
+      filters['City'] = _currentUser!.address!.city!;
     }
+    
+    final pagedResult = await executeWithCache(
+      generateCacheKey('nearby_properties', filters),
+      () => api.searchAndDecode('properties/search', Property.fromJson, filters: filters),
+      cacheTtl: const Duration(minutes: 10),
+    );
+    
+    _nearbyProperties = pagedResult?.items ?? [];
   }
 
   Future<void> _loadRecommendedProperties() async {
-    _isRecommendedLoading = true;
-    _recommendedError = null;
-    notifyListeners();
-
-    try {
-      final uri = Uri.parse('properties/search').replace(queryParameters: {
-        'IsRecommended': 'true',
-        'PageSize': '6',
-        'SortBy': 'rating',
-      });
-      final response = await _apiService.get(uri.toString());
-      final data = jsonDecode(response.body);
-      final pagedList = PagedList<Property>.fromJson(data, (json) => Property.fromJson(json));
-      _recommendedProperties = pagedList.items;
-    } catch (e) {
-      _recommendedError = e.toString();
-    } finally {
-      _isRecommendedLoading = false;
-      notifyListeners();
-    }
+    final pagedResult = await executeWithCache(
+      'recommended_properties',
+      () => api.searchAndDecode(
+        'properties/search',
+        Property.fromJson,
+        filters: {'IsRecommended': true},
+        pageSize: 6,
+        sortBy: 'rating',
+      ),
+      cacheTtl: const Duration(minutes: 15),
+    );
+    
+    _recommendedProperties = pagedResult?.items ?? [];
   }
 
   Future<void> _loadFeaturedProperties() async {
-    _isFeaturedLoading = true;
-    _featuredError = null;
-    notifyListeners();
-
-    try {
-      final uri = Uri.parse('properties/search').replace(queryParameters: {
-        'IsFeatured': 'true',
-        'PageSize': '8',
-        'SortBy': 'popularity',
-      });
-      final response = await _apiService.get(uri.toString());
-      final data = jsonDecode(response.body);
-      final pagedList = PagedList<Property>.fromJson(data, (json) => Property.fromJson(json));
-      _featuredProperties = pagedList.items;
-    } catch (e) {
-      _featuredError = e.toString();
-    } finally {
-      _isFeaturedLoading = false;
-      notifyListeners();
-    }
+    final pagedResult = await executeWithCache(
+      'featured_properties',
+      () => api.searchAndDecode(
+        'properties/search',
+        Property.fromJson,
+        filters: {'IsFeatured': true},
+        pageSize: 8,
+        sortBy: 'popularity',
+      ),
+      cacheTtl: const Duration(minutes: 10),
+    );
+    
+    _featuredProperties = pagedResult?.items ?? [];
   }
 
   Future<void> searchProperties(String query) async {
@@ -229,43 +137,37 @@ class HomeProvider extends ChangeNotifier {
       return;
     }
 
-    _isFeaturedLoading = true;
-    _featuredError = null;
-    notifyListeners();
-
-    try {
-      final uri = Uri.parse('properties/search').replace(queryParameters: {'FTS': query, 'PageSize': '8'});
-      final response = await _apiService.get(uri.toString());
-      final data = jsonDecode(response.body);
-      final pagedList = PagedList<Property>.fromJson(data, (json) => Property.fromJson(json));
-      _featuredProperties = pagedList.items;
-    } catch (e) {
-      _featuredError = e.toString();
-    } finally {
-      _isFeaturedLoading = false;
-      notifyListeners();
-    }
+    final pagedResult = await executeWithState(() async {
+      // Don't cache search results as they change frequently
+      return api.searchAndDecode(
+        'properties/search',
+        Property.fromJson,
+        query: query,
+        pageSize: 8,
+      );
+    });
+    
+    _featuredProperties = pagedResult?.items ?? [];
   }
 
   Future<void> applyPropertyFilters(Map<String, dynamic> filters) async {
-    _isFeaturedLoading = true;
-    _featuredError = null;
-    notifyListeners();
-
-    try {
-      final params = filters.map((key, value) => MapEntry(key, value.toString()));
-      params['IsFeatured'] = 'true';
-
-      final uri = Uri.parse('properties/search').replace(queryParameters: params);
-      final response = await _apiService.get(uri.toString());
-      final data = jsonDecode(response.body);
-      final pagedList = PagedList<Property>.fromJson(data, (json) => Property.fromJson(json));
-      _featuredProperties = pagedList.items;
-    } catch (e) {
-      _featuredError = e.toString();
-    } finally {
-      _isFeaturedLoading = false;
-      notifyListeners();
-    }
+    final searchFilters = Map<String, dynamic>.from(filters);
+    searchFilters['IsFeatured'] = true;
+    
+    final pagedResult = await executeWithState(() async {
+      // Use cache for filtered results with TTL
+      final cacheKey = generateCacheKey('filtered_properties', searchFilters);
+      return getCachedOrExecute(
+        cacheKey,
+        () => api.searchAndDecode(
+          'properties/search',
+          Property.fromJson,
+          filters: searchFilters,
+        ),
+        ttl: const Duration(minutes: 5),
+      );
+    });
+    
+    _featuredProperties = pagedResult?.items ?? [];
   }
 }

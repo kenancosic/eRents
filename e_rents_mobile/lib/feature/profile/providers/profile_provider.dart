@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
@@ -11,17 +12,13 @@ import 'package:e_rents_mobile/core/models/tenant_preference_model.dart';
 /// Consolidated provider for all Profile feature functionality
 /// Manages user profile, bookings, tenant preferences, and payment methods
 /// Following the provider-only architecture pattern
-class ProfileProvider extends ChangeNotifier {
-  final ApiService _api;
+class ProfileProvider extends BaseProvider {
   
-  ProfileProvider(this._api);
+  ProfileProvider(ApiService api) : super(api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-  
-  String? _error;
-  String? get error => _error;
+  // Use inherited loading/error state from BaseProvider
+  // isLoading, error, hasError are available
 
   // User Profile State
   User? _currentUser;
@@ -54,12 +51,20 @@ class ProfileProvider extends ChangeNotifier {
   List<Booking> _filteredBookings = [];
   List<Booking> get filteredBookings => _filteredBookings;
 
-  // Caching with TTL
+  // Cache TTL for manual cache management
+  static const Duration _cacheTTL = Duration(minutes: 5);
+  
+  // Cache timestamps for manual TTL management
   DateTime? _lastUserLoad;
   DateTime? _lastBookingsLoad;
   DateTime? _lastPaymentMethodsLoad;
   DateTime? _lastTenantPreferencesLoad;
-  static const Duration _cacheTTL = Duration(minutes: 5);
+  
+  /// Check if cache is still valid based on timestamp and TTL
+  bool _isCacheValid(DateTime? lastLoad) {
+    if (lastLoad == null) return false;
+    return DateTime.now().difference(lastLoad) < _cacheTTL;
+  }
 
   // ─── Convenience Getters ───────────────────────────────────────────────
   
@@ -106,7 +111,8 @@ class ProfileProvider extends ChangeNotifier {
   List<Booking> get pastBookings {
     final now = DateTime.now();
     return _filteredBookings.where((booking) {
-      return booking.endDate != null && booking.endDate!.isBefore(now);
+      return booking.status == BookingStatus.completed ||
+          (booking.endDate?.isBefore(now) ?? false);
     }).toList();
   }
 
@@ -124,66 +130,28 @@ class ProfileProvider extends ChangeNotifier {
 
   // ─── Private Helpers ───────────────────────────────────────────────────
   
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String? error) {
-    _error = error;
-    notifyListeners();
-  }
-
-  void _clearError() {
-    _error = null;
-  }
-
-  bool _isCacheValid(DateTime? lastLoad) {
-    if (lastLoad == null) return false;
-    return DateTime.now().difference(lastLoad) < _cacheTTL;
-  }
-
-  Future<T> _execute<T>(Future<T> Function() operation) async {
-    try {
-      _clearError();
-      _setLoading(true);
-      final result = await operation();
-      return result;
-    } catch (e) {
-      debugPrint('ProfileProvider: Error in operation: $e');
-      _setError(e.toString());
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
+  // Manual state management methods removed - using BaseProvider methods
 
   // ─── User Profile Methods ──────────────────────────────────────────────
   
   /// Load current user profile
   Future<void> loadCurrentUser({bool forceRefresh = false}) async {
-    if (!forceRefresh && _isCacheValid(_lastUserLoad) && _currentUser != null) {
+    // Check cache first
+    if (!forceRefresh && _currentUser != null && _isCacheValid(_lastUserLoad)) {
+      debugPrint('ProfileProvider: Using cached user data');
       return;
     }
-
-    await _execute(() async {
-      debugPrint('ProfileProvider: Loading current user profile');
+    
+    await executeWithState(() async {
+      debugPrint('ProfileProvider: Loading current user');
       
-      final response = await _api.get('/users/current', authenticated: true);
+      final response = await api.get('/users/current', authenticated: true);
       
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
         _currentUser = User.fromJson(userData);
         _lastUserLoad = DateTime.now();
-        
-        debugPrint('ProfileProvider: User profile loaded - ${_currentUser!.fullName}');
-        
-        // Auto-load tenant preferences if user is loaded
-        if (_currentUser!.userId != null) {
-          await loadTenantPreferences(forceRefresh: forceRefresh);
-        }
-      } else {
-        throw Exception('Failed to load user profile: ${response.statusCode}');
+        debugPrint('ProfileProvider: Current user loaded successfully');
       }
     });
   }
@@ -196,10 +164,10 @@ class ProfileProvider extends ChangeNotifier {
 
   /// Update current user profile
   Future<bool> updateUserProfile(User updatedUser) async {
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Updating user profile');
       
-      final response = await _api.put(
+      final response = await api.put(
         '/users/current', 
         updatedUser.toJson(),
         authenticated: true,
@@ -211,72 +179,74 @@ class ProfileProvider extends ChangeNotifier {
         _lastUserLoad = DateTime.now();
         
         debugPrint('ProfileProvider: User profile updated successfully');
-        return true;
       } else {
-        throw Exception('Failed to update user profile: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to update user profile');
+        throw Exception('Failed to update user profile');
       }
     });
   }
 
   /// Update specific user fields (optimistic updates)
-  void updateUserField({
+  Future<void> updateUserField({
     String? firstName,
     String? lastName,
     String? email,
     String? phoneNumber,
-  }) {
-    if (_currentUser != null) {
-      _currentUser = _currentUser!.copyWith(
-        firstName: firstName ?? _currentUser!.firstName,
-        lastName: lastName ?? _currentUser!.lastName,
-        email: email ?? _currentUser!.email,
-        phoneNumber: phoneNumber ?? _currentUser!.phoneNumber,
-      );
-      notifyListeners();
-    }
+  }) async {
+    final user = _currentUser;
+    if (user == null) return;
+    
+    // Update locally first (optimistic update)
+    _currentUser = user.copyWith(
+      firstName: firstName ?? user.firstName,
+      lastName: lastName ?? user.lastName,
+      email: email ?? user.email,
+      phoneNumber: phoneNumber ?? user.phoneNumber,
+    );
+    notifyListeners();
   }
 
   /// Update user's public status
   Future<bool> updateUserPublicStatus(bool isPublic) async {
-    if (_currentUser == null) return false;
-
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Updating user public status to $isPublic');
       
-      final response = await _api.put(
+      final response = await api.put(
         '/users/current/public-status',
         {'isPublic': isPublic},
         authenticated: true,
       );
       
       if (response.statusCode == 200) {
-        _currentUser = _currentUser!.copyWith(isPublic: isPublic);
+        // Update local user data
+        final user = _currentUser;
+        if (user != null) {
+          _currentUser = user.copyWith(isPublic: isPublic);
+        }
         debugPrint('ProfileProvider: User public status updated successfully');
-        return true;
       } else {
-        throw Exception('Failed to update public status: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to update user public status');
+        throw Exception('Failed to update user public status');
       }
     });
   }
 
   /// Upload profile image
   Future<bool> uploadProfileImage(File imageFile) async {
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Uploading profile image');
       
-      // Create multipart request
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${_api.baseUrl}/users/current/image'),
+        Uri.parse('${api.baseUrl}/users/current/profile-image'),
       );
       
-      // Add authentication header
-      final token = await _api.secureStorageService.getToken();
+      final token = await api.secureStorageService.getToken();
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
+      request.headers['Content-Type'] = 'multipart/form-data';
       
-      // Add file
       request.files.add(await http.MultipartFile.fromPath(
         'image',
         imageFile.path,
@@ -286,44 +256,46 @@ class ProfileProvider extends ChangeNotifier {
       final response = await http.Response.fromStream(streamedResponse);
       
       if (response.statusCode == 200) {
-        // Reload user profile to get updated image
+        // Update user profile with new image data
         await loadCurrentUser(forceRefresh: true);
-        debugPrint('ProfileProvider: Profile image uploaded and profile reloaded');
-        return true;
+        debugPrint('ProfileProvider: Profile image uploaded successfully');
       } else {
-        throw Exception('Failed to upload profile image: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to upload profile image');
+        throw Exception('Failed to upload profile image');
       }
     });
   }
 
   /// Logout - clear all user data
   Future<void> logout() async {
-    await _execute(() async {
+    await executeWithState(() async {
       debugPrint('ProfileProvider: Logging out user');
       
-      final response = await _api.delete('/auth/logout', authenticated: true);
-      
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        // Clear all cached data
-        _currentUser = null;
-        _tenantPreferences = null;
-        _paymentMethods.clear();
-        _bookings.clear();
-        _filteredBookings.clear();
-        _bookingStats.clear();
-        _currentFilters.clear();
-        _searchQuery = '';
-        
-        // Clear cache timestamps
-        _lastUserLoad = null;
-        _lastBookingsLoad = null;
-        _lastPaymentMethodsLoad = null;
-        _lastTenantPreferencesLoad = null;
-        
-        debugPrint('ProfileProvider: User logged out and data cleared');
-      } else {
-        throw Exception('Failed to logout: ${response.statusCode}');
+      try {
+        // Call logout endpoint
+        await api.post('/auth/logout', {}, authenticated: true);
+      } catch (e) {
+        debugPrint('ProfileProvider: Logout API call failed: $e');
+        // Continue with local logout even if API fails
       }
+      
+      // Clear all local data
+      _currentUser = null;
+      _tenantPreferences = null;
+      _paymentMethods.clear();
+      _bookings.clear();
+      _filteredBookings.clear();
+      _bookingStats.clear();
+      _currentFilters.clear();
+      _searchQuery = '';
+      
+      // Clear cache timestamps
+      _lastUserLoad = null;
+      _lastBookingsLoad = null;
+      _lastPaymentMethodsLoad = null;
+      _lastTenantPreferencesLoad = null;
+      
+      debugPrint('ProfileProvider: User logged out successfully');
     });
   }
 
@@ -331,43 +303,33 @@ class ProfileProvider extends ChangeNotifier {
   
   /// Load tenant preferences for current user
   Future<void> loadTenantPreferences({bool forceRefresh = false}) async {
-    if (_currentUser?.userId == null) return;
-    
-    if (!forceRefresh && _isCacheValid(_lastTenantPreferencesLoad) && _tenantPreferences != null) {
+    // Check cache first
+    if (!forceRefresh && _tenantPreferences != null && _isCacheValid(_lastTenantPreferencesLoad)) {
+      debugPrint('ProfileProvider: Using cached tenant preferences');
       return;
     }
-
-    await _execute(() async {
+    
+    await executeWithState(() async {
       debugPrint('ProfileProvider: Loading tenant preferences');
       
-      final response = await _api.get(
-        '/users/${_currentUser!.userId}/tenant-preferences',
-        authenticated: true,
-      );
+      final response = await api.get('/users/current/tenant-preferences', authenticated: true);
       
       if (response.statusCode == 200) {
-        final prefsData = jsonDecode(response.body);
-        _tenantPreferences = TenantPreferenceModel.fromJson(prefsData);
+        final preferencesData = jsonDecode(response.body);
+        _tenantPreferences = TenantPreferenceModel.fromJson(preferencesData);
         _lastTenantPreferencesLoad = DateTime.now();
-        
-        debugPrint('ProfileProvider: Tenant preferences loaded');
-      } else if (response.statusCode == 404) {
-        // No preferences found, this is okay
-        _tenantPreferences = null;
-        _lastTenantPreferencesLoad = DateTime.now();
-      } else {
-        throw Exception('Failed to load tenant preferences: ${response.statusCode}');
+        debugPrint('ProfileProvider: Tenant preferences loaded successfully');
       }
     });
   }
 
   /// Update tenant preferences
   Future<bool> updateTenantPreferences(TenantPreferenceModel preferences) async {
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Updating tenant preferences');
       
-      final response = await _api.put(
-        '/users/${_currentUser!.userId}/tenant-preferences',
+      final response = await api.put(
+        '/users/current/tenant-preferences',
         preferences.toJson(),
         authenticated: true,
       );
@@ -376,9 +338,9 @@ class ProfileProvider extends ChangeNotifier {
         _tenantPreferences = preferences;
         _lastTenantPreferencesLoad = DateTime.now();
         debugPrint('ProfileProvider: Tenant preferences updated successfully');
-        return true;
       } else {
-        throw Exception('Failed to update tenant preferences: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to update tenant preferences');
+        throw Exception('Failed to update tenant preferences');
       }
     });
   }
@@ -387,23 +349,22 @@ class ProfileProvider extends ChangeNotifier {
   
   /// Load payment methods for current user
   Future<void> loadPaymentMethods({bool forceRefresh = false}) async {
-    if (!forceRefresh && _isCacheValid(_lastPaymentMethodsLoad) && _paymentMethods.isNotEmpty) {
+    // Check cache first
+    if (!forceRefresh && _paymentMethods.isNotEmpty && _isCacheValid(_lastPaymentMethodsLoad)) {
+      debugPrint('ProfileProvider: Using cached payment methods');
       return;
     }
-
-    await _execute(() async {
+    
+    await executeWithState(() async {
       debugPrint('ProfileProvider: Loading payment methods');
       
-      final response = await _api.get('/users/current/payment-methods', authenticated: true);
+      final response = await api.get('/users/current/payment-methods', authenticated: true);
       
       if (response.statusCode == 200) {
-        final paymentData = jsonDecode(response.body) as List;
+        final List<dynamic> paymentData = jsonDecode(response.body);
         _paymentMethods = paymentData.cast<Map<String, dynamic>>();
         _lastPaymentMethodsLoad = DateTime.now();
-        
-        debugPrint('ProfileProvider: Payment methods loaded');
-      } else {
-        throw Exception('Failed to load payment methods: ${response.statusCode}');
+        debugPrint('ProfileProvider: Payment methods loaded successfully');
       }
     });
   }
@@ -414,30 +375,30 @@ class ProfileProvider extends ChangeNotifier {
       await loadPaymentMethods();
       return _paymentMethods;
     } catch (e) {
+      setError('Failed to retrieve payment methods: $e');
       debugPrint('ProfileProvider: Error getting payment methods: $e');
-      _setError('Failed to load payment methods');
       return [];
     }
   }
 
   /// Add payment method for current user
   Future<bool> addPaymentMethod(Map<String, dynamic> paymentData) async {
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Adding payment method');
       
-      final response = await _api.post(
+      final response = await api.post(
         '/users/current/payment-methods',
         paymentData,
         authenticated: true,
       );
       
       if (response.statusCode == 201) {
-        // Reload payment methods to get updated list
+        // Refresh payment methods to get updated list
         await loadPaymentMethods(forceRefresh: true);
         debugPrint('ProfileProvider: Payment method added successfully');
-        return true;
       } else {
-        throw Exception('Failed to add payment method: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to add payment method');
+        throw Exception('Failed to add payment method');
       }
     });
   }
@@ -449,44 +410,41 @@ class ProfileProvider extends ChangeNotifier {
     Map<String, dynamic>? filters,
     bool forceRefresh = false,
   }) async {
-    if (!forceRefresh && _isCacheValid(_lastBookingsLoad) && _bookings.isNotEmpty) {
-      _applyFiltersAndSearch();
+    // Check cache first
+    if (!forceRefresh && _bookings.isNotEmpty && _isCacheValid(_lastBookingsLoad)) {
+      debugPrint('ProfileProvider: Using cached bookings');
       return;
     }
-
-    await _execute(() async {
+    
+    await executeWithState(() async {
       debugPrint('ProfileProvider: Loading user bookings');
       
       // Build query parameters
-      final queryParams = <String, String>{};
+      final queryParams = <String, dynamic>{};
       if (filters != null) {
-        filters.forEach((key, value) {
-          if (value != null) {
-            queryParams[key] = value.toString();
-          }
-        });
+        queryParams.addAll(filters);
       }
       
-      final queryString = queryParams.isNotEmpty 
-          ? '?${queryParams.entries.map((e) => '${e.key}=${e.value}').join('&')}'
-          : '';
+      // Build query string if filters exist
+      String endpoint = '/users/current/bookings';
+      if (queryParams.isNotEmpty) {
+        final queryString = queryParams.entries
+            .map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}')
+            .join('&');
+        endpoint += '?$queryString';
+      }
       
-      final response = await _api.get('/bookings/user$queryString', authenticated: true);
+      final response = await api.get(endpoint, authenticated: true);
       
       if (response.statusCode == 200) {
         final bookingsData = jsonDecode(response.body) as List;
         _bookings = bookingsData.map((json) => Booking.fromJson(json)).toList();
         _lastBookingsLoad = DateTime.now();
         
-        // Auto-sort by newest first
-        _bookings.sort((a, b) => b.startDate.compareTo(a.startDate));
-        
-        // Apply current filters and search
+        // Apply any current filters and search
         _applyFiltersAndSearch();
         
-        debugPrint('ProfileProvider: Loaded ${_bookings.length} bookings');
-      } else {
-        throw Exception('Failed to load bookings: ${response.statusCode}');
+        debugPrint('ProfileProvider: User bookings loaded successfully (${_bookings.length} items)');
       }
     });
   }
@@ -501,8 +459,8 @@ class ProfileProvider extends ChangeNotifier {
     String? specialRequests,
     String paymentMethod = 'PayPal',
   }) async {
-    return await _execute(() async {
-      debugPrint('ProfileProvider: Creating booking for property $propertyId');
+    return await executeWithStateForSuccess(() async {
+      debugPrint('ProfileProvider: Creating new booking');
       
       final bookingData = {
         'propertyId': propertyId,
@@ -514,62 +472,55 @@ class ProfileProvider extends ChangeNotifier {
         'paymentMethod': paymentMethod,
       };
       
-      final response = await _api.post('/bookings', bookingData, authenticated: true);
+      final response = await api.post(
+        '/bookings',
+        bookingData,
+        authenticated: true,
+      );
       
       if (response.statusCode == 201) {
-        final bookingJson = jsonDecode(response.body);
-        final newBooking = Booking.fromJson(bookingJson);
-        
-        // Add to local collection
-        _bookings.insert(0, newBooking);
-        _applyFiltersAndSearch();
-        
+        // Refresh bookings to get updated list
+        await loadUserBookings(forceRefresh: true);
         debugPrint('ProfileProvider: Booking created successfully');
-        return true;
       } else {
-        throw Exception('Failed to create booking: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to create booking');
+        throw Exception('Failed to create booking');
       }
     });
   }
 
   /// Cancel a booking
   Future<bool> cancelBooking(String bookingId) async {
-    return await _execute(() async {
+    return await executeWithStateForSuccess(() async {
       debugPrint('ProfileProvider: Cancelling booking $bookingId');
       
-      final response = await _api.put(
+      final response = await api.put(
         '/bookings/$bookingId/cancel',
         {},
         authenticated: true,
       );
       
       if (response.statusCode == 200) {
-        // Remove cancelled booking from local collection and refresh
-        _bookings.removeWhere(
-          (booking) => booking.bookingId.toString() == bookingId,
-        );
-        _applyFiltersAndSearch();
-        
+        // Refresh bookings to get updated list
+        await loadUserBookings(forceRefresh: true);
         debugPrint('ProfileProvider: Booking cancelled successfully');
-        return true;
       } else {
-        throw Exception('Failed to cancel booking: ${response.statusCode}');
+        debugPrint('ProfileProvider: Failed to cancel booking');
+        throw Exception('Failed to cancel booking');
       }
     });
   }
 
   /// Get booking statistics
   Future<void> loadBookingStats() async {
-    await _execute(() async {
+    await executeWithState(() async {
       debugPrint('ProfileProvider: Loading booking statistics');
       
-      final response = await _api.get('/bookings/user/stats', authenticated: true);
+      final response = await api.get('/users/current/booking-stats', authenticated: true);
       
       if (response.statusCode == 200) {
         _bookingStats = jsonDecode(response.body);
-        debugPrint('ProfileProvider: Booking statistics loaded');
-      } else {
-        throw Exception('Failed to load booking stats: ${response.statusCode}');
+        debugPrint('ProfileProvider: Booking statistics loaded successfully');
       }
     });
   }
@@ -697,7 +648,7 @@ class ProfileProvider extends ChangeNotifier {
     if (filters.containsKey('endDate')) {
       final endDate = filters['endDate'] as DateTime?;
       if (endDate != null &&
-          (booking.endDate == null || booking.endDate!.isAfter(endDate))) {
+          (booking.endDate?.isAfter(endDate) ?? true)) {
         return false;
       }
     }

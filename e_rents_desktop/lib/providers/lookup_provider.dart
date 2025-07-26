@@ -1,24 +1,30 @@
-import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/models/lookup_data.dart';
-import 'package:e_rents_desktop/services/lookup_service.dart';
-import 'package:e_rents_desktop/utils/logger.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/api_service_extensions.dart';
 
-class LookupProvider with ChangeNotifier {
-  final LookupService _lookupService;
+/// Refactored LookupProvider using the new base provider architecture
+/// 
+/// This demonstrates how to use:
+/// - BaseProvider for common functionality
+/// - Built-in caching with TTL
+/// - Automatic state management (loading, error)
+/// - API service extensions for cleaner code
+/// 
+/// Compare with the original lookup_provider.dart to see the reduction in boilerplate
+class LookupProvider extends BaseProvider {
+  static const String _cacheKey = 'lookup_data';
+  static const Duration _lookupCacheTtl = Duration(hours: 1); // Lookup data changes infrequently
 
+  LookupProvider(super.api);
+
+  // ─── State ──────────────────────────────────────────────────────────────
   LookupData? _lookupData;
-  bool _isLoading = false;
-  String? _error;
-
-  LookupProvider(this._lookupService);
-
-  // Getters
+  
+  // ─── Getters ────────────────────────────────────────────────────────────
   LookupData? get lookupData => _lookupData;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
   bool get hasData => _lookupData != null;
 
-  // Property types for dropdowns
+  // Property types for dropdowns - all derived from cached data
   List<LookupItem> get propertyTypes => _lookupData?.propertyTypes ?? [];
   List<LookupItem> get rentingTypes => _lookupData?.rentingTypes ?? [];
   List<LookupItem> get propertyStatuses => _lookupData?.propertyStatuses ?? [];
@@ -28,56 +34,54 @@ class LookupProvider with ChangeNotifier {
   List<LookupItem> get issueStatuses => _lookupData?.issueStatuses ?? [];
   List<LookupItem> get amenities => _lookupData?.amenities ?? [];
 
+  // ─── Public API ─────────────────────────────────────────────────────────
+
   /// Initialize lookup data on app startup
+  /// Uses caching to avoid unnecessary API calls
   Future<void> initializeLookupData() async {
     if (_lookupData != null) {
-      // Already initialized
-      return;
+      return; // Already initialized
     }
 
-    await loadLookupData(forceRefresh: false);
+    await loadLookupData();
   }
 
-  /// Load lookup data from backend
+  /// Load lookup data with automatic caching and state management
+  /// The BaseProvider handles loading states and error handling automatically
   Future<void> loadLookupData({bool forceRefresh = false}) async {
-    if (_isLoading) return; // Prevent concurrent loading
+    if (forceRefresh) {
+      invalidateCache(_cacheKey);
+    }
 
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
+    final data = await executeWithCacheAndMessage(
+      _cacheKey,
+      () => _fetchLookupData(),
+      'Failed to load lookup data',
+      cacheTtl: _lookupCacheTtl,
+    );
 
-    try {
-      log.info(
-        'LookupProvider: Loading lookup data (forceRefresh: $forceRefresh)',
-      );
-      _lookupData = await _lookupService.getAllLookupData(
-        forceRefresh: forceRefresh,
-      );
-      log.info(
-        'LookupProvider: Successfully loaded ${_lookupData?.propertyTypes.length} property types',
-      );
-    } catch (e, stackTrace) {
-      _error = e.toString();
-      log.severe('LookupProvider: Error loading lookup data', e, stackTrace);
-    } finally {
-      _isLoading = false;
+    if (data != null) {
+      _lookupData = data;
       notifyListeners();
     }
   }
 
   /// Refresh lookup data from backend
+  /// Forces cache invalidation and fresh data fetch
   Future<void> refreshLookupData() async {
     await loadLookupData(forceRefresh: true);
   }
 
   /// Clear cache and reload
+  /// Demonstrates cache management capabilities
   Future<void> clearCacheAndReload() async {
-    _lookupService.clearCache();
+    invalidateCache(); // Clear all cache
     _lookupData = null;
     await loadLookupData(forceRefresh: true);
   }
 
-  // Convenience methods for UI components
+  // ─── Convenience Methods ───────────────────────────────────────────────
+
   /// Get property type name by ID
   String getPropertyTypeName(int id) {
     final item = _lookupData?.getPropertyTypeById(id);
@@ -132,12 +136,33 @@ class LookupProvider with ChangeNotifier {
   }
 
   /// Get cache information for debugging
+  /// Enhanced with base provider cache statistics
   Map<String, dynamic> getCacheInfo() {
-    return _lookupService.getCacheInfo();
+    final baseStats = getCacheStats();
+    return {
+      ...baseStats,
+      'lookupDataCached': isCacheValid(_cacheKey, _lookupCacheTtl),
+      'lookupDataLoaded': _lookupData != null,
+      'cacheTtl': _lookupCacheTtl.toString(),
+    };
+  }
+
+  // ─── Private Methods ────────────────────────────────────────────────────
+
+  /// Fetch lookup data from API
+  /// Uses the new API service extensions for cleaner code
+  Future<LookupData> _fetchLookupData() async {
+    // Using the API service extension for automatic JSON decoding
+    return await api.getAndDecode(
+      '/lookup/all',
+      LookupData.fromJson,
+      authenticated: true,
+      customHeaders: api.desktopHeaders,
+    );
   }
 }
 
-// Helper class for dropdown items
+// Helper class for dropdown items (unchanged)
 class DropdownItem {
   final int value;
   final String label;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PropertyImagesGrid extends StatelessWidget {
   final List<int> images;
@@ -211,20 +212,12 @@ class PropertyImagesGrid extends StatelessWidget {
   }
 
   void _showImageCarousel(BuildContext context, int initialIndex) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black.withValues(alpha: 0.8),
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return FadeTransition(
-            opacity: animation,
-            child: ImageCarouselDialog(
-              images: images,
-              initialIndex: initialIndex,
-            ),
-          );
-        },
-      ),
+    context.push(
+      '/property-images',
+      extra: {
+        'images': images,
+        'initialIndex': initialIndex,
+      },
     );
   }
 }
@@ -369,7 +362,7 @@ class _ImageCarouselDialogState extends State<ImageCarouselDialog> {
             top: MediaQuery.of(context).padding.top + 16,
             right: 16,
             child: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => context.pop(),
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(

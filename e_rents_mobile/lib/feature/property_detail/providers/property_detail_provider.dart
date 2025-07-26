@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
@@ -9,18 +9,12 @@ import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 
 /// Consolidated PropertyDetailProvider following the new single-provider pattern
 /// Replaces PropertyDetailProvider, PropertyCollectionProvider, MaintenanceCollectionProvider, and ReviewCollectionProvider
-/// Uses direct ApiService calls and handles all property detail related functionality
-class PropertyDetailProvider extends ChangeNotifier {
-  final ApiService _api;
-
-  PropertyDetailProvider(this._api);
+/// Uses direct ApiService calls with BaseProvider architecture for state management and caching
+class PropertyDetailProvider extends BaseProvider {
+  PropertyDetailProvider(super.api);
 
   // ─── Loading & Error State ──────────────────────────────────────
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-
-  String? _error;
-  String? get error => _error;
+  // Inherited from BaseProviderMixin: isLoading, error, hasError
 
   // ─── Property State ─────────────────────────────────────────────
   Property? _property;
@@ -88,39 +82,37 @@ class PropertyDetailProvider extends ChangeNotifier {
   Map<DateTime, bool> get propertyAvailability => _propertyAvailability;
 
   // ─── Cache Management ───────────────────────────────────────────
-  DateTime? _lastPropertyFetch;
-  DateTime? _lastReviewsFetch;
-  DateTime? _lastMaintenanceFetch;
-  static const Duration _cacheTimeout = Duration(minutes: 15);
+  // Using CacheableProviderMixin from BaseProvider for automatic caching
 
   // ─── Main Property Operations ───────────────────────────────────
 
   /// Fetch property details and related data
   Future<void> fetchPropertyDetails(String propertyId, {String? bookingId, bool forceRefresh = false}) async {
-    if (!forceRefresh && _isDataCached(_lastPropertyFetch)) {
-      return;
+    if (forceRefresh) {
+      invalidateCache('property_$propertyId');
     }
 
-    _setLoading(true);
-    try {
-      _property = await _api.getPropertyById(propertyId);
-      _lastPropertyFetch = DateTime.now();
-      
-      if (_property != null) {
-        // Fetch related data in parallel
-        await Future.wait([
-          fetchReviews(propertyId, forceRefresh: forceRefresh),
-          fetchMaintenanceIssues(propertyId, forceRefresh: forceRefresh),
-          fetchSimilarProperties(forceRefresh: forceRefresh),
-          fetchOwnerProperties(forceRefresh: forceRefresh),
-          if (bookingId != null) fetchBookingDetails(bookingId),
-        ]);
-      }
-    } catch (e) {
-      _setError('Failed to load property details: $e');
-    } finally {
-      _setLoading(false);
-    }
+    await executeWithCache(
+      'property_$propertyId',
+      () async {
+        _property = await api.getPropertyById(propertyId);
+        
+        if (_property != null) {
+          // Fetch related data in parallel
+          await Future.wait([
+            fetchReviews(propertyId, forceRefresh: forceRefresh),
+            fetchMaintenanceIssues(propertyId, forceRefresh: forceRefresh),
+            fetchSimilarProperties(forceRefresh: forceRefresh),
+            fetchOwnerProperties(forceRefresh: forceRefresh),
+            if (bookingId != null) fetchBookingDetails(bookingId),
+          ]);
+        }
+        notifyListeners();
+        return _property;
+      },
+      cacheTtl: Duration(minutes: 15),
+      errorMessage: 'Failed to load property details',
+    );
   }
 
   /// Fetch similar properties based on current property
@@ -128,7 +120,7 @@ class PropertyDetailProvider extends ChangeNotifier {
     if (_property == null) return;
     
     try {
-      _similarProperties = await _api.searchProperties({
+      _similarProperties = await api.searchProperties({
         'propertyTypeId': _property!.propertyTypeId.toString(),
         'minPrice': (_property!.price * 0.8).toString(),
         'maxPrice': (_property!.price * 1.2).toString(),
@@ -145,7 +137,7 @@ class PropertyDetailProvider extends ChangeNotifier {
     if (_property?.ownerId == null) return;
     
     try {
-      _ownerProperties = await _api.searchProperties({
+      _ownerProperties = await api.searchProperties({
         'ownerId': _property!.ownerId.toString(),
         'exclude': _property!.propertyId.toString(),
       });
@@ -158,7 +150,7 @@ class PropertyDetailProvider extends ChangeNotifier {
   /// Fetch booking details
   Future<void> fetchBookingDetails(String bookingId) async {
     try {
-      _booking = await _api.getBookingById(bookingId);
+      _booking = await api.getBookingById(bookingId);
     } catch (e) {
       debugPrint('Failed to fetch booking details: $e');
     }
@@ -168,14 +160,14 @@ class PropertyDetailProvider extends ChangeNotifier {
 
   /// Load property collection with optional filters
   Future<void> loadPropertyCollection({Map<String, dynamic>? filters, bool forceRefresh = false}) async {
-    _setLoading(true);
+    setLoading(true);
     try {
-      _propertyCollection = await _api.searchProperties(filters ?? {});
+      _propertyCollection = await api.searchProperties(filters ?? {});
       _applyPropertySearchAndFilters();
     } catch (e) {
-      _setError('Failed to load properties: $e');
+      setError('Failed to load properties: $e');
     } finally {
-      _setLoading(false);
+      setLoading(false);
     }
   }
 
@@ -208,37 +200,40 @@ class PropertyDetailProvider extends ChangeNotifier {
 
   /// Fetch reviews for a property
   Future<void> fetchReviews(String propertyId, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _isDataCached(_lastReviewsFetch)) {
-      return;
+    if (forceRefresh) {
+      invalidateCache('reviews_$propertyId');
     }
 
-    try {
-      _allReviews = await _api.getReviewsForProperty(propertyId);
-      _reviews = List.from(_allReviews);
-      _lastReviewsFetch = DateTime.now();
-      _applyReviewSearchAndFilters();
-    } catch (e) {
-      debugPrint('Failed to load reviews: $e');
-    }
-    notifyListeners();
+    await executeWithCache(
+      'reviews_$propertyId',
+      () async {
+        _allReviews = await api.getReviewsForProperty(propertyId);
+        _reviews = List.from(_allReviews);
+        _applyReviewSearchAndFilters();
+        notifyListeners();
+        return _allReviews;
+      },
+      cacheTtl: Duration(minutes: 15),
+      errorMessage: 'Failed to load reviews',
+    );
   }
 
   /// Add a new review
   Future<bool> addReview(String propertyId, String comment, double rating) async {
-    _setLoading(true);
+    setLoading(true);
     try {
-      final newReview = await _api.createReview(propertyId, comment, rating);
+      final newReview = await api.createReview(propertyId, comment, rating);
       _allReviews.insert(0, newReview);
       _applyReviewSearchAndFilters();
       
       // Optionally, refetch property to update average rating
-      _property = await _api.getPropertyById(propertyId);
+      _property = await api.getPropertyById(propertyId);
       return true;
     } catch (e) {
-      _setError('Failed to add review: $e');
+      setError('Failed to add review: $e');
       return false;
     } finally {
-      _setLoading(false);
+      setLoading(false);
     }
   }
 
@@ -315,43 +310,46 @@ class PropertyDetailProvider extends ChangeNotifier {
 
   /// Fetch maintenance issues for a property
   Future<void> fetchMaintenanceIssues(String propertyId, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _isDataCached(_lastMaintenanceFetch)) {
-      return;
+    if (forceRefresh) {
+      invalidateCache('maintenance_$propertyId');
     }
 
-    try {
-      _allMaintenanceIssues = await _api.getMaintenanceIssuesForProperty(propertyId);
-      _maintenanceIssues = List.from(_allMaintenanceIssues);
-      _lastMaintenanceFetch = DateTime.now();
-      _applyMaintenanceSearchAndFilters();
-    } catch (e) {
-      debugPrint('Failed to load maintenance issues: $e');
-    }
-    notifyListeners();
+    await executeWithCache(
+      'maintenance_$propertyId',
+      () async {
+        _allMaintenanceIssues = await api.getMaintenanceIssuesForProperty(propertyId);
+        _maintenanceIssues = List.from(_allMaintenanceIssues);
+        _applyMaintenanceSearchAndFilters();
+        notifyListeners();
+        return _allMaintenanceIssues;
+      },
+      cacheTtl: Duration(minutes: 15),
+      errorMessage: 'Failed to load maintenance issues',
+    );
   }
 
   /// Report a new maintenance issue
   Future<bool> reportMaintenanceIssue(String propertyId, String title, String description) async {
-    _setLoading(true);
+    setLoading(true);
     try {
-      final newIssue = await _api.createMaintenanceIssue(propertyId, title, description);
+      final newIssue = await api.createMaintenanceIssue(propertyId, title, description);
       _allMaintenanceIssues.insert(0, newIssue);
       _applyMaintenanceSearchAndFilters();
       return true;
     } catch (e) {
-      _setError('Failed to report issue: $e');
+      setError('Failed to report issue: $e');
       return false;
     } finally {
-      _setLoading(false);
+      setLoading(false);
     }
   }
 
   /// Update maintenance issue status
   Future<bool> updateMaintenanceIssueStatus(String issueId, MaintenanceIssueStatus newStatus) async {
-    _setLoading(true);
+    setLoading(true);
     try {
       // Use existing API method to update the issue
-      final updatedIssue = await _api.updateMaintenanceIssue(issueId, {
+      final updatedIssue = await api.updateMaintenanceIssue(issueId, {
         'status': newStatus.toString().split('.').last,
         'statusId': _getStatusId(newStatus),
       });
@@ -362,10 +360,10 @@ class PropertyDetailProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
-      _setError('Failed to update maintenance issue: $e');
+      setError('Failed to update maintenance issue: $e');
       return false;
     } finally {
-      _setLoading(false);
+      setLoading(false);
     }
   }
 
@@ -448,7 +446,7 @@ class PropertyDetailProvider extends ChangeNotifier {
   /// Submit a lease extension request
   Future<bool> requestLeaseExtension(LeaseExtensionRequest request) async {
     try {
-      final response = await _api.post(
+      final response = await api.post(
         '/api/lease-extensions',
         request.toJson(),
         authenticated: true,
@@ -459,11 +457,11 @@ class PropertyDetailProvider extends ChangeNotifier {
         await getLeaseExtensionRequests(request.tenantId);
         return true;
       } else {
-        _setError('Failed to request extension: ${response.statusCode} ${response.body}');
+        setError('Failed to request extension: ${response.statusCode} ${response.body}');
         return false;
       }
     } catch (e) {
-      _setError('PropertyDetailProvider.requestLeaseExtension: $e');
+      setError('PropertyDetailProvider.requestLeaseExtension: $e');
       return false;
     }
   }
@@ -489,7 +487,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       ];
       
       /* Real API call:
-      final response = await _api.get(
+      final response = await api.get(
         '/leases/extension-requests/tenant/$tenantId',
         authenticated: true,
       );
@@ -504,7 +502,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       
       notifyListeners();
     } catch (e) {
-      _setError('Error getting lease extension requests: $e');
+      setError('Error getting lease extension requests: $e');
     }
   }
 
@@ -519,7 +517,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       // 3. Send notification to landlord
 
       /* Real API call:
-      final response = await _api.put(
+      final response = await api.put(
         '/bookings/$bookingId/cancel',
         {'reason': reason},
         authenticated: true,
@@ -530,7 +528,7 @@ class PropertyDetailProvider extends ChangeNotifier {
 
       return true; // Mock success
     } catch (e) {
-      _setError('Error cancelling booking: $e');
+      setError('Error cancelling booking: $e');
       return false;
     }
   }
@@ -544,7 +542,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       return null;
 
       /* Real API call:
-      final response = await _api.get(
+      final response = await api.get(
         '/bookings/$bookingId',
         authenticated: true,
       );
@@ -555,7 +553,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       return null;
       */
     } catch (e) {
-      _setError('Error getting booking details: $e');
+      setError('Error getting booking details: $e');
       return null;
     }
   }
@@ -581,7 +579,7 @@ class PropertyDetailProvider extends ChangeNotifier {
         if (isDailyRental != null) 'isDailyRental': isDailyRental,
       };
 
-      final response = await _api.post(
+      final response = await api.post(
         '/api/pricing/calculate',
         requestData,
         authenticated: true,
@@ -592,11 +590,11 @@ class PropertyDetailProvider extends ChangeNotifier {
         notifyListeners();
         return _currentPricing;
       } else {
-        _setError('Failed to get pricing: ${response.statusCode} ${response.body}');
+        setError('Failed to get pricing: ${response.statusCode} ${response.body}');
         return null;
       }
     } catch (e) {
-      _setError('PricingService.getPricing: Error $e');
+      setError('PricingService.getPricing: Error $e');
       return null;
     }
   }
@@ -613,12 +611,12 @@ class PropertyDetailProvider extends ChangeNotifier {
     // Client-side validation only
     final duration = endDate.difference(startDate).inDays;
     if (duration <= 0) {
-      _setError('Invalid date range - end date must be after start date');
+      setError('Invalid date range - end date must be after start date');
       return null;
     }
 
     if (numberOfGuests <= 0) {
-      _setError('Invalid guest count - must be greater than 0');
+      setError('Invalid guest count - must be greater than 0');
       return null;
     }
 
@@ -648,7 +646,7 @@ class PropertyDetailProvider extends ChangeNotifier {
         'numberOfGuests': numberOfGuests,
       };
 
-      final response = await _api.post(
+      final response = await api.post(
         '/api/pricing/estimate',
         requestData,
         authenticated: true,
@@ -660,11 +658,11 @@ class PropertyDetailProvider extends ChangeNotifier {
         notifyListeners();
         return _currentPricingEstimate;
       } else {
-        _setError('Failed to get estimate: ${response.statusCode}');
+        setError('Failed to get estimate: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      _setError('PricingService.getPricingEstimate: Error $e');
+      setError('PricingService.getPricingEstimate: Error $e');
       return null;
     }
   }
@@ -802,7 +800,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       return availability;
 
       /* Real API call would be:
-      final response = await _api.get(
+      final response = await api.get(
         '/properties/$propertyId/availability?start=${start.toIso8601String()}&end=${end.toIso8601String()}',
         authenticated: true,
       );
@@ -817,7 +815,7 @@ class PropertyDetailProvider extends ChangeNotifier {
       }
       */
     } catch (e) {
-      _setError('Error getting property availability: $e');
+      setError('Error getting property availability: $e');
       return {};
     }
   }
@@ -924,20 +922,7 @@ class PropertyDetailProvider extends ChangeNotifier {
 
   // ─── Private Helpers ────────────────────────────────────────────
 
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
 
-  void _setError(String? error) {
-    _error = error;
-    notifyListeners();
-  }
-
-  bool _isDataCached(DateTime? lastFetch) {
-    if (lastFetch == null) return false;
-    return DateTime.now().difference(lastFetch) < _cacheTimeout;
-  }
 
   /// Clear all data and reset state
   void clearAll() {
@@ -954,11 +939,11 @@ class PropertyDetailProvider extends ChangeNotifier {
     _currentPricing = null;
     _currentPricingEstimate = null;
     _propertyAvailability.clear();
-    _error = null;
-    _isLoading = false;
-    _lastPropertyFetch = null;
-    _lastReviewsFetch = null;
-    _lastMaintenanceFetch = null;
+
+    
+    // Clear BaseProvider state and cache
+    setError(null);
+    invalidateCache();
     notifyListeners();
   }
 }

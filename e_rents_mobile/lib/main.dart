@@ -1,4 +1,5 @@
-import 'package:e_rents_mobile/core/services/service_locator.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
@@ -19,9 +20,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "lib/.env");
 
-  // Initialize ServiceLocator with lazy loading
-  await ServiceLocator.setupServices();
-
   runApp(MyApp());
 }
 
@@ -33,14 +31,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Create shared service instances
+    final secureStorageService = SecureStorageService();
+    final apiService = ApiService(
+      dotenv.env['BASE_URL'] ?? 'http://localhost:8080',
+      secureStorageService,
+    );
+    
     return MultiProvider(
       providers: [
-
+        // Provide shared services
+        Provider<SecureStorageService>.value(value: secureStorageService),
+        Provider<ApiService>.value(value: apiService),
+        
         // Essential providers that still need manual setup
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(
-            ServiceLocator.get(), // ApiService
-            ServiceLocator.get(), // SecureStorageService
+            apiService,
+            secureStorageService,
           ),
         ),
         ChangeNotifierProvider<NavigationProvider>(
@@ -50,22 +58,22 @@ class MyApp extends StatelessWidget {
 
         // 🎯 REPOSITORY-BASED PROVIDERS - Modern architecture with automatic features
         ChangeNotifierProvider<ExploreProvider>(
-          create: (_) => ExploreProvider(ServiceLocator.get()),
+          create: (context) => ExploreProvider(context.read<ApiService>()),
         ),
         ChangeNotifierProvider<ProfileProvider>(
-          create: (_) => ProfileProvider(ServiceLocator.get()),
+          create: (context) => ProfileProvider(context.read<ApiService>()),
         ),
         ChangeNotifierProvider<HomeProvider>(
-          create: (_) => HomeProvider(ServiceLocator.get()),
+          create: (context) => HomeProvider(context.read<ApiService>()),
         ),
         ChangeNotifierProvider<SavedProvider>(
           create: (context) => SavedProvider(
-            ServiceLocator.get(), // ApiService
-            ServiceLocator.get(), // SecureStorageService
+            context.read<ApiService>(),
+            context.read<SecureStorageService>(),
           ),
         ),
         ChangeNotifierProvider(
-          create: (context) => ChatProvider(ServiceLocator.get()),
+          create: (context) => ChatProvider(context.read<ApiService>()),
         ),
 
         // 📝 USAGE EXAMPLES:

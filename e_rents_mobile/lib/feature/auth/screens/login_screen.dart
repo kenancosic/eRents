@@ -174,10 +174,10 @@ class LoginScreen extends StatelessWidget {
                                     if (context.mounted) {
                                         if (success) {
                                             context.go('/');
-                                        } else if (provider.errorMessage != null) {
+                                        } else if (provider.hasError) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                                content: Text(provider.errorMessage!)),
+                                                content: Text(provider.error!)),
                                             );
                                         }
                                     }

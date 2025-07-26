@@ -8,7 +8,7 @@ enum ButtonWidth { content, expanded, flexible }
 class CustomButton extends StatelessWidget {
   final dynamic label;
   final bool isLoading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color backgroundColor;
   final double? height; // Now optional
   final double? fontSize; // Now optional
@@ -27,7 +27,7 @@ class CustomButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.isLoading,
-    required this.onPressed,
+    this.onPressed,
     this.icon,
     this.backgroundColor = primaryColor,
     this.height, // Remove default, will be calculated

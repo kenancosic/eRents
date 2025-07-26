@@ -651,7 +651,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                                   .showSnackBar(
                                                 SnackBar(
                                                   content: Text(provider
-                                                          .errorMessage ??
+                                                          .error ??
                                                       'Registration failed'),
                                                 ),
                                               );

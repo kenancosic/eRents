@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/models/booking.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -248,13 +249,13 @@ class _StayActionsCard extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               child: const Text('Back'),
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => dialogContext.pop(false),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  Navigator.of(dialogContext).pop(true);
+                  dialogContext.pop(true);
                 }
               },
               child: const Text('Confirm Cancellation'),

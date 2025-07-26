@@ -36,6 +36,7 @@ import 'dart:io';
 import 'services/api_service.dart';
 // ✅ NEW: Import base infrastructure and new providers
 import 'features/properties/providers/properties_provider.dart';
+import 'features/properties/widgets/property_images_grid.dart';
 
 
 
@@ -232,6 +233,13 @@ class AppRouter {
 
     // FALLBACK: Simple version available if needed
     // return const BookingsTableScreen();
+  }
+
+  Widget _createImageCarouselScreen(List<int> images, int initialIndex) {
+    return ImageCarouselDialog(
+      images: images,
+      initialIndex: initialIndex,
+    );
   }
 
 
@@ -433,6 +441,17 @@ class AppRouter {
                   title: 'Rental Management',
                   child: _createRentsTableScreen(),
                 ),
+          ),
+          // Image carousel route for property images
+          GoRoute(
+            path: '/property-images',
+            builder: (context, state) {
+              final extras = state.extra as Map<String, dynamic>?;
+              final images = extras?['images'] as List<int>? ?? [];
+              final initialIndex = extras?['initialIndex'] as int? ?? 0;
+              
+              return _createImageCarouselScreen(images, initialIndex);
+            },
           ),
         ],
       ),

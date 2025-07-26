@@ -1,116 +1,100 @@
 import 'dart:convert';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
 
-class AuthProvider extends ChangeNotifier {
-  final ApiService _apiService;
+class AuthProvider extends BaseProvider {
   final SecureStorageService _secureStorageService;
 
-  AuthProvider(this._apiService, this._secureStorageService);
+  AuthProvider(ApiService apiService, this._secureStorageService) : super(apiService);
 
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
-
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String? message) {
-    _errorMessage = message;
-    notifyListeners();
-  }
+  // Use inherited loading/error state from BaseProvider
+  // isLoading, error, hasError are available
 
   Future<bool> login(String email, String password) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      final response = await _apiService.post('/auth/login', {
-        'email': email,
-        'password': password,
-      });
+    return await executeWithStateAndMessage(() async {
+      // Use direct post method since login returns custom token structure
+      final response = await api.post(
+        '/auth/login',
+        {
+          'email': email,
+          'password': password,
+        },
+        authenticated: false,
+      );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        await _secureStorageService.storeToken(data['token']);
-        _setLoading(false);
-        return true;
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        if (data.containsKey('token')) {
+          await _secureStorageService.storeToken(data['token']);
+          debugPrint('AuthProvider: Login successful for $email');
+          return true;
+        }
       }
-      _setError('Login failed. Please check your credentials.');
-      _setLoading(false);
-      return false;
-    } catch (e) {
-      _setError('An error occurred during login.');
-      _setLoading(false);
-      return false;
-    }
+      
+      throw Exception('Invalid response from server');
+    }, 'Login failed. Please check your credentials.') ?? false;
   }
 
   Future<bool> register(Map<String, dynamic> userData) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      final response = await _apiService.post('/auth/register', userData);
+    return await executeWithStateAndMessage(() async {
+      final response = await api.post(
+        '/auth/register',
+        userData,
+        authenticated: false,
+      );
+      
       if (response.statusCode == 201) {
-        _setLoading(false);
+        debugPrint('AuthProvider: Registration successful for ${userData['email']}');
         return true;
       }
-      _setError('Registration failed.');
-      _setLoading(false);
-      return false;
-    } catch (e) {
-      _setError('An error occurred during registration.');
-      _setLoading(false);
-      return false;
-    }
+      
+      throw Exception('Registration failed');
+    }, 'Registration failed. Please try again.') ?? false;
   }
 
   Future<void> logout() async {
-    await _secureStorageService.clearToken();
+    await executeWithStateAndMessage(() async {
+      await _secureStorageService.clearToken();
+      debugPrint('AuthProvider: User logged out successfully');
+    }, 'Failed to logout');
   }
 
   Future<bool> forgotPassword(String email) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      final response = await _apiService.post('/auth/forgot-password', {'email': email});
+    return await executeWithStateAndMessage(() async {
+      final response = await api.post(
+        '/auth/forgot-password',
+        {'email': email},
+        authenticated: false,
+      );
+      
       if (response.statusCode == 200) {
-        _setLoading(false);
+        debugPrint('AuthProvider: Password reset email sent to $email');
         return true;
       }
-      _setError('Failed to send password reset email.');
-      _setLoading(false);
-      return false;
-    } catch (e) {
-      _setError('An error occurred while sending the password reset email.');
-      _setLoading(false);
-      return false;
-    }
+      
+      throw Exception('Failed to send reset email');
+    }, 'Failed to send password reset email.') ?? false;
   }
 
   Future<bool> resetPassword(String token, String newPassword) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      final response = await _apiService.post('/auth/reset-password', {
-        'token': token,
-        'password': newPassword,
-      });
+    return await executeWithStateAndMessage(() async {
+      final response = await api.post(
+        '/auth/reset-password',
+        {
+          'token': token,
+          'password': newPassword,
+        },
+        authenticated: false,
+      );
+      
       if (response.statusCode == 200) {
-        _setLoading(false);
+        debugPrint('AuthProvider: Password reset successful');
         return true;
       }
-      _setError('Failed to reset password.');
-      _setLoading(false);
-      return false;
-    } catch (e) {
-      _setError('An error occurred during password reset.');
-      _setLoading(false);
-      return false;
-    }
+      
+      throw Exception('Password reset failed');
+    }, 'Failed to reset password.') ?? false;
   }
 }

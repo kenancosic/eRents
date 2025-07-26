@@ -70,7 +70,7 @@ class _TenantsScreenState extends State<TenantsScreen>
           tenant: tenant,
           properties: properties,
           onSendMessage: () {
-            Navigator.of(dialogContext).pop();
+            dialogContext.pop();
             _sendMessage(context, tenant);
           },
         );

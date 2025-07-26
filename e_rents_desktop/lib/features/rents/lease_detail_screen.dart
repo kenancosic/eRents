@@ -2,6 +2,7 @@ import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/models/rental_request.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -271,11 +272,11 @@ class _LeaseActionsCard extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               child: const Text('Cancel'),
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => dialogContext.pop(false),
             ),
             ElevatedButton(
               child: Text(isApproval ? 'Approve' : 'Reject'),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
+              onPressed: () => dialogContext.pop(true),
             ),
           ],
         );

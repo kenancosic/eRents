@@ -268,14 +268,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'Cancel',
                   isLoading: false,
                   onPressed: () {
-                    Navigator.of(dialogContext).pop(false); // User cancelled
+                    dialogContext.pop(false); // User cancelled
                   },
                 ),
                 CustomButton.compact(
                   label: 'Confirm',
                   isLoading: false,
                   onPressed: () {
-                    Navigator.of(dialogContext).pop(true); // User confirmed
+                    dialogContext.pop(true); // User confirmed
                   },
                 ),
               ],

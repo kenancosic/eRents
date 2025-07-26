@@ -1,6 +1,8 @@
-import 'base_provider.dart';
+import 'package:flutter/material.dart';
 
-class NavigationProvider extends BaseProvider {
+/// Navigation provider for managing bottom navigation state
+/// This provider doesn't need API access, so it extends ChangeNotifier directly
+class NavigationProvider extends ChangeNotifier {
   int _currentIndex = 0;
 
   int get currentIndex => _currentIndex;

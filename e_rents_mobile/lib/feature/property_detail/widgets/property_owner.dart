@@ -137,7 +137,7 @@ class _PropertyOfferDialogState extends State<_PropertyOfferDialog> {
 
       // Show success message
       if (mounted) {
-        Navigator.of(context).pop();
+        context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
           CustomSnackBar.showSuccessSnackBar(
             'Property offer sent successfully!',
@@ -188,7 +188,7 @@ class _PropertyOfferDialogState extends State<_PropertyOfferDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+          onPressed: _isLoading ? null : () => context.pop(),
           child: const Text('Cancel'),
         ),
         CustomButton(

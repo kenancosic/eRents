@@ -1,34 +1,27 @@
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'dart:convert';
 
 /// Provider for managing saved/favorite properties
 /// Consolidates logic from SavedCollectionProvider, SavedRepository, and SavedService
 /// Following the desktop refactoring pattern: View → Provider → ApiService
-class SavedProvider extends ChangeNotifier {
-  final ApiService _api;
+class SavedProvider extends BaseProvider {
   final SecureStorageService _storage;
 
-  SavedProvider(this._api, this._storage);
+  SavedProvider(super.api, this._storage);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  bool _isLoading = false;
-  String? _error;
   List<Property> _items = [];
   List<Property> _filteredItems = [];
   String _searchQuery = '';
   Map<String, dynamic> _currentFilters = {};
   
-  // Cache management
-  DateTime? _lastCacheTime;
-  static const Duration _cacheTtl = Duration(minutes: 15);
   static const String _savedPropertiesKey = 'saved_properties';
 
   // ─── Getters ────────────────────────────────────────────────────────────
-  bool get isLoading => _isLoading;
-  String? get error => _error;
   List<Property> get items => _filteredItems;
   List<Property> get allItems => _items;
   String get searchQuery => _searchQuery;
@@ -38,79 +31,71 @@ class SavedProvider extends ChangeNotifier {
   int get savedCount => _items.length;
   bool get hasSavedProperties => _items.isNotEmpty;
 
-  // ─── Cache Management ───────────────────────────────────────────────────
-  bool get _isCacheValid {
-    if (_lastCacheTime == null) return false;
-    return DateTime.now().difference(_lastCacheTime!) < _cacheTtl;
-  }
-
-  void _updateCache() {
-    _lastCacheTime = DateTime.now();
-  }
-
-  void _clearCache() {
-    _lastCacheTime = null;
-  }
-
   // ─── Public API ─────────────────────────────────────────────────────────
 
   /// Load all saved properties
   Future<void> loadSavedProperties({bool forceRefresh = false}) async {
-    if (!forceRefresh && _isCacheValid && _items.isNotEmpty) {
-      debugPrint('SavedProvider: Using cached saved properties');
-      return;
+    if (!forceRefresh) {
+      // Try cache first
+      final cachedProperties = getCache<List<Property>>('saved_properties');
+      if (cachedProperties != null) {
+        _items = cachedProperties;
+        _applySearchAndFilters();
+        return;
+      }
     }
 
-    await _execute(() async {
-      debugPrint('SavedProvider: Loading saved properties');
-      
-      // First try to get from local storage for offline support
-      List<Property> properties = [];
-      
-      try {
-        final savedJson = await _storage.getData(_savedPropertiesKey);
-        if (savedJson != null) {
-          final List<dynamic> savedList = json.decode(savedJson);
-          properties = savedList.map((json) => Property.fromJson(json)).toList();
-          debugPrint('SavedProvider: Loaded ${properties.length} properties from local storage');
-        }
-      } catch (e) {
-        debugPrint('SavedProvider: Failed to load from local storage: $e');
-      }
-
-      // If no local data or force refresh, try to fetch from API
-      if (properties.isEmpty || forceRefresh) {
+    final properties = await executeWithCacheAndMessage(
+      'saved_properties',
+      () async {
+        // First try local storage for offline support
         try {
-          final response = await _api.get('/user/saved-properties', authenticated: true);
-          if (response.statusCode == 200) {
-            final responseData = json.decode(response.body);
-            final List<dynamic> savedList = responseData['data'] ?? [];
-            properties = savedList.map((json) => Property.fromJson(json)).toList();
-            
-            // Cache locally
-            await _cacheSavedProperties(properties);
-            debugPrint('SavedProvider: Loaded ${properties.length} properties from API');
+          final savedJson = await _storage.getData(_savedPropertiesKey);
+          if (savedJson != null) {
+            final List<dynamic> savedList = json.decode(savedJson);
+            return savedList.map((json) => Property.fromJson(json)).toList();
           }
         } catch (e) {
-          debugPrint('SavedProvider: Failed to load from API: $e');
-          if (properties.isEmpty) {
-            throw Exception('Failed to load saved properties');
-          }
+          debugPrint('SavedProvider: Failed to load from local storage: $e');
         }
-      }
 
-      _items = properties;
-      _applySearchAndFilters();
-      _updateCache();
-      
-      debugPrint('SavedProvider: Loaded ${_items.length} saved properties');
-    });
+        // Fallback to API
+        final savedList = await api.getListAndDecode(
+          '/user/saved-properties',
+          Property.fromJson,
+          authenticated: true,
+        );
+        
+        // Cache locally for offline support
+        await _cacheSavedProperties(savedList);
+        return savedList;
+      },
+      'Failed to load saved properties',
+      cacheTtl: const Duration(minutes: 15),
+    );
+
+    _items = properties ?? [];
+    _applySearchAndFilters();
   }
 
   /// Refresh saved properties (force reload from API)
   Future<void> refreshSavedProperties() async {
-    _clearCache();
-    await loadSavedProperties(forceRefresh: true);
+    await refreshCachedData(
+      'saved_properties',
+      () async {
+        final savedList = await api.getListAndDecode(
+          '/user/saved-properties',
+          Property.fromJson,
+          authenticated: true,
+        );
+        await _cacheSavedProperties(savedList);
+        return savedList;
+      },
+      cacheTtl: const Duration(minutes: 15),
+    );
+    
+    _items = getCache<List<Property>>('saved_properties') ?? [];
+    _applySearchAndFilters();
   }
 
   /// Check if a property is saved
@@ -122,65 +107,79 @@ class SavedProvider extends ChangeNotifier {
   Future<bool> toggleSavedStatus(Property property) async {
     bool newStatus = false;
 
-    await _execute(() async {
+    await executeWithStateAndMessage(() async {
       final isSaved = isPropertySaved(property.propertyId);
 
       if (isSaved) {
-        // Remove from saved
-        await _unsavePropertyInternal(property.propertyId);
+        final wasRemoved = await _unsavePropertyInternal(property.propertyId);
+        if (wasRemoved) {
+          _items.removeWhere((p) => p.propertyId == property.propertyId);
+          invalidateCache('saved_properties');
+          _applySearchAndFilters();
+        }
         newStatus = false;
-        debugPrint('SavedProvider: Removed property ${property.propertyId} from saved');
       } else {
-        // Add to saved
         await _savePropertyInternal(property);
+        if (!_items.any((p) => p.propertyId == property.propertyId)) {
+          _items.add(property);
+          invalidateCache('saved_properties');
+          _applySearchAndFilters();
+        }
         newStatus = true;
-        debugPrint('SavedProvider: Added property ${property.propertyId} to saved');
       }
 
-      // Reload to get updated list
-      await loadSavedProperties(forceRefresh: true);
-    });
+      debugPrint(
+        'SavedProvider: Toggled ${property.propertyId} to ${newStatus ? 'saved' : 'unsaved'}',
+      );
+    }, 'Failed to toggle property saved status');
 
     return newStatus;
   }
 
   /// Save a property to favorites
   Future<void> saveProperty(Property property) async {
-    if (!isPropertySaved(property.propertyId)) {
-      await _execute(() async {
-        await _savePropertyInternal(property);
-        await loadSavedProperties(forceRefresh: true);
-        debugPrint('SavedProvider: Saved property ${property.propertyId}');
-      });
-    }
+    await executeWithStateAndMessage(() async {
+      await _savePropertyInternal(property);
+      
+      // Update local state optimistically
+      if (!_items.any((p) => p.propertyId == property.propertyId)) {
+        _items.add(property);
+        // Invalidate cache to force refresh next time
+        invalidateCache('saved_properties');
+        _applySearchAndFilters();
+      }
+    }, 'Failed to save property');
   }
 
   /// Remove a property from saved list
-  Future<bool> unsaveProperty(Property property) async {
-    bool removed = false;
-    await _execute(() async {
-      removed = await _unsavePropertyInternal(property.propertyId);
-      await loadSavedProperties(forceRefresh: true);
-      debugPrint('SavedProvider: Unsaved property ${property.propertyId}');
-    });
-    return removed;
+  Future<void> unsaveProperty(Property property) async {
+    await executeWithStateAndMessage(() async {
+      final wasRemoved = await _unsavePropertyInternal(property.propertyId);
+      
+      // Update local state optimistically
+      if (wasRemoved) {
+        _items.removeWhere((p) => p.propertyId == property.propertyId);
+        // Invalidate cache to force refresh next time
+        invalidateCache('saved_properties');
+        _applySearchAndFilters();
+      }
+    }, 'Failed to remove property');
   }
 
   /// Clear all saved properties
   Future<void> clearSavedProperties() async {
-    await _execute(() async {
+    await executeWithStateAndMessage(() async {
+      // Clear on server
+      await api.delete('/user/saved-properties', authenticated: true);
+      
       // Clear local storage
       await _storage.clearData(_savedPropertiesKey);
-
-      // Clear on server
-      await _api.delete('/user/saved-properties', authenticated: true);
-
-      _items.clear();
-      _applySearchAndFilters();
-      _clearCache();
       
-      debugPrint('SavedProvider: Cleared all saved properties');
-    });
+      // Clear local state
+      _items.clear();
+      invalidateCache('saved_properties');
+      _applySearchAndFilters();
+    }, 'Failed to clear saved properties');
   }
 
   /// Search saved properties
@@ -249,38 +248,7 @@ class SavedProvider extends ChangeNotifier {
 
   // ─── Internal Helpers ───────────────────────────────────────────────────
 
-  /// Execute operation with loading state and error handling
-  Future<void> _execute(Future<void> Function() operation) async {
-    if (_isLoading) return;
 
-    _setLoading(true);
-    _clearError();
-
-    try {
-      await operation();
-    } catch (e) {
-      _setError(e.toString());
-      debugPrint('SavedProvider: Error - $e');
-      rethrow;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String error) {
-    _error = error;
-    notifyListeners();
-  }
-
-  void _clearError() {
-    _error = null;
-    notifyListeners();
-  }
 
   /// Apply search and filters to the property list
   void _applySearchAndFilters() {
@@ -352,7 +320,7 @@ class SavedProvider extends ChangeNotifier {
     }
 
     // Then update on server
-    await _api.post(
+    await api.post(
         '/user/saved-properties',
         {
           'propertyId': property.propertyId,
@@ -369,7 +337,7 @@ class SavedProvider extends ChangeNotifier {
     await _cacheSavedProperties(currentSaved);
 
     // Then update on server
-    await _api.delete('/user/saved-properties/$propertyId', authenticated: true);
+    await api.delete('/user/saved-properties/$propertyId', authenticated: true);
 
     return currentSaved.length < initialLength; // True if something was removed
   }

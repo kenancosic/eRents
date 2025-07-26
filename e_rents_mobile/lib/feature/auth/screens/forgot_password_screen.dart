@@ -127,7 +127,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                                           .showSnackBar(
                                         SnackBar(
                                             content: Text(
-                                                provider.errorMessage ??
+                                                provider.error ??
                                                     'Failed to send email')),
                                       );
                                     }

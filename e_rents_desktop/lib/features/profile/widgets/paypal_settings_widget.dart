@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 
@@ -162,7 +163,7 @@ class PaypalSettingsWidget extends StatelessWidget {
           actions: [
             TextButton(
               child: const Text('OK'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () => dialogContext.pop(),
             ),
           ],
         );

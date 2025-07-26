@@ -210,42 +210,117 @@ class ApiService {
   // ======================================
 
   Future<Property> getPropertyById(String id) async {
-    // TODO: Implement API call
-    throw UnimplementedError('getPropertyById not implemented');
+    final response = await get('/properties/$id', authenticated: true);
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Property.fromJson(data);
+    } else {
+      throw Exception('Failed to fetch property: ${response.statusCode} - ${response.body}');
+    }
   }
 
   Future<List<Review>> getReviewsForProperty(String propertyId) async {
-    // TODO: Implement API call
-    throw UnimplementedError('getReviewsForProperty not implemented');
+    final response = await get('/properties/$propertyId/reviews');
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.map((reviewJson) => Review.fromJson(reviewJson)).toList();
+    } else {
+      throw Exception('Failed to fetch reviews: ${response.statusCode} - ${response.body}');
+    }
   }
 
   Future<List<MaintenanceIssue>> getMaintenanceIssuesForProperty(String propertyId) async {
-    // TODO: Implement API call
-    throw UnimplementedError('getMaintenanceIssuesForProperty not implemented');
+    final response = await get('/properties/$propertyId/maintenance-issues', authenticated: true);
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.map((issueJson) => MaintenanceIssue.fromJson(issueJson)).toList();
+    } else {
+      throw Exception('Failed to fetch maintenance issues: ${response.statusCode} - ${response.body}');
+    }
   }
 
   Future<List<Property>> searchProperties(Map<String, dynamic> queryParams) async {
-    // TODO: Implement API call
-    throw UnimplementedError('searchProperties not implemented');
+    // Build query string from parameters
+    final queryString = queryParams.entries
+        .where((entry) => entry.value != null && entry.value.toString().isNotEmpty)
+        .map((entry) => '${Uri.encodeComponent(entry.key)}=${Uri.encodeComponent(entry.value.toString())}')
+        .join('&');
+    
+    final endpoint = queryString.isNotEmpty ? '/properties?$queryString' : '/properties';
+    final response = await get(endpoint, authenticated: true);
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List;
+      return data.map((propertyJson) => Property.fromJson(propertyJson)).toList();
+    } else {
+      throw Exception('Failed to search properties: ${response.statusCode} - ${response.body}');
+    }
   }
 
   Future<Review> createReview(String propertyId, String comment, double rating) async {
-    // TODO: Implement API call
-    throw UnimplementedError('createReview not implemented');
+    final response = await post(
+      '/properties/$propertyId/reviews',
+      {
+        'comment': comment,
+        'rating': rating,
+      },
+      authenticated: true,
+    );
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Review.fromJson(data);
+    } else {
+      throw Exception('Failed to create review: ${response.statusCode} - ${response.body}');
+    }
   }
 
-  Future<MaintenanceIssue> createMaintenanceIssue(String propertyId, String title, String description) {
-    // TODO: Implement actual API call
-    throw UnimplementedError();
+  Future<MaintenanceIssue> createMaintenanceIssue(String propertyId, String title, String description) async {
+    final response = await post(
+      '/properties/$propertyId/maintenance-issues',
+      {
+        'title': title,
+        'description': description,
+        'priority': 'medium', // Default priority
+        'status': 'pending',  // Default status
+      },
+      authenticated: true,
+    );
+    
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return MaintenanceIssue.fromJson(data);
+    } else {
+      throw Exception('Failed to create maintenance issue: ${response.statusCode} - ${response.body}');
+    }
   }
 
-  Future<MaintenanceIssue> updateMaintenanceIssue(String issueId, Map<String, dynamic> updateData) {
-    // TODO: Implement actual API call
-    throw UnimplementedError();
+  Future<MaintenanceIssue> updateMaintenanceIssue(String issueId, Map<String, dynamic> updateData) async {
+    final response = await put(
+      '/maintenance-issues/$issueId',
+      updateData,
+      authenticated: true,
+    );
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return MaintenanceIssue.fromJson(data);
+    } else {
+      throw Exception('Failed to update maintenance issue: ${response.statusCode} - ${response.body}');
+    }
   }
 
-  Future<Booking> getBookingById(String bookingId) {
-    // TODO: Implement actual API call
-    throw UnimplementedError();
+  Future<Booking> getBookingById(String bookingId) async {
+    final response = await get('/bookings/$bookingId', authenticated: true);
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Booking.fromJson(data);
+    } else {
+      throw Exception('Failed to fetch booking: ${response.statusCode} - ${response.body}');
+    }
   }
 }

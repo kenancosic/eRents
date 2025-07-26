@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
-import 'package:e_rents_mobile/core/services/service_locator.dart';
+import 'package:provider/provider.dart';
 
 class PropertyImageSlider extends StatelessWidget {
   final Property property;
@@ -17,11 +17,13 @@ class PropertyImageSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final apiService = context.read<ApiService>();
+    
     return Stack(
       children: [
         CustomSlider(
           items: property.imageIds
-              .map((imageId) => ServiceLocator.get<ApiService>().buildImage(
+              .map((imageId) => apiService.buildImage(
                     '/Image/$imageId',
                     width: double.infinity,
                     height: 350,

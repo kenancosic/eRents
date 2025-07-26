@@ -1,42 +1,45 @@
 import 'package:e_rents_mobile/core/models/paged_list.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/property_search_object.dart';
-import 'dart:convert';
+import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:flutter/material.dart';
 
-class ExploreProvider extends ChangeNotifier {
-  final ApiService _api;
-  ExploreProvider(this._api);
+/// Property exploration provider for searching and filtering properties
+/// Migrated from ChangeNotifier to BaseProvider for consistent state management
+/// Uses built-in caching, error handling, pagination, and type-safe API calls
+class ExploreProvider extends BaseProvider {
+  ExploreProvider(ApiService api) : super(api);
 
-  // --- State ---
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-
-  String? _error;
-  String? get error => _error;
+  // ─── State ──────────────────────────────────────────────────────────────
+  // Use inherited loading/error state from BaseProvider
+  // isLoading, error, hasError are available from BaseProvider
 
   PagedList<Property>? _properties;
-  PagedList<Property>? get properties => _properties;
-
   PropertySearchObject _searchObject = PropertySearchObject();
+
+  // ─── Getters ────────────────────────────────────────────────────────────
+  PagedList<Property>? get properties => _properties;
   PropertySearchObject get searchObject => _searchObject;
+  
+  // Convenience getters for UI
+  List<Property> get propertyList => _properties?.items ?? [];
+  bool get hasProperties => _properties?.items.isNotEmpty ?? false;
+  bool get hasMorePages => _properties?.hasNextPage ?? false;
+  int get totalCount => _properties?.totalCount ?? 0;
+  int get currentPage => _searchObject.page;
 
-  // --- Public API ---
+  // ─── Public API ─────────────────────────────────────────────────────────
+
+  /// Fetch properties with built-in caching and pagination support
+  /// Uses BaseProvider's executeWithCache for 10-minute caching
   Future<void> fetchProperties({bool loadMore = false}) async {
-    if (_isLoading) return;
-
-    _isLoading = true;
-    _error = null;
-    if (!loadMore) {
-      // If it's a refresh, notify to show loading indicator immediately
-      notifyListeners();
-    }
-
+    // Skip if already loading or no more pages available for load more
+    if (isLoading) return;
+    
     if (loadMore) {
       if (_properties == null || !_properties!.hasNextPage) {
-        _isLoading = false;
-        notifyListeners();
         return;
       }
       _searchObject.page++;
@@ -44,38 +47,42 @@ class ExploreProvider extends ChangeNotifier {
       _searchObject.page = 1;
     }
 
-    try {
-            final queryParams = _searchObject.toQueryParameters();
-      final uri = Uri(path: 'properties/search', queryParameters: queryParams);
+    // Generate cache key based on search filters
+    final searchFilters = _searchObject.toQueryParameters();
+    final cacheKey = generateCacheKey('explore_properties', searchFilters);
+    
+    final pagedResult = await executeWithCache(
+      cacheKey,
+      () => api.searchAndDecode(
+        'properties/search',
+        Property.fromJson,
+        filters: searchFilters,
+        page: _searchObject.page,
+      ),
+      cacheTtl: const Duration(minutes: 10),
+      errorMessage: 'Failed to load properties',
+    );
 
-      final response = await _api.get(uri.toString());
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final pagedResult = PagedList<Property>.fromJson(
-            data, (json) => Property.fromJson(json as Map<String, dynamic>));
-
-        if (_properties != null && loadMore) {
-          _properties = PagedList(
-            items: [..._properties!.items, ...pagedResult.items],
-            page: pagedResult.page,
-            pageSize: pagedResult.pageSize,
-            totalCount: pagedResult.totalCount,
-          );
-        } else {
-          _properties = pagedResult;
-        }
+    if (pagedResult != null) {
+      if (loadMore && _properties != null) {
+        // Append to existing results for load more
+        _properties = PagedList(
+          items: [..._properties!.items, ...pagedResult.items],
+          page: pagedResult.page,
+          pageSize: pagedResult.pageSize,
+          totalCount: pagedResult.totalCount,
+        );
       } else {
-        _error = 'Failed to load properties. Status code: ${response.statusCode}';
+        // Replace results for new search/refresh
+        _properties = pagedResult;
       }
-    } catch (e) {
-      _error = "Failed to fetch properties: $e";
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      
+      debugPrint('ExploreProvider: Loaded ${pagedResult.items.length} properties (page ${pagedResult.page})');
     }
   }
 
+  /// Apply filters to property search and refresh results
+  /// Invalidates cache to ensure fresh results with new filters
   void applyFilters(Map<String, dynamic> filters) {
     _searchObject = PropertySearchObject(
       cityName: filters['city'],
@@ -84,11 +91,80 @@ class ExploreProvider extends ChangeNotifier {
       sortBy: filters['sortBy'],
       sortDescending: filters['sortDescending'],
     );
+    
+    // Clear existing results and cache for new filter criteria
+    _properties = null;
+    invalidateCache('explore_properties');
+    
     fetchProperties();
+    debugPrint('ExploreProvider: Applied filters - city: ${filters['city']}, price: ${filters['minPrice']}-${filters['maxPrice']}');
   }
 
+  /// Search properties by query string
+  /// Clears previous results and starts fresh search
   void search(String query) {
     _searchObject = PropertySearchObject(cityName: query);
+    
+    // Clear existing results and cache for new search
+    _properties = null;
+    invalidateCache('explore_properties');
+    
     fetchProperties();
+    debugPrint('ExploreProvider: Searching for properties with query: "$query"');
+  }
+
+  /// Load more properties (pagination)
+  /// Uses existing search criteria to load next page
+  Future<void> loadMore() async {
+    if (hasMorePages && !isLoading) {
+      await fetchProperties(loadMore: true);
+    }
+  }
+
+  /// Refresh current search results
+  /// Forces cache invalidation and reloads current search
+  Future<void> refresh() async {
+    invalidateCache('explore_properties');
+    _searchObject.page = 1; // Reset to first page
+    _properties = null; // Clear existing results
+    await fetchProperties();
+    debugPrint('ExploreProvider: Refreshed property search results');
+  }
+
+  /// Clear all search criteria and results
+  void clearSearch() {
+    _searchObject = PropertySearchObject();
+    _properties = null;
+    invalidateCache();
+    notifyListeners();
+    debugPrint('ExploreProvider: Cleared search criteria and results');
+  }
+
+  /// Update search object with new criteria without immediately fetching
+  /// Useful for building complex search criteria before executing
+  void updateSearchCriteria({
+    String? cityName,
+    double? minPrice,
+    double? maxPrice,
+    String? sortBy,
+    bool? sortDescending,
+  }) {
+    _searchObject = PropertySearchObject(
+      cityName: cityName ?? _searchObject.cityName,
+      minPrice: minPrice ?? _searchObject.minPrice,
+      maxPrice: maxPrice ?? _searchObject.maxPrice,
+      sortBy: sortBy ?? _searchObject.sortBy,
+      sortDescending: sortDescending ?? _searchObject.sortDescending,
+    );
+    
+    debugPrint('ExploreProvider: Updated search criteria');
+  }
+
+  /// Get property by ID from current results
+  Property? getPropertyById(int propertyId) {
+    return propertyList.cast<Property?>().firstWhere(
+      (property) => property?.propertyId == propertyId,
+      orElse: () => null,
+    );
   }
 }
