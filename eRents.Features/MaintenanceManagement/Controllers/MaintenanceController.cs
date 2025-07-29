@@ -1,6 +1,7 @@
 using eRents.Features.MaintenanceManagement.DTOs;
 using eRents.Features.MaintenanceManagement.Services;
 using eRents.Features.Shared.Controllers;
+using eRents.Features.Shared.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -57,25 +58,7 @@ public class MaintenanceController : BaseController
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<MaintenanceIssueResponse>> GetMaintenanceIssue(int id)
-    {
-        try
-        {
-            var issue = await _maintenanceService.GetMaintenanceIssueByIdAsync(id);
-            if (issue == null)
-                return NotFound(new { message = "Maintenance issue not found" });
-
-            return Ok(issue);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving maintenance issue {IssueId}", id);
-            return BadRequest(new { message = "Failed to retrieve maintenance issue" });
-        }
-    }
+        => await this.GetByIdAsync<MaintenanceIssueResponse, int>(id, _maintenanceService.GetMaintenanceIssueByIdAsync, _logger);
 
     /// <summary>
     /// Get maintenance issues for specific property
@@ -104,113 +87,35 @@ public class MaintenanceController : BaseController
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<MaintenanceIssueResponse>> CreateMaintenanceIssue([FromBody] MaintenanceIssueRequest request)
-    {
-        try
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var issue = await _maintenanceService.CreateMaintenanceIssueAsync(request);
-            return CreatedAtAction(nameof(GetMaintenanceIssue), new { id = issue.MaintenanceIssueId }, issue);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating maintenance issue");
-            return BadRequest(new { message = "Failed to create maintenance issue" });
-        }
-    }
+        => await this.CreateAsync<MaintenanceIssueRequest, MaintenanceIssueResponse>(
+            request,
+            _maintenanceService.CreateMaintenanceIssueAsync,
+            _logger,
+            nameof(GetMaintenanceIssue));
 
     /// <summary>
     /// Update existing maintenance issue
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<MaintenanceIssueResponse>> UpdateMaintenanceIssue(int id, [FromBody] MaintenanceIssueRequest request)
-    {
-        try
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var issue = await _maintenanceService.UpdateMaintenanceIssueAsync(id, request);
-            return Ok(issue);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating maintenance issue {IssueId}", id);
-            return BadRequest(new { message = "Failed to update maintenance issue" });
-        }
-    }
+        => await this.UpdateAsync<MaintenanceIssueRequest, MaintenanceIssueResponse>(id, request, _maintenanceService.UpdateMaintenanceIssueAsync, _logger);
 
     /// <summary>
     /// Update maintenance issue status
     /// </summary>
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateMaintenanceStatus(int id, [FromBody] MaintenanceStatusUpdateRequest request)
-    {
-        try
+        => await this.ExecuteAsync(async () =>
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             await _maintenanceService.UpdateMaintenanceStatusAsync(id, request);
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating maintenance issue {IssueId} status", id);
-            return BadRequest(new { message = "Failed to update maintenance status" });
-        }
-    }
+        }, _logger, "UpdateMaintenanceStatus");
 
     /// <summary>
     /// Delete maintenance issue
     /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMaintenanceIssue(int id)
-    {
-        try
-        {
-            await _maintenanceService.DeleteMaintenanceIssueAsync(id);
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting maintenance issue {IssueId}", id);
-            return BadRequest(new { message = "Failed to delete maintenance issue" });
-        }
-    }
+        => await this.DeleteAsync(id, _maintenanceService.DeleteMaintenanceIssueAsync, _logger);
 
     #endregion
 
@@ -221,18 +126,7 @@ public class MaintenanceController : BaseController
     /// </summary>
     [HttpGet("statistics")]
     public async Task<ActionResult<MaintenanceStatisticsResponse>> GetMaintenanceStatistics()
-    {
-        try
-        {
-            var statistics = await _maintenanceService.GetMaintenanceStatisticsAsync();
-            return Ok(statistics);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving maintenance statistics");
-            return BadRequest(new { message = "Failed to retrieve maintenance statistics" });
-        }
-    }
+        => await this.ExecuteAsync(async () => await _maintenanceService.GetMaintenanceStatisticsAsync(), _logger, "GetMaintenanceStatistics");
 
     /// <summary>
     /// Get maintenance summary for specific property
@@ -260,19 +154,8 @@ public class MaintenanceController : BaseController
     /// Get overdue maintenance issues
     /// </summary>
     [HttpGet("overdue")]
-    public async Task<ActionResult<IEnumerable<MaintenanceIssueResponse>>> GetOverdueMaintenanceIssues()
-    {
-        try
-        {
-            var overdueIssues = await _maintenanceService.GetOverdueMaintenanceIssuesAsync();
-            return Ok(overdueIssues);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving overdue maintenance issues");
-            return BadRequest(new { message = "Failed to retrieve overdue maintenance issues" });
-        }
-    }
+    public async Task<ActionResult<List<MaintenanceIssueResponse>>> GetOverdueMaintenanceIssues()
+        => await this.ExecuteAsync(async () => await _maintenanceService.GetOverdueMaintenanceIssuesAsync(), _logger, "GetOverdueMaintenanceIssues");
 
     /// <summary>
     /// Get recent maintenance issues

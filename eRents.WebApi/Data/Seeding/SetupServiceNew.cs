@@ -311,35 +311,40 @@ namespace eRents.WebApi.Data.Seeding
 
 		#region 4. Properties
 		private async Task SeedPropertiesAsync(ERentsContext context)
-		{
-			_logger?.LogInformation("Seeding properties...");
+{
+    _logger?.LogInformation("Seeding properties...");
 
-			var landlords = await context.Users.Where(u => u.UserTypeNavigation.TypeName == "Landlord").ToListAsync();
-			var propertyTypes = await context.PropertyTypes.ToListAsync();
-			var rentingTypes = await context.RentingTypes.ToListAsync();
-			var amenities = await context.Amenities.ToListAsync();
-			var propertyStatuses = await context.PropertyStatuses.ToListAsync();
+    var landlords = await context.Users.Where(u => u.UserTypeNavigation.TypeName == "Landlord").ToListAsync();
+    var propertyTypes = await context.PropertyTypes.ToListAsync();
+    var rentingTypes = await context.RentingTypes.ToListAsync();
+    var amenities = await context.Amenities.ToListAsync();
+    var propertyStatuses = await context.PropertyStatuses.ToListAsync();
 
-			var properties = new List<Property>();
+    var properties = new List<Property>();
 
-			for (int i = 0; i < 15; i++)
-			{
-				var landlord = landlords[_random.Next(landlords.Count)];
-				var property = CreateRealisticProperty(landlord, propertyTypes, rentingTypes, amenities, propertyStatuses);
-				properties.Add(property);
+    // Find the main landlord for testing purposes
+    var mainLandlord = landlords.FirstOrDefault(l => l.Email == "landlord@erent.com");
 
-				// Add availability
-				context.PropertyAvailabilities.Add(new PropertyAvailability
-				{
-					Property = property,
-					StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
-					EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)) // Available for one year
-				});
-			}
+    for (int i = 0; i < 15; i++)
+    {
+        // Assign the first 5 properties to the main landlord, and the rest randomly
+        var landlord = (i < 5 && mainLandlord != null) ? mainLandlord : landlords[_random.Next(landlords.Count)];
+        
+        var property = CreateRealisticProperty(landlord, propertyTypes, rentingTypes, amenities, propertyStatuses);
+        properties.Add(property);
 
-			context.Properties.AddRange(properties);
-			await context.SaveChangesAsync();
-		}
+        // Add availability
+        context.PropertyAvailabilities.Add(new PropertyAvailability
+        {
+            Property = property,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            EndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)) // Available for one year
+        });
+    }
+
+    context.Properties.AddRange(properties);
+    await context.SaveChangesAsync();
+}
 
 		private Property CreateRealisticProperty(User landlord, List<PropertyType> propertyTypes, List<RentingType> rentingTypes, List<Amenity> amenities, List<eRents.Domain.Models.PropertyStatus> propertyStatuses)
 		{

@@ -1,6 +1,8 @@
 using eRents.Features.UserManagement.DTOs;
 using eRents.Features.UserManagement.Services;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Controllers;
+using eRents.Features.Shared.Extensions;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,13 +12,12 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Features.UserManagement.Controllers;
 
 /// <summary>
-/// Users management controller following new feature architecture
-/// Uses service directly - no repository layer or base controller inheritance
+/// Users management controller using unified BaseController CRUD operations
+/// Refactored to use BaseController for 80%+ boilerplate reduction
 /// </summary>
-[ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UsersController : ControllerBase
+public class UsersController : BaseController
 {
     private readonly IUserService _userService;
     private readonly ILogger<UsersController> _logger;
@@ -33,264 +34,139 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get paginated list of users
+    /// Get paginated list of users using unified BaseController operation
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<PagedResponse<UserResponse>>> GetPaged([FromQuery] UserSearchObject search)
     {
-        try
+        // Only landlords can access general user listing
+        var role = _currentUserService.UserRole;
+        
+        if (role != "Landlord")
         {
-            // Only landlords can access general user listing
-            var role = _currentUserService.UserRole;
-            
-            if (role != "Landlord")
+            _logger.LogWarning("Non-landlord user {UserId} attempted to access general user listing",
+                _currentUserService.GetUserIdAsInt());
+            return Ok(new PagedResponse<UserResponse>
             {
-                _logger.LogWarning("Non-landlord user {UserId} attempted to access general user listing", 
-                    _currentUserService.GetUserIdAsInt());
-                return Ok(new PagedResponse<UserResponse>
-                {
-                    Items = new List<UserResponse>(),
-                    TotalCount = 0,
-                    Page = search.Page,
-                    PageSize = search.PageSize
-                });
-            }
+                Items = new List<UserResponse>(),
+                TotalCount = 0,
+                Page = search.Page,
+                PageSize = search.PageSize
+            });
+        }
 
-            var result = await _userService.GetPagedAsync(search);
-            
-            _logger.LogInformation("Retrieved {Count} users with pagination", 
-                result.Items.Count);
-                
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User retrieval failed");
-            return StatusCode(500, "An error occurred while retrieving users");
-        }
+        return await this.ExecuteAsync(() => _userService.GetPagedAsync(search), _logger, "GetPaged");
     }
 
     /// <summary>
-    /// Get user by ID
+    /// Get user by ID using unified BaseController operation
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<UserResponse>> GetById(int id)
-    {
-        try
-        {
-            var result = await _userService.GetByIdAsync(id);
-            
-            if (result == null)
-            {
-                _logger.LogWarning("User not found: {Id}", id);
-                return NotFound($"User with ID {id} not found");
-            }
-            
-            _logger.LogInformation("Retrieved user {Id}", id);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User retrieval failed for ID {Id}", id);
-            return StatusCode(500, "An error occurred while retrieving the user");
-        }
-    }
+    public async Task<ActionResult<UserResponse>> GetById(int id) =>
+        await this.GetByIdAsync<UserResponse, int>(id, _userService.GetByIdAsync, _logger);
 
     /// <summary>
-    /// Create a new user
+    /// Create a new user using unified BaseController operation
     /// </summary>
     [HttpPost]
     [Authorize(Roles = "Landlord")]
     public async Task<ActionResult<UserResponse>> Create([FromBody] UserRequest request)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-            var result = await _userService.CreateAsync(request);
-
-            _logger.LogInformation("User created successfully: {Id}", result.Id);
-
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User creation failed");
-            return StatusCode(500, "An error occurred while creating the user");
-        }
+        return await this.CreateAsync<UserRequest, UserResponse>(request, _userService.CreateAsync, _logger, nameof(GetById));
     }
 
     /// <summary>
-    /// Update an existing user
+    /// Update an existing user using unified BaseController operation
     /// </summary>
     [HttpPut("{id}")]
     [Authorize]
     public async Task<ActionResult<UserResponse>> Update(int id, [FromBody] UserUpdateRequest request)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-            var result = await _userService.UpdateAsync(id, request);
-
-            if (result == null)
-            {
-                _logger.LogWarning("User not found for update: {Id}", id);
-                return NotFound($"User with ID {id} not found");
-            }
-
-            _logger.LogInformation("User updated successfully: {Id}", id);
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException)
+        return await this.UpdateAsync<UserUpdateRequest, UserResponse>(id, request, async (userId, req) =>
         {
-            _logger.LogWarning("Unauthorized attempt to update user {Id}", id);
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User update failed for ID {Id}", id);
-            return StatusCode(500, "An error occurred while updating the user");
-        }
+            var result = await _userService.UpdateAsync(userId, req);
+            return result!; // Remove nullable since BaseController expects non-nullable
+        }, _logger);
     }
 
     /// <summary>
-    /// Delete a user
+    /// Delete a user using unified BaseController operation
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Roles = "Landlord")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        try
-        {
-            var result = await _userService.DeleteAsync(id);
-            
-            if (!result)
-            {
-                _logger.LogWarning("User not found for deletion: {Id}", id);
-                return NotFound($"User with ID {id} not found");
-            }
-            
-            _logger.LogInformation("User deleted successfully: {Id}", id);
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            _logger.LogWarning("Unauthorized attempt to delete user {Id}", id);
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Cannot delete user {Id} due to dependencies", id);
-            return Conflict("Cannot delete user with related records");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User deletion failed for ID {Id}", id);
-            return StatusCode(500, "An error occurred while deleting the user");
-        }
-    }
+    public async Task<ActionResult> Delete(int id) =>
+        await this.DeleteAsync(id, async (userId) => { await _userService.DeleteAsync(userId); }, _logger);
 
     /// <summary>
-    /// Landlord only - Get all users with advanced filtering
+    /// Landlord only - Get all users with advanced filtering (Simplified)
     /// </summary>
     [HttpGet("all")]
     [Authorize(Roles = "Landlord")]
-    public async Task<ActionResult<IEnumerable<UserResponse>>> GetAllUsers([FromQuery] UserSearchObject searchObject)
-    {
-        try
+    public async Task<ActionResult<List<UserResponse>>> GetAllUsers([FromQuery] UserSearchObject searchObject) =>
+        await this.ExecuteAsync(async () =>
         {
-            var users = await _userService.GetAllUsersAsync(searchObject);
-            
-            var userId = _currentUserService.GetUserIdAsInt();
-            _logger.LogInformation("Landlord {LandlordId} retrieved {UserCount} users with filters", 
-                userId > 0 ? userId.ToString() : "unknown", users.Count());
-                
-            return Ok(users);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Get all users failed");
-            return StatusCode(500, "An error occurred while retrieving users");
-        }
-    }
+            var result = await _userService.GetAllUsersAsync(searchObject);
+            return result.ToList();
+        }, _logger, "GetAllUsers");
 
     /// <summary>
-    /// Landlord only - Get tenants for landlord's properties
+    /// Landlord only - Get tenants for landlord's properties (Simplified)
     /// </summary>
     [HttpGet("tenants")]
     [Authorize(Roles = "Landlord")]
-    public async Task<ActionResult<IEnumerable<UserResponse>>> GetTenants()
+    public async Task<ActionResult<List<UserResponse>>> GetTenants()
     {
-        try
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
+        {
+            _logger.LogWarning("Tenant retrieval failed - Invalid user ID claim for landlord");
+            return Unauthorized();
+        }
+
+        return await this.ExecuteAsync(async () =>
+        {
+            var result = await _userService.GetTenantsByLandlordAsync(landlordId);
+            return result.ToList();
+        }, _logger, "GetTenants");
+    }
+
+    /// <summary>
+    /// Landlord - Get users by role with restrictions (Simplified)
+    /// </summary>
+    [HttpGet("by-role/{role}")]
+    [Authorize(Roles = "Landlord")]
+    public async Task<ActionResult<List<UserResponse>>> GetUsersByRole(string role, [FromQuery] UserSearchObject searchObject)
+    {
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+        
+        // Landlords can only see tenants, and only their own tenants
+        if (userRole == "Landlord" && role.Equals("TENANT", StringComparison.OrdinalIgnoreCase))
         {
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
             {
-                _logger.LogWarning("Tenant retrieval failed - Invalid user ID claim for landlord");
+                _logger.LogWarning("Role-based user retrieval failed - Invalid user ID claim for landlord");
                 return Unauthorized();
             }
 
-            var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
-            
-            _logger.LogInformation("Landlord {LandlordId} retrieved {TenantCount} tenants", 
-                landlordId, tenants.Count());
-                
-            return Ok(tenants);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Get tenants failed");
-            return StatusCode(500, "An error occurred while retrieving tenants");
-        }
-    }
-
-    /// <summary>
-    /// Landlord - Get users by role with restrictions
-    /// </summary>
-    [HttpGet("by-role/{role}")]
-    [Authorize(Roles = "Landlord")]
-    public async Task<ActionResult<IEnumerable<UserResponse>>> GetUsersByRole(string role, [FromQuery] UserSearchObject searchObject)
-    {
-        try
-        {
-            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            
-            // Landlords can only see tenants, and only their own tenants
-            if (userRole == "Landlord" && role.Equals("TENANT", StringComparison.OrdinalIgnoreCase))
+            return await this.ExecuteAsync(async () =>
             {
-                var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var landlordId))
-                {
-                    _logger.LogWarning("Role-based user retrieval failed - Invalid user ID claim for landlord");
-                    return Unauthorized();
-                }
-
-                var tenants = await _userService.GetTenantsByLandlordAsync(landlordId);
-                
-                _logger.LogInformation("Landlord {LandlordId} retrieved {TenantCount} tenants by role", 
-                    landlordId, tenants.Count());
-                    
-                return Ok(tenants);
-            }
-            else
-            {
-                var userId = _currentUserService.GetUserIdAsInt();
-                _logger.LogWarning("Unauthorized role-based user access attempt by user {UserId} for role {Role}", 
-                    userId > 0 ? userId.ToString() : "unknown", role);
-                return Forbid("You do not have permission to access users of this role.");
-            }
+                var result = await _userService.GetTenantsByLandlordAsync(landlordId);
+                return result.ToList();
+            }, _logger, "GetUsersByRole");
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Get users by role failed for role {Role}", role);
-            return StatusCode(500, $"An error occurred while retrieving users with role {role}");
+            var userId = _currentUserService.GetUserIdAsInt();
+            _logger.LogWarning("Unauthorized role-based user access attempt by user {UserId} for role {Role}",
+                userId > 0 ? userId.ToString() : "unknown", role);
+            return Forbid("You do not have permission to access users of this role.");
         }
     }
 } 

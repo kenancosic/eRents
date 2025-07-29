@@ -1,380 +1,232 @@
-using eRents.Domain.Shared.Interfaces;
 using eRents.Features.BookingManagement.DTOs;
 using eRents.Features.BookingManagement.Services;
-using eRents.Features.PropertyManagement.DTOs;
+using eRents.Features.Shared.Controllers;
 using eRents.Features.Shared.DTOs;
-using eRents.Features.Shared.Services;
+using eRents.Features.Shared.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace eRents.Features.BookingManagement.Controllers;
-
-/// <summary>
-/// Bookings management controller using modular architecture
-/// Clean separation with BookingManagement feature services and DTOs
-/// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Authorize]
-public class BookingController : ControllerBase
+namespace eRents.Features.BookingManagement.Controllers
 {
-	private readonly IBookingService _bookingService;
-	private readonly ICurrentUserService _currentUserService;
-	private readonly ILogger<BookingController> _logger;
-
-	public BookingController(
-			IBookingService bookingService,
-			ICurrentUserService currentUserService,
-			ILogger<BookingController> logger)
+	[ApiController]
+	[Route("api/[controller]")]
+	[Authorize]
+	public class BookingController : BaseController
 	{
-		_bookingService = bookingService;
-		_currentUserService = currentUserService;
-		_logger = logger;
-	}
+		private readonly IBookingService _bookingService;
+		private readonly ILogger<BookingController> _logger;
 
-	/// <summary>
-	/// Get paginated bookings with filtering and sorting
-	/// </summary>
-	[HttpGet]
-	public async Task<ActionResult<PagedResponse<BookingResponse>>> GetBookings([FromQuery] BookingSearchObject search)
-	{
-		try
+		public BookingController(IBookingService bookingService, ILogger<BookingController> logger) : base()
 		{
-			var result = await _bookingService.GetBookingsAsync(search);
-			return Ok(result);
+			_bookingService = bookingService;
+			_logger = logger;
 		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving bookings for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, new { error = "An error occurred while retrieving bookings" });
-		}
-	}
 
-	/// <summary>
-	/// Get booking by ID
-	/// </summary>
-	[HttpGet("{id}")]
-	public async Task<ActionResult<BookingResponse>> GetBooking(int id)
-	{
-		try
+		/// <summary>
+		/// Get paged bookings with optional search and sorting
+		/// </summary>
+		[HttpGet]
+		public async Task<ActionResult<PagedResponse<BookingResponse>>> GetBookings([FromQuery] BookingSearchObject search)
 		{
-			var booking = await _bookingService.GetBookingByIdAsync(id);
-			if (booking == null)
-				return NotFound();
+			return await this.GetPagedAsync<BookingResponse, BookingSearchObject>(
+					search,
+					_bookingService.GetBookingsAsync,
+					_logger);
+		}
 
-			return Ok(booking);
-		}
-		catch (UnauthorizedAccessException)
+		/// <summary>
+		/// Get booking by ID
+		/// </summary>
+		[HttpGet("{id}")]
+		public async Task<ActionResult<BookingResponse>> GetBooking(int id)
 		{
-			return Forbid();
+			return await this.GetByIdAsync<BookingResponse, int>(
+					id,
+					_bookingService.GetBookingByIdAsync,
+					_logger);
 		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving booking {BookingId} for user {UserId}", id, _currentUserService.UserId);
-			return StatusCode(500, new { error = "An error occurred while retrieving the booking" });
-		}
-	}
 
-	/// <summary>
-	/// Create new booking
-	/// </summary>
-	[HttpPost]
-	[Authorize(Roles = "User,Tenant")]
-	public async Task<ActionResult<BookingResponse>> CreateBooking([FromBody] BookingRequest request)
-	{
-		try
+		/// <summary>
+		/// Create a new booking
+		/// </summary>
+		[HttpPost]
+		[Authorize(Roles = "User,Tenant")]
+		public async Task<ActionResult<BookingResponse>> CreateBooking([FromBody] BookingRequest request)
 		{
-			var result = await _bookingService.CreateBookingAsync(request);
+			return await this.CreateAsync<BookingRequest, BookingResponse>(
+					request,
+					_bookingService.CreateBookingAsync,
+					_logger,
+					nameof(GetBooking));
+		}
 
-			_logger.LogInformation("Booking created successfully: {BookingId} by user {UserId} for property {PropertyId}",
-					result.BookingId, _currentUserService.UserId, request.PropertyId);
+		/// <summary>
+		/// Update an existing booking
+		/// </summary>
+		[HttpPut("{id}")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<ActionResult<BookingResponse>> UpdateBooking(int id, [FromBody] BookingUpdateRequest request)
+		{
+			return await this.UpdateAsync<BookingUpdateRequest, BookingResponse>(
+					id,
+					request,
+					_bookingService.UpdateBookingAsync,
+					_logger);
+		}
 
-			return CreatedAtAction(nameof(GetBooking), new { id = result.BookingId }, result);
-		}
-		catch (ArgumentException ex)
+		/// <summary>
+		/// Cancel booking
+		/// </summary>
+		[HttpPost("{id}/cancel")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<ActionResult<BookingResponse>> CancelBooking(int id, [FromBody] BookingCancellationRequest request)
 		{
-			return BadRequest(new { error = ex.Message });
-		}
-		catch (InvalidOperationException ex)
-		{
-			return Conflict(new { error = ex.Message });
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Booking creation failed for user {UserId} and property {PropertyId}",
-					_currentUserService.UserId, request.PropertyId);
-			return StatusCode(500, new { error = "An error occurred while creating the booking" });
-		}
-	}
-
-	/// <summary>
-	/// Update existing booking
-	/// </summary>
-	[HttpPut("{id}")]
-	[Authorize(Roles = "User,Tenant,Landlord")]
-	public async Task<ActionResult<BookingResponse>> UpdateBooking(int id, [FromBody] BookingUpdateRequest request)
-	{
-		try
-		{
-			var result = await _bookingService.UpdateBookingAsync(id, request);
-
-			_logger.LogInformation("Booking updated successfully: {BookingId} by user {UserId}",
-					id, _currentUserService.UserId);
-
-			return Ok(result);
-		}
-		catch (ArgumentException ex)
-		{
-			return BadRequest(new { error = ex.Message });
-		}
-		catch (UnauthorizedAccessException)
-		{
-			return Forbid();
-		}
-		catch (KeyNotFoundException)
-		{
-			return NotFound();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Booking update failed for user {UserId} and booking {BookingId}",
-					_currentUserService.UserId, id);
-			return StatusCode(500, new { error = "An error occurred while updating the booking" });
-		}
-	}
-
-	/// <summary>
-	/// Cancel booking
-	/// </summary>
-	[HttpPost("{id}/cancel")]
-	[Authorize(Roles = "User,Tenant,Landlord")]
-	public async Task<ActionResult<BookingResponse>> CancelBooking(int id, [FromBody] BookingCancellationRequest request)
-	{
-		try
-		{
-			request.BookingId = id; // Ensure consistency
-			var result = await _bookingService.CancelBookingAsync(request);
-
-			_logger.LogInformation("Booking cancelled successfully: {BookingId} by user {UserId}",
-					id, _currentUserService.UserId);
-
-			return Ok(result);
-		}
-		catch (ArgumentException ex)
-		{
-			return BadRequest(new { error = ex.Message });
-		}
-		catch (UnauthorizedAccessException)
-		{
-			return Forbid();
-		}
-		catch (KeyNotFoundException)
-		{
-			return NotFound();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Booking cancellation failed for user {UserId} and booking {BookingId}",
-					_currentUserService.UserId, id);
-			return StatusCode(500, new { error = "An error occurred while cancelling the booking" });
-		}
-	}
-
-	/// <summary>
-	/// Delete booking (hard delete)
-	/// </summary>
-	[HttpDelete("{id}")]
-	[Authorize(Roles = "User,Tenant,Landlord")]
-	public async Task<ActionResult> DeleteBooking(int id)
-	{
-		try
-		{
-			var success = await _bookingService.DeleteBookingAsync(id);
-			if (!success)
-				return NotFound();
-
-			_logger.LogInformation("Booking deleted successfully: {BookingId} by user {UserId}",
-					id, _currentUserService.UserId);
-
-			return NoContent();
-		}
-		catch (UnauthorizedAccessException)
-		{
-			return Forbid();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Booking deletion failed for user {UserId} and booking {BookingId}",
-					_currentUserService.UserId, id);
-			return StatusCode(500, new { error = "An error occurred while deleting the booking" });
-		}
-	}
-
-	/// <summary>
-	/// Check property availability
-	/// </summary>
-	[HttpGet("availability/{propertyId}")]
-	[AllowAnonymous]
-	public async Task<ActionResult<PropertyAvailabilityResponse>> CheckAvailability(
-			int propertyId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
-	{
-		try
-		{
-			var result = await _bookingService.CheckPropertyAvailabilityAsync(propertyId, startDate, endDate);
-
-			_logger.LogInformation("Availability check for property {PropertyId} from {StartDate} to {EndDate}: {IsAvailable}",
-					propertyId, startDate.ToShortDateString(), endDate.ToShortDateString(), result.IsAvailable);
-
-			return Ok(result);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Availability check failed for property {PropertyId}", propertyId);
-			return StatusCode(500, new { error = "An error occurred while checking availability" });
-		}
-	}
-
-	/// <summary>
-	/// Simple availability check (returns boolean)
-	/// </summary>
-	[HttpGet("availability/{propertyId}/simple")]
-	[AllowAnonymous]
-	public async Task<ActionResult<object>> CheckSimpleAvailability(
-			int propertyId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
-	{
-		try
-		{
-			var isAvailable = await _bookingService.IsPropertyAvailableAsync(
-					propertyId, DateOnly.FromDateTime(startDate), DateOnly.FromDateTime(endDate));
-
-			return Ok(new
+			return await this.ExecuteAsync(() =>
 			{
-				IsAvailable = isAvailable,
-				PropertyId = propertyId,
-				StartDate = startDate,
-				EndDate = endDate
-			});
+				request.BookingId = id; // Ensure consistency
+				return _bookingService.CancelBookingAsync(request);
+			}, _logger, $"CancelBooking({id})");
 		}
-		catch (Exception ex)
+
+		/// <summary>
+		/// Delete booking (hard delete)
+		/// </summary>
+		[HttpDelete("{id}")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<ActionResult> DeleteBooking(int id)
 		{
-			_logger.LogError(ex, "Simple availability check failed for property {PropertyId}", propertyId);
-			return StatusCode(500, new { error = "An error occurred while checking availability" });
+			return await this.DeleteAsync(
+					id,
+					_bookingService.DeleteBookingAsync,
+					_logger);
 		}
-	}
 
-	/// <summary>
-	/// Get current active stays for current user
-	/// </summary>
-	[HttpGet("current")]
-	public async Task<ActionResult<List<BookingResponse>>> GetCurrentStays([FromQuery] int? propertyId = null)
-	{
-		try
+		/// <summary>
+		/// Check property availability
+		/// </summary>
+		[HttpGet("availability/{propertyId}")]
+		[AllowAnonymous]
+		public async Task<ActionResult<object>> CheckAvailability(int propertyId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
 		{
-			var userId = _currentUserService.GetUserIdAsInt();
-			if (userId == 0)
-				return Unauthorized();
+			return await this.ExecuteAsync(() => 
+				_bookingService.CheckPropertyAvailabilityAsync(propertyId, startDate, endDate),
+				_logger, $"CheckAvailability({propertyId}, {startDate:yyyy-MM-dd}, {endDate:yyyy-MM-dd})");
+		}
 
-			var result = await _bookingService.GetCurrentStaysAsync(userId.Value);
-
-			// Filter by property if specified (for landlord property details)
-			if (propertyId.HasValue)
+		/// <summary>
+		/// Simple availability check (returns boolean)
+		/// </summary>
+		[HttpGet("availability/{propertyId}/simple")]
+		[AllowAnonymous]
+		public async Task<IActionResult> CheckSimpleAvailability(int propertyId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+		{
+			try
 			{
-				result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
-				_logger.LogInformation("User {UserId} retrieved {StayCount} current stays for property {PropertyId}",
-						userId, result.Count, propertyId.Value);
+				var isAvailable = await _bookingService.IsPropertyAvailableAsync(
+						propertyId, startDate, endDate);
+
+				return Ok(SuccessResponse(new
+				{
+					IsAvailable = isAvailable,
+					PropertyId = propertyId,
+					StartDate = startDate,
+					EndDate = endDate
+				}, "Availability check successful"));
 			}
-			else
+			catch (Exception ex)
 			{
-				_logger.LogInformation("User {UserId} retrieved {StayCount} current stays",
-						userId, result.Count);
+				return StatusCode(500, ErrorResponse($"An error occurred while checking availability: {ex.Message}"));
 			}
-
-			return Ok(result);
 		}
-		catch (Exception ex)
+
+		/// <summary>
+		/// Get current active stays for current user
+		/// </summary>
+		[HttpGet("current")]
+		public async Task<IActionResult> GetCurrentStays([FromQuery] int? propertyId = null)
 		{
-			_logger.LogError(ex, "Current stays retrieval failed for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, new { error = "An error occurred while retrieving current stays" });
-		}
-	}
-
-	/// <summary>
-	/// Get upcoming stays for current user
-	/// </summary>
-	[HttpGet("upcoming")]
-	public async Task<ActionResult<List<BookingResponse>>> GetUpcomingStays([FromQuery] int? propertyId = null)
-	{
-		try
-		{
-			var userId = _currentUserService.GetUserIdAsInt();
-			if (userId == 0)
-				return Unauthorized();
-
-			var result = await _bookingService.GetUpcomingStaysAsync(userId.Value);
-
-			// Filter by property if specified (for landlord property details)
-			if (propertyId.HasValue)
+			try
 			{
-				result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
-				_logger.LogInformation("User {UserId} retrieved {StayCount} upcoming stays for property {PropertyId}",
-						userId, result.Count, propertyId.Value);
+				var result = await _bookingService.GetCurrentStaysAsync();
+
+				// Filter by property if specified (for landlord property details)
+				if (propertyId.HasValue)
+				{
+					result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
+				}
+
+				return Ok(SuccessResponse(result, "Current stays retrieved successfully"));
 			}
-			else
+			catch (Exception ex)
 			{
-				_logger.LogInformation("User {UserId} retrieved {StayCount} upcoming stays",
-						userId, result.Count);
+				return StatusCode(500, ErrorResponse($"An error occurred while retrieving current stays: {ex.Message}"));
 			}
-
-			return Ok(result);
 		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Upcoming stays retrieval failed for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, new { error = "An error occurred while retrieving upcoming stays" });
-		}
-	}
 
-	/// <summary>
-	/// Calculate refund amount for booking cancellation
-	/// </summary>
-	[HttpGet("{id}/refund-calculation")]
-	[Authorize(Roles = "User,Tenant,Landlord")]
-	public async Task<ActionResult<object>> CalculateRefundAmount(int id, [FromQuery] DateTime? cancellationDate = null)
-	{
-		try
+		/// <summary>
+		/// Get upcoming stays for current user
+		/// </summary>
+		[HttpGet("upcoming")]
+		public async Task<IActionResult> GetUpcomingStays([FromQuery] int? propertyId = null)
 		{
-			var refundAmount = await _bookingService.CalculateRefundAmountAsync(id, cancellationDate);
-
-			return Ok(new
+			try
 			{
-				BookingId = id,
-				RefundAmount = refundAmount,
-				CancellationDate = cancellationDate ?? DateTime.UtcNow
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Refund calculation failed for booking {BookingId}", id);
-			return StatusCode(500, new { error = "An error occurred while calculating refund amount" });
-		}
-	}
+				var result = await _bookingService.GetUpcomingStaysAsync();
 
-	/// <summary>
-	/// Get current user's bookings
-	/// </summary>
-	[HttpGet("my-bookings")]
-	public async Task<ActionResult<List<BookingResponse>>> GetMyBookings()
-	{
-		try
-		{
-			var result = await _bookingService.GetCurrentUserBookingsAsync();
-			return Ok(result);
+				// Filter by property if specified (for landlord property details)
+				if (propertyId.HasValue)
+				{
+					result = result.Where(b => b.PropertyId == propertyId.Value).ToList();
+				}
+
+				return Ok(SuccessResponse(result, "Upcoming stays retrieved successfully"));
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, ErrorResponse($"An error occurred while retrieving upcoming stays: {ex.Message}"));
+			}
 		}
-		catch (Exception ex)
+
+		/// <summary>
+		/// Calculate refund amount for booking cancellation
+		/// </summary>
+		[HttpGet("{id}/refund-calculation")]
+		[Authorize(Roles = "User,Tenant,Landlord")]
+		public async Task<IActionResult> CalculateRefundAmount(int id, [FromQuery] DateTime? cancellationDate = null)
 		{
-			_logger.LogError(ex, "Error retrieving user bookings for {UserId}", _currentUserService.UserId);
-			return StatusCode(500, new { error = "An error occurred while retrieving your bookings" });
+			try
+			{
+				var refundAmount = await _bookingService.CalculateRefundAmountAsync(id, cancellationDate);
+
+				return Ok(SuccessResponse(new
+				{
+					BookingId = id,
+					RefundAmount = refundAmount,
+					CancellationDate = cancellationDate ?? DateTime.UtcNow
+				}, "Refund amount calculated successfully"));
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, ErrorResponse($"An error occurred while calculating refund amount: {ex.Message}"));
+			}
+		}
+
+		/// <summary>
+		/// Get current user's bookings
+		/// </summary>
+		[HttpGet("my-bookings")]
+		public async Task<IActionResult> GetMyBookings()
+		{
+			try
+			{
+				var result = await _bookingService.GetCurrentUserBookingsAsync();
+				return Ok(SuccessResponse(result, "Your bookings retrieved successfully"));
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, ErrorResponse($"An error occurred while retrieving your bookings: {ex.Message}"));
+			}
 		}
 	}
 }

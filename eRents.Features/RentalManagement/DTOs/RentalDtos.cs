@@ -93,7 +93,7 @@ public class TenantResponse
 /// <summary>
 /// Rental filter request
 /// </summary>
-public class RentalFilterRequest
+public class RentalFilterRequest : IPagedRequest
 {
 	public int? PropertyId { get; set; }
 	public int? UserId { get; set; }
@@ -109,8 +109,8 @@ public class RentalFilterRequest
 	public string? SearchTerm { get; set; }
 	public string? SortBy { get; set; } = "CreatedAt";
 	public string? SortOrder { get; set; } = "DESC";
-	public int? PageNumber { get; set; } = 1;
-	public int? PageSize { get; set; } = 10;
+	public int Page { get; set; } = 1;
+	public int PageSize { get; set; } = 10;
 }
 
 /// <summary>

@@ -174,7 +174,7 @@ public static class UserMapper
     /// </summary>
     private static (byte[] hash, byte[] salt) HashPassword(string password)
     {
-        var salt = new byte[32];
+        var salt = new byte[16];  // Match seeding and UserService (16 bytes)
         using (var rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(salt);
@@ -182,7 +182,7 @@ public static class UserMapper
         
         using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
         {
-            var hash = pbkdf2.GetBytes(32);
+            var hash = pbkdf2.GetBytes(20);  // Match seeding and UserService (20 bytes)
             return (hash, salt);
         }
     }
@@ -194,7 +194,7 @@ public static class UserMapper
     {
         using (var pbkdf2 = new Rfc2898DeriveBytes(password, storedSalt, 10000, HashAlgorithmName.SHA256))
         {
-            var hash = pbkdf2.GetBytes(32);
+            var hash = pbkdf2.GetBytes(20);  // Match seeding and UserService (20 bytes)
             return hash.SequenceEqual(storedHash);
         }
     }

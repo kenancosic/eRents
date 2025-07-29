@@ -28,7 +28,7 @@ public interface IReviewService
 	/// <summary>
 	/// Deletes a review
 	/// </summary>
-	Task<bool> DeleteReviewAsync(int reviewId);
+	Task DeleteReviewAsync(int reviewId);
 
 	/// <summary>
 	/// Creates a reply to an existing review

@@ -14,23 +14,15 @@ namespace eRents.Features.MaintenanceManagement.Services;
 /// MaintenanceService for reactive maintenance issues only
 /// Handles maintenance issues, requests, and tracking
 /// </summary>
-public class MaintenanceService : IMaintenanceService
+public class MaintenanceService : BaseService, IMaintenanceService
 {
-	private readonly ERentsContext _context;
-	private readonly ICurrentUserService _currentUserService;
-	private readonly IUnitOfWork _unitOfWork;
-	private readonly ILogger<MaintenanceService> _logger;
-
 	public MaintenanceService(
 			ERentsContext context,
-			ICurrentUserService currentUserService,
 			IUnitOfWork unitOfWork,
+			ICurrentUserService currentUserService,
 			ILogger<MaintenanceService> logger)
+		: base(context, unitOfWork, currentUserService, logger)
 	{
-		_context = context;
-		_currentUserService = currentUserService;
-		_unitOfWork = unitOfWork;
-		_logger = logger;
 	}
 
 	#region Maintenance Issue CRUD
@@ -40,31 +32,13 @@ public class MaintenanceService : IMaintenanceService
 	/// </summary>
 	public async Task<MaintenanceIssueResponse?> GetMaintenanceIssueByIdAsync(int id)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var issue = await _context.MaintenanceIssues
-					.Where(m => m.MaintenanceIssueId == id)
-					.Include(m => m.Property)
-					.Include(m => m.Status)
-					.Include(m => m.Priority)
-					.AsNoTracking()
-					.FirstOrDefaultAsync();
-
-			if (issue == null) return null;
-
-			// Verify access rights - user must own the property or be assigned to the issue
-			if (issue.Property.OwnerId != currentUserId && issue.AssignedToUserId != currentUserId)
-				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
-
-			return issue.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving maintenance issue {IssueId}", id);
-			throw;
-		}
+		return await GetByIdAsync<MaintenanceIssue, MaintenanceIssueResponse>(
+			id,
+			q => q.Include(m => m.Property).Include(m => m.Status).Include(m => m.Priority).AsNoTracking(),
+			async issue => await CanAccessIssueAsync(issue),
+			issue => issue.ToResponse(),
+			"GetMaintenanceIssueById"
+		);
 	}
 
 	/// <summary>
@@ -79,10 +53,8 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var query = _context.MaintenanceIssues
-					.Where(m => m.Property.OwnerId == currentUserId || m.AssignedToUserId == currentUserId);
+			var query = Context.MaintenanceIssues
+					.Where(m => m.Property.OwnerId == CurrentUserId || m.AssignedToUserId == CurrentUserId);
 
 			// Apply filters
 			if (propertyId.HasValue)
@@ -118,7 +90,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving user maintenance issues");
+			LogError(ex, "Error retrieving user maintenance issues");
 			throw;
 		}
 	}
@@ -130,16 +102,14 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
 			// Verify property ownership
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
+			var property = await Context.Properties
+					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
 
 			if (property == null)
 				throw new UnauthorizedAccessException("Property not found or access denied");
 
-			var issues = await _context.MaintenanceIssues
+			var issues = await Context.MaintenanceIssues
 					.Where(m => m.PropertyId == propertyId)
 					.Include(m => m.Status)
 					.Include(m => m.Priority)
@@ -151,7 +121,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving maintenance issues for property {PropertyId}", propertyId);
+			LogError(ex, "Error retrieving maintenance issues for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -161,35 +131,18 @@ public class MaintenanceService : IMaintenanceService
 	/// </summary>
 	public async Task<MaintenanceIssueResponse> CreateMaintenanceIssueAsync(MaintenanceIssueRequest request)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			// Verify property ownership
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId && p.OwnerId == currentUserId);
-
-			if (property == null)
-				throw new UnauthorizedAccessException("Property not found or access denied");
-
-			var issue = request.ToEntity(currentUserId.Value);
-
-			_context.MaintenanceIssues.Add(issue);
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Created maintenance issue {IssueId} for property {PropertyId}", issue.MaintenanceIssueId, request.PropertyId);
-
-			// Reload with navigation properties for response
-			await _context.Entry(issue).Reference(m => m.Status).LoadAsync();
-			await _context.Entry(issue).Reference(m => m.Priority).LoadAsync();
-
-			return issue.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating maintenance issue for property {PropertyId}", request.PropertyId);
-			throw;
-		}
+		return await CreateAsync<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse>(
+			request,
+			req => req.ToEntity(CurrentUserId),
+			async (entity, req) => await ValidatePropertyOwnershipAsync(req.PropertyId),
+			entity => {
+				// Load navigation properties for proper response mapping
+				Context.Entry(entity).Reference(m => m.Status).Load();
+				Context.Entry(entity).Reference(m => m.Priority).Load();
+				return entity.ToResponse();
+			},
+			"CreateMaintenanceIssue"
+		);
 	}
 
 	/// <summary>
@@ -197,36 +150,18 @@ public class MaintenanceService : IMaintenanceService
 	/// </summary>
 	public async Task<MaintenanceIssueResponse> UpdateMaintenanceIssueAsync(int id, MaintenanceIssueRequest request)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var issue = await _context.MaintenanceIssues
-					.Include(m => m.Property)
-					.Include(m => m.Status)
-					.Include(m => m.Priority)
-					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
-
-			if (issue == null)
-				throw new ArgumentException("Maintenance issue not found");
-
-			// Verify access rights
-			if (issue.Property.OwnerId != currentUserId)
-				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
-
-			issue.UpdateFromRequest(request);
-
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Updated maintenance issue {IssueId}", id);
-
-			return issue.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating maintenance issue {IssueId}", id);
-			throw;
-		}
+		return await UpdateAsync<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse>(
+			id,
+			request,
+			q => q.Include(m => m.Property).Include(m => m.Status).Include(m => m.Priority),
+			async issue => await CanUpdateIssueAsync(issue),
+			async (entity, req) => {
+				entity.UpdateFromRequest(req);
+				await Task.CompletedTask;
+			},
+			entity => entity.ToResponse(),
+			"UpdateMaintenanceIssue"
+		);
 	}
 
 	/// <summary>
@@ -236,9 +171,7 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var issue = await _context.MaintenanceIssues
+			var issue = await Context.MaintenanceIssues
 					.Include(m => m.Property)
 					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
 
@@ -246,18 +179,18 @@ public class MaintenanceService : IMaintenanceService
 				throw new ArgumentException("Maintenance issue not found");
 
 			// Verify access rights - owner or assigned user can update status
-			if (issue.Property.OwnerId != currentUserId && issue.AssignedToUserId != currentUserId)
+			if (issue.Property.OwnerId != CurrentUserId && issue.AssignedToUserId != CurrentUserId)
 				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
 
 			issue.UpdateStatusFromRequest(request);
 
-			await _unitOfWork.SaveChangesAsync();
+			await UnitOfWork.SaveChangesAsync();
 
-			_logger.LogInformation("Updated maintenance issue {IssueId} status to {Status}", id, request.Status);
+			LogInfo("Updated maintenance issue {IssueId} status to {Status}", id, request.Status);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error updating maintenance issue {IssueId} status", id);
+			LogError(ex, "Error updating maintenance issue {IssueId} status", id);
 			throw;
 		}
 	}
@@ -267,31 +200,14 @@ public class MaintenanceService : IMaintenanceService
 	/// </summary>
 	public async Task DeleteMaintenanceIssueAsync(int id)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var issue = await _context.MaintenanceIssues
-					.Include(m => m.Property)
-					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
-
-			if (issue == null)
-				throw new ArgumentException("Maintenance issue not found");
-
-			// Verify property ownership
-			if (issue.Property.OwnerId != currentUserId)
-				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
-
-			_context.MaintenanceIssues.Remove(issue);
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Deleted maintenance issue {IssueId}", id);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error deleting maintenance issue {IssueId}", id);
-			throw;
-		}
+		await DeleteAsync<MaintenanceIssue>(
+			id,
+			async issue => {
+				await Context.Entry(issue).Reference(m => m.Property).LoadAsync();
+				return await CanDeleteIssueAsync(issue);
+			},
+			"DeleteMaintenanceIssue"
+		);
 	}
 
 	#endregion
@@ -305,14 +221,12 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var userPropertyIds = await _context.Properties
-					.Where(p => p.OwnerId == currentUserId)
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
 					.Select(p => p.PropertyId)
 					.ToListAsync();
 
-			var issues = await _context.MaintenanceIssues
+			var issues = await Context.MaintenanceIssues
 					.Where(m => userPropertyIds.Contains(m.PropertyId))
 					.Include(m => m.Status)
 					.Include(m => m.Priority)
@@ -343,7 +257,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving maintenance statistics");
+			LogError(ex, "Error retrieving maintenance statistics");
 			throw;
 		}
 	}
@@ -355,16 +269,14 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
 			// Verify property ownership
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
+			var property = await Context.Properties
+					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
 
 			if (property == null)
 				throw new UnauthorizedAccessException("Property not found or access denied");
 
-			var issues = await _context.MaintenanceIssues
+			var issues = await Context.MaintenanceIssues
 					.Where(m => m.PropertyId == propertyId)
 					.Include(m => m.Status)
 					.AsNoTracking()
@@ -382,7 +294,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving maintenance summary for property {PropertyId}", propertyId);
+			LogError(ex, "Error retrieving maintenance summary for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -394,15 +306,14 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
 			var overdueThreshold = DateTime.UtcNow.AddDays(-7);
 
-			var userPropertyIds = await _context.Properties
-					.Where(p => p.OwnerId == currentUserId)
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
 					.Select(p => p.PropertyId)
 					.ToListAsync();
 
-			var overdueIssues = await _context.MaintenanceIssues
+			var overdueIssues = await Context.MaintenanceIssues
 					.Where(m => userPropertyIds.Contains(m.PropertyId) &&
 										 m.Status.StatusName == "Pending" &&
 										 m.CreatedAt < overdueThreshold)
@@ -416,7 +327,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving overdue maintenance issues");
+			LogError(ex, "Error retrieving overdue maintenance issues");
 			throw;
 		}
 	}
@@ -428,15 +339,14 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
 			var recentThreshold = DateTime.UtcNow.AddDays(-days);
 
-			var userPropertyIds = await _context.Properties
-					.Where(p => p.OwnerId == currentUserId)
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
 					.Select(p => p.PropertyId)
 					.ToListAsync();
 
-			var recentIssues = await _context.MaintenanceIssues
+			var recentIssues = await Context.MaintenanceIssues
 					.Where(m => userPropertyIds.Contains(m.PropertyId) &&
 										 m.CreatedAt >= recentThreshold)
 					.Include(m => m.Status)
@@ -449,7 +359,7 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving recent maintenance issues");
+			LogError(ex, "Error retrieving recent maintenance issues");
 			throw;
 		}
 	}
@@ -465,9 +375,7 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var issue = await _context.MaintenanceIssues
+			var issue = await Context.MaintenanceIssues
 					.Include(m => m.Property)
 					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == issueId);
 
@@ -475,23 +383,23 @@ public class MaintenanceService : IMaintenanceService
 				throw new ArgumentException("Maintenance issue not found");
 
 			// Verify property ownership
-			if (issue.Property.OwnerId != currentUserId)
+			if (issue.Property.OwnerId != CurrentUserId)
 				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
 
 			// Verify assigned user exists
-			var assignedUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == assignedToUserId);
+			var assignedUser = await Context.Users.FirstOrDefaultAsync(u => u.UserId == assignedToUserId);
 			if (assignedUser == null)
 				throw new ArgumentException("Assigned user not found");
 
 			issue.AssignedToUserId = assignedToUserId;
 
-			await _unitOfWork.SaveChangesAsync();
+			await UnitOfWork.SaveChangesAsync();
 
-			_logger.LogInformation("Assigned maintenance issue {IssueId} to user {UserId}", issueId, assignedToUserId);
+			LogInfo("Assigned maintenance issue {IssueId} to user {UserId}", issueId, assignedToUserId);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error assigning maintenance issue {IssueId}", issueId);
+			LogError(ex, "Error assigning maintenance issue {IssueId}", issueId);
 			throw;
 		}
 	}
@@ -503,10 +411,8 @@ public class MaintenanceService : IMaintenanceService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var assignedIssues = await _context.MaintenanceIssues
-					.Where(m => m.AssignedToUserId == currentUserId)
+			var assignedIssues = await Context.MaintenanceIssues
+					.Where(m => m.AssignedToUserId == CurrentUserId)
 					.Include(m => m.Property)
 					.Include(m => m.Status)
 					.Include(m => m.Priority)
@@ -518,9 +424,52 @@ public class MaintenanceService : IMaintenanceService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving assigned maintenance issues");
+			LogError(ex, "Error retrieving assigned maintenance issues");
 			throw;
 		}
+	}
+
+	#endregion
+
+	#region Authorization Helper Methods
+
+	/// <summary>
+	/// Check if current user can access the maintenance issue
+	/// </summary>
+	private async Task<bool> CanAccessIssueAsync(MaintenanceIssue issue)
+	{
+		// User must own the property or be assigned to the issue
+		return issue.Property.OwnerId == CurrentUserId || issue.AssignedToUserId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Check if current user can update the maintenance issue
+	/// </summary>
+	private async Task<bool> CanUpdateIssueAsync(MaintenanceIssue issue)
+	{
+		// Only property owner can update issues
+		return issue.Property.OwnerId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Check if current user can delete the maintenance issue
+	/// </summary>
+	private async Task<bool> CanDeleteIssueAsync(MaintenanceIssue issue)
+	{
+		// Only property owner can delete issues
+		return issue.Property.OwnerId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Validate that current user owns the specified property
+	/// </summary>
+	private async Task ValidatePropertyOwnershipAsync(int propertyId)
+	{
+		var exists = await Context.Properties
+			.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
+		
+		if (!exists)
+			throw new UnauthorizedAccessException("Property not found or access denied");
 	}
 
 	#endregion

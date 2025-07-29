@@ -6,66 +6,25 @@ namespace eRents.Features.FinancialManagement.Validators;
 /// <summary>
 /// Validator for payment requests
 /// </summary>
-public class PaymentRequestValidator : AbstractValidator<PaymentRequest>
+using eRents.Features.Shared.Validation;
+
+public class PaymentRequestValidator : BaseEntityValidator<PaymentRequest>
 {
-    private static readonly string[] ValidCurrencies = { "BAM", "EUR", "USD" };
-    private static readonly string[] ValidPaymentMethods = { "PayPal", "CreditCard", "BankTransfer", "Cash" };
+	public PaymentRequestValidator()
+	{
+		ValidateRequiredId(x => x.PropertyId, "Property ID");
+		ValidateRequiredPositiveDecimal(x => x.Amount, "Amount");
+	}
+}
 
-    public PaymentRequestValidator()
+public class RefundRequestValidator : BaseEntityValidator<RefundRequest>
+{
+    public RefundRequestValidator()
     {
-        RuleFor(x => x.BookingId)
-            .GreaterThan(0)
-            .WithMessage("Valid booking ID is required")
-            .When(x => x.BookingId.HasValue);
-
-        RuleFor(x => x.PropertyId)
-            .GreaterThan(0)
-            .WithMessage("Valid property ID is required");
-
-        RuleFor(x => x.Amount)
-            .GreaterThan(0)
-            .WithMessage("Amount must be greater than 0")
-            .LessThanOrEqualTo(100000)
-            .WithMessage("Amount cannot exceed 100,000");
-
-        RuleFor(x => x.Currency)
-            .NotEmpty()
-            .WithMessage("Currency is required")
-            .Must(BeValidCurrency)
-            .WithMessage($"Currency must be one of: {string.Join(", ", ValidCurrencies)}");
-
-        RuleFor(x => x.PaymentMethod)
-            .NotEmpty()
-            .WithMessage("Payment method is required")
-            .Must(BeValidPaymentMethod)
-            .WithMessage($"Payment method must be one of: {string.Join(", ", ValidPaymentMethods)}");
-
-        RuleFor(x => x.ReturnUrl)
-            .Must(BeValidUrl)
-            .WithMessage("Return URL must be a valid URL")
-            .When(x => !string.IsNullOrEmpty(x.ReturnUrl));
-
-        RuleFor(x => x.CancelUrl)
-            .Must(BeValidUrl)
-            .WithMessage("Cancel URL must be a valid URL")
-            .When(x => !string.IsNullOrEmpty(x.CancelUrl));
-    }
-
-    private static bool BeValidCurrency(string currency)
-    {
-        return ValidCurrencies.Contains(currency, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static bool BeValidPaymentMethod(string paymentMethod)
-    {
-        return ValidPaymentMethods.Contains(paymentMethod, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static bool BeValidUrl(string? url)
-    {
-        if (string.IsNullOrEmpty(url)) return false;
-        return Uri.TryCreate(url, UriKind.Absolute, out var uriResult) &&
-               (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
+        ValidateRequiredId(x => x.OriginalPaymentId, "Original Payment ID");
+        ValidateRequiredPositiveDecimal(x => x.Amount, "Amount");
+        ValidateRequiredText(x => x.Reason, "Reason", 500);
+        ValidateOptionalText(x => x.Notes, "Notes", 1000);
     }
 }
 

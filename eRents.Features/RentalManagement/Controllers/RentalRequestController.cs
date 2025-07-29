@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using eRents.Features.Shared.Controllers;
+using eRents.Features.Shared.Extensions;
 using eRents.Features.RentalManagement.DTOs;
 using eRents.Features.RentalManagement.Services;
 
@@ -13,7 +15,7 @@ namespace eRents.Features.RentalManagement.Controllers;
 [ApiController]
 [Route("api/rental-requests")]
 [Authorize]
-public class RentalRequestController : ControllerBase
+public class RentalRequestController : BaseController
 {
 	private readonly IRentalRequestService _rentalRequestService;
 	private readonly ILogger<RentalRequestController> _logger;
@@ -34,26 +36,7 @@ public class RentalRequestController : ControllerBase
 	[HttpGet("{id}")]
 	public async Task<ActionResult<RentalRequestResponse>> GetRentalRequest(int id)
 	{
-		try
-		{
-			var rentalRequest = await _rentalRequestService.GetRentalRequestByIdAsync(id);
-
-			if (rentalRequest == null)
-			{
-				return NotFound($"Rental request {id} not found");
-			}
-
-			return Ok(rentalRequest);
-		}
-		catch (UnauthorizedAccessException ex)
-		{
-			return Forbid(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting rental request {Id}", id);
-			return StatusCode(500, "Internal server error");
-		}
+		return await this.GetByIdAsync<RentalRequestResponse, int>(id, _rentalRequestService.GetRentalRequestByIdAsync, _logger);
 	}
 
 	/// <summary>
@@ -63,33 +46,11 @@ public class RentalRequestController : ControllerBase
 	[Authorize(Roles = "User,Tenant")]
 	public async Task<ActionResult<RentalRequestResponse>> CreateRentalRequest([FromBody] RentalRequestRequest request)
 	{
-		try
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(ModelState);
-			}
-
-			var rentalRequest = await _rentalRequestService.CreateRentalRequestAsync(request);
-
-			return CreatedAtAction(
-					nameof(GetRentalRequest),
-					new { id = rentalRequest.RentalRequestId },
-					rentalRequest);
-		}
-		catch (ArgumentException ex)
-		{
-			return BadRequest(ex.Message);
-		}
-		catch (InvalidOperationException ex)
-		{
-			return Conflict(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating rental request");
-			return StatusCode(500, "Internal server error");
-		}
+		return await this.CreateAsync<RentalRequestRequest, RentalRequestResponse>(
+			request,
+			_rentalRequestService.CreateRentalRequestAsync,
+			_logger,
+			nameof(GetRentalRequest));
 	}
 
 	/// <summary>
@@ -99,37 +60,11 @@ public class RentalRequestController : ControllerBase
 	[Authorize(Roles = "User,Tenant,Landlord")]
 	public async Task<ActionResult<RentalRequestResponse>> UpdateRentalRequest(int id, [FromBody] RentalRequestRequest request)
 	{
-		try
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(ModelState);
-			}
-
-			var rentalRequest = await _rentalRequestService.UpdateRentalRequestAsync(id, request);
-			return Ok(rentalRequest);
-		}
-		catch (KeyNotFoundException)
-		{
-			return NotFound($"Rental request {id} not found");
-		}
-		catch (UnauthorizedAccessException ex)
-		{
-			return Forbid(ex.Message);
-		}
-		catch (ArgumentException ex)
-		{
-			return BadRequest(ex.Message);
-		}
-		catch (InvalidOperationException ex)
-		{
-			return Conflict(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating rental request {Id}", id);
-			return StatusCode(500, "Internal server error");
-		}
+		return await this.UpdateAsync<RentalRequestRequest, RentalRequestResponse>(
+			id,
+			request,
+			_rentalRequestService.UpdateRentalRequestAsync,
+			_logger);
 	}
 
 	/// <summary>
@@ -139,30 +74,10 @@ public class RentalRequestController : ControllerBase
 	[Authorize(Roles = "User,Tenant,Landlord")]
 	public async Task<ActionResult> DeleteRentalRequest(int id)
 	{
-		try
-		{
-			var deleted = await _rentalRequestService.DeleteRentalRequestAsync(id);
-
-			if (!deleted)
-			{
-				return NotFound($"Rental request {id} not found");
-			}
-
-			return NoContent();
-		}
-		catch (UnauthorizedAccessException ex)
-		{
-			return Forbid(ex.Message);
-		}
-		catch (InvalidOperationException ex)
-		{
-			return Conflict(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error deleting rental request {Id}", id);
-			return StatusCode(500, "Internal server error");
-		}
+		return await this.DeleteAsync(
+			id,
+			_rentalRequestService.DeleteRentalRequestAsync,
+			_logger);
 	}
 
 	#endregion
@@ -176,16 +91,7 @@ public class RentalRequestController : ControllerBase
 	[Authorize(Roles = "User,Tenant,Landlord")]
 	public async Task<ActionResult<RentalPagedResponse>> GetRentalRequests([FromQuery] RentalFilterRequest filter)
 	{
-		try
-		{
-			var result = await _rentalRequestService.GetRentalRequestsAsync(filter);
-			return Ok(result);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting rental requests");
-			return StatusCode(500, "Internal server error");
-		}
+		return await this.ExecuteAsync(() => _rentalRequestService.GetRentalRequestsAsync(filter), _logger, "GetRentalRequests");
 	}
 
 	/// <summary>

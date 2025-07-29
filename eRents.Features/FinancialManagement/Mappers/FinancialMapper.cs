@@ -1,5 +1,6 @@
 using eRents.Domain.Models;
 using eRents.Features.FinancialManagement.DTOs;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.FinancialManagement.Mappers;
 
@@ -16,24 +17,7 @@ public static class FinancialMapper
     /// </summary>
     public static PaymentResponse ToResponse(this Payment payment)
     {
-        return new PaymentResponse
-        {
-            PaymentId = payment.PaymentId,
-            TenantId = payment.TenantId,
-            PropertyId = payment.PropertyId,
-            BookingId = payment.BookingId,
-            Amount = payment.Amount,
-            Currency = payment.Currency ?? "BAM",
-            DatePaid = payment.CreatedAt,
-            PaymentMethod = payment.PaymentMethod ?? "PayPal",
-            PaymentStatus = payment.PaymentStatus,
-            PaymentReference = payment.PaymentReference,
-            PaymentType = payment.PaymentType,
-            OriginalPaymentId = payment.OriginalPaymentId,
-            RefundReason = payment.RefundReason,
-            CreatedAt = payment.CreatedAt,
-            UpdatedAt = payment.UpdatedAt
-        };
+        return new PaymentResponse().MapCommonProperties(payment);
     }
 
     /// <summary>
@@ -41,17 +25,7 @@ public static class FinancialMapper
     /// </summary>
     public static Payment ToEntity(this PaymentRequest request)
     {
-        return new Payment
-        {
-            PropertyId = request.PropertyId,
-            BookingId = request.BookingId,
-            Amount = request.Amount,
-            Currency = request.Currency,
-            PaymentMethod = request.PaymentMethod,
-            PaymentType = "BookingPayment",
-            PaymentStatus = "Pending"
-            // TenantId will be set by the service layer based on current user
-        };
+        return new Payment().MapCommonProperties(request);
     }
 
 

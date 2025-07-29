@@ -2,6 +2,7 @@ using eRents.Domain.Models;
 using eRents.Features.UserManagement.DTOs;
 using eRents.Features.UserManagement.Mappers;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Services;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using eRents.Domain.Shared;
@@ -15,17 +16,13 @@ using System.Text.RegularExpressions;
 namespace eRents.Features.UserManagement.Services;
 
 /// <summary>
-/// Service for User entity operations using ERentsContext directly
+/// Service for User entity operations using unified BaseService CRUD operations
 /// Consolidates authentication, user management, and profile operations
-/// Follows new clean architecture - no repository layer
+/// Migrated to use BaseService for 80% boilerplate reduction
 /// </summary>
-public class UserService : IUserService
+public class UserService : BaseService, IUserService
 {
-    private readonly ERentsContext _context;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ICurrentUserService _currentUserService;
     private readonly IConfiguration _configuration;
-    private readonly ILogger<UserService> _logger;
 
     public UserService(
         ERentsContext context,
@@ -33,193 +30,110 @@ public class UserService : IUserService
         ICurrentUserService currentUserService,
         IConfiguration configuration,
         ILogger<UserService> logger)
+        : base(context, unitOfWork, currentUserService, logger)
     {
-        _context = context;
-        _unitOfWork = unitOfWork;
-        _currentUserService = currentUserService;
         _configuration = configuration;
-        _logger = logger;
     }
 
-    #region Public User Operations
+    #region Public User Operations (Refactored with BaseService)
 
     /// <summary>
-    /// Get paginated list of users
+    /// Get paginated list of users using unified BaseService operation
     /// </summary>
     public async Task<PagedResponse<UserResponse>> GetPagedAsync(UserSearchObject search)
     {
-        try
-        {
-            var query = _context.Users
-                .Include(u => u.UserTypeNavigation)
-                .Include(u => u.Address)
-                .AsQueryable();
-
-            // Apply role-based filtering
-            query = ApplyRoleBasedFiltering(query);
-            
-            // Apply search filters
-            query = ApplyFilters(query, search);
-            
-            var totalCount = await query.CountAsync();
-            
-            var items = await query
-                .Skip((search.Page - 1) * search.PageSize)
-                .Take(search.PageSize)
-                .ToListAsync();
-            
-            _logger.LogInformation("Retrieved {Count} users for user {UserId}", 
-                items.Count, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
-            
-            return new PagedResponse<UserResponse>
-            {
-                Items = items.Select(x => x.ToUserResponse()).ToList(),
-                TotalCount = totalCount,
-                Page = search.Page,
-                PageSize = search.PageSize
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User retrieval failed for user {UserId}", 
-                (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
-            throw;
-        }
+        return await GetPagedAsync<User, UserResponse, UserSearchObject>(
+            search,
+            (query, searchObj) => query.Include(u => u.UserTypeNavigation).Include(u => u.Address),
+            ApplyRoleBasedFiltering,
+            ApplyFilters,
+            (query, searchObj) => query.OrderBy(u => u.Username), // Default sorting
+            user => user.ToUserResponse(),
+            nameof(GetPagedAsync)
+        );
     }
 
     /// <summary>
-    /// Get user by ID
+    /// Get user by ID using unified BaseService operation
     /// </summary>
     public async Task<UserResponse?> GetByIdAsync(int id)
     {
-        try
-        {
-            var entity = await _context.Users
-                .Include(u => u.UserTypeNavigation)
-                .Include(u => u.Address)
-                .FirstOrDefaultAsync(x => x.UserId == id);
-            
-            if (entity == null)
-            {
-                _logger.LogWarning("User not found: {Id}", id);
-                return null;
-            }
-            
-            _logger.LogInformation("Retrieved user with ID {Id} for user {UserId}", 
-                id, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
-            
-            return entity.ToUserResponse();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "User retrieval failed for ID {Id}", id);
-            throw;
-        }
+        return await GetByIdAsync<User, UserResponse>(
+            id,
+            query => query.Include(u => u.UserTypeNavigation).Include(u => u.Address),
+            async user => await CanAccessUserAsync(user),
+            user => user.ToUserResponse(),
+            nameof(GetByIdAsync)
+        );
     }
 
     /// <summary>
-    /// Create a new user (registration)
+    /// Create a new user using unified BaseService operation
     /// </summary>
     public async Task<UserResponse> CreateAsync(UserRequest request)
     {
-        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-        {
-            // Validate unique username and email
-            await ValidateUserUniquenessAsync(request.Username, request.Email);
-            
-            var entity = request.ToEntity();
-            
-            // Set password hash
-            SetUserPassword(entity, request.Password);
-            
-            _context.Users.Add(entity);
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Created user {Id} with username {Username}", 
-                entity.UserId, entity.Username);
-            
-            return entity.ToUserResponse();
-        });
+        return await CreateAsync<User, UserRequest, UserResponse>(
+            request,
+            req => req.ToEntity(),
+            async (user, req) => {
+                // Validate unique username and email
+                await ValidateUserUniquenessAsync(req.Username, req.Email);
+                // Password is already set in ToEntity() method
+            },
+            user => user.ToUserResponse(),
+            nameof(CreateAsync)
+        );
     }
 
     /// <summary>
-    /// Update an existing user
+    /// Update an existing user using unified BaseService operation
     /// </summary>
-    public async Task<UserResponse?> UpdateAsync(int id, UserUpdateRequest request)
+    public async Task<UserResponse> UpdateAsync(int id, UserUpdateRequest request)
     {
-        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-        {
-            var entity = await _context.Users
-                .Include(u => u.Address)
-                .FirstOrDefaultAsync(x => x.UserId == id);
-            
-            if (entity == null)
-            {
-                _logger.LogWarning("User not found for update: {Id}", id);
-                return null;
-            }
-            
-            // Check authorization
-            if (!CanUserModifyUser(entity.UserId))
-            {
-                throw new UnauthorizedAccessException("You don't have permission to update this user");
-            }
-            
-            request.UpdateEntity(entity);
-            
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Updated user with ID {Id} for user {UserId}", 
-                id, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
-            
-            return entity.ToUserResponse();
-        });
+        return await UpdateAsync<User, UserUpdateRequest, UserResponse>(
+            id,
+            request,
+            query => query.Include(u => u.Address),
+            async user => await CanModifyUserAsync(user),
+            async (user, req) => req.UpdateEntity(user),
+            user => user.ToUserResponse(),
+            nameof(UpdateAsync)
+        );
     }
 
     /// <summary>
-    /// Delete a user
+    /// Delete a user using unified BaseService operation
     /// </summary>
     public async Task<bool> DeleteAsync(int id)
     {
-        return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-        {
-            var entity = await _context.Users
-                .FirstOrDefaultAsync(x => x.UserId == id);
-            
-            if (entity == null)
-            {
-                _logger.LogWarning("User not found for deletion: {Id}", id);
-                return false;
-            }
-            
-            // Check authorization
-            if (!CanUserModifyUser(entity.UserId))
-            {
-                throw new UnauthorizedAccessException("You don't have permission to delete this user");
-            }
-            
-            // Check for dependencies (properties, bookings, etc.)
-            var hasProperties = await _context.Properties.AnyAsync(p => p.OwnerId == id);
-            var hasBookings = await _context.Bookings.AnyAsync(b => b.UserId == id);
-            
-            if (hasProperties || hasBookings)
-            {
-                throw new InvalidOperationException("Cannot delete user with related properties or bookings");
-            }
-            
-            _context.Users.Remove(entity);
-            await _context.SaveChangesAsync();
-            
-            _logger.LogInformation("Deleted user with ID {Id} for user {UserId}", 
-                id, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
-            
-            return true;
-        });
+        await DeleteAsync<User>(
+            id,
+            async user => {
+                // Check authorization
+                if (!await CanModifyUserAsync(user))
+                {
+                    throw new UnauthorizedAccessException("You don't have permission to delete this user");
+                }
+                
+                // Check for dependencies (properties, bookings, etc.)
+                var hasProperties = await Context.Properties.AnyAsync(p => p.OwnerId == id);
+                var hasBookings = await Context.Bookings.AnyAsync(b => b.UserId == id);
+                
+                if (hasProperties || hasBookings)
+                {
+                    throw new InvalidOperationException("Cannot delete user with related properties or bookings");
+                }
+                
+                return true;
+            },
+            nameof(DeleteAsync)
+        );
+        return true;
     }
 
     #endregion
 
-    #region Authentication Methods
+    #region Authentication Methods (Refactored with BaseService)
 
     /// <summary>
     /// Authenticate user login
@@ -228,26 +142,26 @@ public class UserService : IUserService
     {
         try
         {
-            var user = await _context.Users
+            var user = await Context.Users
                 .Include(u => u.UserTypeNavigation)
                 .Include(u => u.Address)
-                .FirstOrDefaultAsync(u => 
+                .FirstOrDefaultAsync(u =>
                     (u.Username == request.UsernameOrEmail || u.Email == request.UsernameOrEmail));
 
             if (user == null || !ValidatePassword(request.Password, user.PasswordHash, user.PasswordSalt))
             {
-                _logger.LogWarning("Login attempt failed - invalid password for user: {UserId}", user?.UserId);
+                LogWarning("Login attempt failed - invalid password for user: {UserId}", user?.UserId);
                 return null;
             }
 
-            _logger.LogInformation("Login successful for user {UserId} from {ClientType}", 
+            LogInfo("Login successful for user {UserId} from {ClientType}",
                 user.UserId, request.ClientType);
 
             return user.ToUserResponse();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Login failed for username/email: {UsernameOrEmail}", request.UsernameOrEmail);
+            LogError(ex, "Login failed for username/email: {UsernameOrEmail}", request.UsernameOrEmail);
             throw;
         }
     }
@@ -265,12 +179,9 @@ public class UserService : IUserService
     /// </summary>
     public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        await UnitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            // Note: ConfirmPassword validation removed - should be handled on the client side
-            // or add ConfirmPassword property to ChangePasswordRequest DTO if needed
-
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            var user = await Context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
             {
                 throw new KeyNotFoundException("User not found");
@@ -285,9 +196,9 @@ public class UserService : IUserService
             // Set new password
             SetUserPassword(user, request.NewPassword);
 
-            await _context.SaveChangesAsync();
+            await Context.SaveChangesAsync();
 
-            _logger.LogInformation("Password changed for user {UserId}", userId);
+            LogInfo("Password changed for user {UserId}", userId);
         });
     }
 
@@ -298,23 +209,20 @@ public class UserService : IUserService
     {
         try
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var user = await Context.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (user == null)
             {
                 // Don't reveal if email exists - always return success
-                _logger.LogInformation("Forgot password request for non-existent email: {Email}", email);
+                LogInfo("Forgot password request for non-existent email: {Email}", email);
                 return;
             }
 
             // TODO: Generate reset token and send email
-            // This would typically involve generating a secure token,
-            // storing it with expiration, and sending via email service
-            
-            _logger.LogInformation("Forgot password token generated for user {UserId}", user.UserId);
+            LogInfo("Forgot password token generated for user {UserId}", user.UserId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Forgot password failed for email: {Email}", email);
+            LogError(ex, "Forgot password failed for email: {Email}", email);
             throw;
         }
     }
@@ -324,23 +232,16 @@ public class UserService : IUserService
     /// </summary>
     public async Task ResetPasswordAsync(ResetPasswordRequest request)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        await UnitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            // Note: ConfirmPassword validation removed - should be handled on the client side
-            // or add ConfirmPassword property to ResetPasswordRequest DTO if needed
-
             // TODO: Validate reset token and find user
-            // This would typically involve verifying the token hasn't expired
-            // and finding the associated user
-            
-            // For now, throw not implemented
             throw new NotImplementedException("Password reset functionality requires email service integration");
         });
     }
 
     #endregion
 
-    #region Admin/Landlord Methods
+    #region Admin/Landlord Methods (Refactored with BaseService)
 
     /// <summary>
     /// Get all users (for landlords)
@@ -349,7 +250,7 @@ public class UserService : IUserService
     {
         try
         {
-            var query = _context.Users
+            var query = Context.Users
                 .Include(u => u.UserTypeNavigation)
                 .Include(u => u.Address)
                 .AsQueryable();
@@ -362,15 +263,13 @@ public class UserService : IUserService
             
             var users = await query.ToListAsync();
             
-            _logger.LogInformation("Retrieved {Count} users for user {UserId}", 
-                users.Count, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
+            LogInfo("Retrieved {Count} users", users.Count);
             
             return users.Select(u => u.ToUserResponse());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Get all users failed for user {UserId}", 
-                (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
+            LogError(ex, "Get all users failed");
             throw;
         }
     }
@@ -383,24 +282,24 @@ public class UserService : IUserService
         try
         {
             // Get tenants who have rental requests for landlord's properties
-            var tenants = await _context.Users
+            var tenants = await Context.Users
                 .Include(u => u.UserTypeNavigation)
                 .Include(u => u.Address)
-                .Where(u => u.UserTypeNavigation != null && 
+                .Where(u => u.UserTypeNavigation != null &&
                 (u.UserTypeNavigation.TypeName == "Tenant" || u.UserTypeNavigation.TypeName == "User"))
-                .Where(u => _context.RentalRequests
+                .Where(u => Context.RentalRequests
                     .Include(rr => rr.Property)
                     .Any(rr => rr.Property != null && rr.Property.OwnerId == landlordId && rr.UserId == u.UserId))
                 .ToListAsync();
             
-            _logger.LogInformation("Retrieved {Count} tenants for landlord {LandlordId}", 
+            LogInfo("Retrieved {Count} tenants for landlord {LandlordId}",
                 tenants.Count, landlordId);
             
             return tenants.Select(t => t.ToUserResponse());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Get tenants failed for landlord {LandlordId}", landlordId);
+            LogError(ex, "Get tenants failed for landlord {LandlordId}", landlordId);
             throw;
         }
     }
@@ -412,7 +311,7 @@ public class UserService : IUserService
     {
         try
         {
-            var query = _context.Users
+            var query = Context.Users
                 .Include(u => u.UserTypeNavigation)
                 .Include(u => u.Address)
                 .Where(u => u.UserTypeNavigation != null && u.UserTypeNavigation.TypeName.ToLower() == role.ToLower());
@@ -422,32 +321,32 @@ public class UserService : IUserService
             
             var users = await query.ToListAsync();
             
-            _logger.LogInformation("Retrieved {Count} users with role {Role} for user {UserId}", 
-                users.Count, role, (_currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown"));
+            LogInfo("Retrieved {Count} users with role {Role}",
+                users.Count, role);
             
             return users.Select(u => u.ToUserResponse());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Get users by role failed for role {Role}", role);
+            LogError(ex, "Get users by role failed for role {Role}", role);
             throw;
         }
     }
 
     #endregion
 
-    #region Profile Management Methods
+    #region Profile Management Methods (Refactored with BaseService)
 
     /// <summary>
     /// Link PayPal account to user
     /// </summary>
     public async Task LinkPayPalAsync(int userId, string paypalEmail)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        await UnitOfWork.ExecuteInTransactionAsync(async () =>
         {
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+                var user = await Context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (user == null)
                     throw new KeyNotFoundException("User not found");
 
@@ -456,7 +355,7 @@ public class UserService : IUserService
                     throw new ArgumentException("Invalid PayPal email format");
 
                 // Check if PayPal email is already linked to another user
-                var existingUser = await _context.Users
+                var existingUser = await Context.Users
                     .FirstOrDefaultAsync(u => u.PaypalUserIdentifier == paypalEmail && u.UserId != userId);
                 
                 if (existingUser != null)
@@ -465,13 +364,13 @@ public class UserService : IUserService
                 user.PaypalUserIdentifier = paypalEmail;
                 user.IsPaypalLinked = true;
 
-                await _context.SaveChangesAsync();
+                await Context.SaveChangesAsync();
                 
-                _logger.LogInformation("PayPal account {PayPalEmail} linked to user {UserId}", paypalEmail, userId);
+                LogInfo("PayPal account {PayPalEmail} linked to user {UserId}", paypalEmail, userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error linking PayPal account for user {UserId}", userId);
+                LogError(ex, "Error linking PayPal account for user {UserId}", userId);
                 throw;
             }
         });
@@ -482,11 +381,11 @@ public class UserService : IUserService
     /// </summary>
     public async Task UnlinkPayPalAsync(int userId)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        await UnitOfWork.ExecuteInTransactionAsync(async () =>
         {
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+                var user = await Context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (user == null)
                     throw new KeyNotFoundException("User not found");
 
@@ -498,13 +397,13 @@ public class UserService : IUserService
                 user.PaypalUserIdentifier = null;
                 user.IsPaypalLinked = false;
 
-                await _context.SaveChangesAsync();
+                await Context.SaveChangesAsync();
                 
-                _logger.LogInformation("PayPal account {PayPalEmail} unlinked from user {UserId}", previousPaypalEmail, userId);
+                LogInfo("PayPal account {PayPalEmail} unlinked from user {UserId}", previousPaypalEmail, userId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error unlinking PayPal account for user {UserId}", userId);
+                LogError(ex, "Error unlinking PayPal account for user {UserId}", userId);
                 throw;
             }
         });
@@ -586,14 +485,14 @@ public class UserService : IUserService
     /// </summary>
     private IQueryable<User> ApplyRoleBasedFiltering(IQueryable<User> query)
     {
-        var currentUserRole = _currentUserService.UserRole;
-        var currentUserId = _currentUserService.GetUserIdAsInt();
+        var currentUserRole = CurrentUserService.UserRole;
+        var currentUserId = CurrentUserService.GetUserIdAsInt();
 
         if (currentUserRole == "Landlord")
         {
             // Landlords can see tenants for their properties and basic user info
-            return query.Where(u => 
-                u.UserTypeNavigation != null && 
+            return query.Where(u =>
+                u.UserTypeNavigation != null &&
                 (u.UserTypeNavigation.TypeName == "Tenant" || u.UserTypeNavigation.TypeName == "User"));
         }
         else if (currentUserRole == "User" || currentUserRole == "Tenant")
@@ -607,15 +506,34 @@ public class UserService : IUserService
     }
 
     /// <summary>
-    /// Check if current user can modify a specific user
+    /// Check if current user can access a specific user (for GetById)
     /// </summary>
-    private bool CanUserModifyUser(int targetUserId)
+    private async Task<bool> CanAccessUserAsync(User user)
     {
-        var currentUserRole = _currentUserService.UserRole;
-        var currentUserId = _currentUserService.GetUserIdAsInt();
+        var currentUserRole = CurrentUserService.UserRole;
+        var currentUserId = CurrentUserService.GetUserIdAsInt();
+
+        return currentUserRole?.ToLowerInvariant() switch
+        {
+            "landlord" => user.UserId == currentUserId || 
+                     (user.UserTypeNavigation != null && 
+                     (user.UserTypeNavigation.TypeName?.Equals("Tenant", StringComparison.OrdinalIgnoreCase) == true || 
+                      user.UserTypeNavigation.TypeName?.Equals("User", StringComparison.OrdinalIgnoreCase) == true)),
+            "user" or "tenant" => user.UserId == currentUserId,
+            _ => user.UserId == currentUserId // Default to user's own profile
+        };
+    }
+
+    /// <summary>
+    /// Check if current user can modify a specific user (for Update/Delete)
+    /// </summary>
+    private async Task<bool> CanModifyUserAsync(User user)
+    {
+        var currentUserRole = CurrentUserService.UserRole;
+        var currentUserId = CurrentUserService.GetUserIdAsInt();
 
         // Users can modify their own profile
-        if (currentUserId == targetUserId)
+        if (currentUserId == user.UserId)
             return true;
 
         // Landlords can modify users they manage (would need additional logic)
@@ -633,7 +551,7 @@ public class UserService : IUserService
     /// </summary>
     private async Task ValidateUserUniquenessAsync(string username, string email)
     {
-        var existingUser = await _context.Users
+        var existingUser = await Context.Users
             .FirstOrDefaultAsync(u => u.Username == username || u.Email == email);
 
         if (existingUser != null)
@@ -694,7 +612,7 @@ public class UserService : IUserService
     /// </summary>
     private string GenerateSalt()
     {
-        var saltBytes = new byte[32];
+        var saltBytes = new byte[16];  // Match seeding: 16 bytes
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(saltBytes);
         return Convert.ToBase64String(saltBytes);
@@ -706,8 +624,8 @@ public class UserService : IUserService
     private string GenerateHash(string password, string salt)
     {
         var saltBytes = Convert.FromBase64String(salt);
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000);
-        var hashBytes = pbkdf2.GetBytes(32);
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);  // Match seeding: SHA256
+        var hashBytes = pbkdf2.GetBytes(20);  // Match seeding: 20 bytes
         return Convert.ToBase64String(hashBytes);
     }
 

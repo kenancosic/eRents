@@ -1,3 +1,4 @@
+using eRents.Features.Shared.Validation;
 using eRents.Features.RentalManagement.DTOs;
 using FluentValidation;
 using eRents.Domain.Models.Enums;
@@ -7,54 +8,39 @@ namespace eRents.Features.RentalManagement.Validators;
 /// <summary>
 /// Validator for rental request creation/updates
 /// </summary>
-public class RentalRequestValidator : AbstractValidator<RentalRequestRequest>
+public class RentalRequestValidator : BaseEntityValidator<RentalRequestRequest>
 {
-	private static readonly string[] ValidCurrencies = { "BAM", "EUR", "USD" };
-	private static readonly string[] ValidRentalTypes = { "Daily", "Monthly", "Annual" };
-
 	public RentalRequestValidator()
 	{
-		RuleFor(x => x.PropertyId)
-				.GreaterThan(0)
-				.WithMessage("Valid property ID is required");
-
-		// BookingId is not part of RentalRequestRequest
-
+		ValidateRequiredId(x => x.PropertyId, "Property ID");
+		
 		RuleFor(x => x.StartDate)
-				.NotEmpty()
-				.WithMessage("Start date is required")
-				.GreaterThanOrEqualTo(DateTime.Today)
-				.WithMessage("Start date cannot be in the past");
-
+			.NotEmpty()
+			.WithMessage("Start date is required");
+			
 		RuleFor(x => x.EndDate)
-				.NotEmpty()
-				.WithMessage("End date is required")
-				.GreaterThan(x => x.StartDate)
-				.WithMessage("End date must be after start date");
-
+			.NotEmpty()
+			.WithMessage("End date is required");
+			
 		RuleFor(x => x.NumberOfGuests)
-				.InclusiveBetween(1, 20)
-				.WithMessage("Number of guests must be between 1 and 20");
-
+			.GreaterThan(0)
+			.WithMessage("Number of guests must be greater than 0")
+			.LessThanOrEqualTo(20)
+			.WithMessage("Number of guests cannot exceed 20");
+			
 		RuleFor(x => x.TotalPrice)
-				.GreaterThanOrEqualTo(0)
-				.WithMessage("Total price must be non-negative")
-				.LessThanOrEqualTo(100000)
-				.WithMessage("Total price cannot exceed 100,000");
-
+			.GreaterThanOrEqualTo(0)
+			.WithMessage("Total price must be non-negative");
+		
 		RuleFor(x => x.Currency)
-				.NotEmpty()
-				.WithMessage("Currency is required")
 				.Must(BeValidCurrency)
-				.WithMessage($"Currency must be one of: {string.Join(", ", ValidCurrencies)}");
+				.WithMessage($"Currency must be one of: BAM, EUR, USD");
 
 		RuleFor(x => x.RentalType)
 				.IsInEnum()
 				.WithMessage("Rental type must be a valid enum value");
 
-		RuleFor(x => x.SpecialRequests)
-				.MaximumLength(500)
-				.WithMessage("Special requests cannot exceed 500 characters");
+		ValidateOptionalText(x => x.SpecialRequests, "Special requests", 500);
 
 		// Business rule: Rental duration should match rental type
 		RuleFor(x => x)
@@ -69,7 +55,7 @@ public class RentalRequestValidator : AbstractValidator<RentalRequestRequest>
 
 	private static bool BeValidCurrency(string currency)
 	{
-		return ValidCurrencies.Contains(currency, StringComparer.OrdinalIgnoreCase);
+		return new[] { "BAM", "EUR", "USD" }.Contains(currency, StringComparer.OrdinalIgnoreCase);
 	}
 
 	private static bool HaveConsistentRentalDuration(RentalRequestRequest request)
@@ -94,20 +80,13 @@ public class RentalRequestValidator : AbstractValidator<RentalRequestRequest>
 /// <summary>
 /// Validator for rental approval requests
 /// </summary>
-public class RentalApprovalValidator : AbstractValidator<RentalApprovalRequest>
+public class RentalApprovalValidator : BaseEntityValidator<RentalApprovalRequest>
 {
 	public RentalApprovalValidator()
 	{
-		RuleFor(x => x.Reason)
-				.MaximumLength(1000)
-				.WithMessage("Reason cannot exceed 1000 characters");
-
-		RuleFor(x => x.Notes)
-				.MaximumLength(2000)
-				.WithMessage("Notes cannot exceed 2000 characters");
+		ValidateOptionalText(x => x.Reason, "Reason", 1000);
+		ValidateOptionalText(x => x.Notes, "Notes", 2000);
 	}
-
-	// Helper method removed - no longer needed with simplified approval request
 }
 
 // StartCoordinationValidator removed - coordination functionality was simplified
@@ -115,55 +94,43 @@ public class RentalApprovalValidator : AbstractValidator<RentalApprovalRequest>
 /// <summary>
 /// Validator for creating tenant from rental request
 /// </summary>
-public class CreateTenantFromRentalValidator : AbstractValidator<CreateTenantFromRentalRequest>
+public class CreateTenantFromRentalValidator : BaseEntityValidator<CreateTenantFromRentalRequest>
 {
-	private static readonly string[] ValidCurrencies = { "BAM", "EUR", "USD" };
-
 	public CreateTenantFromRentalValidator()
 	{
-		RuleFor(x => x.RentalRequestId)
-				.GreaterThan(0)
-				.WithMessage("Valid rental request ID is required");
-
-		RuleFor(x => x.UserId)
-				.GreaterThan(0)
-				.WithMessage("Valid user ID is required");
-
-		RuleFor(x => x.PropertyId)
-				.GreaterThan(0)
-				.WithMessage("Valid property ID is required");
-
+		ValidateRequiredId(x => x.RentalRequestId, "Rental request ID");
+		ValidateRequiredId(x => x.UserId, "User ID");
+		ValidateRequiredId(x => x.PropertyId, "Property ID");
+		
 		RuleFor(x => x.StartDate)
-				.NotEmpty()
-				.WithMessage("Start date is required")
-				.GreaterThanOrEqualTo(DateTime.Today.AddDays(-7))
-				.WithMessage("Start date cannot be more than 7 days in the past");
-
+			.NotEmpty()
+			.WithMessage("Start date is required");
+			
 		RuleFor(x => x.EndDate)
-				.NotEmpty()
-				.WithMessage("End date is required")
-				.GreaterThan(x => x.StartDate)
-				.WithMessage("End date must be after start date");
-
+			.NotEmpty()
+			.WithMessage("End date is required");
+			
 		RuleFor(x => x.MonthlyRent)
-				.GreaterThan(0)
-				.WithMessage("Monthly rent must be greater than 0")
-				.LessThanOrEqualTo(50000)
-				.WithMessage("Monthly rent cannot exceed 50,000");
-
+			.GreaterThanOrEqualTo(0.01m)
+			.WithMessage("Monthly rent must be at least 0.01")
+			.LessThanOrEqualTo(50000)
+			.WithMessage("Monthly rent cannot exceed 50,000");
+			
 		RuleFor(x => x.SecurityDeposit)
-				.GreaterThanOrEqualTo(0)
-				.WithMessage("Security deposit must be non-negative")
-				.LessThanOrEqualTo(100000)
-				.WithMessage("Security deposit cannot exceed 100,000");
-
+			.GreaterThanOrEqualTo(0)
+			.WithMessage("Security deposit must be non-negative")
+			.LessThanOrEqualTo(100000)
+			.WithMessage("Security deposit cannot exceed 100,000");
+			
 		RuleFor(x => x.SpecialTerms)
-				.MaximumLength(1000)
-				.WithMessage("Special terms cannot exceed 1000 characters");
-
+			.MaximumLength(1000)
+			.WithMessage("Special terms cannot exceed 1000 characters")
+			.When(x => !string.IsNullOrEmpty(x.SpecialTerms));
+			
 		RuleFor(x => x.Notes)
-				.MaximumLength(1000)
-				.WithMessage("Notes cannot exceed 1000 characters");
+			.MaximumLength(1000)
+			.WithMessage("Notes cannot exceed 1000 characters")
+			.When(x => !string.IsNullOrEmpty(x.Notes));
 
 		// Business rule: Lease duration should be reasonable
 		RuleFor(x => x)
@@ -175,11 +142,6 @@ public class CreateTenantFromRentalValidator : AbstractValidator<CreateTenantFro
 				.Must(HaveReasonableSecurityDeposit)
 				.WithMessage("Security deposit should not exceed 6 months of rent")
 				.When(x => x.MonthlyRent > 0);
-	}
-
-	private static bool BeValidCurrency(string currency)
-	{
-		return ValidCurrencies.Contains(currency, StringComparer.OrdinalIgnoreCase);
 	}
 
 	private static bool HaveReasonableLeaseDuration(CreateTenantFromRentalRequest request)
@@ -198,54 +160,64 @@ public class CreateTenantFromRentalValidator : AbstractValidator<CreateTenantFro
 /// <summary>
 /// Validator for rental filter requests
 /// </summary>
-public class RentalFilterValidator : AbstractValidator<RentalFilterRequest>
+public class RentalFilterValidator : BaseEntityValidator<RentalFilterRequest>
 {
-	private static readonly string[] ValidStatuses = { "Pending", "Approved", "Rejected", "Cancelled" };
-	private static readonly string[] ValidRentalTypes = { "Daily", "Monthly", "Annual" };
-	private static readonly string[] ValidSortFields = { "CreatedAt", "StartDate", "TotalPrice", "Status", "EndDate" };
-	private static readonly string[] ValidSortOrders = { "ASC", "DESC" };
-
 	public RentalFilterValidator()
 	{
 		RuleFor(x => x.PropertyId)
-				.GreaterThan(0)
-				.WithMessage("Valid property ID is required")
-				.When(x => x.PropertyId.HasValue);
-
+			.GreaterThan(0)
+			.WithMessage("Property ID must be greater than 0")
+			.When(x => x.PropertyId.HasValue);
+			
 		RuleFor(x => x.UserId)
-				.GreaterThan(0)
-				.WithMessage("Valid user ID is required")
-				.When(x => x.UserId.HasValue);
-
+			.GreaterThan(0)
+			.WithMessage("User ID must be greater than 0")
+			.When(x => x.UserId.HasValue);
+			
 		RuleFor(x => x.LandlordId)
-				.GreaterThan(0)
-				.WithMessage("Valid landlord ID is required")
-				.When(x => x.LandlordId.HasValue);
-
+			.GreaterThan(0)
+			.WithMessage("Landlord ID must be greater than 0")
+			.When(x => x.LandlordId.HasValue);
+			
 		RuleFor(x => x.Status)
-				.Must(BeValidStatus)
-				.WithMessage($"Status must be one of: {string.Join(", ", ValidStatuses)}")
-				.When(x => !string.IsNullOrEmpty(x.Status));
-
-		RuleFor(x => x.RentalType)
-				.IsInEnum()
-				.WithMessage("Rental type must be a valid enum value")
-				.When(x => x.RentalType.HasValue);
-
+			.MaximumLength(50)
+			.WithMessage("Status cannot exceed 50 characters")
+			.When(x => !string.IsNullOrEmpty(x.Status));
+			
+		RuleFor(x => x.SortBy)
+			.MaximumLength(50)
+			.WithMessage("Sort field cannot exceed 50 characters")
+			.When(x => !string.IsNullOrEmpty(x.SortBy));
+			
+		RuleFor(x => x.SortOrder)
+			.MaximumLength(4)
+			.WithMessage("Sort order cannot exceed 4 characters")
+			.When(x => !string.IsNullOrEmpty(x.SortOrder));
+			
+		RuleFor(x => x.Page)
+			.GreaterThan(0)
+			.WithMessage("Page number must be greater than 0");
+			
+		RuleFor(x => x.PageSize)
+			.GreaterThan(0)
+			.WithMessage("Page size must be greater than 0")
+			.LessThanOrEqualTo(100)
+			.WithMessage("Page size cannot exceed 100");
+			
+		RuleFor(x => x.MinPrice)
+			.GreaterThanOrEqualTo(0)
+			.WithMessage("Minimum price must be non-negative")
+			.When(x => x.MinPrice.HasValue);
+			
+		RuleFor(x => x.MaxPrice)
+			.GreaterThanOrEqualTo(0)
+			.WithMessage("Maximum price must be non-negative")
+			.When(x => x.MaxPrice.HasValue);
+		
 		RuleFor(x => x.StartDate)
 				.LessThanOrEqualTo(x => x.EndDate)
 				.WithMessage("Start date must be before or equal to end date")
 				.When(x => x.StartDate.HasValue && x.EndDate.HasValue);
-
-		RuleFor(x => x.MinPrice)
-				.GreaterThanOrEqualTo(0)
-				.WithMessage("Minimum price must be non-negative")
-				.When(x => x.MinPrice.HasValue);
-
-		RuleFor(x => x.MaxPrice)
-				.GreaterThanOrEqualTo(0)
-				.WithMessage("Maximum price must be non-negative")
-				.When(x => x.MaxPrice.HasValue);
 
 		RuleFor(x => x.MaxPrice)
 				.GreaterThanOrEqualTo(x => x.MinPrice)
@@ -255,43 +227,6 @@ public class RentalFilterValidator : AbstractValidator<RentalFilterRequest>
 		RuleFor(x => x.SearchTerm)
 				.MaximumLength(100)
 				.WithMessage("Search term cannot exceed 100 characters");
-
-		RuleFor(x => x.SortBy)
-				.Must(BeValidSortField)
-				.WithMessage($"Sort field must be one of: {string.Join(", ", ValidSortFields)}")
-				.When(x => !string.IsNullOrEmpty(x.SortBy));
-
-		RuleFor(x => x.SortOrder)
-				.Must(BeValidSortOrder)
-				.WithMessage($"Sort order must be one of: {string.Join(", ", ValidSortOrders)}")
-				.When(x => !string.IsNullOrEmpty(x.SortOrder));
-
-		RuleFor(x => x.PageNumber)
-				.GreaterThan(0)
-				.WithMessage("Page number must be greater than 0")
-				.When(x => x.PageNumber.HasValue);
-
-		RuleFor(x => x.PageSize)
-				.InclusiveBetween(1, 100)
-				.WithMessage("Page size must be between 1 and 100")
-				.When(x => x.PageSize.HasValue);
-	}
-
-	private static bool BeValidStatus(string status)
-	{
-		return ValidStatuses.Contains(status, StringComparer.OrdinalIgnoreCase);
-	}
-
-	// BeValidRentalType method removed - using IsInEnum instead
-
-	private static bool BeValidSortField(string sortField)
-	{
-		return ValidSortFields.Contains(sortField, StringComparer.OrdinalIgnoreCase);
-	}
-
-	private static bool BeValidSortOrder(string sortOrder)
-	{
-		return ValidSortOrders.Contains(sortOrder, StringComparer.OrdinalIgnoreCase);
 	}
 }
 

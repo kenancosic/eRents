@@ -91,7 +91,7 @@ public class TenantPreferenceUpdateRequest
 /// <summary>
 /// Tenant search object for filtering and pagination
 /// </summary>
-public class TenantSearchObject
+public class TenantSearchObject : IPagedRequest
 {
 	public int Page { get; set; } = 1;
 	public int PageSize { get; set; } = 10;

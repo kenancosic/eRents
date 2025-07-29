@@ -362,10 +362,11 @@ namespace eRents.Features.Shared.Services
 				// Get all review data for training
 				var reviewData = await _context.Reviews
 						.Where(r => r.StarRating > 0)
+						.Where(r => r.Reviewer != null && r.Property != null)
 						.Select(r => new PropertyRating
 						{
-							UserId = r.Reviewer.UserId,
-							PropertyId = r.Property.PropertyId,
+							UserId = r.Reviewer!.UserId,
+							PropertyId = r.Property!.PropertyId,
 							Label = (float)r.StarRating
 						})
 						.ToListAsync();
@@ -492,9 +493,9 @@ namespace eRents.Features.Shared.Services
 
 	public class PropertyRating
 	{
-		public float UserId { get; set; }
-		public float PropertyId { get; set; }
-		public float Label { get; set; }
+		public float? UserId { get; set; }
+		public float? PropertyId { get; set; }
+		public float? Label { get; set; }
 	}
 
 	public class PropertyRatingPrediction

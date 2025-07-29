@@ -197,6 +197,10 @@ public class PropertyAvailabilityResponse
 	public DateTime? AvailableTo { get; set; }
 	public string? UnavailabilityReason { get; set; }
 	public List<BlockedDateRangeResponse>? BlockedPeriods { get; set; }
+	
+	// Additional properties used by BookingService
+	public List<string>? ConflictingBookingIds { get; set; }
+	public bool IsDailyRental { get; set; }
 }
 
 /// <summary>

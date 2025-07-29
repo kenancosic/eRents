@@ -69,6 +69,36 @@ public class RefundRequest
     public string? Notes { get; set; }
 }
 
+/// <summary>
+ /// DTO for executing a payment
+ /// </summary>
+ public class ExecutePaymentRequest
+ {
+  public string PayerId { get; set; } = string.Empty;
+ }
+/// <summary>
+/// DTO for updating payment status
+/// </summary>
+public class UpdatePaymentStatusRequest
+{
+    public string Status { get; set; } = string.Empty;
+}
+#endregion
+
+#region Search Objects
+
+/// <summary>
+/// Search object for filtering payments
+/// </summary>
+public class PaymentSearchObject : BaseSearchObject
+{
+    public int? TenantId { get; set; }
+    public int? PropertyId { get; set; }
+    public int? BookingId { get; set; }
+    public string? PaymentStatus { get; set; }
+    public string? PaymentReference { get; set; }
+}
+
 #endregion
 
 #region Financial Report DTOs

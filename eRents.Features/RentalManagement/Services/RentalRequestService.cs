@@ -13,172 +13,180 @@ namespace eRents.Features.RentalManagement.Services;
 /// Service for RentalRequest management - uses ERentsContext directly
 /// Following modular architecture principles with focused rental request operations
 /// </summary>
-public class RentalRequestService : IRentalRequestService
+public class RentalRequestService : BaseService, IRentalRequestService
 {
-	private readonly ERentsContext _context;
-	private readonly IUnitOfWork _unitOfWork;
-	private readonly ICurrentUserService _currentUserService;
-	private readonly ILogger<RentalRequestService> _logger;
-
 	public RentalRequestService(
 			ERentsContext context,
 			IUnitOfWork unitOfWork,
 			ICurrentUserService currentUserService,
 			ILogger<RentalRequestService> logger)
+			: base(context, unitOfWork, currentUserService, logger)
 	{
-		_context = context;
-		_unitOfWork = unitOfWork;
-		_currentUserService = currentUserService;
-		_logger = logger;
 	}
 
 	#region Core CRUD Operations
 
 	public async Task<RentalRequestResponse?> GetRentalRequestByIdAsync(int rentalRequestId)
 	{
-		try
-		{
-			var rentalRequest = await _context.RentalRequests
-					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
+		return await GetByIdAsync<RentalRequest, RentalRequestResponse>(
+			rentalRequestId,
+			q => q.Include(r => r.Property),
+			async r => await CanAccessRentalRequestAsync(r),
+			r => new RentalRequestResponse
+			{
+				Id = r.RequestId,
+				RentalRequestId = r.RequestId,
+				PropertyId = r.PropertyId,
+				UserId = r.UserId,
+				StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = r.ProposedMonthlyRent,
+				Status = r.Status,
+				CreatedAt = r.CreatedAt,
+				UpdatedAt = r.UpdatedAt
+			}
+		);
+	}
 
-			return rentalRequest?.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+	private async Task<bool> CanAccessRentalRequestAsync(RentalRequest request)
+	{
+		var currentUserId = CurrentUserId;
+		return request.UserId == currentUserId ||
+					 await IsLandlordOfPropertyAsync(request.PropertyId, currentUserId);
 	}
 
 	public async Task<RentalRequestResponse> CreateRentalRequestAsync(RentalRequestRequest request)
 	{
-		try
-		{
-			// Validate request
-			var (isValid, validationErrors) = await ValidateRentalRequestAsync(request);
-			if (!isValid)
+		return await CreateAsync<RentalRequest, RentalRequestRequest, RentalRequestResponse>(
+			request,
+			req =>
 			{
-				throw new ArgumentException($"Invalid rental request: {string.Join(", ", validationErrors)}");
-			}
-
-			// Check availability
-			var isAvailable = await IsPropertyAvailableAsync(request.PropertyId, request.StartDate, request.EndDate);
-			if (!isAvailable)
+				var entity = new RentalRequest
+				{
+					PropertyId = req.PropertyId,
+					UserId = CurrentUserId,
+					ProposedStartDate = DateOnly.FromDateTime(req.StartDate),
+					//ProposedEndDate = DateOnly.FromDateTime(req.EndDate),
+					LeaseDurationMonths = (int)Math.Ceiling((req.EndDate - req.StartDate).TotalDays / 30.0),
+					ProposedMonthlyRent = req.TotalPrice,
+					Message = req.SpecialRequests ?? "",
+					Status = "Pending",
+					CreatedAt = DateTime.UtcNow,
+					UpdatedAt = DateTime.UtcNow
+				};
+				return entity;
+			},
+			async (entity, req) =>
 			{
-				throw new InvalidOperationException("Property is not available for the selected dates");
-			}
+				// Validation
+				var (isValid, validationErrors) = await ValidateRentalRequestAsync(request);
+				if (!isValid)
+					throw new ArgumentException($"Invalid rental request: {string.Join(", ", validationErrors)}");
 
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-			var entity = request.ToRentalRequestEntity(currentUserId);
+				// Availability check
+				var isAvailable = await IsPropertyAvailableAsync(entity.PropertyId,
+					entity.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+					entity.ProposedEndDate.ToDateTime(TimeOnly.MinValue));
+				if (!isAvailable)
+					throw new InvalidOperationException("Property is not available for the selected dates");
 
-			// Calculate total price if not provided
-			if (entity.ProposedMonthlyRent == 0)
+				// Calculate price if needed
+				if (entity.ProposedMonthlyRent == 0)
+				{
+					entity.ProposedMonthlyRent = await CalculateRentalPriceAsync(
+						entity.PropertyId,
+						entity.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+						entity.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+						request.NumberOfGuests);
+				}
+			},
+			entity => new RentalRequestResponse
 			{
-				entity.ProposedMonthlyRent = await CalculateRentalPriceAsync(request.PropertyId, request.StartDate, request.EndDate, request.NumberOfGuests);
-			}
-
-			_context.RentalRequests.Add(entity);
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Created rental request {RentalRequestId} for user {UserId}", entity.RequestId, currentUserId);
-
-			return entity.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating rental request for property {PropertyId}", request.PropertyId);
-			throw;
-		}
+				Id = entity.RequestId,
+				RentalRequestId = entity.RequestId,
+				PropertyId = entity.PropertyId,
+				UserId = entity.UserId,
+				StartDate = entity.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = entity.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = entity.ProposedMonthlyRent,
+				Status = entity.Status,
+				CreatedAt = entity.CreatedAt,
+				UpdatedAt = entity.UpdatedAt
+			},
+			"CreateRentalRequest"
+		);
 	}
 
 	public async Task<RentalRequestResponse> UpdateRentalRequestAsync(int rentalRequestId, RentalRequestRequest request)
 	{
-		try
-		{
-			var entity = await _context.RentalRequests
-					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
-
-			if (entity == null)
+		return await UpdateAsync<RentalRequest, RentalRequestRequest, RentalRequestResponse>(
+			rentalRequestId,
+			request,
+			q => q.Include(r => r.Property),
+			async entity =>
 			{
-				throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
-			}
-
-			// Check if user can update this request
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-			if (entity.UserId != currentUserId && !await IsLandlordOfPropertyAsync(entity.PropertyId, currentUserId))
+				var currentUserId = CurrentUserId;
+				return entity.UserId == currentUserId ||
+						 await IsLandlordOfPropertyAsync(entity.PropertyId, currentUserId);
+			},
+			async (entity, req) =>
 			{
-				throw new UnauthorizedAccessException("You don't have permission to update this rental request");
-			}
+				// Only allow updates if status is Pending
+				if (entity.Status != "Pending")
+					throw new InvalidOperationException("Only pending rental requests can be updated");
 
-			// Only allow updates if status is Pending
-			if (entity.Status != "Pending")
+				// Validate updated request
+				var (isValid, validationErrors) = await ValidateRentalRequestAsync(req);
+				if (!isValid)
+					throw new ArgumentException($"Invalid rental request: {string.Join(", ", validationErrors)}");
+
+				entity.ProposedStartDate = DateOnly.FromDateTime(req.StartDate);
+				entity.LeaseDurationMonths = (int)Math.Ceiling((req.EndDate - req.StartDate).TotalDays / 30.0);
+				entity.ProposedMonthlyRent = req.TotalPrice;
+				entity.Message = req.SpecialRequests ?? "";
+			},
+			entity => new RentalRequestResponse
 			{
-				throw new InvalidOperationException("Only pending rental requests can be updated");
-			}
-
-			// Validate updated request
-			var (isValid, validationErrors) = await ValidateRentalRequestAsync(request);
-			if (!isValid)
-			{
-				throw new ArgumentException($"Invalid rental request: {string.Join(", ", validationErrors)}");
-			}
-
-			// Update entity fields
-			entity.ProposedStartDate = DateOnly.FromDateTime(request.StartDate);
-			entity.LeaseDurationMonths = (int)Math.Ceiling((request.EndDate - request.StartDate).TotalDays / 30.0);
-			entity.ProposedMonthlyRent = request.TotalPrice;
-			entity.Message = request.SpecialRequests ?? "";
-
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Updated rental request {RentalRequestId}", rentalRequestId);
-
-			return entity.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+				Id = entity.RequestId,
+				RentalRequestId = entity.RequestId,
+				PropertyId = entity.PropertyId,
+				UserId = entity.UserId,
+				StartDate = entity.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = entity.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = entity.ProposedMonthlyRent,
+				Status = entity.Status,
+				CreatedAt = entity.CreatedAt,
+				UpdatedAt = entity.UpdatedAt
+			},
+			"UpdateRentalRequest"
+		);
 	}
 
 	public async Task<bool> DeleteRentalRequestAsync(int rentalRequestId)
 	{
-		try
-		{
-			var entity = await _context.RentalRequests
-					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
-
-			if (entity == null)
+		await DeleteAsync<RentalRequest>(
+			rentalRequestId,
+			async entity =>
 			{
-				return false;
-			}
+				// Authorization check
+				var currentUserId = CurrentUserId;
+				if (entity.UserId != currentUserId &&
+						!await IsLandlordOfPropertyAsync(entity.PropertyId, currentUserId))
+				{
+					return false;
+				}
 
-			// Check if user can delete this request
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-			if (entity.UserId != currentUserId && !await IsLandlordOfPropertyAsync(entity.PropertyId, currentUserId))
-			{
-				throw new UnauthorizedAccessException("You don't have permission to delete this rental request");
-			}
+				// Status validation
+				if (entity.Status != "Pending" && entity.Status != "Rejected")
+				{
+					return false;
+				}
 
-			// Only allow deletion if status is Pending or Rejected
-			if (entity.Status != "Pending" && entity.Status != "Rejected")
-			{
-				throw new InvalidOperationException("Only pending or rejected rental requests can be deleted");
-			}
-
-			_context.RentalRequests.Remove(entity);
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Deleted rental request {RentalRequestId}", rentalRequestId);
-
-			return true;
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error deleting rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+				return true;
+			},
+			"DeleteRentalRequest"
+		);
+		return true;
 	}
 
 	#endregion
@@ -187,101 +195,117 @@ public class RentalRequestService : IRentalRequestService
 
 	public async Task<RentalPagedResponse> GetRentalRequestsAsync(RentalFilterRequest filter)
 	{
-		try
+		var pagedResult = await GetPagedAsync<RentalRequest, RentalRequestResponse, RentalFilterRequest>(
+			filter,
+			(query, search) => query.Include(r => r.Property),
+			ApplyAuthorization,
+			ApplyFilters,
+			(query, search) => ApplySorting(query, search.SortBy, search.SortOrder),
+			r => new RentalRequestResponse
+			{
+				Id = r.RequestId,
+				RentalRequestId = r.RequestId,
+				PropertyId = r.PropertyId,
+				UserId = r.UserId,
+				StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = r.ProposedMonthlyRent,
+				Status = r.Status,
+				CreatedAt = r.CreatedAt,
+				UpdatedAt = r.UpdatedAt
+			}
+		);
+
+		return new RentalPagedResponse
 		{
-			var query = _context.RentalRequests.AsQueryable();
+			Items = pagedResult.Items,
+			TotalCount = pagedResult.TotalCount,
+			PageNumber = pagedResult.Page,
+			PageSize = pagedResult.PageSize,
+			TotalPages = pagedResult.TotalPages
+		};
+	}
 
-			// Apply role-based filtering
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-			var currentUser = await _context.Users.FindAsync(currentUserId);
-			var userRole = currentUser?.UserTypeNavigation?.TypeName ?? "User";
+	private IQueryable<RentalRequest> ApplyAuthorization(IQueryable<RentalRequest> query)
+	{
+		var currentUserId = CurrentUserId;
+		var userRole = CurrentUserRole;
 
-			if (userRole == "User")
-			{
-				query = query.Where(r => r.UserId == currentUserId);
-			}
-			else if (userRole == "Landlord")
-			{
-				query = query.Where(r => r.Property.OwnerId == currentUserId);
-			}
-
-			// Apply filters
-			if (filter.PropertyId.HasValue)
-			{
-				query = query.Where(r => r.PropertyId == filter.PropertyId.Value);
-			}
-
-			if (!string.IsNullOrEmpty(filter.Status))
-			{
-				query = query.Where(r => r.Status == filter.Status);
-			}
-
-			if (filter.StartDate.HasValue)
-			{
-				query = query.Where(r => r.ProposedStartDate >= DateOnly.FromDateTime(filter.StartDate.Value));
-			}
-
-			if (filter.EndDate.HasValue)
-			{
-				query = query.Where(r => r.ProposedEndDate <= DateOnly.FromDateTime(filter.EndDate.Value));
-			}
-
-			if (filter.MinPrice.HasValue)
-			{
-				query = query.Where(r => r.ProposedMonthlyRent >= filter.MinPrice.Value);
-			}
-
-			if (filter.MaxPrice.HasValue)
-			{
-				query = query.Where(r => r.ProposedMonthlyRent <= filter.MaxPrice.Value);
-			}
-
-			// Apply sorting
-			query = ApplySorting(query, filter.SortBy, filter.SortOrder);
-
-			// Get total count before pagination
-			var totalCount = await query.CountAsync();
-
-			// Apply pagination
-			var pageSize = filter.PageSize ?? 10;
-			var pageNumber = filter.PageNumber ?? 1;
-			var skip = (pageNumber - 1) * pageSize;
-
-			var rentalRequests = await query
-					.Skip(skip)
-					.Take(pageSize)
-					.ToListAsync();
-
-			return new RentalPagedResponse
-			{
-				Items = rentalRequests.Select(r => r.ToRentalRequestResponse()).ToList(),
-				TotalCount = totalCount,
-				PageNumber = pageNumber,
-				PageSize = pageSize,
-				TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-			};
-		}
-		catch (Exception ex)
+		if (userRole == "User")
 		{
-			_logger.LogError(ex, "Error getting rental requests with filter");
-			throw;
+			return query.Where(r => r.UserId == currentUserId);
 		}
+		else if (userRole == "Landlord")
+		{
+			return query.Where(r => r.Property.OwnerId == currentUserId);
+		}
+
+		return query;
+	}
+
+	private IQueryable<RentalRequest> ApplyFilters(IQueryable<RentalRequest> query, RentalFilterRequest filter)
+	{
+		if (filter.PropertyId.HasValue)
+		{
+			query = query.Where(r => r.PropertyId == filter.PropertyId.Value);
+		}
+
+		if (!string.IsNullOrEmpty(filter.Status))
+		{
+			query = query.Where(r => r.Status == filter.Status);
+		}
+
+		if (filter.StartDate.HasValue)
+		{
+			query = query.Where(r => r.ProposedStartDate >= DateOnly.FromDateTime(filter.StartDate.Value));
+		}
+
+		if (filter.EndDate.HasValue)
+		{
+			query = query.Where(r => r.ProposedEndDate <= DateOnly.FromDateTime(filter.EndDate.Value));
+		}
+
+		if (filter.MinPrice.HasValue)
+		{
+			query = query.Where(r => r.ProposedMonthlyRent >= filter.MinPrice.Value);
+		}
+
+		if (filter.MaxPrice.HasValue)
+		{
+			query = query.Where(r => r.ProposedMonthlyRent <= filter.MaxPrice.Value);
+		}
+
+		return query;
 	}
 
 	public async Task<List<RentalRequestResponse>> GetPendingRentalRequestsAsync()
 	{
 		try
 		{
-			var pendingRequests = await _context.RentalRequests
-					.Where(r => r.Status == "Pending")
-					.OrderBy(r => r.CreatedAt)
-					.ToListAsync();
+			var pendingRequests = await Context.RentalRequests
+				.Where(r => r.Status == "Pending")
+				.OrderBy(r => r.CreatedAt)
+				.AsNoTracking()
+				.ToListAsync();
 
-			return pendingRequests.Select(r => r.ToRentalRequestResponse()).ToList();
+			LogInfo("GetPendingRentalRequests: Retrieved {Count} pending requests", pendingRequests.Count);
+			return pendingRequests.Select(r => new RentalRequestResponse
+			{
+				Id = r.RequestId,
+				RentalRequestId = r.RequestId,
+				PropertyId = r.PropertyId,
+				UserId = r.UserId,
+				StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = r.ProposedMonthlyRent,
+				Status = r.Status,
+				CreatedAt = r.CreatedAt,
+				UpdatedAt = r.UpdatedAt
+			}).ToList();
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting pending rental requests");
+			LogError(ex, "Error getting pending rental requests");
 			throw;
 		}
 	}
@@ -290,16 +314,30 @@ public class RentalRequestService : IRentalRequestService
 	{
 		try
 		{
-			var propertyRequests = await _context.RentalRequests
-					.Where(r => r.PropertyId == propertyId)
-					.OrderByDescending(r => r.CreatedAt)
-					.ToListAsync();
+			var propertyRequests = await Context.RentalRequests
+				.Where(r => r.PropertyId == propertyId)
+				.OrderByDescending(r => r.CreatedAt)
+				.AsNoTracking()
+				.ToListAsync();
 
-			return propertyRequests.Select(r => r.ToRentalRequestResponse()).ToList();
+			LogInfo("GetPropertyRentalRequests: Retrieved {Count} requests for property {PropertyId}", propertyRequests.Count, propertyId);
+			return propertyRequests.Select(r => new RentalRequestResponse
+			{
+				Id = r.RequestId,
+				RentalRequestId = r.RequestId,
+				PropertyId = r.PropertyId,
+				UserId = r.UserId,
+				StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = r.ProposedMonthlyRent,
+				Status = r.Status,
+				CreatedAt = r.CreatedAt,
+				UpdatedAt = r.UpdatedAt
+			}).ToList();
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting rental requests for property {PropertyId}", propertyId);
+			LogError(ex, "Error getting rental requests for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -308,16 +346,30 @@ public class RentalRequestService : IRentalRequestService
 	{
 		try
 		{
-			var expiredRequests = await _context.RentalRequests
-					.Where(r => r.Status == "Pending" && r.CreatedAt < DateTime.UtcNow.AddDays(-30))
-					.OrderBy(r => r.ProposedEndDate)
-					.ToListAsync();
+			var expiredRequests = await Context.RentalRequests
+				.Where(r => r.Status == "Pending" && r.CreatedAt < DateTime.UtcNow.AddDays(-30))
+				.OrderBy(r => r.ProposedEndDate)
+				.AsNoTracking()
+				.ToListAsync();
 
-			return expiredRequests.Select(r => r.ToRentalRequestResponse()).ToList();
+			LogInfo("GetExpiredRentalRequests: Retrieved {Count} expired requests", expiredRequests.Count);
+			return expiredRequests.Select(r => new RentalRequestResponse
+			{
+				Id = r.RequestId,
+				RentalRequestId = r.RequestId,
+				PropertyId = r.PropertyId,
+				UserId = r.UserId,
+				StartDate = r.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+				EndDate = r.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+				TotalPrice = r.ProposedMonthlyRent,
+				Status = r.Status,
+				CreatedAt = r.CreatedAt,
+				UpdatedAt = r.UpdatedAt
+			}).ToList();
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting expired rental requests");
+			LogError(ex, "Error getting expired rental requests");
 			throw;
 		}
 	}
@@ -328,145 +380,181 @@ public class RentalRequestService : IRentalRequestService
 
 	public async Task<RentalRequestResponse> ApproveRentalRequestAsync(int rentalRequestId, RentalApprovalRequest approval)
 	{
-		try
+		return await UnitOfWork.ExecuteInTransactionAsync(async () =>
 		{
-			var rentalRequest = await _context.RentalRequests
+			try
+			{
+				var rentalRequest = await Context.RentalRequests
 					.Include(r => r.Property)
 					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
 
-			if (rentalRequest == null)
-			{
-				throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
-			}
+				if (rentalRequest == null)
+				{
+					throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
+				}
 
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
+				// Check if user can approve this request
+				if (!await CanApproveRentalRequestAsync(rentalRequestId, CurrentUserId))
+				{
+					throw new UnauthorizedAccessException("You don't have permission to approve this rental request");
+				}
 
-			// Check if user can approve this request
-			if (!await CanApproveRentalRequestAsync(rentalRequestId, currentUserId))
-			{
-				throw new UnauthorizedAccessException("You don't have permission to approve this rental request");
-			}
+				// Can only approve pending requests
+				if (rentalRequest.Status != "Pending")
+				{
+					throw new InvalidOperationException("Only pending rental requests can be approved");
+				}
 
-			// Can only approve pending requests
-			if (rentalRequest.Status != "Pending")
-			{
-				throw new InvalidOperationException("Only pending rental requests can be approved");
-			}
-
-			// Final availability check
-			var isAvailable = await IsPropertyAvailableAsync(rentalRequest.PropertyId,
+				// Final availability check
+				var isAvailable = await IsPropertyAvailableAsync(rentalRequest.PropertyId,
 					rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
 					rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
 					rentalRequestId);
-			if (!isAvailable)
-			{
-				throw new InvalidOperationException("Property is no longer available for the requested dates");
+				if (!isAvailable)
+				{
+					throw new InvalidOperationException("Property is no longer available for the requested dates");
+				}
+
+				// Update request
+				rentalRequest.Status = "Approved";
+				rentalRequest.ResponseDate = DateTime.UtcNow;
+				rentalRequest.LandlordResponse = approval.Reason;
+
+				await Context.SaveChangesAsync();
+
+				LogInfo("Approved rental request {RentalRequestId}", rentalRequestId);
+				return new RentalRequestResponse
+				{
+					Id = rentalRequest.RequestId,
+					RentalRequestId = rentalRequest.RequestId,
+					PropertyId = rentalRequest.PropertyId,
+					UserId = rentalRequest.UserId,
+					StartDate = rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+					EndDate = rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+					TotalPrice = rentalRequest.ProposedMonthlyRent,
+					Status = rentalRequest.Status,
+					CreatedAt = rentalRequest.CreatedAt,
+					UpdatedAt = rentalRequest.UpdatedAt
+				};
 			}
-
-			// Update request
-			rentalRequest.Status = "Approved";
-			rentalRequest.ResponseDate = DateTime.UtcNow;
-			rentalRequest.LandlordResponse = approval.Reason;
-
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Approved rental request {RentalRequestId} by user {UserId}", rentalRequestId, currentUserId);
-
-			return rentalRequest.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error approving rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+			catch (Exception ex)
+			{
+				LogError(ex, "Error approving rental request {RentalRequestId}", rentalRequestId);
+				throw;
+			}
+		});
 	}
 
 	public async Task<RentalRequestResponse> RejectRentalRequestAsync(int rentalRequestId, RentalApprovalRequest rejection)
 	{
-		try
+		return await UnitOfWork.ExecuteInTransactionAsync(async () =>
 		{
-			var rentalRequest = await _context.RentalRequests
+			try
+			{
+				var rentalRequest = await Context.RentalRequests
 					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
 
-			if (rentalRequest == null)
-			{
-				throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
+				if (rentalRequest == null)
+				{
+					throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
+				}
+
+				// Check if user can reject this request
+				if (!await CanApproveRentalRequestAsync(rentalRequestId, CurrentUserId))
+				{
+					throw new UnauthorizedAccessException("You don't have permission to reject this rental request");
+				}
+
+				// Can only reject pending requests
+				if (rentalRequest.Status != "Pending")
+				{
+					throw new InvalidOperationException("Only pending rental requests can be rejected");
+				}
+
+				// Update request
+				rentalRequest.Status = "Rejected";
+				rentalRequest.ResponseDate = DateTime.UtcNow;
+				rentalRequest.LandlordResponse = rejection.Reason;
+
+				await Context.SaveChangesAsync();
+
+				LogInfo("Rejected rental request {RentalRequestId}", rentalRequestId);
+				return new RentalRequestResponse
+				{
+					Id = rentalRequest.RequestId,
+					RentalRequestId = rentalRequest.RequestId,
+					PropertyId = rentalRequest.PropertyId,
+					UserId = rentalRequest.UserId,
+					StartDate = rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+					EndDate = rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+					TotalPrice = rentalRequest.ProposedMonthlyRent,
+					Status = rentalRequest.Status,
+					CreatedAt = rentalRequest.CreatedAt,
+					UpdatedAt = rentalRequest.UpdatedAt
+				};
 			}
-
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-			// Check if user can reject this request
-			if (!await CanApproveRentalRequestAsync(rentalRequestId, currentUserId))
+			catch (Exception ex)
 			{
-				throw new UnauthorizedAccessException("You don't have permission to reject this rental request");
+				LogError(ex, "Error rejecting rental request {RentalRequestId}", rentalRequestId);
+				throw;
 			}
-
-			// Can only reject pending requests
-			if (rentalRequest.Status != "Pending")
-			{
-				throw new InvalidOperationException("Only pending rental requests can be rejected");
-			}
-
-			// Update request
-			rentalRequest.Status = "Rejected";
-			rentalRequest.ResponseDate = DateTime.UtcNow;
-			rentalRequest.LandlordResponse = rejection.Reason;
-
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Rejected rental request {RentalRequestId} by user {UserId}", rentalRequestId, currentUserId);
-
-			return rentalRequest.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error rejecting rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+		});
 	}
 
 	public async Task<RentalRequestResponse> CancelRentalRequestAsync(int rentalRequestId, string? reason = null)
 	{
-		try
+		return await UnitOfWork.ExecuteInTransactionAsync(async () =>
 		{
-			var rentalRequest = await _context.RentalRequests
+			try
+			{
+				var rentalRequest = await Context.RentalRequests
 					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
 
-			if (rentalRequest == null)
-			{
-				throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
+				if (rentalRequest == null)
+				{
+					throw new KeyNotFoundException($"Rental request {rentalRequestId} not found");
+				}
+
+				// Check if user can cancel this request (only the requester can cancel)
+				if (rentalRequest.UserId != CurrentUserId)
+				{
+					throw new UnauthorizedAccessException("You can only cancel your own rental requests");
+				}
+
+				// Can only cancel pending or approved requests
+				if (rentalRequest.Status != "Pending" && rentalRequest.Status != "Approved")
+				{
+					throw new InvalidOperationException("Only pending or approved rental requests can be cancelled");
+				}
+
+				// Update request
+				rentalRequest.Status = "Cancelled";
+				rentalRequest.ResponseDate = DateTime.UtcNow;
+				rentalRequest.LandlordResponse = reason ?? "Cancelled by requester";
+
+				await Context.SaveChangesAsync();
+
+				LogInfo("Cancelled rental request {RentalRequestId}", rentalRequestId);
+				return new RentalRequestResponse
+				{
+					Id = rentalRequest.RequestId,
+					RentalRequestId = rentalRequest.RequestId,
+					PropertyId = rentalRequest.PropertyId,
+					UserId = rentalRequest.UserId,
+					StartDate = rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue),
+					EndDate = rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue),
+					TotalPrice = rentalRequest.ProposedMonthlyRent,
+					Status = rentalRequest.Status,
+					CreatedAt = rentalRequest.CreatedAt,
+					UpdatedAt = rentalRequest.UpdatedAt
+				};
 			}
-
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-			// Check if user can cancel this request (only the requester can cancel)
-			if (rentalRequest.UserId != currentUserId)
+			catch (Exception ex)
 			{
-				throw new UnauthorizedAccessException("You can only cancel your own rental requests");
+				LogError(ex, "Error cancelling rental request {RentalRequestId}", rentalRequestId);
+				throw;
 			}
-
-			// Can only cancel pending or approved requests
-			if (rentalRequest.Status != "Pending" && rentalRequest.Status != "Approved")
-			{
-				throw new InvalidOperationException("Only pending or approved rental requests can be cancelled");
-			}
-
-			// Update request
-			rentalRequest.Status = "Cancelled";
-			rentalRequest.ResponseDate = DateTime.UtcNow;
-			rentalRequest.LandlordResponse = reason ?? "Cancelled by requester";
-
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Cancelled rental request {RentalRequestId} by user {UserId}", rentalRequestId, currentUserId);
-
-			return rentalRequest.ToRentalRequestResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error cancelling rental request {RentalRequestId}", rentalRequestId);
-			throw;
-		}
+		});
 	}
 
 	#endregion
@@ -477,19 +565,21 @@ public class RentalRequestService : IRentalRequestService
 	{
 		try
 		{
-			var rentalRequest = await _context.RentalRequests
-					.Include(r => r.Property)
-					.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
+			var rentalRequest = await Context.RentalRequests
+				.Include(r => r.Property)
+				.FirstOrDefaultAsync(r => r.RequestId == rentalRequestId);
 
 			if (rentalRequest == null)
 				return false;
 
 			// Only property owner can approve rental requests for their properties
-			return rentalRequest.Property.OwnerId == userId;
+			var canApprove = rentalRequest.Property.OwnerId == userId;
+			LogInfo("CanApproveRentalRequest: User {UserId} can approve request {RequestId}: {CanApprove}", userId, rentalRequestId, canApprove);
+			return canApprove;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking approval permission for rental request {RentalRequestId}", rentalRequestId);
+			LogError(ex, "Error checking approval permission for rental request {RentalRequestId}", rentalRequestId);
 			return false;
 		}
 	}
@@ -506,30 +596,33 @@ public class RentalRequestService : IRentalRequestService
 			// Check for overlapping approved rental requests
 			var startDateOnly = DateOnly.FromDateTime(startDate);
 			var endDateOnly = DateOnly.FromDateTime(endDate);
-			var conflictingRequests = await _context.RentalRequests
-					.Where(r => r.PropertyId == propertyId &&
-										 r.Status == "Approved" &&
-										 r.ProposedStartDate < endDateOnly &&
-										 r.ProposedEndDate > startDateOnly)
-					.Where(r => !excludeRequestId.HasValue || r.RequestId != excludeRequestId.Value)
-					.AnyAsync();
+			var conflictingRequests = await Context.RentalRequests
+				.Where(r => r.PropertyId == propertyId &&
+							r.Status == "Approved" &&
+							r.ProposedStartDate < endDateOnly &&
+							r.ProposedEndDate > startDateOnly)
+				.Where(r => !excludeRequestId.HasValue || r.RequestId != excludeRequestId.Value)
+				.AnyAsync();
 
 			if (conflictingRequests)
 				return false;
 
 			// Check for overlapping bookings
-			var conflictingBookings = await _context.Bookings
-					.Where(b => b.PropertyId == propertyId &&
-										 (b.BookingStatus.StatusName == "Confirmed" || b.BookingStatus.StatusName == "CheckedIn") &&
-										 b.StartDate < endDateOnly &&
-										 (b.EndDate == null || b.EndDate > startDateOnly))
-					.AnyAsync();
+			var conflictingBookings = await Context.Bookings
+				.Where(b => b.PropertyId == propertyId &&
+							(b.BookingStatus.StatusName == "Confirmed" || b.BookingStatus.StatusName == "CheckedIn") &&
+							b.StartDate < endDateOnly &&
+							(b.EndDate == null || b.EndDate > startDateOnly))
+				.AnyAsync();
 
-			return !conflictingBookings;
+			var isAvailable = !conflictingBookings;
+			LogInfo("IsPropertyAvailable: Property {PropertyId} available from {StartDate} to {EndDate}: {IsAvailable}",
+				propertyId, startDate, endDate, isAvailable);
+			return isAvailable;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking property availability for property {PropertyId}", propertyId);
+			LogError(ex, "Error checking property availability for property {PropertyId}", propertyId);
 			return false;
 		}
 	}
@@ -554,8 +647,8 @@ public class RentalRequestService : IRentalRequestService
 				errors.Add("Number of guests must be at least 1");
 
 			// Check if property exists
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
+			var property = await Context.Properties
+				.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
 
 			if (property == null)
 			{
@@ -582,11 +675,14 @@ public class RentalRequestService : IRentalRequestService
 			if (advanceBookingDays > 365)
 				errors.Add("Cannot book more than 1 year in advance");
 
-			return (errors.Count == 0, errors);
+			var isValid = errors.Count == 0;
+			LogInfo("ValidateRentalRequest: Property {PropertyId} validation result: {IsValid}, {ErrorCount} errors",
+				request.PropertyId, isValid, errors.Count);
+			return (isValid, errors);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error validating rental request");
+			LogError(ex, "Error validating rental request");
 			errors.Add("Validation error occurred");
 			return (false, errors);
 		}
@@ -600,8 +696,8 @@ public class RentalRequestService : IRentalRequestService
 	{
 		try
 		{
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+			var property = await Context.Properties
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 			if (property == null)
 			{
@@ -624,11 +720,13 @@ public class RentalRequestService : IRentalRequestService
 				totalPrice += extraGuestFee * (numberOfGuests - 2) * months;
 			}
 
+			LogInfo("CalculateRentalPrice: Property {PropertyId}, {Months} months, {Guests} guests = {TotalPrice}",
+				propertyId, months, numberOfGuests, totalPrice);
 			return totalPrice;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error calculating rental price for property {PropertyId}", propertyId);
+			LogError(ex, "Error calculating rental price for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -641,13 +739,16 @@ public class RentalRequestService : IRentalRequestService
 	{
 		try
 		{
-			var property = await _context.Properties
-					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+			var property = await Context.Properties
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
-			return property?.OwnerId == userId;
+			var isLandlord = property?.OwnerId == userId;
+			LogInfo("IsLandlordOfProperty: User {UserId} owns property {PropertyId}: {IsLandlord}", userId, propertyId, isLandlord);
+			return isLandlord;
 		}
-		catch
+		catch (Exception ex)
 		{
+			LogError(ex, "Error checking if user {UserId} is landlord of property {PropertyId}", userId, propertyId);
 			return false;
 		}
 	}

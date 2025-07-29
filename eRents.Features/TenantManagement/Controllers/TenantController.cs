@@ -1,6 +1,7 @@
 using eRents.Features.TenantManagement.DTOs;
 using eRents.Features.TenantManagement.Services;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Controllers;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,9 @@ namespace eRents.Features.TenantManagement.Controllers;
 /// Clean separation with TenantManagement feature services and DTOs
 /// Handles tenant relationships, preferences, and status operations
 /// </summary>
-[ApiController]
 [Route("api/[controller]")]
 [Authorize] // All endpoints require authentication
-public class TenantController : ControllerBase
+public class TenantController : BaseController
 {
 	private readonly ITenantService _tenantService;
 	private readonly ICurrentUserService _currentUserService;
@@ -44,20 +44,7 @@ public class TenantController : ControllerBase
 	[Authorize(Roles = "Landlord")]
 	public async Task<ActionResult<PagedResponse<TenantResponse>>> GetCurrentTenants([FromQuery] TenantSearchObject search)
 	{
-		try
-		{
-			var tenants = await _tenantService.GetCurrentTenantsAsync(search);
-
-			_logger.LogInformation("Retrieved {TenantCount} current tenants for landlord {UserId}",
-					tenants.Items.Count, _currentUserService.UserId);
-
-			return Ok(tenants);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving current tenants for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, "An error occurred while retrieving current tenants");
-		}
+		return await GetPagedAsync(search, _tenantService.GetCurrentTenantsAsync, _logger, nameof(GetCurrentTenants));
 	}
 
 	/// <summary>
@@ -70,30 +57,7 @@ public class TenantController : ControllerBase
 	[Authorize(Roles = "Landlord")]
 	public async Task<ActionResult<TenantResponse>> GetTenantById(int tenantId)
 	{
-		try
-		{
-			var tenant = await _tenantService.GetTenantByIdAsync(tenantId);
-			if (tenant == null)
-			{
-				_logger.LogWarning("Tenant {TenantId} not found for landlord {LandlordId}",
-						tenantId, _currentUserService.UserId);
-				return NotFound("Tenant not found or not accessible");
-			}
-
-			_logger.LogInformation("Retrieved tenant details for {TenantId} by landlord {LandlordId}",
-					tenantId, _currentUserService.UserId);
-
-			return Ok(tenant);
-		}
-		catch (UnauthorizedAccessException)
-		{
-			return Forbid("You can only access tenants in your properties");
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving tenant {TenantId} for user {UserId}", tenantId, _currentUserService.UserId);
-			return StatusCode(500, "An error occurred while retrieving tenant details");
-		}
+		return await GetByIdAsync(tenantId, _tenantService.GetTenantByIdAsync, _logger, nameof(GetTenantById));
 	}
 
 	#endregion
@@ -110,20 +74,7 @@ public class TenantController : ControllerBase
 	[Authorize(Roles = "Landlord")]
 	public async Task<ActionResult<PagedResponse<TenantPreferenceResponse>>> GetProspectiveTenants([FromQuery] TenantSearchObject search)
 	{
-		try
-		{
-			var prospects = await _tenantService.GetProspectiveTenantsAsync(search);
-
-			_logger.LogInformation("Retrieved {ProspectCount} prospective tenants for landlord {LandlordId}",
-					prospects.Items.Count, _currentUserService.UserId);
-
-			return Ok(prospects);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving prospective tenants for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, "An error occurred while retrieving prospective tenants");
-		}
+		return await GetPagedAsync(search, _tenantService.GetProspectiveTenantsAsync, _logger, nameof(GetProspectiveTenants));
 	}
 
 	/// <summary>
@@ -136,24 +87,7 @@ public class TenantController : ControllerBase
 	[Authorize]
 	public async Task<ActionResult<TenantPreferenceResponse>> GetTenantPreferences(int tenantId)
 	{
-		try
-		{
-			var preferences = await _tenantService.GetTenantPreferencesAsync(tenantId);
-			if (preferences == null)
-			{
-				return NotFound("Tenant preferences not found");
-			}
-
-			_logger.LogInformation("Retrieved preferences for tenant {TenantId} by user {UserId}",
-					tenantId, _currentUserService.UserId);
-
-			return Ok(preferences);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving preferences for tenant {TenantId}", tenantId);
-			return StatusCode(500, "An error occurred while retrieving tenant preferences");
-		}
+		return await GetByIdAsync(tenantId, _tenantService.GetTenantPreferencesAsync, _logger, nameof(GetTenantPreferences));
 	}
 
 	/// <summary>
@@ -167,30 +101,7 @@ public class TenantController : ControllerBase
 	[Authorize]
 	public async Task<ActionResult<TenantPreferenceResponse>> UpdateTenantPreferences(int tenantId, [FromBody] TenantPreferenceUpdateRequest request)
 	{
-		try
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(ModelState);
-			}
-
-			var updatedPreferences = await _tenantService.UpdateTenantPreferencesAsync(tenantId, request);
-
-			_logger.LogInformation("Updated preferences for tenant {TenantId} by user {UserId}",
-					tenantId, _currentUserService.UserId);
-
-			return Ok(updatedPreferences);
-		}
-		catch (ArgumentException ex)
-		{
-			_logger.LogWarning(ex, "Invalid request for updating tenant {TenantId} preferences", tenantId);
-			return BadRequest(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating preferences for tenant {TenantId}", tenantId);
-			return StatusCode(500, "An error occurred while updating tenant preferences");
-		}
+		return await UpdateAsync(tenantId, request, _tenantService.UpdateTenantPreferencesAsync, _logger, nameof(UpdateTenantPreferences));
 	}
 
 	#endregion
@@ -206,20 +117,7 @@ public class TenantController : ControllerBase
 	[Authorize(Roles = "Landlord")]
 	public async Task<ActionResult<List<TenantRelationshipResponse>>> GetTenantRelationships()
 	{
-		try
-		{
-			var relationships = await _tenantService.GetTenantRelationshipsForLandlordAsync();
-
-			_logger.LogInformation("Retrieved {RelationshipCount} tenant relationships for landlord {LandlordId}",
-					relationships.Count, _currentUserService.UserId);
-
-			return Ok(relationships);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving tenant relationships for user {UserId}", _currentUserService.UserId);
-			return StatusCode(500, "An error occurred while retrieving tenant relationships");
-		}
+		return await GetListAsync(_tenantService.GetTenantRelationshipsForLandlordAsync, _logger, nameof(GetTenantRelationships));
 	}
 
 	/// <summary>
@@ -323,30 +221,8 @@ public class TenantController : ControllerBase
 	[Authorize(Roles = "Landlord")]
 	public async Task<ActionResult<TenantResponse>> CreateTenantFromApprovedRentalRequest([FromBody] TenantCreateRequest request)
 	{
-		try
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest(ModelState);
-			}
-
-			var tenant = await _tenantService.CreateTenantFromApprovedRentalRequestAsync(request);
-
-			_logger.LogInformation("Created tenant from rental request {RentalRequestId} by landlord {LandlordId}",
-					request.RentalRequestId, _currentUserService.UserId);
-
-			return CreatedAtAction(nameof(GetTenantById), new { tenantId = tenant.TenantId }, tenant);
-		}
-		catch (ArgumentException ex)
-		{
-			_logger.LogWarning(ex, "Invalid request for creating tenant from rental request {RentalRequestId}", request.RentalRequestId);
-			return BadRequest(ex.Message);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating tenant from rental request {RentalRequestId}", request.RentalRequestId);
-			return StatusCode(500, "An error occurred while creating tenant");
-		}
+		return await CreateAsync(request, _tenantService.CreateTenantFromApprovedRentalRequestAsync, _logger, nameof(CreateTenantFromApprovedRentalRequest),
+			tenant => CreatedAtAction(nameof(GetTenantById), new { tenantId = tenant.TenantId }, tenant));
 	}
 
 	#endregion

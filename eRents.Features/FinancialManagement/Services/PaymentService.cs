@@ -4,6 +4,7 @@ using eRents.Domain.Shared.Interfaces;
 using eRents.Features.FinancialManagement.DTOs;
 using eRents.Features.FinancialManagement.Mappers;
 using eRents.Features.Shared.Services;
+using eRents.Features.Shared.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -14,13 +15,9 @@ namespace eRents.Features.FinancialManagement.Services;
 /// PaymentService using ERentsContext directly - no repository layer
 /// Follows modular architecture principles with clean separation of concerns
 /// </summary>
-public class PaymentService : IPaymentService
+public class PaymentService : BaseService, IPaymentService
 {
-	private readonly ERentsContext _context;
-	private readonly IUnitOfWork _unitOfWork;
-	private readonly ICurrentUserService _currentUserService;
 	private readonly IConfiguration _configuration;
-	private readonly ILogger<PaymentService> _logger;
 
 	// Configuration properties
 	private readonly string _paymentSuccessUrl;
@@ -33,12 +30,9 @@ public class PaymentService : IPaymentService
 			ICurrentUserService currentUserService,
 			IConfiguration configuration,
 			ILogger<PaymentService> logger)
+		: base(context, unitOfWork, currentUserService, logger)
 	{
-		_context = context;
-		_unitOfWork = unitOfWork;
-		_currentUserService = currentUserService;
-		_configuration = configuration;
-		_logger = logger;
+		this._configuration = configuration;
 
 		// Load configuration values
 		_paymentSuccessUrl = _configuration["Payment:SuccessUrl"] ?? "https://yourdomain.com/payment/success";
@@ -48,46 +42,25 @@ public class PaymentService : IPaymentService
 
 	#region Public Payment Operations
 
-	/// <summary>
-	/// Get payments for current user with basic filtering
-	/// </summary>
-	public async Task<List<PaymentResponse>> GetPaymentsAsync(int? propertyId = null, string? status = null)
+	public async Task<PagedResponse<PaymentResponse>> GetPaymentsAsync(PaymentSearchObject search)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-			var currentUserRole = _currentUserService.UserRole;
-
-			var query = _context.Payments
-					.Include(p => p.Property)
-							.ThenInclude(p => p!.Owner) // Include property owner for payee information
-					.Include(p => p.Booking)
-					.Include(p => p.Tenant)
-							.ThenInclude(t => t!.User) // Include tenant's user for payer information
-					.AsNoTracking();
-
-			// Apply role-based filtering
-			query = ApplyRoleBasedFiltering(query, currentUserRole, currentUserId.Value);
-
-			// Apply basic filters
-			if (propertyId.HasValue)
-				query = query.Where(p => p.PropertyId == propertyId.Value);
-
-			if (!string.IsNullOrEmpty(status))
-				query = query.Where(p => p.PaymentStatus == status);
-
-			// Order by most recent
-			query = query.OrderByDescending(p => p.CreatedAt);
-
-			var payments = await query.ToListAsync();
-
-			return payments.ToResponseList();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payments for user {UserId}", _currentUserService.UserId);
-			throw;
-		}
+		return await GetPagedAsync<Payment, PaymentResponse, PaymentSearchObject>(
+			search,
+			(query, search) => query.Include(payment => payment.Property).ThenInclude(payment => payment!.Owner)
+				.Include(payment => payment.Booking)
+				.Include(payment => payment.Tenant).ThenInclude(tenant => tenant!.User),
+			query => ApplyPaymentAuthorization(query),
+			(query, search) =>
+			{
+				if (search.PropertyId.HasValue)
+					query = query.Where(payment => payment.PropertyId == search.PropertyId);
+				if (!string.IsNullOrEmpty(search.PaymentStatus))
+					query = query.Where(payment => payment.PaymentStatus == search.PaymentStatus);
+				return query;
+			},
+			(q, s) => q.OrderByDescending(p => p.CreatedAt),
+			p => p.ToResponse()
+		);
 	}
 
 	/// <summary>
@@ -95,31 +68,15 @@ public class PaymentService : IPaymentService
 	/// </summary>
 	public async Task<PaymentResponse?> GetPaymentByIdAsync(int paymentId)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-			var currentUserRole = _currentUserService.UserRole;
-
-			var query = _context.Payments
-					.Include(p => p.Property)
-							.ThenInclude(p => p!.Owner) // Include property owner for payee information
+		return await GetByIdAsync<Payment, PaymentResponse>(
+			paymentId,
+			q => q.Include(p => p.Property).ThenInclude(p => p!.Owner)
 					.Include(p => p.Booking)
-					.Include(p => p.Tenant)
-							.ThenInclude(t => t!.User) // Include tenant's user for payer information
-					.AsNoTracking();
-
-			// Apply role-based filtering
-			query = ApplyRoleBasedFiltering(query, currentUserRole, currentUserId.Value);
-
-			var payment = await query.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
-
-			return payment?.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payment {PaymentId} for user {UserId}", paymentId, _currentUserService.UserId);
-			throw;
-		}
+					.Include(p => p.Tenant).ThenInclude(t => t!.User),
+			async payment => await CanAccessPayment(payment),
+			payment => payment.ToResponse(),
+			nameof(GetPaymentByIdAsync)
+		);
 	}
 
 	/// <summary>
@@ -127,85 +84,47 @@ public class PaymentService : IPaymentService
 	/// </summary>
 	public async Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request)
 	{
-		return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-		{
-			try
+		return await CreateAsync<Payment, PaymentRequest, PaymentResponse>(
+			request,
+			req => req.ToEntity(),
+			async (entity, req) =>
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt();
-
-				// Get property owner for payee
-				var property = await _context.Properties
-								.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
-
+				var property = await Context.Properties.FindAsync(req.PropertyId);
 				if (property == null)
-					throw new ArgumentException($"Property {request.PropertyId} not found");
+					throw new ArgumentException($"Property {req.PropertyId} not found");
 
-				// Create database payment record with proper audit fields
-				var payment = request.ToEntity();
-				payment.TenantId = currentUserId.Value; // Current user becomes tenant when making booking payment
-
-				payment.PaymentReference = GeneratePaymentReference();
-				payment.CreatedBy = currentUserId.Value;
-				payment.CreatedAt = DateTime.UtcNow;
-				payment.ModifiedBy = currentUserId.Value;
-				payment.UpdatedAt = DateTime.UtcNow;
-
-				_context.Payments.Add(payment);
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Payment {PaymentId} created successfully. Tenant: {TenantId}, Property: {PropertyId}, Owner: {OwnerId}",
-								payment.PaymentId, payment.TenantId, request.PropertyId, property.OwnerId);
-
-				var response = payment.ToResponse();
-				response.ApprovalUrl = $"{_paymentSuccessUrl}?paymentId={payment.PaymentReference}";
-
-				return response;
-			}
-			catch (Exception ex)
+				entity.TenantId = CurrentUserId;
+				entity.PaymentReference = GeneratePaymentReference();
+			},
+			entity =>
 			{
-				_logger.LogError(ex, "Error creating payment for user {UserId} and property {PropertyId}",
-								_currentUserService.UserId, request.PropertyId);
-				throw;
-			}
-		});
+				var response = entity.ToResponse();
+				response.ApprovalUrl = $"{_paymentSuccessUrl}?paymentId={entity.PaymentReference}";
+				return response;
+			},
+			nameof(ProcessPaymentAsync)
+		);
 	}
 
 	/// <summary>
 	/// Execute/capture a payment and update database record
 	/// </summary>
-	public async Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, string payerId)
+	public async Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, ExecutePaymentRequest request)
 	{
-		return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-		{
-			try
+		return await UpdateAsync<Payment, ExecutePaymentRequest, PaymentResponse>(
+			paymentReference,
+			request,
+			q => q,
+			async _ => true,
+			async (payment, req) =>
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt();
-
-				// Update database payment record
-				var payment = await _context.Payments
-								.FirstOrDefaultAsync(p => p.PaymentReference == paymentReference);
-
-				if (payment == null)
-					throw new KeyNotFoundException($"Payment with reference {paymentReference} not found");
-
 				payment.PaymentStatus = "Completed";
-				payment.CreatedAt = DateTime.UtcNow;
 				payment.UpdatedAt = DateTime.UtcNow;
-				payment.ModifiedBy = currentUserId.Value;
-
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Payment {PaymentReference} executed successfully by user {UserId}",
-								paymentReference, currentUserId);
-
-				return payment.ToResponse();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Payment execution failed for payment {PaymentReference}", paymentReference);
-				throw;
-			}
-		});
+				payment.ModifiedBy = CurrentUserId;
+			},
+			payment => payment.ToResponse(),
+			nameof(ExecutePaymentAsync)
+		);
 	}
 
 	/// <summary>
@@ -229,32 +148,20 @@ public class PaymentService : IPaymentService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Standalone payment creation failed for amount {Amount}", amount);
+			Logger.LogError(ex, "Standalone payment creation failed for amount {Amount}", amount);
 			throw;
 		}
 	}
 
-	/// <summary>
-	/// Get payment status from database
-	/// </summary>
-	public async Task<PaymentResponse> GetPaymentStatusAsync(int paymentId)
+	public async Task<PaymentResponse?> GetPaymentStatusAsync(int paymentId)
 	{
-		try
-		{
-			var payment = await _context.Payments
-					.AsNoTracking()
-					.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
-
-			if (payment == null)
-				throw new KeyNotFoundException($"Payment {paymentId} not found");
-
-			return payment.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting payment status for payment {PaymentId}", paymentId);
-			throw;
-		}
+		return await GetByIdAsync<Payment, PaymentResponse>(
+			paymentId,
+			q => q,
+			async _ => true,
+			p => p.ToResponse(),
+			nameof(GetPaymentStatusAsync)
+		);
 	}
 
 	/// <summary>
@@ -262,176 +169,90 @@ public class PaymentService : IPaymentService
 	/// </summary>
 	public async Task<PaymentResponse> ProcessRefundAsync(RefundRequest request)
 	{
-		return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-		{
-			try
+		return await UpdateAsync<Payment, RefundRequest, PaymentResponse>(
+			request.OriginalPaymentId,
+			request,
+			q => q.Include(p => p.Property),
+			async payment => payment.Property?.OwnerId == CurrentUserId,
+			async (payment, req) =>
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt();
-
-				// Get original payment with authorization check
-				var originalPayment = await _context.Payments
-								.Include(p => p.Property)
-								.FirstOrDefaultAsync(p => p.PaymentId == request.OriginalPaymentId);
-
-				if (originalPayment == null)
-					throw new KeyNotFoundException($"Payment {request.OriginalPaymentId} not found");
-
-				// Verify current user is authorized to refund (must be property owner)
-				if (originalPayment.Property?.OwnerId != currentUserId.Value)
-					throw new UnauthorizedAccessException("You are not authorized to refund this payment");
-
-				// Verify payment is refundable
-				if (originalPayment.PaymentStatus != "Completed")
+				if (payment.PaymentStatus != "Completed")
 					throw new InvalidOperationException("Only completed payments can be refunded");
 
-				// Check if refund amount is valid
-				var existingRefunds = await _context.Payments
-								.Where(p => p.OriginalPaymentId == request.OriginalPaymentId && p.PaymentType == "Refund")
-								.SumAsync(p => p.Amount);
+				var existingRefunds = await Context.Payments
+					.Where(p => p.OriginalPaymentId == req.OriginalPaymentId && p.PaymentType == "Refund")
+					.SumAsync(p => p.Amount);
 
-				if (existingRefunds + request.Amount > originalPayment.Amount)
+				if (existingRefunds + req.Amount > payment.Amount)
 					throw new InvalidOperationException("Refund amount exceeds available refund balance");
-
-				// Create refund payment record
 				var refundPayment = new Payment
 				{
-					Amount = request.Amount,
-					Currency = originalPayment.Currency,
-					PaymentMethod = originalPayment.PaymentMethod,
+					Amount = req.Amount,
+					Currency = payment.Currency,
+					PaymentMethod = payment.PaymentMethod,
 					PaymentStatus = "Completed",
 					PaymentType = "Refund",
-					PropertyId = originalPayment.PropertyId,
-					BookingId = originalPayment.BookingId,
-					TenantId = originalPayment.TenantId, // Refund goes back to original tenant
-					OriginalPaymentId = originalPayment.PaymentId,
-					RefundReason = request.Reason,
+					PropertyId = payment.PropertyId,
+					BookingId = payment.BookingId,
+					TenantId = payment.TenantId,
+					OriginalPaymentId = payment.PaymentId,
+					RefundReason = req.Reason,
 					PaymentReference = GeneratePaymentReference()
 				};
 
-				_context.Payments.Add(refundPayment);
+				Context.Payments.Add(refundPayment);
 
-				// Update original payment status if fully refunded
-				if (existingRefunds + request.Amount >= originalPayment.Amount)
+				if (existingRefunds + req.Amount >= payment.Amount)
 				{
-					originalPayment.PaymentStatus = "Refunded";
+					payment.PaymentStatus = "Refunded";
 				}
-
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Refund {RefundId} processed for payment {PaymentId} by user {UserId}. Amount: {Amount}, Reason: {Reason}",
-								refundPayment.PaymentId, request.OriginalPaymentId, currentUserId, request.Amount, request.Reason);
-
-				return refundPayment.ToResponse();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Refund processing failed for payment {PaymentId}", request.OriginalPaymentId);
-				throw;
-			}
-		});
+			},
+			payment => payment.ToResponse(),
+			nameof(ProcessRefundAsync)
+		);
 	}
-
 	/// <summary>
-	/// Legacy refund method - kept for backward compatibility
+	/// Process refund for a payment (legacy method)
 	/// </summary>
 	public async Task<PaymentResponse> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
 	{
-		var refundRequest = new RefundRequest
+		var request = new RefundRequest
 		{
 			OriginalPaymentId = paymentId,
 			Amount = refundAmount,
 			Reason = reason
 		};
-
-		return await ProcessRefundAsync(refundRequest);
+		return await ProcessRefundAsync(request);
+	}
+	public async Task<PagedResponse<PaymentResponse>> GetCurrentUserPaymentsAsync(PaymentSearchObject search)
+	{
+		search.TenantId = CurrentUserId;
+		return await GetPaymentsAsync(search);
 	}
 
-	/// <summary>
-	/// Get current user's payments (both as tenant and property owner)
-	/// </summary>
-	public async Task<List<PaymentResponse>> GetCurrentUserPaymentsAsync()
+	public async Task<PagedResponse<PaymentResponse>> GetUserPaymentsAsync(int userId, PaymentSearchObject search)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var payments = await _context.Payments
-					.Include(p => p.Property)
-							.ThenInclude(p => p!.Owner)
-					.Include(p => p.Booking)
-					.Include(p => p.Tenant)
-							.ThenInclude(t => t!.User)
-					.Where(p => p.TenantId == currentUserId || p.Property!.OwnerId == currentUserId)
-					.OrderByDescending(p => p.CreatedAt)
-					.AsNoTracking()
-					.ToListAsync();
-
-			return payments.ToResponseList();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payments for current user {UserId}", _currentUserService.UserId);
-			throw;
-		}
-	}
-
-	/// <summary>
-	/// Get payments for a specific user (admin/landlord functionality)
-	/// </summary>
-	public async Task<List<PaymentResponse>> GetUserPaymentsAsync(int userId)
-	{
-		try
-		{
-			var payments = await _context.Payments
-					.Include(p => p.Property)
-							.ThenInclude(p => p!.Owner)
-					.Include(p => p.Booking)
-					.Include(p => p.Tenant)
-							.ThenInclude(t => t!.User)
-					.Where(p => p.TenantId == userId || p.Property!.OwnerId == userId)
-					.OrderByDescending(p => p.CreatedAt)
-					.AsNoTracking()
-					.ToListAsync();
-
-			return payments.ToResponseList();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payments for user {UserId}", userId);
-			throw;
-		}
+		search.TenantId = userId;
+		return await GetPaymentsAsync(search);
 	}
 
 	/// <summary>
 	/// Update payment status in database
 	/// </summary>
-	public async Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, string status)
+	public async Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, UpdatePaymentStatusRequest request)
 	{
-		return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-		{
-			try
+		return await UpdateAsync<Payment, UpdatePaymentStatusRequest, PaymentResponse>(
+			paymentId,
+			request,
+			q => q,
+			async _ => true,
+			async (payment, req) =>
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt();
-				var payment = await _context.Payments.FindAsync(paymentId);
-
-				if (payment == null)
-					throw new KeyNotFoundException($"Payment {paymentId} not found");
-
-				payment.PaymentStatus = status;
-
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Payment {PaymentId} status updated to {Status} by user {UserId}",
-								paymentId, status, currentUserId);
-
-				return payment.ToResponse();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error updating payment status for payment {PaymentId}", paymentId);
-				throw;
-			}
-		});
+				payment.PaymentStatus = req.Status;
+			},
+			payment => payment.ToResponse(),
+			nameof(UpdatePaymentStatusAsync)
+		);
 	}
 
 	/// <summary>
@@ -439,58 +260,26 @@ public class PaymentService : IPaymentService
 	/// </summary>
 	public async Task<PaymentResponse?> GetPaymentByReferenceAsync(string paymentReference)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var payment = await _context.Payments
-					.Include(p => p.Property)
-							.ThenInclude(p => p!.Owner)
-					.Include(p => p.Booking)
-					.Include(p => p.Tenant)
-							.ThenInclude(t => t!.User)
-					.AsNoTracking()
-					.FirstOrDefaultAsync(p => p.PaymentReference == paymentReference);
-
-			return payment?.ToResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payment by reference {Reference}", paymentReference);
-			throw;
-		}
+		var search = new PaymentSearchObject { PaymentReference = paymentReference };
+		var result = await GetPaymentsAsync(search);
+		return result.Items.FirstOrDefault();
 	}
 
 	/// <summary>
 	/// Get all payments for a specific booking
 	/// </summary>
-	public async Task<List<PaymentResponse>> GetPaymentsByBookingAsync(int bookingId)
+	public async Task<PagedResponse<PaymentResponse>> GetPaymentsByBookingAsync(int bookingId, PaymentSearchObject search)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
+		var booking = await Context.Bookings.FindAsync(bookingId);
 
-			// Verify booking ownership
-			var booking = await _context.Bookings
-					.FirstOrDefaultAsync(b => b.BookingId == bookingId && b.UserId == currentUserId);
+		if (booking == null)
+			throw new KeyNotFoundException("Booking not found");
 
-			if (booking == null)
-				throw new UnauthorizedAccessException("Access denied to this booking");
+		if (booking.UserId != CurrentUserId && CurrentUserRole is not "Admin" and not "SuperAdmin")
+			throw new UnauthorizedAccessException("Access denied to this booking's payments");
 
-			var payments = await _context.Payments
-					.Where(p => p.BookingId == bookingId)
-					.Include(p => p.PaymentStatus)
-					.OrderByDescending(p => p.CreatedAt)
-					.AsNoTracking()
-					.ToListAsync();
-
-			return payments.ToResponseList();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving payments for booking {BookingId}", bookingId);
-			throw;
-		}
+		search.BookingId = bookingId;
+		return await GetPaymentsAsync(search);
 	}
 
 	#endregion
@@ -498,16 +287,40 @@ public class PaymentService : IPaymentService
 	#region Helper Methods
 
 	/// <summary>
+	/// Apply role-based filtering to payment queries at query level
+	/// </summary>
+	private IQueryable<Payment> ApplyPaymentAuthorization(IQueryable<Payment> query)
+	{
+		if (CurrentUserRole is "Admin" or "SuperAdmin")
+		{
+			return query; // No filtering for admins
+		}
+
+		if (CurrentUserRole == "Landlord")
+		{
+			return query.Where(p => p.Property!.OwnerId == CurrentUserId);
+		}
+
+		// Default: filter by tenant
+		return query.Where(p => p.TenantId == CurrentUserId);
+	}
+
+	/// <summary>
 	/// Apply role-based filtering to payment queries - uses tenant and property owner structure
 	/// </summary>
-	private IQueryable<Payment> ApplyRoleBasedFiltering(IQueryable<Payment> query, string? userRole, int userId)
+	private async Task<bool> CanAccessPayment(Payment payment)
 	{
-		return userRole?.ToLower() switch
+		if (CurrentUserRole is "Admin" or "SuperAdmin")
 		{
-			"landlord" => query.Where(p => p.Property!.OwnerId == userId), // Landlords receive payments on their properties
-			"user" or "tenant" => query.Where(p => p.TenantId == userId), // Users/tenants pay for their bookings
-			_ => query.Where(p => p.TenantId == userId || p.Property!.OwnerId == userId) // Default to user's payments (both directions)
-		};
+			return true;
+		}
+
+		if (CurrentUserRole == "Landlord")
+		{
+			return payment.Property?.OwnerId == CurrentUserId;
+		}
+
+		return payment.TenantId == CurrentUserId;
 	}
 
 	/// <summary>

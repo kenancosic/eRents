@@ -1,6 +1,7 @@
 using eRents.Features.FinancialManagement.DTOs;
 using eRents.Features.FinancialManagement.Services;
 using eRents.Features.Shared.Controllers;
+using eRents.Features.Shared.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -28,39 +29,37 @@ public class StatisticsController : BaseController
     }
 
     /// <summary>
+    /// Get comprehensive dashboard statistics for current user
+    /// Includes property, financial, and maintenance summaries
+    /// </summary>
+    [HttpGet("comprehensive-dashboard")]
+    public async Task<ActionResult<DashboardStatisticsResponse>> GetComprehensiveDashboard()
+    {
+        return await this.ExecuteAsync(
+            () => _statisticsService.GetDashboardStatisticsAsync(),
+            _logger, "GetComprehensiveDashboard");
+    }
+
+    /// <summary>
     /// Get basic financial metrics for current user
     /// </summary>
     [HttpGet("dashboard")]
     public async Task<ActionResult<FinancialSummaryResponse>> GetDashboardStatistics()
     {
-        try
-        {
-            var stats = await _statisticsService.GetBasicFinancialStatsAsync();
-            return Ok(stats);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving dashboard statistics");
-            return BadRequest(new { message = "Failed to retrieve dashboard statistics" });
-        }
+        return await this.ExecuteAsync(
+            () => _statisticsService.GetBasicFinancialStatsAsync(),
+            _logger, "GetDashboardStatistics");
     }
 
     /// <summary>
     /// Get monthly revenue data for the current year
     /// </summary>
     [HttpGet("monthly-revenue")]
-    public async Task<ActionResult<IEnumerable<MonthlyRevenueResponse>>> GetCurrentYearRevenue()
+    public async Task<ActionResult<List<MonthlyRevenueResponse>>> GetCurrentYearRevenue()
     {
-        try
-        {
-            var revenue = await _statisticsService.GetCurrentYearRevenueAsync();
-            return Ok(revenue);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving current year revenue");
-            return BadRequest(new { message = "Failed to retrieve current year revenue" });
-        }
+        return await this.ExecuteAsync(
+            () => _statisticsService.GetCurrentYearRevenueAsync(),
+            _logger, "GetCurrentYearRevenue");
     }
 
     /// <summary>
@@ -69,23 +68,13 @@ public class StatisticsController : BaseController
     [HttpGet("property/{propertyId}/revenue")]
     public async Task<ActionResult<object>> GetPropertyTotalRevenue(int propertyId)
     {
-        try
-        {
+        return await this.ExecuteAsync(async () => {
             var totalRevenue = await _statisticsService.GetPropertyTotalRevenueAsync(propertyId);
-            return Ok(new { 
+            return new { 
                 PropertyId = propertyId,
                 TotalRevenue = totalRevenue 
-            });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving total revenue for property {PropertyId}", propertyId);
-            return BadRequest(new { message = "Failed to retrieve property revenue" });
-        }
+            };
+        }, _logger, $"GetPropertyTotalRevenue({propertyId})");
     }
 
     /// <summary>
@@ -194,11 +183,10 @@ public class StatisticsController : BaseController
     [HttpGet("quick-metrics")]
     public async Task<ActionResult<object>> GetQuickMetrics()
     {
-        try
-        {
+        return await this.ExecuteAsync(async () => {
             var stats = await _statisticsService.GetBasicFinancialStatsAsync();
             
-            return Ok(new 
+            return new 
             { 
                 TotalIncome = stats.TotalRentIncome,
                 TotalExpenses = stats.TotalMaintenanceCosts,
@@ -207,13 +195,8 @@ public class StatisticsController : BaseController
                 PropertiesCount = stats.TotalProperties,
                 ActiveBookings = stats.ActiveBookings,
                 Year = DateTime.UtcNow.Year
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving quick metrics");
-            return BadRequest(new { message = "Failed to retrieve quick metrics" });
-        }
+            };
+        }, _logger, "GetQuickMetrics");
     }
 
     /// <summary>

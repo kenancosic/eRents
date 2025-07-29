@@ -111,7 +111,7 @@ public class ReviewReplyRequest
 /// <summary>
 /// Review filter request - Aligned with frontend expectations
 /// </summary>
-public class ReviewFilterRequest
+public class ReviewFilterRequest : IPagedRequest
 {
     public int? PropertyId { get; set; }
     public int? ReviewerId { get; set; } // Changed from UserId to match frontend

@@ -250,4 +250,53 @@ public class NotFoundException : Exception
 	}
 }
 
+/// <summary>
+/// Generic success response wrapper
+/// </summary>
+public class SuccessResponse<T>
+{
+	public bool Success { get; set; } = true;
+	public string Message { get; set; } = "Operation completed successfully";
+	public T? Data { get; set; }
+	public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+	public SuccessResponse() { }
+
+	public SuccessResponse(T data, string? message = null)
+	{
+		Data = data;
+		if (!string.IsNullOrEmpty(message))
+			Message = message;
+	}
+}
+
+/// <summary>
+/// Generic success response without data
+/// </summary>
+public class SuccessResponse : SuccessResponse<object>
+{
+	public SuccessResponse(string? message = null) : base(null, message) { }
+}
+
+/// <summary>
+/// Generic error response wrapper
+/// </summary>
+public class ErrorResponse
+{
+	public bool Success { get; set; } = false;
+	public string Message { get; set; } = "An error occurred";
+	public string? ErrorCode { get; set; }
+	public object? Details { get; set; }
+	public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+	public ErrorResponse() { }
+
+	public ErrorResponse(string message, string? errorCode = null, object? details = null)
+	{
+		Message = message;
+		ErrorCode = errorCode;
+		Details = details;
+	}
+}
+
 #endregion

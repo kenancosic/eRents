@@ -54,14 +54,14 @@ public interface IBookingService
 	Task<List<BookingResponse>> GetCurrentUserBookingsAsync();
 
 	/// <summary>
-	/// Get current active stays for a user (ongoing bookings)
+	/// Get current active stays for current user (ongoing bookings)
 	/// </summary>
-	Task<List<BookingResponse>> GetCurrentStaysAsync(int userId);
+	Task<List<BookingResponse>> GetCurrentStaysAsync();
 
 	/// <summary>
-	/// Get upcoming stays for a user (future bookings)
+	/// Get upcoming stays for current user (future bookings)
 	/// </summary>
-	Task<List<BookingResponse>> GetUpcomingStaysAsync(int userId);
+	Task<List<BookingResponse>> GetUpcomingStaysAsync();
 
 	/// <summary>
 	/// Calculate refund amount for booking cancellation
@@ -71,7 +71,7 @@ public interface IBookingService
 	/// <summary>
 	/// Simple property availability check
 	/// </summary>
-	Task<bool> IsPropertyAvailableAsync(int propertyId, DateOnly startDate, DateOnly endDate);
+	Task<bool> IsPropertyAvailableAsync(int propertyId, DateTime startDate, DateTime endDate);
 
 	/// <summary>
 	/// Check if daily booking can be created for property and date range

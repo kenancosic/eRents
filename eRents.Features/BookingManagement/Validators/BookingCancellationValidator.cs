@@ -1,4 +1,5 @@
 using eRents.Features.BookingManagement.DTOs;
+using eRents.Features.Shared.Validation;
 using FluentValidation;
 using System;
 using System.Linq;
@@ -9,7 +10,7 @@ namespace eRents.Features.BookingManagement.Validators
 	/// Comprehensive validator for booking cancellation requests
 	/// Handles both tenant and landlord-specific validation rules
 	/// </summary>
-	public class BookingCancellationValidator : AbstractValidator<BookingCancellationRequest>
+	public class BookingCancellationValidator : BaseEntityValidator<BookingCancellationRequest>
 	{
 		private static readonly string[] ValidLandlordReasons = {
 			"emergency", "maintenance", "property damage", "force majeure",
@@ -18,24 +19,17 @@ namespace eRents.Features.BookingManagement.Validators
 
 		public BookingCancellationValidator()
 		{
-			RuleFor(x => x.BookingId)
-				.GreaterThan(0)
-				.WithMessage("Valid booking ID is required");
+			ValidateRequiredId(x => x.BookingId, "Booking ID");
 
-			RuleFor(x => x.CancellationReason)
-				.NotEmpty()
-				.WithMessage("Cancellation reason is required")
-				.MaximumLength(200)
-				.WithMessage("Cancellation reason cannot exceed 200 characters");
+			ValidateRequiredText(x => x.CancellationReason, "Cancellation reason", 200);
 
-			RuleFor(x => x.AdditionalNotes)
-				.MaximumLength(1000)
-				.WithMessage("Additional notes cannot exceed 1000 characters");
+			ValidateOptionalText(x => x.AdditionalNotes, "Additional notes", 1000);
 
+			// Validate RefundMethod with custom rule for optional string values
 			RuleFor(x => x.RefundMethod)
-				.Must(BeValidRefundMethod)
-				.WithMessage("Invalid refund method. Allowed values: Original, PayPal, BankTransfer")
-				.When(x => !string.IsNullOrEmpty(x.RefundMethod));
+				.Must(method => string.IsNullOrEmpty(method) ||
+					new[] { "Original", "PayPal", "BankTransfer" }.Contains(method))
+				.WithMessage("Refund method must be one of: Original, PayPal, BankTransfer");
 		}
 
 		/// <summary>
@@ -58,14 +52,5 @@ namespace eRents.Features.BookingManagement.Validators
 			// Tenants have more flexible cancellation rules
 			// Basic validation is handled by the main validator
 		}
-
-		private bool BeValidRefundMethod(string? refundMethod)
-		{
-			if (string.IsNullOrEmpty(refundMethod))
-				return true;
-
-			var validMethods = new[] { "Original", "PayPal", "BankTransfer" };
-			return validMethods.Contains(refundMethod, StringComparer.OrdinalIgnoreCase);
-		}
 	}
-} 
+}

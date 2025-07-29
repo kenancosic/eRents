@@ -1,4 +1,5 @@
 using eRents.Features.MaintenanceManagement.DTOs;
+using eRents.Features.Shared.Validation;
 using FluentValidation;
 
 namespace eRents.Features.MaintenanceManagement.Validators;
@@ -7,30 +8,22 @@ namespace eRents.Features.MaintenanceManagement.Validators;
 /// Comprehensive validator for maintenance issue requests
 /// Handles validation for creating and updating reactive maintenance issues
 /// </summary>
-public class MaintenanceIssueValidator : AbstractValidator<MaintenanceIssueRequest>
+public class MaintenanceIssueValidator : BaseEntityValidator<MaintenanceIssueRequest>
 {
     private static readonly string[] ValidPriorities = { "Low", "Medium", "High", "Emergency" };
 
     public MaintenanceIssueValidator()
     {
-        RuleFor(x => x.PropertyId)
-            .GreaterThan(0)
-            .WithMessage("Valid property ID is required");
+        ValidateRequiredId(x => x.PropertyId, "Property ID");
 
         RuleFor(x => x.AssignedToUserId)
             .GreaterThan(0)
             .WithMessage("Valid assigned user ID is required")
             .When(x => x.AssignedToUserId.HasValue);
 
-        RuleFor(x => x.Title)
-            .NotEmpty()
-            .WithMessage("Title is required")
-            .MaximumLength(200)
-            .WithMessage("Title cannot exceed 200 characters");
+        ValidateRequiredText(x => x.Title, "Title", 200);
 
-        RuleFor(x => x.Description)
-            .MaximumLength(1000)
-            .WithMessage("Description cannot exceed 1000 characters");
+        ValidateOptionalText(x => x.Description, "Description", 1000);
 
         RuleFor(x => x.Priority)
             .NotEmpty()
@@ -43,15 +36,9 @@ public class MaintenanceIssueValidator : AbstractValidator<MaintenanceIssueReque
             .WithMessage("Cost must be non-negative")
             .When(x => x.Cost.HasValue);
 
-        RuleFor(x => x.Category)
-            .MaximumLength(100)
-            .WithMessage("Category cannot exceed 100 characters")
-            .When(x => !string.IsNullOrEmpty(x.Category));
+        ValidateOptionalText(x => x.Category, "Category", 100);
 
-        RuleFor(x => x.ResolutionNotes)
-            .MaximumLength(500)
-            .WithMessage("Resolution notes cannot exceed 500 characters")
-            .When(x => !string.IsNullOrEmpty(x.ResolutionNotes));
+        ValidateOptionalText(x => x.ResolutionNotes, "Resolution notes", 500);
     }
 
     private static bool BeValidPriority(string priority)
@@ -63,7 +50,7 @@ public class MaintenanceIssueValidator : AbstractValidator<MaintenanceIssueReque
 /// <summary>
 /// Validator for maintenance status update requests
 /// </summary>
-public class MaintenanceStatusUpdateValidator : AbstractValidator<MaintenanceStatusUpdateRequest>
+public class MaintenanceStatusUpdateValidator : BaseEntityValidator<MaintenanceStatusUpdateRequest>
 {
     private static readonly string[] ValidStatuses = { "Pending", "InProgress", "Completed", "Cancelled" };
 
@@ -85,10 +72,7 @@ public class MaintenanceStatusUpdateValidator : AbstractValidator<MaintenanceSta
             .WithMessage("Resolved date cannot be in the future")
             .When(x => x.ResolvedAt.HasValue);
 
-        RuleFor(x => x.ResolutionNotes)
-            .MaximumLength(500)
-            .WithMessage("Resolution notes cannot exceed 500 characters")
-            .When(x => !string.IsNullOrEmpty(x.ResolutionNotes));
+        ValidateOptionalText(x => x.ResolutionNotes, "Resolution notes", 500);
 
         // Business rule: Completed status requires resolution date
         RuleFor(x => x.ResolvedAt)
@@ -106,20 +90,18 @@ public class MaintenanceStatusUpdateValidator : AbstractValidator<MaintenanceSta
 /// <summary>
 /// Validator for maintenance assignment requests
 /// </summary>
-public class AssignMaintenanceValidator : AbstractValidator<AssignMaintenanceRequest>
+public class AssignMaintenanceValidator : BaseEntityValidator<AssignMaintenanceRequest>
 {
     public AssignMaintenanceValidator()
     {
-        RuleFor(x => x.AssignedToUserId)
-            .GreaterThan(0)
-            .WithMessage("Valid user ID is required for assignment");
+        ValidateRequiredId(x => x.AssignedToUserId, "User ID for assignment");
     }
 }
 
 /// <summary>
 /// Validator for bulk completion requests
 /// </summary>
-public class BulkCompleteValidator : AbstractValidator<BulkCompleteRequest>
+public class BulkCompleteValidator : BaseEntityValidator<BulkCompleteRequest>
 {
     public BulkCompleteValidator()
     {
@@ -131,14 +113,11 @@ public class BulkCompleteValidator : AbstractValidator<BulkCompleteRequest>
             .Must(HaveValidIds)
             .WithMessage("All issue IDs must be greater than 0");
 
-        RuleFor(x => x.ResolutionNotes)
-            .MaximumLength(500)
-            .WithMessage("Resolution notes cannot exceed 500 characters")
-            .When(x => !string.IsNullOrEmpty(x.ResolutionNotes));
+        ValidateOptionalText(x => x.ResolutionNotes, "Resolution notes", 500);
     }
 
     private static bool HaveValidIds(List<int> issueIds)
     {
         return issueIds.All(id => id > 0);
     }
-} 
+}

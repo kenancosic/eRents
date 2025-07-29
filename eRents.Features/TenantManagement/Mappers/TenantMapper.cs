@@ -1,82 +1,75 @@
 using eRents.Domain.Models;
 using eRents.Features.TenantManagement.DTOs;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.TenantManagement.Mappers;
 
 /// <summary>
-/// Mapper for Tenant-related entities
-/// Focuses on foreign key ID mappings only - following modular architecture principles
+/// Mapper for Tenant-related entities using standardized mapping extensions
+/// Follows modular architecture principles with clean entity ↔ DTO conversions
 /// </summary>
 public static class TenantMapper
 {
 	#region Tenant Mapping
 
 	/// <summary>
-	/// Map Tenant entity to TenantResponse DTO
+	/// Map Tenant entity to TenantResponse DTO using common mapping patterns
 	/// </summary>
 	public static TenantResponse ToResponse(this Tenant tenant)
 	{
-		return new TenantResponse
-		{
-			TenantId = tenant.TenantId,
-			UserId = tenant.UserId,
-			PropertyId = tenant.PropertyId,
-			LeaseStartDate = tenant.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
-			LeaseEndDate = tenant.LeaseEndDate?.ToDateTime(TimeOnly.MinValue),
-			TenantStatus = tenant.TenantStatus,
-			CurrentBookingId = null, // To be populated based on business logic
-			CreatedAt = tenant.CreatedAt,
-			UpdatedAt = tenant.UpdatedAt
-		};
+		var response = new TenantResponse().MapCommonProperties(tenant);
+		
+		// Handle specific date conversions and business logic
+		response.LeaseStartDate = tenant.LeaseStartDate?.ToDateTime();
+		response.LeaseEndDate = tenant.LeaseEndDate?.ToDateTime();
+		response.CurrentBookingId = null; // To be populated based on business logic
+		
+		return response;
 	}
 
 	/// <summary>
-	/// Map TenantCreateRequest to Tenant entity
+	/// Map TenantCreateRequest to Tenant entity using standardized patterns
 	/// </summary>
 	public static Tenant ToEntity(this TenantCreateRequest request)
 	{
-		return new Tenant
-		{
-			UserId = request.UserId,
-			PropertyId = request.PropertyId,
-			LeaseStartDate = DateOnly.FromDateTime(request.LeaseStartDate),
-			LeaseEndDate = DateOnly.FromDateTime(request.LeaseEndDate),
-			TenantStatus = request.TenantStatus,
-			CreatedAt = DateTime.UtcNow,
-			UpdatedAt = DateTime.UtcNow
-		};
+		var entity = new Tenant().MapCommonProperties(request);
+		
+		// Handle specific date conversions and audit fields
+		entity.LeaseStartDate = request.LeaseStartDate.ToDateOnly();
+		entity.LeaseEndDate = request.LeaseEndDate.ToDateOnly();
+		entity.MapAuditFields();
+		
+		return entity;
 	}
 
 	/// <summary>
-	/// Map Tenant entity to TenantPropertyAssignmentResponse DTO
+	/// Map Tenant entity to TenantPropertyAssignmentResponse DTO using standardized patterns
 	/// </summary>
 	public static TenantPropertyAssignmentResponse ToAssignmentResponse(this Tenant tenant)
 	{
-		return new TenantPropertyAssignmentResponse
-		{
-			TenantId = tenant.TenantId,
-			UserId = tenant.UserId,
-			PropertyId = tenant.PropertyId,
-			TenantStatus = tenant.TenantStatus,
-			LeaseStartDate = tenant.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
-			LeaseEndDate = tenant.LeaseEndDate?.ToDateTime(TimeOnly.MinValue)
-		};
+		var response = new TenantPropertyAssignmentResponse().MapCommonProperties(tenant);
+		
+		// Handle specific date conversions
+		response.LeaseStartDate = tenant.LeaseStartDate?.ToDateTime();
+		response.LeaseEndDate = tenant.LeaseEndDate?.ToDateTime();
+		
+		return response;
 	}
 
 	/// <summary>
-	/// Map list of Tenants to list of TenantResponse DTOs
+	/// Map list of Tenants to list of TenantResponse DTOs using collection mapping
 	/// </summary>
 	public static List<TenantResponse> ToResponseList(this IEnumerable<Tenant> tenants)
 	{
-		return tenants.Select(t => t.ToResponse()).ToList();
+		return tenants.MapCollection(t => t.ToResponse());
 	}
 
 	/// <summary>
-	/// Map list of Tenants to list of TenantPropertyAssignmentResponse DTOs
+	/// Map list of Tenants to list of TenantPropertyAssignmentResponse DTOs using collection mapping
 	/// </summary>
 	public static List<TenantPropertyAssignmentResponse> ToAssignmentResponseList(this IEnumerable<Tenant> tenants)
 	{
-		return tenants.Select(t => t.ToAssignmentResponse()).ToList();
+		return tenants.MapCollection(t => t.ToAssignmentResponse());
 	}
 
 	#endregion
@@ -84,71 +77,52 @@ public static class TenantMapper
 	#region TenantPreference Mapping
 
 	/// <summary>
-	/// Map TenantPreference entity to TenantPreferenceResponse DTO
+	/// Map TenantPreference entity to TenantPreferenceResponse DTO using standardized patterns
 	/// </summary>
 	public static TenantPreferenceResponse ToResponse(this TenantPreference preference)
 	{
-		return new TenantPreferenceResponse
-		{
-			PreferenceId = preference.TenantPreferenceId,
-			UserId = preference.UserId,
-			SearchStartDate = preference.SearchStartDate,
-			SearchEndDate = preference.SearchEndDate,
-			MinPrice = preference.MinPrice,
-			MaxPrice = preference.MaxPrice,
-			City = preference.City,
-			AmenityIds = preference.Amenities?.Select(a => a.AmenityId).ToList() ?? new List<int>(),
-			Description = preference.Description ?? string.Empty,
-			IsActive = preference.IsActive,
-			MatchScore = 0.0, // Calculate match score in service layer
-			CreatedAt = preference.CreatedAt,
-			UpdatedAt = preference.UpdatedAt
-		};
+		var response = new TenantPreferenceResponse().MapCommonProperties(preference);
+		
+		// Handle specific mappings and business logic
+		response.PreferenceId = preference.TenantPreferenceId;
+		response.AmenityIds = preference.Amenities?.Select(a => a.AmenityId).ToList() ?? new List<int>();
+		response.Description = preference.Description ?? string.Empty;
+		response.MatchScore = 0.0; // Calculate match score in service layer
+		
+		return response;
 	}
 
 	/// <summary>
-	/// Map TenantPreferenceUpdateRequest to TenantPreference entity (for updates)
+	/// Map TenantPreferenceUpdateRequest to TenantPreference entity (for updates) using standardized patterns
 	/// </summary>
 	public static void UpdateEntity(this TenantPreference preference, TenantPreferenceUpdateRequest request)
 	{
-		preference.SearchStartDate = request.SearchStartDate;
-		preference.SearchEndDate = request.SearchEndDate;
-		preference.MinPrice = request.MinPrice;
-		preference.MaxPrice = request.MaxPrice;
-		preference.City = request.City;
+		preference.MapCommonProperties(request, "UserId"); // Exclude UserId from update
+		
 		// Note: AmenityIds should be handled separately through many-to-many relationship
-		preference.Description = request.Description;
-		preference.IsActive = request.IsActive;
-		preference.UpdatedAt = DateTime.UtcNow;
+		preference.MapAuditFields(preference.CreatedAt, DateTime.UtcNow); // Keep original CreatedAt
 	}
 
 	/// <summary>
-	/// Map TenantPreferenceUpdateRequest to new TenantPreference entity
+	/// Map TenantPreferenceUpdateRequest to new TenantPreference entity using standardized patterns
 	/// </summary>
 	public static TenantPreference ToEntity(this TenantPreferenceUpdateRequest request, int userId)
 	{
-		return new TenantPreference
-		{
-			UserId = userId,
-			SearchStartDate = request.SearchStartDate,
-			SearchEndDate = request.SearchEndDate,
-			MinPrice = request.MinPrice,
-			MaxPrice = request.MaxPrice,
-			City = request.City,
-			// Note: AmenityIds should be handled separately through many-to-many relationship
-			Description = request.Description,
-			IsActive = request.IsActive,
-			CreatedAt = DateTime.UtcNow,
-			UpdatedAt = DateTime.UtcNow
-		};
+		var entity = new TenantPreference().MapCommonProperties(request);
+		entity.UserId = userId;
+		
+		// Note: AmenityIds should be handled separately through many-to-many relationship
+		entity.MapAuditFields();
+		
+		return entity;
 	}
 
 	/// <summary>
-	/// Map list of TenantPreferences to list of TenantPreferenceResponse DTOs
+	/// Map list of TenantPreferences to list of TenantPreferenceResponse DTOs using collection mapping
 	/// </summary>
 	public static List<TenantPreferenceResponse> ToResponseList(this IEnumerable<TenantPreference> preferences)
 	{
-		return preferences.Select(p => p.ToResponse()).ToList();
+		return preferences.MapCollection(p => p.ToResponse());
 	}
 
 	#endregion
@@ -156,7 +130,7 @@ public static class TenantMapper
 	#region TenantRelationship Mapping
 
 	/// <summary>
-	/// Map Tenant entity to TenantRelationshipResponse with computed metrics
+	/// Map Tenant entity to TenantRelationshipResponse with computed metrics using standardized patterns
 	/// Note: Computed metrics should be calculated separately in the service layer
 	/// </summary>
 	public static TenantRelationshipResponse ToRelationshipResponse(this Tenant tenant,
@@ -165,29 +139,29 @@ public static class TenantMapper
 			decimal? averageRating = null,
 			int maintenanceIssues = 0)
 	{
-		return new TenantRelationshipResponse
-		{
-			TenantId = tenant.TenantId,
-			UserId = tenant.UserId,
-			PropertyId = tenant.PropertyId,
-			LeaseStartDate = tenant.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
-			LeaseEndDate = tenant.LeaseEndDate?.ToDateTime(TimeOnly.MinValue),
-			TenantStatus = tenant.TenantStatus,
-			CurrentBookingId = null, // Tenant entity doesn't have CurrentBookingId
-			TotalBookings = totalBookings,
-			TotalRevenue = totalRevenue,
-			AverageRating = averageRating,
-			MaintenanceIssuesReported = maintenanceIssues
-		};
+		var response = new TenantRelationshipResponse().MapCommonProperties(tenant);
+		
+		// Handle specific date conversions and business logic
+		response.LeaseStartDate = tenant.LeaseStartDate?.ToDateTime();
+		response.LeaseEndDate = tenant.LeaseEndDate?.ToDateTime();
+		response.CurrentBookingId = null; // Tenant entity doesn't have CurrentBookingId
+		
+		// Set computed metrics
+		response.TotalBookings = totalBookings;
+		response.TotalRevenue = totalRevenue;
+		response.AverageRating = averageRating;
+		response.MaintenanceIssuesReported = maintenanceIssues;
+		
+		return response;
 	}
 
 	/// <summary>
-	/// Map list of Tenants to list of TenantRelationshipResponse DTOs
+	/// Map list of Tenants to list of TenantRelationshipResponse DTOs using collection mapping
 	/// Note: This is a simple mapping - computed metrics should be calculated separately
 	/// </summary>
 	public static List<TenantRelationshipResponse> ToRelationshipResponseList(this IEnumerable<Tenant> tenants)
 	{
-		return tenants.Select(t => t.ToRelationshipResponse()).ToList();
+		return tenants.MapCollection(t => t.ToRelationshipResponse());
 	}
 
 	#endregion

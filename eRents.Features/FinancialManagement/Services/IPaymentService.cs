@@ -14,7 +14,7 @@ public interface IPaymentService
     /// <summary>
     /// Get payments for current user with basic filtering
     /// </summary>
-    Task<List<PaymentResponse>> GetPaymentsAsync(int? propertyId = null, string? status = null);
+    Task<PagedResponse<PaymentResponse>> GetPaymentsAsync(PaymentSearchObject search);
 
     /// <summary>
     /// Get payment by ID with authorization check
@@ -29,7 +29,7 @@ public interface IPaymentService
     /// <summary>
     /// Execute/capture a PayPal payment and update database record
     /// </summary>
-    Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, string payerId);
+    Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, ExecutePaymentRequest request);
 
     /// <summary>
     /// Create a standalone PayPal payment without booking context
@@ -39,7 +39,7 @@ public interface IPaymentService
     /// <summary>
     /// Get payment status from database first, fallback to PayPal
     /// </summary>
-    Task<PaymentResponse> GetPaymentStatusAsync(int paymentId);
+    Task<PaymentResponse?> GetPaymentStatusAsync(int paymentId);
 
     /// <summary>
     /// Process refund for a payment using RefundRequest DTO
@@ -54,17 +54,17 @@ public interface IPaymentService
     /// <summary>
     /// Get payments for current user
     /// </summary>
-    Task<List<PaymentResponse>> GetCurrentUserPaymentsAsync();
+    Task<PagedResponse<PaymentResponse>> GetCurrentUserPaymentsAsync(PaymentSearchObject search);
 
     /// <summary>
     /// Get payments for a specific user (admin/landlord functionality)
     /// </summary>
-    Task<List<PaymentResponse>> GetUserPaymentsAsync(int userId);
+    Task<PagedResponse<PaymentResponse>> GetUserPaymentsAsync(int userId, PaymentSearchObject search);
 
     /// <summary>
     /// Update payment status in database
     /// </summary>
-    Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, string status);
+    Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, UpdatePaymentStatusRequest request);
 
     /// <summary>
     /// Get payment by PayPal reference
@@ -74,7 +74,7 @@ public interface IPaymentService
     /// <summary>
     /// Get all payments for a specific booking
     /// </summary>
-    Task<List<PaymentResponse>> GetPaymentsByBookingAsync(int bookingId);
+    Task<PagedResponse<PaymentResponse>> GetPaymentsByBookingAsync(int bookingId, PaymentSearchObject search);
 
     #endregion
 } 

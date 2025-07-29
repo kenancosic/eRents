@@ -3,10 +3,19 @@ using System.ComponentModel.DataAnnotations;
 namespace eRents.Features.Shared.DTOs;
 
 /// <summary>
+/// Interface for pagination support
+/// </summary>
+public interface IPagedRequest
+{
+	int Page { get; set; }
+	int PageSize { get; set; }
+}
+
+/// <summary>
 /// Base search object for all Features with pagination, sorting, and validation
 /// Enhanced version moved from eRents.Shared for modular architecture
 /// </summary>
-public abstract class BaseSearchObject
+public abstract class BaseSearchObject : IPagedRequest
 {
 	#region Pagination
 

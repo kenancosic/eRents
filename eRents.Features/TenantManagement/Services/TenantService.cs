@@ -7,6 +7,7 @@ using eRents.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using eRents.Features.Shared.Services;
+using eRents.Features.TenantManagement.Mappers;
 
 namespace eRents.Features.TenantManagement.Services;
 
@@ -14,15 +15,11 @@ namespace eRents.Features.TenantManagement.Services;
 /// TenantService using ERentsContext directly - no repository layer
 /// Follows Structural Isolation Architecture with clean separation of concerns
 /// </summary>
-public class TenantService : ITenantService
+public class TenantService : BaseService, ITenantService
 {
 	#region Dependencies
 
-	private readonly ERentsContext _context;
 	private readonly ILeaseCalculationService _leaseCalculationService;
-	private readonly ICurrentUserService _currentUserService;
-	private readonly IUnitOfWork _unitOfWork;
-	private readonly ILogger<TenantService> _logger;
 
 	public TenantService(
 			ERentsContext context,
@@ -30,12 +27,9 @@ public class TenantService : ITenantService
 			ICurrentUserService currentUserService,
 			IUnitOfWork unitOfWork,
 			ILogger<TenantService> logger)
+		: base(context, unitOfWork, currentUserService, logger)
 	{
-		_context = context;
 		_leaseCalculationService = leaseCalculationService;
-		_currentUserService = currentUserService;
-		_unitOfWork = unitOfWork;
-		_logger = logger;
 	}
 
 	#endregion
@@ -47,80 +41,20 @@ public class TenantService : ITenantService
 	/// </summary>
 	public async Task<PagedResponse<TenantResponse>> GetCurrentTenantsAsync(TenantSearchObject search)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var query = _context.Tenants
+		return await GetPagedAsync<Tenant, TenantResponse, TenantSearchObject>(
+			search,
+			(query, searchObj) => query
 				.Include(t => t.User)
 				.Include(t => t.Property)
 					.ThenInclude(p => p.Owner)
-				.Where(t => t.Property != null && t.Property.OwnerId == currentUserId);
-
-			// Apply search filters
-			if (!string.IsNullOrEmpty(search.TenantStatus))
-			{
-				query = query.Where(t => t.TenantStatus == search.TenantStatus);
-			}
-
-			// For text search, check if we have a city in the query
-			if (!string.IsNullOrEmpty(search.City))
-			{
-				query = query.Where(t => t.Property != null &&
-					t.Property.Address != null &&
-					!string.IsNullOrEmpty(t.Property.Address.City) &&
-					t.Property.Address.City.Contains(search.City));
-			}
-
-			// Apply sorting
-			query = ApplySorting(query, search);
-
-			// Get total count for pagination
-			var totalCount = await query.CountAsync();
-
-			// Apply pagination
-			var tenants = await query
-				.Skip((search.Page - 1) * search.PageSize)
-				.Take(search.PageSize)
-				.AsNoTracking()
 				.Include(t => t.Property)
-					.ThenInclude(p => p.Address)
-				.Include(t => t.User)
-				.ToListAsync();
-
-			var tenantResponses = tenants.Select(t => new TenantResponse
-			{
-				TenantId = t.TenantId,
-				UserId = t.UserId,
-				PropertyId = t.PropertyId,
-				LeaseStartDate = t.LeaseStartDate?.ToDateTime(TimeOnly.MinValue),
-				LeaseEndDate = t.LeaseEndDate?.ToDateTime(TimeOnly.MinValue),
-				TenantStatus = t.TenantStatus,
-				CurrentBookingId = null, // Will be set by the caller if needed
-				CreatedAt = t.CreatedAt,
-				UpdatedAt = t.UpdatedAt
-			}).ToList();
-
-			var response = new PagedResponse<TenantResponse>
-			{
-				Items = tenantResponses,
-				TotalCount = totalCount,
-				Page = search.Page,
-				PageSize = search.PageSize
-			};
-
-			// Use reflection to set the read-only TotalPages property
-			var totalPages = (int)Math.Ceiling((double)totalCount / search.PageSize);
-			var totalPagesProp = typeof(PagedResponse<TenantResponse>).GetProperty("TotalPages");
-			totalPagesProp?.SetValue(response, totalPages);
-
-			return response;
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving current tenants");
-			throw;
-		}
+					.ThenInclude(p => p.Address),
+			query => query.Where(t => t.Property != null && t.Property.OwnerId == CurrentUserId),
+			ApplySearchFilters,
+			ApplySorting,
+			tenant => tenant.ToResponse(),
+			nameof(GetCurrentTenantsAsync)
+		);
 	}
 
 	/// <summary>
@@ -128,28 +62,16 @@ public class TenantService : ITenantService
 	/// </summary>
 	public async Task<TenantResponse?> GetTenantByIdAsync(int tenantId)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var tenant = await _context.Tenants
+		return await GetByIdAsync<Tenant, TenantResponse>(
+			tenantId,
+			query => query
 				.Include(t => t.User)
 				.Include(t => t.Property)
-					.ThenInclude(p => p.Owner)
-				.FirstOrDefaultAsync(t => t.TenantId == tenantId &&
-										 t.Property != null &&
-										 t.Property.OwnerId == currentUserId);
-
-			if (tenant == null)
-				return null;
-
-			return await GetTenantResponseAsync(tenant);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error retrieving tenant {TenantId}", tenantId);
-			throw;
-		}
+					.ThenInclude(p => p.Owner),
+			async tenant => tenant.Property != null && tenant.Property.OwnerId == CurrentUserId,
+			tenant => tenant.ToResponse(),
+			nameof(GetTenantByIdAsync)
+		);
 	}
 
 	#endregion
@@ -163,10 +85,8 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var query = _context.TenantPreferences
-				.Where(tp => tp.UserId == currentUserId);
+			var query = Context.TenantPreferences
+				.Where(tp => tp.UserId == CurrentUserId);
 
 			// Apply search filters
 			query = ApplyPreferenceSearchFilters(query, search);
@@ -204,7 +124,7 @@ public class TenantService : ITenantService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving prospective tenants");
+			LogError(ex, "Error retrieving prospective tenants");
 			throw;
 		}
 	}
@@ -216,10 +136,8 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
-
-			var preference = await _context.TenantPreferences
-				.Where(tp => tp.UserId == currentUserId && tp.TenantPreferenceId == preferenceId)
+			var preference = await Context.TenantPreferences
+				.Where(tp => tp.UserId == CurrentUserId && tp.TenantPreferenceId == preferenceId)
 				.Include(tp => tp.User)
 				.AsNoTracking()
 				.FirstOrDefaultAsync();
@@ -228,7 +146,7 @@ public class TenantService : ITenantService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving preferences for tenant {TenantId}", preferenceId);
+			LogError(ex, "Error retrieving preferences for tenant {TenantId}", preferenceId);
 			throw;
 		}
 	}
@@ -240,9 +158,9 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
+			var currentUserId = CurrentUserId;
 
-			var preference = await _context.TenantPreferences
+			var preference = await Context.TenantPreferences
 				.Where(tp => tp.UserId == currentUserId && tp.TenantPreferenceId == preferenceId)
 				.Include(tp => tp.User)
 				.FirstOrDefaultAsync();
@@ -251,9 +169,9 @@ public class TenantService : ITenantService
 			{
 				preference = new TenantPreference
 				{
-					UserId = currentUserId.Value,
+					UserId = currentUserId,
 				};
-				await _context.TenantPreferences.AddAsync(preference);
+				await Context.TenantPreferences.AddAsync(preference);
 			}
 
 			// Update properties from request
@@ -268,20 +186,20 @@ public class TenantService : ITenantService
 			// Update amenities if provided
 			if (request.AmenityIds != null && request.AmenityIds.Any())
 			{
-				var amenities = await _context.Amenities
+				var amenities = await Context.Amenities
 					.Where(a => request.AmenityIds.Contains((int)a.AmenityId))
 					.ToListAsync();
 
 				preference.Amenities = amenities;
 			}
 
-			await _unitOfWork.SaveChangesAsync();
+			await UnitOfWork.SaveChangesAsync();
 
 			return MapToTenantPreferenceResponse(preference);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error updating preferences for tenant {TenantId}", preferenceId);
+			LogError(ex, "Error updating preferences for tenant {TenantId}", preferenceId);
 			throw;
 		}
 	}
@@ -297,9 +215,9 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
+			var currentUserId = CurrentUserId;
 
-			var tenants = await _context.Tenants
+			var tenants = await Context.Tenants
 				.Include(t => t.User)
 				.Include(t => t.Property)
 				.Where(t => t.Property != null && t.Property.OwnerId == currentUserId)
@@ -312,7 +230,7 @@ public class TenantService : ITenantService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving tenant relationships");
+			LogError(ex, "Error retrieving tenant relationships");
 			throw;
 		}
 	}
@@ -321,7 +239,7 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var assignments = await _context.Tenants
+			var assignments = await Context.Tenants
 				.Include(t => t.Property)
 				.Where(t => tenantIds.Contains(t.TenantId))
 				.AsNoTracking()
@@ -337,12 +255,12 @@ public class TenantService : ITenantService
 							LeaseEndDate = t.LeaseEndDate?.ToDateTime(TimeOnly.MinValue)
 						});
 
-			_logger.LogInformation("Retrieved property assignments for {Count} tenants", assignments.Count);
+			LogInfo("Retrieved property assignments for {Count} tenants", assignments.Count);
 			return assignments;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving tenant property assignments");
+			LogError(ex, "Error retrieving tenant property assignments");
 			throw;
 		}
 	}
@@ -355,19 +273,19 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var hasActiveTenant = await _context.Tenants
+			var hasActiveTenant = await Context.Tenants
 				.AsNoTracking()
 				.AnyAsync(t => t.PropertyId == propertyId &&
 									t.TenantStatus == "Active");
 
-			_logger.LogInformation("Property {PropertyId} has active tenant: {HasActiveTenant}",
+			LogInfo("Property {PropertyId} has active tenant: {HasActiveTenant}",
 					propertyId, hasActiveTenant);
 
 			return hasActiveTenant;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking active tenant for property {PropertyId}", propertyId);
+			LogError(ex, "Error checking active tenant for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -376,26 +294,26 @@ public class TenantService : ITenantService
 	{
 		try
 		{
-			var tenant = await _context.Tenants
+			var tenant = await Context.Tenants
 				.Include(t => t.Property)
 				.AsNoTracking()
 				.FirstOrDefaultAsync(t => t.TenantId == tenantId);
 
 			if (tenant?.Property == null)
 			{
-				_logger.LogWarning("Tenant {TenantId} or associated property not found", tenantId);
+				LogWarning("Tenant {TenantId} or associated property not found", tenantId);
 				return 0;
 			}
 
 			// Use property's current monthly price as rent
 			var monthlyRent = tenant.Property.Price;
 
-			_logger.LogInformation("Current monthly rent for tenant {TenantId} is {Rent}", tenantId, monthlyRent);
+			LogInfo("Current monthly rent for tenant {TenantId} is {Rent}", tenantId, monthlyRent);
 			return monthlyRent;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting monthly rent for tenant {TenantId}", tenantId);
+			LogError(ex, "Error getting monthly rent for tenant {TenantId}", tenantId);
 			throw;
 		}
 	}
@@ -405,50 +323,40 @@ public class TenantService : ITenantService
 	/// </summary>
 	public async Task<TenantResponse> CreateTenantFromApprovedRentalRequestAsync(TenantCreateRequest request)
 	{
-		try
-		{
-			var currentUserId = _currentUserService.GetUserIdAsInt();
+		return await CreateAsync<Tenant, TenantCreateRequest, TenantResponse>(
+			request,
+			req => req.ToEntity(),
+			async (tenant, req) => await ValidateRentalRequestForTenantCreation(req, tenant),
+			tenant => tenant.ToResponse(),
+			nameof(CreateTenantFromApprovedRentalRequestAsync)
+		);
+	}
 
-			// Verify rental request exists and is approved
-			var rentalRequest = await _context.RentalRequests
-				.Include(rr => rr.Property)
-				.FirstOrDefaultAsync(rr => rr.RequestId == request.RentalRequestId);
+	/// <summary>
+	/// Validates rental request for tenant creation
+	/// </summary>
+	private async Task ValidateRentalRequestForTenantCreation(TenantCreateRequest request, Tenant tenant)
+	{
+		// Verify rental request exists and is approved
+		var rentalRequest = await Context.RentalRequests
+			.Include(rr => rr.Property)
+			.FirstOrDefaultAsync(rr => rr.RequestId == request.RentalRequestId);
 
-			if (rentalRequest == null)
-				throw new ArgumentException("Rental request not found");
+		if (rentalRequest == null)
+			throw new ArgumentException("Rental request not found");
 
-			if (rentalRequest.Status != "Approved")
-				throw new ArgumentException("Rental request must be approved to create tenant");
+		if (rentalRequest.Status != "Approved")
+			throw new ArgumentException("Rental request must be approved to create tenant");
 
-			if (rentalRequest.Property?.OwnerId != currentUserId)
-				throw new UnauthorizedAccessException("You can only create tenants for your own properties");
+		if (rentalRequest.Property?.OwnerId != CurrentUserId)
+			throw new UnauthorizedAccessException("You can only create tenants for your own properties");
 
-			// Create tenant record
-			var tenant = new Tenant
-			{
-				UserId = rentalRequest.UserId,
-				PropertyId = rentalRequest.PropertyId,
-				LeaseStartDate = DateOnly.FromDateTime(rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue)),
-				LeaseEndDate = DateOnly.FromDateTime(rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue)),
-				TenantStatus = "Active"
-			};
-
-			_context.Tenants.Add(tenant);
-			await _unitOfWork.SaveChangesAsync();
-
-			_logger.LogInformation("Created tenant from rental request {RentalRequestId}: {TenantId}", request.RentalRequestId, tenant.TenantId);
-
-			// Reload with navigation properties for response
-			await _context.Entry(tenant).Reference(t => t.User).LoadAsync();
-			await _context.Entry(tenant).Reference(t => t.Property).LoadAsync();
-
-			return await GetTenantResponseAsync(tenant);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating tenant from rental request {RentalRequestId}", request.RentalRequestId);
-			throw;
-		}
+		// Update tenant with rental request data
+		tenant.UserId = rentalRequest.UserId;
+		tenant.PropertyId = rentalRequest.PropertyId;
+		tenant.LeaseStartDate = DateOnly.FromDateTime(rentalRequest.ProposedStartDate.ToDateTime(TimeOnly.MinValue));
+		tenant.LeaseEndDate = DateOnly.FromDateTime(rentalRequest.ProposedEndDate.ToDateTime(TimeOnly.MinValue));
+		tenant.TenantStatus = "Active";
 	}
 
 	#endregion
@@ -463,14 +371,14 @@ public class TenantService : ITenantService
 			var expiringTenants = await _leaseCalculationService.GetExpiringTenants(days);
 			var isExpiring = expiringTenants.Any(t => t.TenantId == tenantId);
 
-			_logger.LogInformation("Tenant {TenantId} lease expiring in {Days} days: {IsExpiring}",
+			LogInfo("Tenant {TenantId} lease expiring in {Days} days: {IsExpiring}",
 					tenantId, days, isExpiring);
 
 			return isExpiring;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking lease expiration for tenant {TenantId}", tenantId);
+			LogError(ex, "Error checking lease expiration for tenant {TenantId}", tenantId);
 			throw;
 		}
 	}
@@ -490,14 +398,14 @@ public class TenantService : ITenantService
 			var responseTasks = landlordTenantEntities.Select(GetTenantResponseAsync);
 			var landlordTenants = (await Task.WhenAll(responseTasks)).ToList();
 
-			_logger.LogInformation("Found {Count} tenants with expiring leases for landlord {LandlordId}",
+			LogInfo("Found {Count} tenants with expiring leases for landlord {LandlordId}",
 					landlordTenants.Count, landlordId);
 
 			return landlordTenants;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting tenants with expiring leases for landlord {LandlordId}", landlordId);
+			LogError(ex, "Error getting tenants with expiring leases for landlord {LandlordId}", landlordId);
 			throw;
 		}
 	}
@@ -646,29 +554,29 @@ public class TenantService : ITenantService
 		// Load related data if not already loaded
 		if (tenant.Property == null)
 		{
-			await _context.Entry(tenant).Reference(t => t.Property).LoadAsync();
+			await Context.Entry(tenant).Reference(t => t.Property).LoadAsync();
 		}
 
 		if (tenant.User == null)
 		{
-			await _context.Entry(tenant).Reference(t => t.User).LoadAsync();
+			await Context.Entry(tenant).Reference(t => t.User).LoadAsync();
 		}
 
 		// Calculate aggregates
-		var totalBookings = await _context.Bookings
+		var totalBookings = await Context.Bookings
 			.CountAsync(b => b.UserId == tenant.UserId);
 
-		var totalRevenue = await _context.Payments
+		var totalRevenue = await Context.Payments
 			.Where(p => p.TenantId == tenant.TenantId || (p.TenantId == null && p.Booking != null && p.Booking.UserId == tenant.UserId))
 			.SumAsync(p => p.Amount);
 
-		var averageRating = await _context.Reviews
+		var averageRating = await Context.Reviews
 			.Where(r => r.RevieweeId == tenant.UserId && r.StarRating.HasValue)
 			.Select(r => r.StarRating!.Value)
 			.DefaultIfEmpty(0)
 			.AverageAsync();
 
-		var maintenanceIssues = await _context.MaintenanceIssues
+		var maintenanceIssues = await Context.MaintenanceIssues
 			.CountAsync(mi => mi.ReportedByUserId == tenant.UserId && mi.IsTenantComplaint);
 
 		return new TenantRelationshipResponse

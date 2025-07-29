@@ -1,6 +1,8 @@
 using eRents.Features.FinancialManagement.DTOs;
 using eRents.Features.FinancialManagement.Services;
 using eRents.Features.Shared.Controllers;
+using eRents.Features.Shared.Extensions;
+using eRents.Features.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -31,22 +33,9 @@ public class PaymentController : BaseController
     /// Get payments for current user with filtering
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PaymentResponse>>> GetPayments(
-        [FromQuery] int? propertyId = null,
-        [FromQuery] string? paymentStatus = null,
-        [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null)
+    public async Task<ActionResult<PagedResponse<PaymentResponse>>> GetPayments([FromQuery] PaymentSearchObject search)
     {
-        try
-        {
-            var payments = await _paymentService.GetPaymentsAsync(propertyId, paymentStatus);
-            return Ok(payments);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving payments");
-            return BadRequest(new { message = "Failed to retrieve payments" });
-        }
+        return await this.ExecuteAsync(() => _paymentService.GetPaymentsAsync(search), _logger, "GetPayments");
     }
 
     /// <summary>
@@ -55,23 +44,7 @@ public class PaymentController : BaseController
     [HttpGet("{id}")]
     public async Task<ActionResult<PaymentResponse>> GetPayment(int id)
     {
-        try
-        {
-            var payment = await _paymentService.GetPaymentByIdAsync(id);
-            if (payment == null)
-                return NotFound(new { message = "Payment not found" });
-
-            return Ok(payment);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving payment {PaymentId}", id);
-            return BadRequest(new { message = "Failed to retrieve payment" });
-        }
+    	return await this.GetByIdAsync<PaymentResponse, int>(id, _paymentService.GetPaymentByIdAsync, _logger);
     }
 
     /// <summary>
@@ -80,49 +53,16 @@ public class PaymentController : BaseController
     [HttpPost]
     public async Task<ActionResult<PaymentResponse>> CreatePayment([FromBody] PaymentRequest request)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var payment = await _paymentService.ProcessPaymentAsync(request);
-            return CreatedAtAction(nameof(GetPayment), new { id = payment.PaymentId }, payment);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating payment");
-            return BadRequest(new { message = "Failed to create payment" });
-        }
+    	return await this.CreateAsync<PaymentRequest, PaymentResponse>(request, _paymentService.ProcessPaymentAsync, _logger, nameof(GetPayment));
     }
 
     /// <summary>
     /// Update payment status
     /// </summary>
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> UpdatePaymentStatus(int id, [FromBody] string status)
+    public async Task<ActionResult<PaymentResponse>> UpdatePaymentStatus(int id, [FromBody] UpdatePaymentStatusRequest request)
     {
-        try
-        {
-            await _paymentService.UpdatePaymentStatusAsync(id, status);
-            return NoContent();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating payment status for {PaymentId}", id);
-            return BadRequest(new { message = "Failed to update payment status" });
-        }
+    	return await this.UpdateAsync<UpdatePaymentStatusRequest, PaymentResponse>(id, request, _paymentService.UpdatePaymentStatusAsync, _logger);
     }
 
     /// <summary>
@@ -131,35 +71,7 @@ public class PaymentController : BaseController
     [HttpPost("refund")]
     public async Task<ActionResult<PaymentResponse>> ProcessRefund([FromBody] RefundRequest request)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var refund = await _paymentService.ProcessRefundAsync(request);
-            return Ok(refund);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { message = "Original payment not found" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing refund for payment {PaymentId}", request.OriginalPaymentId);
-            return BadRequest(new { message = "Failed to process refund" });
-        }
+    	return await this.CreateAsync<RefundRequest, PaymentResponse>(request, _paymentService.ProcessRefundAsync, _logger, nameof(GetPayment));
     }
 
     /// <summary>
@@ -207,41 +119,16 @@ public class PaymentController : BaseController
     [HttpGet("reference/{reference}")]
     public async Task<ActionResult<PaymentResponse>> GetPaymentByReference(string reference)
     {
-        try
-        {
-            var payment = await _paymentService.GetPaymentByReferenceAsync(reference);
-            if (payment == null)
-                return NotFound(new { message = "Payment not found" });
-
-            return Ok(payment);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving payment by reference {Reference}", reference);
-            return BadRequest(new { message = "Failed to retrieve payment" });
-        }
+    	return await this.GetByIdAsync<PaymentResponse, string>(reference, _paymentService.GetPaymentByReferenceAsync, _logger);
     }
 
     /// <summary>
     /// Get payments for specific booking
     /// </summary>
     [HttpGet("booking/{bookingId}")]
-    public async Task<ActionResult<IEnumerable<PaymentResponse>>> GetPaymentsByBooking(int bookingId)
+    public async Task<ActionResult<PagedResponse<PaymentResponse>>> GetPaymentsByBooking(int bookingId, [FromQuery] PaymentSearchObject search)
     {
-        try
-        {
-            var payments = await _paymentService.GetPaymentsByBookingAsync(bookingId);
-            return Ok(payments);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving payments for booking {BookingId}", bookingId);
-            return BadRequest(new { message = "Failed to retrieve payments" });
-        }
+        return await this.ExecuteAsync(() => _paymentService.GetPaymentsByBookingAsync(bookingId, search), _logger, "GetPaymentsByBooking");
     }
 }
 

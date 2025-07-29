@@ -1,56 +1,41 @@
 using eRents.Features.TenantManagement.DTOs;
+using eRents.Features.Shared.Validation;
 using FluentValidation;
 
 namespace eRents.Features.TenantManagement.Validators;
 
 /// <summary>
-/// Validator for tenant creation requests
+/// Validator for tenant creation requests using standardized base validation patterns
 /// </summary>
-public class TenantCreateValidator : AbstractValidator<TenantCreateRequest>
+public class TenantCreateValidator : BaseEntityValidator<TenantCreateRequest>
 {
     private static readonly string[] ValidTenantStatuses = { "Active", "Completed", "Cancelled", "Pending" };
 
     public TenantCreateValidator()
     {
-        RuleFor(x => x.UserId)
-            .GreaterThan(0)
-            .WithMessage("Valid user ID is required");
+        // Use standardized ID validation helpers
+        ValidateRequiredId(x => x.UserId, "User ID");
+        ValidateRequiredId(x => x.PropertyId, "Property ID");
+        ValidateRequiredId(x => x.RentalRequestId, "Rental Request ID");
 
-        RuleFor(x => x.PropertyId)
-            .GreaterThan(0)
-            .WithMessage("Valid property ID is required");
+        // Use standardized date validation helpers
+        ValidateRequiredDate(x => x.LeaseStartDate, "Lease start date",
+            DateTime.Today.AddDays(-30), DateTime.Today.AddYears(5));
 
-        RuleFor(x => x.RentalRequestId)
-            .GreaterThan(0)
-            .WithMessage("Valid rental request ID is required");
+        ValidateRequiredDate(x => x.LeaseEndDate, "Lease end date",
+            DateTime.Today.AddDays(-30), DateTime.Today.AddYears(5));
 
-        RuleFor(x => x.LeaseStartDate)
-            .NotEmpty()
-            .WithMessage("Lease start date is required")
-            .GreaterThanOrEqualTo(DateTime.Today.AddDays(-30))
-            .WithMessage("Lease start date cannot be more than 30 days in the past");
+        // Use standardized date range validation
+        ValidateDateRange(x => x.LeaseStartDate, x => x.LeaseEndDate,
+            "Lease start date", "Lease end date");
 
-        RuleFor(x => x.LeaseEndDate)
-            .NotEmpty()
-            .WithMessage("Lease end date is required")
-            .GreaterThan(x => x.LeaseStartDate)
-            .WithMessage("Lease end date must be after lease start date");
-
-        RuleFor(x => x.TenantStatus)
-            .NotEmpty()
-            .WithMessage("Tenant status is required")
-            .Must(BeValidTenantStatus)
-            .WithMessage($"Tenant status must be one of: {string.Join(", ", ValidTenantStatuses)}");
+        // Use standardized allowed values validation
+        ValidateAllowedValues(x => x.TenantStatus, ValidTenantStatuses, "Tenant status");
 
         // Business rule: Lease duration should be reasonable (at least 7 days, max 5 years)
         RuleFor(x => x)
             .Must(HaveReasonableLeaseDuration)
             .WithMessage("Lease duration must be between 7 days and 5 years");
-    }
-
-    private static bool BeValidTenantStatus(string status)
-    {
-        return ValidTenantStatuses.Contains(status, StringComparer.OrdinalIgnoreCase);
     }
 
     private static bool HaveReasonableLeaseDuration(TenantCreateRequest request)
@@ -61,23 +46,25 @@ public class TenantCreateValidator : AbstractValidator<TenantCreateRequest>
 }
 
 /// <summary>
-/// Validator for tenant preference update requests
+/// Validator for tenant preference update requests using standardized base validation patterns
 /// </summary>
-public class TenantPreferenceValidator : AbstractValidator<TenantPreferenceUpdateRequest>
+public class TenantPreferenceValidator : BaseEntityValidator<TenantPreferenceUpdateRequest>
 {
     public TenantPreferenceValidator()
     {
-        RuleFor(x => x.SearchStartDate)
-            .NotEmpty()
-            .WithMessage("Search start date is required")
-            .GreaterThanOrEqualTo(DateTime.Today.AddDays(-1))
-            .WithMessage("Search start date cannot be in the past");
+        // Use standardized date validation helpers
+        ValidateRequiredDate(x => x.SearchStartDate, "Search start date",
+            DateTime.Today.AddDays(-1), DateTime.Today.AddYears(2));
 
-        RuleFor(x => x.SearchEndDate)
-            .GreaterThan(x => x.SearchStartDate)
-            .WithMessage("Search end date must be after search start date")
-            .When(x => x.SearchEndDate.HasValue);
+        // Use standardized optional date range validation for nullable dates
+        ValidateOptionalDateRange(x => x.SearchStartDate, x => x.SearchEndDate,
+            "Search start date", "Search end date");
 
+        // Use standardized text validation helpers
+        ValidateRequiredText(x => x.City, "City", maxLength: 100, minLength: 2);
+        ValidateOptionalText(x => x.Description, "Description", maxLength: 1000);
+
+        // Custom price validations (since BaseValidator doesn't have optional decimal validation)
         RuleFor(x => x.MinPrice)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Minimum price must be non-negative")
@@ -93,22 +80,11 @@ public class TenantPreferenceValidator : AbstractValidator<TenantPreferenceUpdat
             .WithMessage("Maximum price must be greater than or equal to minimum price")
             .When(x => x.MinPrice.HasValue && x.MaxPrice.HasValue);
 
-        RuleFor(x => x.City)
-            .NotEmpty()
-            .WithMessage("City is required")
-            .MaximumLength(100)
-            .WithMessage("City name cannot exceed 100 characters")
-            .MinimumLength(2)
-            .WithMessage("City name must be at least 2 characters");
-
+        // Custom ID list validation
         RuleFor(x => x.AmenityIds)
             .Must(HaveValidAmenityIds)
             .WithMessage("All amenity IDs must be greater than 0")
             .When(x => x.AmenityIds != null && x.AmenityIds.Any());
-
-        RuleFor(x => x.Description)
-            .MaximumLength(1000)
-            .WithMessage("Description cannot exceed 1000 characters");
 
         // Business rule: Search duration should be reasonable (max 2 years)
         RuleFor(x => x)
@@ -146,33 +122,31 @@ public class TenantPreferenceValidator : AbstractValidator<TenantPreferenceUpdat
 }
 
 /// <summary>
-/// Validator for tenant search objects
+/// Validator for tenant search objects using standardized base validation patterns
 /// </summary>
-public class TenantSearchValidator : AbstractValidator<TenantSearchObject>
+public class TenantSearchValidator : BaseEntityValidator<TenantSearchObject>
 {
-    private static readonly string[] ValidSortFields = 
-    { 
-        "TenantId", "UserId", "PropertyId", "LeaseStartDate", "LeaseEndDate", 
-        "TenantStatus", "CreatedAt", "UpdatedAt" 
+    private static readonly string[] ValidSortFields =
+    {
+        "TenantId", "UserId", "PropertyId", "LeaseStartDate", "LeaseEndDate",
+        "TenantStatus", "CreatedAt", "UpdatedAt"
     };
     
     private static readonly string[] ValidTenantStatuses = { "Active", "Completed", "Cancelled", "Pending" };
 
     public TenantSearchValidator()
     {
-        RuleFor(x => x.Page)
-            .GreaterThan(0)
-            .WithMessage("Page number must be greater than 0");
+        // Use standardized pagination validation
+        ValidateRequiredPositiveInt(x => x.Page, "Page number", minValue: 1);
+        ValidateRequiredPositiveInt(x => x.PageSize, "Page size", minValue: 1, maxValue: 100);
 
-        RuleFor(x => x.PageSize)
-            .InclusiveBetween(1, 100)
-            .WithMessage("Page size must be between 1 and 100");
-
+        // Use standardized allowed values validation for optional fields
         RuleFor(x => x.SortBy)
             .Must(BeValidSortField)
             .WithMessage($"Sort field must be one of: {string.Join(", ", ValidSortFields)}")
             .When(x => !string.IsNullOrEmpty(x.SortBy));
 
+        // Optional ID validations using custom rules (since BaseValidator doesn't have optional ID validation)
         RuleFor(x => x.UserId)
             .GreaterThan(0)
             .WithMessage("Valid user ID is required")
@@ -183,21 +157,24 @@ public class TenantSearchValidator : AbstractValidator<TenantSearchObject>
             .WithMessage("Valid property ID is required")
             .When(x => x.PropertyId.HasValue);
 
+        // Use standardized text validation for optional fields
+        ValidateOptionalText(x => x.TenantStatus, "Tenant status", maxLength: 50);
+        ValidateOptionalText(x => x.City, "City", maxLength: 100);
+
+        // Custom validation for tenant status values
         RuleFor(x => x.TenantStatus)
             .Must(BeValidTenantStatus)
             .WithMessage($"Tenant status must be one of: {string.Join(", ", ValidTenantStatuses)}")
             .When(x => !string.IsNullOrEmpty(x.TenantStatus));
 
-        RuleFor(x => x.LeaseStartAfter)
-            .LessThanOrEqualTo(x => x.LeaseStartBefore)
-            .WithMessage("Lease start 'after' date must be before or equal to 'before' date")
-            .When(x => x.LeaseStartAfter.HasValue && x.LeaseStartBefore.HasValue);
+        // Use standardized optional date range validation
+        ValidateOptionalDateRange(x => x.LeaseStartAfter, x => x.LeaseStartBefore,
+            "Lease start after", "Lease start before");
+        
+        ValidateOptionalDateRange(x => x.LeaseEndAfter, x => x.LeaseEndBefore,
+            "Lease end after", "Lease end before");
 
-        RuleFor(x => x.LeaseEndAfter)
-            .LessThanOrEqualTo(x => x.LeaseEndBefore)
-            .WithMessage("Lease end 'after' date must be before or equal to 'before' date")
-            .When(x => x.LeaseEndAfter.HasValue && x.LeaseEndBefore.HasValue);
-
+        // Custom price validations (optional decimal values)
         RuleFor(x => x.MinPrice)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Minimum price must be non-negative")
@@ -213,11 +190,7 @@ public class TenantSearchValidator : AbstractValidator<TenantSearchObject>
             .WithMessage("Maximum price must be greater than or equal to minimum price")
             .When(x => x.MinPrice.HasValue && x.MaxPrice.HasValue);
 
-        RuleFor(x => x.City)
-            .MaximumLength(100)
-            .WithMessage("City name cannot exceed 100 characters")
-            .When(x => !string.IsNullOrEmpty(x.City));
-
+        // Custom ID list validation
         RuleFor(x => x.AmenityIds)
             .Must(HaveValidAmenityIds)
             .WithMessage("All amenity IDs must be greater than 0")
@@ -238,4 +211,4 @@ public class TenantSearchValidator : AbstractValidator<TenantSearchObject>
     {
         return amenityIds.All(id => id > 0);
     }
-} 
+}

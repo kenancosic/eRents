@@ -1,105 +1,114 @@
-using System.ComponentModel.DataAnnotations;
 using eRents.Features.Shared.DTOs;
+using System.ComponentModel.DataAnnotations;
 
 namespace eRents.Features.BookingManagement.DTOs;
 
 /// <summary>
-/// Comprehensive booking search object with filtering, validation, and pagination
-/// Enhanced version consolidated into Features modular architecture
+/// Search object for booking queries with filtering and pagination
 /// </summary>
 public class BookingSearchObject : BaseSearchObject
 {
-    #region Basic Filters
-    
+    /// <summary>
+    /// Filter by property ID
+    /// </summary>
     public int? PropertyId { get; set; }
+
+    /// <summary>
+    /// Filter by user ID
+    /// </summary>
     public int? UserId { get; set; }
-    
-    [Display(Name = "Booking Start Date")]
-    public DateTime? StartDate { get; set; }
-    
-    [Display(Name = "Booking End Date")]
-    public DateTime? EndDate { get; set; }
 
+    /// <summary>
+    /// Filter by booking status ID
+    /// </summary>
     public int? BookingStatusId { get; set; }
-    
-    #endregion
 
-    #region Financial Filters
-    
-    [Range(0, double.MaxValue, ErrorMessage = "Minimum amount must be positive")]
-    public decimal? MinTotalPrice { get; set; }
-    
-    [Range(0, double.MaxValue, ErrorMessage = "Maximum amount must be positive")]
-    public decimal? MaxTotalPrice { get; set; }
+    /// <summary>
+    /// Filter by booking status name
+    /// </summary>
+    [StringLength(50)]
+    public string? StatusName { get; set; }
 
-    public string? PaymentMethod { get; set; }
-    public string? Currency { get; set; }
+    /// <summary>
+    /// Filter by minimum number of guests
+    /// </summary>
+    [Range(1, 20)]
+    public int? MinGuests { get; set; }
+
+    /// <summary>
+    /// Filter by maximum number of guests
+    /// </summary>
+    [Range(1, 20)]
+    public int? MaxGuests { get; set; }
+
+    /// <summary>
+    /// Filter by minimum total price
+    /// </summary>
+    [Range(0.01, 999999.99)]
+    public decimal? MinPrice { get; set; }
+
+    /// <summary>
+    /// Filter by maximum total price
+    /// </summary>
+    [Range(0.01, 999999.99)]
+    public decimal? MaxPrice { get; set; }
+
+    /// <summary>
+    /// Filter by start date (from)
+    /// </summary>
+    public DateTime? StartDateFrom { get; set; }
+
+    /// <summary>
+    /// Filter by start date (to)
+    /// </summary>
+    public DateTime? StartDateTo { get; set; }
+
+    /// <summary>
+    /// Filter by end date (from)
+    /// </summary>
+    public DateTime? EndDateFrom { get; set; }
+
+    /// <summary>
+    /// Filter by end date (to)
+    /// </summary>
+    public DateTime? EndDateTo { get; set; }
+
+    /// <summary>
+    /// Filter by payment status
+    /// </summary>
+    [StringLength(50)]
     public string? PaymentStatus { get; set; }
-    public int? MinNumberOfGuests { get; set; }
-    public int? MaxNumberOfGuests { get; set; }
-    
-    #endregion
 
-    #region Status Filters
-    
-    [StringLength(50, ErrorMessage = "Status cannot exceed 50 characters")]
-    public string? Status { get; set; }
-    
     /// <summary>
-    /// Filter by multiple statuses (OR condition)
+    /// Filter by payment method
     /// </summary>
-    public List<string>? Statuses { get; set; }
-    
-    #endregion
+    [StringLength(50)]
+    public string? PaymentMethod { get; set; }
 
-    #region Date Filters (using base DateFrom/DateTo for created date, these for booking dates)
-    
-    public DateTime? CheckInDate { get; set; }
-    public DateTime? CheckOutDate { get; set; }
-    
-    #endregion
-
-    #region Legacy Properties (for backward compatibility)
-    
     /// <summary>
-    /// Legacy property mapped to SearchTerm for backward compatibility
+    /// Include cancelled bookings in results
     /// </summary>
-    public string? Name
-    {
-        get => SearchTerm;
-        set => SearchTerm = value;
-    }
-    
-    #endregion
-
-    #region Validation Methods
+    public bool IncludeCancelled { get; set; } = false;
 
     /// <summary>
-    /// Enhanced validation with booking-specific rules
+    /// Override validation to add booking-specific rules
     /// </summary>
     public override List<string> GetValidationErrors()
     {
         var errors = base.GetValidationErrors();
-        
-        if (!IsValidAmountRange)
-            errors.Add("MinTotalPrice must be less than or equal to MaxTotalPrice");
-            
-        if (!IsValidGuestRange)
-            errors.Add("MinNumberOfGuests must be less than or equal to MaxNumberOfGuests");
-            
-        if (!IsValidBookingDateRange)
-            errors.Add("StartDate must be before or equal to EndDate");
-            
+
+        if (StartDateFrom.HasValue && StartDateTo.HasValue && StartDateFrom > StartDateTo)
+            errors.Add("StartDateFrom must be before or equal to StartDateTo");
+
+        if (EndDateFrom.HasValue && EndDateTo.HasValue && EndDateFrom > EndDateTo)
+            errors.Add("EndDateFrom must be before or equal to EndDateTo");
+
+        if (MinGuests.HasValue && MaxGuests.HasValue && MinGuests > MaxGuests)
+            errors.Add("MinGuests must be less than or equal to MaxGuests");
+
+        if (MinPrice.HasValue && MaxPrice.HasValue && MinPrice > MaxPrice)
+            errors.Add("MinPrice must be less than or equal to MaxPrice");
+
         return errors;
     }
-
-    #endregion
-
-    #region Helper Properties
-    
-    public bool IsValidAmountRange => !MinTotalPrice.HasValue || !MaxTotalPrice.HasValue || MinTotalPrice <= MaxTotalPrice;
-    public bool IsValidGuestRange => !MinNumberOfGuests.HasValue || !MaxNumberOfGuests.HasValue || MinNumberOfGuests <= MaxNumberOfGuests;
-    public bool IsValidBookingDateRange => !StartDate.HasValue || !EndDate.HasValue || StartDate <= EndDate;
-    
-    #endregion
 }
