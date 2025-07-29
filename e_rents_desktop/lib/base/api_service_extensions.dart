@@ -54,6 +54,8 @@ extension ApiServiceExtensions on ApiService {
   
   /// GET request with automatic JSON decoding to PagedResult
   /// 
+  /// Handles both paginated response format and simple array format from backend
+  /// 
   /// Usage:
   /// ```dart
   /// final pagedUsers = await api.getPagedAndDecode('/users/paged', User.fromJson);
@@ -69,8 +71,29 @@ extension ApiServiceExtensions on ApiService {
       authenticated: authenticated,
       customHeaders: customHeaders,
     );
-    final data = json.decode(response.body) as Map<String, dynamic>;
-    return PagedResult<T>.fromJson(data, (item) => decoder(item as Map<String, dynamic>));
+    
+    final decodedBody = json.decode(response.body);
+    
+    // Handle different response formats from backend
+    if (decodedBody is List) {
+      // Backend returned simple array - convert to PagedResult format
+      final items = decodedBody
+          .cast<Map<String, dynamic>>()
+          .map((item) => decoder(item))
+          .toList();
+      
+      return PagedResult<T>(
+        items: items,
+        totalCount: items.length,
+        page: 0,
+        pageSize: items.length,
+      );
+    } else if (decodedBody is Map<String, dynamic>) {
+      // Backend returned proper paginated format
+      return PagedResult<T>.fromJson(decodedBody, (item) => decoder(item as Map<String, dynamic>));
+    } else {
+      throw Exception('Unexpected response format: expected List or Map, got ${decodedBody.runtimeType}');
+    }
   }
   
   /// POST request with automatic JSON encoding/decoding

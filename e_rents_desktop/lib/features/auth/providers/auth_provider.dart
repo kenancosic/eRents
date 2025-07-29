@@ -73,7 +73,7 @@ class AuthProvider extends BaseProvider {
     _emailSent = false;
     
     final success = await executeWithStateForSuccess(() async {
-      await api.postJson('/Auth/ForgotPassword', {'email': email});
+      await api.postJson('api/Auth/forgot-password', {'email': email});
       _emailSent = true;
     });
     
@@ -84,7 +84,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> login(String email, String password) async {
     final success = await executeWithStateForSuccess(() async {
       final request = LoginRequestModel(usernameOrEmail: email, password: password);
-      final result = await api.postJson('/Auth/Login', request.toJson());
+      final result = await api.postJson('api/Auth/login', request.toJson());
       
       final token = result['token'] as String?;
       if (token == null) throw Exception('Token not returned from API');
@@ -109,6 +109,7 @@ class AuthProvider extends BaseProvider {
       }
 
       _isAuthenticated = true;
+      notifyListeners();
     });
 
     return success;
@@ -168,16 +169,13 @@ class AuthProvider extends BaseProvider {
   /// Fetch user data from API
   Future<User> _fetchUserData() async {
     final response = await api.getJson(
-      '/Auth/Me', 
+      'api/Auth/me', 
       authenticated: true,
       customHeaders: api.desktopHeaders,
     );
     
-    if (response.containsKey('user')) {
-      return User.fromJson(response['user']);
-    } else {
-      throw Exception('Malformed user data');
-    }
+    // Backend returns user data directly, not wrapped in 'user' field
+    return User.fromJson(response);
   }
 }
 

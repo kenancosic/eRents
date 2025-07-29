@@ -38,7 +38,7 @@ class StatisticsProvider extends BaseProvider {
     final result = await executeWithCache<DashboardStatistics>(
       cacheKey,
       () => api.getAndDecode(
-        '/Statistics/dashboard',
+        'api/financial/statistics/quick-metrics',
         DashboardStatistics.fromJson,
         authenticated: true,
       ),
@@ -50,7 +50,7 @@ class StatisticsProvider extends BaseProvider {
     }
   }
 
-  Future<void> loadFinancialStatistics({bool forceRefresh = false}) async {
+ Future<void> loadFinancialStatistics({bool forceRefresh = false}) async {
     final cacheKey =
         'financial_stats_${_startDate.toIso8601String()}_${_endDate.toIso8601String()}';
 
@@ -60,12 +60,8 @@ class StatisticsProvider extends BaseProvider {
 
     final result = await executeWithCache<FinancialSummaryDto>(
       cacheKey,
-      () => api.postAndDecode(
-        '/Statistics/financial',
-        {
-          'startDate': _startDate.toIso8601String(),
-          'endDate': _endDate.toIso8601String(),
-        },
+      () => api.getAndDecode(
+        'api/financial/statistics/dashboard',
         FinancialSummaryDto.fromJson,
         authenticated: true,
       ),

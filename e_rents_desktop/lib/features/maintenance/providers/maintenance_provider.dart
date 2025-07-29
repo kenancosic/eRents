@@ -42,7 +42,7 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
   Future<PagedResult<MaintenanceIssue>> fetchData(TableQuery query) async {
     final result = await executeWithState<PagedResult<MaintenanceIssue>>(() async {
       return await api.getPagedAndDecode(
-        '/maintenance${api.buildQueryString(query.toQueryParams())}',
+        'api/maintenance${api.buildQueryString(query.toQueryParams())}',
         MaintenanceIssue.fromJson,
         authenticated: true,
       );
@@ -59,7 +59,7 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
 
   Future<void> getIssueById(String id) async {
     final result = await executeWithState<MaintenanceIssue>(() async {
-      return await api.getAndDecode('/maintenance/$id', MaintenanceIssue.fromJson, authenticated: true);
+      return await api.getAndDecode('api/maintenance/$id', MaintenanceIssue.fromJson, authenticated: true);
     });
     
     if (result != null) {
@@ -90,9 +90,9 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
   Future<bool> saveIssue(MaintenanceIssue issue) async {
     final result = await executeWithState<Map<String, dynamic>>(() async {
       if (issue.maintenanceIssueId == 0) {
-        return await api.postJson('/maintenance', issue.toJson(), authenticated: true);
+        return await api.postJson('api/maintenance', issue.toJson(), authenticated: true);
       } else {
-        return await api.putAndDecode('/maintenance/${issue.maintenanceIssueId}', issue.toJson(), (json) => json, authenticated: true);
+        return await api.putAndDecode('api/maintenance/${issue.maintenanceIssueId}', issue.toJson(), (json) => json, authenticated: true);
       }
     });
     
@@ -106,7 +106,7 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
 
   Future<bool> deleteIssue(String id) async {
     final result = await executeWithState<bool>(() async {
-      return await api.deleteAndConfirm('/maintenance/$id', authenticated: true);
+      return await api.deleteAndConfirm('api/maintenance/$id', authenticated: true);
     });
     
     if (result == true) {
@@ -117,18 +117,20 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
     return false;
   }
 
-  Future<bool> updateStatus(String id, IssueStatus newStatus, {String? resolutionNotes, double? cost}) async {
-    final body = {
-      'status': newStatus.toString(),
-      'resolutionNotes': resolutionNotes,
-      'cost': cost,
+  Future<void> updateStatus(String id, IssueStatus newStatus, {String? resolutionNotes, double? cost}) async {
+    final payload = {
+      'Status': newStatus.name,
+      'ResolutionNotes': resolutionNotes,
+      'Cost': cost,
     };
-    
-    final result = await executeWithState<Map<String, dynamic>>(() async {
-      return await api.putAndDecode('/maintenance/$id/status', body, (json) => json, authenticated: true);
+
+        if (newStatus == IssueStatus.completed) {
+      payload['ResolvedAt'] = DateTime.now().toIso8601String();
+    }
+
+    await executeWithState(() async {
+      await api.put('api/maintenance/$id/status', payload, authenticated: true);
     });
-    
-    return result != null;
   }
 
   // ─── UI State Management ───────────────────────────────────────────────

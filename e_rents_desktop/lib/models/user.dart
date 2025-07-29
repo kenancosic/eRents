@@ -49,7 +49,8 @@ class User {
       firstName: json['firstName'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
       phone: json['phoneNumber'] as String? ?? json['phone'] as String?,
-      role: _parseUserType(json['role']),
+      // Backend sends 'userTypeName' field, not 'role'
+      role: _parseUserType(json['userTypeName'] ?? json['role']),
       profileImageId: json['profileImageId'] as int?,
       dateOfBirth:
           json['dateOfBirth'] != null
@@ -64,10 +65,8 @@ class User {
               : null,
       isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
       paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
-      address:
-          json['address'] != null
-              ? Address.fromJson(json['address'] as Map<String, dynamic>)
-              : null,
+      // Backend sends flattened address fields, construct Address object
+      address: _parseAddress(json),
     );
   }
 
@@ -98,6 +97,34 @@ class User {
       }
     }
     return DateTime.now();
+  }
+
+  static Address? _parseAddress(Map<String, dynamic> json) {
+    // Backend sends flattened address fields, construct Address object
+    final streetLine1 = json['streetLine1'] as String?;
+    final streetLine2 = json['streetLine2'] as String?;
+    final city = json['city'] as String?;
+    final state = json['state'] as String?;
+    final country = json['country'] as String?;
+    final postalCode = json['postalCode'] as String?;
+    final latitude = json['latitude'] as double?;
+    final longitude = json['longitude'] as double?;
+
+    // Only create Address if at least one field is present
+    if (streetLine1 != null || city != null || country != null) {
+      return Address(
+        streetLine1: streetLine1 ?? '',
+        streetLine2: streetLine2,
+        city: city ?? '',
+        state: state,
+        country: country ?? '',
+        postalCode: postalCode,
+        latitude: latitude,
+        longitude: longitude,
+      );
+    }
+    
+    return null;
   }
 
   Map<String, dynamic> toJson() {

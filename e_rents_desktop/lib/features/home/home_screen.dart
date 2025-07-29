@@ -20,7 +20,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Dashboard data is loaded automatically by the factory method in router
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.isAuthenticated) {
+        context.read<HomeProvider>().fetchDashboardStatistics();
+      }
+    });
   }
 
   @override

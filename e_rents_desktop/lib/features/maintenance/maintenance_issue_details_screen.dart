@@ -296,28 +296,22 @@ class _ActionCardState extends State<_ActionCard> {
     }
 
     try {
-      final success = await context.read<MaintenanceProvider>().updateStatus(
-            widget.issue.maintenanceIssueId.toString(),
-            _selectedStatus,
-            resolutionNotes: notesController.text.isNotEmpty ? notesController.text : null,
-            cost: double.tryParse(costController.text),
-          );
+      await context.read<MaintenanceProvider>().updateStatus(
+        widget.issue.maintenanceIssueId.toString(),
+        _selectedStatus,
+        resolutionNotes: notesController.text.isNotEmpty ? notesController.text : null,
+        cost: double.tryParse(costController.text),
+      );
 
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Status updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          setState(() {
-            _hasChanges = false;
-          });
-        }
-      } else {
-        throw Exception('Failed to update status.');
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Status updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {
+        _hasChanges = false;
+      });
     } catch (e) {
       if (mounted) {
         setState(() {

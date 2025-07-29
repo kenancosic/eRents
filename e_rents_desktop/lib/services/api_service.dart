@@ -41,7 +41,8 @@ class ApiService {
     int retryCount = 0;
     while (retryCount < maxRetries) {
       try {
-        final url = Uri.parse('$baseUrl$endpoint');
+        // Ensure proper URL construction with forward slash
+        final url = Uri.parse('${baseUrl.endsWith('/') ? baseUrl : '$baseUrl/'}${endpoint.startsWith('/') ? endpoint.substring(1) : endpoint}');
         final headers = await getHeaders(customHeaders: customHeaders);
 
         http.Response response;
@@ -157,16 +158,58 @@ class ApiService {
         );
       }
 
+      // Try to parse as JSON first, fallback to plain text
       try {
         final decodedBody = jsonDecode(response.body);
-        errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? 'An unknown error occurred.';
-      } catch (e, stackTrace) {
-        log.severe('ApiService: Failed to decode error response body', e, stackTrace);
-        errorMessage = 'Failed to process server error response.';
+        if (decodedBody is Map<String, dynamic>) {
+          errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? decodedBody['title'] ?? 'Server error occurred.';
+        } else {
+          errorMessage = 'Unexpected server response format.';
+        }
+      } catch (e) {
+        // JSON parsing failed - treat as plain text error
+        log.info('ApiService: Non-JSON error response, using response body as error message');
+        
+        // Use response body directly, but clean it up if it's HTML or too long
+        String rawError = response.body.trim();
+        
+        if (rawError.isEmpty) {
+          errorMessage = 'HTTP ${response.statusCode}: ${_getStatusMessage(response.statusCode)}';
+        } else if (rawError.toLowerCase().contains('<html>') || rawError.toLowerCase().contains('<!doctype')) {
+          // HTML error page - extract title or use generic message
+          errorMessage = 'Server error (${response.statusCode}): The server returned an error page.';
+        } else if (rawError.length > 200) {
+          // Truncate very long error messages
+          errorMessage = '${rawError.substring(0, 200)}...';
+        } else {
+          errorMessage = rawError;
+        }
       }
 
       log.severe('ApiService: Parsed error message: $errorMessage');
       throw Exception(errorMessage);
+    }
+  }
+  
+  /// Get human-readable status message for HTTP status codes
+  String _getStatusMessage(int statusCode) {
+    switch (statusCode) {
+      case 400:
+        return 'Bad Request';
+      case 401:
+        return 'Unauthorized';
+      case 403:
+        return 'Forbidden';
+      case 404:
+        return 'Not Found';
+      case 500:
+        return 'Internal Server Error';
+      case 502:
+        return 'Bad Gateway';
+      case 503:
+        return 'Service Unavailable';
+      default:
+        return 'Unknown Error';
     }
   }
 

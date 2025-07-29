@@ -21,7 +21,7 @@ class HomeProvider extends BaseProvider {
     final result = await executeWithCache<DashboardStatistics>(
       cacheKey,
       () => api.getAndDecode(
-        '/Dashboard/GetDashboardStatistics',
+        '/api/financial/statistics/dashboard',
         DashboardStatistics.fromJson,
         authenticated: true,
       ),

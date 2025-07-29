@@ -117,11 +117,7 @@ class AppRouter {
   // ✅ NEW: Factory methods for creating screens with lazy persistent providers
   Widget _createHomeScreen(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) {
-        final provider = HomeProvider(context.read<ApiService>());
-        provider.fetchDashboardStatistics(); // Initial data fetch
-        return provider;
-      },
+      create: (context) => HomeProvider(context.read<ApiService>()),
       child: const HomeScreen(),
     );
   }
@@ -264,15 +260,21 @@ class AppRouter {
         return null;
       }
 
-      final isAuthRoute =
-          state.uri.path == '/login' ||
+      final isAuthRoute = state.uri.path == '/login' ||
           state.uri.path == '/signup' ||
           state.uri.path == '/forgot-password';
 
-      if (!isAuthRoute && !isAuthenticated) {
+      // If the user is authenticated and trying to access an auth route, redirect to home
+      if (isAuthenticated && isAuthRoute) {
+        return '/';
+      }
+
+      // If the user is not authenticated and not on an auth route, redirect to login
+      if (!isAuthenticated && !isAuthRoute) {
         return '/login';
       }
 
+      // Otherwise, allow navigation
       return null;
     },
     routes: [

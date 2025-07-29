@@ -28,8 +28,9 @@ class DashboardStatistics {
 
   factory DashboardStatistics.fromJson(Map<String, dynamic> json) {
     return DashboardStatistics(
-      totalProperties: json['totalProperties'] ?? 0,
-      occupiedProperties: json['occupiedProperties'] ?? 0,
+      // Map from quick-metrics response format
+      totalProperties: json['PropertiesCount'] ?? json['totalProperties'] ?? 0,
+      occupiedProperties: json['ActiveBookings'] ?? json['occupiedProperties'] ?? 0,
       occupancyRate: json['occupancyRate']?.toDouble() ?? 0.0,
       averageRating: json['averageRating']?.toDouble() ?? 0.0,
       topProperties:
@@ -38,11 +39,11 @@ class DashboardStatistics {
               .toList() ??
           [],
       pendingMaintenanceIssues: json['pendingMaintenanceIssues'] ?? 0,
-      monthlyRevenue: json['monthlyRevenue']?.toDouble() ?? 0.0,
-      yearlyRevenue: json['yearlyRevenue']?.toDouble() ?? 0.0,
-      totalRentIncome: json['totalRentIncome']?.toDouble() ?? 0.0,
-      totalMaintenanceCosts: json['totalMaintenanceCosts']?.toDouble() ?? 0.0,
-      netTotal: json['netTotal']?.toDouble() ?? 0.0,
+      monthlyRevenue: json['MonthlyAverage'] ?? json['monthlyRevenue']?.toDouble() ?? 0.0,
+      yearlyRevenue: json['TotalIncome'] ?? json['yearlyRevenue']?.toDouble() ?? 0.0,
+      totalRentIncome: json['TotalIncome'] ?? json['totalRentIncome']?.toDouble() ?? 0.0,
+      totalMaintenanceCosts: json['TotalExpenses'] ?? json['totalMaintenanceCosts']?.toDouble() ?? 0.0,
+      netTotal: json['NetProfit'] ?? json['netTotal']?.toDouble() ?? 0.0,
     );
   }
 

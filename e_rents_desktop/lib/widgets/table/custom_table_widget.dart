@@ -64,7 +64,10 @@ class _CustomTableWidgetState<T> extends State<CustomTableWidget<T>> {
       _columnVisibility[column.key] = true;
     }
 
-    _fetchData();
+    // Defer data fetch until after build to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchData();
+    });
   }
 
   @override

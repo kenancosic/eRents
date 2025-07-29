@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-// New imports from Phase 1
 import 'base/app_state_providers.dart';
 import 'widgets/global_error_dialog.dart';
 
@@ -14,95 +13,68 @@ import 'services/secure_storage_service.dart';
 import 'services/user_preferences_service.dart';
 import 'services/lookup_service.dart';
 
-// Provider imports (only essential ones loaded at startup)
+// Provider imports
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'providers/lookup_provider.dart';
-import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
-import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
-import 'package:e_rents_desktop/features/statistics/providers/statistics_provider.dart';
-import 'package:e_rents_desktop/features/tenants/providers/tenants_provider.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment
   try {
     await dotenv.load(fileName: "lib/.env");
   } catch (e) {
     dotenv.env.clear();
   }
 
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
-
-  // Manually instantiate services
-  final secureStorage = SecureStorageService();
-  final apiService = ApiService(baseUrl, secureStorage);
-  final userPrefsService = UserPreferencesService();
-  final lookupService = LookupService(baseUrl, secureStorage);
-
-  runApp(ERentsApp(
-    apiService: apiService,
-    secureStorage: secureStorage,
-    userPrefsService: userPrefsService,
-    lookupService: lookupService,
-  ));
+  runApp(const ERentsApp());
 }
 
 class ERentsApp extends StatelessWidget {
-  final ApiService apiService;
-  final SecureStorageService secureStorage;
-  final UserPreferencesService userPrefsService;
-  final LookupService lookupService;
-
-  const ERentsApp({
-    super.key,
-    required this.apiService,
-    required this.secureStorage,
-    required this.userPrefsService,
-    required this.lookupService,
-  });
+  const ERentsApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // First, create the AuthProvider instance since AppRouter depends on it.
-    final authProvider = AuthProvider(
-      apiService: apiService,
-      storage: secureStorage,
-    );
-
-    // Now, create the AppRouter and pass the AuthProvider to it.
-    final appRouter = AppRouter(authProvider);
+    final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
 
     return MultiProvider(
       providers: [
-        // Provide the existing AuthProvider instance to the widget tree.
-        ChangeNotifierProvider.value(value: authProvider),
+        // Core services that can be accessed by any provider
+        Provider<SecureStorageService>(create: (_) => SecureStorageService()),
+        Provider<UserPreferencesService>(create: (_) => UserPreferencesService()),
+        Provider<ApiService>(
+          create: (context) => ApiService(
+            baseUrl,
+            context.read<SecureStorageService>(),
+          ),
+        ),
+        Provider<LookupService>(
+          create: (context) => LookupService(
+            baseUrl,
+            context.read<SecureStorageService>(),
+          ),
+        ),
 
-        // Other providers
+        // Core state providers
         ChangeNotifierProvider(create: (_) => AppErrorProvider()),
         ChangeNotifierProvider(create: (_) => NavigationStateProvider()),
         ChangeNotifierProvider(
-          create: (_) => PreferencesStateProvider(userPrefsService),
+          create: (context) => PreferencesStateProvider(
+            context.read<UserPreferencesService>(),
+          ),
         ),
 
-        // Feature Providers - Order matters for dependencies
-        ChangeNotifierProvider(create: (context) => ProfileProvider(apiService)),
-        ChangeNotifierProvider(create: (context) => TenantsProvider(apiService)),
-        ChangeNotifierProvider(create: (context) => MaintenanceProvider(apiService)),
-        ChangeNotifierProvider(create: (context) => StatisticsProvider(apiService)),
-        ChangeNotifierProvider(create: (context) => ReportsProvider(apiService)),
-
-        // Dependent Feature Providers
-        ChangeNotifierProvider<PropertiesProvider>(
-          create: (context) => PropertiesProvider(apiService),
+        // AuthProvider depends on ApiService and SecureStorageService
+        ChangeNotifierProvider<AuthProvider>(
+          create: (context) => AuthProvider(
+            apiService: context.read<ApiService>(),
+            storage: context.read<SecureStorageService>(),
+          ),
         ),
-        ChangeNotifierProvider(
-          create: (_) {
-            final lookupProvider = LookupProvider(lookupService);
-            // Defer the initialization until after the first frame is built.
+
+        // Other providers can be added here if they are needed globally
+        ChangeNotifierProvider<LookupProvider>(
+          create: (context) {
+            final lookupProvider = LookupProvider(context.read<LookupService>());
             WidgetsBinding.instance.addPostFrameCallback((_) {
               lookupProvider.initializeLookupData();
             });
@@ -110,14 +82,41 @@ class ERentsApp extends StatelessWidget {
           },
         ),
       ],
-      child: MaterialApp.router(
-        title: 'eRents Desktop',
-        debugShowCheckedModeBanner: false,
-        // Use the router from the AppRouter instance.
-        routerConfig: appRouter.router,
-        theme: appTheme,
-        builder: (context, child) =>
-            Stack(children: [child!, const GlobalErrorDialog()]),
+      child: const AppWithRouter(),
+    );
+  }
+}
+
+class AppWithRouter extends StatefulWidget {
+  const AppWithRouter({super.key});
+
+  @override
+  State<AppWithRouter> createState() => _AppWithRouterState();
+}
+
+class _AppWithRouterState extends State<AppWithRouter> {
+  AppRouter? _appRouter;
+  bool? _lastAuthState;
+
+  @override
+  Widget build(BuildContext context) {
+    // Only watch for authentication changes, not all AuthProvider changes
+    final authProvider = context.watch<AuthProvider>();
+    final currentAuthState = authProvider.isAuthenticated;
+    
+    // Only recreate router when authentication state actually changes
+    if (_appRouter == null || _lastAuthState != currentAuthState) {
+      _appRouter = AppRouter(authProvider);
+      _lastAuthState = currentAuthState;
+    }
+
+    return MaterialApp.router(
+      title: 'eRents Desktop',
+      debugShowCheckedModeBanner: false,
+      routerConfig: _appRouter!.router,
+      theme: appTheme,
+      builder: (context, child) => Stack(
+        children: [child!, const GlobalErrorDialog()],
       ),
     );
   }

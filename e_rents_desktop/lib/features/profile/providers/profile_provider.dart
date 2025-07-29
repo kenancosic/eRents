@@ -53,7 +53,7 @@ class ProfileProvider extends BaseProvider {
     
     final result = await executeWithCache<User>(
       cacheKey,
-      () => api.getAndDecode('/profile/me', User.fromJson, authenticated: true),
+      () => api.getAndDecode('/api/Profile/me', User.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -72,7 +72,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> updateProfile(User user) async {
     final result = await executeWithState<User>(() async {
-      return await api.putAndDecode('/profile/me', user.toJson(), User.fromJson, authenticated: true);
+      return await api.putAndDecode('/api/Profile/me', user.toJson(), User.fromJson, authenticated: true);
     });
     
     if (result != null) {
@@ -97,7 +97,7 @@ class ProfileProvider extends BaseProvider {
     );
     
     final result = await executeWithState<Map<String, dynamic>>(() async {
-      return await api.postJson('/profile/change-password', request.toJson(), authenticated: true);
+      return await api.postJson('/api/Profile/change-password', request.toJson(), authenticated: true);
     });
     
     return result != null;
@@ -112,7 +112,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> linkPayPalAccount(String paypalEmail) async {
     final result = await executeWithState<User>(() async {
-      return await api.postAndDecode('/profile/link-paypal', {'email': paypalEmail}, User.fromJson, authenticated: true);
+      return await api.postAndDecode('/api/Profile/link-paypal', {'email': paypalEmail}, User.fromJson, authenticated: true);
     });
     
     if (result != null) {
@@ -126,7 +126,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> unlinkPayPalAccount() async {
     final result = await executeWithState<User>(() async {
-      return await api.postAndDecode('/profile/unlink-paypal', {}, User.fromJson, authenticated: true);
+      return await api.postAndDecode('/api/Profile/unlink-paypal', {}, User.fromJson, authenticated: true);
     });
     
     if (result != null) {

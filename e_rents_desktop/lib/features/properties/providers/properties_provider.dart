@@ -59,7 +59,7 @@ class PropertiesProvider extends BaseProvider {
   Future<void> getPagedProperties({Map<String, dynamic>? params}) async {
     final result = await executeWithState<PagedResult<Property>>(() async {
       return await api.getPagedAndDecode(
-        '/properties/paged${api.buildQueryString(params)}',
+        'api/Properties${api.buildQueryString(params)}',
         Property.fromJson,
         authenticated: true,
       );
@@ -82,7 +82,7 @@ class PropertiesProvider extends BaseProvider {
     
     final result = await executeWithCache<Property>(
       cacheKey,
-      () => api.getAndDecode('/properties/$propertyId', Property.fromJson, authenticated: true),
+      () => api.getAndDecode('api/Properties/$propertyId', Property.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -105,7 +105,7 @@ class PropertiesProvider extends BaseProvider {
   /// Delete property.
   Future<bool> deleteProperty(String propertyId) async {
     final result = await executeWithState<bool>(() async {
-      return await api.deleteAndConfirm('/properties/$propertyId', authenticated: true);
+      return await api.deleteAndConfirm('api/Properties/$propertyId', authenticated: true);
     });
     
     if (result == true) {
@@ -136,7 +136,7 @@ class PropertiesProvider extends BaseProvider {
 
     try {
       final params = {'page': _reviewsPage, 'pageSize': _reviewsPageSize};
-      final endpoint = 'properties/$propertyId/reviews${api.buildQueryString(params)}';
+      final endpoint = 'api/Review/property/$propertyId${api.buildQueryString(params)}';
       final result = await api.getPagedAndDecode(
         endpoint,
         Review.fromJson,
@@ -166,7 +166,7 @@ class PropertiesProvider extends BaseProvider {
   Future<bool> submitReply(String reviewId, String replyText) async {
     final result = await executeWithState<bool>(() async {
       await api.postJson(
-        '/reviews/$reviewId/reply',
+        'api/Review/reply',
         {'reply': replyText},
         authenticated: true,
       );
@@ -194,7 +194,7 @@ class PropertiesProvider extends BaseProvider {
     
     final result = await executeWithCache<PropertyStatsData>(
       cacheKey,
-      () => api.getAndDecode('/properties/$propertyId/stats', PropertyStatsData.fromJson, authenticated: true),
+      () => api.getAndDecode('api/financial/statistics/property/$propertyId/overview', PropertyStatsData.fromJson, authenticated: true),
     );
     
     if (result != null) {

@@ -72,7 +72,7 @@ class TenantsProvider extends BaseProvider {
   Future<void> loadPagedTenants(Map<String, dynamic> params) async {
     final result = await executeWithState<PagedResult<User>>(() async {
       return await api.getPagedAndDecode(
-        '/users/tenants${api.buildQueryString(params)}',
+        'api/Users${api.buildQueryString(params)}',
         User.fromJson,
         authenticated: true,
       );
@@ -95,7 +95,7 @@ class TenantsProvider extends BaseProvider {
     
     final result = await executeWithCache<User>(
       cacheKey,
-      () => api.getAndDecode('/users/$tenantId', User.fromJson, authenticated: true),
+      () => api.getAndDecode('api/Users/$tenantId', User.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -114,7 +114,7 @@ class TenantsProvider extends BaseProvider {
     
     final result = await executeWithCache<List<Review>>(
       cacheKey,
-      () => api.getListAndDecode('/users/$tenantId/reviews', Review.fromJson, authenticated: true),
+      () => api.getListAndDecode('api/Review/user/$tenantId', Review.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -124,18 +124,21 @@ class TenantsProvider extends BaseProvider {
   }
 
   /// Submit a review for a tenant.
-  Future<bool> submitTenantReview({
-    required String tenantId,
+    Future<bool> submitTenantReview({
+    required String tenantId, // The user being reviewed
+    required int propertyId, // The context of the review
     required double rating,
     required String description,
   }) async {
     final reviewData = {
-      'rating': rating,
-      'comment': description,
+      'propertyId': propertyId,
+      'description': description,
+      'starRating': rating,
+      'reviewType': 'tenantReview', // Explicitly set review type
     };
-    
+
     final result = await executeWithState<Map<String, dynamic>>(() async {
-      return await api.postJson('/users/$tenantId/reviews', reviewData, authenticated: true);
+      return await api.postJson('api/Review', reviewData, authenticated: true);
     });
     
     if (result != null) {
@@ -155,7 +158,7 @@ class TenantsProvider extends BaseProvider {
     
     final result = await executeWithCache<List<Property>>(
       cacheKey,
-      () => api.getListAndDecode('/properties?IsAvailable=true', Property.fromJson, authenticated: true),
+      () => api.getListAndDecode('api/Properties/my-properties', Property.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -173,7 +176,7 @@ class TenantsProvider extends BaseProvider {
     };
     
     final result = await executeWithState<Map<String, dynamic>>(() async {
-      return await api.postJson('/chat/send-property-offer', offerData, authenticated: true);
+      return await api.postJson('api/chat/send-property-offer', offerData, authenticated: true);
     });
     
     return result != null;
@@ -210,7 +213,7 @@ class TenantsProvider extends BaseProvider {
     final result = await getCachedOrExecute<List<User>>(
       cacheKey,
       () => api.getListAndDecode(
-        '/users/tenants?status=current',
+        'api/Users/tenants?status=current',
         User.fromJson,
         authenticated: true,
       ),
@@ -230,7 +233,7 @@ class TenantsProvider extends BaseProvider {
       final result = await getCachedOrExecute<List<User>>(
         cacheKey,
         () => api.getListAndDecode(
-          '/users/tenants?status=prospective',
+          'api/Users/tenants?status=prospective',
           User.fromJson,
           authenticated: true,
         ),
@@ -250,7 +253,7 @@ class TenantsProvider extends BaseProvider {
     final result = await getCachedOrExecute<Map<String, Map<String, dynamic>>>(
       cacheKey,
       () async {
-        final response = await api.getJson('/tenants/property-assignments', authenticated: true);
+        final response = await api.getJson('api/tenants/property-assignments', authenticated: true);
         final assignments = (response['assignments'] as List).cast<Map<String, dynamic>>();
         
         // Convert list to map keyed by tenant ID for efficient lookup
@@ -276,7 +279,7 @@ class TenantsProvider extends BaseProvider {
     final result = await getCachedOrExecute<List<TenantPreference>>(
       cacheKey,
       () => api.getListAndDecode(
-        '/tenant-preferences',
+        'api/tenant-preferences',
         TenantPreference.fromJson,
         authenticated: true,
       ),

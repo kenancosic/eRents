@@ -10,34 +10,44 @@ import 'package:flutter/foundation.dart';
 mixin BaseProviderMixin on ChangeNotifier {
   bool _isLoading = false;
   String? _error;
-  
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   /// Current loading state
   bool get isLoading => _isLoading;
-  
+
   /// Current error message (null if no error)
   String? get error => _error;
-  
+
   /// Whether there is currently an error
   bool get hasError => _error != null;
-  
+
   /// Set loading state and notify listeners
   void setLoading(bool value) {
-    if (_isLoading != value) {
-      _isLoading = value;
-      notifyListeners();
+    if (_disposed) return;
+    _isLoading = value;
+    if (value) {
+      _error = null;
     }
+    notifyListeners();
   }
-  
+
   /// Set error state and notify listeners
   void setError(String? error) {
-    if (_error != error) {
-      _error = error;
-      notifyListeners();
-    }
+    if (_disposed) return;
+    _error = error;
+    _isLoading = false;
+    notifyListeners();
   }
-  
+
   /// Clear error state and notify listeners if there was an error
   void clearError() {
+    if (_disposed) return;
     if (_error != null) {
       _error = null;
       notifyListeners();
@@ -62,7 +72,6 @@ mixin BaseProviderMixin on ChangeNotifier {
   /// ```
   Future<T?> executeWithState<T>(Future<T> Function() operation) async {
     setLoading(true);
-    clearError();
     try {
       final result = await operation();
       return result;
@@ -83,7 +92,6 @@ mixin BaseProviderMixin on ChangeNotifier {
     String errorMessage,
   ) async {
     setLoading(true);
-    clearError();
     try {
       final result = await operation();
       return result;
@@ -101,7 +109,6 @@ mixin BaseProviderMixin on ChangeNotifier {
   /// Returns success status instead of result
   Future<bool> executeWithStateForSuccess(Future<void> Function() operation) async {
     setLoading(true);
-    clearError();
     try {
       await operation();
       return true;

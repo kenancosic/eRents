@@ -4,24 +4,15 @@ import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/services/secure_storage_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 class LoginScreen extends StatelessWidget {
-  LoginScreen({super.key});
-
-  final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
+  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(
-        apiService: ApiService(baseUrl, SecureStorageService()),
-        storage: SecureStorageService(),
-      ),
-      child: LoginView(),
-    );
+    // AuthProvider is now provided globally, so we just need to build the view.
+    return const LoginView();
   }
 }
 

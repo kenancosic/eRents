@@ -45,7 +45,7 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
 
   Future<void> getStayById(int id) async {
     final result = await executeWithState<Booking>(() async {
-      return await api.getAndDecode('/bookings/$id', Booking.fromJson, authenticated: true);
+      return await api.getAndDecode('api/bookings/$id', Booking.fromJson, authenticated: true);
     });
     
     if (result != null) {
@@ -56,7 +56,7 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
 
   Future<void> getLeaseById(int id) async {
     final result = await executeWithState<RentalRequest>(() async {
-      return await api.getAndDecode('/rental-requests/$id', RentalRequest.fromJson, authenticated: true);
+      return await api.getAndDecode('api/rental-requests/$id', RentalRequest.fromJson, authenticated: true);
     });
     
     if (result != null) {
@@ -67,7 +67,7 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
 
   Future<bool> cancelStay(int bookingId, String reason) async {
     return await _performAction(
-      () => api.postJson('/bookings/$bookingId/cancel', {'reason': reason}, authenticated: true),
+      () => api.postJson('api/bookings/$bookingId/cancel', {'reason': reason}, authenticated: true),
       'cancelStay',
     );
   }
@@ -80,7 +80,7 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
 
   Future<bool> approveLease(int requestId, String response) async {
     return await _performAction(
-      () => api.postJson('/rental-requests/$requestId/approve', {'response': response}, authenticated: true),
+      () => api.postJson('api/rental-requests/$requestId/approve', {'response': response}, authenticated: true),
       'approveLease',
     );
   }
@@ -93,7 +93,7 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
 
   Future<bool> rejectLease(int requestId, String response) async {
     return await _performAction(
-      () => api.postJson('/rental-requests/$requestId/reject', {'response': response}, authenticated: true),
+      () => api.postJson('api/rental-requests/$requestId/reject', {'response': response}, authenticated: true),
       'rejectLease',
     );
   }
@@ -152,10 +152,10 @@ class RentsProvider extends BaseProvider implements BaseTableProvider<dynamic> {
     PagedResult<dynamic> result = PagedResult.empty();
     final fetchResult = await executeWithState<PagedResult<dynamic>>(() async {
       if (_currentType == RentalType.stay) {
-        _stayPagedResult = await api.getPagedAndDecode<Booking>('/bookings${api.buildQueryString(query.toQueryParams())}', Booking.fromJson, authenticated: true);
+        _stayPagedResult = await api.getPagedAndDecode<Booking>('api/booking${api.buildQueryString(query.toQueryParams())}', Booking.fromJson, authenticated: true);
         return _stayPagedResult;
       } else {
-        _leasePagedResult = await api.getPagedAndDecode<RentalRequest>('/rental-requests${api.buildQueryString(query.toQueryParams())}', RentalRequest.fromJson, authenticated: true);
+        _leasePagedResult = await api.getPagedAndDecode<RentalRequest>('/api/rental-requests${api.buildQueryString(query.toQueryParams())}', RentalRequest.fromJson, authenticated: true);
         return _leasePagedResult;
       }
     });
