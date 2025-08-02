@@ -48,16 +48,6 @@ class Booking {
   final DateTime? bookingDate;
   final BookingStatus status;
 
-  // Phase 2 fields - Payment Information
-  final String paymentMethod;
-  final String currency;
-  final String? paymentStatus;
-  final String? paymentReference;
-
-  // Phase 2 fields - Booking Details
-  final int numberOfGuests;
-  final String? specialRequests;
-
   // Navigation properties (loaded from includes)
   final String? propertyName;
   final String? propertyAddress;
@@ -84,12 +74,6 @@ class Booking {
     required this.totalPrice,
     this.bookingDate,
     required this.status,
-    this.paymentMethod = 'PayPal',
-    this.currency = 'BAM',
-    this.paymentStatus,
-    this.paymentReference,
-    this.numberOfGuests = 1,
-    this.specialRequests,
     this.propertyName,
     this.propertyAddress,
     this.propertyImageId,
@@ -121,12 +105,6 @@ class Booking {
               ? DateTime.parse(json['bookingDate'])
               : null,
       status: _parseStatus(json),
-      paymentMethod: json['paymentMethod'] ?? 'PayPal',
-      currency: json['currency'] ?? 'BAM',
-      paymentStatus: json['paymentStatus'],
-      paymentReference: json['paymentReference'],
-      numberOfGuests: json['numberOfGuests'] ?? 1,
-      specialRequests: json['specialRequests'],
       propertyName: json['propertyName'],
       propertyAddress: json['propertyAddress'],
       propertyImageId: json['propertyImageId'],
@@ -157,12 +135,6 @@ class Booking {
       'totalPrice': totalPrice,
       'bookingDate': bookingDate?.toIso8601String(),
       'status': status.statusName,
-      'paymentMethod': paymentMethod,
-      'currency': currency,
-      'paymentStatus': paymentStatus,
-      'paymentReference': paymentReference,
-      'numberOfGuests': numberOfGuests,
-      'specialRequests': specialRequests,
     };
   }
 
@@ -194,12 +166,6 @@ class Booking {
     double? totalPrice,
     DateTime? bookingDate,
     BookingStatus? status,
-    String? paymentMethod,
-    String? currency,
-    String? paymentStatus,
-    String? paymentReference,
-    int? numberOfGuests,
-    String? specialRequests,
     String? propertyName,
     String? propertyAddress,
     int? propertyImageId,
@@ -222,12 +188,6 @@ class Booking {
       totalPrice: totalPrice ?? this.totalPrice,
       bookingDate: bookingDate ?? this.bookingDate,
       status: status ?? this.status,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
-      currency: currency ?? this.currency,
-      paymentStatus: paymentStatus ?? this.paymentStatus,
-      paymentReference: paymentReference ?? this.paymentReference,
-      numberOfGuests: numberOfGuests ?? this.numberOfGuests,
-      specialRequests: specialRequests ?? this.specialRequests,
       propertyName: propertyName ?? this.propertyName,
       propertyAddress: propertyAddress ?? this.propertyAddress,
       propertyImageId: propertyImageId ?? this.propertyImageId,
@@ -250,15 +210,6 @@ class Booking {
         (endDate == null || endDate!.isAfter(now));
   }
 
-  /// Check if booking can be cancelled
-  bool get canBeCancelled {
-    return status == BookingStatus.upcoming || status == BookingStatus.active;
-  }
-
-  bool get isCompleted => status == BookingStatus.completed;
-  bool get isCancelled => status == BookingStatus.cancelled;
-  bool get isUpcoming => status == BookingStatus.upcoming;
-
   /// Get booking duration in days
   int? get durationInDays {
     if (endDate == null) return null;
@@ -277,7 +228,7 @@ class Booking {
 
   /// Get formatted price with currency
   String get formattedPrice {
-    return '$totalPrice $currency';
+    return '$totalPrice';
   }
 
   /// Get formatted total price (alias for formattedPrice)
@@ -316,88 +267,4 @@ class Booking {
 
   @override
   int get hashCode => bookingId.hashCode;
-}
-
-/// Booking insert request model for creating new bookings
-class BookingInsertRequest {
-  final int propertyId;
-  final DateTime startDate;
-  final DateTime endDate;
-  final double totalPrice;
-  final String? paymentMethod;
-  final String? currency;
-  final int numberOfGuests;
-  final String? specialRequests;
-
-  const BookingInsertRequest({
-    required this.propertyId,
-    required this.startDate,
-    required this.endDate,
-    required this.totalPrice,
-    this.paymentMethod = 'PayPal',
-    this.currency = 'BAM',
-    this.numberOfGuests = 1,
-    this.specialRequests,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'propertyId': propertyId,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
-      'totalPrice': totalPrice,
-      'paymentMethod': paymentMethod,
-      'currency': currency,
-      'numberOfGuests': numberOfGuests,
-      'specialRequests': specialRequests,
-    };
-  }
-}
-
-/// Booking update request model
-class BookingUpdateRequest {
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final int? numberOfGuests;
-  final String? specialRequests;
-
-  const BookingUpdateRequest({
-    this.startDate,
-    this.endDate,
-    this.numberOfGuests,
-    this.specialRequests,
-  });
-
-  Map<String, dynamic> toJson() {
-    final json = <String, dynamic>{};
-    if (startDate != null) json['startDate'] = startDate!.toIso8601String();
-    if (endDate != null) json['endDate'] = endDate!.toIso8601String();
-    if (numberOfGuests != null) json['numberOfGuests'] = numberOfGuests;
-    if (specialRequests != null) json['specialRequests'] = specialRequests;
-    return json;
-  }
-}
-
-/// Booking cancellation request model
-class BookingCancellationRequest {
-  final int bookingId;
-  final String? cancellationReason;
-  final bool requestRefund;
-  final String? refundMethod;
-
-  const BookingCancellationRequest({
-    required this.bookingId,
-    this.cancellationReason,
-    this.requestRefund = false,
-    this.refundMethod,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'bookingId': bookingId,
-      'cancellationReason': cancellationReason,
-      'requestRefund': requestRefund,
-      'refundMethod': refundMethod,
-    };
-  }
 }

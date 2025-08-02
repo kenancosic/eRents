@@ -14,13 +14,8 @@ class User {
   final DateTime? dateOfBirth;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String? resetToken;
-  final DateTime? resetTokenExpiration;
 
   final Address? address;
-
-  final bool isPaypalLinked;
-  final String? paypalUserIdentifier;
 
   User({
     required this.id,
@@ -34,10 +29,6 @@ class User {
     this.dateOfBirth,
     required this.createdAt,
     required this.updatedAt,
-    this.resetToken,
-    this.resetTokenExpiration,
-    this.isPaypalLinked = false,
-    this.paypalUserIdentifier,
     this.address,
   });
 
@@ -58,13 +49,6 @@ class User {
               : null,
       createdAt: _parseDateTime(json['createdAt']),
       updatedAt: _parseDateTime(json['updatedAt']),
-      resetToken: json['resetToken'] as String?,
-      resetTokenExpiration:
-          json['resetTokenExpiration'] != null
-              ? DateTime.tryParse(json['resetTokenExpiration'] as String)
-              : null,
-      isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
-      paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
       // Backend sends flattened address fields, construct Address object
       address: _parseAddress(json),
     );
@@ -140,10 +124,6 @@ class User {
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
-      'resetToken': resetToken,
-      'resetTokenExpiration': resetTokenExpiration?.toIso8601String(),
-      'isPaypalLinked': isPaypalLinked,
-      'paypalUserIdentifier': paypalUserIdentifier,
       'address': address?.toJson(),
     };
   }
@@ -162,10 +142,6 @@ class User {
     DateTime? dateOfBirth,
     DateTime? createdAt,
     DateTime? updatedAt,
-    String? resetToken,
-    DateTime? resetTokenExpiration,
-    bool? isPaypalLinked,
-    String? paypalUserIdentifier,
     Address? address,
   }) {
     return User(
@@ -180,10 +156,6 @@ class User {
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      resetToken: resetToken ?? this.resetToken,
-      resetTokenExpiration: resetTokenExpiration ?? this.resetTokenExpiration,
-      isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
-      paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
       address: address ?? this.address,
     );
   }

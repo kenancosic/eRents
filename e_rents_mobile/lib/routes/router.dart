@@ -1,14 +1,11 @@
 import 'package:e_rents_mobile/feature/auth/screens/login_screen.dart';
 import 'package:e_rents_mobile/feature/auth/screens/signup_screen.dart';
-import 'package:e_rents_mobile/feature/chat/chat_room_screen.dart';
-import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
 import 'package:e_rents_mobile/feature/home/home_screen.dart';
 import 'package:e_rents_mobile/feature/home/screens/modern_home_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/payment_screen.dart';
+import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/personal_details_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/feature/profile/screens/tenant_preferences_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/screens/property_details_screen.dart';
 import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
@@ -20,6 +17,7 @@ import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
@@ -40,12 +38,32 @@ final _shellNavigatorEKey =
     GlobalKey<NavigatorState>(debugLabel: 'shellE'); // Profile
 
 class AppRouter {
-  final GoRouter router = GoRouter(
-    initialLocation: '/login', // Remains /login
-    navigatorKey: _rootNavigatorKey,
-    routes: [
-      // StatefulShellRoute for tabbed navigation
-      StatefulShellRoute.indexedStack(
+  final AuthProvider authProvider;
+  late final GoRouter router;
+
+  AppRouter(this.authProvider) {
+    router = GoRouter(
+      initialLocation: '/login',
+      navigatorKey: _rootNavigatorKey,
+      redirect: (context, state) {
+        final isAuthenticated = authProvider.isAuthenticated;
+        final isAuthRoute = state.uri.path == '/login' ||
+            state.uri.path == '/signup' ||
+            state.uri.path == '/forgot_password';
+
+        if (isAuthenticated && isAuthRoute) {
+          return '/';
+        }
+
+        if (!isAuthenticated && !isAuthRoute) {
+          return '/login';
+        }
+
+        return null;
+      },
+      routes: [
+        // StatefulShellRoute for tabbed navigation
+        StatefulShellRoute.indexedStack(
         builder: (BuildContext context, GoRouterState state,
             StatefulNavigationShell navigationShell) {
           // This is where you'd build your main scaffold with the CustomBottomNavigationBar
@@ -92,28 +110,13 @@ class AppRouter {
             navigatorKey: _shellNavigatorCKey,
             routes: <RouteBase>[
               GoRoute(
-                  path:
-                      '/chatRoom', // Changed to be the primary for this tab for simplicity
-                  name: 'chatRoom', // Added name for consistency
-                  builder: (context, state) => ChatRoomScreen(),
-                  routes: [
-                    GoRoute(
-                      path: ':roomId',
-                      name: 'chatMessages',
-                      builder: (context, state) {
-                        final roomId = state.pathParameters['roomId']!;
-                        final extras = state.extra as Map<String, dynamic>?;
-                        final userName = extras?['userName'] as String? ?? 'Unknown';
-                        final userImage = extras?['userImage'] as String? ?? 'assets/images/user-image.png';
-
-                        return ChatScreen(
-                          roomId: roomId,
-                          userName: userName,
-                          userImage: userImage,
-                        );
-                      },
-                    ),
-                  ]),
+                  path: '/chat',
+                  name: 'chat',
+                  builder: (context, state) => const ChatScreen(
+                        roomId: 'placeholder_room_id',
+                        userName: 'Placeholder User',
+                        userImage: 'assets/images/placeholder.png',
+                      )),
             ],
           ),
           // Branch D: Saved
@@ -140,15 +143,6 @@ class AppRouter {
                         name: 'personal_details', // name was personal_details
                         builder: (context, state) =>
                             const PersonalDetailsScreen()),
-                    GoRoute(
-                        path: 'payment',
-                        name: 'payment_details', // name was payment_details
-                        builder: (context, state) => const PaymentScreen()),
-                    GoRoute(
-                        path: 'booking-history',
-                        name: 'booking_history',
-                        builder: (context, state) =>
-                            const BookingHistoryScreen()),
                     GoRoute(
                       path: 'accommodation-preferences',
                       name: 'accommodation_preferences',
@@ -320,6 +314,7 @@ class AppRouter {
       body: const Center(
         child: Text('ERROR: Route not found'),
       ),
-    ),
-  );
+      ),
+    );
+  }
 }

@@ -175,7 +175,6 @@ namespace eRents.Features.Shared.Services
             {
                 // Get all users except the current user
                 var contacts = await _context.Users
-                    .Include(u => u.UserTypeNavigation)
                     .Where(u => u.UserId != userId)
                     .Select(u => new UserResponse
                     {
@@ -266,6 +265,31 @@ namespace eRents.Features.Shared.Services
             {
                 _logger.LogError(ex, "Error sending property offer message for Property {PropertyId}", propertyId);
                 throw;
+            }
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        /// <summary>
+        /// Get username by user ID for messaging operations
+        /// </summary>
+        private async Task<string> GetUsernameByUserIdAsync(int userId)
+        {
+            try
+            {
+                var user = await _context.Users
+                    .Where(u => u.UserId == userId)
+                    .Select(u => u.Username)
+                    .FirstOrDefaultAsync();
+
+                return user ?? $"user_{userId}";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting username for User {UserId}", userId);
+                return $"user_{userId}";
             }
         }
 
@@ -387,122 +411,6 @@ namespace eRents.Features.Shared.Services
 
         #endregion
 
-        #region Legacy RabbitMQ Support
 
-        public async Task HandleUserMessageAsync(UserMessage message)
-        {
-            try
-            {
-                var sender = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == message.SenderUsername);
-                var recipient = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == message.RecipientUsername);
-
-                if (sender == null || recipient == null)
-                {
-                    throw new ArgumentException("Sender or Recipient username is invalid.");
-                }
-
-                var messageEntity = new Message
-                {
-                    SenderId = sender.UserId,
-                    ReceiverId = recipient.UserId,
-                    MessageText = message.Body,
-                    IsRead = false
-                };
-
-                _context.Messages.Add(messageEntity);
-                await _unitOfWork.SaveChangesAsync();
-
-                _logger.LogInformation("Handled RabbitMQ message from {Sender} to {Recipient}", 
-                    message.SenderUsername, message.RecipientUsername);
-            }
-            catch (Exception ex)
-            { 
-                _logger.LogError(ex, "Error handling RabbitMQ message from {Sender} to {Recipient}", 
-                    message.SenderUsername, message.RecipientUsername);
-                throw;
-            }
-        }
-
-        public async Task SendMessageAsync(UserMessage userMessage)
-        {
-            await HandleUserMessageAsync(userMessage);
-        }
-
-        public async Task<IEnumerable<UserMessage>> GetMessagesAsync(int senderId, int receiverId)
-        {
-            try
-            {
-                var messages = await _context.Messages
-                    .Where(m => (m.SenderId == senderId && m.ReceiverId == receiverId) ||
-                               (m.SenderId == receiverId && m.ReceiverId == senderId))
-                    .Where(m => !m.IsDeleted)
-                    .OrderBy(m => m.CreatedAt)
-                    .ToListAsync();
-
-                // Get usernames for mapping
-                var senderUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == senderId);
-                var receiverUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == receiverId);
-
-                return messages.Select(m => new UserMessage
-                {
-                    SenderUsername = (m.SenderId == senderId ? senderUser?.Username : receiverUser?.Username) ?? $"user_{m.SenderId}",
-                    RecipientUsername = (m.ReceiverId == receiverId ? receiverUser?.Username : senderUser?.Username) ?? $"user_{m.ReceiverId}",
-                    Subject = "Chat Message",
-                    Body = m.MessageText
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting messages between User {SenderId} and User {ReceiverId}", 
-                    senderId, receiverId);
-                throw;
-            }
-        }
-
-        #endregion
-
-        #region User Lookup Helpers
-
-        public async Task<int> GetUserIdByUsernameAsync(string username)
-        {
-            try
-            {
-                // Handle the special case where username is in format "user_{id}"
-                if (username.StartsWith("user_") && int.TryParse(username.Substring(5), out var userId))
-                {
-                    return userId;
-                }
-
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username);
-                
-                return user?.UserId ?? 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting user ID for username {Username}", username);
-                return 0;
-            }
-        }
-
-        public async Task<string> GetUsernameByUserIdAsync(int userId)
-        {
-            try
-            {
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.UserId == userId);
-                
-                return user?.Username ?? $"user_{userId}";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting username for User {UserId}", userId);
-                return $"user_{userId}";
-            }
-        }
-
-        #endregion
     }
 } 

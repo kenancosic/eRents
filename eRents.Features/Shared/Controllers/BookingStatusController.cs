@@ -1,10 +1,11 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.Shared.Controllers
 {
@@ -12,16 +13,13 @@ namespace eRents.Features.Shared.Controllers
 	[Route("[controller]")]
 	public class BookingStatusController : ControllerBase
 	{
-		private readonly ERentsContext _context;
 		private readonly ILogger<BookingStatusController> _logger;
 		private readonly ICurrentUserService _currentUserService;
 
 		public BookingStatusController(
-			ERentsContext context,
 			ILogger<BookingStatusController> logger,
 			ICurrentUserService currentUserService)
 		{
-			_context = context;
 			_logger = logger;
 			_currentUserService = currentUserService;
 		}
@@ -31,44 +29,29 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet]
 		[Authorize] // BookingStatuses require authentication
-		public async Task<IActionResult> GetBookingStatuses()
+		public async Task<ActionResult<object>> GetBookingStatuses()
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				var userId = _currentUserService.GetUserIdAsInt();
-				_logger.LogInformation("Get booking statuses request by user {UserId}", 
+				_logger.LogInformation("Get booking statuses request by user {UserId}",
 					userId > 0 ? userId.ToString() : "unknown");
 
-				var bookingStatuses = await _context.BookingStatuses
-					.AsNoTracking()
-					.OrderBy(bs => bs.StatusName)
-					.ToListAsync();
+				// Convert enum values to list
+				var bookingStatuses = Enum.GetValues<BookingStatusEnum>()
+					.Select(status => new
+					{
+						Id = (int)status,
+						Name = status.ToString()
+					})
+					.OrderBy(bs => bs.Name)
+					.ToList();
 
-				var response = bookingStatuses.Select(bs => new
-				{
-					Id = bs.BookingStatusId,
-					Name = bs.StatusName
-				}).ToList();
+				_logger.LogInformation("Retrieved {Count} booking statuses for user {UserId}",
+					bookingStatuses.Count, userId > 0 ? userId.ToString() : "unknown");
 
-				_logger.LogInformation("Retrieved {Count} booking statuses for user {UserId}", 
-					response.Count, userId > 0 ? userId.ToString() : "unknown");
-
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				var userId = _currentUserService.GetUserIdAsInt();
-				_logger.LogError(ex, "Error retrieving booking statuses for user {UserId}", 
-					userId > 0 ? userId.ToString() : "unknown");
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving booking statuses",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+				return bookingStatuses;
+			}, _logger, "GetBookingStatuses");
 		}
 
 		/// <summary>
@@ -76,54 +59,29 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet("{id}")]
 		[Authorize]
-		public async Task<IActionResult> GetBookingStatus(int id)
+		public async Task<ActionResult<object>> GetBookingStatus(int id)
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				var userId = _currentUserService.GetUserIdAsInt();
-				_logger.LogInformation("Get booking status by ID: {BookingStatusId} by user {UserId}", 
+				_logger.LogInformation("Get booking status by ID: {BookingStatusId} by user {UserId}",
 					id, userId > 0 ? userId.ToString() : "unknown");
 
-				var bookingStatus = await _context.BookingStatuses
-					.AsNoTracking()
-					.FirstOrDefaultAsync(bs => bs.BookingStatusId == id);
-
-				if (bookingStatus == null)
+				// Validate enum value
+				if (!Enum.IsDefined(typeof(BookingStatusEnum), id))
 				{
-					_logger.LogWarning("Booking status not found: {BookingStatusId} for user {UserId}", 
+					_logger.LogWarning("Booking status not found: {BookingStatusId} for user {UserId}",
 						id, userId > 0 ? userId.ToString() : "unknown");
-					return NotFound(new StandardErrorResponse
-					{
-						Type = "NotFound",
-						Message = "Booking status not found",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
+					throw new KeyNotFoundException($"Booking status with ID {id} not found");
 				}
 
-				var response = new
+				var bookingStatus = (BookingStatusEnum)id;
+				return new
 				{
-					Id = bookingStatus.BookingStatusId,
-					Name = bookingStatus.StatusName
+					Id = id,
+					Name = bookingStatus.ToString()
 				};
-
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				var userId = _currentUserService.GetUserIdAsInt();
-				_logger.LogError(ex, "Error retrieving booking status {BookingStatusId} for user {UserId}", 
-					id, userId > 0 ? userId.ToString() : "unknown");
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving the booking status",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+			}, _logger, "GetBookingStatus");
 		}
 	}
-} 
+}

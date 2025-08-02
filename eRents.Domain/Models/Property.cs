@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
+using eRents.Domain.Models.Enums;
 
 namespace eRents.Domain.Models;
 
@@ -12,22 +13,24 @@ public partial class Property : BaseEntity
 
     public string? Description { get; set; }
 
-    public decimal Price { get; set; }  
+    public decimal Price { get; set; }
 
     public string Currency { get; set; } = "BAM";
 
     public string? Facilities { get; set; }
 
-    public string? Status { get; set; }
-
+    // Replaced Status string with enum
+    public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;
 
     public string Name { get; set; } = null!;
 
     public Address? Address { get; set; }
 
-    public int? PropertyTypeId { get; set; }
+    // Replaced PropertyTypeId foreign key with enum
+    public PropertyTypeEnum? PropertyType { get; set; }
 
-    public int? RentingTypeId { get; set; }
+    // Replaced RentingTypeId foreign key with enum
+    public RentalType? RentingType { get; set; }
 
     public int? Bedrooms { get; set; }
 
@@ -43,10 +46,6 @@ public partial class Property : BaseEntity
     public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 
     public virtual User Owner { get; set; } = null!;
-
-    public virtual PropertyType? PropertyType { get; set; }
-
-    public virtual RentingType? RentingType { get; set; }
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 

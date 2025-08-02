@@ -38,7 +38,7 @@ namespace eRents.Features.Shared.Services
         Task<bool> SendPropertyOfferMessageAsync(int senderId, int receiverId, int propertyId, string offerMessage);
 
         /// <summary>
-        /// Send a property offer message (legacy - generates default message)
+        /// Send a property offer message (generates default message)
         /// </summary>
         Task<MessageResponse> SendPropertyOfferMessageAsync(int senderId, int receiverId, int propertyId);
 
@@ -67,38 +67,5 @@ namespace eRents.Features.Shared.Services
         Task SendMessageToUserAsync(int receiverId, string eventName, object data);
 
         #endregion
-
-        #region Legacy RabbitMQ Support
-
-        /// <summary>
-        /// Handle incoming user message from RabbitMQ
-        /// </summary>
-        Task HandleUserMessageAsync(UserMessage message);
-
-        /// <summary>
-        /// Send message via RabbitMQ (legacy support)
-        /// </summary>
-        Task SendMessageAsync(UserMessage userMessage);
-
-        /// <summary>
-        /// Get messages between users (legacy format)
-        /// </summary>
-        Task<IEnumerable<UserMessage>> GetMessagesAsync(int senderId, int receiverId);
-
-        #endregion
-
-        #region User Lookup Helpers
-
-        /// <summary>
-        /// Get user ID by username
-        /// </summary>
-        Task<int> GetUserIdByUsernameAsync(string username);
-
-        /// <summary>
-        /// Get username by user ID
-        /// </summary>
-        Task<string> GetUsernameByUserIdAsync(int userId);
-
-        #endregion
     }
-} 
+}

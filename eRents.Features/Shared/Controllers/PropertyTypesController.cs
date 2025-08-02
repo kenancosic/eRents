@@ -1,10 +1,12 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.Shared.Controllers
 {
@@ -31,39 +33,22 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet]
 		[AllowAnonymous] // PropertyTypes can be public for property searching
-		public async Task<IActionResult> GetPropertyTypes()
+		public async Task<ActionResult<object>> GetPropertyTypes()
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				_logger.LogInformation("Get property types request");
 
-				var propertyTypes = await _context.PropertyTypes
-					.AsNoTracking()
-					.OrderBy(pt => pt.TypeName)
-					.ToListAsync();
-
-				var response = propertyTypes.Select(pt => new
-				{
-					Id = pt.TypeId,
-					Name = pt.TypeName
-				}).ToList();
+				// Convert enum to lookup data
+				var response = Enum.GetValues<PropertyTypeEnum>()
+					.Select(e => new { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
 
 				_logger.LogInformation("Retrieved {Count} property types", response.Count);
 
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error retrieving property types");
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving property types",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+				return response;
+			}, _logger, "GetPropertyTypes");
 		}
 
 		/// <summary>
@@ -71,49 +56,25 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet("{id}")]
 		[AllowAnonymous]
-		public async Task<IActionResult> GetPropertyType(int id)
+		public async Task<ActionResult<object>> GetPropertyType(int id)
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				_logger.LogInformation("Get property type by ID: {PropertyTypeId}", id);
 
-				var propertyType = await _context.PropertyTypes
-					.AsNoTracking()
-					.FirstOrDefaultAsync(pt => pt.TypeId == id);
-
-				if (propertyType == null)
+				if (!Enum.IsDefined(typeof(PropertyTypeEnum), id))
 				{
 					_logger.LogWarning("Property type not found: {PropertyTypeId}", id);
-					return NotFound(new StandardErrorResponse
-					{
-						Type = "NotFound",
-						Message = "Property type not found",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
+					throw new KeyNotFoundException($"Property type with ID {id} not found");
 				}
 
-				var response = new
+				var propertyTypeEnum = (PropertyTypeEnum)id;
+				return new
 				{
-					Id = propertyType.TypeId,
-					Name = propertyType.TypeName
+					Id = id,
+					Name = propertyTypeEnum.ToString()
 				};
-
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error retrieving property type {PropertyTypeId}", id);
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving the property type",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+			}, _logger, "GetPropertyType");
 		}
 	}
-} 
+}

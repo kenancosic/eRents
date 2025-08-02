@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 
 class AppNavigationBar extends StatefulWidget {
   final String currentPath;
@@ -180,7 +182,13 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: InkWell(
-        onTap: () => context.go('/login'),
+        onTap: () async {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          await authProvider.logout();
+          if (context.mounted) {
+            context.go('/login');
+          }
+        },
         child: Column(
           children: [
             Icon(

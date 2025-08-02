@@ -11,6 +11,4 @@ public partial class Amenity : BaseEntity
     public string AmenityName { get; set; } = null!;
 
     public virtual ICollection<Property> Properties { get; set; } = new List<Property>();
-
-    public virtual ICollection<TenantPreference> TenantPreferences { get; set; } = new List<TenantPreference>();
 }

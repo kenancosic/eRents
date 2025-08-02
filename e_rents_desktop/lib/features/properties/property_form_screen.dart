@@ -13,9 +13,8 @@ import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 
 import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
-import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
+import 'package:e_rents_desktop/widgets/inputs/address_input.dart'; // Use generic AddressInput
 import 'package:flutter/material.dart' hide ImageInfo;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -41,7 +40,6 @@ class PropertyFormScreen extends StatelessWidget {
     }
 
     if (!lookupProvider.hasData) {
-      // This should ideally not happen if initialized properly, but as a fallback
       return Scaffold(
         body: Center(
           child: Column(
@@ -195,6 +193,8 @@ class _PropertyFormScreenContentState extends State<_PropertyFormScreenContent> 
           city: _cityController.text,
           postalCode: _postalCodeController.text,
           country: _countryController.text,
+          latitude: null, 
+          longitude: null,
         ),
       );
 
@@ -252,7 +252,7 @@ class _PropertyFormScreenContentState extends State<_PropertyFormScreenContent> 
               const SizedBox(height: 24),
               _buildDetailsSection(theme),
               const SizedBox(height: 24),
-              _buildAddressSection(theme),
+              _buildAddressSection(theme), // Now uses generic AddressInput
               const SizedBox(height: 24),
               _buildImagesSection(context, theme),
               const SizedBox(height: 24),
@@ -373,68 +373,44 @@ class _PropertyFormScreenContentState extends State<_PropertyFormScreenContent> 
   Widget _buildAddressSection(ThemeData theme) {
     return SectionCard(
       title: 'Location & Address',
-      child: Column(
-        children: [
-          GoogleAddressInput(
-            googleApiKey: dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '',
-            onAddressSelected: (address) {
-              if (address != null) {
-                setState(() {
-                  _property = _property.copyWith(address: address);
-                  _streetNameController.text = address.streetLine1 ?? '';
-                  _streetNumberController.text = address.streetLine2 ?? '';
-                  _cityController.text = address.city ?? '';
-                  _postalCodeController.text = address.postalCode ?? '';
-                  _countryController.text = address.country ?? '';
-                });
-              }
-            },
-            initialValue: _property.address?.getFullAddress() ?? '',
-            labelText: 'Search for an address',
-          ),
-          const SizedBox(height: 16),
-          PropertyFormFields.buildRequiredTextField(
-            controller: _streetNameController,
-            labelText: 'Street Name',
-          ),
-          PropertyFormFields.buildSpacer(),
-          Row(
-            children: [
-              Expanded(
-                child: PropertyFormFields.buildTextField(
-                  controller: _streetNumberController,
-                  labelText: 'Street No.',
-                  validator: (_) => null,
-                ),
+      child: AddressInput(
+        initialAddress: _property.address,
+        // Existing controllers are passed directly
+        streetNameController: _streetNameController,
+        streetNumberController: _streetNumberController,
+        cityController: _cityController,
+        postalCodeController: _postalCodeController,
+        countryController: _countryController,
+        // Callbacks to ensure _property is updated from manual changes
+        onManualAddressChanged: () {
+          setState(() {
+            _property = _property.copyWith(
+              address: Address(
+                streetLine1: _streetNameController.text,
+                streetLine2: _streetNumberController.text,
+                city: _cityController.text,
+                postalCode: _postalCodeController.text,
+                country: _countryController.text,
+                latitude: null, // No longer used with simple input
+                longitude: null, // No longer used with simple input
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PropertyFormFields.buildRequiredTextField(
-                  controller: _cityController,
-                  labelText: 'City',
-                ),
-              ),
-            ],
-          ),
-          PropertyFormFields.buildSpacer(),
-          Row(
-            children: [
-              Expanded(
-                child: PropertyFormFields.buildRequiredTextField(
-                  controller: _postalCodeController,
-                  labelText: 'Postal Code',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: PropertyFormFields.buildRequiredTextField(
-                  controller: _countryController,
-                  labelText: 'Country',
-                ),
-              ),
-            ],
-          ),
-        ],
+            );
+          });
+        },
+        // This callback could be removed as it's for external address selection
+        // For a simplified manual input, it will not be triggered by AddressInput itself
+        onAddressSelected: (Address? selectedAddress) {
+          if (selectedAddress != null) {
+            setState(() {
+              _property = _property.copyWith(address: selectedAddress);
+              _streetNameController.text = selectedAddress.streetLine1 ?? '';
+              _streetNumberController.text = selectedAddress.streetLine2 ?? '';
+              _cityController.text = selectedAddress.city ?? '';
+              _postalCodeController.text = selectedAddress.postalCode ?? '';
+              _countryController.text = selectedAddress.country ?? '';
+            });
+          }
+        },
       ),
     );
   }

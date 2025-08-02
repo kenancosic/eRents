@@ -1,10 +1,11 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.Shared.Controllers
 {
@@ -31,39 +32,26 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet]
 		[AllowAnonymous] // RentingTypes can be public for property searching
-		public async Task<IActionResult> GetRentingTypes()
+		public async Task<ActionResult<object>> GetRentingTypes()
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				_logger.LogInformation("Get renting types request");
 
-				var rentingTypes = await _context.RentingTypes
-					.AsNoTracking()
-					.OrderBy(rt => rt.TypeName)
-					.ToListAsync();
+				// Convert enum values to list for frontend consumption
+				var rentingTypes = Enum.GetValues<RentalType>()
+					.Select(rt => new
+					{
+						Id = (int)rt,
+						Name = rt.ToString()
+					})
+					.OrderBy(rt => rt.Name)
+					.ToList();
 
-				var response = rentingTypes.Select(rt => new
-				{
-					Id = rt.RentingTypeId,
-					Name = rt.TypeName
-				}).ToList();
+				_logger.LogInformation("Retrieved {Count} renting types", rentingTypes.Count);
 
-				_logger.LogInformation("Retrieved {Count} renting types", response.Count);
-
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error retrieving renting types");
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving renting types",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+				return rentingTypes;
+			}, _logger, "GetRentingTypes");
 		}
 
 		/// <summary>
@@ -71,49 +59,26 @@ namespace eRents.Features.Shared.Controllers
 		/// </summary>
 		[HttpGet("{id}")]
 		[AllowAnonymous]
-		public async Task<IActionResult> GetRentingType(int id)
+		public async Task<ActionResult<object>> GetRentingType(int id)
 		{
-			try
+			return await this.ExecuteAsync(async () =>
 			{
 				_logger.LogInformation("Get renting type by ID: {RentingTypeId}", id);
 
-				var rentingType = await _context.RentingTypes
-					.AsNoTracking()
-					.FirstOrDefaultAsync(rt => rt.RentingTypeId == id);
-
-				if (rentingType == null)
+				// Check if the ID corresponds to a valid enum value
+				if (!Enum.IsDefined(typeof(RentalType), id))
 				{
 					_logger.LogWarning("Renting type not found: {RentingTypeId}", id);
-					return NotFound(new StandardErrorResponse
-					{
-						Type = "NotFound",
-						Message = "Renting type not found",
-						Timestamp = DateTime.UtcNow,
-						TraceId = HttpContext.TraceIdentifier,
-						Path = Request.Path.Value
-					});
+					throw new KeyNotFoundException($"Renting type with ID {id} not found");
 				}
 
-				var response = new
+				var rentingTypeEnum = (RentalType)id;
+				return new
 				{
-					Id = rentingType.RentingTypeId,
-					Name = rentingType.TypeName
+					Id = id,
+					Name = rentingTypeEnum.ToString()
 				};
-
-				return Ok(response);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Error retrieving renting type {RentingTypeId}", id);
-				return StatusCode(500, new StandardErrorResponse
-				{
-					Type = "Internal",
-					Message = "An error occurred while retrieving the renting type",
-					Timestamp = DateTime.UtcNow,
-					TraceId = HttpContext.TraceIdentifier,
-					Path = Request.Path.Value
-				});
-			}
+			}, _logger, "GetRentingType");
 		}
 	}
-} 
+}

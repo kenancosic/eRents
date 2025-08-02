@@ -47,14 +47,9 @@ public interface IPaymentService
     Task<PaymentResponse> ProcessRefundAsync(RefundRequest request);
 
     /// <summary>
-    /// Process refund for a payment (legacy method)
+    /// Process refund for a payment
     /// </summary>
     Task<PaymentResponse> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason);
-
-    /// <summary>
-    /// Get payments for current user
-    /// </summary>
-    Task<PagedResponse<PaymentResponse>> GetCurrentUserPaymentsAsync(PaymentSearchObject search);
 
     /// <summary>
     /// Get payments for a specific user (admin/landlord functionality)

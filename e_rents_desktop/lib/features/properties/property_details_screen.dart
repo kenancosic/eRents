@@ -1,10 +1,6 @@
 import 'package:e_rents_desktop/features/properties/providers/properties_provider.dart';
-import 'package:e_rents_desktop/features/properties/widgets/booking_list.dart';
-import 'package:e_rents_desktop/features/properties/widgets/property_financial_summary.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_info_display.dart';
-import 'package:e_rents_desktop/features/properties/widgets/reviews_list.dart';
-import 'package:e_rents_desktop/features/properties/widgets/tenant_info.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/widgets/common/section_header.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
@@ -26,7 +22,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void initState() {
     super.initState();
     // Initial data load is handled by the router.
-    // We might still want to load stats here if they aren't loaded yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData(initialLoad: true);
     });
@@ -39,10 +34,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     // We only need to force a refresh on user action.
     if (!initialLoad) {
       await propertiesProvider.getPropertyById(
-        widget.propertyId,
-        forceRefresh: true,
-      );
-      await propertiesProvider.loadPropertyStats(
         widget.propertyId,
         forceRefresh: true,
       );
@@ -136,69 +127,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             PropertyImagesGrid(images: property.imageIds),
             const SizedBox(height: 16),
             PropertyInfoDisplay(property: property, showStatus: true),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Financial Summary'),
-            const SizedBox(height: 16),
-            if (propertiesProvider.isStatsLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              PropertyFinancialSummary(stats: propertiesProvider.statsData),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Current Tenant'),
-            const SizedBox(height: 16),
-            if (propertiesProvider.isStatsLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              TenantInfo(
-                property: property,
-                currentTenant: propertiesProvider.currentBookings.isNotEmpty ? propertiesProvider.currentBookings.first : null,
-              ),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Upcoming Bookings'),
-            const SizedBox(height: 16),
-            if (propertiesProvider.isStatsLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              BookingList(
-                title: '',
-                bookings: propertiesProvider.upcomingBookings,
-                isEmpty: propertiesProvider.upcomingBookings.isEmpty,
-                emptyMessage: 'No upcoming bookings.',
-              ),
-            const SizedBox(height: 24),
-            const SectionHeader(title: 'Recent Reviews'),
-            const SizedBox(height: 16),
-            ReviewsList(
-              reviews: propertiesProvider.reviews,
-              isLoading: propertiesProvider.areReviewsLoading,
-              error: propertiesProvider.reviewsError,
-              onReplySubmitted: (reviewId, replyText) async {
-                await propertiesProvider.submitReply(reviewId.toString(), replyText);
-
-                if (propertiesProvider.error != null && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(propertiesProvider.error ??
-                          'Failed to submit reply. Please try again.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Reply submitted successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              onLoadMore: () {
-                propertiesProvider.loadMoreReviews();
-              },
-              hasMoreReviews: propertiesProvider.hasMoreReviews,
-              totalCount: propertiesProvider.totalReviewCount,
-              canReply: propertiesProvider.canReplyToReviews,
-            ),
           ],
         ),
       ),

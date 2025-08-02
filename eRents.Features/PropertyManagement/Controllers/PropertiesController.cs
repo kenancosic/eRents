@@ -1,7 +1,6 @@
 using eRents.Features.PropertyManagement.DTOs;
 using eRents.Features.PropertyManagement.Services;
 using eRents.Features.Shared.DTOs;
-using eRents.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -47,6 +46,113 @@ public class PropertiesController : ControllerBase
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error getting properties");
+			return StatusCode(500, new { message = "Internal server error" });
+		}
+	}
+
+	/// <summary>
+	/// Get properties with basic search filters only - simplified interface
+	/// GET /api/properties/basic-search
+	/// </summary>
+	[HttpGet("basic-search")]
+	[AllowAnonymous]
+	public async Task<ActionResult<PagedResponse<PropertyResponse>>> GetPropertiesBasicSearch([FromQuery] BasicPropertySearch search)
+	{
+		try
+		{
+			search ??= new BasicPropertySearch();
+			
+			// Convert BasicPropertySearch to PropertySearchObject for service compatibility
+			var fullSearch = new PropertySearchObject
+			{
+				// Map pagination
+				Page = search.Page,
+				PageSize = search.PageSize,
+				NoPaging = search.NoPaging,
+				
+				// Map basic search
+				SearchTerm = search.SearchTerm,
+				SearchText = search.SearchText,
+				GenericStatusString = search.GenericStatusString,
+				
+				// Map core property filters
+				Name = search.Name,
+				MinPrice = search.MinPrice,
+				MaxPrice = search.MaxPrice,
+				PropertyTypeId = search.PropertyTypeId,
+				CityName = search.CityName,
+				Bedrooms = search.Bedrooms,
+				
+				// Map sorting
+				SortBy = search.SortBy,
+				SortDescending = search.SortDescending,
+				
+				// Set performance-optimized defaults for basic search
+				IncludeImages = false,
+				IncludeAmenities = false,
+				IncludeReviews = false,
+				IncludeOwner = false
+			};
+			
+			var result = await _propertyService.GetPropertiesAsync(fullSearch);
+			return Ok(result);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error getting properties with basic search");
+			return StatusCode(500, new { message = "Internal server error" });
+		}
+	}
+
+	/// <summary>
+	/// Get properties with advanced search filters - full feature set
+	/// GET /api/properties/advanced-search
+	/// </summary>
+	[HttpGet("advanced-search")]
+	[AllowAnonymous]
+	public async Task<ActionResult<PagedResponse<PropertyResponse>>> GetPropertiesAdvancedSearch([FromQuery] AdvancedPropertySearch search)
+	{
+		try
+		{
+			search ??= new AdvancedPropertySearch();
+			
+			// Convert AdvancedPropertySearch to PropertySearchObject for service compatibility
+			var fullSearch = new PropertySearchObject
+			{
+				// Map pagination from base
+				Page = search.Page,
+				PageSize = search.PageSize,
+				NoPaging = search.NoPaging,
+				
+				// Map basic search from base
+				SearchTerm = search.SearchTerm,
+				SearchText = search.SearchText,
+				GenericStatusString = search.GenericStatusString,
+				
+				// Map available properties from AdvancedPropertySearch (simplified version)
+				MinPrice = search.MinPrice,
+				MaxPrice = search.MaxPrice,
+				Bedrooms = search.Bedrooms,
+				CityName = search.City,
+				StateName = search.State,
+				
+				// Map sorting
+				SortBy = search.SortBy,
+				SortDescending = search.SortDescending,
+				
+				// Set reasonable defaults for advanced features not available in simplified search
+				IncludeImages = true,
+				IncludeAmenities = false,
+				IncludeReviews = false,
+				IncludeOwner = false
+			};
+			
+			var result = await _propertyService.GetPropertiesAsync(fullSearch);
+			return Ok(result);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error getting properties with advanced search");
 			return StatusCode(500, new { message = "Internal server error" });
 		}
 	}
@@ -398,5 +504,5 @@ public class PropertiesController : ControllerBase
 /// </summary>
 public class UpdatePropertyStatusRequest
 {
-	public PropertyStatusEnum Status { get; set; }
+	public int Status { get; set; }
 }

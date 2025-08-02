@@ -30,15 +30,8 @@ class _LoginViewState extends State<LoginView> {
   @override
   void initState() {
     super.initState();
-    _loadCredentials();
   }
 
-  Future<void> _loadCredentials() async {
-    final email = await context.read<AuthProvider>().loadRememberedCredentials();
-    if (email != null) {
-      _emailController.text = email;
-    }
-  }
 
   @override
   void dispose() {
@@ -123,16 +116,14 @@ class _LoginViewState extends State<LoginView> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: authProvider.rememberMe,
-                        onChanged: (value) {
-                          authProvider.setRememberMe(value);
-                        },
-                      ),
-                      const Text('Remember Me'),
-                    ],
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        context.go('/forgot-password');
+                      },
+                      child: const Text('Forgot Password?'),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   CustomButton(
@@ -149,27 +140,19 @@ class _LoginViewState extends State<LoginView> {
                       ),
                     ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    runAlignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    direction: Axis.vertical,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      const Text("Don't have an account?"),
                       TextButton(
                         onPressed: () {
-                          context.push('/signup');
+                          context.go('/signup');
                         },
-                        child: const Text('Don\'t have an account? Sign up'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          context.push('/forgot-password');
-                        },
-                        child: const Text('Forgot Password?'),
+                        child: const Text('Sign up for free'),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),

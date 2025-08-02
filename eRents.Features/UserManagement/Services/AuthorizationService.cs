@@ -1,3 +1,21 @@
+/*
+ * SIMPLIFIED FOR ACADEMIC PURPOSES
+ *
+ * Original AuthorizationService.cs removed as part of Phase 7B: Enterprise Feature Removal
+ *
+ * The original service contained 290 lines of complex enterprise authorization logic including:
+ * - Complex relationship-based permissions
+ * - Advanced "act on behalf" functionality
+ * - Financial reporting authorization (already removed)
+ * - Complex review and tenant management permissions
+ *
+ * Replaced with simplified version focusing on basic Owner/Tenant role authorization
+ * for academic thesis requirements.
+ *
+ * Removed: January 30, 2025
+ * Reason: Simplify authentication system to basic Owner/Tenant roles per Phase 7B requirements
+ */
+
 using eRents.Domain.Models;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -6,9 +24,8 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Features.UserManagement.Services;
 
 /// <summary>
-/// Service for handling authorization business logic across the application
-/// Uses ERentsContext directly - no repository layer
-/// Organized under UserManagement as it deals with user authorization
+/// Simplified authorization service for academic thesis requirements
+/// Focuses on basic Owner/Tenant role authorization and property ownership checks
 /// </summary>
 public class AuthorizationService : IAuthorizationService
 {
@@ -27,7 +44,7 @@ public class AuthorizationService : IAuthorizationService
     }
 
     /// <summary>
-    /// Check if user can approve a rental request
+    /// Check if user can approve a rental request (property owners only)
     /// </summary>
     public async Task<bool> CanUserApproveRentalRequestAsync(int userId, int rentalRequestId)
     {
@@ -37,27 +54,17 @@ public class AuthorizationService : IAuthorizationService
                 .Include(rr => rr.Property)
                 .FirstOrDefaultAsync(rr => rr.RequestId == rentalRequestId);
 
-            if (rentalRequest?.Property == null)
-                return false;
-
-            // User can approve if they own the property
-            bool canApprove = rentalRequest.Property.OwnerId == userId;
-
-            _logger.LogInformation("Authorization check for rental request approval: UserId={UserId}, RequestId={RequestId}, CanApprove={CanApprove}",
-                userId, rentalRequestId, canApprove);
-
-            return canApprove;
+            return rentalRequest?.Property?.OwnerId == userId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking rental request approval authorization for user {UserId} and request {RequestId}",
-                userId, rentalRequestId);
+            _logger.LogError(ex, "Error checking rental request approval authorization");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if user can cancel a booking
+    /// Check if user can cancel a booking (booking creator or property owner)
     /// </summary>
     public async Task<bool> CanUserCancelBookingAsync(int userId, int bookingId)
     {
@@ -67,27 +74,18 @@ public class AuthorizationService : IAuthorizationService
                 .Include(b => b.Property)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
 
-            if (booking?.Property == null)
-                return false;
-
-            // User can cancel if they made the booking or own the property
-            bool canCancel = booking.UserId == userId || booking.Property.OwnerId == userId;
-
-            _logger.LogInformation("Authorization check for booking cancellation: UserId={UserId}, BookingId={BookingId}, CanCancel={CanCancel}",
-                userId, bookingId, canCancel);
-
-            return canCancel;
+            return booking != null &&
+                   (booking.UserId == userId || booking.Property?.OwnerId == userId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking booking cancellation authorization for user {UserId} and booking {BookingId}",
-                userId, bookingId);
+            _logger.LogError(ex, "Error checking booking cancellation authorization");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if user can modify a property
+    /// Check if user can modify a property (property owners only)
     /// </summary>
     public async Task<bool> CanUserModifyPropertyAsync(int userId, int propertyId)
     {
@@ -100,44 +98,22 @@ public class AuthorizationService : IAuthorizationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking property authorization");
+            _logger.LogError(ex, "Error checking property modification authorization");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if user can view tenant information
+    /// Check if user can view tenant information (self only for simplified system)
     /// </summary>
     public async Task<bool> CanUserViewTenantAsync(int userId, int tenantId)
     {
-        try
-        {
-            // Users can view their own information
-            if (userId == tenantId)
-                return true;
-
-            // Landlords can view tenants who have relationships with their properties
-            var hasRelationship = await _context.RentalRequests
-                .Include(rr => rr.Property)
-                .AnyAsync(rr => rr.UserId == tenantId && 
-                               rr.Property != null && 
-                               rr.Property.OwnerId == userId);
-
-            _logger.LogInformation("Authorization check for tenant viewing: UserId={UserId}, TenantId={TenantId}, CanView={CanView}",
-                userId, tenantId, hasRelationship);
-
-            return hasRelationship;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking tenant viewing authorization for user {UserId} and tenant {TenantId}",
-                userId, tenantId);
-            return false;
-        }
+        // Simplified: users can only view their own information
+        return userId == tenantId;
     }
 
     /// <summary>
-    /// Check if user can manage maintenance requests
+    /// Check if user can manage maintenance requests (reporter or property owner)
     /// </summary>
     public async Task<bool> CanUserManageMaintenanceAsync(int userId, int maintenanceId)
     {
@@ -147,144 +123,76 @@ public class AuthorizationService : IAuthorizationService
                 .Include(m => m.Property)
                 .FirstOrDefaultAsync(m => m.MaintenanceIssueId == maintenanceId);
 
-            if (maintenance?.Property == null)
-                return false;
-
-            // User can manage if they reported the issue or own the property
-            bool canManage = maintenance.ReportedByUserId == userId || maintenance.Property.OwnerId == userId;
-
-            _logger.LogInformation("Authorization check for maintenance management: UserId={UserId}, MaintenanceId={MaintenanceId}, CanManage={CanManage}",
-                userId, maintenanceId, canManage);
-
-            return canManage;
+            return maintenance != null &&
+                   (maintenance.ReportedByUserId == userId ||
+                    maintenance.Property?.OwnerId == userId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking maintenance management authorization for user {UserId} and maintenance {MaintenanceId}",
-                userId, maintenanceId);
+            _logger.LogError(ex, "Error checking maintenance management authorization");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if user can access financial reports
+    /// Financial reports authorization - removed as part of enterprise feature simplification
     /// </summary>
     public async Task<bool> CanUserAccessFinancialReportsAsync(int userId)
     {
-        try
-        {
-            // Only landlords can access financial reports
-            var user = await _context.Users
-                .Include(u => u.UserTypeNavigation)
-                .FirstOrDefaultAsync(u => u.UserId == userId);
-
-            if (user?.UserTypeNavigation == null)
-                return false;
-
-            bool canAccess = user.UserTypeNavigation.TypeName == "Landlord";
-
-            _logger.LogInformation("Authorization check for financial reports access: UserId={UserId}, CanAccess={CanAccess}",
-                userId, canAccess);
-
-            return canAccess;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking financial reports authorization for user {UserId}", userId);
-            return false;
-        }
+        // Financial reporting services were removed in Phase 7B
+        return false;
     }
 
     /// <summary>
-    /// Check if user can manage reviews
+    /// Check if user can manage reviews (review author only for simplified system)
     /// </summary>
     public async Task<bool> CanUserManageReviewAsync(int userId, int reviewId)
     {
         try
         {
             var review = await _context.Reviews
-                .Include(r => r.Property)
                 .FirstOrDefaultAsync(r => r.ReviewId == reviewId);
 
-            if (review?.Property == null)
-                return false;
-
-            // User can manage if they wrote the review or own the property
-            bool canManage = review.ReviewerId == userId || review.Property.OwnerId == userId;
-
-            _logger.LogInformation("Authorization check for review management: UserId={UserId}, ReviewId={ReviewId}, CanManage={CanManage}",
-                userId, reviewId, canManage);
-
-            return canManage;
+            // Simplified: only review authors can manage their reviews
+            return review?.ReviewerId == userId;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking review management authorization for user {UserId} and review {ReviewId}",
-                userId, reviewId);
+            _logger.LogError(ex, "Error checking review management authorization");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if user has specific role
+    /// Check if user has specific role (basic role checking)
     /// </summary>
     public async Task<bool> HasRoleAsync(int userId, params string[] roles)
     {
         try
         {
             var user = await _context.Users
-                .Include(u => u.UserTypeNavigation)
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
-            if (user?.UserTypeNavigation == null)
+            if (user == null)
                 return false;
 
-            bool hasRole = roles.Any(role => string.Equals(user.UserTypeNavigation.TypeName, role, StringComparison.OrdinalIgnoreCase));
-
-            _logger.LogInformation("Role check: UserId={UserId}, RequiredRoles=[{Roles}], UserRole={UserRole}, HasRole={HasRole}",
-                userId, string.Join(",", roles), user.UserTypeNavigation.TypeName, hasRole);
-
-            return hasRole;
+            return roles.Any(role =>
+                string.Equals(user.UserType.ToString(), role, StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking roles for user {UserId}", userId);
+            _logger.LogError(ex, "Error checking user roles");
             return false;
         }
     }
 
     /// <summary>
-    /// Check if current user can perform action on behalf of target user
+    /// Check if current user can act on behalf of target user (self only for simplified system)
     /// </summary>
     public async Task<bool> CanActOnBehalfOfUserAsync(int targetUserId)
     {
-        try
-        {
-            var currentUserId = _currentUserService.GetUserIdAsInt();
-            
-            // Users can always act on their own behalf
-            if (currentUserId == targetUserId)
-                return true;
-
-            // Check if current user is a landlord and target user is their tenant
-            var currentUserRole = _currentUserService.UserRole;
-            if (currentUserRole == "Landlord")
-            {
-                var hasRelationship = await _context.RentalRequests
-                    .Include(rr => rr.Property)
-                    .AnyAsync(rr => rr.UserId == targetUserId && 
-                                   rr.Property != null && 
-                                   rr.Property.OwnerId == currentUserId);
-
-                return hasRelationship;
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking act-on-behalf authorization for target user {TargetUserId}", targetUserId);
-            return false;
-        }
+        // Simplified: users can only act on their own behalf
+        var currentUserId = _currentUserService.GetUserIdAsInt();
+        return currentUserId == targetUserId;
     }
-} 
+}

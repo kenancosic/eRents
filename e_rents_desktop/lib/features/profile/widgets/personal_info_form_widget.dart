@@ -4,8 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 
 import 'package:e_rents_desktop/models/address.dart';
-import 'package:e_rents_desktop/widgets/inputs/google_address_input.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:e_rents_desktop/widgets/inputs/address_input.dart'; // Use generic AddressInput
 
 class PersonalInfoFormWidget extends StatefulWidget {
   final bool isEditing;
@@ -26,7 +25,14 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _addressController;
+  late final TextEditingController _addressController; // This may become redundant
+
+  late final TextEditingController _streetNameController;
+  late final TextEditingController _streetNumberController;
+  late final TextEditingController _cityController;
+  late final TextEditingController _postalCodeController;
+  late final TextEditingController _countryController;
+
 
   @override
   void initState() {
@@ -36,7 +42,14 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
-    _addressController = TextEditingController(text: user?.address?.getFullAddress() ?? '');
+    _addressController = TextEditingController(text: user?.address?.getFullAddress() ?? ''); // Still used for display if not editing
+
+    // Initialize address controllers separately
+    _streetNameController = TextEditingController(text: user?.address?.streetLine1 ?? '');
+    _streetNumberController = TextEditingController(text: user?.address?.streetLine2 ?? '');
+    _cityController = TextEditingController(text: user?.address?.city ?? '');
+    _postalCodeController = TextEditingController(text: user?.address?.postalCode ?? '');
+    _countryController = TextEditingController(text: user?.address?.country ?? '');
   }
 
   @override
@@ -45,15 +58,14 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
-    super.dispose();
-  }
+    _addressController.dispose(); // Still needed if used for display
 
-  String get _googleApiKey {
-    if (dotenv.isInitialized) {
-      return dotenv.env['GOOGLE_MAPS_API_KEY'] ?? 'YOUR_API_KEY_NOT_FOUND';
-    }
-    return 'YOUR_API_KEY_NOT_FOUND';
+    _streetNameController.dispose();
+    _streetNumberController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _countryController.dispose();
+    super.dispose();
   }
 
   @override
@@ -64,60 +76,12 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       return const Center(child: Text('User not found.'));
     }
 
-    Widget addressDisplayWidget;
-        final bool apiKeyMissing = _googleApiKey == 'YOUR_API_KEY_NOT_FOUND';
-
-        if (apiKeyMissing && widget.isEditing) {
-      addressDisplayWidget = _buildCompactTextField(
-        context,
-                controller: _addressController,
-        label: 'Address (Limited - API Key Missing)',
-        enabled: true,
-        onChanged: (value) {
-          final currentAddress = context.read<ProfileProvider>().currentUser?.address;
-          final newAddress = (currentAddress ?? Address()).copyWith(streetLine1: value);
-          context.read<ProfileProvider>().updateLocalUser(address: newAddress);
-        },
-        validator: null,
-      );
-        } else if (apiKeyMissing && !widget.isEditing) {
-      addressDisplayWidget = _buildReadOnlyField(
-        context,
-        label: 'Address',
-        value: user.address?.getFullAddress() ?? 'Not set',
-        icon: Icons.location_on,
-      );
-        } else if (widget.isEditing) {
-      addressDisplayWidget = GoogleAddressInput(
-        googleApiKey: _googleApiKey,
-        initialValue: user.address?.getFullAddress(),
-        labelText: 'Address',
-        hintText: 'Search for your address',
-                onAddressSelected: (address) {
-          setState(() {
-            _addressController.text = address?.getFullAddress() ?? '';
-            if (address != null) {
-              context.read<ProfileProvider>().updateLocalUser(address: address);
-            }
-          });
-        },
-        validator: (value) => null,
-      );
-    } else {
-      addressDisplayWidget = _buildReadOnlyField(
-        context,
-        label: 'Address',
-        value: user.address?.getFullAddress() ?? 'Not set',
-        icon: Icons.location_on,
-      );
-    }
-
     return Form(
-            key: widget.formKey,
-            autovalidateMode:
+      key: widget.formKey,
+      autovalidateMode:
           widget.isEditing
-              ? AutovalidateMode.onUserInteraction
-              : AutovalidateMode.disabled,
+          ? AutovalidateMode.onUserInteraction
+          : AutovalidateMode.disabled,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -130,7 +94,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   label: 'First Name',
                   enabled: widget.isEditing,
                   onChanged: (value) =>
-                      context.read<ProfileProvider>().updateLocalUser(firstName: value),
+                      profileProvider.updateLocalUser(firstName: value),
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Required' : null,
                 ),
@@ -143,7 +107,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   label: 'Last Name',
                   enabled: widget.isEditing,
                   onChanged: (value) =>
-                      context.read<ProfileProvider>().updateLocalUser(lastName: value),
+                      profileProvider.updateLocalUser(lastName: value),
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Required' : null,
                 ),
@@ -169,7 +133,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   controller: _phoneController,
                   label: 'Phone Number',
                   enabled: widget.isEditing,
-                  onChanged: (value) => context.read<ProfileProvider>().updateLocalUser(phone: value),
+                  onChanged: (value) => profileProvider.updateLocalUser(phone: value),
                   validator: (value) {
                     if (value != null &&
                         value.isNotEmpty &&
@@ -185,7 +149,42 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
             ],
           ),
           const SizedBox(height: 16),
-          addressDisplayWidget,
+          // Replaced GoogleAddressInput with AddressInput
+          AddressInput(
+            initialAddress: user.address,
+            streetNameController: _streetNameController,
+            streetNumberController: _streetNumberController,
+            cityController: _cityController,
+            postalCodeController: _postalCodeController,
+            countryController: _countryController,
+            onManualAddressChanged: () {
+              // Update local user property directly from controllers
+              profileProvider.updateLocalUser(
+                address: Address(
+                  streetLine1: _streetNameController.text,
+                  streetLine2: _streetNumberController.text,
+                  city: _cityController.text,
+                  postalCode: _postalCodeController.text,
+                  country: _countryController.text,
+                  latitude: null, // Removed with GoogleMaps
+                  longitude: null, // Removed with GoogleMaps
+                ),
+              );
+            },
+            // This callback is for an external address picker, not strictly needed for manual inputs
+            // but kept for compatibility as it might be useful if the AddressInput widget changes
+            onAddressSelected: (Address? selectedAddress) {
+              if (selectedAddress != null) {
+                profileProvider.updateLocalUser(address: selectedAddress);
+                // Also update text controllers if AddressInput's internal fields differ
+                _streetNameController.text = selectedAddress.streetLine1 ?? '';
+                _streetNumberController.text = selectedAddress.streetLine2 ?? '';
+                _cityController.text = selectedAddress.city ?? '';
+                _postalCodeController.text = selectedAddress.postalCode ?? '';
+                _countryController.text = selectedAddress.country ?? '';
+              }
+            },
+          ),
         ],
       ),
     );
@@ -238,7 +237,7 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     );
   }
 
-  Widget _buildReadOnlyField(
+  Widget _buildReadOnlyField( // This is now unused because personal_info is always in editing mode.
     BuildContext context, {
     required String label,
     required String value,

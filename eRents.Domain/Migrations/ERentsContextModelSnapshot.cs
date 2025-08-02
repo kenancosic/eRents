@@ -18,25 +18,10 @@ namespace eRents.Domain.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .UseCollation("Croatian_CI_AS")
-                .HasAnnotation("ProductVersion", "9.0.6")
+                .HasAnnotation("ProductVersion", "9.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("AmenityTenantPreference", b =>
-                {
-                    b.Property<int>("AmenitiesAmenityId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TenantPreferencesTenantPreferenceId")
-                        .HasColumnType("int");
-
-                    b.HasKey("AmenitiesAmenityId", "TenantPreferencesTenantPreferenceId");
-
-                    b.HasIndex("TenantPreferencesTenantPreferenceId");
-
-                    b.ToTable("AmenityTenantPreference");
-                });
 
             modelBuilder.Entity("eRents.Domain.Models.Amenity", b =>
                 {
@@ -81,9 +66,6 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingId"));
-
-                    b.Property<int>("BookingStatusId")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -132,6 +114,12 @@ namespace eRents.Domain.Migrations
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Upcoming");
+
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18, 2)");
 
@@ -143,53 +131,11 @@ namespace eRents.Domain.Migrations
 
                     b.HasKey("BookingId");
 
-                    b.HasIndex("BookingStatusId");
-
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.BookingStatus", b =>
-                {
-                    b.Property<int>("BookingStatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingStatusId"));
-
-                    b.Property<string>("StatusName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("BookingStatusId");
-
-                    b.ToTable("BookingStatuses");
-
-                    b.HasData(
-                        new
-                        {
-                            BookingStatusId = 1,
-                            StatusName = "Upcoming"
-                        },
-                        new
-                        {
-                            BookingStatusId = 2,
-                            StatusName = "Completed"
-                        },
-                        new
-                        {
-                            BookingStatusId = 3,
-                            StatusName = "Cancelled"
-                        },
-                        new
-                        {
-                            BookingStatusId = 4,
-                            StatusName = "Active"
-                        });
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Image", b =>
@@ -266,115 +212,6 @@ namespace eRents.Domain.Migrations
                     b.ToTable("Images");
                 });
 
-            modelBuilder.Entity("eRents.Domain.Models.IssuePriority", b =>
-                {
-                    b.Property<int>("PriorityId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PriorityId"));
-
-                    b.Property<string>("PriorityName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("PriorityId");
-
-                    b.ToTable("IssuePriorities");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.IssueStatus", b =>
-                {
-                    b.Property<int>("StatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StatusId"));
-
-                    b.Property<string>("StatusName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("StatusId");
-
-                    b.ToTable("IssueStatuses");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.LeaseExtensionRequest", b =>
-                {
-                    b.Property<int>("RequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
-
-                    b.Property<int>("BookingId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("DateResponded")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LandlordReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("LandlordResponse")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int?>("ModifiedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("NewEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("NewMinimumStayEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("RequestId");
-
-                    b.HasIndex("BookingId");
-
-                    b.HasIndex("PropertyId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("LeaseExtensionRequests");
-                });
-
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
                 {
                     b.Property<int>("MaintenanceIssueId")
@@ -407,8 +244,11 @@ namespace eRents.Domain.Migrations
                     b.Property<int?>("ModifiedBy")
                         .HasColumnType("int");
 
-                    b.Property<int>("PriorityId")
-                        .HasColumnType("int");
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Medium");
 
                     b.Property<int>("PropertyId")
                         .HasColumnType("int");
@@ -431,8 +271,11 @@ namespace eRents.Domain.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<int>("StatusId")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -446,13 +289,9 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("AssignedToUserId");
 
-                    b.HasIndex("PriorityId");
-
                     b.HasIndex("PropertyId");
 
                     b.HasIndex("ReportedByUserId");
-
-                    b.HasIndex("StatusId");
 
                     b.ToTable("MaintenanceIssues");
                 });
@@ -688,14 +527,11 @@ namespace eRents.Domain.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18, 2)");
 
-                    b.Property<int?>("PropertyStatusStatusId")
-                        .HasColumnType("int");
+                    b.Property<string>("PropertyType")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("PropertyTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("RentingTypeId")
-                        .HasColumnType("int");
+                    b.Property<string>("RentingType")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("RequiresApproval")
                         .HasColumnType("bit");
@@ -707,7 +543,10 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Available");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -715,12 +554,6 @@ namespace eRents.Domain.Migrations
                     b.HasKey("PropertyId");
 
                     b.HasIndex("OwnerId");
-
-                    b.HasIndex("PropertyStatusStatusId");
-
-                    b.HasIndex("PropertyTypeId");
-
-                    b.HasIndex("RentingTypeId");
 
                     b.ToTable("Properties");
                 });
@@ -740,91 +573,6 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("AmenityId");
 
                     b.ToTable("PropertyAmenities");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.PropertyAvailability", b =>
-                {
-                    b.Property<int>("AvailabilityId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AvailabilityId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly>("EndDate")
-                        .HasColumnType("date");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("ModifiedBy")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PropertyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("AvailabilityId");
-
-                    b.HasIndex("PropertyId");
-
-                    b.ToTable("PropertyAvailabilities");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.PropertyStatus", b =>
-                {
-                    b.Property<int>("StatusId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StatusId"));
-
-                    b.Property<string>("StatusName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("StatusId");
-
-                    b.ToTable("PropertyStatuses");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.PropertyType", b =>
-                {
-                    b.Property<int>("TypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TypeId"));
-
-                    b.Property<string>("TypeName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("TypeId");
-
-                    b.ToTable("PropertyTypes");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.RentalRequest", b =>
@@ -886,9 +634,9 @@ namespace eRents.Domain.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -904,24 +652,6 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RentalRequests");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.RentingType", b =>
-                {
-                    b.Property<int>("RentingTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RentingTypeId"));
-
-                    b.Property<string>("TypeName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("RentingTypeId");
-
-                    b.ToTable("RentingTypes");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
@@ -972,9 +702,6 @@ namespace eRents.Domain.Migrations
                     b.Property<decimal?>("StarRating")
                         .HasColumnType("decimal(2, 1)");
 
-                    b.Property<int?>("TenantId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -989,8 +716,6 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("RevieweeId");
 
                     b.HasIndex("ReviewerId");
-
-                    b.HasIndex("TenantId");
 
                     b.ToTable("Reviews");
                 });
@@ -1028,7 +753,10 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<string>("TenantStatus")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Active");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1043,79 +771,6 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Tenants");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.TenantPreference", b =>
-                {
-                    b.Property<int>("TenantPreferenceId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TenantPreferenceId"));
-
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal?>("MaxPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("MinPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int?>("ModifiedBy")
-                        .HasColumnType("int");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<DateTime?>("SearchEndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("SearchStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TenantPreferenceId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TenantPreferences");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.TenantPreferenceAmenity", b =>
-                {
-                    b.Property<int>("TenantPreferenceId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("AmenityId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TenantPreferenceId", "AmenityId");
-
-                    b.HasIndex("AmenityId");
-
-                    b.ToTable("TenantPreferenceAmenities");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
@@ -1150,12 +805,22 @@ namespace eRents.Domain.Migrations
                     b.Property<bool?>("IsPublic")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("en");
+
                     b.Property<string>("LastName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<int?>("ModifiedBy")
                         .HasColumnType("int");
+
+                    b.Property<string>("NotificationSettings")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("PasswordHash")
                         .IsRequired()
@@ -1186,11 +851,21 @@ namespace eRents.Domain.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("light");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UserTypeId")
-                        .HasColumnType("int");
+                    b.Property<string>("UserType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Guest");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -1206,57 +881,10 @@ namespace eRents.Domain.Migrations
                         .IsUnique()
                         .HasFilter("[ProfileImageId] IS NOT NULL");
 
-                    b.HasIndex("UserTypeId");
-
                     b.HasIndex("Username")
                         .IsUnique();
 
                     b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.UserPreferences", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Language")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)")
-                        .HasDefaultValue("en");
-
-                    b.Property<int?>("ModifiedBy")
-                        .HasColumnType("int");
-
-                    b.Property<string>("NotificationSettings")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<string>("Theme")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("light");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("UserPreferences");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserSavedProperty", b =>
@@ -1292,47 +920,8 @@ namespace eRents.Domain.Migrations
                     b.ToTable("UserSavedProperties");
                 });
 
-            modelBuilder.Entity("eRents.Domain.Models.UserType", b =>
-                {
-                    b.Property<int>("UserTypeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserTypeId"));
-
-                    b.Property<string>("TypeName")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("UserTypeId");
-
-                    b.ToTable("UserTypes");
-                });
-
-            modelBuilder.Entity("AmenityTenantPreference", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.Amenity", null)
-                        .WithMany()
-                        .HasForeignKey("AmenitiesAmenityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eRents.Domain.Models.TenantPreference", null)
-                        .WithMany()
-                        .HasForeignKey("TenantPreferencesTenantPreferenceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
                 {
-                    b.HasOne("eRents.Domain.Models.BookingStatus", "BookingStatus")
-                        .WithMany("Bookings")
-                        .HasForeignKey("BookingStatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Bookings")
                         .HasForeignKey("PropertyId")
@@ -1344,8 +933,6 @@ namespace eRents.Domain.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("BookingStatus");
 
                     b.Navigation("Property");
 
@@ -1373,44 +960,11 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Review");
                 });
 
-            modelBuilder.Entity("eRents.Domain.Models.LeaseExtensionRequest", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("eRents.Domain.Models.Property", "Property")
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("eRents.Domain.Models.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Booking");
-
-                    b.Navigation("Property");
-
-                    b.Navigation("Tenant");
-                });
-
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
                 {
                     b.HasOne("eRents.Domain.Models.User", "AssignedToUser")
                         .WithMany("AssignedMaintenanceIssues")
                         .HasForeignKey("AssignedToUserId");
-
-                    b.HasOne("eRents.Domain.Models.IssuePriority", "Priority")
-                        .WithMany("MaintenanceIssues")
-                        .HasForeignKey("PriorityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("MaintenanceIssues")
@@ -1424,21 +978,11 @@ namespace eRents.Domain.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("eRents.Domain.Models.IssueStatus", "Status")
-                        .WithMany("MaintenanceIssues")
-                        .HasForeignKey("StatusId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("AssignedToUser");
-
-                    b.Navigation("Priority");
 
                     b.Navigation("Property");
 
                     b.Navigation("ReportedByUser");
-
-                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Message", b =>
@@ -1507,18 +1051,6 @@ namespace eRents.Domain.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("eRents.Domain.Models.PropertyStatus", null)
-                        .WithMany("Properties")
-                        .HasForeignKey("PropertyStatusStatusId");
-
-                    b.HasOne("eRents.Domain.Models.PropertyType", "PropertyType")
-                        .WithMany("Properties")
-                        .HasForeignKey("PropertyTypeId");
-
-                    b.HasOne("eRents.Domain.Models.RentingType", "RentingType")
-                        .WithMany("Properties")
-                        .HasForeignKey("RentingTypeId");
-
                     b.OwnsOne("eRents.Domain.Models.Address", "Address", b1 =>
                         {
                             b1.Property<int>("PropertyId")
@@ -1565,10 +1097,6 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Address");
 
                     b.Navigation("Owner");
-
-                    b.Navigation("PropertyType");
-
-                    b.Navigation("RentingType");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.PropertyAmenity", b =>
@@ -1586,17 +1114,6 @@ namespace eRents.Domain.Migrations
                         .IsRequired();
 
                     b.Navigation("Amenity");
-
-                    b.Navigation("Property");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.PropertyAvailability", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.Property", "Property")
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Property");
                 });
@@ -1644,10 +1161,6 @@ namespace eRents.Domain.Migrations
                         .HasForeignKey("ReviewerId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("eRents.Domain.Models.Tenant", null)
-                        .WithMany("Reviews")
-                        .HasForeignKey("TenantId");
-
                     b.Navigation("Booking");
 
                     b.Navigation("ParentReview");
@@ -1676,46 +1189,12 @@ namespace eRents.Domain.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("eRents.Domain.Models.TenantPreference", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.User", "User")
-                        .WithMany("TenantPreferences")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.TenantPreferenceAmenity", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.Amenity", "Amenity")
-                        .WithMany()
-                        .HasForeignKey("AmenityId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eRents.Domain.Models.TenantPreference", "TenantPreference")
-                        .WithMany()
-                        .HasForeignKey("TenantPreferenceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Amenity");
-
-                    b.Navigation("TenantPreference");
-                });
-
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
                 {
                     b.HasOne("eRents.Domain.Models.Image", "ProfileImage")
                         .WithOne()
                         .HasForeignKey("eRents.Domain.Models.User", "ProfileImageId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("eRents.Domain.Models.UserType", "UserTypeNavigation")
-                        .WithMany("Users")
-                        .HasForeignKey("UserTypeId");
 
                     b.OwnsOne("eRents.Domain.Models.Address", "Address", b1 =>
                         {
@@ -1763,19 +1242,6 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Address");
 
                     b.Navigation("ProfileImage");
-
-                    b.Navigation("UserTypeNavigation");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.UserPreferences", b =>
-                {
-                    b.HasOne("eRents.Domain.Models.User", "User")
-                        .WithOne()
-                        .HasForeignKey("eRents.Domain.Models.UserPreferences", "UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.UserSavedProperty", b =>
@@ -1795,21 +1261,6 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Property");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.BookingStatus", b =>
-                {
-                    b.Navigation("Bookings");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.IssuePriority", b =>
-                {
-                    b.Navigation("MaintenanceIssues");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.IssueStatus", b =>
-                {
-                    b.Navigation("MaintenanceIssues");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
@@ -1839,21 +1290,6 @@ namespace eRents.Domain.Migrations
                     b.Navigation("UserSavedProperties");
                 });
 
-            modelBuilder.Entity("eRents.Domain.Models.PropertyStatus", b =>
-                {
-                    b.Navigation("Properties");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.PropertyType", b =>
-                {
-                    b.Navigation("Properties");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.RentingType", b =>
-                {
-                    b.Navigation("Properties");
-                });
-
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
                 {
                     b.Navigation("Images");
@@ -1864,8 +1300,6 @@ namespace eRents.Domain.Migrations
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
                 {
                     b.Navigation("Payments");
-
-                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>
@@ -1884,14 +1318,7 @@ namespace eRents.Domain.Migrations
 
                     b.Navigation("Tenancies");
 
-                    b.Navigation("TenantPreferences");
-
                     b.Navigation("UserSavedProperties");
-                });
-
-            modelBuilder.Entity("eRents.Domain.Models.UserType", b =>
-                {
-                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }

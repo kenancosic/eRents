@@ -182,8 +182,29 @@ extension ApiServiceExtensions on ApiService {
     return json.decode(response.body) as Map<String, dynamic>;
   }
   
+  /// PUT request that returns raw JSON map
+  ///
+  /// Usage:
+  /// ```dart
+  /// final data = await api.putJson('/endpoint', body);
+  /// ```
+  Future<Map<String, dynamic>> putJson(
+    String endpoint,
+    Map<String, dynamic> body, {
+    bool authenticated = false,
+    Map<String, String>? customHeaders,
+  }) async {
+    final response = await put(
+      endpoint,
+      body,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
   /// DELETE request with success confirmation
-  /// 
+  ///
   /// Usage:
   /// ```dart
   /// final success = await api.deleteAndConfirm('/users/1');

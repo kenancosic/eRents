@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/widgets/status_dialog.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:go_router/go_router.dart';
@@ -25,16 +24,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   Future<void> _sendResetLink(AuthProvider authProvider) async {
     if (_formKey.currentState?.validate() ?? false) {
-      await authProvider.forgotPassword(_emailController.text);
-      if (authProvider.emailSent && mounted) {
-        StatusDialog.show(
-          context: context,
-          title: 'Email Sent!',
-          message:
-              'A password reset link has been sent to your email address. Please check your inbox.',
-          actionLabel: 'Back to Login',
-          onActionPressed: () => context.go('/login'),
-        );
+      final success = await authProvider.forgotPassword(_emailController.text);
+      if (success && mounted) {
+        // Navigate to the verification screen
+        context.push('/verification?email=${_emailController.text}');
       }
     }
   }
@@ -102,7 +95,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => context.pop(),
+                onPressed: () => context.go('/login'),
                 child: const Text('Back to Login'),
               ),
             ],

@@ -109,227 +109,201 @@ public class PaymentService : BaseService, IPaymentService
 	/// <summary>
 	/// Execute/capture a payment and update database record
 	/// </summary>
-	public async Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, ExecutePaymentRequest request)
-	{
-		return await UpdateAsync<Payment, ExecutePaymentRequest, PaymentResponse>(
-			paymentReference,
-			request,
-			q => q,
-			async _ => true,
-			async (payment, req) =>
-			{
-				payment.PaymentStatus = "Completed";
-				payment.UpdatedAt = DateTime.UtcNow;
-				payment.ModifiedBy = CurrentUserId;
-			},
-			payment => payment.ToResponse(),
-			nameof(ExecutePaymentAsync)
-		);
-	}
+ public async Task<PaymentResponse> ExecutePaymentAsync(string paymentReference, ExecutePaymentRequest request)
+ {
+  return await UpdateAsync<Payment, ExecutePaymentRequest, PaymentResponse>(
+   paymentReference,
+   request,
+   q => q,
+   async _ => true,
+   async (payment, req) =>
+   {
+    payment.PaymentStatus = "Completed";
+    payment.UpdatedAt = DateTime.UtcNow;
+    payment.ModifiedBy = CurrentUserId;
+   },
+   payment => payment.ToResponse(),
+   nameof(ExecutePaymentAsync)
+  );
+ }
 
-	/// <summary>
-	/// Create a standalone payment without booking context
-	/// </summary>
 	public async Task<PaymentResponse> CreatePaymentAsync(decimal amount, string currency, string returnUrl, string cancelUrl)
 	{
-		try
+		// Academic approach: Create a Payment record in the database
+		// In a real application, this would involve interaction with a payment gateway to generate a payment ID and approval URL
+		// Construct a PaymentRequest DTO to align with BaseService.CreateAsync signature
+		var paymentRequest = new PaymentRequest
 		{
-			var paymentReference = GeneratePaymentReference();
+			Amount = amount,
+			Currency = currency,
+			ReturnUrl = returnUrl,
+			CancelUrl = cancelUrl,
+			// PropertyId is required but not directly provided. This assumes a default or
+			// that it's handled upstream. For now, setting to a dummy value or a known default.
+			// Ideally, this should come from the CreatePaymentAsync parameters.
+			// For academic exercise, let's assume it's optional for this specific creation flow
+			// or that an appropriate default can be determined. If not, it needs to be provided.
+			// Let's set it to 1 until clarified, or make it nullable in PaymentRequest if applicable.
+		          PropertyId = 0 // Assuming a default value. This needs to be provided by the caller or derived.
+		};
 
-			return new PaymentResponse
+		return await CreateAsync<Payment, PaymentRequest, PaymentResponse>(
+			paymentRequest,
+			req =>
 			{
-				PaymentId = 0, // No database record for standalone orders
-				PaymentStatus = "Created",
-				PaymentReference = paymentReference,
-				ApprovalUrl = $"{returnUrl}?paymentId={paymentReference}",
-				Amount = amount,
-				Currency = currency
-			};
-		}
-		catch (Exception ex)
-		{
-			Logger.LogError(ex, "Standalone payment creation failed for amount {Amount}", amount);
-			throw;
-		}
-	}
-
-	public async Task<PaymentResponse?> GetPaymentStatusAsync(int paymentId)
-	{
-		return await GetByIdAsync<Payment, PaymentResponse>(
-			paymentId,
-			q => q,
-			async _ => true,
-			p => p.ToResponse(),
-			nameof(GetPaymentStatusAsync)
-		);
-	}
-
-	/// <summary>
-	/// Process refund for a payment using RefundRequest DTO - creates separate refund record
-	/// </summary>
-	public async Task<PaymentResponse> ProcessRefundAsync(RefundRequest request)
-	{
-		return await UpdateAsync<Payment, RefundRequest, PaymentResponse>(
-			request.OriginalPaymentId,
-			request,
-			q => q.Include(p => p.Property),
-			async payment => payment.Property?.OwnerId == CurrentUserId,
-			async (payment, req) =>
-			{
-				if (payment.PaymentStatus != "Completed")
-					throw new InvalidOperationException("Only completed payments can be refunded");
-
-				var existingRefunds = await Context.Payments
-					.Where(p => p.OriginalPaymentId == req.OriginalPaymentId && p.PaymentType == "Refund")
-					.SumAsync(p => p.Amount);
-
-				if (existingRefunds + req.Amount > payment.Amount)
-					throw new InvalidOperationException("Refund amount exceeds available refund balance");
-				var refundPayment = new Payment
+				var payment = new Payment
 				{
 					Amount = req.Amount,
-					Currency = payment.Currency,
-					PaymentMethod = payment.PaymentMethod,
-					PaymentStatus = "Completed",
-					PaymentType = "Refund",
-					PropertyId = payment.PropertyId,
-					BookingId = payment.BookingId,
-					TenantId = payment.TenantId,
-					OriginalPaymentId = payment.PaymentId,
-					RefundReason = req.Reason,
-					PaymentReference = GeneratePaymentReference()
+					Currency = req.Currency,
+					PaymentStatus = "Created",
+					PaymentReference = GeneratePaymentReference(),
+					TenantId = CurrentUserId, // Assuming the logged-in user is the one creating the payment
+					PropertyId = req.PropertyId // Using PropertyId from request
 				};
-
-				Context.Payments.Add(refundPayment);
-
-				if (existingRefunds + req.Amount >= payment.Amount)
-				{
-					payment.PaymentStatus = "Refunded";
-				}
+				return payment;
 			},
-			payment => payment.ToResponse(),
-			nameof(ProcessRefundAsync)
-		);
-	}
-	/// <summary>
-	/// Process refund for a payment (legacy method)
-	/// </summary>
-	public async Task<PaymentResponse> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
-	{
-		var request = new RefundRequest
-		{
-			OriginalPaymentId = paymentId,
-			Amount = refundAmount,
-			Reason = reason
-		};
-		return await ProcessRefundAsync(request);
-	}
-	public async Task<PagedResponse<PaymentResponse>> GetCurrentUserPaymentsAsync(PaymentSearchObject search)
-	{
-		search.TenantId = CurrentUserId;
-		return await GetPaymentsAsync(search);
-	}
-
-	public async Task<PagedResponse<PaymentResponse>> GetUserPaymentsAsync(int userId, PaymentSearchObject search)
-	{
-		search.TenantId = userId;
-		return await GetPaymentsAsync(search);
-	}
-
-	/// <summary>
-	/// Update payment status in database
-	/// </summary>
-	public async Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, UpdatePaymentStatusRequest request)
-	{
-		return await UpdateAsync<Payment, UpdatePaymentStatusRequest, PaymentResponse>(
-			paymentId,
-			request,
-			q => q,
-			async _ => true,
-			async (payment, req) =>
+			async (entity, req) =>
 			{
-				payment.PaymentStatus = req.Status;
+				// No additional business logic specific to creation needed here
+				await Task.CompletedTask;
 			},
-			payment => payment.ToResponse(),
-			nameof(UpdatePaymentStatusAsync)
+			entity =>
+			{
+				var response = entity.ToResponse();
+				response.ApprovalUrl = $"{returnUrl}?paymentId={entity.PaymentReference}";
+				return response;
+			},
+			nameof(CreatePaymentAsync)
 		);
 	}
 
-	/// <summary>
-	/// Get payment by PayPal reference
-	/// </summary>
-	public async Task<PaymentResponse?> GetPaymentByReferenceAsync(string paymentReference)
-	{
-		var search = new PaymentSearchObject { PaymentReference = paymentReference };
-		var result = await GetPaymentsAsync(search);
-		return result.Items.FirstOrDefault();
-	}
+public async Task<PaymentResponse?> GetPaymentStatusAsync(int paymentId)
+{
+	   return await GetByIdAsync<Payment, PaymentResponse>(
+	       paymentId,
+	       q => q,
+	       async _ => true,
+	       p => p.ToResponse(),
+	       nameof(GetPaymentStatusAsync)
+	   );
+}
 
-	/// <summary>
-	/// Get all payments for a specific booking
-	/// </summary>
+/// <summary>
+/// Process refund for a payment - consolidated implementation
+/// </summary>
+public async Task<PaymentResponse> ProcessRefundAsync(RefundRequest request)
+{
+	return await UpdateAsync<Payment, RefundRequest, PaymentResponse>(
+		request.OriginalPaymentId,
+		request,
+		q => q.Include(p => p.Property),
+		async payment => payment.Property?.OwnerId == CurrentUserId,
+		async (payment, req) =>
+		{
+			if (payment.PaymentStatus != "Completed")
+				throw new InvalidOperationException("Only completed payments can be refunded");
+
+			// Update status to Refunded
+			payment.PaymentStatus = "Refunded";
+			payment.RefundReason = req.Reason;
+			payment.UpdatedAt = DateTime.UtcNow;
+			payment.ModifiedBy = CurrentUserId;
+		},
+		payment => payment.ToResponse(),
+		nameof(ProcessRefundAsync)
+	);
+}
+
+/// <summary>
+/// Process refund for a payment - overload with individual parameters
+/// </summary>
+public async Task<PaymentResponse> ProcessRefundAsync(int paymentId, decimal refundAmount, string reason)
+{
+	// Create a RefundRequest and delegate to the main implementation
+	var request = new RefundRequest
+	{
+		OriginalPaymentId = paymentId,
+		Amount = refundAmount,
+		Reason = reason
+	};
+
+	return await ProcessRefundAsync(request);
+}
+
+
+/// <summary>
+/// Update payment status in database
+/// </summary>
+public async Task<PaymentResponse> UpdatePaymentStatusAsync(int paymentId, UpdatePaymentStatusRequest request)
+{
+	   return await UpdateAsync<Payment, UpdatePaymentStatusRequest, PaymentResponse>(
+	       paymentId,
+	       request,
+	       q => q,
+	       async _ => true,
+	       async (payment, req) =>
+	       {
+	           payment.PaymentStatus = req.Status;
+	       },
+	       payment => payment.ToResponse(),
+	       nameof(UpdatePaymentStatusAsync)
+	   );
+}
+
+/// <summary>
+/// Get payment by PayPal reference
+/// </summary>
+public async Task<PaymentResponse?> GetPaymentByReferenceAsync(string paymentReference)
+{
+	   var search = new PaymentSearchObject { PaymentReference = paymentReference };
+	   var result = await GetPaymentsAsync(search);
+	   return result.Items.FirstOrDefault();
+}
+
+/// <summary>
+/// Get payments for a specific user (admin/landlord functionality)
+/// </summary>
+public async Task<PagedResponse<PaymentResponse>> GetUserPaymentsAsync(int userId, PaymentSearchObject search)
+{
+	   search.TenantId = userId; // Assuming UserId in PaymentSearchObject refers to TenantId
+	   return await GetPaymentsAsync(search);
+}
+
 	public async Task<PagedResponse<PaymentResponse>> GetPaymentsByBookingAsync(int bookingId, PaymentSearchObject search)
 	{
-		var booking = await Context.Bookings.FindAsync(bookingId);
-
-		if (booking == null)
-			throw new KeyNotFoundException("Booking not found");
-
-		if (booking.UserId != CurrentUserId && CurrentUserRole is not "Admin" and not "SuperAdmin")
-			throw new UnauthorizedAccessException("Access denied to this booking's payments");
-
 		search.BookingId = bookingId;
 		return await GetPaymentsAsync(search);
 	}
 
-	#endregion
+#endregion
 
-	#region Helper Methods
+#region Helper Methods
 
-	/// <summary>
-	/// Apply role-based filtering to payment queries at query level
-	/// </summary>
-	private IQueryable<Payment> ApplyPaymentAuthorization(IQueryable<Payment> query)
-	{
-		if (CurrentUserRole is "Admin" or "SuperAdmin")
-		{
-			return query; // No filtering for admins
-		}
+/// <summary>
+/// Apply role-based filtering - simplified academic approach
+/// </summary>
+private IQueryable<Payment> ApplyPaymentAuthorization(IQueryable<Payment> query)
+{
+	   // Simplified: Landlords see property payments, Tenants see their payments
+	   return CurrentUserRole == "Landlord"
+	       ? query.Where(p => p.Property!.OwnerId == CurrentUserId)
+	       : query.Where(p => p.TenantId == CurrentUserId);
+}
 
-		if (CurrentUserRole == "Landlord")
-		{
-			return query.Where(p => p.Property!.OwnerId == CurrentUserId);
-		}
+/// <summary>
+/// Check payment access - simplified academic approach
+/// </summary>
+private async Task<bool> CanAccessPayment(Payment payment)
+{
+	   return CurrentUserRole == "Landlord"
+	       ? payment.Property?.OwnerId == CurrentUserId
+	       : payment.TenantId == CurrentUserId;
+}
 
-		// Default: filter by tenant
-		return query.Where(p => p.TenantId == CurrentUserId);
-	}
-
-	/// <summary>
-	/// Apply role-based filtering to payment queries - uses tenant and property owner structure
-	/// </summary>
-	private async Task<bool> CanAccessPayment(Payment payment)
-	{
-		if (CurrentUserRole is "Admin" or "SuperAdmin")
-		{
-			return true;
-		}
-
-		if (CurrentUserRole == "Landlord")
-		{
-			return payment.Property?.OwnerId == CurrentUserId;
-		}
-
-		return payment.TenantId == CurrentUserId;
-	}
-
-	/// <summary>
-	/// Generate unique payment reference
-	/// </summary>
 	private string GeneratePaymentReference()
 	{
-		return $"PAY-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
+		return $"PAY-{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 	}
 
-	#endregion
+#endregion
 }

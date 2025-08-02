@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
+using eRents.Domain.Models.Enums;
 
 namespace eRents.Domain.Models;
 
@@ -20,7 +21,8 @@ public partial class Booking : BaseEntity
 
     public decimal TotalPrice { get; set; }
 
-    public int BookingStatusId { get; set; }
+    // Replaced BookingStatusId foreign key with enum
+    public BookingStatusEnum Status { get; set; } = BookingStatusEnum.Upcoming;
 
     // Payment Information (Optional - for PayPal tracking)
     public string PaymentMethod { get; set; } = "PayPal";
@@ -35,5 +37,4 @@ public partial class Booking : BaseEntity
     // Navigation Properties
     public virtual Property Property { get; set; } = null!;
     public virtual User User { get; set; } = null!;
-    public virtual BookingStatus BookingStatus { get; set; } = null!;
 }

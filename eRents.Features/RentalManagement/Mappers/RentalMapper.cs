@@ -53,7 +53,7 @@ namespace eRents.Features.RentalManagement.Mappers
 				ProposedMonthlyRent = request.TotalPrice,
 				NumberOfGuests = request.NumberOfGuests,
 				Message = request.SpecialRequests ?? "",
-				Status = "Pending",
+				Status = Domain.Models.Enums.RentalRequestStatusEnum.Pending,
 				CreatedAt = DateTime.UtcNow
 			};
 		}
@@ -77,7 +77,7 @@ namespace eRents.Features.RentalManagement.Mappers
 				UserId = request.UserId,
 				LeaseStartDate = DateOnly.FromDateTime(request.StartDate),
 				LeaseEndDate = DateOnly.FromDateTime(request.EndDate),
-				TenantStatus = "Active",
+				TenantStatus = Domain.Models.Enums.TenantStatusEnum.Active,
 				CreatedAt = DateTime.UtcNow,
 				CreatedBy = createdBy
 			};
@@ -96,7 +96,7 @@ namespace eRents.Features.RentalManagement.Mappers
 				StartDate = tenant.LeaseStartDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.MinValue,
 				EndDate = tenant.LeaseEndDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.MinValue,
 				MonthlyRent = 0, // Tenant entity doesn't have MonthlyRent
-				Status = tenant.TenantStatus ?? "Active",
+				Status = tenant.TenantStatus,
 				CreatedAt = tenant.CreatedAt,
 				IsSuccess = true,
 				Message = "Tenant created successfully"

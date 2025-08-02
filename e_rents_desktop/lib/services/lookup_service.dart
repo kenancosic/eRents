@@ -79,20 +79,6 @@ class LookupService extends ApiService {
     return lookupData.bookingStatuses;
   }
 
-  /// Fetch issue priorities only
-  Future<List<LookupItem>> getIssuePriorities({
-    bool forceRefresh = false,
-  }) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.issuePriorities;
-  }
-
-  /// Fetch issue statuses only
-  Future<List<LookupItem>> getIssueStatuses({bool forceRefresh = false}) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.issueStatuses;
-  }
-
   /// Fetch amenities only
   Future<List<LookupItem>> getAmenities({bool forceRefresh = false}) async {
     final lookupData = await getAllLookupData(forceRefresh: forceRefresh);

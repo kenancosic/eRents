@@ -7,7 +7,7 @@ using System.Net.Mail;
 
 namespace eRents.RabbitMQMicroservice.Services
 {
-	public class SmtpEmailService : IEmailService
+	public class SmtpEmailService : IEmailService, Shared.Services.IEmailService
 	{
 		private readonly IConfiguration _configuration;
 		private readonly ILogger<SmtpEmailService> _logger;

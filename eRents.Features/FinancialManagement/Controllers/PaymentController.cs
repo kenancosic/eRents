@@ -66,51 +66,14 @@ public class PaymentController : BaseController
     }
 
     /// <summary>
-    /// Process payment refund using RefundRequest DTO
-    /// </summary>
-    [HttpPost("refund")]
-    public async Task<ActionResult<PaymentResponse>> ProcessRefund([FromBody] RefundRequest request)
-    {
-    	return await this.CreateAsync<RefundRequest, PaymentResponse>(request, _paymentService.ProcessRefundAsync, _logger, nameof(GetPayment));
-    }
-
-    /// <summary>
-    /// Process payment refund (legacy endpoint)
+    /// Process payment refund
     /// </summary>
     [HttpPost("{id}/refund")]
-    public async Task<IActionResult> ProcessRefund(
-        int id, 
-        [FromBody] RefundRequest request)
+    public async Task<ActionResult<PaymentResponse>> ProcessRefund(int id, [FromBody] RefundRequest request)
     {
-        try
-        {
-            // Use the original payment ID from the route
-            request.OriginalPaymentId = id;
-            
-            var refund = await _paymentService.ProcessRefundAsync(request);
-            return Ok(new { message = "Refund processed successfully", refund });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Forbid();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new { message = "Payment not found" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing refund for payment {PaymentId}", id);
-            return BadRequest(new { message = "Failed to process refund" });
-        }
+        // Set the payment ID from route parameter
+        request.OriginalPaymentId = id;
+        return await this.CreateAsync<RefundRequest, PaymentResponse>(request, _paymentService.ProcessRefundAsync, _logger, nameof(GetPayment));
     }
 
     /// <summary>

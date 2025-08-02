@@ -43,10 +43,14 @@ class _SignupScreenState extends State<SignupScreen> {
         phoneNumber: _phoneController.text,
         password: _passwordController.text,
         confirmPassword: _passwordController.text,
-        dateOfBirth: DateTime.now(),
+        dateOfBirth: DateTime.now().toIso8601String(),
         role: UserType.tenant.name,
       );
-      await authProvider.register(request);
+      final success = await authProvider.register(request);
+      if (success && mounted) {
+        // Navigate to the verification screen
+        context.push('/verification?email=${_emailController.text}');
+      }
     }
   }
 

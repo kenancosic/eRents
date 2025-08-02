@@ -20,32 +20,39 @@ public partial class ERentsContext : DbContext
         _currentUserService = currentUserService;
     }
 
+    // Core Business Logic Tables (12 tables - Academic Optimized)
     public virtual DbSet<Amenity> Amenities { get; set; }
     public virtual DbSet<Booking> Bookings { get; set; }
-    public virtual DbSet<BookingStatus> BookingStatuses { get; set; }
     public virtual DbSet<Image> Images { get; set; }
-    public virtual DbSet<IssuePriority> IssuePriorities { get; set; }
-    public virtual DbSet<IssueStatus> IssueStatuses { get; set; }
     public virtual DbSet<MaintenanceIssue> MaintenanceIssues { get; set; }
     public virtual DbSet<Message> Messages { get; set; }
     public virtual DbSet<Payment> Payments { get; set; }
     public virtual DbSet<Property> Properties { get; set; }
-    public virtual DbSet<PropertyAmenity> PropertyAmenities { get; set; }
-    public virtual DbSet<PropertyStatus> PropertyStatuses { get; set; }
-    public virtual DbSet<PropertyType> PropertyTypes { get; set; }
     public virtual DbSet<RentalRequest> RentalRequests { get; set; }
-    public virtual DbSet<RentingType> RentingTypes { get; set; }
     public virtual DbSet<Review> Reviews { get; set; }
     public virtual DbSet<Tenant> Tenants { get; set; }
     public virtual DbSet<User> Users { get; set; }
-    public virtual DbSet<UserSavedProperty> UserSavedProperties { get; set; }
-    public virtual DbSet<UserType> UserTypes { get; set; }
-    public virtual DbSet<LeaseExtensionRequest> LeaseExtensionRequests { get; set; }
     public virtual DbSet<Notification> Notifications { get; set; }
-    public virtual DbSet<PropertyAvailability> PropertyAvailabilities { get; set; }
-    public virtual DbSet<UserPreferences> UserPreferences { get; set; }
-    public virtual DbSet<TenantPreference> TenantPreferences { get; set; }
-    public virtual DbSet<TenantPreferenceAmenity> TenantPreferenceAmenities { get; set; }
+
+    // Junction Tables (2 tables)
+    public virtual DbSet<PropertyAmenity> PropertyAmenities { get; set; }
+    public virtual DbSet<UserSavedProperty> UserSavedProperties { get; set; }
+
+    // Removed: Reference tables converted to enums (7 tables removed)
+    // - BookingStatuses -> BookingStatusEnum
+    // - PropertyStatuses -> PropertyStatusEnum
+    // - PropertyTypes -> PropertyTypeEnum
+    // - UserTypes -> UserTypeEnum
+    // - RentingTypes -> RentalTypeEnum
+    // - IssuePriorities -> MaintenanceIssuePriorityEnum
+    // - IssueStatuses -> MaintenanceIssueStatusEnum
+
+    // Removed: Over-engineered enterprise features (5 tables removed for academic simplification)
+    // - UserPreferences -> merged into User
+    // - TenantPreferences -> simplified approach
+    // - TenantPreferenceAmenities -> simplified approach
+    // - LeaseExtensionRequest -> basic lease management through Booking/Tenant
+    // - PropertyAvailability -> simple Property.Status enum approach
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -73,6 +80,16 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.FirstName).HasMaxLength(100);
             entity.Property(e => e.LastName).HasMaxLength(100);
 
+            // UserType enum configuration
+            entity.Property(e => e.UserType)
+                .HasConversion<string>()
+                .HasDefaultValue(UserTypeEnum.Guest);
+
+            // Merged UserPreferences fields
+            entity.Property(e => e.Theme).HasMaxLength(20).HasDefaultValue("light");
+            entity.Property(e => e.Language).HasMaxLength(10).HasDefaultValue("en");
+            entity.Property(e => e.NotificationSettings);
+
             entity.OwnsOne(e => e.Address);
 
             entity.HasOne(e => e.ProfileImage)
@@ -87,6 +104,17 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.PropertyId);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+
+            // Enum configurations
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasDefaultValue(PropertyStatusEnum.Available);
+
+            entity.Property(e => e.PropertyType)
+                .HasConversion<string>();
+
+            entity.Property(e => e.RentingType)
+                .HasConversion<string>();
 
             entity.OwnsOne(e => e.Address);
 
@@ -118,6 +146,11 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.BookingId);
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(18, 2)");
 
+            // BookingStatus enum configuration
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasDefaultValue(BookingStatusEnum.Upcoming);
+
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Bookings)
                 .HasForeignKey(e => e.UserId)
@@ -127,10 +160,6 @@ public partial class ERentsContext : DbContext
                 .WithMany(p => p.Bookings)
                 .HasForeignKey(e => e.PropertyId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.BookingStatus)
-                .WithMany(bs => bs.Bookings)
-                .HasForeignKey(e => e.BookingStatusId);
         });
 
         // Review Configuration
@@ -181,6 +210,10 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.TenantId);
 
+            entity.Property(e => e.TenantStatus)
+                .HasConversion<string>()
+                .HasDefaultValue(TenantStatusEnum.Active);
+
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Tenancies)
                 .HasForeignKey(e => e.UserId)
@@ -197,6 +230,15 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.MaintenanceIssueId);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
+
+            // Enum configurations
+            entity.Property(e => e.Priority)
+                .HasConversion<string>()
+                .HasDefaultValue(MaintenanceIssuePriorityEnum.Medium);
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasDefaultValue(MaintenanceIssueStatusEnum.Pending);
 
             entity.HasOne(e => e.ReportedByUser)
                 .WithMany(u => u.ReportedMaintenanceIssues)
@@ -257,50 +299,17 @@ public partial class ERentsContext : DbContext
                 .HasForeignKey(e => e.PropertyId);
         });
 
-        // Seed Data
-        modelBuilder.Entity<BookingStatus>().HasData(
-            new BookingStatus { BookingStatusId = 1, StatusName = "Upcoming" },
-            new BookingStatus { BookingStatusId = 2, StatusName = "Completed" },
-            new BookingStatus { BookingStatusId = 3, StatusName = "Cancelled" },
-            new BookingStatus { BookingStatusId = 4, StatusName = "Active" }
-        );
-        
+        // Amenity Configuration
         modelBuilder.Entity<Amenity>(entity =>
         {
             entity.HasKey(e => e.AmenityId);
             entity.Property(e => e.AmenityName).IsRequired().HasMaxLength(50);
         });
 
-        modelBuilder.Entity<UserType>(entity =>
-        {
-            entity.HasKey(e => e.UserTypeId);
-            entity.Property(e => e.TypeName).IsRequired().HasMaxLength(50);
-        });
+        // Note: Removed seed data for BookingStatus as it's now an enum
+        // Note: Removed UserType configuration as it's now an enum
 
-        modelBuilder.Entity<LeaseExtensionRequest>(entity =>
-        {
-            entity.HasKey(e => e.RequestId);
-            entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
-
-            entity.Property(e => e.LandlordResponse).HasMaxLength(500);
-            entity.Property(e => e.LandlordReason).HasMaxLength(500);
-
-            entity.HasOne(d => d.Booking)
-                .WithMany()
-                .HasForeignKey(d => d.BookingId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(d => d.Property)
-                .WithMany()
-                .HasForeignKey(d => d.PropertyId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(d => d.Tenant)
-                .WithMany()
-                .HasForeignKey(d => d.TenantId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
+        // Note: LeaseExtensionRequest configuration removed - simplified to basic lease management
 
         modelBuilder.Entity<RentalRequest>(entity =>
         {
@@ -312,9 +321,12 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.ProposedStartDate).HasColumnName("proposed_start_date");
             entity.Property(e => e.LeaseDurationMonths).HasColumnName("lease_duration_months");
             entity.Property(e => e.ProposedMonthlyRent).HasColumnType("decimal(10, 2)").HasColumnName("proposed_monthly_rent");
+
             entity.Property(e => e.NumberOfGuests).HasColumnName("number_of_guests");
             entity.Property(e => e.Message).HasMaxLength(1000).HasColumnName("message");
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(50).HasColumnName("status");
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasDefaultValue(RentalRequestStatusEnum.Pending);
             entity.Property(e => e.ResponseDate).HasColumnName("response_date");
             entity.Property(e => e.LandlordResponse).HasMaxLength(1000).HasColumnName("landlord_response");
 
@@ -343,69 +355,23 @@ public partial class ERentsContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<PropertyAvailability>(entity =>
-        {
-            entity.HasKey(e => e.AvailabilityId);
-            entity.Property(e => e.Reason).HasMaxLength(255);
+        // Note: PropertyAvailability configuration removed - simplified to Property.Status enum
 
-            entity.HasOne(d => d.Property)
-                .WithMany()
-                .HasForeignKey(d => d.PropertyId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
+        // Note: Removed configurations for tables converted to enums:
+        // - BookingStatus -> BookingStatusEnum
+        // - IssuePriority -> MaintenanceIssuePriorityEnum
+        // - IssueStatus -> MaintenanceIssueStatusEnum
+        // - PropertyStatus -> PropertyStatusEnum
+        // - PropertyType -> PropertyTypeEnum
+        // - RentingType -> RentalTypeEnum
+        // - UserType -> UserTypeEnum
 
-        modelBuilder.Entity<UserPreferences>(entity =>
-        {
-            entity.HasKey(e => e.UserId);
-            entity.Property(e => e.Theme).HasMaxLength(20).HasDefaultValue("light");
-            entity.Property(e => e.Language).HasMaxLength(10).HasDefaultValue("en");
-
-
-            entity.HasOne(d => d.User)
-                .WithOne()
-                .HasForeignKey<UserPreferences>(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<IssuePriority>(entity =>
-        {
-            entity.HasKey(e => e.PriorityId);
-            entity.Property(e => e.PriorityName).IsRequired().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<IssueStatus>(entity =>
-        {
-            entity.HasKey(e => e.StatusId);
-            entity.Property(e => e.StatusName).IsRequired().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<PropertyStatus>(entity =>
-        {
-            entity.HasKey(e => e.StatusId);
-            entity.Property(e => e.StatusName).IsRequired().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<PropertyType>(entity =>
-        {
-            entity.HasKey(e => e.TypeId);
-            entity.Property(e => e.TypeName).IsRequired().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<RentingType>(entity =>
-        {
-            entity.HasKey(e => e.RentingTypeId);
-            entity.Property(e => e.TypeName).IsRequired().HasMaxLength(50);
-        });
-
-        modelBuilder.Entity<TenantPreference>(entity =>
-        {
-            entity.HasKey(e => e.TenantPreferenceId);
-        });
-
-        modelBuilder.Entity<TenantPreferenceAmenity>(entity =>
-        {
-            entity.HasKey(e => new { e.TenantPreferenceId, e.AmenityId });
-        });
+        // Note: Removed configurations for over-engineered enterprise features:
+        // - UserPreferences -> merged into User table
+        // - TenantPreference -> simplified approach
+        // - TenantPreferenceAmenity -> simplified approach
+        // - LeaseExtensionRequest -> basic lease management through Booking/Tenant
+        // - PropertyAvailability -> simple Property.Status enum approach
 
         OnModelCreatingPartial(modelBuilder);
     }

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/features/reports/widgets/report_table.dart';
 import 'package:e_rents_desktop/widgets/filters/report_filters.dart';
-import 'package:e_rents_desktop/features/reports/widgets/export_options.dart';
 import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-import 'package:flutter/services.dart';
 import 'package:e_rents_desktop/utils/logger.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -19,7 +16,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    // Load reports data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isAuthenticated) {
@@ -36,7 +32,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget build(BuildContext context) {
     return Consumer2<ReportsProvider, AuthProvider>(
       builder: (context, reportsProvider, authProvider, _) {
-        // If not authenticated, show login prompt
         if (!authProvider.isAuthenticated) {
           return const Center(
             child: Column(
@@ -50,234 +45,93 @@ class _ReportsScreenState extends State<ReportsScreen> {
           );
         }
 
-        return _ReportsScreenContent(reportsProvider: reportsProvider);
+        return _FinancialReportContent(reportsProvider: reportsProvider);
       },
     );
   }
 }
 
-class _ReportsScreenContent extends StatelessWidget {
+class _FinancialReportContent extends StatelessWidget {
   final ReportsProvider reportsProvider;
 
-  const _ReportsScreenContent({required this.reportsProvider});
-
-  void _showExportResult(
-    BuildContext context,
-    String filePath,
-    String message,
-  ) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(message),
-                  Text(
-                    'Saved to: $filePath',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: filePath));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Path copied to clipboard'),
-                    duration: Duration(seconds: 1),
-                  ),
-                );
-              },
-              child: const Text('Copy Path'),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showError(BuildContext context, String error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text('Export failed: $error')),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _handleExportPDF(BuildContext context) async {
-    try {
-      final filePath = await reportsProvider.exportReport('pdf');
-      if (!context.mounted) return;
-
-      if (filePath != null) {
-        _showExportResult(
-          context,
-          filePath,
-          'PDF file exported and opened with system viewer',
-        );
-      } else {
-        _showError(context, 'Export failed - no file generated');
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      _showError(context, e.toString());
-    }
-  }
-
-  Future<void> _handleExportExcel(BuildContext context) async {
-    try {
-      final filePath = await reportsProvider.exportReport('excel');
-      if (!context.mounted) return;
-
-      if (filePath != null) {
-        _showExportResult(
-          context,
-          filePath,
-          'Excel file exported and opened with system viewer',
-        );
-      } else {
-        _showError(context, 'Export failed - no file generated');
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      _showError(context, e.toString());
-    }
-  }
-
-  Future<void> _handleExportCSV(BuildContext context) async {
-    try {
-      final filePath = await reportsProvider.exportReport('csv');
-      if (!context.mounted) return;
-
-      if (filePath != null) {
-        _showExportResult(
-          context,
-          filePath,
-          'CSV file exported and opened with system viewer',
-        );
-      } else {
-        _showError(context, 'Export failed - no file generated');
-      }
-    } catch (e) {
-      if (!context.mounted) return;
-      _showError(context, e.toString());
-    }
-  }
+  const _FinancialReportContent({required this.reportsProvider});
 
   void _handleDateRangeChanged(
     BuildContext context,
     DateTime start,
     DateTime end,
   ) {
-    // setDateRange automatically triggers data loading via onDateRangeChanged
-    // No need to call loadCurrentReportData() separately
     reportsProvider.setDateRange(start, end);
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<String> reportTypes = ["Financial Report", "Tenant Report"];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header section with title and report type selector
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(13), // 0.05 opacity
-                offset: const Offset(0, 2),
-                blurRadius: 5,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const Text(
-                'Report Type:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 240,
-                child: DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                  ),
-                  value:
-                      reportsProvider.currentReportType == ReportType.financial
-                          ? "Financial Report"
-                          : "Tenant Report",
-                  items:
-                      reportTypes.map((String type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
-                        );
-                      }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      final reportType =
-                          newValue == "Financial Report"
-                              ? ReportType.financial
-                              : ReportType.tenant;
-                      reportsProvider.setReportType(reportType);
-                    }
-                  },
-                ),
-              ),
-              const Spacer(),
-              ExportOptions(
-                onExportPDF: () => _handleExportPDF(context),
-                onExportExcel: () => _handleExportExcel(context),
-                onExportCSV: () => _handleExportCSV(context),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
         // Filters section
-        ReportFilters(
-          onDateRangeChanged:
-              (start, end) => _handleDateRangeChanged(context, start, end),
-          onPropertyFilterChanged: (selectedProps) {
-            // TODO: Implement property filter logic if needed by reports
-            log.info('Property filter changed: $selectedProps');
-          },
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ReportFilters(
+            onDateRangeChanged:
+                (start, end) => _handleDateRangeChanged(context, start, end),
+            onPropertyFilterChanged: (selectedProps) {
+              log.info('Property filter changed (not implemented for simplified report): $selectedProps');
+            },
+          ),
         ),
 
         const SizedBox(height: 16),
 
         // Report data table section
-        const Expanded(child: ReportTable()),
+        Expanded(
+          child: Builder(
+            builder: (context) {
+              if (reportsProvider.isLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (reportsProvider.error != null) {
+                return Center(child: Text('Error: ${reportsProvider.error}'));
+              }
+              if (reportsProvider.financialReports.isEmpty) {
+                return const Center(child: Text('No financial data found for the selected period.'));
+              }
+
+              final List<DataColumn> columns = [
+                const DataColumn(label: Text('Date From')),
+                const DataColumn(label: Text('Date To')),
+                const DataColumn(label: Text('Property')),
+                const DataColumn(label: Text('Total Rent')),
+                const DataColumn(label: Text('Maintenance Costs')),
+                const DataColumn(label: Text('Net Total')),
+              ];
+
+              final List<DataRow> rows = reportsProvider.financialReports.map((item) {
+                return DataRow(cells: [
+                  DataCell(Text(item['dateFrom']?.toString().split('T')[0] ?? 'N/A')),
+                  DataCell(Text(item['dateTo']?.toString().split('T')[0] ?? 'N/A')),
+                  DataCell(Text(item['property'] ?? 'N/A')),
+                  DataCell(Text(item['totalRent']?.toStringAsFixed(2) ?? '0.00')),
+                  DataCell(Text(item['maintenanceCosts']?.toStringAsFixed(2) ?? '0.00')),
+                  DataCell(Text(item['total']?.toStringAsFixed(2) ?? '0.00')),
+                ]);
+              }).toList();
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: columns,
+                  rows: rows,
+                  headingRowColor: MaterialStateProperty.resolveWith((states) => Colors.grey[200]),
+                  dataRowColor: MaterialStateProperty.resolveWith((states) => Colors.white),
+                  columnSpacing: 24,
+                  horizontalMargin: 24,
+                  border: TableBorder.all(color: Colors.grey[300]!),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }

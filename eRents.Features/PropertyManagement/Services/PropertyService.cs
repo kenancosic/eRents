@@ -1,9 +1,9 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using eRents.Domain.Shared;
 using eRents.Features.PropertyManagement.DTOs;
 using eRents.Features.PropertyManagement.Mappers;
 using eRents.Features.Shared.DTOs;
-using eRents.Domain.Models.Enums;
 using eRents.Features.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,23 +17,15 @@ namespace eRents.Features.PropertyManagement.Services;
 /// Uses ERentsContext directly (no repository layer)
 /// Implements all PropertyManagement business logic
 /// </summary>
-public class PropertyService : IPropertyManagementService
+public class PropertyService : BaseService, IPropertyManagementService
 {
-	private readonly ERentsContext _context;
-	private readonly IUnitOfWork _unitOfWork;
-	private readonly ICurrentUserService _currentUserService;
-	private readonly ILogger<PropertyService> _logger;
-
 	public PropertyService(
 			ERentsContext context,
 			IUnitOfWork unitOfWork,
 			ICurrentUserService currentUserService,
 			ILogger<PropertyService> logger)
+		: base(context, unitOfWork, currentUserService, logger)
 	{
-		_context = context;
-		_unitOfWork = unitOfWork;
-		_currentUserService = currentUserService;
-		_logger = logger;
 	}
 
 	#region Core CRUD Operations
@@ -43,31 +35,17 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<PropertyResponse?> GetPropertyByIdAsync(int propertyId)
 	{
-		try
-		{
-			var property = await _context.Properties
-					.Include(p => p.Images)
-					.Include(p => p.Amenities)
-					.Include(p => p.Address)
-					.Include(p => p.PropertyType)
-					.Include(p => p.RentingType)
-					.Include(p => p.Owner)
-					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-
-			if (property == null)
-				return null;
-
-			// Apply role-based filtering
-			if (!await CanAccessPropertyAsync(property))
-				throw new UnauthorizedAccessException("Access denied to this property");
-
-			return property.ToPropertyResponse();
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting property {PropertyId}", propertyId);
-			throw;
-		}
+		return await GetByIdAsync<Property, PropertyResponse>(
+			propertyId,
+			query => query
+				.Include(p => p.Images)
+				.Include(p => p.Amenities)
+				.Include(p => p.Address)
+				.Include(p => p.Owner),
+			async property => await CanAccessPropertyAsync(property),
+			property => property.ToPropertyResponse(),
+			nameof(GetPropertyByIdAsync)
+		);
 	}
 
 	/// <summary>
@@ -76,45 +54,17 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<PagedResponse<PropertyResponse>> GetPropertiesAsync(PropertySearchObject search)
 	{
-		try
-		{
-			search ??= new PropertySearchObject();
-
-			var query = _context.Properties.AsQueryable();
-
-			// Apply role-based filtering
-			query = ApplyRoleBasedFiltering(query);
-
-			// Apply includes based on search parameters
-			query = ApplyIncludes(query, search);
-
-			// Apply all search filters
-			query = ApplySearchFilters(query, search);
-
-			// Get total count
-			var totalCount = await query.CountAsync();
-
-			// Apply sorting
-			query = ApplySorting(query, search);
-
-			// Apply pagination
-			var items = await query
-					.Skip((search.PageNumber - 1) * search.PageSizeValue)
-					.Take(search.PageSizeValue)
-					.AsNoTracking()
-					.ToListAsync();
-
-			return new PagedResponse<PropertyResponse>(
-					items.Select(p => p.ToPropertyResponse()).ToList(),
-					search.PageNumber,
-					search.PageSizeValue,
-					totalCount);
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error getting properties with search filters");
-			throw;
-		}
+		search ??= new PropertySearchObject();
+		
+		return await GetPagedAsync<Property, PropertyResponse, PropertySearchObject>(
+			search,
+			(query, searchObj) => ApplyIncludes(query, searchObj),
+			query => ApplyRoleBasedFiltering(query),
+			(query, searchObj) => ApplySearchFilters(query, searchObj),
+			(query, searchObj) => ApplySorting(query, searchObj),
+			property => property.ToPropertyResponse(),
+			nameof(GetPropertiesAsync)
+		);
 	}
 
 	/// <summary>
@@ -122,44 +72,31 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<PropertyResponse> CreatePropertyAsync(PropertyRequest request)
 	{
-		try
-		{
-			return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-			{
-				var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
+		return await CreateAsync<Property, PropertyRequest, PropertyResponse>(
+			request,
+			req => {
+				var property = req.ToEntity();
+				property.OwnerId = CurrentUserId;
+				property.Status = PropertyStatusEnum.Available;
+				return property;
+			},
+			async (property, req) => {
 				// Validate request
-				await ValidatePropertyRequestAsync(request);
-
-				// Create property entity
-				var property = request.ToEntity();
-				property.OwnerId = currentUserId;
-				property.Status = "Available";
+				await ValidatePropertyRequestAsync(req);
 
 				// Handle amenities if provided
-				if (request.AmenityIds?.Any() == true)
+				if (req.AmenityIds?.Any() == true)
 				{
-					var amenities = await _context.Amenities
-										.Where(a => request.AmenityIds.Contains(a.AmenityId))
+					var amenities = await Context.Amenities
+										.Where(a => req.AmenityIds.Contains(a.AmenityId))
 										.ToListAsync();
 
 					property.Amenities = amenities;
 				}
-
-				_context.Properties.Add(property);
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Property {PropertyId} created by user {UserId}",
-									property.PropertyId, currentUserId);
-
-				return property.ToPropertyResponse();
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error creating property");
-			throw;
-		}
+			},
+			property => property.ToPropertyResponse(),
+			nameof(CreatePropertyAsync)
+		);
 	}
 
 	/// <summary>
@@ -167,68 +104,54 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<PropertyResponse> UpdatePropertyAsync(int propertyId, PropertyRequest request)
 	{
-		try
-		{
-			return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-			{
-				var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-				var property = await _context.Properties
-									.Include(p => p.Amenities)
-									.Include(p => p.Address)
-									.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-
-				if (property == null)
-					throw new NotFoundException("Property not found");
-
+		return await UpdateAsync<Property, PropertyRequest, PropertyResponse>(
+			propertyId,
+			request,
+			query => query.Include(p => p.Amenities).Include(p => p.Address),
+			async property => {
 				// Authorization check
-				if (property.OwnerId != currentUserId && !IsLandlord())
-					throw new UnauthorizedAccessException("You don't have permission to update this property");
-
+				if (property.OwnerId != CurrentUserId && !IsLandlord())
+					return false;
+				return true;
+			},
+			async (property, req) => {
 				// Validate request
-				await ValidatePropertyRequestAsync(request);
+				await ValidatePropertyRequestAsync(req);
 
 				// Update property using mapper
-				request.UpdateEntity(property);
+				req.UpdateEntity(property);
 
 				// Handle amenities update
-				if (request.AmenityIds != null)
+				if (req.AmenityIds != null)
 				{
 					// Clear existing amenities
 					property.Amenities.Clear();
 
 					// Add new amenities
-					if (request.AmenityIds.Any())
+					if (req.AmenityIds.Any())
 					{
-						var amenities = await _context.Amenities
-											.Where(a => request.AmenityIds.Contains(a.AmenityId))
+						var amenities = await Context.Amenities
+											.Where(a => req.AmenityIds.Contains(a.AmenityId))
 											.ToListAsync();
 
 						property.Amenities = amenities;
 					}
 				}
 
+				// Handle concurrency conflicts
 				try
 				{
-					await _unitOfWork.SaveChangesAsync();
+					await Task.CompletedTask; // BaseService will handle SaveChanges
 				}
 				catch (DbUpdateConcurrencyException ex)
 				{
-					_logger.LogWarning(ex, "Concurrency conflict for Property {PropertyId}", propertyId);
+					LogWarning("Concurrency conflict for Property {PropertyId}", propertyId);
 					throw new ConcurrencyException("Property", propertyId, "The property has been updated by another user.", ex);
 				}
-
-				_logger.LogInformation("Property {PropertyId} updated by user {UserId}",
-									propertyId, currentUserId);
-
-				return property.ToPropertyResponse();
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error updating property {PropertyId}", propertyId);
-			throw;
-		}
+			},
+			property => property.ToPropertyResponse(),
+			nameof(UpdatePropertyAsync)
+		);
 	}
 
 	/// <summary>
@@ -236,46 +159,28 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<bool> DeletePropertyAsync(int propertyId)
 	{
-		try
-		{
-			return await _unitOfWork.ExecuteInTransactionAsync(async () =>
-			{
-				var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-				var property = await _context.Properties
-									.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-
-				if (property == null)
-					return false;
-
+		await DeleteAsync<Property>(
+			propertyId,
+			async property => {
 				// Authorization check
-				if (property.OwnerId != currentUserId && !IsLandlord())
-					throw new UnauthorizedAccessException("You don't have permission to delete this property");
+				if (property.OwnerId != CurrentUserId && !IsLandlord())
+					return false;
 
 				// Check for active bookings
 				var today = DateOnly.FromDateTime(DateTime.Now);
-				var hasActiveBookings = await _context.Bookings
+				var hasActiveBookings = await Context.Bookings
 									.AnyAsync(b => b.PropertyId == propertyId &&
-																b.BookingStatus.StatusName == "Confirmed" &&
+																b.Status == BookingStatusEnum.Active &&
 																b.EndDate > today);
 
 				if (hasActiveBookings)
 					throw new InvalidOperationException("Cannot delete property with active bookings");
 
-				_context.Properties.Remove(property);
-				await _context.SaveChangesAsync();
-
-				_logger.LogInformation("Property {PropertyId} deleted by user {UserId}",
-									propertyId, currentUserId);
-
 				return true;
-			});
-		}
-		catch (Exception ex)
-		{
-			_logger.LogError(ex, "Error deleting property {PropertyId}", propertyId);
-			throw;
-		}
+			},
+			nameof(DeletePropertyAsync)
+		);
+		return true;
 	}
 
 	#endregion
@@ -285,37 +190,38 @@ public class PropertyService : IPropertyManagementService
 	/// <summary>
 	/// Update property status
 	/// </summary>
-	public async Task UpdateStatusAsync(int propertyId, PropertyStatusEnum status)
+	public async Task UpdateStatusAsync(int propertyId, int statusId)
 	{
 		try
 		{
-			await _unitOfWork.ExecuteInTransactionAsync(async () =>
+			await UnitOfWork.ExecuteInTransactionAsync(async () =>
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-				var property = await _context.Properties
+				var property = await Context.Properties
 									.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 				if (property == null)
 					throw new NotFoundException("Property not found");
 
 				// Authorization check
-				if (property.OwnerId != currentUserId && !IsLandlord())
+				if (property.OwnerId != CurrentUserId && !IsLandlord())
 					throw new UnauthorizedAccessException("You don't have permission to update this property status");
 
-				property.Status = status.ToString();
-				property.ModifiedBy = _currentUserService.GetUserIdAsInt() ?? 0;
+	   if (!Enum.IsDefined(typeof(PropertyStatusEnum), statusId))
+	    throw new ArgumentException("Invalid status provided");
+
+	   property.Status = (PropertyStatusEnum)statusId;
+				property.ModifiedBy = CurrentUserId;
 				property.UpdatedAt = DateTime.UtcNow;
 
-				await _context.SaveChangesAsync();
+				await Context.SaveChangesAsync();
 
-				_logger.LogInformation("Property {PropertyId} status updated to {Status} by user {UserId}",
-									propertyId, status, currentUserId);
+				LogInfo("Property {PropertyId} status updated to {Status} by user {UserId}",
+									propertyId, (PropertyStatusEnum)statusId, CurrentUserId);
 			});
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error updating property {PropertyId} status", propertyId);
+			LogError(ex, "Error updating property {PropertyId} status", propertyId);
 			throw;
 		}
 	}
@@ -329,13 +235,21 @@ public class PropertyService : IPropertyManagementService
 		{
 			search ??= new PropertySearchObject();
 
-			var query = _context.Properties.AsQueryable();
+			var query = Context.Properties.AsQueryable();
 
 			// Apply role-based filtering
 			query = ApplyRoleBasedFiltering(query);
 
 			// Filter by rental type
-			query = query.Where(p => p.RentingType.TypeName.ToLower() == rentalType.ToLower());
+			if (Enum.TryParse<RentalType>(rentalType, true, out var rentalTypeEnum))
+			{
+				query = query.Where(p => p.RentingType == rentalTypeEnum);
+			}
+			else
+			{
+				// If invalid enum value, return no results
+				query = query.Where(p => false);
+			}
 
 			// Apply includes
 			query = ApplyIncludes(query, search);
@@ -364,7 +278,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting properties by rental type {RentalType}", rentalType);
+			LogError(ex, "Error getting properties by rental type {RentalType}", rentalType);
 			throw;
 		}
 	}
@@ -377,12 +291,11 @@ public class PropertyService : IPropertyManagementService
 		try
 		{
 			search ??= new PropertySearchObject();
-			var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
 
-			var query = _context.Properties.AsQueryable();
+			var query = Context.Properties.AsQueryable();
 
 			// Filter by current user ownership
-			query = query.Where(p => p.OwnerId == currentUserId);
+			query = query.Where(p => p.OwnerId == CurrentUserId);
 
 			// Apply includes
 			query = ApplyIncludes(query, search);
@@ -411,7 +324,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting current user's properties");
+			LogError(ex, "Error getting current user's properties");
 			throw;
 		}
 	}
@@ -423,7 +336,7 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var property = await _context.Properties
+			var property = await Context.Properties
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 			if (property == null)
@@ -438,9 +351,9 @@ public class PropertyService : IPropertyManagementService
 				var endDate = DateOnly.FromDateTime(end.Value);
 
 				// Check for conflicting bookings
-				var hasConflict = await _context.Bookings
+				var hasConflict = await Context.Bookings
 						.AnyAsync(b => b.PropertyId == propertyId &&
-													b.BookingStatus.StatusName != "Cancelled" &&
+													b.Status != BookingStatusEnum.Cancelled &&
 													b.StartDate < endDate &&
 													b.EndDate > startDate);
 
@@ -458,7 +371,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking availability for property {PropertyId}", propertyId);
+			LogError(ex, "Error checking availability for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -470,16 +383,16 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var property = await _context.Properties
+			var property = await Context.Properties
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 			return property != null &&
-						 property.Status == "Available" &&
+						 property.Status == PropertyStatusEnum.Available &&
 						 !property.RequiresApproval;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking if property {PropertyId} can accept bookings", propertyId);
+			LogError(ex, "Error checking if property {PropertyId} can accept bookings", propertyId);
 			throw;
 		}
 	}
@@ -491,14 +404,14 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var property = await _context.Properties
+			var property = await Context.Properties
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
-			return property != null && property.Status == "Available";
+			return property != null && property.Status == PropertyStatusEnum.Available;
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking if property {PropertyId} is visible in market", propertyId);
+			LogError(ex, "Error checking if property {PropertyId} is visible in market", propertyId);
 			throw;
 		}
 	}
@@ -511,15 +424,15 @@ public class PropertyService : IPropertyManagementService
 		try
 		{
 			var today = DateOnly.FromDateTime(DateTime.Now);
-			return await _context.Tenants
+			return await Context.Tenants
 					.AnyAsync(t => t.PropertyId == propertyId &&
-												(t.TenantStatus == "Active" || t.TenantStatus == "Current") &&
+												(t.TenantStatus == TenantStatusEnum.Active || t.TenantStatus == TenantStatusEnum.Active) &&
 												t.LeaseStartDate.HasValue &&
 												t.LeaseStartDate <= today);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking if property {PropertyId} has active annual tenant", propertyId);
+			LogError(ex, "Error checking if property {PropertyId} has active annual tenant", propertyId);
 			throw;
 		}
 	}
@@ -540,7 +453,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error searching properties");
+			LogError(ex, "Error searching properties");
 			throw;
 		}
 	}
@@ -552,8 +465,8 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var query = _context.Properties
-					.Where(p => p.Status == "Available");
+			var query = Context.Properties
+					.Where(p => p.Status == PropertyStatusEnum.Available);
 
 			query = ApplyRoleBasedFiltering(query);
 
@@ -570,7 +483,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving popular properties");
+			LogError(ex, "Error retrieving popular properties");
 			throw;
 		}
 	}
@@ -580,29 +493,27 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	public async Task<bool> SavePropertyAsync(int propertyId, int userId)
 	{
-		return await _unitOfWork.ExecuteInTransactionAsync(async () =>
+		return await UnitOfWork.ExecuteInTransactionAsync(async () =>
 		{
 			try
 			{
-				var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
 				// Use provided userId or default to current user
-				var targetUserId = userId > 0 ? userId : currentUserId;
+				var targetUserId = userId > 0 ? userId : CurrentUserId;
 
 				// Check if property exists
-				var property = await _context.Properties
+				var property = await Context.Properties
 								.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 				if (property == null)
 					throw new KeyNotFoundException($"Property with ID {propertyId} not found");
 
 				// Check if property is already saved by user
-				var existingSave = await _context.UserSavedProperties
+				var existingSave = await Context.UserSavedProperties
 								.FirstOrDefaultAsync(usp => usp.UserId == targetUserId && usp.PropertyId == propertyId);
 
 				if (existingSave != null)
 				{
-					_logger.LogInformation("Property {PropertyId} already saved by user {UserId}", propertyId, targetUserId);
+					LogInfo("Property {PropertyId} already saved by user {UserId}", propertyId, targetUserId);
 					return false; // Already saved
 				}
 
@@ -612,20 +523,20 @@ public class PropertyService : IPropertyManagementService
 					UserId = targetUserId,
 					PropertyId = propertyId,
 					CreatedAt = DateTime.UtcNow,
-					CreatedBy = currentUserId,
-					ModifiedBy = currentUserId,
+					CreatedBy = CurrentUserId,
+					ModifiedBy = CurrentUserId,
 					UpdatedAt = DateTime.UtcNow
 				};
 
-				_context.UserSavedProperties.Add(savedProperty);
-				await _context.SaveChangesAsync();
+				Context.UserSavedProperties.Add(savedProperty);
+				await Context.SaveChangesAsync();
 
-				_logger.LogInformation("Property {PropertyId} saved successfully by user {UserId}", propertyId, targetUserId);
+				LogInfo("Property {PropertyId} saved successfully by user {UserId}", propertyId, targetUserId);
 				return true;
 			}
 			catch (Exception ex)
 			{
-				_logger.LogError(ex, "Error saving property {PropertyId} for user {UserId}", propertyId, userId);
+				LogError(ex, "Error saving property {PropertyId} for user {UserId}", propertyId, userId);
 				throw;
 			}
 		});
@@ -638,30 +549,36 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var property = await _context.Properties
-					.Include(p => p.RentingType)
-					.Include(p => p.Bookings.Where(b => b.BookingStatus.StatusName != "Cancelled"))
+			var property = await Context.Properties
+					.Include(p => p.Bookings.Where(b => b.Status != BookingStatusEnum.Cancelled))
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 			if (property == null)
 				return false;
 
 			// Check if property is available status
-			if (property.Status != "Available")
+			if (property.Status != PropertyStatusEnum.Available)
 				return false;
 
 			// Check if property supports the requested rental type
-			if (property.RentingType?.TypeName != rentalType)
-				return false;
+			if (Enum.TryParse<RentalType>(rentalType, true, out var rentalTypeEnum))
+			{
+				if (property.RentingType != rentalTypeEnum)
+					return false;
+			}
+			else
+			{
+				return false; // Invalid rental type
+			}
 
 			// If no date range specified, property is available for the rental type
 			if (!startDate.HasValue || !endDate.HasValue)
 				return true;
 
 			// Check for conflicting bookings in the date range
-			var hasConflicts = await _context.Bookings
+			var hasConflicts = await Context.Bookings
 					.AnyAsync(b => b.PropertyId == propertyId &&
-												b.BookingStatus.StatusName != "Cancelled" &&
+												b.Status != BookingStatusEnum.Cancelled &&
 												b.StartDate < endDate.Value &&
 												(b.EndDate == null || b.EndDate > startDate.Value));
 
@@ -669,7 +586,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error checking property availability for rental type. PropertyId: {PropertyId}, RentalType: {RentalType}",
+			LogError(ex, "Error checking property availability for rental type. PropertyId: {PropertyId}, RentalType: {RentalType}",
 					propertyId, rentalType);
 			throw;
 		}
@@ -682,18 +599,17 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var property = await _context.Properties
-					.Include(p => p.RentingType)
+			var property = await Context.Properties
 					.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
 			if (property == null)
 				throw new KeyNotFoundException($"Property with ID {propertyId} not found");
 
-			return property.RentingType?.TypeName ?? "Unknown";
+			return property.RentingType?.ToString() ?? "Unknown";
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error getting rental type for property {PropertyId}", propertyId);
+			LogError(ex, "Error getting rental type for property {PropertyId}", propertyId);
 			throw;
 		}
 	}
@@ -705,11 +621,21 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var query = _context.Properties
-					.Include(p => p.RentingType)
-					.Where(p => p.Status == "Available" &&
-										 p.RentingType != null &&
-										 p.RentingType.TypeName == rentalType);
+			var query = Context.Properties.AsQueryable();
+
+			// Filter by rental type
+			if (Enum.TryParse<RentalType>(rentalType, true, out var rentalTypeEnumResult))
+			{
+				query = query.Where(p => p.RentingType == rentalTypeEnumResult);
+			}
+			else
+			{
+				// If invalid enum value, return no results
+				query = query.Where(p => false);
+			}
+
+			// Filter by status (available)
+			query = query.Where(p => p.Status == PropertyStatusEnum.Available);
 
 			query = ApplyRoleBasedFiltering(query);
 
@@ -729,7 +655,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving available properties for rental type {RentalType}", rentalType);
+			LogError(ex, "Error retrieving available properties for rental type {RentalType}", rentalType);
 			throw;
 		}
 	}
@@ -741,9 +667,17 @@ public class PropertyService : IPropertyManagementService
 	{
 		try
 		{
-			var query = _context.Properties
-					.Include(p => p.RentingType)
-					.Where(p => p.RentingType != null && p.RentingType.TypeName == rentalType);
+			var query = Context.Properties.AsQueryable();
+			
+			if (Enum.TryParse<RentalType>(rentalType, true, out var rentalTypeEnum))
+			{
+				query = query.Where(p => p.RentingType == rentalTypeEnum);
+			}
+			else
+			{
+				// If invalid enum value, return no results
+				query = query.Where(p => false);
+			}
 
 			query = ApplyRoleBasedFiltering(query);
 
@@ -763,7 +697,7 @@ public class PropertyService : IPropertyManagementService
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Error retrieving properties by rental type {RentalType}", rentalType);
+			LogError(ex, "Error retrieving properties by rental type {RentalType}", rentalType);
 			throw;
 		}
 	}
@@ -777,13 +711,12 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	private IQueryable<Property> ApplyRoleBasedFiltering(IQueryable<Property> query)
 	{
-		var currentUserRole = _currentUserService.UserRole;
-		var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
+		var currentUserRole = CurrentUserRole;
 
 		return currentUserRole switch
 		{
-			"Landlord" => query.Where(p => p.OwnerId == currentUserId),
-			"Tenant" or "User" => query.Where(p => p.Status == "Available"),
+			"Landlord" => query.Where(p => p.OwnerId == CurrentUserId),
+			"Tenant" or "User" => query.Where(p => p.Status == PropertyStatusEnum.Available),
 			_ => query.Where(p => false) // Deny access for unknown roles
 		};
 	}
@@ -795,9 +728,7 @@ public class PropertyService : IPropertyManagementService
 	{
 		// Always include basic relations
 		query = query
-				.Include(p => p.Address)
-				.Include(p => p.PropertyType)
-				.Include(p => p.RentingType);
+				.Include(p => p.Address);
 
 		if (search.IncludeImages)
 			query = query.Include(p => p.Images);
@@ -826,8 +757,11 @@ public class PropertyService : IPropertyManagementService
 		if (!string.IsNullOrEmpty(search.Description))
 			query = query.Where(p => p.Description != null && p.Description.Contains(search.Description));
 
-		if (!string.IsNullOrEmpty(search.Status))
-			query = query.Where(p => p.Status == search.Status);
+		if (!string.IsNullOrEmpty(search.GenericStatusString))
+		{
+			if (Enum.TryParse<PropertyStatusEnum>(search.GenericStatusString, true, out var statusEnum))
+				query = query.Where(p => p.Status == statusEnum);
+		}
 
 		if (!string.IsNullOrEmpty(search.Currency))
 			query = query.Where(p => p.Currency == search.Currency);
@@ -837,10 +771,16 @@ public class PropertyService : IPropertyManagementService
 			query = query.Where(p => p.OwnerId == search.OwnerId.Value);
 
 		if (search.PropertyTypeId.HasValue)
-			query = query.Where(p => p.PropertyTypeId == search.PropertyTypeId.Value);
+		{
+			if (Enum.IsDefined(typeof(PropertyTypeEnum), search.PropertyTypeId.Value))
+				query = query.Where(p => p.PropertyType == (PropertyTypeEnum)search.PropertyTypeId.Value);
+		}
 
 		if (search.RentingTypeId.HasValue)
-			query = query.Where(p => p.RentingTypeId == search.RentingTypeId.Value);
+		{
+			if (Enum.IsDefined(typeof(RentalType), search.RentingTypeId.Value))
+				query = query.Where(p => p.RentingType == (RentalType)search.RentingTypeId.Value);
+		}
 
 		// Numeric filters
 		if (search.Bedrooms.HasValue)
@@ -898,7 +838,7 @@ public class PropertyService : IPropertyManagementService
 			var toDate = DateOnly.FromDateTime(search.AvailableTo.Value);
 
 			query = query.Where(p => !p.Bookings.Any(b =>
-					b.BookingStatus.StatusName != "Cancelled" &&
+					b.Status != BookingStatusEnum.Cancelled &&
 					b.StartDate < toDate && b.EndDate > fromDate));
 		}
 
@@ -935,13 +875,10 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	private async Task<bool> CanAccessPropertyAsync(Property property)
 	{
-		var currentUserRole = _currentUserService.UserRole;
-		var currentUserId = _currentUserService.GetUserIdAsInt() ?? throw new UnauthorizedAccessException("User not authenticated");
-
-		return currentUserRole switch
+		return CurrentUserRole switch
 		{
-			"Landlord" => property.OwnerId == currentUserId,
-			"Tenant" or "User" => property.Status == "Available",
+			"Landlord" => property.OwnerId == CurrentUserId,
+			"Tenant" or "User" => property.Status == PropertyStatusEnum.Available,
 			_ => false
 		};
 	}
@@ -959,25 +896,20 @@ public class PropertyService : IPropertyManagementService
 
 		if (request.PropertyTypeId.HasValue)
 		{
-			var propertyTypeExists = await _context.PropertyTypes
-					.AnyAsync(pt => pt.TypeId == request.PropertyTypeId.Value);
-
-			if (!propertyTypeExists)
+			if (!Enum.IsDefined(typeof(PropertyTypeEnum), request.PropertyTypeId.Value))
 				throw new ArgumentException($"PropertyTypeId {request.PropertyTypeId.Value} does not exist");
 		}
 
 		if (request.RentingTypeId.HasValue)
 		{
-			var rentingTypeExists = await _context.RentingTypes
-					.AnyAsync(rt => rt.RentingTypeId == request.RentingTypeId.Value);
-
-			if (!rentingTypeExists)
+			// Validate against RentalType instead of database table
+			if (!Enum.IsDefined(typeof(RentalType), request.RentingTypeId.Value))
 				throw new ArgumentException($"RentingTypeId {request.RentingTypeId.Value} does not exist");
 		}
 
 		if (request.AmenityIds?.Any() == true)
 		{
-			var validAmenityCount = await _context.Amenities
+			var validAmenityCount = await Context.Amenities
 					.CountAsync(a => request.AmenityIds.Contains(a.AmenityId));
 
 			if (validAmenityCount != request.AmenityIds.Count)
@@ -990,9 +922,435 @@ public class PropertyService : IPropertyManagementService
 	/// </summary>
 	private bool IsLandlord()
 	{
-		var role = _currentUserService.UserRole;
-		return role == "Landlord";
+		return CurrentUserRole == "Landlord";
 	}
+
+	#endregion
+
+	#region Maintenance Management Operations
+
+	/// <summary>
+	/// Get maintenance issue by ID
+	/// </summary>
+	public async Task<MaintenanceIssueResponse?> GetMaintenanceIssueByIdAsync(int id)
+	{
+		return await GetByIdAsync<MaintenanceIssue, MaintenanceIssueResponse>(
+			id,
+			q => q.Include(m => m.Property).AsNoTracking(),
+			async issue => await CanAccessMaintenanceIssueAsync(issue),
+			issue => issue.ToResponse(),
+			"GetMaintenanceIssueById"
+		);
+	}
+
+	/// <summary>
+	/// Get maintenance issues for current user with filtering
+	/// </summary>
+	public async Task<List<MaintenanceIssueResponse>> GetUserMaintenanceIssuesAsync(
+			int? propertyId = null,
+			string? status = null,
+			string? priority = null,
+			DateTime? startDate = null,
+			DateTime? endDate = null)
+	{
+		try
+		{
+			var query = Context.MaintenanceIssues
+					.Where(m => m.Property.OwnerId == CurrentUserId || m.AssignedToUserId == CurrentUserId);
+
+			// Apply filters
+			if (propertyId.HasValue)
+				query = query.Where(m => m.PropertyId == propertyId.Value);
+
+			if (!string.IsNullOrEmpty(status))
+			{
+				if (Enum.TryParse<MaintenanceIssueStatusEnum>(status, true, out var statusEnum))
+					query = query.Where(m => m.Status == statusEnum);
+			}
+
+			if (!string.IsNullOrEmpty(priority))
+			{
+				if (Enum.TryParse<MaintenanceIssuePriorityEnum>(priority, true, out var priorityEnum))
+					query = query.Where(m => m.Priority == priorityEnum);
+			}
+
+			if (startDate.HasValue)
+				query = query.Where(m => m.CreatedAt >= startDate.Value);
+
+			if (endDate.HasValue)
+				query = query.Where(m => m.CreatedAt <= endDate.Value);
+
+			var issues = await query
+					.Include(m => m.Property)
+					.OrderByDescending(m => m.CreatedAt)
+					.AsNoTracking()
+					.ToListAsync();
+
+			return issues.ToResponseList();
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving user maintenance issues");
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Get maintenance issues for specific property
+	/// </summary>
+	public async Task<List<MaintenanceIssueResponse>> GetPropertyMaintenanceIssuesAsync(int propertyId)
+	{
+		try
+		{
+			// Verify property ownership
+			var property = await Context.Properties
+					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
+
+			if (property == null)
+				throw new UnauthorizedAccessException("Property not found or access denied");
+
+			var issues = await Context.MaintenanceIssues
+					.Where(m => m.PropertyId == propertyId)
+					.OrderByDescending(m => m.CreatedAt)
+					.AsNoTracking()
+					.ToListAsync();
+
+			return issues.ToResponseList();
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving maintenance issues for property {PropertyId}", propertyId);
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Create new maintenance issue
+	/// </summary>
+	public async Task<MaintenanceIssueResponse> CreateMaintenanceIssueAsync(MaintenanceIssueRequest request)
+	{
+		return await CreateAsync<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse>(
+			request,
+			req => req.ToEntity(CurrentUserId),
+			async (entity, req) => await ValidatePropertyOwnershipForMaintenanceAsync(req.PropertyId),
+			entity => entity.ToResponse(),
+			"CreateMaintenanceIssue"
+		);
+	}
+
+	/// <summary>
+	/// Update existing maintenance issue
+	/// </summary>
+	public async Task<MaintenanceIssueResponse> UpdateMaintenanceIssueAsync(int id, MaintenanceIssueRequest request)
+	{
+		return await UpdateAsync<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse>(
+			id,
+			request,
+			q => q.Include(m => m.Property),
+			async issue => await CanUpdateMaintenanceIssueAsync(issue),
+			async (entity, req) => {
+				entity.UpdateFromRequest(req);
+				await Task.CompletedTask;
+			},
+			entity => entity.ToResponse(),
+			"UpdateMaintenanceIssue"
+		);
+	}
+
+	/// <summary>
+	/// Update maintenance issue status
+	/// </summary>
+	public async Task UpdateMaintenanceStatusAsync(int id, MaintenanceStatusUpdateRequest request)
+	{
+		try
+		{
+			var issue = await Context.MaintenanceIssues
+					.Include(m => m.Property)
+					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == id);
+
+			if (issue == null)
+				throw new ArgumentException("Maintenance issue not found");
+
+			// Verify access rights - owner or assigned user can update status
+			if (issue.Property.OwnerId != CurrentUserId && issue.AssignedToUserId != CurrentUserId)
+				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
+
+			issue.UpdateStatusFromRequest(request);
+
+			await UnitOfWork.SaveChangesAsync();
+
+			LogInfo("Updated maintenance issue {IssueId} status to {Status}", id, request.Status);
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error updating maintenance issue {IssueId} status", id);
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Delete maintenance issue
+	/// </summary>
+	public async Task DeleteMaintenanceIssueAsync(int id)
+	{
+		await DeleteAsync<MaintenanceIssue>(
+			id,
+			async issue => {
+				await Context.Entry(issue).Reference(m => m.Property).LoadAsync();
+				return await CanDeleteMaintenanceIssueAsync(issue);
+			},
+			"DeleteMaintenanceIssue"
+		);
+	}
+
+	/// <summary>
+	/// Get maintenance statistics for current user
+	/// </summary>
+	public async Task<MaintenanceStatisticsResponse> GetMaintenanceStatisticsAsync()
+	{
+		try
+		{
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
+					.Select(p => p.PropertyId)
+					.ToListAsync();
+
+			var issues = await Context.MaintenanceIssues
+					.Where(m => userPropertyIds.Contains(m.PropertyId))
+					.AsNoTracking()
+					.ToListAsync();
+
+			var totalIssues = issues.Count;
+			var pendingIssues = issues.Count(i => i.Status == MaintenanceIssueStatusEnum.Pending);
+			var inProgressIssues = issues.Count(i => i.Status == MaintenanceIssueStatusEnum.InProgress);
+			var completedIssues = issues.Count(i => i.Status == MaintenanceIssueStatusEnum.Completed);
+			var highPriorityIssues = issues.Count(i => i.Priority == MaintenanceIssuePriorityEnum.High);
+			var emergencyIssues = issues.Count(i => i.Priority == MaintenanceIssuePriorityEnum.Emergency);
+			var totalCosts = issues.Where(i => i.Cost.HasValue).Sum(i => i.Cost!.Value);
+
+			// Calculate average resolution days for completed issues
+			var completedWithDates = issues.Where(i => i.Status == MaintenanceIssueStatusEnum.Completed && i.ResolvedAt.HasValue).ToList();
+			var averageResolutionDays = completedWithDates.Any()
+					? completedWithDates.Average(i => (i.ResolvedAt!.Value - i.CreatedAt).TotalDays)
+					: 0;
+
+			var tenantComplaints = issues.Count(i => i.IsTenantComplaint);
+			var issuesRequiringInspection = issues.Count(i => i.RequiresInspection);
+			var oldestPendingIssue = issues.Where(i => i.Status == MaintenanceIssueStatusEnum.Pending).OrderBy(i => i.CreatedAt).FirstOrDefault()?.CreatedAt;
+
+			return MaintenanceMapper.ToStatisticsResponse(
+					totalIssues, pendingIssues, inProgressIssues, completedIssues, highPriorityIssues, emergencyIssues,
+					totalCosts, averageResolutionDays, tenantComplaints, issuesRequiringInspection, oldestPendingIssue);
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving maintenance statistics");
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Get maintenance summary for specific property
+	/// </summary>
+	public async Task<PropertyMaintenanceSummaryResponse> GetPropertyMaintenanceSummaryAsync(int propertyId)
+	{
+		try
+		{
+			// Verify property ownership
+			var property = await Context.Properties
+					.FirstOrDefaultAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
+
+			if (property == null)
+				throw new UnauthorizedAccessException("Property not found or access denied");
+
+			var issues = await Context.MaintenanceIssues
+					.Where(m => m.PropertyId == propertyId)
+					.AsNoTracking()
+					.ToListAsync();
+
+			var totalIssues = issues.Count;
+			var pendingIssues = issues.Count(i => i.Status == MaintenanceIssueStatusEnum.Pending);
+			var totalCosts = issues.Where(i => i.Cost.HasValue).Sum(i => i.Cost!.Value);
+			var lastResolvedDate = issues.Where(i => i.ResolvedAt.HasValue).OrderByDescending(i => i.ResolvedAt).FirstOrDefault()?.ResolvedAt;
+			var tenantComplaints = issues.Count(i => i.IsTenantComplaint);
+			var issuesRequiringInspection = issues.Count(i => i.RequiresInspection);
+
+			return MaintenanceMapper.ToPropertySummaryResponse(
+					propertyId, totalIssues, pendingIssues, totalCosts, lastResolvedDate, tenantComplaints, issuesRequiringInspection);
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving maintenance summary for property {PropertyId}", propertyId);
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Get overdue maintenance issues (pending issues older than 7 days)
+	/// </summary>
+	public async Task<List<MaintenanceIssueResponse>> GetOverdueMaintenanceIssuesAsync()
+	{
+		try
+		{
+			var overdueThreshold = DateTime.UtcNow.AddDays(-7);
+
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
+					.Select(p => p.PropertyId)
+					.ToListAsync();
+
+			var overdueIssues = await Context.MaintenanceIssues
+					.Where(m => userPropertyIds.Contains(m.PropertyId) &&
+										 m.Status == MaintenanceIssueStatusEnum.Pending &&
+										 m.CreatedAt < overdueThreshold)
+					.OrderBy(m => m.CreatedAt)
+					.AsNoTracking()
+					.ToListAsync();
+
+			return overdueIssues.ToResponseList();
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving overdue maintenance issues");
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Get recent maintenance issues (last 7 days)
+	/// </summary>
+	public async Task<List<MaintenanceIssueResponse>> GetUpcomingMaintenanceAsync(int days = 7)
+	{
+		try
+		{
+			var recentThreshold = DateTime.UtcNow.AddDays(-days);
+
+			var userPropertyIds = await Context.Properties
+					.Where(p => p.OwnerId == CurrentUserId)
+					.Select(p => p.PropertyId)
+					.ToListAsync();
+
+			var recentIssues = await Context.MaintenanceIssues
+					.Where(m => userPropertyIds.Contains(m.PropertyId) &&
+										 m.CreatedAt >= recentThreshold)
+					.OrderByDescending(m => m.CreatedAt)
+					.AsNoTracking()
+					.ToListAsync();
+
+			return recentIssues.ToResponseList();
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving recent maintenance issues");
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Assign maintenance issue to user
+	/// </summary>
+	public async Task AssignMaintenanceIssueAsync(int issueId, int assignedToUserId)
+	{
+		try
+		{
+			var issue = await Context.MaintenanceIssues
+					.Include(m => m.Property)
+					.FirstOrDefaultAsync(m => m.MaintenanceIssueId == issueId);
+
+			if (issue == null)
+				throw new ArgumentException("Maintenance issue not found");
+
+			// Verify property ownership
+			if (issue.Property.OwnerId != CurrentUserId)
+				throw new UnauthorizedAccessException("Access denied to this maintenance issue");
+
+			// Verify assigned user exists
+			var assignedUser = await Context.Users.FirstOrDefaultAsync(u => u.UserId == assignedToUserId);
+			if (assignedUser == null)
+				throw new ArgumentException("Assigned user not found");
+
+			issue.AssignedToUserId = assignedToUserId;
+
+			await UnitOfWork.SaveChangesAsync();
+
+			LogInfo("Assigned maintenance issue {IssueId} to user {UserId}", issueId, assignedToUserId);
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error assigning maintenance issue {IssueId}", issueId);
+			throw;
+		}
+	}
+
+	/// <summary>
+	/// Get maintenance issues assigned to current user
+	/// </summary>
+	public async Task<List<MaintenanceIssueResponse>> GetAssignedMaintenanceIssuesAsync()
+	{
+		try
+		{
+			var assignedIssues = await Context.MaintenanceIssues
+					.Where(m => m.AssignedToUserId == CurrentUserId)
+					.Include(m => m.Property)
+					.OrderByDescending(m => m.CreatedAt)
+					.AsNoTracking()
+					.ToListAsync();
+
+			return assignedIssues.ToResponseList();
+		}
+		catch (Exception ex)
+		{
+			LogError(ex, "Error retrieving assigned maintenance issues");
+			throw;
+		}
+	}
+
+	#endregion
+
+	#region Maintenance Helper Methods
+
+	/// <summary>
+	/// Check if current user can access the maintenance issue
+	/// </summary>
+	private async Task<bool> CanAccessMaintenanceIssueAsync(MaintenanceIssue issue)
+	{
+		// User must own the property or be assigned to the issue
+		return issue.Property.OwnerId == CurrentUserId || issue.AssignedToUserId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Check if current user can update the maintenance issue
+	/// </summary>
+	private async Task<bool> CanUpdateMaintenanceIssueAsync(MaintenanceIssue issue)
+	{
+		// Only property owner can update issues
+		return issue.Property.OwnerId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Check if current user can delete the maintenance issue
+	/// </summary>
+	private async Task<bool> CanDeleteMaintenanceIssueAsync(MaintenanceIssue issue)
+	{
+		// Only property owner can delete issues
+		return issue.Property.OwnerId == CurrentUserId;
+	}
+
+	/// <summary>
+	/// Validate that current user owns the specified property for maintenance
+	/// </summary>
+	private async Task ValidatePropertyOwnershipForMaintenanceAsync(int propertyId)
+	{
+		var exists = await Context.Properties
+			.AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == CurrentUserId);
+		
+		if (!exists)
+			throw new UnauthorizedAccessException("Property not found or access denied");
+	}
+
+	/// <summary>
+	/// Get status ID from status name
+	/// </summary>
 
 	#endregion
 }

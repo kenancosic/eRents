@@ -1,16 +1,14 @@
 namespace eRents.Domain.Models.Enums
 {
     /// <summary>
-    /// Enum for booking status values, matching the database BookingStatus table.
+    /// Enum for booking status values, replacing the BookingStatus table.
+    /// Matches the seeded values in ERentsContext.
     /// </summary>
     public enum BookingStatusEnum
     {
-        Pending = 1,
-        Confirmed = 2,
+        Upcoming = 1,
+        Completed = 2,
         Cancelled = 3,
-        Completed = 4,
-        Failed = 5,
-        Upcoming = 6,
-        Active = 7
+        Active = 4
     }
 } 

@@ -5,7 +5,6 @@ class Message {
   final String messageText;
   final DateTime dateSent;
   final bool isRead;
-  final bool isDeleted;
 
   // Fields from other entities - use "EntityName + FieldName" pattern
   final String? userFirstNameSender; // Sender's first name
@@ -20,7 +19,6 @@ class Message {
     required this.messageText,
     required this.dateSent,
     this.isRead = false,
-    this.isDeleted = false,
     this.userFirstNameSender,
     this.userLastNameSender,
     this.userFirstNameReceiver,
@@ -35,7 +33,6 @@ class Message {
       messageText: json['messageText'] as String,
       dateSent: DateTime.parse(json['dateSent'] as String),
       isRead: json['isRead'] as bool? ?? false,
-      isDeleted: json['isDeleted'] as bool? ?? false,
       // Fields from other entities - use "EntityName + FieldName" pattern
       userFirstNameSender: json['userFirstNameSender'] as String?,
       userLastNameSender: json['userLastNameSender'] as String?,
@@ -52,7 +49,6 @@ class Message {
       'messageText': messageText,
       'dateSent': dateSent.toIso8601String(),
       'isRead': isRead,
-      'isDeleted': isDeleted,
     };
   }
 
@@ -63,7 +59,6 @@ class Message {
     String? messageText,
     DateTime? dateSent,
     bool? isRead,
-    bool? isDeleted,
     String? userFirstNameSender,
     String? userLastNameSender,
     String? userFirstNameReceiver,
@@ -76,7 +71,6 @@ class Message {
       messageText: messageText ?? this.messageText,
       dateSent: dateSent ?? this.dateSent,
       isRead: isRead ?? this.isRead,
-      isDeleted: isDeleted ?? this.isDeleted,
       userFirstNameSender: userFirstNameSender ?? this.userFirstNameSender,
       userLastNameSender: userLastNameSender ?? this.userLastNameSender,
       userFirstNameReceiver:

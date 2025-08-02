@@ -24,17 +24,14 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  // Initialize the AppRouter
-  final AppRouter _appRouter = AppRouter();
-
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     // Create shared service instances
     final secureStorageService = SecureStorageService();
     final apiService = ApiService(
-      dotenv.env['BASE_URL'] ?? 'http://localhost:8080',
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8080',
       secureStorageService,
     );
     
@@ -97,22 +94,27 @@ class MyApp extends StatelessWidget {
         // detailProvider.loadItem(propertyId.toString());
       ],
       child: Builder(
-        builder: (context) => Stack(
-          children: [
-            MaterialApp.router(
-              title: 'eRents',
-              theme: appTheme,
-              routerConfig: _appRouter.router,
-              debugShowCheckedModeBanner: false,
-              builder: (context, child) => Stack(
-                children: [
-                  child!,
-                  const GlobalErrorDialog(),
-                ],
+        builder: (context) {
+          final authProvider = context.watch<AuthProvider>();
+          final appRouter = AppRouter(authProvider);
+          return Stack(
+            textDirection: TextDirection.ltr,
+            children: [
+              MaterialApp.router(
+                title: 'eRents',
+                theme: appTheme,
+                routerConfig: appRouter.router,
+                debugShowCheckedModeBanner: false,
+                builder: (context, child) => Stack(
+                  children: [
+                    child!,
+                    const GlobalErrorDialog(),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
+using eRents.Domain.Models.Enums;
 
 namespace eRents.Domain.Models;
 
@@ -22,9 +23,8 @@ public partial class User : BaseEntity
 
 	public Address? Address { get; set; }
 
-	public int? UserTypeId { get; set; }
-
-	public virtual UserType? UserTypeNavigation { get; set; }
+	// Replaced UserTypeId foreign key with enum
+	public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;
 
 	public string? PhoneNumber { get; set; }
 
@@ -44,6 +44,13 @@ public partial class User : BaseEntity
 
 	public DateOnly? DateOfBirth { get; set; }
 
+	// Merged UserPreferences fields directly into User
+	public string Theme { get; set; } = "light";  // 'light', 'dark'
+
+	public string Language { get; set; } = "en";  // ISO language code
+
+	public string? NotificationSettings { get; set; }  // JSON string for notification preferences
+
 	public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
 	public virtual ICollection<Message> MessageReceivers { get; set; } = new List<Message>();
@@ -55,8 +62,6 @@ public partial class User : BaseEntity
 	public virtual ICollection<MaintenanceIssue> AssignedMaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
 
 	public virtual ICollection<MaintenanceIssue> ReportedMaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
-
-	public virtual ICollection<TenantPreference> TenantPreferences { get; set; } = new List<TenantPreference>();
 
 	public virtual ICollection<UserSavedProperty> UserSavedProperties { get; set; } = new List<UserSavedProperty>();
 

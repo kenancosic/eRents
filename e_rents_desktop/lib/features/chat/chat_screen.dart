@@ -85,27 +85,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _deleteMessage(BuildContext context, Message message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Message'),
-        content: const Text('Are you sure you want to delete this message?'),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.pop();
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _selectContact(BuildContext context, int contactId) {
     Provider.of<ChatProvider>(context, listen: false).selectContact(contactId);
@@ -259,7 +238,6 @@ class _ChatScreenState extends State<ChatScreen> {
                                   return ChatMessageBubble(
                                     message: message,
                                     isMe: isMe,
-                                    onDelete: isMe && !message.isDeleted ? () => _deleteMessage(context, message) : null,
                                   );
                                 },
                               ),

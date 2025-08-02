@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using eRents.Domain.Models.Enums;
 using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
@@ -16,13 +17,11 @@ public partial class Tenant : BaseEntity
 
     public DateOnly? LeaseEndDate { get; set; }
 
-    public string? TenantStatus { get; set; }
+    public TenantStatusEnum TenantStatus { get; set; } = TenantStatusEnum.Active;
 
     public virtual User User { get; set; } = null!;
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual Property? Property { get; set; }
-
-    public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
 }

@@ -1,4 +1,5 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using eRents.Features.PropertyManagement.DTOs;
 
 namespace eRents.Features.PropertyManagement.Mappers;
@@ -19,11 +20,11 @@ public static class PropertyMapper
             Price = property.Price,
             Currency = property.Currency,
             Facilities = property.Facilities,
-            Status = property.Status,
+            Status = property.Status.ToString(),
             DateAdded = property.CreatedAt,
             OwnerId = property.OwnerId,
-            PropertyTypeId = property.PropertyTypeId,
-            RentingTypeId = property.RentingTypeId,
+            PropertyTypeId = (int)property.PropertyType,
+            RentingTypeId = (int)property.RentingType,
             Bedrooms = property.Bedrooms,
             Bathrooms = property.Bathrooms,
             Area = property.Area,
@@ -47,8 +48,8 @@ public static class PropertyMapper
             OwnerName = property.Owner != null 
                 ? $"{property.Owner.FirstName} {property.Owner.LastName}".Trim() 
                 : null,
-            PropertyTypeName = property.PropertyType?.TypeName,
-            RentingTypeName = property.RentingType?.TypeName,
+            PropertyTypeName = property.PropertyType?.ToString(),
+            RentingTypeName = property.RentingType?.ToString(),
             ImageIds = property.Images?.Select(i => i.ImageId).ToList(),
             AmenityIds = property.Amenities?.Select(a => a.AmenityId).ToList()
         };
@@ -66,8 +67,8 @@ public static class PropertyMapper
             Price = request.Price,
             Currency = request.Currency,
             Facilities = request.Facilities,
-            PropertyTypeId = request.PropertyTypeId,
-            RentingTypeId = request.RentingTypeId,
+            PropertyType = (PropertyTypeEnum)request.PropertyTypeId,
+            RentingType = (RentalType)request.RentingTypeId,
             Bedrooms = request.Bedrooms,
             Bathrooms = request.Bathrooms,
             Area = request.Area,
@@ -87,7 +88,7 @@ public static class PropertyMapper
             ),
             
             CreatedAt = DateTime.UtcNow,
-            Status = "Available"  // Default status
+            Status = PropertyStatusEnum.Available  // Default status
             // OwnerId will be set by service layer from current user
         };
     }
@@ -102,8 +103,8 @@ public static class PropertyMapper
         property.Price = request.Price;
         property.Currency = request.Currency;
         property.Facilities = request.Facilities;
-        property.PropertyTypeId = request.PropertyTypeId;
-        property.RentingTypeId = request.RentingTypeId;
+        property.PropertyType = (PropertyTypeEnum)request.PropertyTypeId;
+        property.RentingType = (RentalType)request.RentingTypeId;
         property.Bedrooms = request.Bedrooms;
         property.Bathrooms = request.Bathrooms;
         property.Area = request.Area;
@@ -144,10 +145,10 @@ public static class PropertyMapper
             property.Facilities = request.Facilities;
             
         if (request.PropertyTypeId.HasValue)
-            property.PropertyTypeId = request.PropertyTypeId;
+            property.PropertyType = (PropertyTypeEnum)request.PropertyTypeId;
             
         if (request.RentingTypeId.HasValue)
-            property.RentingTypeId = request.RentingTypeId;
+            property.RentingType = (RentalType)request.RentingTypeId;
             
         if (request.Bedrooms.HasValue)
             property.Bedrooms = request.Bedrooms;
@@ -204,9 +205,9 @@ public static class PropertyMapper
             Currency = property.Currency,
             LocationString = property.Address?.GetLocationString() ?? string.Empty,
             DateAdded = property.CreatedAt,
-            Status = property.Status,
-            PropertyTypeId = property.PropertyTypeId,
-            RentingTypeId = property.RentingTypeId,
+            Status = property.Status.ToString(),
+            PropertyTypeId = (int)property.PropertyType,
+            RentingTypeId = (int)property.RentingType,
             // CoverImageId and AverageRating would be populated by service layer if needed
         };
     }

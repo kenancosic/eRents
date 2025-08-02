@@ -4,6 +4,7 @@ using eRents.Domain.Shared;
 using eRents.WebApi.Data.Seeding;
 using eRents.WebApi.Extensions;
 using eRents.WebAPI.Filters;
+using eRents.WebApi.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using eRents.RabbitMQMicroservice.Services;
@@ -18,6 +19,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
+	.AddApplicationPart(typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly)
 	.AddJsonOptions(options =>
 	{
 		// Configure JSON serialization to use camelCase and be case-insensitive
@@ -66,6 +68,13 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+	c.SwaggerDoc("v1", new OpenApiInfo
+	{
+		Title = "eRents API",
+		Version = "v1",
+		Description = "eRents Property Management System API"
+	});
+
 	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
 	{
 		Type = SecuritySchemeType.Http,
@@ -73,18 +82,13 @@ builder.Services.AddSwaggerGen(c =>
 		BearerFormat = "JWT",
 		In = ParameterLocation.Header,
 		Name = "Authorization",
-		Description = "Enter JWT token"
+		Description = "Enter JWT token for endpoints that require authentication"
 	});
-	c.AddSecurityRequirement(new OpenApiSecurityRequirement
-		{
-				{
-						new OpenApiSecurityScheme
-						{
-								Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer"}
-						},
-						new string[]{}
-				}
-		});
+
+	// Add operation filter to apply security requirements only to endpoints that need it
+	c.OperationFilter<SecurityRequirementsOperationFilter>();
+	
+	c.DescribeAllParametersInCamelCase();
 });
 
 // Configure eRents services using the new modular architecture
@@ -118,14 +122,14 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 	try
 	{
 		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-		var logger = scope.ServiceProvider.GetService<ILogger<SetupServiceNew>>();
-		var setupService = new SetupServiceNew(logger);
+		var logger = scope.ServiceProvider.GetService<ILogger<AcademicDataSeeder>>();
+		var seeder = new AcademicDataSeeder(logger);
 
-		await setupService.InitAsync(context);
+		await seeder.InitAsync(context);
 
 		// Configuration-based seeding: only force seed in development or when explicitly configured
 		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", app.Environment.IsDevelopment());
-		await setupService.InsertDataAsync(context, forceSeed);
+		await seeder.SeedAcademicDataAsync(context, forceSeed);
 	}
 	catch (Exception ex)
 	{

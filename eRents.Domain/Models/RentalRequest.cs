@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using eRents.Domain.Models.Enums;
 using eRents.Domain.Shared;
 
 namespace eRents.Domain.Models;
@@ -25,8 +26,7 @@ public partial class RentalRequest : BaseEntity
 
     public string? Message { get; set; }
 
-    [Required]
-    public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected
+    public RentalRequestStatusEnum Status { get; set; } = RentalRequestStatusEnum.Pending;
 
     public DateTime? ResponseDate { get; set; }
 

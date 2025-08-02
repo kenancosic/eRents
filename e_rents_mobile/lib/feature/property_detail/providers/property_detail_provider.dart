@@ -95,7 +95,8 @@ class PropertyDetailProvider extends BaseProvider {
     await executeWithCache(
       'property_$propertyId',
       () async {
-        _property = await api.getPropertyById(propertyId);
+        final response = await api.get('/properties/$propertyId', authenticated: true);
+        _property = Property.fromJson(jsonDecode(response.body));
         
         if (_property != null) {
           // Fetch related data in parallel
@@ -120,12 +121,14 @@ class PropertyDetailProvider extends BaseProvider {
     if (_property == null) return;
     
     try {
-      _similarProperties = await api.searchProperties({
+      final response = await api.get('/properties/search', customHeaders: {
         'propertyTypeId': _property!.propertyTypeId.toString(),
         'minPrice': (_property!.price * 0.8).toString(),
         'maxPrice': (_property!.price * 1.2).toString(),
         'exclude': _property!.propertyId.toString(),
-      });
+      }, authenticated: true);
+      final data = jsonDecode(response.body)['items'] as List;
+      _similarProperties = data.map((p) => Property.fromJson(p)).toList();
     } catch (e) {
       debugPrint('Failed to load similar properties: $e');
     }
@@ -137,10 +140,12 @@ class PropertyDetailProvider extends BaseProvider {
     if (_property?.ownerId == null) return;
     
     try {
-      _ownerProperties = await api.searchProperties({
+      final response = await api.get('/properties/search', customHeaders: {
         'ownerId': _property!.ownerId.toString(),
         'exclude': _property!.propertyId.toString(),
-      });
+      }, authenticated: true);
+       final data = jsonDecode(response.body)['items'] as List;
+      _ownerProperties = data.map((p) => Property.fromJson(p)).toList();
     } catch (e) {
       debugPrint('Failed to load owner properties: $e');
     }
@@ -150,7 +155,8 @@ class PropertyDetailProvider extends BaseProvider {
   /// Fetch booking details
   Future<void> fetchBookingDetails(String bookingId) async {
     try {
-      _booking = await api.getBookingById(bookingId);
+      final response = await api.get('/bookings/$bookingId', authenticated: true);
+      _booking = Booking.fromJson(jsonDecode(response.body));
     } catch (e) {
       debugPrint('Failed to fetch booking details: $e');
     }
@@ -162,7 +168,9 @@ class PropertyDetailProvider extends BaseProvider {
   Future<void> loadPropertyCollection({Map<String, dynamic>? filters, bool forceRefresh = false}) async {
     setLoading(true);
     try {
-      _propertyCollection = await api.searchProperties(filters ?? {});
+      final response = await api.get('/properties/search', customHeaders: filters?.map((key, value) => MapEntry(key, value.toString())), authenticated: true);
+      final data = jsonDecode(response.body)['items'] as List;
+      _propertyCollection = data.map((p) => Property.fromJson(p)).toList();
       _applyPropertySearchAndFilters();
     } catch (e) {
       setError('Failed to load properties: $e');
@@ -207,7 +215,9 @@ class PropertyDetailProvider extends BaseProvider {
     await executeWithCache(
       'reviews_$propertyId',
       () async {
-        _allReviews = await api.getReviewsForProperty(propertyId);
+        final response = await api.get('/reviews/property/$propertyId', authenticated: true);
+        final data = jsonDecode(response.body) as List;
+        _allReviews = data.map((r) => Review.fromJson(r)).toList();
         _reviews = List.from(_allReviews);
         _applyReviewSearchAndFilters();
         notifyListeners();
@@ -222,12 +232,14 @@ class PropertyDetailProvider extends BaseProvider {
   Future<bool> addReview(String propertyId, String comment, double rating) async {
     setLoading(true);
     try {
-      final newReview = await api.createReview(propertyId, comment, rating);
+      final response = await api.post('/reviews', {'propertyId': propertyId, 'comment': comment, 'rating': rating}, authenticated: true);
+      final newReview = Review.fromJson(jsonDecode(response.body));
       _allReviews.insert(0, newReview);
       _applyReviewSearchAndFilters();
       
       // Optionally, refetch property to update average rating
-      _property = await api.getPropertyById(propertyId);
+      final propResponse = await api.get('/properties/$propertyId', authenticated: true);
+      _property = Property.fromJson(jsonDecode(propResponse.body));
       return true;
     } catch (e) {
       setError('Failed to add review: $e');
@@ -317,7 +329,9 @@ class PropertyDetailProvider extends BaseProvider {
     await executeWithCache(
       'maintenance_$propertyId',
       () async {
-        _allMaintenanceIssues = await api.getMaintenanceIssuesForProperty(propertyId);
+        final response = await api.get('/maintenance/property/$propertyId', authenticated: true);
+        final data = jsonDecode(response.body) as List;
+        _allMaintenanceIssues = data.map((i) => MaintenanceIssue.fromJson(i)).toList();
         _maintenanceIssues = List.from(_allMaintenanceIssues);
         _applyMaintenanceSearchAndFilters();
         notifyListeners();
@@ -332,7 +346,8 @@ class PropertyDetailProvider extends BaseProvider {
   Future<bool> reportMaintenanceIssue(String propertyId, String title, String description) async {
     setLoading(true);
     try {
-      final newIssue = await api.createMaintenanceIssue(propertyId, title, description);
+      final response = await api.post('/maintenance', {'propertyId': propertyId, 'title': title, 'description': description}, authenticated: true);
+      final newIssue = MaintenanceIssue.fromJson(jsonDecode(response.body));
       _allMaintenanceIssues.insert(0, newIssue);
       _applyMaintenanceSearchAndFilters();
       return true;
@@ -349,10 +364,11 @@ class PropertyDetailProvider extends BaseProvider {
     setLoading(true);
     try {
       // Use existing API method to update the issue
-      final updatedIssue = await api.updateMaintenanceIssue(issueId, {
+      final response = await api.put('/maintenance/$issueId', {
         'status': newStatus.toString().split('.').last,
         'statusId': _getStatusId(newStatus),
-      });
+      }, authenticated: true);
+      final updatedIssue = MaintenanceIssue.fromJson(jsonDecode(response.body));
       final index = _allMaintenanceIssues.indexWhere((issue) => issue.maintenanceIssueId.toString() == issueId);
       if (index != -1) {
         _allMaintenanceIssues[index] = updatedIssue;

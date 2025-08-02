@@ -1,5 +1,7 @@
 import 'package:e_rents_desktop/models/auth/login_request_model.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
+import 'package:e_rents_desktop/models/auth/forgot_password_request_model.dart';
+import 'package:e_rents_desktop/models/auth/reset_password_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/secure_storage_service.dart';
@@ -18,8 +20,6 @@ import 'package:e_rents_desktop/base/app_error.dart';
 class AuthProvider extends BaseProvider {
   final SecureStorageService _storage;
   
-  static const String _userCacheKey = 'current_user';
-  static const Duration _userCacheTtl = Duration(minutes: 30);
 
   AuthProvider({
     required ApiService apiService, 
@@ -31,13 +31,11 @@ class AuthProvider extends BaseProvider {
   // ─── State ──────────────────────────────────────────────────────────────
   User? _currentUser;
   bool _isAuthenticated = false;
-  bool _rememberMe = false;
   bool _emailSent = false;
 
   // ─── Getters ────────────────────────────────────────────────────────────
   User? get currentUser => _currentUser;
   bool get isAuthenticated => _isAuthenticated;
-  bool get rememberMe => _rememberMe;
   bool get emailSent => _emailSent;
 
   // ─── Initialization ────────────────────────────────────────────────────
@@ -52,33 +50,6 @@ class AuthProvider extends BaseProvider {
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
-  /// Set remember me preference
-  void setRememberMe(bool? value) {
-    _rememberMe = value ?? false;
-    notifyListeners();
-  }
-
-  /// Load remembered credentials
-  Future<String?> loadRememberedCredentials() async {
-    final rememberedEmail = await _storage.getData('remembered_email');
-    if (rememberedEmail != null) {
-      _rememberMe = true;
-      notifyListeners();
-    }
-    return rememberedEmail;
-  }
-
-  /// Send forgot password email
-  Future<bool> forgotPassword(String email) async {
-    _emailSent = false;
-    
-    final success = await executeWithStateForSuccess(() async {
-      await api.postJson('api/Auth/forgot-password', {'email': email});
-      _emailSent = true;
-    });
-    
-    return success;
-  }
 
   /// Login user with email and password
   Future<bool> login(String email, String password) async {
@@ -92,23 +63,79 @@ class AuthProvider extends BaseProvider {
       await _storage.storeToken(token);
       await _loadMe();
 
-      // Check if user is landlord (desktop app restriction)
-      if (_currentUser?.role != UserType.landlord) {
-        await logout();
-        throw AppError(
-          type: ErrorType.authentication,
-          message: 'Desktop application is for landlords only.',
-        );
-      }
 
-      // Handle remember me
-      if (_rememberMe) {
-        await _storage.storeData('remembered_email', email);
-      } else {
-        await _storage.clearData('remembered_email');
-      }
 
       _isAuthenticated = true;
+      notifyListeners();
+    });
+
+    return success;
+  }
+
+  /// Register a new user
+  Future<bool> register(RegisterRequestModel request) async {
+    final success = await executeWithStateForSuccess(() async {
+      final registerRequest = {
+        'username': request.name,
+        'email': request.email,
+        'password': request.password,
+        'firstName': request.name,
+        'lastName': request.lastName,
+        'phoneNumber': request.phoneNumber,
+        'userType': request.role,
+        'dateOfBirth': request.dateOfBirth,
+      };
+      await api.postJson('api/Auth/register', registerRequest);
+      
+      // Registration successful, email sent for verification
+      _emailSent = true;
+      notifyListeners();
+    });
+
+    return success;
+  }
+
+  /// Forgot password - send reset instructions
+  Future<bool> forgotPassword(String email) async {
+    final success = await executeWithStateForSuccess(() async {
+      await api.postJson('api/Auth/forgot-password', ForgotPasswordRequestModel(email: email).toJson());
+      
+      // Email sent successfully
+      _emailSent = true;
+      notifyListeners();
+    });
+
+    return success;
+  }
+
+  /// Reset password with token
+  Future<bool> resetPassword(String email, String token, String newPassword) async {
+    final success = await executeWithStateForSuccess(() async {
+      final request = ResetPasswordRequestModel(
+        email: email,
+        resetToken: token,
+        newPassword: newPassword,
+      );
+      await api.postJson('api/Auth/reset-password', request.toJson());
+      
+      // Password reset successful
+      _emailSent = false;
+      notifyListeners();
+    });
+
+    return success;
+  }
+
+  /// Verify code for password reset
+  Future<bool> verifyCode(String email, String code) async {
+    final success = await executeWithStateForSuccess(() async {
+      // In a real implementation, you would verify the code here
+      // For now, we'll just return true to simulate successful verification
+      // In a real app, you would call an API endpoint to verify the code
+      // For example: await api.postJson('api/Auth/verify-code', {'email': email, 'code': code});
+      
+      // Simulate successful verification
+      _emailSent = false;
       notifyListeners();
     });
 
@@ -121,40 +148,20 @@ class AuthProvider extends BaseProvider {
       await _storage.clearToken();
       _currentUser = null;
       _isAuthenticated = false;
-      invalidateCache(_userCacheKey); // Clear user cache
+      _emailSent = false;
     });
   }
 
-  /// Register new user (disabled for desktop)
-  Future<void> register(RegisterRequestModel request) async {
-    setError('Account registration is not available in the desktop application.');
-  }
-
-  /// Refresh current user data
-  Future<void> refreshUser() async {
-    if (!_isAuthenticated) return;
-    
-    await refreshCachedData(
-      _userCacheKey,
-      () => _fetchUserData(),
-      cacheTtl: _userCacheTtl,
-      errorMessage: 'Failed to refresh user data',
-    );
-  }
 
   // ─── Private Methods ────────────────────────────────────────────────────
 
   /// Check if valid token exists
   Future<bool> _checkToken() async => (await _storage.getToken()) != null;
 
+
   /// Load current user data with caching
   Future<void> _loadMe() async {
-    final userData = await executeWithCache(
-      _userCacheKey,
-      () => _fetchUserData(),
-      cacheTtl: _userCacheTtl,
-      errorMessage: 'Failed to load user data',
-    );
+    final userData = await _fetchUserData();
 
     if (userData != null) {
       _currentUser = userData;

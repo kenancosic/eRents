@@ -1,13 +1,14 @@
 namespace eRents.Domain.Models.Enums
 {
     /// <summary>
-    /// Enum for property status values, matching the database PropertyStatus table.
+    /// Enum for property status values, replacing the PropertyStatus table.
     /// </summary>
     public enum PropertyStatusEnum
     {
         Available = 1,
-        Rented = 2,
+        Occupied = 2,
         UnderMaintenance = 3,
-        Unavailable = 4
+        Unavailable = 4,
+        Draft = 5
     }
-} 
+}

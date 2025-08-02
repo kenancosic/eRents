@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
+using eRents.Domain.Models.Enums;
 
 namespace eRents.Domain.Models;
 
@@ -14,9 +15,11 @@ public partial class MaintenanceIssue : BaseEntity
 
 	public string? Description { get; set; }
 
-	public int PriorityId { get; set; }
+	// Replaced PriorityId foreign key with enum
+	public MaintenanceIssuePriorityEnum Priority { get; set; } = MaintenanceIssuePriorityEnum.Medium;
 
-	public int StatusId { get; set; }
+	// Replaced StatusId foreign key with enum
+	public MaintenanceIssueStatusEnum Status { get; set; } = MaintenanceIssueStatusEnum.Pending;
 
 	public DateTime? ResolvedAt { get; set; }
 
@@ -35,10 +38,6 @@ public partial class MaintenanceIssue : BaseEntity
 	public bool IsTenantComplaint { get; set; }
 
 	public virtual Property Property { get; set; } = null!;
-
-	public virtual IssuePriority Priority { get; set; } = null!;
-
-	public virtual IssueStatus Status { get; set; } = null!;
 
 	public virtual User? AssignedToUser { get; set; }
 

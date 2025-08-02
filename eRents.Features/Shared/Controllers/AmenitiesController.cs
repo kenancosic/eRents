@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using eRents.Features.Shared.Services;
 using eRents.Features.Shared.DTOs;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Features.Shared.Extensions;
 
 namespace eRents.Features.Shared.Controllers
 {

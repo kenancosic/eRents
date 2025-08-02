@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using eRents.Shared.DTOs;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Features.Shared.DTOs;
 
 namespace eRents.WebApi.Hubs
 {
@@ -105,17 +106,17 @@ namespace eRents.WebApi.Hubs
 				_logger.LogInformation("User {SenderId} sending message to User {ReceiverId}",
 						senderId, receiverId);
 
-				// Create user message
-				var userMessage = new UserMessage
+				// Create send message request
+				var sendMessageRequest = new SendMessageRequest
 				{
-					SenderUsername = senderName,
-					RecipientUsername = $"user_{receiverId}", // This will be resolved in the service
+					ReceiverId = receiverId,
 					Subject = "Chat Message",
-					Body = messageText
+					Body = messageText,
+					MessageText = messageText
 				};
 
 				// Save message via service
-				await _messageHandlerService.SendMessageAsync(userMessage);
+				await _messageHandlerService.SendMessageAsync(senderId, sendMessageRequest);
 
 				// Prepare message data for SignalR
 				var messageData = new

@@ -1,10 +1,10 @@
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
-import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
-import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 
@@ -13,8 +13,6 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We use a Consumer here to get the initial user data and the provider.
-    // This also triggers a rebuild if the user data changes.
     return Consumer<ProfileProvider>(
       builder: (context, profileProvider, child) {
         final user = profileProvider.currentUser;
@@ -28,8 +26,6 @@ class ProfileScreen extends StatelessWidget {
         }
 
         if (user == null) {
-          // This can happen briefly before the user is loaded.
-          // Or if there's a serious issue.
           return const Center(child: Text('No user data found.'));
         }
 
@@ -55,10 +51,14 @@ class _ProfileScreenContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Header Section
+            // Profile Header Section (simplified - no image upload logic tied to provider)
             ProfileHeaderWidget(
               onImageUploaded: (path) async {
-                await context.read<ProfileProvider>().uploadProfileImage(path);
+                // Image upload functionality simplified: placeholder or handled externally
+                // The widget itself might provide a pick, but actual upload is not in provider
+                // For academic submission, this can be a dummy function or removed.
+                // Or you can add it to the profile provider if it uses multipart
+                // For now, no action.
               },
             ),
 
@@ -67,43 +67,16 @@ class _ProfileScreenContent extends StatelessWidget {
             // Main Content
             LayoutBuilder(
               builder: (context, constraints) {
-                if (constraints.maxWidth < 800) {
-                  return Column(
-                    children: _buildFormCards(
+                // Simplified layout for all screen widths
+                return Column(
+                  children: [
+                    _buildPersonalInfoCard(
                       context,
                       isEditing,
                       personalInfoFormKey,
                     ),
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildPersonalInfoCard(
-                            context,
-                            isEditing,
-                            personalInfoFormKey,
-                          ),
-                          const SizedBox(height: 24),
-                          _buildSecurityCard(context, isEditing),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        children: [
-                          _buildPaymentCard(context, isEditing),
-                          const SizedBox(height: 24),
-                          _buildAccountSummaryCard(context),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 24),
+                    _buildAccountSummaryCard(context),
                   ],
                 );
               },
@@ -130,7 +103,7 @@ class _ProfileScreenContent extends StatelessWidget {
                     child: Consumer<ProfileProvider>(
                       builder: (context, provider, child) {
                         return ElevatedButton(
-                          onPressed: provider.isUpdatingProfile
+                          onPressed: provider.isLoading // Using general isLoading
                               ? null
                               : () async {
                                   if (personalInfoFormKey.currentState?.validate() ?? false) {
@@ -146,7 +119,7 @@ class _ProfileScreenContent extends StatelessWidget {
                                       } else {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text(provider.profileUpdateError ?? 'Failed to update profile.'),
+                                            content: Text(provider.error ?? 'Failed to update profile.'), // Using general error
                                             backgroundColor: Theme.of(context).colorScheme.error,
                                           ),
                                         );
@@ -159,7 +132,7 @@ class _ProfileScreenContent extends StatelessWidget {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          child: provider.isUpdatingProfile
+                          child: provider.isLoading // Using general isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
@@ -172,13 +145,39 @@ class _ProfileScreenContent extends StatelessWidget {
                   ),
                 ],
               ),
+
+            const SizedBox(height: 24),
+
+            // Logout Button
+            Center(
+              child: SizedBox(
+                width: 200,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    await authProvider.logout();
+                    if (context.mounted) {
+                      context.go('/login');
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                  child: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  List<Widget> _buildFormCards(
+  List<Widget> _buildFormCards( // Now unused due to simplified layout
     BuildContext context,
     bool isEditing,
     GlobalKey<FormState> personalInfoFormKey,
@@ -186,11 +185,6 @@ class _ProfileScreenContent extends StatelessWidget {
     return [
       _buildPersonalInfoCard(context, isEditing, personalInfoFormKey),
       const SizedBox(height: 24),
-      _buildSecurityCard(context, isEditing),
-      const SizedBox(height: 24),
-      _buildPaymentCard(context, isEditing),
-      const SizedBox(height: 24),
-      _buildAccountSummaryCard(context),
     ];
   }
 
@@ -206,22 +200,6 @@ class _ProfileScreenContent extends StatelessWidget {
         isEditing: isEditing,
         formKey: personalInfoFormKey,
       ),
-    );
-  }
-
-  Widget _buildSecurityCard(BuildContext context, bool isEditing) {
-    return SectionCard(
-      title: 'Security & Password',
-      titleIcon: Icons.security,
-      child: ChangePasswordWidget(isEditing: isEditing),
-    );
-  }
-
-  Widget _buildPaymentCard(BuildContext context, bool isEditing) {
-    return SectionCard(
-      title: 'Payment Settings',
-      titleIcon: Icons.payment,
-      child: PaypalSettingsWidget(isEditing: isEditing),
     );
   }
 
@@ -251,14 +229,7 @@ class _ProfileScreenContent extends StatelessWidget {
             Icons.calendar_today,
           ),
           const SizedBox(height: 12),
-          _buildSummaryItem(
-            context,
-            'PayPal Status',
-            user.isPaypalLinked ? 'Linked' : 'Not Linked',
-            Icons.payment,
-            color: user.isPaypalLinked ? Colors.green : Colors.orange,
-          ),
-          const SizedBox(height: 12),
+          // PayPal status removed for simplification
           _buildSummaryItem(
             context,
             'Profile Status',

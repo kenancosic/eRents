@@ -1,3 +1,4 @@
+using eRents.Domain.Models.Enums;
 using eRents.Features.Shared.DTOs;
 using System.ComponentModel.DataAnnotations;
 
@@ -15,7 +16,7 @@ public class UserResponse
     public string? FirstName { get; set; }            // Nullable in domain model
     public string? LastName { get; set; }             // Nullable in domain model
     public int? ProfileImageId { get; set; }
-    public int? UserTypeId { get; set; }
+    public UserTypeEnum UserType { get; set; }
     public string? PhoneNumber { get; set; }          // Matches domain model exactly
     public bool IsPaypalLinked { get; set; }
     public string? PaypalUserIdentifier { get; set; }
@@ -69,7 +70,7 @@ public class UserRequest
     [StringLength(20)]
     public string? PhoneNumber { get; set; }          // Matches domain model exactly
     
-    public int? UserTypeId { get; set; }
+    public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;
     public bool? IsPublic { get; set; }               // Nullable to match domain model
     public DateTime? DateOfBirth { get; set; }        // Will be converted to DateOnly
     
@@ -126,7 +127,7 @@ public class UserInsertRequest
     [StringLength(20)]
     public string? PhoneNumber { get; set; }
     
-    public int? UserTypeId { get; set; }
+    public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;
 }
 
 /// <summary>
@@ -150,7 +151,7 @@ public class UserUpdateRequest
     [StringLength(20)]
     public string? PhoneNumber { get; set; }          // Matches domain model exactly
     
-    public int? UserTypeId { get; set; }
+    public UserTypeEnum? UserType { get; set; }
     public bool? IsPublic { get; set; }               // Nullable to match domain model
     public bool? IsPaypalLinked { get; set; }
     public string? PaypalUserIdentifier { get; set; }

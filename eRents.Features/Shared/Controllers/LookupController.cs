@@ -1,4 +1,5 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,38 +37,59 @@ namespace eRents.Features.Shared.Controllers
 			{
 				_logger.LogInformation("Get all lookup data request");
 
-				// Query all lookup data in parallel for better performance
-				var propertyTypesTask = _context.PropertyTypes.AsNoTracking().OrderBy(pt => pt.TypeName).ToListAsync();
-				var rentingTypesTask = _context.RentingTypes.AsNoTracking().OrderBy(rt => rt.TypeName).ToListAsync();
-				var userTypesTask = _context.UserTypes.AsNoTracking().OrderBy(ut => ut.TypeName).ToListAsync();
-				var bookingStatusesTask = _context.BookingStatuses.AsNoTracking().OrderBy(bs => bs.StatusName).ToListAsync();
-				var issuePrioritiesTask = _context.IssuePriorities.AsNoTracking().OrderBy(ip => ip.PriorityName).ToListAsync();
-				var issueStatusesTask = _context.IssueStatuses.AsNoTracking().OrderBy(istat => istat.StatusName).ToListAsync();
-				var propertyStatusesTask = _context.PropertyStatuses.AsNoTracking().OrderBy(ps => ps.StatusName).ToListAsync();
+				// Query remaining lookup data from database in parallel
 				var amenitiesTask = _context.Amenities.AsNoTracking().OrderBy(a => a.AmenityName).ToListAsync();
 
-				// Wait for all queries to complete
-				await Task.WhenAll(
-					propertyTypesTask, 
-					rentingTypesTask, 
-					userTypesTask, 
-					bookingStatusesTask,
-					issuePrioritiesTask,
-					issueStatusesTask,
-					propertyStatusesTask,
-					amenitiesTask
-				);
+				// Convert enums to lookup data
+				var propertyTypes = Enum.GetValues<PropertyTypeEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				var bookingStatuses = Enum.GetValues<BookingStatusEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				var issuePriorities = Enum.GetValues<MaintenanceIssuePriorityEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				var issueStatuses = Enum.GetValues<MaintenanceIssueStatusEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				var propertyStatuses = Enum.GetValues<PropertyStatusEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				// Convert enums to lookup data
+				var rentingTypes = Enum.GetValues<RentalType>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				var userTypes = Enum.GetValues<UserTypeEnum>()
+					.Select(e => new LookupResponse { Id = (int)e, Name = e.ToString() })
+					.OrderBy(x => x.Name)
+					.ToList();
+
+				// Wait for database queries to complete
+				await amenitiesTask;
 
 				// Build response using LookupResponse DTOs for consistency
 				var response = new
 				{
-					PropertyTypes = propertyTypesTask.Result.Select(pt => new LookupResponse { Id = pt.TypeId, Name = pt.TypeName }),
-					RentingTypes = rentingTypesTask.Result.Select(rt => new LookupResponse { Id = rt.RentingTypeId, Name = rt.TypeName }),
-					UserTypes = userTypesTask.Result.Select(ut => new LookupResponse { Id = ut.UserTypeId, Name = ut.TypeName }),
-					BookingStatuses = bookingStatusesTask.Result.Select(bs => new LookupResponse { Id = bs.BookingStatusId, Name = bs.StatusName }),
-					IssuePriorities = issuePrioritiesTask.Result.Select(ip => new LookupResponse { Id = ip.PriorityId, Name = ip.PriorityName }),
-					IssueStatuses = issueStatusesTask.Result.Select(istat => new LookupResponse { Id = istat.StatusId, Name = istat.StatusName }),
-					PropertyStatuses = propertyStatusesTask.Result.Select(ps => new LookupResponse { Id = ps.StatusId, Name = ps.StatusName }),
+					PropertyTypes = propertyTypes,
+					RentingTypes = rentingTypes,
+					UserTypes = userTypes,
+					BookingStatuses = bookingStatuses,
+					IssuePriorities = issuePriorities,
+					IssueStatuses = issueStatuses,
+					PropertyStatuses = propertyStatuses,
 					Amenities = amenitiesTask.Result.Select(a => new LookupResponse { Id = a.AmenityId, Name = a.AmenityName })
 				};
 

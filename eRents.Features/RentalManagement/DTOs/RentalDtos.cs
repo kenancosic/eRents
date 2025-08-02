@@ -1,5 +1,6 @@
 using eRents.Features.Shared.DTOs;
 using eRents.Domain.Models.Enums;
+using eRents.Domain.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace eRents.Features.RentalManagement.DTOs;
@@ -11,7 +12,6 @@ public class RentalRequestResponse
 {
 	public int Id { get; set; }
 	public int RentalRequestId { get; set; }
-	public int? BookingId { get; set; }
 	public int PropertyId { get; set; }
 	public int UserId { get; set; }
 	public int TenantId { get; set; }
@@ -26,7 +26,7 @@ public class RentalRequestResponse
 	public string? RejectionReason { get; set; }
 	public DateTime? ApprovedAt { get; set; }
 	public int? ApprovedBy { get; set; }
-	public string Status { get; set; } = string.Empty;
+	public RentalRequestStatusEnum Status { get; set; }
 	public string UserName { get; set; } = string.Empty;
 	public string LandlordName { get; set; } = string.Empty;
 	public string PropertyName { get; set; } = string.Empty;
@@ -168,7 +168,7 @@ public class TenantCreationResponse
 	public DateTime StartDate { get; set; }
 	public DateTime EndDate { get; set; }
 	public decimal MonthlyRent { get; set; }
-	public string? Status { get; set; }
+	public TenantStatusEnum Status { get; set; }
 	public DateTime CreatedAt { get; set; }
 	public bool IsSuccess { get; set; }
 	public string? Message { get; set; }

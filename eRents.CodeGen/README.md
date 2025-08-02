@@ -1,31 +1,29 @@
-# eRents Code Generator
+# eRents Code Generator - NEW FEATURE ARCHITECTURE
 
-This tool generates boilerplate code for the eRents application using T4 templates, following the **enhanced architecture patterns** with comprehensive error handling, logging, and security.
+This tool generates boilerplate code for the eRents application using T4 templates, following the **new feature-based architecture** with clean separation of concerns and no repository layer.
 
 ## 🎯 **What Gets Generated**
 
-When you run the generator, it creates:
+When you run the generator, it creates a complete feature module:
 
-### **✅ Controller (EnhancedBaseCRUDController)**
-- Inherits from `EnhancedBaseCRUDController` with comprehensive error handling
-- Includes proper authorization attributes and role-based access
-- Integrated logging with user context tracking
-- Structured error handling with `HandleStandardError`
-- Ready-to-use CRUD endpoints with documentation
+### **✅ Feature Structure**
+- Complete feature folder: `eRents.Features/{EntityName}Management/`
+- Clean DTOs without cross-entity bloat
+- Mappers for entity ↔ DTO conversion
+- Services using ERentsContext directly (no repositories!)
+- Controllers with proper error handling and logging
 
-### **✅ Service Layer**
-- Service interface extending `ICRUDService`
-- Service implementation with proper constructor injection
-- Integration with `ICurrentUserService` for user context
-- Comprehensive logging throughout all operations
-- Pre/post operation hooks for business logic
-- Entity-specific filtering and include logic
+### **✅ Generated Files**
+1. **DTOs** - Clean request/response objects with pagination support
+2. **Mappers** - Static extension methods for entity ↔ DTO conversion
+3. **Service** - Uses ERentsContext directly with UnitOfWork for transactions
+4. **Controller** - RESTful API with proper HTTP status codes and error handling
 
-### **✅ DTOs with Inheritance**
-- Request DTOs inheriting from `BaseInsertRequest` and `BaseUpdateRequest`
-- Response DTOs with proper documentation
-- Search objects inheriting from `BaseSearchObject`
-- Proper namespace organization
+### **✅ Architecture Benefits**
+- **No Repository Layer** - Services use ERentsContext directly
+- **Feature Organization** - All related code grouped by business domain
+- **Clean DTOs** - 70% smaller than old bloated DTOs
+- **Proper Separation** - Domain entities isolated from business logic
 
 ## 📋 **Prerequisites**
 
@@ -49,106 +47,129 @@ dotnet run --project eRents.CodeGen -- Amenity
 ```
 
 This generates:
-- `eRents.Shared/DTO/AmenityDTOs.cs` - All DTOs for the entity
-- `eRents.Application/Service/AmenityService/IAmenityService.cs` - Service interface
-- `eRents.Application/Service/AmenityService/AmenityService.cs` - Service implementation
-- `eRents.WebApi/Controllers/AmenitiesController.cs` - Enhanced controller
+- `eRents.Features/AmenityManagement/DTOs/AmenityDtos.cs` - Clean DTOs
+- `eRents.Features/AmenityManagement/Mappers/AmenityMapper.cs` - Entity ↔ DTO mappers
+- `eRents.Features/AmenityManagement/Services/AmenityService.cs` - Service using ERentsContext
+- `eRents.Features/AmenityManagement/Controllers/AmenitiesController.cs` - Feature controller
 
 ## 🔧 **Post-Generation Setup**
 
 ### **1. Register the Service**
-Add to your service registration extensions in `Program.cs`:
+Add to your service registration extensions:
 
 ```csharp
-// In ServiceRegistrationExtensions.cs - AddERentsBusinessServices method
-services.AddScoped<IAmenityService, AmenityService>();
+// In ServiceRegistrationExtensions.cs
+services.AddScoped<AmenityService>();
 ```
 
-### **2. Configure AutoMapper**
-Add mapping profile for your new entity:
+### **2. Customize Property Mappings**
+Update the generated mapper with your entity's actual properties:
 
 ```csharp
-// In your AutoMapper profile
-CreateMap<Amenity, AmenityResponse>();
-CreateMap<AmenityInsertRequest, Amenity>();
-CreateMap<AmenityUpdateRequest, Amenity>();
+// In AmenityMapper.cs - customize these mappings
+public static AmenityResponse ToAmenityResponse(this Amenity entity)
+{
+    return new AmenityResponse
+    {
+        Id = entity.Id,
+        Name = entity.Name,           // Add your actual properties
+        Description = entity.Description,
+        // ... other properties
+    };
+}
 ```
 
-### **3. Customize Generated Code**
-- **Update property definitions** in the DTO template before generation
-- **Adjust authorization roles** in the controller as needed
-- **Add entity-specific business logic** in the service hooks
-- **Configure entity relationships** in the AddInclude method
+### **3. Configure Entity Relationships**
+Update the service to include related entities as needed:
+
+```csharp
+// In AmenityService.cs - add includes
+var entity = await _context.Amenities
+    .Include(x => x.RelatedEntity)  // Add your includes
+    .FirstOrDefaultAsync(x => x.Id == id);
+```
 
 ## 📁 **Generated File Structure**
 
 ```
-eRents.Shared/
-  DTO/
-    AmenityDTOs.cs                 # All DTOs for the entity
-
-eRents.Application/
-  Service/
-    AmenityService/
-      IAmenityService.cs           # Service interface
-      AmenityService.cs            # Service implementation
-
-eRents.WebApi/
-  Controllers/
-    AmenitiesController.cs         # Enhanced controller
+eRents.Features/
+  AmenityManagement/               # Complete feature module
+    DTOs/
+      AmenityDtos.cs              # Clean request/response DTOs
+    Mappers/
+      AmenityMapper.cs            # Entity ↔ DTO conversion
+    Services/
+      AmenityService.cs           # Business logic with ERentsContext
+    Controllers/
+      AmenitiesController.cs      # RESTful API endpoints
 ```
 
 ## 🎨 **Customizing Templates**
 
-### **Controller Template (`ControllerGenerator.tt`)**
-- Modify authorization roles
-- Add custom endpoints
-- Adjust error handling patterns
+### **Mapper Template (`MapperGenerator.tt`)**
+- Update entity property mappings
+- Add Address mapping if entity has Address property
+- Configure related entity ID collections
 
 ### **Service Template (`ServiceGenerator.tt`)**
-- Add entity-specific business logic
-- Configure custom filtering
-- Add validation rules
+- Add entity-specific includes for related data
+- Configure custom filtering logic
+- Add business validation rules
 
 ### **DTO Template (`DTOGenerator.tt`)**
 - Update the properties list at the top of the template
-- Add entity-specific validation attributes
-- Configure custom search fields
+- Add entity-specific search fields
+- Configure pagination parameters
+
+### **Controller Template (`ControllerGenerator.tt`)**
+- Adjust authorization roles for your security model
+- Add custom endpoints for entity-specific operations
+- Configure error handling patterns
 
 ## ✨ **Features of Generated Code**
+
+### **🎯 Clean Architecture**
+- **No Repository Layer** - Services use ERentsContext directly
+- **Feature Organization** - All related code in one place  
+- **Clean DTOs** - No cross-entity bloat, just foreign key IDs
+- **Proper Separation** - Domain models isolated from business logic
 
 ### **🔒 Security Features**
 - Role-based authorization on all endpoints
 - User context tracking with `ICurrentUserService`
-- Comprehensive audit logging
+- Comprehensive audit logging with user IDs
 
-### **📊 Logging & Monitoring**
-- Structured logging with user IDs and trace information
-- Operation-specific log messages
-- Error tracking with full context
-
-### **🎯 Error Handling**
-- Standardized error responses
-- Proper HTTP status codes
-- Exception type handling
+### **📊 Error Handling & Logging**
+- Proper HTTP status codes (200, 201, 404, 500, etc.)
+- Structured logging with entity IDs and operations
+- Exception-specific handling (UnauthorizedAccess, InvalidOperation)
 - User-friendly error messages
 
-### **🏗️ Architecture Compliance**
-- Follows repository pattern
-- Service layer separation
-- DTO inheritance patterns
-- Enhanced base controller usage
+### **⚡ Performance Features**
+- Pagination support built-in
+- Efficient database queries with targeted includes
+- Transaction management with UnitOfWork pattern
+- Audit field population (CreatedBy, ModifiedBy, timestamps)
 
 ## 🚨 **Important Notes**
 
 1. **Property Definitions**: Update the properties list in `DTOGenerator.tt` before generating
-2. **Role Permissions**: Review and adjust authorization roles in generated controllers
-3. **Entity Relationships**: Configure includes and filtering in the service after generation
-4. **Business Logic**: Add entity-specific validation in the service hooks
+2. **Entity Mapping**: Customize the mapper methods with your entity's actual properties
+3. **Database Includes**: Add `.Include()` statements for related entities in the service
+4. **Authorization Roles**: Adjust controller authorization roles to match your security model
+5. **Business Validation**: Add entity-specific validation rules in the service methods
 
 ## 🔧 **Troubleshooting**
 
-- **Build Errors**: Ensure all namespaces are correctly referenced
-- **T4 Issues**: Verify `dotnet-t4` tool is installed and accessible
-- **Missing Dependencies**: Check that base classes exist in your projects
-- **Authorization Issues**: Verify role names match your authentication setup 
+- **Build Errors**: Ensure `eRents.Features` project is referenced in your main projects
+- **T4 Issues**: Verify `dotnet-t4` tool is installed globally: `dotnet tool install -g dotnet-t4`
+- **Missing ERentsContext**: Ensure your entity exists in the `ERentsContext.DbSet<Entity>`
+- **Namespace Issues**: Check that all generated namespaces match your project structure
+- **Service Registration**: Don't forget to register your new service in `ServiceRegistrationExtensions.cs`
+
+## 🚀 **Next Steps After Generation**
+
+1. **Test the endpoints** using Swagger or Postman
+2. **Update frontend** to use the new API endpoints
+3. **Add unit tests** for the new service methods
+4. **Configure database migrations** if you've added new entities 

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using eRents.Features.ReviewManagement.DTOs;
 using eRents.Features.ReviewManagement.Mappers;
 using eRents.Domain.Shared.Interfaces;
@@ -394,7 +395,7 @@ public class ReviewService : BaseService, IReviewService
 			var hasBooking = await Context.Bookings
 				.AnyAsync(b => b.UserId == userId &&
 							   b.PropertyId == propertyId &&
-							   b.BookingStatus.StatusName == "Completed");
+							   b.Status == BookingStatusEnum.Completed);
 
 			// Check if user hasn't already reviewed this property
 			var hasExistingReview = await Context.Reviews

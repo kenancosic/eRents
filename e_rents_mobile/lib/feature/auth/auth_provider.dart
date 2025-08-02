@@ -12,6 +12,8 @@ class AuthProvider extends BaseProvider {
   // Use inherited loading/error state from BaseProvider
   // isLoading, error, hasError are available
 
+  bool get isAuthenticated => _secureStorageService.getToken() != null;
+
   Future<bool> login(String email, String password) async {
     return await executeWithStateAndMessage(() async {
       // Use direct post method since login returns custom token structure

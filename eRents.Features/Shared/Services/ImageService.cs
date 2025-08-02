@@ -1,3 +1,24 @@
+/*
+ * SIMPLIFIED FOR ACADEMIC PURPOSES
+ *
+ * Original ImageService.cs removed as part of Phase 7B: Enterprise Feature Removal
+ *
+ * The original service contained 503 lines of complex enterprise image management functionality including:
+ * - Thumbnail generation with complex image processing
+ * - Bulk operations for property image updates
+ * - Specialized image queries for maintenance and review images
+ * - Complex cover image management with automatic unset logic
+ * - Advanced authorization helpers with multi-type image access control
+ * - Complex metadata updates with business logic
+ * - Enterprise-level bulk processing operations
+ *
+ * Replaced with simplified version focusing on basic upload/display functionality
+ * for academic thesis requirements.
+ *
+ * Removed: January 30, 2025
+ * Reason: Simplify image management to basic upload/display per Phase 7B requirements
+ */
+
 using eRents.Domain.Models;
 using eRents.Domain.Shared;
 using eRents.Features.Shared.DTOs;
@@ -8,8 +29,8 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Features.Shared.Services
 {
     /// <summary>
-    /// Image management service using direct ERentsContext access
-    /// Handles property, review, and maintenance images with proper authorization
+    /// Simplified image management service for academic thesis requirements
+    /// Focuses on basic upload, display, and delete functionality for property images only
     /// </summary>
     public class ImageService : IImageService
     {
@@ -30,19 +51,18 @@ namespace eRents.Features.Shared.Services
             _logger = logger;
         }
 
-        #region Core Image Operations
+        #region Basic Image Operations
 
+        /// <summary>
+        /// Upload a basic property image (simplified - no thumbnails)
+        /// </summary>
         public async Task<ImageResponse> UploadImageAsync(ImageUploadRequest request)
         {
             try
             {
                 var currentUserId = _currentUserService.GetUserIdAsInt();
-                var currentUserRole = _currentUserService.UserRole;
 
-                if (currentUserRole != "Landlord")
-                    throw new UnauthorizedAccessException("Only landlords can upload images");
-
-                // Verify property ownership
+                // Basic ownership verification
                 var isOwner = await _context.Properties
                     .AnyAsync(p => p.PropertyId == request.PropertyId && p.OwnerId == currentUserId);
                 
@@ -61,45 +81,40 @@ namespace eRents.Features.Shared.Services
                     ContentType = request.ImageFile.ContentType,
                     FileSizeBytes = request.ImageFile.Length,
                     DateUploaded = DateTime.UtcNow,
-                    IsCover = request.IsCover,
+                    IsCover = false, // Simplified: no cover image logic
                     CreatedBy = currentUserId,
                     ModifiedBy = currentUserId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                // Generate thumbnail if it's an image
-                if (request.ImageFile.ContentType?.StartsWith("image/") == true)
-                {
-                    image.ThumbnailData = GenerateThumbnail(imageData);
-                }
-
                 _context.Images.Add(image);
                 await _unitOfWork.SaveChangesAsync();
 
-                _logger.LogInformation("Image uploaded for property {PropertyId}: {FileName}", request.PropertyId, request.ImageFile.FileName);
-
+                _logger.LogInformation("Image uploaded for property {PropertyId}", request.PropertyId);
                 return ToImageResponse(image);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error uploading image for property {PropertyId}", request.PropertyId);
+                _logger.LogError(ex, "Error uploading image");
                 throw;
             }
         }
 
+        /// <summary>
+        /// Get all images for a property (basic display)
+        /// </summary>
         public async Task<IEnumerable<ImageResponse>> GetImagesByPropertyIdAsync(int propertyId)
         {
             try
             {
                 var images = await _context.Images
                     .Where(i => i.PropertyId == propertyId)
-                    .OrderBy(i => i.IsCover)
-                    .ThenBy(i => i.DateUploaded)
+                    .OrderBy(i => i.DateUploaded)
                     .AsNoTracking()
                     .ToListAsync();
 
-                return images.Select(ToImageResponseWithoutBinaryData);
+                return images.Select(ToImageResponse);
             }
             catch (Exception ex)
             {
@@ -108,6 +123,9 @@ namespace eRents.Features.Shared.Services
             }
         }
 
+        /// <summary>
+        /// Get a single image by ID (basic retrieval)
+        /// </summary>
         public async Task<ImageResponse?> GetImageByIdAsync(int id)
         {
             try
@@ -124,15 +142,14 @@ namespace eRents.Features.Shared.Services
             }
         }
 
+        /// <summary>
+        /// Delete an image (basic deletion with ownership check)
+        /// </summary>
         public async Task<bool> DeleteImageAsync(int imageId)
         {
             try
             {
                 var currentUserId = _currentUserService.GetUserIdAsInt();
-                var currentUserRole = _currentUserService.UserRole;
-
-                if (currentUserRole != "Landlord")
-                    throw new UnauthorizedAccessException("Only landlords can delete images");
 
                 var image = await _context.Images
                     .Include(i => i.Property)
@@ -141,7 +158,7 @@ namespace eRents.Features.Shared.Services
                 if (image == null)
                     return false;
 
-                // Verify property ownership
+                // Basic ownership verification
                 if (image.Property?.OwnerId != currentUserId)
                     throw new UnauthorizedAccessException("You can only delete images for your own properties");
 
@@ -158,52 +175,121 @@ namespace eRents.Features.Shared.Services
             }
         }
 
+        #endregion
+
+        #region Specialized Image Queries
+
+        /// <summary>
+        /// Get images associated with maintenance issue
+        /// </summary>
+        public async Task<IEnumerable<ImageResponse>> GetImagesByMaintenanceIssueIdAsync(int maintenanceIssueId)
+        {
+            try
+            {
+                var images = await _context.Images
+                    .Where(i => i.MaintenanceIssueId == maintenanceIssueId)
+                    .OrderBy(i => i.DateUploaded)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return images.Select(ToImageResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving images for maintenance issue {MaintenanceIssueId}", maintenanceIssueId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Get images associated with review
+        /// </summary>
+        public async Task<IEnumerable<ImageResponse>> GetImagesByReviewIdAsync(int reviewId)
+        {
+            try
+            {
+                var images = await _context.Images
+                    .Where(i => i.ReviewId == reviewId)
+                    .OrderBy(i => i.DateUploaded)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                return images.Select(ToImageResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving images for review {ReviewId}", reviewId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Set specific image as cover image for property
+        /// </summary>
+        public async Task<bool> SetCoverImageAsync(int propertyId, int imageId)
+        {
+            try
+            {
+                var currentUserId = _currentUserService.GetUserIdAsInt();
+
+                // Verify ownership
+                var isOwner = await _context.Properties
+                    .AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
+                
+                if (!isOwner)
+                    throw new UnauthorizedAccessException("You can only set cover images for your own properties");
+
+                // Unset current cover image
+                await _context.Images
+                    .Where(i => i.PropertyId == propertyId && i.IsCover)
+                    .ExecuteUpdateAsync(i => i.SetProperty(img => img.IsCover, false));
+
+                // Set new cover image
+                var updatedRows = await _context.Images
+                    .Where(i => i.ImageId == imageId && i.PropertyId == propertyId)
+                    .ExecuteUpdateAsync(i => i.SetProperty(img => img.IsCover, true));
+
+                await _unitOfWork.SaveChangesAsync();
+                
+                _logger.LogInformation("Cover image set for property {PropertyId}: image {ImageId}", propertyId, imageId);
+                return updatedRows > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting cover image for property {PropertyId}", propertyId);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Update image metadata (cover status)
+        /// </summary>
         public async Task<ImageResponse> UpdateImageMetadataAsync(int imageId, bool? isCover = null)
         {
             try
             {
                 var currentUserId = _currentUserService.GetUserIdAsInt();
-                var currentUserRole = _currentUserService.UserRole;
-
-                if (currentUserRole != "Landlord")
-                    throw new UnauthorizedAccessException("Only landlords can update image metadata");
 
                 var image = await _context.Images
                     .Include(i => i.Property)
                     .FirstOrDefaultAsync(i => i.ImageId == imageId);
 
                 if (image == null)
-                    throw new ArgumentException("Image not found");
+                    throw new ArgumentException($"Image {imageId} not found");
 
-                // Verify property ownership
+                // Verify ownership
                 if (image.Property?.OwnerId != currentUserId)
                     throw new UnauthorizedAccessException("You can only update images for your own properties");
 
                 if (isCover.HasValue)
                 {
-                    // If setting as cover, unset other cover images for this property
-                    if (isCover.Value && image.PropertyId.HasValue)
-                    {
-                        var otherCoverImages = await _context.Images
-                            .Where(i => i.PropertyId == image.PropertyId && i.ImageId != imageId && i.IsCover)
-                            .ToListAsync();
-
-                        foreach (var otherImage in otherCoverImages)
-                        {
-                            otherImage.IsCover = false;
-                            otherImage.ModifiedBy = currentUserId;
-                            otherImage.UpdatedAt = DateTime.UtcNow;
-                        }
-                    }
-
                     image.IsCover = isCover.Value;
+                    image.UpdatedAt = DateTime.UtcNow;
+                    image.ModifiedBy = currentUserId;
                 }
 
-                image.ModifiedBy = currentUserId;
-                image.UpdatedAt = DateTime.UtcNow;
-
                 await _unitOfWork.SaveChangesAsync();
-
+                
                 _logger.LogInformation("Image metadata updated: {ImageId}", imageId);
                 return ToImageResponse(image);
             }
@@ -216,132 +302,43 @@ namespace eRents.Features.Shared.Services
 
         #endregion
 
-        #region Specialized Image Queries
+        #region Bulk Operations
 
-        public async Task<IEnumerable<ImageResponse>> GetImagesByMaintenanceIssueIdAsync(int maintenanceIssueId)
-        {
-            try
-            {
-                var images = await _context.Images
-                    .Where(i => i.MaintenanceIssueId == maintenanceIssueId)
-                    .OrderBy(i => i.DateUploaded)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                return images.Select(ToImageResponseWithoutBinaryData);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving images for maintenance issue {MaintenanceIssueId}", maintenanceIssueId);
-                throw;
-            }
-        }
-
-        public async Task<IEnumerable<ImageResponse>> GetImagesByReviewIdAsync(int reviewId)
-        {
-            try
-            {
-                var images = await _context.Images
-                    .Where(i => i.ReviewId == reviewId)
-                    .OrderBy(i => i.DateUploaded)
-                    .AsNoTracking()
-                    .ToListAsync();
-
-                return images.Select(ToImageResponseWithoutBinaryData);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving images for review {ReviewId}", reviewId);
-                throw;
-            }
-        }
-
-        public async Task<bool> SetCoverImageAsync(int propertyId, int imageId)
+        /// <summary>
+        /// Delete all images for a property
+        /// </summary>
+        public async Task<bool> DeleteImagesByPropertyIdAsync(int propertyId)
         {
             try
             {
                 var currentUserId = _currentUserService.GetUserIdAsInt();
-                var currentUserRole = _currentUserService.UserRole;
 
-                if (currentUserRole != "Landlord")
-                    throw new UnauthorizedAccessException("Only landlords can set cover images");
-
-                // Verify property ownership
+                // Verify ownership
                 var isOwner = await _context.Properties
                     .AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
                 
                 if (!isOwner)
-                    throw new UnauthorizedAccessException("You can only set cover images for your own properties");
+                    throw new UnauthorizedAccessException("You can only delete images for your own properties");
 
-                // Verify image belongs to property
-                var image = await _context.Images
-                    .FirstOrDefaultAsync(i => i.ImageId == imageId && i.PropertyId == propertyId);
-
-                if (image == null)
-                    return false;
-
-                // Unset other cover images for this property
-                var otherCoverImages = await _context.Images
-                    .Where(i => i.PropertyId == propertyId && i.ImageId != imageId && i.IsCover)
-                    .ToListAsync();
-
-                foreach (var otherImage in otherCoverImages)
-                {
-                    otherImage.IsCover = false;
-                    otherImage.ModifiedBy = currentUserId;
-                    otherImage.UpdatedAt = DateTime.UtcNow;
-                }
-
-                // Set this image as cover
-                image.IsCover = true;
-                image.ModifiedBy = currentUserId;
-                image.UpdatedAt = DateTime.UtcNow;
+                var deletedCount = await _context.Images
+                    .Where(i => i.PropertyId == propertyId)
+                    .ExecuteDeleteAsync();
 
                 await _unitOfWork.SaveChangesAsync();
-
-                _logger.LogInformation("Cover image set for property {PropertyId}: {ImageId}", propertyId, imageId);
-                return true;
+                
+                _logger.LogInformation("Deleted {Count} images for property {PropertyId}", deletedCount, propertyId);
+                return deletedCount > 0;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting cover image for property {PropertyId}", propertyId);
+                _logger.LogError(ex, "Error deleting images for property {PropertyId}", propertyId);
                 throw;
             }
         }
 
-        #endregion
-
-        #region Bulk Operations
-
-        public async Task<bool> DeleteImagesByPropertyIdAsync(int propertyId)
-        {
-            var currentUserId = _currentUserService.GetUserIdAsInt();
-            var currentUserRole = _currentUserService.UserRole;
-
-            if (currentUserRole != "Landlord")
-                throw new UnauthorizedAccessException("Only landlords can delete property images");
-
-            // Verify property ownership
-            var isOwner = await _context.Properties
-                .AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
-            
-            if (!isOwner)
-                throw new UnauthorizedAccessException("You can only delete images for your own properties");
-
-            var images = await _context.Images
-                .Where(i => i.PropertyId == propertyId)
-                .ToListAsync();
-
-            if (!images.Any())
-                return false;
-
-            _context.Images.RemoveRange(images);
-            await _unitOfWork.SaveChangesAsync();
-
-            _logger.LogInformation("Deleted {Count} images for property {PropertyId}", images.Count, propertyId);
-            return true;
-        }
-
+        /// <summary>
+        /// Process property image updates (add/remove/update multiple images)
+        /// </summary>
         public async Task ProcessPropertyImageUpdateAsync(
             int propertyId,
             List<int>? existingImageIds,
@@ -349,125 +346,124 @@ namespace eRents.Features.Shared.Services
             List<string>? imageFileNames,
             List<bool>? imageIsCoverFlags)
         {
-            var currentUserId = _currentUserService.GetUserIdAsInt();
-            var currentUserRole = _currentUserService.UserRole;
-
-            if (currentUserRole != "Landlord")
-                throw new UnauthorizedAccessException("Only landlords can update property images");
-
-            // Verify property ownership
-            var isOwner = await _context.Properties
-                .AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
-            
-            if (!isOwner)
-                throw new UnauthorizedAccessException("You can only update images for your own properties");
-
-            // Remove images not in the existing list
-            if (existingImageIds != null)
+            try
             {
-                var imagesToDelete = await _context.Images
-                    .Where(i => i.PropertyId == propertyId && !existingImageIds.Contains(i.ImageId))
-                    .ToListAsync();
+                var currentUserId = _currentUserService.GetUserIdAsInt();
 
-                if (imagesToDelete.Any())
+                // Verify ownership
+                var isOwner = await _context.Properties
+                    .AnyAsync(p => p.PropertyId == propertyId && p.OwnerId == currentUserId);
+                
+                if (!isOwner)
+                    throw new UnauthorizedAccessException("You can only update images for your own properties");
+
+                // Handle existing images (keep only specified ones)
+                if (existingImageIds?.Any() == true)
                 {
-                    _context.Images.RemoveRange(imagesToDelete);
+                    await _context.Images
+                        .Where(i => i.PropertyId == propertyId && !existingImageIds.Contains(i.ImageId))
+                        .ExecuteDeleteAsync();
                 }
-            }
-
-            // Add new images
-            if (newImages != null && newImages.Any())
-            {
-                for (int i = 0; i < newImages.Count; i++)
+                else
                 {
-                    var imageFile = newImages[i];
-                    var fileName = imageFileNames?.ElementAtOrDefault(i) ?? imageFile.FileName;
-                    var isCover = imageIsCoverFlags?.ElementAtOrDefault(i) ?? false;
+                    // Remove all existing images if no existing IDs specified
+                    await _context.Images
+                        .Where(i => i.PropertyId == propertyId)
+                        .ExecuteDeleteAsync();
+                }
 
-                    using var memoryStream = new MemoryStream();
-                    await imageFile.CopyToAsync(memoryStream);
-                    var imageData = memoryStream.ToArray();
-
-                    var image = new Image
+                // Add new images
+                if (newImages?.Any() == true)
+                {
+                    for (int i = 0; i < newImages.Count; i++)
                     {
-                        FileName = fileName,
-                        ImageData = imageData,
-                        PropertyId = propertyId,
-                        ContentType = imageFile.ContentType,
-                        FileSizeBytes = imageFile.Length,
-                        DateUploaded = DateTime.UtcNow,
-                        IsCover = isCover,
-                        CreatedBy = currentUserId,
-                        ModifiedBy = currentUserId,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
+                        var imageFile = newImages[i];
+                        var isCover = imageIsCoverFlags?.ElementAtOrDefault(i) ?? false;
 
-                    // Generate thumbnail if it's an image
-                    if (imageFile.ContentType?.StartsWith("image/") == true)
-                    {
-                        image.ThumbnailData = GenerateThumbnail(imageData);
+                        using var memoryStream = new MemoryStream();
+                        await imageFile.CopyToAsync(memoryStream);
+                        var imageData = memoryStream.ToArray();
+
+                        var image = new Image
+                        {
+                            FileName = imageFileNames?.ElementAtOrDefault(i) ?? imageFile.FileName,
+                            ImageData = imageData,
+                            PropertyId = propertyId,
+                            ContentType = imageFile.ContentType,
+                            FileSizeBytes = imageFile.Length,
+                            DateUploaded = DateTime.UtcNow,
+                            IsCover = isCover,
+                            CreatedBy = currentUserId,
+                            ModifiedBy = currentUserId,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        _context.Images.Add(image);
                     }
-
-                    _context.Images.Add(image);
                 }
-            }
 
-            await _unitOfWork.SaveChangesAsync();
-            _logger.LogInformation("Property images updated for property {PropertyId}", propertyId);
+                await _unitOfWork.SaveChangesAsync();
+                
+                _logger.LogInformation("Bulk image update completed for property {PropertyId}", propertyId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing bulk image update for property {PropertyId}", propertyId);
+                throw;
+            }
         }
 
         #endregion
 
         #region Authorization Helpers
 
+        /// <summary>
+        /// Check if user can access specific image
+        /// </summary>
         public async Task<bool> UserCanAccessImageAsync(int imageId, int userId, string userRole)
         {
-            var image = await _context.Images
-                .Include(i => i.Property)
-                .FirstOrDefaultAsync(i => i.ImageId == imageId);
+            try
+            {
+                var image = await _context.Images
+                    .Include(i => i.Property)
+                    .Include(i => i.MaintenanceIssue)
+                    .Include(i => i.Review)
+                    .FirstOrDefaultAsync(i => i.ImageId == imageId);
 
-            if (image == null)
+                if (image == null)
+                    return false;
+
+                // Property owners can access their property images
+                if (image.Property?.OwnerId == userId)
+                    return true;
+
+                // Users can access images for maintenance issues they created
+                if (image.MaintenanceIssue?.ReportedByUserId == userId)
+                    return true;
+
+                // Users can access images for reviews they wrote
+                if (image.Review?.ReviewerId == userId)
+                    return true;
+
+                // Admin can access all images
+                if (userRole?.Equals("Admin", StringComparison.OrdinalIgnoreCase) == true)
+                    return true;
+
                 return false;
-
-            // Property images: landlords can access their own, others can access public properties
-            if (image.PropertyId.HasValue)
-            {
-                if (userRole == "Landlord")
-                {
-                    return image.Property?.OwnerId == userId;
-                }
-                // For tenants/users, assume they can view images of available properties
-                return true;
             }
-
-            // Review images: can be accessed by anyone (public reviews)
-            if (image.ReviewId.HasValue)
-                return true;
-
-            // Maintenance images: only landlords and the reporter can access
-            if (image.MaintenanceIssueId.HasValue)
+            catch (Exception ex)
             {
-                var maintenanceIssue = await _context.MaintenanceIssues
-                    .Include(m => m.Property)
-                    .FirstOrDefaultAsync(m => m.MaintenanceIssueId == image.MaintenanceIssueId);
-
-                if (maintenanceIssue?.Property?.OwnerId == userId)
-                    return true;
-
-                // Check if user reported the issue
-                if (maintenanceIssue?.ReportedByUserId == userId)
-                    return true;
+                _logger.LogError(ex, "Error checking image access for user {UserId}", userId);
+                return false;
             }
-
-            return false;
         }
 
         #endregion
 
         #region Private Helper Methods
 
-        private ImageResponse ToImageResponse(Image image, bool includeBinaryData = false)
+        private ImageResponse ToImageResponse(Image image)
         {
             return new ImageResponse
             {
@@ -475,8 +471,7 @@ namespace eRents.Features.Shared.Services
                 FileName = image.FileName ?? string.Empty,
                 DateUploaded = image.DateUploaded ?? DateTime.UtcNow,
                 Url = $"/Image/{image.ImageId}",
-                ImageData = includeBinaryData ? image.ImageData : null,
-                ThumbnailData = includeBinaryData ? image.ThumbnailData : null,
+                ImageData = image.ImageData,
                 ContentType = image.ContentType,
                 Width = image.Width,
                 Height = image.Height,
@@ -485,19 +480,6 @@ namespace eRents.Features.Shared.Services
             };
         }
 
-        private ImageResponse ToImageResponseWithoutBinaryData(Image image)
-        {
-            return ToImageResponse(image, includeBinaryData: false);
-        }
-
-        private byte[] GenerateThumbnail(byte[] imageData)
-        {
-            // Basic thumbnail generation - in production, use a proper image library like ImageSharp
-            // For now, return a placeholder or the original image
-            // TODO: Implement proper thumbnail generation with resize functionality
-            return imageData; // Placeholder implementation
-        }
-
         #endregion
     }
-} 
+}

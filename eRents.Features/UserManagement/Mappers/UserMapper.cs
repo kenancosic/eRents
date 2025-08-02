@@ -1,4 +1,5 @@
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using eRents.Features.UserManagement.DTOs;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,7 +26,7 @@ public static class UserMapper
             FirstName = entity.FirstName,                 // Nullable in corrected DTO
             LastName = entity.LastName,                   // Nullable in corrected DTO
             ProfileImageId = entity.ProfileImageId,
-            UserTypeId = entity.UserTypeId,
+            UserType = entity.UserType,
             PhoneNumber = entity.PhoneNumber,             // Matches domain model exactly
             IsPaypalLinked = entity.IsPaypalLinked,
             PaypalUserIdentifier = entity.PaypalUserIdentifier,
@@ -44,8 +45,8 @@ public static class UserMapper
             Latitude = entity.Address?.Latitude,
             Longitude = entity.Address?.Longitude,
             
-            // Navigation properties (populated separately if needed)
-            UserTypeName = entity.UserTypeNavigation?.TypeName
+            // Enum properties
+            UserTypeName = entity.UserType.ToString()
         };
     }
 
@@ -63,7 +64,7 @@ public static class UserMapper
             FirstName = request.FirstName,
             LastName = request.LastName,
             PhoneNumber = request.PhoneNumber,
-            UserTypeId = request.UserTypeId,
+            UserType = request.UserType,
             IsPublic = request.IsPublic,
             DateOfBirth = request.DateOfBirth?.ToDateOnly(), // Convert DateTime? to DateOnly?
             
@@ -102,7 +103,7 @@ public static class UserMapper
             FirstName = request.FirstName,
             LastName = request.LastName,
             PhoneNumber = request.PhoneNumber,
-            UserTypeId = request.UserTypeId,
+            UserType = request.UserType,
             
             // Password security
             PasswordHash = passwordHash,
@@ -133,8 +134,8 @@ public static class UserMapper
         if (request.PhoneNumber != null)
             entity.PhoneNumber = request.PhoneNumber;
             
-        if (request.UserTypeId.HasValue)
-            entity.UserTypeId = request.UserTypeId;
+        if (request.UserType.HasValue)
+            entity.UserType = request.UserType.Value;
             
         if (request.IsPublic.HasValue)
             entity.IsPublic = request.IsPublic;
