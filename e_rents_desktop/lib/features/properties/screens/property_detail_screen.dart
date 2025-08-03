@@ -5,7 +5,7 @@ import 'package:e_rents_desktop/features/properties/providers/property_provider.
 import 'package:provider/provider.dart';
 
 class PropertyDetailScreen extends StatelessWidget {
-  final String propertyId;
+  final int propertyId;
   
   const PropertyDetailScreen({super.key, required this.propertyId});
 
@@ -26,13 +26,13 @@ class PropertyDetailScreen extends StatelessWidget {
         amenityIds: [],
       ), // Placeholder while loading
       fetchItem: (id) async {
-        final property = await propertyProvider.loadProperty(id);
+        final property = await propertyProvider.loadProperty(int.parse(id));
         if (property == null) {
           throw Exception('Property not found');
         }
         return property;
       },
-      itemId: propertyId,
+      itemId: propertyId.toString(),
       detailBuilder: (context, property) {
         return Padding(
           padding: const EdgeInsets.all(16.0),

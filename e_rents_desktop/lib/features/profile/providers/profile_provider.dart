@@ -13,6 +13,13 @@ class ProfileProvider extends BaseProvider {
   bool _isEditing = false;
   bool get isEditing => _isEditing;
 
+  // Password change state
+  bool _isChangingPassword = false;
+  bool get isChangingPassword => _isChangingPassword;
+
+  String? _passwordChangeError;
+  String? get passwordChangeError => _passwordChangeError;
+
   // ─── Public API ─────────────────────────────────────────────────────────
 
   void toggleEditing() {
@@ -36,15 +43,8 @@ class ProfileProvider extends BaseProvider {
     notifyListeners();
   }
 
-  Future<void> loadUserProfile({bool forceRefresh = false}) async {
-    const cacheKey = 'user_profile';
-    
-    if (forceRefresh) {
-      invalidateCache(cacheKey);
-    }
-    
-    final result = await executeWithCache<User>(
-      cacheKey,
+  Future<void> loadUserProfile() async {
+    final result = await executeWithState(
       () => api.getAndDecode('/api/Profile/me', User.fromJson, authenticated: true),
     );
     
@@ -77,8 +77,42 @@ class ProfileProvider extends BaseProvider {
     return false;
   }
 
-  void clearUserProfileCache() {
-    invalidateCache('user_profile');
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _isChangingPassword = true;
+    _passwordChangeError = null;
+    notifyListeners();
+
+    try {
+      final result = await executeWithState<bool>(() async {
+        final response = await api.post(
+          '/api/Profile/change-password',
+          {
+            'oldPassword': oldPassword,
+            'newPassword': newPassword,
+            'confirmPassword': confirmPassword,
+          },
+          authenticated: true,
+        );
+
+        return response.statusCode == 200;
+      });
+
+      _isChangingPassword = false;
+      notifyListeners();
+      return result ?? false;
+    } catch (e) {
+      _isChangingPassword = false;
+      _passwordChangeError = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void clearUserProfile() {
     _currentUser = null;
     notifyListeners();
   }

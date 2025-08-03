@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 /// A generic form screen template that provides common functionality for creating
 /// and editing items with comprehensive validation and submission lifecycle management.
@@ -13,7 +12,12 @@ class FormScreen<T> extends StatefulWidget {
   final T? initialItem;
 
   /// Function to build the form fields
-  final Widget Function(BuildContext context, T? item, GlobalKey<FormState> formKey) formBuilder;
+  final Widget Function(
+    BuildContext context,
+    T? item,
+    GlobalKey<FormState> formKey,
+  )
+  formBuilder;
 
   /// Function to validate the form
   final String? Function(T item)? validator;
@@ -25,6 +29,10 @@ class FormScreen<T> extends StatefulWidget {
   final T Function() createNewItem;
 
   /// Function to update an existing item with form data
+  ///
+  /// This function is used when editing an existing item to create a new
+  /// instance with updated values from the form. It's only used when
+  /// initialItem is not null (edit mode) and the function is provided.
   final T Function(T item)? updateItem;
 
   /// Whether to show a save button
@@ -46,7 +54,8 @@ class FormScreen<T> extends StatefulWidget {
   final bool enableFocusTraversal;
 
   /// Custom submit button builder
-  final Widget Function(BuildContext context, VoidCallback onSubmit)? submitButtonBuilder;
+  final Widget Function(BuildContext context, VoidCallback onSubmit)?
+  submitButtonBuilder;
 
   /// Custom validation error handler
   final void Function(String error)? onValidationError;
@@ -100,9 +109,15 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
       });
 
       try {
+        // Update the item with form data if in edit mode and updateItem is provided
+        T updatedItem = _item;
+        if (widget.initialItem != null && widget.updateItem != null) {
+          updatedItem = widget.updateItem!(_item);
+        }
+
         // Validate the item if a validator is provided
         if (widget.validator != null) {
-          final validationError = widget.validator!(_item);
+          final validationError = widget.validator!(updatedItem);
           if (validationError != null) {
             if (widget.onValidationError != null) {
               widget.onValidationError!(validationError);
@@ -115,7 +130,7 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
           }
         }
 
-        final success = await widget.onSubmit(_item);
+        final success = await widget.onSubmit(updatedItem);
         if (success && mounted) {
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);
@@ -152,10 +167,7 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        actions: _buildActions(),
-      ),
+      appBar: AppBar(title: Text(widget.title), actions: _buildActions()),
       body: _buildBody(),
     );
   }
@@ -174,9 +186,7 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
 
     if (widget.showSaveButton) {
       if (widget.submitButtonBuilder != null) {
-        actions.add(
-          widget.submitButtonBuilder!(context, _onSubmit),
-        );
+        actions.add(widget.submitButtonBuilder!(context, _onSubmit));
       } else {
         actions.add(
           ElevatedButton(

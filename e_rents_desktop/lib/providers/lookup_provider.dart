@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
@@ -6,15 +7,9 @@ import 'package:e_rents_desktop/base/api_service_extensions.dart';
 /// 
 /// This demonstrates how to use:
 /// - BaseProvider for common functionality
-/// - Built-in caching with TTL
 /// - Automatic state management (loading, error)
 /// - API service extensions for cleaner code
-/// 
-/// Compare with the original lookup_provider.dart to see the reduction in boilerplate
 class LookupProvider extends BaseProvider {
-  static const String _cacheKey = 'lookup_data';
-  static const Duration _lookupCacheTtl = Duration(hours: 1); // Lookup data changes infrequently
-
   LookupProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
@@ -37,7 +32,6 @@ class LookupProvider extends BaseProvider {
   // ─── Public API ─────────────────────────────────────────────────────────
 
   /// Initialize lookup data on app startup
-  /// Uses caching to avoid unnecessary API calls
   Future<void> initializeLookupData() async {
     if (_lookupData != null) {
       return; // Already initialized
@@ -46,18 +40,12 @@ class LookupProvider extends BaseProvider {
     await loadLookupData();
   }
 
-  /// Load lookup data with automatic caching and state management
+  /// Load lookup data with state management
   /// The BaseProvider handles loading states and error handling automatically
   Future<void> loadLookupData({bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      invalidateCache(_cacheKey);
-    }
-
-    final data = await executeWithCacheAndMessage(
-      _cacheKey,
+    final data = await executeWithState(
       () => _fetchLookupData(),
-      'Failed to load lookup data',
-      cacheTtl: _lookupCacheTtl,
+      errorMessage: 'Failed to load lookup data',
     );
 
     if (data != null) {
@@ -67,15 +55,13 @@ class LookupProvider extends BaseProvider {
   }
 
   /// Refresh lookup data from backend
-  /// Forces cache invalidation and fresh data fetch
+  /// Forces fresh data fetch
   Future<void> refreshLookupData() async {
     await loadLookupData(forceRefresh: true);
   }
 
-  /// Clear cache and reload
-  /// Demonstrates cache management capabilities
+  /// Clear and reload lookup data
   Future<void> clearCacheAndReload() async {
-    invalidateCache(); // Clear all cache
     _lookupData = null;
     await loadLookupData(forceRefresh: true);
   }
@@ -135,15 +121,91 @@ class LookupProvider extends BaseProvider {
     return ids.map((id) => getAmenityName(id)).toList();
   }
 
-  /// Get cache information for debugging
-  /// Enhanced with base provider cache statistics
-  Map<String, dynamic> getCacheInfo() {
-    final baseStats = getCacheStats();
+  // ─── Individual Enum Methods ───────────────────────────────────────────────
+
+  /// Fetch property types from the new enum endpoint
+  Future<List<LookupItem>> getPropertyTypesEnum() async {
+    final result = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/lookup/enums/PropertyTypeEnum',
+        LookupItem.fromJson,
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+    });
+    return result ?? [];
+  }
+
+  /// Fetch renting types from the new enum endpoint
+  Future<List<LookupItem>> getRentingTypesEnum() async {
+    final result = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/lookup/enums/RentalType',
+        LookupItem.fromJson,
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+    });
+    return result ?? [];
+  }
+
+  /// Fetch property statuses from the new enum endpoint
+  Future<List<LookupItem>> getPropertyStatusesEnum() async {
+    final result = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/lookup/enums/PropertyStatusEnum',
+        LookupItem.fromJson,
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+    });
+    return result ?? [];
+  }
+
+  /// Fetch user types from the new enum endpoint
+  Future<List<LookupItem>> getUserTypesEnum() async {
+    final result = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/lookup/enums/UserTypeEnum',
+        LookupItem.fromJson,
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+    });
+    return result ?? [];
+  }
+
+  /// Fetch booking statuses from the new enum endpoint
+  Future<List<LookupItem>> getBookingStatusesEnum() async {
+    final result = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/lookup/enums/BookingStatusEnum',
+        LookupItem.fromJson,
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+    });
+    return result ?? [];
+  }
+
+  /// Fetch all available enum types
+  Future<List<String>> getAvailableEnumTypes() async {
+    final result = await executeWithState(() async {
+      final response = await api.get(
+        '/lookup/enums',
+        authenticated: true,
+        customHeaders: api.desktopHeaders,
+      );
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList.cast<String>().toList();
+    });
+    return result ?? [];
+  }
+
+  /// Get lookup data status information
+  Map<String, dynamic> getLookupDataStatus() {
     return {
-      ...baseStats,
-      'lookupDataCached': isCacheValid(_cacheKey, _lookupCacheTtl),
       'lookupDataLoaded': _lookupData != null,
-      'cacheTtl': _lookupCacheTtl.toString(),
     };
   }
 

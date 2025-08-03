@@ -42,15 +42,8 @@ class ChatProvider extends BaseProvider {
     notifyListeners();
   }
 
-  Future<void> loadContacts({bool forceRefresh = false}) async {
-    const cacheKey = 'contacts';
-    
-    if (forceRefresh) {
-      invalidateCache(cacheKey);
-    }
-    
-    final result = await executeWithCache<List<User>>(
-      cacheKey,
+  Future<void> loadContacts() async {
+    final result = await executeWithState(
       () => api.getListAndDecode('/Chat/Contacts', User.fromJson, authenticated: true),
     );
     
@@ -140,7 +133,6 @@ class ChatProvider extends BaseProvider {
     _currentPage.clear();
     _hasMoreMessages.clear();
     _selectedContactId = null;
-    invalidateCache('contacts');
     clearError();
     notifyListeners();
   }

@@ -120,7 +120,7 @@ namespace eRents.WebApi.Data.Seeding
 		}
 		#endregion
 
-		#region 2. Academic Users (Meeting Requirements)
+		#region 2. Users (Meeting Requirements)
 		private async Task SeedAcademicUsersAsync(ERentsContext context)
 		{
 			_logger?.LogInformation("Seeding academic-compliant users...");
@@ -132,7 +132,6 @@ namespace eRents.WebApi.Data.Seeding
 			users.Add(CreateAcademicUser("desktop", "desktop", "test", UserTypeEnum.Owner, "Desktop", "User", "desktop@erent.com", "Sarajevo"));
 			users.Add(CreateAcademicUser("owner", "owner", "test", UserTypeEnum.Owner, "Property", "Owner", "owner@erent.com", "Mostar"));
 			users.Add(CreateAcademicUser("tenant", "tenant", "test", UserTypeEnum.Tenant, "Test", "Tenant", "tenant@erent.com", "Banja Luka"));
-			users.Add(CreateAcademicUser("admin", "admin", "test", UserTypeEnum.Admin, "System", "Administrator", "admin@erent.com", "Sarajevo"));
 
 			// Additional test users for comprehensive functionality testing
 			for (int i = 1; i <= 15; i++)
@@ -428,8 +427,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyTypeEnum.House => _random.Next(100, 250),
 				PropertyTypeEnum.Villa => _random.Next(200, 500),
 				PropertyTypeEnum.Room => _random.Next(25, 60),
-				PropertyTypeEnum.Office => _random.Next(80, 200),
-				PropertyTypeEnum.Commercial => _random.Next(150, 400),
 				_ => _random.Next(50, 100)
 			};
 
@@ -451,8 +448,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyTypeEnum.House => _random.Next(2, 6),
 				PropertyTypeEnum.Villa => _random.Next(3, 8),
 				PropertyTypeEnum.Room => 1,
-				PropertyTypeEnum.Office => 0,
-				PropertyTypeEnum.Commercial => 0,
 				_ => _random.Next(1, 3)
 			};
 		}
@@ -466,8 +461,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyTypeEnum.House => _random.Next(1, 4),
 				PropertyTypeEnum.Villa => _random.Next(2, 5),
 				PropertyTypeEnum.Room => 1,
-				PropertyTypeEnum.Office => _random.Next(1, 3),
-				PropertyTypeEnum.Commercial => _random.Next(1, 4),
 				_ => 1
 			};
 		}
@@ -481,8 +474,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyTypeEnum.House => _random.Next(80, 300),
 				PropertyTypeEnum.Villa => _random.Next(150, 500),
 				PropertyTypeEnum.Room => _random.Next(12, 25),
-				PropertyTypeEnum.Office => _random.Next(30, 200),
-				PropertyTypeEnum.Commercial => _random.Next(50, 1000),
 				_ => _random.Next(40, 100)
 			};
 		}
@@ -518,7 +509,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyTypeEnum.House => _random.Next(4, 8),
 				PropertyTypeEnum.Apartment => _random.Next(3, 6),
 				PropertyTypeEnum.Studio => _random.Next(2, 4),
-				PropertyTypeEnum.Office => _random.Next(2, 5),
 				_ => _random.Next(2, 4)
 			};
 

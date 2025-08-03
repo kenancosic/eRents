@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/models/address.dart';
+import 'package:e_rents_desktop/models/renting_type.dart';
 
 /// Property entity model that aligns with the backend API
 class Property {
@@ -23,6 +24,15 @@ class Property {
   final int? minimumStayDays;
   final bool requiresApproval;
   final int? coverImageId;
+
+  // Getter to convert rentingTypeId to RentingType enum
+  RentingType get rentingType {
+    if (rentingTypeId == 2) {
+      return RentingType.monthly;
+    } else {
+      return RentingType.daily;
+    }
+  }
 
   Property({
     required this.propertyId,

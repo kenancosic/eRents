@@ -23,6 +23,21 @@ enum ErrorType {
 
   /// Permission-related errors
   permission,
+  
+  /// Timeout errors
+  timeout,
+  
+  /// Service unavailable errors
+  serviceUnavailable,
+  
+  /// Rate limiting errors
+  rateLimit,
+  
+  /// Feature not available errors
+  notAvailable,
+  
+  /// Payment required errors
+  paymentRequired,
 
   /// Unknown or unhandled errors
   unknown,
@@ -57,6 +72,69 @@ class AppError {
     DateTime? timestamp,
     this.stackTrace,
   }) : timestamp = timestamp ?? DateTime.now();
+  
+  /// Creates a network error
+  factory AppError.network(String message, {String? details, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.network,
+      message: message,
+      details: details,
+      stackTrace: stackTrace,
+    );
+  }
+  
+  /// Creates a validation error
+  factory AppError.validation(String message, {String? details, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.validation,
+      message: message,
+      details: details,
+      stackTrace: stackTrace,
+    );
+  }
+  
+  /// Creates an authentication error
+  factory AppError.authentication(String message, {String? details, int? statusCode, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.authentication,
+      message: message,
+      details: details,
+      statusCode: statusCode ?? 401,
+      stackTrace: stackTrace,
+    );
+  }
+  
+  /// Creates a not found error
+  factory AppError.notFound(String message, {String? details, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.notFound,
+      message: message,
+      details: details,
+      statusCode: 404,
+      stackTrace: stackTrace,
+    );
+  }
+  
+  /// Creates a server error
+  factory AppError.server(String message, {String? details, int? statusCode, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.server,
+      message: message,
+      details: details,
+      statusCode: statusCode ?? 500,
+      stackTrace: stackTrace,
+    );
+  }
+  
+  /// Creates a timeout error
+  factory AppError.timeout(String message, {String? details, StackTrace? stackTrace}) {
+    return AppError(
+      type: ErrorType.timeout,
+      message: message,
+      details: details,
+      stackTrace: stackTrace,
+    );
+  }
 
   /// Creates an AppError from various exception types
   factory AppError.fromException(dynamic exception, [StackTrace? stackTrace, String? message]) {
@@ -205,6 +283,9 @@ class AppError {
     switch (type) {
       case ErrorType.network:
       case ErrorType.server:
+      case ErrorType.timeout:
+      case ErrorType.rateLimit:
+      case ErrorType.serviceUnavailable:
         return true;
       case ErrorType.authentication:
       case ErrorType.permission:
@@ -212,6 +293,8 @@ class AppError {
       case ErrorType.notFound:
       case ErrorType.cache:
       case ErrorType.unknown:
+      case ErrorType.notAvailable:
+      case ErrorType.paymentRequired:
         return false;
     }
   }
@@ -220,21 +303,31 @@ class AppError {
   String get userMessage {
     switch (type) {
       case ErrorType.network:
-        return 'Please check your internet connection and try again.';
+        return 'Network connection failed. Please check your internet connection and try again.';
+      case ErrorType.timeout:
+        return 'Request timed out. Please check your connection and try again.';
       case ErrorType.authentication:
-        return 'Please log in again to continue.';
+        return 'Session expired. Please log in again to continue.';
       case ErrorType.permission:
-        return 'You don\'t have permission to perform this action.';
+        return 'You don\'t have permission to perform this action. Please contact support if you believe this is an error.';
       case ErrorType.validation:
-        return 'Please check your input and try again.';
+        return 'Invalid input. Please check your information and try again.';
       case ErrorType.notFound:
-        return 'The requested item could not be found.';
+        return 'The requested resource could not be found.';
       case ErrorType.server:
-        return 'Server is temporarily unavailable. Please try again later.';
+        return 'Our servers are experiencing issues. Please try again in a few moments.';
       case ErrorType.cache:
-        return 'Data loading failed. Please refresh and try again.';
+        return 'Unable to load cached data. Please refresh and try again.';
+      case ErrorType.rateLimit:
+        return 'Too many requests. Please wait a moment and try again.';
+      case ErrorType.serviceUnavailable:
+        return 'Service is temporarily unavailable. Please try again later.';
+      case ErrorType.notAvailable:
+        return 'This feature is not available in your current plan.';
+      case ErrorType.paymentRequired:
+        return 'Payment required. Please update your subscription to continue.';
       case ErrorType.unknown:
-        return 'Something went wrong. Please try again.';
+        return 'An unexpected error occurred. Please try again or contact support if the problem persists.';
     }
   }
 

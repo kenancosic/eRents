@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/property_type.dart';
 import 'package:e_rents_desktop/widgets/icon_selection.dart';
 import 'package:flutter/material.dart';
 

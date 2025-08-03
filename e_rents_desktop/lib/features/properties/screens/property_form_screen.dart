@@ -5,7 +5,7 @@ import 'package:e_rents_desktop/features/properties/providers/property_provider.
 import 'package:provider/provider.dart';
 
 class PropertyFormScreen extends StatefulWidget {
-  final String? propertyId;
+  final int? propertyId;
   
   const PropertyFormScreen({super.key, this.propertyId});
 

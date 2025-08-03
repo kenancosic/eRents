@@ -10,7 +10,5 @@ namespace eRents.Domain.Models.Enums
         Studio = 3,
         Villa = 4,
         Room = 5,
-        Office = 6,
-        Commercial = 7
     }
 }

@@ -48,8 +48,26 @@ extension ApiServiceExtensions on ApiService {
       authenticated: authenticated,
       customHeaders: customHeaders,
     );
-    final List<dynamic> data = json.decode(response.body);
-    return data.map((json) => decoder(json as Map<String, dynamic>)).toList();
+    final dynamic data = json.decode(response.body);
+    
+    // Handle both array and object responses
+    if (data is List) {
+      return data.map((json) => decoder(json as Map<String, dynamic>)).toList();
+    } else if (data is Map<String, dynamic>) {
+      // If the response is an object, try to find a list in common properties
+      if (data.containsKey('items') && data['items'] is List) {
+        return (data['items'] as List).map((json) => decoder(json as Map<String, dynamic>)).toList();
+      } else if (data.containsKey('data') && data['data'] is List) {
+        return (data['data'] as List).map((json) => decoder(json as Map<String, dynamic>)).toList();
+      } else if (data.containsKey('results') && data['results'] is List) {
+        return (data['results'] as List).map((json) => decoder(json as Map<String, dynamic>)).toList();
+      } else {
+        // If no list found in common properties, wrap the single object in a list
+        return [decoder(data)];
+      }
+    } else {
+      throw Exception('Unexpected response format: expected List or Map, got ${data.runtimeType}');
+    }
   }
   
   /// GET request with automatic JSON decoding to PagedResult
@@ -72,27 +90,62 @@ extension ApiServiceExtensions on ApiService {
       customHeaders: customHeaders,
     );
     
-    final decodedBody = json.decode(response.body);
+    final dynamic decodedBody = json.decode(response.body);
     
-    // Handle different response formats from backend
-    if (decodedBody is List) {
-      // Backend returned simple array - convert to PagedResult format
-      final items = decodedBody
-          .cast<Map<String, dynamic>>()
-          .map((item) => decoder(item))
-          .toList();
-      
-      return PagedResult<T>(
-        items: items,
-        totalCount: items.length,
-        page: 0,
-        pageSize: items.length,
-      );
-    } else if (decodedBody is Map<String, dynamic>) {
-      // Backend returned proper paginated format
-      return PagedResult<T>.fromJson(decodedBody, (item) => decoder(item as Map<String, dynamic>));
-    } else {
-      throw Exception('Unexpected response format: expected List or Map, got ${decodedBody.runtimeType}');
+    try {
+      // Handle different response formats from backend
+      if (decodedBody is List) {
+        // Backend returned simple array - convert to PagedResult format
+        final items = decodedBody
+            .cast<Map<String, dynamic>>()
+            .map((item) => decoder(item))
+            .toList();
+        
+        return PagedResult<T>(
+          items: items,
+          totalCount: items.length,
+          page: 0,
+          pageSize: items.length,
+        );
+      } else if (decodedBody is Map<String, dynamic>) {
+        // Check for common pagination response formats
+        if (decodedBody.containsKey('items') && decodedBody['items'] is List) {
+          // Standard pagination format: { items: [], totalCount: number, page: number, pageSize: number }
+          return PagedResult<T>.fromJson(decodedBody, (item) => decoder(item as Map<String, dynamic>));
+        } else if (decodedBody.containsKey('data') && decodedBody['data'] is List) {
+          // Alternative format: { data: [], total: number, currentPage: number, perPage: number }
+          final data = decodedBody['data'] as List;
+          return PagedResult<T>(
+            items: data.cast<Map<String, dynamic>>().map(decoder).toList(),
+            totalCount: decodedBody['total'] as int? ?? data.length,
+            page: decodedBody['currentPage'] as int? ?? 0,
+            pageSize: decodedBody['perPage'] as int? ?? data.length,
+          );
+        } else if (decodedBody.containsKey('results') && decodedBody['results'] is List) {
+          // Another common format: { results: [], count: number, page: number, pageSize: number }
+          final results = decodedBody['results'] as List;
+          return PagedResult<T>(
+            items: results.cast<Map<String, dynamic>>().map(decoder).toList(),
+            totalCount: decodedBody['count'] as int? ?? results.length,
+            page: decodedBody['page'] as int? ?? 0,
+            pageSize: decodedBody['pageSize'] as int? ?? results.length,
+          );
+        } else {
+          // If it's a single object, wrap it in a list
+          return PagedResult<T>(
+            items: [decoder(decodedBody)],
+            totalCount: 1,
+            page: 0,
+            pageSize: 1,
+          );
+        }
+      } else {
+        throw Exception('Unexpected response format: expected List or Map, got ${decodedBody.runtimeType}');
+      }
+    } catch (e) {
+      print('Error parsing paged response: $e');
+      print('Response body: $decodedBody');
+      rethrow;
     }
   }
   

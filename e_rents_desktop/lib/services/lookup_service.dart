@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:e_rents_desktop/models/lookup_data.dart';
-import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/property_type.dart';
+import 'package:e_rents_desktop/models/property_status.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/utils/logger.dart';
@@ -38,7 +39,9 @@ class LookupService extends ApiService {
       log.severe('LookupService: Error fetching lookup data', e, stackTrace);
       // If we have cached data, return it even if expired
       if (_cachedLookupData != null) {
-        log.warning('LookupService: Returning expired cached data due to error');
+        log.warning(
+          'LookupService: Returning expired cached data due to error',
+        );
         return _cachedLookupData!;
       }
       rethrow;
@@ -51,10 +54,38 @@ class LookupService extends ApiService {
     return lookupData.propertyTypes;
   }
 
+  /// Fetch property types from the new enum endpoint
+  Future<List<LookupItem>> getPropertyTypesEnum() async {
+    try {
+      final response = await get('/lookup/enums/PropertyTypeEnum', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching property types enum', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Fetch renting types only
   Future<List<LookupItem>> getRentingTypes({bool forceRefresh = false}) async {
     final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
     return lookupData.rentingTypes;
+  }
+
+  /// Fetch renting types from the new enum endpoint
+  Future<List<LookupItem>> getRentingTypesEnum() async {
+    try {
+      final response = await get('/lookup/enums/RentalType', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching renting types enum', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Fetch property statuses only
@@ -65,10 +96,38 @@ class LookupService extends ApiService {
     return lookupData.propertyStatuses;
   }
 
+  /// Fetch property statuses from the new enum endpoint
+  Future<List<LookupItem>> getPropertyStatusesEnum() async {
+    try {
+      final response = await get('/lookup/enums/PropertyStatusEnum', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching property statuses enum', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Fetch user types only
   Future<List<LookupItem>> getUserTypes({bool forceRefresh = false}) async {
     final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
     return lookupData.userTypes;
+  }
+
+  /// Fetch user types from the new enum endpoint
+  Future<List<LookupItem>> getUserTypesEnum() async {
+    try {
+      final response = await get('/lookup/enums/UserTypeEnum', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching user types enum', e, stackTrace);
+      rethrow;
+    }
   }
 
   /// Fetch booking statuses only
@@ -79,10 +138,36 @@ class LookupService extends ApiService {
     return lookupData.bookingStatuses;
   }
 
+  /// Fetch booking statuses from the new enum endpoint
+  Future<List<LookupItem>> getBookingStatusesEnum() async {
+    try {
+      final response = await get('/lookup/enums/BookingStatusEnum', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching booking statuses enum', e, stackTrace);
+      rethrow;
+    }
+  }
+
   /// Fetch amenities only
   Future<List<LookupItem>> getAmenities({bool forceRefresh = false}) async {
     final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
     return lookupData.amenities;
+  }
+
+  /// Fetch all available enum types
+  Future<List<String>> getAvailableEnumTypes() async {
+    try {
+      final response = await get('/lookup/enums', authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList.cast<String>().toList();
+    } catch (e, stackTrace) {
+      log.severe('LookupService: Error fetching available enum types', e, stackTrace);
+      rethrow;
+    }
   }
 
   // Convenience methods for converting enum values to IDs

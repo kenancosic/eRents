@@ -2,12 +2,11 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
-import 'package:e_rents_desktop/widgets/table/custom_table.dart';
-import 'package:e_rents_desktop/widgets/table/providers/base_table_provider.dart';
+import 'package:e_rents_desktop/widgets/table/table_config.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class MaintenanceProvider extends BaseProvider implements BaseTableProvider<MaintenanceIssue> {
+class MaintenanceProvider extends BaseProvider {
   final BuildContext? context;
 
   MaintenanceProvider(super.api, {this.context});
@@ -33,21 +32,133 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
   final TextEditingController notesController = TextEditingController();
 
   // ─── Getters ────────────────────────────────────────────────────────────
-  
+
   /// Expose ApiService for backward compatibility with form screens
   get apiService => api;
 
-  // ─── Public API ─────────────────────────────────────────────────────────
+  // ─── Public API - CRUD Operations ──────────────────────────────────────
 
-  Future<PagedResult<MaintenanceIssue>> fetchData(TableQuery query) async {
-    final result = await executeWithState<PagedResult<MaintenanceIssue>>(() async {
-      return await api.getPagedAndDecode(
-        'api/maintenance${api.buildQueryString(query.toQueryParams())}',
+  /// Load paged maintenance issues
+  Future<PagedResult<MaintenanceIssue>?> loadPagedIssues({
+    Map<String, dynamic>? params,
+  }) async {
+    final query = TableQuery(
+      page: params?['page'] ?? 1,
+      pageSize: params?['pageSize'] ?? 25,
+      searchTerm: params?['searchTerm'],
+      filters: params?['filters'] ?? {},
+      sortBy: params?['sortBy'],
+      sortDescending: params?['sortDescending'] ?? false,
+    );
+
+    final queryString = api.buildQueryString(query.toQueryParams());
+
+    return executeWithState(
+      () => api.getPagedAndDecode(
+        'api/maintenance$queryString',
+        MaintenanceIssue.fromJson,
+        authenticated: true,
+      ),
+    );
+  }
+
+  /// Load a specific maintenance issue by ID
+  Future<MaintenanceIssue?> loadIssueById(String id) async {
+    return executeWithState(
+      () => api.getAndDecode(
+        'api/maintenance/$id',
+        MaintenanceIssue.fromJson,
+        authenticated: true,
+      ),
+    );
+  }
+
+  /// Create a new maintenance issue
+  Future<MaintenanceIssue?> createIssue(MaintenanceIssue issue) async {
+    return executeWithState(
+      () => api.postAndDecode(
+        'api/maintenance',
+        issue.toJson(),
+        MaintenanceIssue.fromJson,
+        authenticated: true,
+      ),
+    );
+  }
+
+  /// Update an existing maintenance issue
+  Future<MaintenanceIssue?> updateIssue(MaintenanceIssue issue) async {
+    return executeWithState(() async {
+      final result = await api.putAndDecode(
+        'api/maintenance/${issue.maintenanceIssueId}',
+        issue.toJson(),
         MaintenanceIssue.fromJson,
         authenticated: true,
       );
+
+      return result;
     });
-    
+  }
+
+  /// Delete a maintenance issue by ID
+  Future<bool> deleteIssue(String id) async {
+    final success = await executeWithState(() async {
+      await api.deleteAndConfirm('api/maintenance/$id', authenticated: true);
+    });
+
+    if (success) {
+      _issues.removeWhere((issue) => issue.maintenanceIssueId.toString() == id);
+      if (_selectedIssue?.maintenanceIssueId.toString() == id) {
+        _selectedIssue = null;
+      }
+      notifyListeners();
+    }
+
+    return success;
+  }
+
+  /// Update the status of a maintenance issue
+  Future<bool> updateIssueStatus(
+    String id,
+    IssueStatus newStatus, {
+    String? resolutionNotes,
+    double? cost,
+  }) async {
+    final data = <String, dynamic>{'status': newStatus.name};
+
+    if (resolutionNotes != null) {
+      data['resolutionNotes'] = resolutionNotes;
+    }
+
+    if (cost != null) {
+      data['cost'] = cost;
+    }
+
+    final success = await executeWithStateForSuccess(() async {
+      await api.putJson(
+        'api/maintenance/$id/status',
+        data,
+        authenticated: true,
+      );
+    });
+
+    return success;
+  }
+
+  // ─── Legacy Methods for Backward Compatibility ──────────────────────────
+
+  // These methods maintain backward compatibility with existing code
+
+  Future<PagedResult<MaintenanceIssue>> fetchData(TableQuery query) async {
+    final result = await executeWithState<PagedResult<MaintenanceIssue>>(
+      () async {
+        return await api.getPagedAndDecode(
+          'api/maintenance${api.buildQueryString(query.toQueryParams())}',
+          MaintenanceIssue.fromJson,
+          authenticated: true,
+        );
+      },
+    );
+
     if (result != null) {
       _pagedResult = result;
       _issues = result.items;
@@ -59,9 +170,13 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
 
   Future<void> getIssueById(String id) async {
     final result = await executeWithState<MaintenanceIssue>(() async {
-      return await api.getAndDecode('api/maintenance/$id', MaintenanceIssue.fromJson, authenticated: true);
+      return await api.getAndDecode(
+        'api/maintenance/$id',
+        MaintenanceIssue.fromJson,
+        authenticated: true,
+      );
     });
-    
+
     if (result != null) {
       _selectedIssue = result;
       notifyListeners();
@@ -73,8 +188,10 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
     await getIssueById(id);
   }
 
-  /// Get paged maintenance issues - used by router 
-  Future<PagedResult<MaintenanceIssue>> getPaged([Map<String, dynamic>? params]) async {
+  /// Get paged maintenance issues - used by router
+  Future<PagedResult<MaintenanceIssue>> getPaged([
+    Map<String, dynamic>? params,
+  ]) async {
     // Create default TableQuery if no params provided
     final query = TableQuery(
       page: params?['page'] ?? 1,
@@ -90,13 +207,27 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
   Future<bool> saveIssue(MaintenanceIssue issue) async {
     final result = await executeWithState<Map<String, dynamic>>(() async {
       if (issue.maintenanceIssueId == 0) {
-        return await api.postJson('api/maintenance', issue.toJson(), authenticated: true);
+        return await api.postJson(
+          'api/maintenance',
+          issue.toJson(),
+          authenticated: true,
+        );
       } else {
-        return await api.putAndDecode('api/maintenance/${issue.maintenanceIssueId}', issue.toJson(), (json) => json, authenticated: true);
+        return await api.putAndDecode(
+          'api/maintenance/${issue.maintenanceIssueId}',
+          issue.toJson(),
+          (json) => json,
+          authenticated: true,
+        );
       }
     });
-    
-    return result != null;
+
+    if (result != null) {
+      // Refresh the issues list
+      await getPaged();
+      return true;
+    }
+    return false;
   }
 
   /// Alias for saveIssue - used by maintenance form screen
@@ -104,36 +235,7 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
     return await saveIssue(issue);
   }
 
-  Future<bool> deleteIssue(String id) async {
-    final result = await executeWithState<bool>(() async {
-      return await api.deleteAndConfirm('api/maintenance/$id', authenticated: true);
-    });
-    
-    if (result == true) {
-      _issues.removeWhere((i) => i.maintenanceIssueId.toString() == id);
-      notifyListeners();
-      return true;
-    }
-    return false;
-  }
-
-  Future<void> updateStatus(String id, IssueStatus newStatus, {String? resolutionNotes, double? cost}) async {
-    final payload = {
-      'Status': newStatus.name,
-      'ResolutionNotes': resolutionNotes,
-      'Cost': cost,
-    };
-
-        if (newStatus == IssueStatus.completed) {
-      payload['ResolvedAt'] = DateTime.now().toIso8601String();
-    }
-
-    await executeWithState(() async {
-      await api.put('api/maintenance/$id/status', payload, authenticated: true);
-    });
-  }
-
-  // ─── UI State Management ───────────────────────────────────────────────
+  // ─── Editing State Management ──────────────────────────────────────────
 
   void startEditing(MaintenanceIssue issue) {
     _editingIssue = issue;
@@ -145,6 +247,9 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
 
   void cancelEditing() {
     _editingIssue = null;
+    _selectedStatus = null;
+    costController.clear();
+    notesController.clear();
     notifyListeners();
   }
 
@@ -153,73 +258,19 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
     notifyListeners();
   }
 
-  // ─── Table Provider Implementation ────────────────────────────────────
-
-  List<TableColumnConfig<MaintenanceIssue>> get columns =>
-      context != null ? getTableColumns(context!) : _getBasicTableColumns();
-
-  List<TableFilter> get availableFilters => getTableFilters();
-
-  String get emptyStateMessage => 'No maintenance issues found';
+  // ─── Table Configuration (for DesktopDataTable integration) ─────────────
 
   List<TableColumnConfig<MaintenanceIssue>> getTableColumns(
     BuildContext tableContext,
   ) {
     return [
-      ..._getBasicTableColumns(),
-      TableColumnConfig(
-        key: 'actions',
-        label: 'Actions',
-        cellBuilder:
-            (issue) => _actionCell([
-              _iconActionCell(
-                icon: Icons.edit,
-                tooltip: 'Edit',
-                onPressed:
-                    () => tableContext.push(
-                      '/maintenance/${issue.maintenanceIssueId}',
-                    ),
-              ),
-            ]),
-      ),
-    ];
-  }
-
-  List<TableFilter> getTableFilters() {
-    return [
-      TableFilter(
-        key: 'status',
-        label: 'Status',
-        type: FilterType.dropdown,
-        options:
-            IssueStatus.values
-                .map((s) => FilterOption(value: s.name, label: s.name))
-                .toList(),
-      ),
-      TableFilter(
-        key: 'priority',
-        label: 'Priority',
-        type: FilterType.dropdown,
-        options:
-            IssuePriority.values
-                .map((p) => FilterOption(value: p.name, label: p.name))
-                .toList(),
-      ),
-    ];
-  }
-
-  // ─── Private Helpers & UI Builders ──────────────────────────────────
-
-  List<TableColumnConfig<MaintenanceIssue>> _getBasicTableColumns() {
-    return [
       TableColumnConfig(
         key: 'priority',
         label: 'Priority',
-        cellBuilder:
-            (issue) => _priorityCell(
-              issue.priority.name,
-              color: _getPriorityColor(issue.priority),
-            ),
+        cellBuilder: (issue) => _priorityCell(
+          issue.priority.name,
+          color: _getPriorityColor(issue.priority),
+        ),
       ),
       TableColumnConfig(
         key: 'title',
@@ -230,19 +281,32 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
       TableColumnConfig(
         key: 'status',
         label: 'Status',
-        cellBuilder:
-            (issue) => _statusCell(
-              issue.status.name,
-              color: _getStatusColor(issue.status),
-            ),
+        cellBuilder: (issue) => _statusCell(
+          issue.status.name,
+          color: _getStatusColor(issue.status),
+        ),
       ),
       TableColumnConfig(
         key: 'createdAt',
         label: 'Reported',
         cellBuilder: (issue) => _dateCell(issue.createdAt),
       ),
+      TableColumnConfig(
+        key: 'actions',
+        label: 'Actions',
+        cellBuilder: (issue) => _actionCell([
+          _iconActionCell(
+            icon: Icons.edit,
+            tooltip: 'Edit',
+            onPressed: () =>
+                tableContext.push('/maintenance/${issue.maintenanceIssueId}'),
+          ),
+        ]),
+      ),
     ];
   }
+
+  // ─── Private Helpers & UI Builders ──────────────────────────────────
 
   Widget _priorityCell(String text, {Color? color}) => Container(
     padding: const EdgeInsets.all(8),
@@ -271,12 +335,14 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
 
   Color _getPriorityColor(IssuePriority priority) {
     switch (priority) {
-      case IssuePriority.high:
-        return Colors.red.shade100;
+      case IssuePriority.low:
+        return Colors.green.shade100;
       case IssuePriority.medium:
         return Colors.orange.shade100;
-      default:
-        return Colors.green.shade100;
+      case IssuePriority.high:
+        return Colors.red.shade100;
+      case IssuePriority.emergency:
+        return Colors.purple.shade100;
     }
   }
 
@@ -286,8 +352,10 @@ class MaintenanceProvider extends BaseProvider implements BaseTableProvider<Main
         return Colors.blue.shade100;
       case IssueStatus.inProgress:
         return Colors.yellow.shade100;
-      default:
-        return Colors.grey.shade100;
+      case IssueStatus.completed:
+        return Colors.green.shade100;
+      case IssueStatus.cancelled:
+        return Colors.red.shade100;
     }
   }
 

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using eRents.Features.Shared.DTOs;
+using eRents.Features.Core.Models;
 
 namespace eRents.Features.PropertyManagement.DTOs;
 
@@ -7,7 +7,7 @@ namespace eRents.Features.PropertyManagement.DTOs;
 /// Comprehensive property search object with filtering, validation, and pagination
 /// Extends AdvancedSearchObject to leverage the base search functionality
 /// </summary>
-public class PropertySearchObject : AdvancedSearchObject
+public class PropertySearchObject : BaseSearchObject
 {
     #region Property-Specific Filters
     

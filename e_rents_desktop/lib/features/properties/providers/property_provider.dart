@@ -1,72 +1,111 @@
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/services/mock_property_service.dart';
-import 'package:flutter/foundation.dart';
+import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:e_rents_desktop/base/api_service_extensions.dart';
 
-/// Simple provider class for property data management
-/// This replaces the Riverpod providers with a traditional provider pattern
-class PropertyProvider extends ChangeNotifier {
-  final MockPropertyService _service;
-
-  PropertyProvider() : _service = MockPropertyService();
-
-  /// Get the mock service instance
-  MockPropertyService get service => _service;
+/// Property provider using the base provider architecture
+/// 
+/// This provides:
+/// - Automatic state management (loading, error states)
+/// - Built-in caching with TTL
+/// - Cleaner API calls with automatic JSON decoding
+/// - Consistent error handling
+/// - Reduced boilerplate code
+class PropertyProvider extends BaseProvider {
+  PropertyProvider(super.api);
 
   /// Load all properties
-  Future<List<Property>> loadProperties() async {
-    return await _service.getAllProperties();
+  Future<List<Property>?> loadProperties() async {
+    return executeWithState(
+      () => api.getListAndDecode('/api/properties', Property.fromJson),
+    );
+  }
+
+  /// Load all properties with sorting
+  Future<List<Property>?> loadPropertiesSorted({String? sortBy, bool? ascending}) async {
+    final queryParams = <String, dynamic>{};
+    if (sortBy != null) queryParams['sortBy'] = sortBy;
+    if (ascending != null) queryParams['ascending'] = ascending;
+    
+    final queryString = api.buildQueryString(queryParams);
+    
+    return executeWithState(
+      () => api.getListAndDecode('/api/properties$queryString', Property.fromJson),
+    );
   }
 
   /// Load a specific property by ID
-  Future<Property?> loadProperty(String id) async {
-    return await _service.getPropertyById(id);
+  Future<Property?> loadProperty(int id) async {
+    return executeWithState(
+      () => api.getAndDecode('/api/properties/$id', Property.fromJson),
+    );
   }
 
   /// Create a new property
   Future<Property?> createProperty(Property property) async {
-    return await _service.createProperty(property);
+    return executeWithState(() => api.postAndDecode(
+      '/api/properties',
+      property.toJson(),
+      Property.fromJson,
+    ));
   }
 
   /// Update an existing property
   Future<Property?> updateProperty(Property property) async {
-    return await _service.updateProperty(property);
+    return executeWithState(() => api.putAndDecode(
+      '/api/properties/${property.propertyId}',
+      property.toJson(),
+      Property.fromJson,
+    ));
   }
 
   /// Delete a property by ID
-  Future<bool> deleteProperty(String id) async {
-    return await _service.deleteProperty(id);
+  Future<bool> deleteProperty(int id) async {
+    return await executeWithStateForSuccess(
+      () => api.deleteAndConfirm('/api/properties/$id'),
+    );
   }
 
   /// Search properties by query
-  Future<List<Property>> searchProperties(String query) async {
-    return await _service.searchProperties(query);
+  Future<List<Property>?> searchProperties(String query) async {
+    return executeWithState(
+      () => api.getListAndDecode(
+        '/api/properties/search?q=$query',
+        Property.fromJson,
+      ),
+    );
   }
 }
 
-/// Simple form provider class for property form management
-class PropertyFormProvider {
-  final MockPropertyService _service;
-
-  PropertyFormProvider() : _service = MockPropertyService();
+/// Property form provider for handling create/edit operations
+/// This separates form-specific logic from the main data provider
+class PropertyFormProvider extends BaseProvider {
+  PropertyFormProvider(super.api);
 
   /// Load a property for editing
-  Future<Property?> loadProperty(String id) async {
-    return await _service.getPropertyById(id);
+  Future<Property?> loadProperty(int id) async {
+    return executeWithState(() async {
+      return await api.getAndDecode('/api/properties/$id', Property.fromJson);
+    });
   }
 
   /// Save a property (create or update)
-  Future<bool> saveProperty(Property property) async {
-    try {
+  Future<Property?> saveProperty(Property property) async {
+    return executeWithState(() async {
       if (property.propertyId == 0) {
         // Create new property
-        await _service.createProperty(property);
+        return await api.postAndDecode(
+          '/api/properties',
+          property.toJson(),
+          Property.fromJson,
+        );
       } else {
         // Update existing property
-        await _service.updateProperty(property);
+        return await api.putAndDecode(
+          '/api/properties/${property.propertyId}',
+          property.toJson(),
+          Property.fromJson,
+        );
       }
-      return true;
-    } catch (e) {
-      return false;
-    }
+    });
   }
 }

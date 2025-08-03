@@ -1,13 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'base_provider_mixin.dart';
-import 'cacheable_provider_mixin.dart';
 
 /// Base provider class that combines common functionality
 /// 
 /// This class provides:
 /// - State management (loading, error) via BaseProviderMixin
-/// - Caching functionality via CacheableProviderMixin
 /// - ApiService access
 /// - Automatic cleanup on dispose
 /// 
@@ -24,68 +22,40 @@ import 'cacheable_provider_mixin.dart';
 ///   }
 /// }
 /// ```
-abstract class BaseProvider extends ChangeNotifier 
-    with BaseProviderMixin, CacheableProviderMixin {
-  
+abstract class BaseProvider extends ChangeNotifier with BaseProviderMixin {
   /// ApiService instance for making HTTP requests
   final ApiService api;
   
-  /// Constructor requiring ApiService dependency
+  /// Initialize the base provider with required ApiService
   BaseProvider(this.api);
   
+  /// Clean up resources when the provider is disposed
   @override
   void dispose() {
-    // Clean up cache when provider is disposed
-    invalidateCache();
     super.dispose();
   }
   
-  /// Convenience method for cached API operations
+  /// Execute an operation with automatic state management
   /// 
-  /// This combines caching with state management for common use cases.
+  /// This method wraps the operation with loading/error state management.
+  /// It's a convenience method that delegates to the mixin's implementation.
   /// 
   /// Usage:
   /// ```dart
-  /// final data = await executeWithCache(
-  ///   'users_list',
+  /// final data = await executeWithState(
   ///   () => api.getListAndDecode('/users', User.fromJson),
+  ///   errorMessage: 'Failed to load users',
   /// );
   /// ```
-  Future<T?> executeWithCache<T>(
-    String cacheKey,
+  @override
+  Future<T?> executeWithState<T>(
     Future<T> Function() operation, {
-    Duration? cacheTtl,
+    bool isRefresh = false,
     String? errorMessage,
   }) async {
-    return executeWithState(() async {
-      return getCachedOrExecute(cacheKey, operation, ttl: cacheTtl);
-    });
-  }
-  
-  /// Convenience method for cached API operations with custom error message
-  Future<T?> executeWithCacheAndMessage<T>(
-    String cacheKey,
-    Future<T> Function() operation,
-    String errorMessage, {
-    Duration? cacheTtl,
-  }) async {
-    return executeWithStateAndMessage(() async {
-      return getCachedOrExecute(cacheKey, operation, ttl: cacheTtl);
-    }, errorMessage);
-  }
-  
-  /// Refresh cached data by invalidating cache and re-executing operation
-  Future<T?> refreshCachedData<T>(
-    String cacheKey,
-    Future<T> Function() operation, {
-    Duration? cacheTtl,
-    String? errorMessage,
-  }) async {
-    // Invalidate the specific cache entry
-    invalidateCache(cacheKey);
-    
-    // Execute with cache (which will now fetch fresh data)
-    return executeWithCache(cacheKey, operation, 
-        cacheTtl: cacheTtl, errorMessage: errorMessage);
+    if (errorMessage != null) {
+      return super.executeWithStateAndMessage(operation, errorMessage, isRefresh: isRefresh);
+    }
+    return super.executeWithState(operation, isRefresh: isRefresh);
   }
 }

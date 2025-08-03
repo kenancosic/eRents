@@ -27,10 +27,7 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildListCard(BuildContext context) {
     final theme = Theme.of(context);
-    final statusDisplay = _getStatusDisplayProperties(
-      property.propertyStatus,
-      theme,
-    );
+    final statusDisplay = _getStatusDisplayProperties(property.status, theme);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -75,10 +72,7 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildGridCard(BuildContext context) {
     final theme = Theme.of(context);
-    final statusDisplay = _getStatusDisplayProperties(
-      property.propertyStatus,
-      theme,
-    );
+    final statusDisplay = _getStatusDisplayProperties(property.status, theme);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -100,7 +94,7 @@ class PropertyCard extends StatelessWidget {
                     top: 8,
                     right: 8,
                     child: StatusChip(
-                      label: property.propertyStatus.displayName,
+                      label: property.status,
                       backgroundColor: statusDisplay.color,
                       iconData: statusDisplay.icon,
                     ),
@@ -168,15 +162,20 @@ class PropertyCard extends StatelessWidget {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(Icons.broken_image, size: 48, color: Colors.grey.shade400),
-        ),
+        errorBuilder:
+            (context, error, stackTrace) => Container(
+              width: width,
+              height: height,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.broken_image,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
+            ),
       ),
     );
   }
@@ -265,7 +264,7 @@ class PropertyCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         StatusChip(
-          label: property.propertyStatus.displayName,
+          label: property.status,
           backgroundColor: statusDisplay.color,
           iconData: statusDisplay.icon,
         ),
@@ -310,17 +309,17 @@ class PropertyCard extends StatelessWidget {
   }
 
   ({Color color, IconData icon}) _getStatusDisplayProperties(
-    PropertyStatus status,
+    String status,
     ThemeData theme,
   ) {
     switch (status) {
-      case PropertyStatus.available:
+      case 'Available':
         return (color: Colors.green, icon: Icons.check_circle_outline);
-      case PropertyStatus.rented:
+      case 'Rented':
         return (color: Colors.blue, icon: Icons.person_outline);
-      case PropertyStatus.maintenance:
+      case 'Maintenance':
         return (color: Colors.orange, icon: Icons.build_circle_outlined);
-      case PropertyStatus.unavailable:
+      case 'Unavailable':
       default:
         return (color: Colors.grey, icon: Icons.help_outline);
     }

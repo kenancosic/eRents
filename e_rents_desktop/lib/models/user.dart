@@ -17,6 +17,10 @@ class User {
 
   final Address? address;
 
+  // PayPal-related properties
+  final bool isPaypalLinked;
+  final String? paypalUserIdentifier;
+
   User({
     required this.id,
     required this.email,
@@ -30,6 +34,8 @@ class User {
     required this.createdAt,
     required this.updatedAt,
     this.address,
+    this.isPaypalLinked = false,
+    this.paypalUserIdentifier,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -51,6 +57,9 @@ class User {
       updatedAt: _parseDateTime(json['updatedAt']),
       // Backend sends flattened address fields, construct Address object
       address: _parseAddress(json),
+      // PayPal properties
+      isPaypalLinked: json['isPaypalLinked'] as bool? ?? false,
+      paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
     );
   }
 
@@ -125,6 +134,8 @@ class User {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'address': address?.toJson(),
+      'isPaypalLinked': isPaypalLinked,
+      'paypalUserIdentifier': paypalUserIdentifier,
     };
   }
 
@@ -143,6 +154,8 @@ class User {
     DateTime? createdAt,
     DateTime? updatedAt,
     Address? address,
+    bool? isPaypalLinked,
+    String? paypalUserIdentifier,
   }) {
     return User(
       id: id ?? this.id,
@@ -157,6 +170,8 @@ class User {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       address: address ?? this.address,
+      isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
+      paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
     );
   }
 }

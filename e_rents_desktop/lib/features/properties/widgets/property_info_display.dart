@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/property_status.dart';
 import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
@@ -40,9 +41,9 @@ class PropertyInfoDisplay extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: StatusChip(
-                  label: property.propertyStatus.displayName,
-                  backgroundColor: _getStatusColor(property.propertyStatus),
-                  iconData: _getStatusIcon(property.propertyStatus),
+                  label: property.status,
+                  backgroundColor: _getStatusColor(_parseStatus(property.status)),
+                  iconData: _getStatusIcon(_parseStatus(property.status)),
                 ),
               ),
           ],
@@ -64,9 +65,9 @@ class PropertyInfoDisplay extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        if (property.description.isNotEmpty) ...[
+        if (property.description?.isNotEmpty == true) ...[
           const SizedBox(height: 12),
-          Text(property.description, style: theme.textTheme.bodyMedium),
+          Text(property.description!, style: theme.textTheme.bodyMedium),
         ],
       ],
     );
@@ -83,11 +84,11 @@ class PropertyInfoDisplay extends StatelessWidget {
         ),
         _InfoChip(
           icon: Icons.bathtub_outlined,
-          label: '${property.bathrooms} Baths',
+          label: '${property.bathrooms ?? 0} Baths',
         ),
         _InfoChip(
           icon: Icons.square_foot_outlined,
-          label: '${property.area.toStringAsFixed(0)} m²',
+          label: '${(property.area ?? 0).toStringAsFixed(0)} m²',
         ),
         _InfoChip(
           icon: Icons.calendar_today_outlined,
@@ -96,6 +97,21 @@ class PropertyInfoDisplay extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  PropertyStatus _parseStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return PropertyStatus.available;
+      case 'rented':
+        return PropertyStatus.rented;
+      case 'maintenance':
+        return PropertyStatus.maintenance;
+      case 'unavailable':
+        return PropertyStatus.unavailable;
+      default:
+        return PropertyStatus.available;
+    }
   }
 
   Color _getStatusColor(PropertyStatus status) {

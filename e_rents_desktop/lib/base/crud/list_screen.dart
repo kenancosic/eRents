@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 /// A generic list screen template that provides common functionality for displaying
 /// lists of items with sorting, filtering, pagination, and navigation capabilities.
@@ -13,15 +12,29 @@ class ListScreen<T> extends StatefulWidget {
   final Widget Function(BuildContext context, T item) itemBuilder;
 
   /// Function to fetch items with optional pagination parameters
-  final Future<List<T>> Function({int page, int pageSize, Map<String, dynamic>? filters}) fetchItems;
+  final Future<List<T>> Function({
+    int page,
+    int pageSize,
+    Map<String, dynamic>? filters,
+  })
+  fetchItems;
 
   /// Function to navigate to the detail view for an item
   final void Function(T item) onItemTap;
 
   /// Optional function to sort items
+  ///
+  /// This function is used to sort items client-side after they are fetched
+  /// from the server. It follows the standard Dart comparison function pattern
+  /// where it should return a negative value if a < b, zero if a == b, and a
+  /// positive value if a > b.
   final int Function(T a, T b)? sortFunction;
 
   /// Optional function to filter items
+  ///
+  /// This function is used to filter items client-side after they are fetched
+  /// from the server. It should return true for items that should be included
+  /// in the list and false for items that should be filtered out.
   final bool Function(T item)? filterFunction;
 
   /// Whether to enable pagination
@@ -104,12 +117,23 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
         pageSize: widget.pageSize,
         filters: _filters,
       );
-      
+
+      // Apply client-side filtering if filterFunction is provided
+      List<T> filteredItems = items;
+      if (widget.filterFunction != null) {
+        filteredItems = items.where(widget.filterFunction!).toList();
+      }
+
+      // Apply client-side sorting if sortFunction is provided
+      if (widget.sortFunction != null) {
+        filteredItems.sort(widget.sortFunction);
+      }
+
       setState(() {
         if (_currentPage == 1) {
-          _items = items;
+          _items = filteredItems;
         } else {
-          _items.addAll(items);
+          _items.addAll(filteredItems);
         }
         _hasMore = items.length == widget.pageSize;
         _isLoading = false;
@@ -124,11 +148,11 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
 
   Future<void> _loadMore() async {
     if (!_hasMore || _isLoading) return;
-    
+
     setState(() {
       _isLoading = true;
     });
-    
+
     _currentPage++;
     await _loadItems();
   }
@@ -175,10 +199,7 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
               icon: const Icon(Icons.filter_list),
               onPressed: _showFilterDialog,
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       body: _buildBody(),
@@ -196,10 +217,7 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text('Error: $_errorMessage'),
-            ElevatedButton(
-              onPressed: _refresh,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: _refresh, child: const Text('Retry')),
           ],
         ),
       );
@@ -213,12 +231,13 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
       onRefresh: _refresh,
       child: ListView.builder(
         controller: _scrollController,
-        itemCount: _items.length + (widget.enablePagination && _hasMore ? 1 : 0),
+        itemCount:
+            _items.length + (widget.enablePagination && _hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (widget.enablePagination && index == _items.length) {
             return _buildLoadMoreIndicator();
           }
-          
+
           final item = _items[index];
           return InkWell(
             onTap: () => widget.onItemTap(item),
@@ -278,7 +297,7 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
 
   void _showFilterDialog() {
     if (widget.filterWidget == null) return;
-    
+
     showDialog(
       context: context,
       builder: (context) {

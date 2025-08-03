@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 /// A generic detail screen template that provides common functionality for displaying
 /// detailed information about an item with a master-detail layout pattern.

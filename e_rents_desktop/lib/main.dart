@@ -1,29 +1,38 @@
-import 'package:e_rents_desktop/router.dart';
-import 'package:e_rents_desktop/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 
-import 'base/app_state_providers.dart';
-import 'widgets/global_error_dialog.dart';
-
-// Service imports
+// Core services
 import 'services/api_service.dart';
 import 'services/secure_storage_service.dart';
 import 'services/user_preferences_service.dart';
-import 'services/lookup_service.dart';
+
+// Router and theme
+import 'router.dart';
+import 'theme/theme.dart';
+
+// Widgets
+import 'widgets/global_error_dialog.dart';
 
 // Provider imports
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'providers/providers_config.dart';
+import 'features/rents/providers/rents_provider.dart';
 import 'providers/lookup_provider.dart';
+import 'features/auth/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await dotenv.load(fileName: "lib/.env");
+    print('Loading .env file...');
+    await dotenv.load(fileName: ".env");
+    print('Successfully loaded .env file');
+    print('API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
   } catch (e) {
-    dotenv.env.clear();
+    print('Error loading .env file: $e');
+    // Initialize with default values if .env loading fails
+    dotenv.env['API_BASE_URL'] = 'http://localhost:5000';
+    print('Using default API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
   }
 
   runApp(const ERentsApp());
@@ -35,54 +44,44 @@ class ERentsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
+    
+    // Initialize services
+    final secureStorage = SecureStorageService();
+    final userPrefs = UserPreferencesService();
+    final apiService = ApiService(baseUrl, secureStorage);
+    
+    // Create provider dependencies
+    final deps = ProviderDependencies(
+      apiService: apiService,
+      secureStorage: secureStorage,
+      userPreferences: userPrefs,
+    );
 
-    return MultiProvider(
-      providers: [
-        // Core services that can be accessed by any provider
-        Provider<SecureStorageService>(create: (_) => SecureStorageService()),
-        Provider<UserPreferencesService>(create: (_) => UserPreferencesService()),
-        Provider<ApiService>(
-          create: (context) => ApiService(
-            baseUrl,
-            context.read<SecureStorageService>(),
-          ),
-        ),
-        Provider<LookupService>(
-          create: (context) => LookupService(
-            baseUrl,
-            context.read<SecureStorageService>(),
-          ),
-        ),
-
-        // Core state providers
-        ChangeNotifierProvider(create: (_) => AppErrorProvider()),
-        ChangeNotifierProvider(create: (_) => NavigationStateProvider()),
-        ChangeNotifierProvider(
-          create: (context) => PreferencesStateProvider(
-            context.read<UserPreferencesService>(),
-          ),
-        ),
-
-        // AuthProvider depends on ApiService and SecureStorageService
-        ChangeNotifierProvider<AuthProvider>(
-          create: (context) => AuthProvider(
-            apiService: context.read<ApiService>(),
-            storage: context.read<SecureStorageService>(),
-          ),
-        ),
-
-        // Other providers can be added here if they are needed globally
-        ChangeNotifierProvider<LookupProvider>(
-          create: (context) {
-            final lookupProvider = LookupProvider(context.read<LookupService>());
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              lookupProvider.initializeLookupData();
-            });
-            return lookupProvider;
-          },
-        ),
-      ],
-      child: const AppWithRouter(),
+    // Wrap the app with all providers
+    return AppProviders(
+      dependencies: deps,
+      child: Builder(
+        builder: (context) {
+          // Initialize RentsProvider with BuildContext
+          final rentsProvider = RentsProvider(
+            deps.apiService,
+            context: context,
+          );
+          
+          // Initialize lookup data after first frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Provider.of<LookupProvider>(context, listen: false).initializeLookupData();
+          });
+          
+          return MultiProvider(
+            providers: [
+              // Override the RentsProvider with the one that has BuildContext
+              ChangeNotifierProvider<RentsProvider>.value(value: rentsProvider),
+            ],
+            child: const AppWithRouter(),
+          );
+        },
+      ),
     );
   }
 }

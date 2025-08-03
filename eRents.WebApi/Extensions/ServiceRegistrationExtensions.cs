@@ -5,7 +5,6 @@ using eRents.Domain.Shared.Interfaces;
 using eRents.WebApi.Services;
 using eRents.Features.Shared.Services;
 
-// Features Services Registration
 using eRents.Features.UserManagement.Services;
 using eRents.Features.PropertyManagement.Services;
 using eRents.Features.FinancialManagement.Services;
@@ -13,6 +12,15 @@ using eRents.Features.RentalManagement.Services;
 using eRents.Features.ReviewManagement.Services;
 using eRents.RabbitMQMicroservice.Services;
 using IEmailService = eRents.Shared.Services.IEmailService;
+using eRents.Features.Shared.Services.LookupServices;
+using eRents.Features.PropertyManagement.Services;
+using eRents.Features.PropertyManagement.DTOs;
+using eRents.Domain.Models;
+using FluentValidation;
+using eRents.Features.Core.Validation;
+using eRents.Features.Core.Filters;
+using eRents.Features.Core.Interfaces;
+using eRents.Features.Core.Services;
 
 namespace eRents.WebApi.Extensions;
 
@@ -28,11 +36,24 @@ public static class ServiceRegistrationExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        // Register CRUD abstractions and validation
+        services.AddCustomValidation(
+            typeof(ServiceRegistrationExtensions).Assembly,
+            typeof(BaseValidator<>).Assembly
+        );
+
+        // Register base services
+        services.AddScoped(typeof(IReadService<,,>), typeof(BaseReadService<,,>));
+        services.AddScoped(typeof(ICrudService<,,,>), typeof(BaseCrudService<,,,>));
+
         // Shared Feature Services (cross-cutting concerns)
         services.AddScoped<IImageService, ImageService>();
         services.AddScoped<IMessagingService, MessagingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        
+        // Lookup Services
+        services.AddScoped<AmenityLookupService>();
         // IRecommendationService removed - enterprise ML feature simplified for academic thesis
         // IAvailabilityService removed - complex availability management simplified to Property.Status enum
         // IContractExpirationService removed - enterprise contract management simplified to basic date queries
@@ -67,8 +88,9 @@ public static class ServiceRegistrationExtensions
 
     private static void RegisterPropertyManagementServices(IServiceCollection services)
     {
+        services.AddScoped<IPropertyService, PropertyService>();
+        // Keep the old interface registration for backward compatibility during transition
         services.AddScoped<IPropertyManagementService, PropertyService>();
-        // IUserSavedPropertiesService removed - enterprise favorites feature simplified for academic thesis
     }
 
     private static void RegisterBookingManagementServices(IServiceCollection services)
@@ -80,21 +102,16 @@ public static class ServiceRegistrationExtensions
     private static void RegisterFinancialManagementServices(IServiceCollection services)
     {
         services.AddScoped<IPaymentService, PaymentService>();
-        // IStatisticsService removed - enterprise analytics feature simplified for academic thesis
-        // IReportService removed - enterprise reporting feature simplified for academic thesis
     }
 
 
     private static void RegisterRentalManagementServices(IServiceCollection services)
     {
-        // Consolidated service handles both rental requests and bookings
         services.AddScoped<IRentalService, RentalService>();
     }
 
     private static void RegisterTenantManagementServices(IServiceCollection services)
     {
-        // Tenant services now handled by consolidated UserService
-        // services.AddScoped<ITenantService, TenantService>(); // Removed - consolidated into UserService
     }
 
     private static void RegisterReviewManagementServices(IServiceCollection services)

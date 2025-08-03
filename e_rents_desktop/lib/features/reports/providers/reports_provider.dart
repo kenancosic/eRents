@@ -41,26 +41,21 @@ class ReportsProvider extends BaseProvider {
   }
 
   Future<void> fetchCurrentReports({bool forceRefresh = false}) async {
-    final cacheKey = _buildCacheKey(_currentReportType.name, _startDate, _endDate);
     final endpoint = _buildReportEndpoint(_currentReportType.name, _startDate, _endDate);
 
     await executeWithState(() async {
       if (_currentReportType == ReportType.financial) {
-        if (forceRefresh) invalidateCache(cacheKey);
-        // Fetch raw JSON list and store it directly for simplicity
-        _financialReports = await getCachedOrExecute<List<Map<String, dynamic>>>(
-          cacheKey,
-          () => api.getListAndDecode(endpoint, (data) => data as Map<String, dynamic>, authenticated: true),
+        final result = await api.getListAndDecode<Map<String, dynamic>>(
+          endpoint, 
+          (data) => data,
+          authenticated: true,
         );
+        _financialReports = result;
       }
-      // No other report types handled on desktop for simplification
     });
   }
 
   // ─── Helpers & Private Methods ────────────────────────────────────────
-
-  String _buildCacheKey(String type, DateTime start, DateTime end) =>
-      'report_${type}_${start.toIso8601String()}_${end.toIso8601String()}';
 
   String _buildReportEndpoint(String type, DateTime start, DateTime end) =>
       'reports/$type?from=${start.toIso8601String()}&to=${end.toIso8601String()}';

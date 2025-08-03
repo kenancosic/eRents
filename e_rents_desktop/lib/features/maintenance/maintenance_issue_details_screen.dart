@@ -127,9 +127,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
   Widget _buildIssueDetails() {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -162,7 +160,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Reported by ${issue.tenantName ?? "Tenant ID ${issue.tenantId}"} • ${AppDateUtils.formatRelative(issue.createdAt)}',
+              'Reported by ${issue.tenantName ?? "Tenant ID ${issue.tenantId ?? "Unknown"}"} • ${AppDateUtils.formatRelative(issue.createdAt)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             const SizedBox(height: 24),
@@ -171,7 +169,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(issue.description, style: const TextStyle(fontSize: 16)),
+            Text(issue.description!, style: const TextStyle(fontSize: 16)),
             if (issue.imageIds.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text(
@@ -267,8 +265,10 @@ class _ActionCardState extends State<_ActionCard> {
   }
 
   void _checkForChanges() {
-    final costChanged = (double.tryParse(costController.text) ?? 0) != (widget.issue.cost ?? 0);
-    final notesChanged = notesController.text != (widget.issue.resolutionNotes ?? '');
+    final costChanged =
+        (double.tryParse(costController.text) ?? 0) != (widget.issue.cost ?? 0);
+    final notesChanged =
+        notesController.text != (widget.issue.resolutionNotes ?? '');
     final statusChanged = _selectedStatus != widget.issue.status;
 
     if (mounted) {
@@ -296,10 +296,12 @@ class _ActionCardState extends State<_ActionCard> {
     }
 
     try {
-      await context.read<MaintenanceProvider>().updateStatus(
+      await context.read<MaintenanceProvider>().updateIssueStatus(
         widget.issue.maintenanceIssueId.toString(),
         _selectedStatus,
-        resolutionNotes: notesController.text.isNotEmpty ? notesController.text : null,
+        resolutionNotes: notesController.text.isNotEmpty
+            ? notesController.text
+            : null,
         cost: double.tryParse(costController.text),
       );
 
@@ -318,10 +320,7 @@ class _ActionCardState extends State<_ActionCard> {
           _errorMessage = e.toString();
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_errorMessage!),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(_errorMessage!), backgroundColor: Colors.red),
         );
       }
     } finally {

@@ -5,9 +5,8 @@ namespace eRents.Domain.Models.Enums
     /// </summary>
     public enum UserTypeEnum
     {
-        Admin = 1,
-        Owner = 2,
-        Tenant = 3,
-        Guest = 4
+        Owner = 1,
+        Tenant = 2,
+        Guest = 3
     }
 }

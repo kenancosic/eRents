@@ -18,7 +18,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddControllers(x => x.Filters.Add(new ErrorFilter()))
+// Configure controllers with filters and validation
+builder.Services.AddControllers(x => {
+    x.Filters.Add(new ErrorFilter());
+    x.Filters.Add<ValidationFilter>();
+})
 	.AddApplicationPart(typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly)
 	.AddJsonOptions(options =>
 	{
@@ -38,6 +42,12 @@ builder.Services.AddSignalR(options =>
 {
 	options.EnableDetailedErrors = builder.Environment.IsDevelopment();
 });
+
+// Configure validation
+builder.Services.AddCustomValidation(
+    typeof(Program).Assembly,
+    typeof(eRents.Features.Core.Validation.BaseValidator<>).Assembly
+);
 
 // Add CORS for frontend applications
 builder.Services.AddCors(options =>
