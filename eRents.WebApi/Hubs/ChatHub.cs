@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using eRents.Shared.DTOs;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Shared.DTOs;
+using eRents.Features.Core.Models.Shared;
 
 namespace eRents.WebApi.Hubs
 {
@@ -107,12 +108,12 @@ namespace eRents.WebApi.Hubs
 						senderId, receiverId);
 
 				// Create send message request
-				var sendMessageRequest = new SendMessageRequest
+				SendMessageRequest sendMessageRequest = new SendMessageRequest
 				{
 					ReceiverId = receiverId,
 					Subject = "Chat Message",
 					Body = messageText,
-					MessageText = messageText
+					MessageText = messageText,
 				};
 
 				// Save message via service

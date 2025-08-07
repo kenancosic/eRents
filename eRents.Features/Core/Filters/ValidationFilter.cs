@@ -2,6 +2,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,14 +11,15 @@ namespace eRents.Features.Core.Filters
 {
     /// <summary>
     /// Action filter that validates requests using FluentValidation
+    /// without relying on the obsolete IValidatorFactory.
     /// </summary>
     public class ValidationFilter : IAsyncActionFilter
     {
-        private readonly IValidatorFactory _validatorFactory;
+        private readonly IServiceProvider _serviceProvider;
 
-        public ValidationFilter(IValidatorFactory validatorFactory)
+        public ValidationFilter(IServiceProvider serviceProvider)
         {
-            _validatorFactory = validatorFactory;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -29,40 +31,84 @@ namespace eRents.Features.Core.Filters
                 return;
             }
 
-            // Get all properties that have validation attributes
+            var failures = new List<ValidationFailure>();
+
             foreach (var argument in context.ActionArguments.Values)
             {
                 if (argument == null) continue;
 
-                var validator = _validatorFactory.GetValidator(argument.GetType());
-                if (validator != null)
+                // Resolve IValidator<TArg> from DI for the runtime type
+                var validator = ResolveValidator(argument.GetType());
+                if (validator == null) continue;
+
+                // Build ValidationContext<TArg> dynamically and call ValidateAsync
+                var validationContext = CreateValidationContext(argument);
+
+                var validateAsyncMethod = validator.GetType().GetMethods()
+                    .FirstOrDefault(m =>
+                        m.Name == "ValidateAsync" &&
+                        m.ReturnType == typeof(Task<ValidationResult>) &&
+                        m.GetParameters().Length == 1);
+
+                ValidationResult result;
+                if (validateAsyncMethod != null)
                 {
-                    var validationResult = await validator.ValidateAsync(
-                        new ValidationContext<object>(argument)
-                    );
+                    result = await (Task<ValidationResult>)validateAsyncMethod.Invoke(validator, new[] { validationContext })!;
+                }
+                else
+                {
+                    // Fallback to synchronous Validate if async not found
+                    var validateMethod = validator.GetType().GetMethods()
+                        .FirstOrDefault(m =>
+                            m.Name == "Validate" &&
+                            m.ReturnType == typeof(ValidationResult) &&
+                            m.GetParameters().Length == 1);
 
-                    if (!validationResult.IsValid)
-                    {
-                        var errors = validationResult.Errors
-                            .GroupBy(e => e.PropertyName)
-                            .ToDictionary(
-                                g => g.Key,
-                                g => g.Select(e => e.ErrorMessage).ToArray()
-                            );
+                    result = validateMethod != null
+                        ? (ValidationResult)validateMethod.Invoke(validator, new[] { validationContext })!
+                        : new ValidationResult();
+                }
 
-                        context.Result = new BadRequestObjectResult(new
-                        {
-                            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                            Title = "One or more validation errors occurred.",
-                            Status = 400,
-                            Errors = errors
-                        });
-                        return;
-                    }
+                if (!result.IsValid)
+                {
+                    failures.AddRange(result.Errors);
                 }
             }
 
+            if (failures.Count > 0)
+            {
+                var errors = failures
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.ErrorMessage).ToArray()
+                    );
+
+                // Use standardized RFC 7807 Problem Details response for validation errors
+                var problemDetails = new ValidationProblemDetails(errors)
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "One or more validation errors occurred.",
+                    Type = "https://httpstatuses.com/400"
+                };
+
+                context.Result = new BadRequestObjectResult(problemDetails);
+                return;
+            }
+
             await next();
+        }
+
+        private object? ResolveValidator(Type modelType)
+        {
+            var validatorType = typeof(IValidator<>).MakeGenericType(modelType);
+            return _serviceProvider.GetService(validatorType);
+        }
+
+        private object CreateValidationContext(object instance)
+        {
+            var contextType = typeof(ValidationContext<>).MakeGenericType(instance.GetType());
+            return Activator.CreateInstance(contextType, instance)!;
         }
     }
 

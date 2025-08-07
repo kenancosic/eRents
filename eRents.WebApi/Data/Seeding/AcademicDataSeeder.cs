@@ -174,9 +174,6 @@ namespace eRents.WebApi.Data.Seeding
 				DateOfBirth = DateOnly.FromDateTime(GenerateRandomDateOfBirth()),
 				IsPaypalLinked = _random.Next(3) == 0, // 33% chance
 				Address = CreateBosnianAddress(city),
-				Theme = _random.Next(2) == 0 ? "light" : "dark",
-				Language = "en",
-				NotificationSettings = """{"email": true, "push": true, "sms": false}""",
 				IsPublic = _random.Next(3) > 0 // 66% chance of being public
 			};
 		}
@@ -198,9 +195,6 @@ namespace eRents.WebApi.Data.Seeding
 				DateOfBirth = DateOnly.FromDateTime(GenerateRandomDateOfBirth()),
 				IsPaypalLinked = _random.Next(4) == 0, // 25% chance
 				Address = CreateBosnianAddress(city),
-				Theme = _random.Next(2) == 0 ? "light" : "dark",
-				Language = _random.Next(3) == 0 ? "bs" : "en", // Some Bosnian users
-				NotificationSettings = """{"email": true, "push": true, "sms": false}""",
 				IsPublic = _random.Next(3) > 0 // 66% chance of being public
 			};
 		}

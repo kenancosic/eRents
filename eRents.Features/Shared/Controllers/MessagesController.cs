@@ -1,5 +1,5 @@
 using eRents.Domain.Shared.Interfaces;
-using eRents.Features.Shared.DTOs;
+using eRents.Features.Core.Models.Shared;
 using eRents.Features.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,7 +9,7 @@ namespace eRents.Features.Shared.Controllers
 {
 	[ApiController]
 	[Route("[controller]")]
-	[Authorize] // Require authentication for all messaging operations
+	[Authorize]
 	public class MessagesController : ControllerBase
 	{
 		private readonly IMessagingService _messagingService;

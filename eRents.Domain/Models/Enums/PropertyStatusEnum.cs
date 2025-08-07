@@ -9,6 +9,5 @@ namespace eRents.Domain.Models.Enums
         Occupied = 2,
         UnderMaintenance = 3,
         Unavailable = 4,
-        Draft = 5
     }
 }

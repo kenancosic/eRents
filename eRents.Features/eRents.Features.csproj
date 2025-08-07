@@ -4,6 +4,8 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<!-- Disable implicit compile items so our explicit Include/Remove lists are authoritative -->
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -12,17 +14,59 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- Reference ASP.NET Core shared framework to provide MVC attributes/types to this library -->
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.6" />
-		<PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.6" />
 		<PackageReference Include="FluentValidation" Version="12.0.0" />
-		<PackageReference Include="FluentValidation.AspNetCore" Version="12.0.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
 		<PackageReference Include="Microsoft.ML" Version="3.0.1" />
 		<PackageReference Include="Microsoft.ML.Recommender" Version="0.21.1" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.7" />
+		<!-- Mapster available for compile-time to enable feature mapping registrars -->
+		<PackageReference Include="Mapster" Version="7.4.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>compile</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<!-- Generate ServiceRegistration.cs to wire feature services into DI (consumed by WebApi host) -->
+	<ItemGroup>
+		<Compile Update="Core\Extensions\ServiceRegistration.cs">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Compile>
+	</ItemGroup>
+
+	<!-- Exclude ONLY the legacy subtree 'eRents.Features/Features/**' to avoid CS0101, keep new features compiling -->
+	<ItemGroup>
+		<Compile Remove="Features\**\*.cs" />
+		<EmbeddedResource Remove="Features\**\*" />
+		<None Remove="Features\**\*" />
+	</ItemGroup>
+
+	<!-- Re-include current feature folders explicitly -->
+	<ItemGroup>
+		<Compile Include="BookingManagement\**\*.cs" />
+		<Compile Include="ImageManagement\**\*.cs" />
+		<Compile Include="PaymentManagement\**\*.cs" />
+		<Compile Include="PropertyManagement\**\*.cs" />
+		<Compile Include="ReviewManagement\**\*.cs" />
+		<Compile Include="TenantManagement\**\*.cs" />
+		<Compile Include="UserManagement\**\*.cs" />
+		<Compile Include="LookupManagement\**\*.cs" />
+		<Compile Include="Shared\**\*.cs" />
+		<Compile Include="Core\**\*.cs" />
+	</ItemGroup>
+
+	<!-- Ensure ASP.NET Core Controllers are visible to discovery when referenced by WebApi -->
+	<!-- Removed duplicate FrameworkReference to avoid NETSDK1087 (it is already declared above) -->
+
+	<!-- Exclude legacy duplicate feature implementations under eRents.Features/Features/** -->
+	<ItemGroup>
+		<Compile Remove="Features\**\*.cs" />
+		<EmbeddedResource Remove="Features\**\*" />
+		<None Remove="Features\**\*" />
 	</ItemGroup>
 
 </Project>

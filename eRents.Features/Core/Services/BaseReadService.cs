@@ -48,9 +48,12 @@ namespace eRents.Features.Core.Services
                 .Take(search.PageSize)
                 .ToListAsync();
 
+            // Map to IReadOnlyList<TResponse> to satisfy PagedResponse<T>.Items type
+            var mapped = Mapper.Map<List<TResponse>>(items);
+
             return new PagedResponse<TResponse>
             {
-                Items = Mapper.Map<ICollection<TResponse>>(items),
+                Items = mapped,
                 TotalCount = totalCount,
                 Page = search.Page,
                 PageSize = search.PageSize

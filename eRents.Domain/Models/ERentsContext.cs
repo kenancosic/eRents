@@ -85,10 +85,6 @@ public partial class ERentsContext : DbContext
                 .HasConversion<string>()
                 .HasDefaultValue(UserTypeEnum.Guest);
 
-            // Merged UserPreferences fields
-            entity.Property(e => e.Theme).HasMaxLength(20).HasDefaultValue("light");
-            entity.Property(e => e.Language).HasMaxLength(10).HasDefaultValue("en");
-            entity.Property(e => e.NotificationSettings);
 
             entity.OwnsOne(e => e.Address);
 

@@ -44,13 +44,6 @@ public partial class User : BaseEntity
 
 	public DateOnly? DateOfBirth { get; set; }
 
-	// Merged UserPreferences fields directly into User
-	public string Theme { get; set; } = "light";  // 'light', 'dark'
-
-	public string Language { get; set; } = "en";  // ISO language code
-
-	public string? NotificationSettings { get; set; }  // JSON string for notification preferences
-
 	public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
 	public virtual ICollection<Message> MessageReceivers { get; set; } = new List<Message>();
