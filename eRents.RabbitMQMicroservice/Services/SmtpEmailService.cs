@@ -1,9 +1,11 @@
-﻿using eRents.Shared.DTOs;
+using eRents.Shared.DTOs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net;
 using System.Net.Mail;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Services
 {
@@ -18,7 +20,7 @@ namespace eRents.RabbitMQMicroservice.Services
 			_logger = logger;
 		}
 
-		public void SendEmailNotification(EmailMessage message)
+		public async Task SendEmailNotificationAsync(EmailMessage message, CancellationToken ct = default)
 		{
 			try
 			{
@@ -35,25 +37,26 @@ namespace eRents.RabbitMQMicroservice.Services
 					return;
 				}
 
-				var smtpClient = new SmtpClient(smtpServer)
+				using var smtpClient = new SmtpClient(smtpServer)
 				{
 					Port = smtpPort,
 					Credentials = new NetworkCredential(smtpUsername, smtpPassword),
 					EnableSsl = true,
 				};
 
-				var mailMessage = new MailMessage
+				using var mailMessage = new MailMessage
 				{
 					From = new MailAddress(fromEmail, fromName),
 					Subject = message.Subject,
 					Body = message.Body,
-					IsBodyHtml = true,
+					IsBodyHtml = message.IsHtml,
 				};
 
-				mailMessage.To.Add(message.Email);
+				var recipient = string.IsNullOrWhiteSpace(message.To) ? message.Email : message.To;
+				mailMessage.To.Add(recipient);
 
-				smtpClient.Send(mailMessage);
-				_logger.LogInformation("Email sent successfully to {Email}", message.Email);
+				await smtpClient.SendMailAsync(mailMessage);
+				_logger.LogInformation("Email sent successfully to {Email}", recipient);
 			}
 			catch (Exception ex)
 			{

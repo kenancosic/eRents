@@ -1,4 +1,5 @@
-﻿using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Events;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Processors
 {
@@ -9,12 +10,12 @@ namespace eRents.RabbitMQMicroservice.Processors
 
 	public interface IReviewNotificationProcessor
 	{
-		void Process(object sender, BasicDeliverEventArgs e);
+		Task Process(object sender, BasicDeliverEventArgs e);
 	}
 
 	public interface IEmailNotificationProcessor
 	{
-		void Process(string message);
+		Task Process(string message);
 	}
 	public interface IChatMessageProcessor
 	{

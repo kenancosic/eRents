@@ -4,7 +4,6 @@ namespace eRents.Features.ImageManagement.Models;
 
 public class ImageRequest
 {
-    public int? ReviewId { get; set; }
     public int? PropertyId { get; set; }
     public int? MaintenanceIssueId { get; set; }
 

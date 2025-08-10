@@ -1,4 +1,4 @@
-﻿using eRents.RabbitMQMicroservice.Processors;
+using eRents.RabbitMQMicroservice.Processors;
 using eRents.RabbitMQMicroservice.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -67,6 +67,7 @@ namespace eRents.RabbitMQMicroservice
 			var serviceProvider = host.Services;
 			var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 			var rabbitMqService = serviceProvider.GetRequiredService<RabbitMQConsumerService>();
+            var config = serviceProvider.GetRequiredService<IConfiguration>();
 
 			// Get processors
 			var chatMessageProcessor = serviceProvider.GetRequiredService<ChatMessageProcessor>();
@@ -94,13 +95,21 @@ namespace eRents.RabbitMQMicroservice
 				logger.LogInformation("Started consuming from messageQueue");
 
 				// 2. Email notifications
-				rabbitMqService.ConsumeMessages("emailQueue", (model, ea) =>
+				// Ensure exchange/queue binding matches the WebApi publisher
+				var emailExchange = config["RabbitMQ:EmailExchange"] ?? "emails.exchange";
+				var emailRoutingKey = config["RabbitMQ:EmailRoutingKey"] ?? "emails.send";
+				var emailExchangeType = config["RabbitMQ:EmailExchangeType"] ?? "topic";
+				var emailQueue = config["RabbitMQ:EmailQueue"] ?? "emailQueue";
+
+				rabbitMqService.EnsureBinding(emailExchange, emailExchangeType, emailQueue, emailRoutingKey);
+
+				rabbitMqService.ConsumeMessages(emailQueue, async (model, ea) =>
 				{
 					try
 					{
 						var body = ea.Body.ToArray();
 						var message = Encoding.UTF8.GetString(body);
-						emailProcessor.Process(message);
+						await emailProcessor.Process(message);
 					}
 					catch (Exception ex)
 					{
@@ -126,11 +135,11 @@ namespace eRents.RabbitMQMicroservice
 				logger.LogInformation("Started consuming from bookingQueue");
 
 				// 4. Review notifications
-				rabbitMqService.ConsumeMessages("reviewQueue", (model, ea) =>
+				rabbitMqService.ConsumeMessages("reviewQueue", async (model, ea) =>
 				{
 					try
 					{
-						reviewProcessor.Process(model, ea);
+						await reviewProcessor.Process(model, ea);
 					}
 					catch (Exception ex)
 					{

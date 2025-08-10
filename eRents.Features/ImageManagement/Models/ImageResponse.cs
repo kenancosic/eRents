@@ -6,7 +6,6 @@ public class ImageResponse
 {
     public int ImageId { get; set; }
 
-    public int? ReviewId { get; set; }
     public int? PropertyId { get; set; }
     public int? MaintenanceIssueId { get; set; }
 

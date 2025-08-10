@@ -14,21 +14,12 @@ using eRents.WebApi.Hubs;
 using eRents.WebApi.Middleware;
 // Updated import to match renamed validation extensions class
 using eRents.Features.Core.Extensions;
-using Mapster;
-using eRents.Features.Core.Mapping;
 using eRents.Features.Core.Filters;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Mapster GlobalSettings wiring with minimal safe defaults and Features registrations
-var typeAdapterConfig = TypeAdapterConfig.GlobalSettings;
-// Minimal safe defaults
-typeAdapterConfig.Default.PreserveReference(true);
-typeAdapterConfig.Default.IgnoreNullValues(true);
-// Register feature mappings
-builder.Services.AddFeaturesMappings(typeAdapterConfig);
-// Make the config available via DI (singleton)
-builder.Services.AddSingleton(typeAdapterConfig);
+// AutoMapper registration (Profiles are discovered via assembly scanning)
 
 // Add services to the container.
 builder.Services.AddHttpContextAccessor();
@@ -55,6 +46,13 @@ builder.Services.AddLogging(loggingBuilder =>
 	loggingBuilder.SetMinimumLevel(LogLevel.Information);
 });
 
+// Add AutoMapper using configuration lambda + assemblies overload
+builder.Services.AddAutoMapper(
+    cfg => { },
+    typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly,
+    typeof(Program).Assembly
+);
+
 // Add SignalR
 builder.Services.AddSignalR(options =>
 {
@@ -77,6 +75,8 @@ builder.Services.AddScoped<eRents.Features.ReviewManagement.Services.ReviewServi
 builder.Services.AddScoped<eRents.Features.TenantManagement.Services.TenantService>();
 // Payment feature DI wiring
 builder.Services.AddScoped<eRents.Features.PaymentManagement.Services.PaymentService>();
+// Maintenance feature DI wiring
+builder.Services.AddScoped<eRents.Features.MaintenanceManagement.Services.MaintenanceIssueService>();
 
 // Add CORS for frontend applications
 builder.Services.AddCors(options =>
@@ -114,18 +114,18 @@ builder.Services.AddSwaggerGen(c =>
 		Description = "eRents Property Management System API"
 	});
 
-	c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-	{
-		Type = SecuritySchemeType.Http,
-		Scheme = "bearer",
-		BearerFormat = "JWT",
-		In = ParameterLocation.Header,
-		Name = "Authorization",
-		Description = "Enter JWT token for endpoints that require authentication"
-	});
+    // Prefer Basic auth in Swagger for simple manual testing; JWT still supported by API
+    c.AddSecurityDefinition("Basic", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "basic",
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description = "Basic auth: username/password for manual testing"
+    });
 
 	// Add operation filter to apply security requirements only to endpoints that need it
-	c.OperationFilter<SecurityRequirementsOperationFilter>();
+    c.OperationFilter<SecurityRequirementsOperationFilter>();
 
 	c.DescribeAllParametersInCamelCase();
 });
@@ -195,8 +195,6 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// Add concurrency handling middleware
-app.UseConcurrencyHandling();
 
 // Enable CORS
 app.UseCors("AllowFrontends");

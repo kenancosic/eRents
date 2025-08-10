@@ -3,16 +3,10 @@ using System.ComponentModel.DataAnnotations;
 namespace eRents.Domain.Shared
 {
 	/// <summary>
-	/// Base entity class that provides common properties including concurrency control
+	/// Base entity class that provides common properties
 	/// </summary>
 	public abstract class BaseEntity
 	{
-		/// <summary>
-		/// Row version for optimistic concurrency control
-		/// </summary>
-		[Timestamp]
-		public byte[] RowVersion { get; set; } = null!;
-
 		/// <summary>
 		/// Creation timestamp
 		/// </summary>

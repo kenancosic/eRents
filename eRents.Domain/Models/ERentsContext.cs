@@ -272,10 +272,6 @@ public partial class ERentsContext : DbContext
                 .WithMany(p => p.Images)
                 .HasForeignKey(e => e.PropertyId);
 
-            entity.HasOne(e => e.Review)
-                .WithMany(r => r.Images)
-                .HasForeignKey(e => e.ReviewId);
-
             entity.HasOne(e => e.MaintenanceIssue)
                 .WithMany(m => m.Images)
                 .HasForeignKey(e => e.MaintenanceIssueId);

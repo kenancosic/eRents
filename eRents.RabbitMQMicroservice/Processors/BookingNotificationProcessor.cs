@@ -1,6 +1,7 @@
-﻿using eRents.RabbitMQMicroservice.Services;
+using eRents.RabbitMQMicroservice.Services;
 using eRents.Shared.DTOs;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Processors
 {
@@ -26,7 +27,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 					Subject = "Booking Confirmation",
 					Body = $"Your booking with ID {bookingNotification.BookingId} has been confirmed."
 				};
-				_emailService.SendEmailNotification(emailMessage);
+				await _emailService.SendEmailNotificationAsync(emailMessage);
 			}
 			catch (Exception ex)
 			{

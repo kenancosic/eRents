@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
-using Mapster;
-using eRents.Features.Core.Mapping;
 using eRents.Features.PropertyManagement.Services;
 using eRents.Features.TenantManagement.Services;
 
@@ -27,11 +25,6 @@ namespace eRents.Features.Core.Extensions
 				this IServiceCollection services,
 				params Assembly[] assemblies)
 		{
-			// Ensure Mapster configuration and register feature mappings
-			var config = TypeAdapterConfig.GlobalSettings;
-			services.AddSingleton(config);
-			services.AddFeaturesMappings(config);
-
 			// Register feature services (Property) - register concrete type (interfaces do not exist)
 			services.AddScoped<PropertyService>();
 			// Disable DataAnnotations (keep single source of validation: FluentValidation)

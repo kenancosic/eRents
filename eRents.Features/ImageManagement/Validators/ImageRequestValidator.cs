@@ -10,9 +10,9 @@ public class ImageRequestValidator : BaseValidator<ImageRequest>
 {
     public ImageRequestValidator()
     {
-        RuleFor(x => new { x.PropertyId, x.ReviewId, x.MaintenanceIssueId })
-            .Must(link => link.PropertyId.HasValue || link.ReviewId.HasValue || link.MaintenanceIssueId.HasValue)
-            .WithMessage("At least one of PropertyId, ReviewId, or MaintenanceIssueId must be provided.");
+        RuleFor(x => new { x.PropertyId, x.MaintenanceIssueId })
+            .Must(link => link.PropertyId.HasValue || link.MaintenanceIssueId.HasValue)
+            .WithMessage("At least one of PropertyId or MaintenanceIssueId must be provided.");
 
         RuleFor(x => x.FileName)
             .NotEmpty().WithMessage("FileName is required.")

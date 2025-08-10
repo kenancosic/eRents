@@ -1,6 +1,7 @@
-﻿using eRents.RabbitMQMicroservice.Services;
+using eRents.RabbitMQMicroservice.Services;
 using eRents.Shared.DTOs;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Processors
 {
@@ -13,10 +14,10 @@ namespace eRents.RabbitMQMicroservice.Processors
 			_emailService = emailService;
 		}
 
-		public void Process(string message)
+		public async Task Process(string message)
 		{
 			var emailMessage = JsonConvert.DeserializeObject<EmailMessage>(message);
-			_emailService.SendEmailNotification(emailMessage);
+			await _emailService.SendEmailNotificationAsync(emailMessage);
 		}
 	}
 

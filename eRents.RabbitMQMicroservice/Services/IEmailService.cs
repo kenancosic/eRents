@@ -1,9 +1,11 @@
-﻿using eRents.Shared.DTOs;
+using eRents.Shared.DTOs;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Services
 {
 	public interface IEmailService
 	{
-		void SendEmailNotification(EmailMessage message);
+		Task SendEmailNotificationAsync(EmailMessage message, CancellationToken ct = default);
 	}
 }

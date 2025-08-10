@@ -16,19 +16,19 @@
 	<ItemGroup>
 		<!-- Reference ASP.NET Core shared framework to provide MVC attributes/types to this library -->
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="AutoMapper" Version="15.0.1" />
 		<PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.6" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.6" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.6" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
 		<PackageReference Include="FluentValidation" Version="12.0.0" />
-		<PackageReference Include="Microsoft.ML" Version="3.0.1" />
-		<PackageReference Include="Microsoft.ML.Recommender" Version="0.21.1" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.7" />
+		<PackageReference Include="Microsoft.ML" Version="4.0.2" />
+		<PackageReference Include="Microsoft.ML.Recommender" Version="0.22.2" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.8" />
+		<!-- JWT Authentication packages -->
+		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.1" />
+		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.13.1" />
 		<!-- Mapster available for compile-time to enable feature mapping registrars -->
-		<PackageReference Include="Mapster" Version="7.4.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>compile</IncludeAssets>
-		</PackageReference>
 	</ItemGroup>
 
 	<!-- Generate ServiceRegistration.cs to wire feature services into DI (consumed by WebApi host) -->
@@ -47,6 +47,7 @@
 
 	<!-- Re-include current feature folders explicitly -->
 	<ItemGroup>
+		<Compile Include="AuthManagement\**\*.cs" />
 		<Compile Include="BookingManagement\**\*.cs" />
 		<Compile Include="ImageManagement\**\*.cs" />
 		<Compile Include="PaymentManagement\**\*.cs" />
@@ -55,6 +56,7 @@
 		<Compile Include="TenantManagement\**\*.cs" />
 		<Compile Include="UserManagement\**\*.cs" />
 		<Compile Include="LookupManagement\**\*.cs" />
+		<Compile Include="MaintenanceManagement\**\*.cs" />
 		<Compile Include="Shared\**\*.cs" />
 		<Compile Include="Core\**\*.cs" />
 	</ItemGroup>

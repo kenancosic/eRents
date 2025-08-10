@@ -5,10 +5,10 @@ using eRents.Domain.Shared.Interfaces;
 using eRents.WebApi.Services;
 using eRents.Features.Shared.Services;
 
-using eRents.RabbitMQMicroservice.Services;
 using eRents.Features.Core.Validation;
 using eRents.Features.Core.Extensions;
 using eRents.Features.ImageManagement.Services;
+
 using eRents.Features.PropertyManagement.Models;
 using eRents.Features.UserManagement.Services;
 using eRents.Features.UserManagement.Models;
@@ -23,6 +23,9 @@ using eRents.Features.PropertyManagement.Services;
 using eRents.Features.Core.Mapping;
 using eRents.Features.LookupManagement.Interfaces;
 using eRents.Features.LookupManagement.Services;
+using eRents.Features.AuthManagement.Extensions;
+using eRents.Features.MaintenanceManagement.Services;
+using eRents.Features.MaintenanceManagement.Models;
 
 namespace eRents.WebApi.Extensions;
 
@@ -34,12 +37,12 @@ public static class ServiceRegistrationExtensions
 		services.AddDbContext<ERentsContext>(options =>
 				options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-		// AutoMapper - register all profiles from Features and WebApi assemblies
-		// This provides AutoMapper.IMapper needed by feature services
-		services.AddAutoMapper(
-			typeof(ServiceRegistrationExtensions).Assembly,
-			typeof(FeaturesMappingRegistration).Assembly
-		);
+		        // AutoMapper - register profiles by assemblies using config lambda overload
+        services.AddAutoMapper(
+            cfg => { },
+            typeof(ServiceRegistrationExtensions).Assembly,
+            typeof(FeaturesMappingRegistration).Assembly
+        );
 
 		services.AddScoped<ICurrentUserService, CurrentUserService>();
 
@@ -53,7 +56,7 @@ public static class ServiceRegistrationExtensions
 		services.AddScoped<ImageService>();
 		services.AddScoped<IMessagingService, MessagingService>();
 		services.AddScoped<INotificationService, NotificationService>();
-		services.AddScoped<IEmailService, SmtpEmailService>();
+		services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
 
 		services.AddScoped<DbContext, ERentsContext>();
 
@@ -63,8 +66,12 @@ public static class ServiceRegistrationExtensions
 		RegisterRentalManagementServices(services);
 		RegisterReviewManagementServices(services);
 		RegisterLookupManagementServices(services);
+		RegisterMaintenanceManagementServices(services);
 
 		RegisterUserManagementServices(services);
+
+		// Register AuthManagement services
+		services.AddAuthManagement();
 	}
 
 	private static void RegisterLookupManagementServices(IServiceCollection services)
@@ -133,5 +140,10 @@ public static class ServiceRegistrationExtensions
 
 		// Optionally expose IReadService separately if required by controllers (PublicUsersController uses IReadService)
 		services.AddScoped<IReadService<User, UserResponse, UserSearch>, UserService>();
+	}
+	private static void RegisterMaintenanceManagementServices(IServiceCollection services)
+	{
+		services.AddScoped<ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
+		services.AddScoped<IReadService<MaintenanceIssue, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
 	}
 }

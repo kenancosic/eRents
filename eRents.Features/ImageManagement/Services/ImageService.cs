@@ -24,12 +24,6 @@ public class ImageService : BaseCrudService<Image, ImageRequest, ImageResponse, 
 			query = query.Where(x => x.PropertyId == id);
 		}
 
-		if (search.ReviewId.HasValue)
-		{
-			var id = search.ReviewId.Value;
-			query = query.Where(x => x.ReviewId == id);
-		}
-
 		if (search.MaintenanceIssueId.HasValue)
 		{
 			var id = search.MaintenanceIssueId.Value;

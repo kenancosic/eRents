@@ -31,7 +31,6 @@ public partial class Review : BaseEntity
 	public int? ParentReviewId { get; set; } // null for original reviews, points to parent for replies
 
 	// Navigation properties
-	public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 	public virtual Property? Property { get; set; }
 	public virtual Booking? Booking { get; set; }
 	public virtual User? Reviewer { get; set; } // The user who wrote the review

@@ -27,7 +27,7 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
             return;
         }
 
-        // If the endpoint or controller has [Authorize], require JWT authentication
+        // If the endpoint or controller has [Authorize], require authentication (Basic for Swagger)
         if (hasAuthorize)
         {
             operation.Security = new List<OpenApiSecurityRequirement>
@@ -40,7 +40,7 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
                             Reference = new OpenApiReference
                             {
                                 Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
+                                Id = "Basic"
                             }
                         },
                         new string[] {}
@@ -53,7 +53,7 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
             {
                 operation.Responses.Add("401", new OpenApiResponse 
                 { 
-                    Description = "Unauthorized - Invalid or missing JWT token" 
+                    Description = "Unauthorized - Invalid or missing credentials" 
                 });
             }
 

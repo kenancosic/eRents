@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace eRents.Features.Core.Filters
 {
@@ -16,10 +17,12 @@ namespace eRents.Features.Core.Filters
     public class ValidationFilter : IAsyncActionFilter
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<ValidationFilter> _logger;
 
-        public ValidationFilter(IServiceProvider serviceProvider)
+        public ValidationFilter(IServiceProvider serviceProvider, ILogger<ValidationFilter> logger)
         {
             _serviceProvider = serviceProvider;
+            _logger = logger;
         }
 
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -37,40 +40,32 @@ namespace eRents.Features.Core.Filters
             {
                 if (argument == null) continue;
 
-                // Resolve IValidator<TArg> from DI for the runtime type
+                // Resolve validator from DI for the runtime type
                 var validator = ResolveValidator(argument.GetType());
                 if (validator == null) continue;
 
-                // Build ValidationContext<TArg> dynamically and call ValidateAsync
-                var validationContext = CreateValidationContext(argument);
-
-                var validateAsyncMethod = validator.GetType().GetMethods()
-                    .FirstOrDefault(m =>
-                        m.Name == "ValidateAsync" &&
-                        m.ReturnType == typeof(Task<ValidationResult>) &&
-                        m.GetParameters().Length == 1);
-
+                // Prefer non-generic IValidator API to avoid reflection overload issues
+                // This calls ValidateAsync(IValidationContext) which is stable across versions
                 ValidationResult result;
-                if (validateAsyncMethod != null)
+                if (validator is IValidator nonGenericValidator)
                 {
-                    result = await (Task<ValidationResult>)validateAsyncMethod.Invoke(validator, new[] { validationContext })!;
+                    _logger?.LogDebug("Validating argument of type {ArgType} with {ValidatorType}", argument.GetType().FullName, nonGenericValidator.GetType().FullName);
+                    var fvContext = new ValidationContext<object>(argument);
+                    result = await nonGenericValidator.ValidateAsync(fvContext);
                 }
                 else
                 {
-                    // Fallback to synchronous Validate if async not found
-                    var validateMethod = validator.GetType().GetMethods()
-                        .FirstOrDefault(m =>
-                            m.Name == "Validate" &&
-                            m.ReturnType == typeof(ValidationResult) &&
-                            m.GetParameters().Length == 1);
-
-                    result = validateMethod != null
-                        ? (ValidationResult)validateMethod.Invoke(validator, new[] { validationContext })!
-                        : new ValidationResult();
+                    // Extremely unlikely, but keep a safe fallback (no failures)
+                    result = new ValidationResult();
                 }
 
                 if (!result.IsValid)
                 {
+                    foreach (var err in result.Errors)
+                    {
+                        _logger?.LogWarning("Validation error on {Property}: {Message} (AttemptedValue: {AttemptedValue})",
+                            err.PropertyName, err.ErrorMessage, err.AttemptedValue);
+                    }
                     failures.AddRange(result.Errors);
                 }
             }
@@ -91,6 +86,10 @@ namespace eRents.Features.Core.Filters
                     Title = "One or more validation errors occurred.",
                     Type = "https://httpstatuses.com/400"
                 };
+
+                _logger?.LogWarning("Validation failed for action {Action}. Errors: {Errors}",
+                    context.ActionDescriptor.DisplayName,
+                    string.Join("; ", failures.Select(f => $"{f.PropertyName}: {f.ErrorMessage}")));
 
                 context.Result = new BadRequestObjectResult(problemDetails);
                 return;

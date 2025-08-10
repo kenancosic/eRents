@@ -63,11 +63,10 @@ namespace eRents.WebApi.Data.Seeding
 				await transaction.CommitAsync();
 				_logger?.LogInformation("Academic data seeding completed successfully.");
 				_logger?.LogInformation("🎓 ACADEMIC TEST ACCOUNTS:");
-				_logger?.LogInformation("📱 Mobile: username='mobile', password='test'");
-				_logger?.LogInformation("🖥️ Desktop: username='desktop', password='test'");
-				_logger?.LogInformation("👨‍💼 Owner: username='owner', password='test'");
-				_logger?.LogInformation("👤 Tenant: username='tenant', password='test'");
-				_logger?.LogInformation("🔑 Admin: username='admin', password='test'");
+				_logger?.LogInformation("📱 Mobile: username='mobile', password='test123'");
+				_logger?.LogInformation("🖥️ Desktop: username='desktop', password='test123'");
+				_logger?.LogInformation("👨‍💼 Owner: username='owner', password='test123'");
+				_logger?.LogInformation("👤 Tenant: username='tenant', password='test123'");
 			}
 			catch (Exception ex)
 			{
@@ -128,10 +127,10 @@ namespace eRents.WebApi.Data.Seeding
 			var users = new List<User>();
 
 			// MANDATORY ACADEMIC TEST ACCOUNTS - as per requirements
-			users.Add(CreateAcademicUser("mobile", "mobile", "test", UserTypeEnum.Tenant, "Mobile", "User", "mobile@erent.com", "Sarajevo"));
-			users.Add(CreateAcademicUser("desktop", "desktop", "test", UserTypeEnum.Owner, "Desktop", "User", "desktop@erent.com", "Sarajevo"));
-			users.Add(CreateAcademicUser("owner", "owner", "test", UserTypeEnum.Owner, "Property", "Owner", "owner@erent.com", "Mostar"));
-			users.Add(CreateAcademicUser("tenant", "tenant", "test", UserTypeEnum.Tenant, "Test", "Tenant", "tenant@erent.com", "Banja Luka"));
+			users.Add(CreateAcademicUser("mobile", "mobile", "test123", UserTypeEnum.Tenant, "Mobile", "User", "mobile@erent.com", "Sarajevo"));
+			users.Add(CreateAcademicUser("desktop", "desktop", "test123", UserTypeEnum.Owner, "Desktop", "User", "desktop@erent.com", "Sarajevo"));
+			users.Add(CreateAcademicUser("owner", "owner", "test123", UserTypeEnum.Owner, "Property", "Owner", "owner@erent.com", "Mostar"));
+			users.Add(CreateAcademicUser("tenant", "tenant", "test123", UserTypeEnum.Tenant, "Test", "Tenant", "tenant@erent.com", "Banja Luka"));
 
 			// Additional test users for comprehensive functionality testing
 			for (int i = 1; i <= 15; i++)
@@ -978,14 +977,14 @@ namespace eRents.WebApi.Data.Seeding
 			// Now create and save refund payments
 			var refundablePayments = payments.Where(p => p.PaymentType == "BookingPayment").Take(3).ToList();
 			var refunds = new List<Payment>();
-			
+
 			foreach (var payment in refundablePayments)
 			{
 				// Find the actual saved payment from the database to get its real PaymentId
 				var savedPayment = await context.Payments.FirstOrDefaultAsync(p =>
 					p.PaymentReference == payment.PaymentReference &&
 					p.Amount == payment.Amount);
-					
+
 				if (savedPayment != null)
 				{
 					refunds.Add(new Payment
@@ -1043,11 +1042,7 @@ namespace eRents.WebApi.Data.Seeding
 				images.Add(CreateMaintenanceImage(issue.MaintenanceIssueId));
 			}
 
-			// Review images (for some reviews)
-			foreach (var review in reviews.Where(r => _random.Next(4) == 0)) // 25% have images
-			{
-				images.Add(CreateReviewImage(review.ReviewId));
-			}
+			// Review images removed - no longer supported
 
 			context.Images.AddRange(images);
 			await context.SaveChangesAsync();
@@ -1091,22 +1086,7 @@ namespace eRents.WebApi.Data.Seeding
 			};
 		}
 
-		private Image CreateReviewImage(int reviewId)
-		{
-			return new Image
-			{
-				ReviewId = reviewId,
-				ImageData = GeneratePlaceholderImageData(),
-				ThumbnailData = GeneratePlaceholderThumbnailData(),
-				ContentType = "image/jpeg",
-				FileName = $"review_{Guid.NewGuid():N}.jpg",
-				DateUploaded = DateTime.UtcNow.AddDays(-_random.Next(1, 60)),
-				FileSizeBytes = _random.Next(300000, 1500000),
-				Width = _random.Next(600, 1200),
-				Height = _random.Next(400, 900),
-				IsCover = false
-			};
-		}
+		// CreateReviewImage method removed - review images no longer supported
 
 		private byte[] GeneratePlaceholderImageData()
 		{

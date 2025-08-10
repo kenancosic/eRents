@@ -1,8 +1,9 @@
-﻿using eRents.RabbitMQMicroservice.Services;
+using eRents.RabbitMQMicroservice.Services;
 using eRents.Shared.DTOs;
 using Newtonsoft.Json;
 using RabbitMQ.Client.Events;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace eRents.RabbitMQMicroservice.Processors
 {
@@ -15,7 +16,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 			_emailService = emailService;
 		}
 
-		public void Process(object sender, BasicDeliverEventArgs e)
+		public async Task Process(object sender, BasicDeliverEventArgs e)
 		{
 			var body = e.Body.ToArray();
 			var message = Encoding.UTF8.GetString(body);
@@ -29,7 +30,7 @@ namespace eRents.RabbitMQMicroservice.Processors
 				Subject = "New Review Notification",
 				Body = $"A new review with ID {reviewNotification.ReviewId} has been posted for your property with ID {reviewNotification.PropertyId}."
 			};
-			_emailService.SendEmailNotification(emailMessage);
+			await _emailService.SendEmailNotificationAsync(emailMessage);
 		}
 
 	}

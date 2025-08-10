@@ -8,8 +8,6 @@ public partial class Image : BaseEntity
 {
     public int ImageId { get; set; }
 
-    public int? ReviewId { get; set; }
-
     public int? PropertyId { get; set; }
 
     public int? MaintenanceIssueId { get; set; }
@@ -34,8 +32,6 @@ public partial class Image : BaseEntity
     public byte[]? ThumbnailData { get; set; } // Thumbnail for mobile optimization
 
     public virtual Property? Property { get; set; }
-
-    public virtual Review? Review { get; set; }
 
     public virtual MaintenanceIssue? MaintenanceIssue { get; set; }
 }

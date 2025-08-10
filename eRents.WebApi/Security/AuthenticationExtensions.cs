@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.Configuration;
+using eRents.WebApi.Security;
 
 public static class AuthenticationExtensions
 {
@@ -16,11 +18,34 @@ public static class AuthenticationExtensions
 		if (string.IsNullOrEmpty(issuer)) throw new InvalidOperationException("JWT Issuer is not configured.");
 		if (string.IsNullOrEmpty(audience)) throw new InvalidOperationException("JWT Audience is not configured.");
 
-		services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-				.AddJwtBearer(options =>
+		services
+			.AddAuthentication(options =>
+			{
+				// Use a policy scheme so we can support both Basic and Bearer seamlessly
+				options.DefaultScheme = "BasicOrBearer";
+				options.DefaultChallengeScheme = "BasicOrBearer";
+			})
+			.AddPolicyScheme("BasicOrBearer", "Basic or Bearer", options =>
+			{
+				options.ForwardDefaultSelector = context =>
 				{
-					options.TokenValidationParameters = BuildTokenValidationParameters(key, issuer, audience);
-				});
+					var authHeader = context.Request.Headers["Authorization"].ToString();
+					if (!string.IsNullOrEmpty(authHeader))
+					{
+						if (authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+							return "Basic";
+						if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+							return JwtBearerDefaults.AuthenticationScheme;
+					}
+					// Default to Basic for manual testing convenience
+					return "Basic";
+				};
+			})
+			.AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("Basic", options => { })
+			.AddJwtBearer(options =>
+			{
+				options.TokenValidationParameters = BuildTokenValidationParameters(key, issuer, audience);
+			});
 
 		return services;
 	}

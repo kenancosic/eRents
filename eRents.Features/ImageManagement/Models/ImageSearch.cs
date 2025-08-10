@@ -6,7 +6,6 @@ namespace eRents.Features.ImageManagement.Models;
 public class ImageSearch : BaseSearchObject
 {
     public int? PropertyId { get; set; }
-    public int? ReviewId { get; set; }
     public int? MaintenanceIssueId { get; set; }
 
     public bool? IsCover { get; set; }
