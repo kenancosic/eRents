@@ -9,6 +9,7 @@ using eRents.Features.Core.Validation;
 using eRents.Features.Core.Extensions;
 using eRents.Features.ImageManagement.Services;
 
+
 using eRents.Features.PropertyManagement.Models;
 using eRents.Features.UserManagement.Services;
 using eRents.Features.UserManagement.Models;
@@ -20,80 +21,67 @@ using eRents.Features.BookingManagement.Services;
 using eRents.Features.PaymentManagement.Services;
 using eRents.Features.PaymentManagement.Models;
 using eRents.Features.PropertyManagement.Services;
-using eRents.Features.Core.Mapping;
 using eRents.Features.LookupManagement.Interfaces;
 using eRents.Features.LookupManagement.Services;
 using eRents.Features.AuthManagement.Extensions;
 using eRents.Features.MaintenanceManagement.Services;
 using eRents.Features.MaintenanceManagement.Models;
+using eRents.Features.TenantManagement.Services;
+using eRents.Features.TenantManagement.Models;
 
 namespace eRents.WebApi.Extensions;
 
 public static class ServiceRegistrationExtensions
 {
-	public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration)
-	{
-		// Database Configuration
-		services.AddDbContext<ERentsContext>(options =>
-				options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+    public static void ConfigureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Host-level concerns like DbContext, AutoMapper, and validation are configured in Program.cs
 
-		        // AutoMapper - register profiles by assemblies using config lambda overload
-        services.AddAutoMapper(
-            cfg => { },
-            typeof(ServiceRegistrationExtensions).Assembly,
-            typeof(FeaturesMappingRegistration).Assembly
-        );
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-		services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-		// Register CRUD abstractions and validation
-		services.AddCustomValidation(
-				typeof(ServiceRegistrationExtensions).Assembly,
-				typeof(BaseValidator<>).Assembly
-		);
+        // Register CRUD abstractions and validation are centralized in Program.cs
 
 
-		services.AddScoped<ImageService>();
-		services.AddScoped<IMessagingService, MessagingService>();
-		services.AddScoped<INotificationService, NotificationService>();
-		services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
+        services.AddScoped<ImageService>();
+        services.AddScoped<IMessagingService, MessagingService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
 
-		services.AddScoped<DbContext, ERentsContext>();
+        // Feature-Specific Services
+        RegisterPropertyManagementServices(services);
+        RegisterFinancialManagementServices(services);
+        RegisterRentalManagementServices(services);
+        RegisterReviewManagementServices(services);
+        RegisterLookupManagementServices(services);
+        RegisterMaintenanceManagementServices(services);
+        RegisterTenantManagementServices(services);
 
-		// Feature-Specific Services
-		RegisterPropertyManagementServices(services);
-		RegisterFinancialManagementServices(services);
-		RegisterRentalManagementServices(services);
-		RegisterReviewManagementServices(services);
-		RegisterLookupManagementServices(services);
-		RegisterMaintenanceManagementServices(services);
+        RegisterUserManagementServices(services);
 
-		RegisterUserManagementServices(services);
+        // Register AuthManagement services
+        services.AddAuthManagement();
+    }
 
-		// Register AuthManagement services
-		services.AddAuthManagement();
-	}
+    private static void RegisterLookupManagementServices(IServiceCollection services)
+    {
+        services.AddScoped<ILookupService, LookupService>();
+        services.AddScoped<IAmenityService, AmenityService>();
+        // Add other LookupManagement services and validators
+    }
 
-	private static void RegisterLookupManagementServices(IServiceCollection services)
-	{
-		services.AddScoped<ILookupService, LookupService>();
-		services.AddScoped<IAmenityService, AmenityService>();
-		// Add other LookupManagement services and validators
-	}
+    private static void RegisterPropertyManagementServices(IServiceCollection services)
+    {
+        // Register concrete service only to avoid missing interface type errors
+        services.AddScoped<PropertyService>();
 
-	private static void RegisterPropertyManagementServices(IServiceCollection services)
-	{
-		// Register concrete service only to avoid missing interface type errors
-		services.AddScoped<PropertyService>();
+        // Register generic interfaces for CrudController-based controllers
+        services.AddScoped<
+            ICrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>,
+            PropertyService
+        >();
 
-		// Register generic interfaces for CrudController-based controllers
-		services.AddScoped<
-			ICrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>,
-			PropertyService
-		>();
-
-		services.AddScoped<IReadService<Property, PropertyResponse, PropertySearch>, PropertyService>();
-	}
+        services.AddScoped<IReadService<Property, PropertyResponse, PropertySearch>, PropertyService>();
+    }
 
 
 	private static void RegisterFinancialManagementServices(IServiceCollection services)
@@ -146,4 +134,18 @@ public static class ServiceRegistrationExtensions
 		services.AddScoped<ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
 		services.AddScoped<IReadService<MaintenanceIssue, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
 	}
+
+    private static void RegisterTenantManagementServices(IServiceCollection services)
+    {
+        // Register concrete TenantService
+        services.AddScoped<TenantService>();
+
+        // Bind generic interfaces to support CrudController-based TenantsController
+        services.AddScoped<
+            ICrudService<eRents.Domain.Models.Tenant, TenantRequest, TenantResponse, TenantSearch>,
+            TenantService
+        >();
+
+        services.AddScoped<IReadService<eRents.Domain.Models.Tenant, TenantResponse, TenantSearch>, TenantService>();
+    }
 }

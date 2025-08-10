@@ -66,17 +66,9 @@ builder.Services.AddCustomValidation(
 );
 
 // Remove explicit generic ICrudService registrations from Program; these are centralized in ServiceRegistrationExtensions
-// Keep only concrete service registrations if needed locally (prefer central ConfigureServices)
+// Keep only services that are not registered centrally (e.g., TenantService if not part of central DI yet)
 
-// Centralize DI in ServiceRegistrationExtensions; remove explicit generic ICrudService registrations here
-// Review feature DI wiring
-builder.Services.AddScoped<eRents.Features.ReviewManagement.Services.ReviewService>();
-// Tenant feature DI wiring
-builder.Services.AddScoped<eRents.Features.TenantManagement.Services.TenantService>();
-// Payment feature DI wiring
-builder.Services.AddScoped<eRents.Features.PaymentManagement.Services.PaymentService>();
-// Maintenance feature DI wiring
-builder.Services.AddScoped<eRents.Features.MaintenanceManagement.Services.MaintenanceIssueService>();
+// Tenant feature DI wiring is centralized in ServiceRegistrationExtensions
 
 // Add CORS for frontend applications
 builder.Services.AddCors(options =>
@@ -150,6 +142,9 @@ builder.Services.AddDbContext<ERentsContext>(options =>
 	options.UseSqlServer(connectionString);
 });
 
+// Map DbContext base type to ERentsContext for services that depend on DbContext
+builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ERentsContext>());
+
 var app = builder.Build();
 
 // Update Main logic to async
@@ -186,11 +181,20 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 SeedDatabaseAsync(app.Services).GetAwaiter().GetResult();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments to avoid mismatches when the app isn't running as Development
+app.UseSwagger(c =>
 {
-	app.UseSwagger();
-	app.UseSwaggerUI();
-}
+    // Ensure OpenAPI 3 output (default)
+    // c.SerializeAsV2 = false;
+});
+
+// Explicitly point Swagger UI to the generated JSON to avoid version field errors
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "eRents API v1");
+    // Keep default route prefix 'swagger'
+    // c.RoutePrefix = "swagger";
+});
 
 //app.UseHttpsRedirection();
 app.UseMiddleware<GlobalExceptionMiddleware>();
