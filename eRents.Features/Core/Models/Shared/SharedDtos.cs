@@ -37,7 +37,6 @@ public class ImageUploadRequest
 {
 	public IFormFile? ImageFile { get; set; }
 	public int? PropertyId { get; set; }
-	public string? Category { get; set; }
 	public bool IsCover { get; set; } = false;
 }
 
@@ -205,32 +204,8 @@ public class StandardErrorResponse
 	public string? Path { get; set; }
 }
 
-/// <summary>
-/// Generic paged response for all features
-/// Part of Features/Core infrastructure
-/// </summary>
-public class PagedResponse<T>
-{
-	public List<T> Items { get; set; } = new();
-	public int Page { get; set; }
-	public int PageSize { get; set; }
-	public int TotalCount { get; set; }
-	public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-	public bool HasNextPage => Page < TotalPages;
-	public bool HasPreviousPage => Page > 1;
-
-	public PagedResponse()
-	{
-	}
-
-	public PagedResponse(List<T> items, int page, int pageSize, int totalCount)
-	{
-		Items = items;
-		Page = page;
-		PageSize = pageSize;
-		TotalCount = totalCount;
-	}
-}
+// NOTE: PagedResponse<T> has been consolidated under eRents.Features.Core.Models.PagedResponse<T>.
+// The duplicate definition that previously lived here was removed to avoid type ambiguity.
 
 /// <summary>
 /// Exception thrown when a requested resource is not found

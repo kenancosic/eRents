@@ -31,10 +31,6 @@ public partial class MaintenanceIssue : BaseEntity
 
 	public string? ResolutionNotes { get; set; }
 
-	public string? Category { get; set; }
-
-	public bool RequiresInspection { get; set; }
-
 	public bool IsTenantComplaint { get; set; }
 
 	public virtual Property Property { get; set; } = null!;

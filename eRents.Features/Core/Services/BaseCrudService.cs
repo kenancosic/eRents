@@ -29,6 +29,9 @@ namespace eRents.Features.Core.Services
 
         public virtual async Task<TResponse> CreateAsync(TRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             Logger.LogInformation("Creating new {EntityType}", EntityType.Name);
 
             var entity = Mapper.Map<TEntity>(request);
@@ -47,6 +50,9 @@ namespace eRents.Features.Core.Services
 
         public virtual async Task<TResponse> UpdateAsync(int id, TRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             Logger.LogInformation("Updating {EntityType} with ID {Id}", EntityType.Name, id);
 
             var entity = await Context.Set<TEntity>().FindAsync(id);

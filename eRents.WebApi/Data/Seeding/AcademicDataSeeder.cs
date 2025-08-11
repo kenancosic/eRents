@@ -758,17 +758,17 @@ namespace eRents.WebApi.Data.Seeding
 		{
 			var issueTemplates = new[]
 			{
-								("Kvar na slavini", "Slavina u kuhinji curi i treba je popraviti", "Vodoinstalacije", MaintenanceIssuePriorityEnum.Medium),
-								("Klima ne radi", "Klima uređaj se ne uključuje", "Klimatizacija", MaintenanceIssuePriorityEnum.High),
-								("Puklo staklo", "Staklo na prozoru u dnevnoj sobi je napuklo", "Staklarski radovi", MaintenanceIssuePriorityEnum.High),
-								("Nema tople vode", "U kupatu nema tople vode", "Vodoinstalacije", MaintenanceIssuePriorityEnum.High),
-								("Začepljen odvod", "Odvod u tušu je začepljen", "Vodoinstalacije", MaintenanceIssuePriorityEnum.Low),
-								("Kvar na grejanju", "Radijatori se ne zagrejavaju", "Centralno grejanje", MaintenanceIssuePriorityEnum.High),
-								("Elektrika problema", "Prekidač u hodniku ne radi", "Elektroinstalacije", MaintenanceIssuePriorityEnum.Medium),
-								("Vrata se ne zatvaraju", "Ulazna vrata se teško zatvaraju", "Bravarsko-ključarski radovi", MaintenanceIssuePriorityEnum.Low),
-								("Problem sa WiFi", "Internet konekcija je sporja", "Internet/IT", MaintenanceIssuePriorityEnum.Low),
-								("Šuška međuvrata", "Vrata između soba šuška", "Stolarsko-tesarski radovi", MaintenanceIssuePriorityEnum.Low)
-						};
+							("Kvar na slavini", "Slavina u kuhinji curi i treba je popraviti"),
+							("Klima ne radi", "Klima uređaj se ne uključuje"),
+							("Puklo staklo", "Staklo na prozoru u dnevnoj sobi je napuklo"),
+							("Nema tople vode", "U kupatu nema tople vode"),
+							("Začepljen odvod", "Odvod u tušu je začepljen"),
+							("Kvar na grejanju", "Radijatori se ne zagrejavaju"),
+							("Elektrika problema", "Prekidač u hodniku ne radi"),
+							("Vrata se ne zatvaraju", "Ulazna vrata se teško zatvaraju"),
+							("Problem sa WiFi", "Internet konekcija je sporja"),
+							("Šuška međuvrata", "Vrata između soba šuška")
+					};
 
 			var template = issueTemplates[_random.Next(issueTemplates.Length)];
 			var priority = priorities[_random.Next(priorities.Length)];
@@ -779,7 +779,6 @@ namespace eRents.WebApi.Data.Seeding
 				PropertyId = property.PropertyId,
 				Title = template.Item1,
 				Description = template.Item2,
-				Category = template.Item3,
 				Priority = priority,
 				Status = status,
 				ReportedByUserId = reporterId,
@@ -787,7 +786,6 @@ namespace eRents.WebApi.Data.Seeding
 				Cost = status == MaintenanceIssueStatusEnum.Completed ? _random.Next(50, 500) : null,
 				ResolvedAt = status == MaintenanceIssueStatusEnum.Completed ?
 							DateTime.UtcNow.AddDays(-_random.Next(1, 30)) : null,
-				RequiresInspection = priority == MaintenanceIssuePriorityEnum.High || _random.Next(4) == 0,
 				IsTenantComplaint = _random.Next(3) > 0, // 66% are tenant complaints
 				ResolutionNotes = status == MaintenanceIssueStatusEnum.Completed ?
 							"Problem je uspešno rešen. Izvršena su potrebna popravka." : null

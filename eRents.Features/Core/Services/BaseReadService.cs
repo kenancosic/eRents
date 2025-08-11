@@ -4,6 +4,7 @@ using eRents.Features.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -34,6 +35,9 @@ namespace eRents.Features.Core.Services
 
         public virtual async Task<PagedResponse<TResponse>> GetPagedAsync(TSearch search)
         {
+            if (search == null)
+                throw new ArgumentNullException(nameof(search));
+
             Logger.LogDebug("Getting paged {EntityType} with search criteria", EntityType.Name);
 
             var query = Context.Set<TEntity>().AsNoTracking();
@@ -42,10 +46,14 @@ namespace eRents.Features.Core.Services
             query = AddSorting(query, search);
 
             var totalCount = await query.CountAsync();
-            
+
+            // ensure valid paging defaults
+            var page = Math.Max(1, search.Page);
+            var pageSize = Math.Max(1, search.PageSize);
+
             var items = await query
-                .Skip((search.Page - 1) * search.PageSize)
-                .Take(search.PageSize)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             // Map to IReadOnlyList<TResponse> to satisfy PagedResponse<T>.Items type
@@ -55,8 +63,8 @@ namespace eRents.Features.Core.Services
             {
                 Items = mapped,
                 TotalCount = totalCount,
-                Page = search.Page,
-                PageSize = search.PageSize
+                Page = page,
+                PageSize = pageSize
             };
         }
 
@@ -80,7 +88,22 @@ namespace eRents.Features.Core.Services
 
         protected virtual IQueryable<TEntity> AddFilter(IQueryable<TEntity> query, TSearch search)
         {
-            // Default implementation - override in derived classes to add specific filtering
+            // Default implementation - adds soft-delete filter if entity has IsDeleted and search doesn't include deleted
+            if (search != null && !search.IncludeDeleted)
+            {
+                var isDeletedProp = typeof(TEntity).GetProperty("IsDeleted");
+                if (isDeletedProp != null && isDeletedProp.PropertyType == typeof(bool))
+                {
+                    var parameter = Expression.Parameter(typeof(TEntity), "x");
+                    var property = Expression.Property(parameter, isDeletedProp);
+                    var falseConst = Expression.Constant(false);
+                    var equal = Expression.Equal(property, falseConst);
+                    var lambda = Expression.Lambda<Func<TEntity, bool>>(equal, parameter);
+                    query = query.Where(lambda);
+                }
+            }
+
+            // Override in derived classes to add specific filtering
             return query;
         }
 
@@ -130,8 +153,45 @@ namespace eRents.Features.Core.Services
         protected virtual Expression<Func<TEntity, bool>> CreateIdPredicate(int id)
         {
             var parameter = Expression.Parameter(typeof(TEntity), "x");
-            var property = Expression.Property(parameter, "Id");
-            var constant = Expression.Constant(id);
+
+            // Use EF Core metadata to resolve the primary key property name
+            var entityType = Context.Model.FindEntityType(typeof(TEntity));
+            var pk = entityType?.FindPrimaryKey();
+            var pkProp = pk?.Properties.FirstOrDefault();
+
+            var propertyInfo = pkProp != null
+                ? typeof(TEntity).GetProperty(pkProp.Name)
+                : typeof(TEntity).GetProperty(
+                    "Id",
+                    System.Reflection.BindingFlags.IgnoreCase |
+                    System.Reflection.BindingFlags.Public |
+                    System.Reflection.BindingFlags.Instance);
+
+            if (propertyInfo == null)
+            {
+                // No resolvable key property; return a predicate that yields no results
+                return x => false;
+            }
+
+            var property = Expression.Property(parameter, propertyInfo);
+            Expression constant = Expression.Constant(id);
+
+            // Ensure types match (e.g., nullable<int> vs int)
+            if (property.Type != typeof(int))
+            {
+                // attempt to convert the constant to the property's type when possible
+                try
+                {
+                    var converted = System.Convert.ChangeType(id, Nullable.GetUnderlyingType(property.Type) ?? property.Type);
+                    constant = Expression.Constant(converted, property.Type);
+                }
+                catch
+                {
+                    // types incompatible; ensure no results
+                    return x => false;
+                }
+            }
+
             var equal = Expression.Equal(property, constant);
             return Expression.Lambda<Func<TEntity, bool>>(equal, parameter);
         }

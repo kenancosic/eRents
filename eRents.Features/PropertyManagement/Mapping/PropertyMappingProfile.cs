@@ -1,6 +1,7 @@
 using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Features.PropertyManagement.Models;
+using System.Linq;
 
 namespace eRents.Features.PropertyManagement.Mapping;
 
@@ -10,6 +11,7 @@ public sealed class PropertyMappingProfile : Profile
     {
         // Domain -> Response (flatten Address)
         CreateMap<Property, PropertyResponse>()
+            .ForMember(d => d.AmenityIds, o => o.MapFrom(s => s.Amenities.Select(a => a.AmenityId).ToList()))
             .ForMember(d => d.StreetLine1, o => o.MapFrom(s => s.Address != null ? s.Address.StreetLine1 : null))
             .ForMember(d => d.StreetLine2, o => o.MapFrom(s => s.Address != null ? s.Address.StreetLine2 : null))
             .ForMember(d => d.City,        o => o.MapFrom(s => s.Address != null ? s.Address.City        : null))

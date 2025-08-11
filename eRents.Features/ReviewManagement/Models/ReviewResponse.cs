@@ -17,7 +17,7 @@ public class ReviewResponse
 
     public DateTime CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
     // Optional computed; may be populated in service-level projections if needed.

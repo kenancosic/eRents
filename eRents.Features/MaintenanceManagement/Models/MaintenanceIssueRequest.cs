@@ -13,8 +13,6 @@ namespace eRents.Features.MaintenanceManagement.Models
         public int? AssignedToUserId { get; set; }
         public int ReportedByUserId { get; set; }
         public string? ResolutionNotes { get; set; }
-        public string? Category { get; set; }
-        public bool RequiresInspection { get; set; }
         public bool IsTenantComplaint { get; set; }
     }
 }

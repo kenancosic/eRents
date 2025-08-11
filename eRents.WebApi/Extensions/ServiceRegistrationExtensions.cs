@@ -28,6 +28,8 @@ using eRents.Features.MaintenanceManagement.Services;
 using eRents.Features.MaintenanceManagement.Models;
 using eRents.Features.TenantManagement.Services;
 using eRents.Features.TenantManagement.Models;
+using System.Reflection;
+using System.Linq;
 
 namespace eRents.WebApi.Extensions;
 
@@ -39,113 +41,116 @@ public static class ServiceRegistrationExtensions
 
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        // Register CRUD abstractions and validation are centralized in Program.cs
-
-
+        // Core/Shared services
         services.AddScoped<ImageService>();
         services.AddScoped<IMessagingService, MessagingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
 
-        // Feature-Specific Services
-        RegisterPropertyManagementServices(services);
-        RegisterFinancialManagementServices(services);
-        RegisterRentalManagementServices(services);
-        RegisterReviewManagementServices(services);
-        RegisterLookupManagementServices(services);
-        RegisterMaintenanceManagementServices(services);
-        RegisterTenantManagementServices(services);
-
-        RegisterUserManagementServices(services);
-
-        // Register AuthManagement services
-        services.AddAuthManagement();
-    }
-
-    private static void RegisterLookupManagementServices(IServiceCollection services)
-    {
-        services.AddScoped<ILookupService, LookupService>();
-        services.AddScoped<IAmenityService, AmenityService>();
-        // Add other LookupManagement services and validators
-    }
-
-    private static void RegisterPropertyManagementServices(IServiceCollection services)
-    {
-        // Register concrete service only to avoid missing interface type errors
+        // Feature-specific services (register concrete services only)
+        // Property/Financial/Booking/Review
         services.AddScoped<PropertyService>();
+        services.AddScoped<PaymentService>();
+        services.AddScoped<BookingService>();
+        services.AddScoped<ReviewService>();
 
-        // Register generic interfaces for CrudController-based controllers
+        // Lookup
+        services.AddScoped<LookupService>();
+        services.AddScoped<AmenityService>();
+
+        // Maintenance
+        services.AddScoped<MaintenanceIssueService>();
+
+        // Tenants
+        services.AddScoped<TenantService>();
+
+        // Users
+        services.AddScoped<UserService>();
+
+        // Map feature interfaces to concrete implementations for controllers injecting ICrudService<...>
+        // Property CRUD
         services.AddScoped<
             ICrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>,
             PropertyService
         >();
 
-        services.AddScoped<IReadService<Property, PropertyResponse, PropertySearch>, PropertyService>();
-    }
-
-
-	private static void RegisterFinancialManagementServices(IServiceCollection services)
-	{
-		// Register concrete PaymentService
-		services.AddScoped<PaymentService>();
-
-		// Register generic interfaces for Payment CRUD endpoints if used
-		services.AddScoped<ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch>, PaymentService>();
-
-		services.AddScoped<
-			IReadService<Payment, PaymentResponse, PaymentSearch>, PaymentService>();
-	}
-
-
-	private static void RegisterRentalManagementServices(IServiceCollection services)
-	{
-		// Register concrete RentalService if exists; otherwise leave empty
-		// services.AddScoped<eRents.Features.RentalManagement.Services.RentalService>();
-		// If/when BookingManagement is active under new pattern, bind generics here.
-		services.AddScoped<ICrudService<Booking, BookingRequest, BookingResponse, BookingSearch>, BookingService>();
-
-		services.AddScoped<IReadService<Booking, BookingResponse, BookingSearch>, BookingService>();
-	}
-
-
-	private static void RegisterReviewManagementServices(IServiceCollection services)
-	{
-		// Register concrete ReviewService
-		services.AddScoped<ReviewService>();
-
-		// Register generic interfaces for Review CRUD endpoints if used
-		services.AddScoped<
-			ICrudService<Review, ReviewRequest, ReviewResponse, ReviewSearch>, ReviewService>();
-
-		services.AddScoped<IReadService<Review, ReviewResponse, ReviewSearch>, ReviewService>();
-	}
-
-	// User Management registration encapsulation
-	private static void RegisterUserManagementServices(IServiceCollection services)
-	{
-		// Bind generic CRUD for User feature
-		services.AddScoped<ICrudService<User, UserRequest, UserResponse, UserSearch>, UserService>();
-
-		// Optionally expose IReadService separately if required by controllers (PublicUsersController uses IReadService)
-		services.AddScoped<IReadService<User, UserResponse, UserSearch>, UserService>();
-	}
-	private static void RegisterMaintenanceManagementServices(IServiceCollection services)
-	{
-		services.AddScoped<ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
-		services.AddScoped<IReadService<MaintenanceIssue, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
-	}
-
-    private static void RegisterTenantManagementServices(IServiceCollection services)
-    {
-        // Register concrete TenantService
-        services.AddScoped<TenantService>();
-
-        // Bind generic interfaces to support CrudController-based TenantsController
+        // Booking CRUD
         services.AddScoped<
-            ICrudService<eRents.Domain.Models.Tenant, TenantRequest, TenantResponse, TenantSearch>,
+            ICrudService<Booking, BookingRequest, BookingResponse, BookingSearch>,
+            BookingService
+        >();
+
+        // Review CRUD
+        services.AddScoped<
+            ICrudService<Review, ReviewRequest, ReviewResponse, ReviewSearch>,
+            ReviewService
+        >();
+
+        // Payment CRUD
+        services.AddScoped<
+            ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch>,
+            PaymentService
+        >();
+
+        // MaintenanceIssue CRUD
+        services.AddScoped<
+            ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>,
+            MaintenanceIssueService
+        >();
+
+        // Tenant CRUD
+        services.AddScoped<
+            ICrudService<Tenant, TenantRequest, TenantResponse, TenantSearch>,
             TenantService
         >();
 
-        services.AddScoped<IReadService<eRents.Domain.Models.Tenant, TenantResponse, TenantSearch>, TenantService>();
+        // Note: UserService may expose a richer, non-generic interface; don't bind to ICrudService unless implemented
+
+        // Register AuthManagement services
+        services.AddAuthManagement();
+
+        // Auto-register all concrete services in eRents.Features that implement ICrudService<,,,>
+        // This removes the need to manually add mappings for each feature service
+        var featuresAssembly = typeof(PropertyService).Assembly; // eRents.Features
+        var serviceTypes = featuresAssembly
+            .GetTypes()
+            .Where(t => !t.IsAbstract && !t.IsInterface);
+
+        foreach (var impl in serviceTypes)
+        {
+            var crudInterfaces = impl
+                .GetInterfaces()
+                .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICrudService<,,,>));
+
+            foreach (var crudIface in crudInterfaces)
+            {
+                services.AddScoped(crudIface, impl);
+            }
+        }
+
+        // Additionally, auto-register any concrete *Service implementations with their feature interfaces
+        // This covers non-CRUD services so frontend calls don't break when new services are added
+        var featureServiceTypes = serviceTypes
+            .Where(t => t.Name.EndsWith("Service", StringComparison.Ordinal));
+
+        foreach (var impl in featureServiceTypes)
+        {
+            var interfaces = impl
+                .GetInterfaces()
+                // exclude the generic CRUD interface already handled above
+                .Where(i => !(i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICrudService<,,,>)))
+                // prefer feature interfaces only
+                .Where(i => (i.Namespace ?? string.Empty).StartsWith("eRents.Features", StringComparison.Ordinal));
+
+            foreach (var iface in interfaces)
+            {
+                // avoid duplicate registrations of same mapping
+                var alreadyRegistered = services.Any(d => d.ServiceType == iface && d.ImplementationType == impl);
+                if (!alreadyRegistered)
+                {
+                    services.AddScoped(iface, impl);
+                }
+            }
+        }
     }
 }

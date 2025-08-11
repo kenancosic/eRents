@@ -1,4 +1,5 @@
 using eRents.Domain.Models.Enums;
+using System.Collections.Generic;
 
 namespace eRents.Features.PropertyManagement.Models;
 
@@ -20,6 +21,9 @@ public sealed class PropertyResponse
     public PropertyTypeEnum? PropertyType { get; set; }
     public RentalType? RentingType { get; set; }
     public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;
+
+    // Amenity IDs for list display (chips) on frontend
+    public List<int> AmenityIds { get; set; } = new();
 
     // Address flattened
     public string? StreetLine1 { get; set; }

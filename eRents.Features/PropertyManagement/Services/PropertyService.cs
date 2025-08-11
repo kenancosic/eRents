@@ -22,7 +22,8 @@ namespace eRents.Features.PropertyManagement.Services
             return query
                 .Include(p => p.Owner)
                 .Include(p => p.Address)
-                .Include(p => p.Images);
+                .Include(p => p.Images)
+                .Include(p => p.Amenities);
         }
 
         protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearch search)
