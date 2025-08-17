@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
 
 class PropertyTypeDropdown extends StatelessWidget {
   final int? selectedValue;
@@ -19,24 +20,17 @@ class PropertyTypeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LookupProvider>(
-      builder: (context, lookupProvider, child) {
-        // Show loading spinner while data is being fetched
-        if (lookupProvider.isLoading) {
+    final lookup = context.read<LookupProvider>();
+    return FutureBuilder(
+      future: lookup.getPropertyTypes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
             height: 48,
-            child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           );
         }
-
-        // Show error message if data failed to load
-        if (lookupProvider.error != null && !lookupProvider.hasData) {
+        if (snapshot.hasError) {
           return Container(
             height: 48,
             decoration: BoxDecoration(
@@ -55,40 +49,12 @@ class PropertyTypeDropdown extends StatelessWidget {
           );
         }
 
-        final propertyTypes = lookupProvider.propertyTypes;
-
-        // Show empty state if no data
-        if (propertyTypes.isEmpty) {
-          return Container(
-            height: 48,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Center(
-              child: Text(
-                'No property types available',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-          );
-        }
-
-        return DropdownButtonFormField<int>(
+        return LookupDropdown(
+          label: hintText ?? 'Select Property Type',
+          lookupKey: LookupKey.propertyType,
           value: selectedValue,
-          onChanged: enabled ? onChanged : null,
-          hint: Text(hintText ?? 'Select Property Type'),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items:
-              propertyTypes.map((LookupItem propertyType) {
-                return DropdownMenuItem<int>(
-                  value: propertyType.id,
-                  child: Text(propertyType.name),
-                );
-              }).toList(),
+          onChanged: onChanged,
+          enabled: enabled,
           validator: (value) {
             if (value == null) {
               return 'Please select a property type';
@@ -117,16 +83,17 @@ class RentingTypeDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LookupProvider>(
-      builder: (context, lookupProvider, child) {
-        if (lookupProvider.isLoading) {
+    final lookup = context.read<LookupProvider>();
+    return FutureBuilder(
+      future: lookup.getRentingTypes(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
             height: 48,
             child: Center(child: CircularProgressIndicator()),
           );
         }
-
-        if (lookupProvider.error != null && !lookupProvider.hasData) {
+        if (snapshot.hasError) {
           return Container(
             height: 48,
             decoration: BoxDecoration(
@@ -145,39 +112,12 @@ class RentingTypeDropdown extends StatelessWidget {
           );
         }
 
-        final rentingTypes = lookupProvider.rentingTypes;
-
-        if (rentingTypes.isEmpty) {
-          return Container(
-            height: 48,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Center(
-              child: Text(
-                'No renting types available',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-          );
-        }
-
-        return DropdownButtonFormField<int>(
+        return LookupDropdown(
+          label: hintText ?? 'Select Renting Type',
+          lookupKey: LookupKey.rentingType,
           value: selectedValue,
-          onChanged: enabled ? onChanged : null,
-          hint: Text(hintText ?? 'Select Renting Type'),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items:
-              rentingTypes.map((LookupItem rentingType) {
-                return DropdownMenuItem<int>(
-                  value: rentingType.id,
-                  child: Text(rentingType.name),
-                );
-              }).toList(),
+          onChanged: onChanged,
+          enabled: enabled,
           validator: (value) {
             if (value == null) {
               return 'Please select a renting type';
@@ -206,16 +146,17 @@ class PropertyStatusDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LookupProvider>(
-      builder: (context, lookupProvider, child) {
-        if (lookupProvider.isLoading) {
+    final lookup = context.read<LookupProvider>();
+    return FutureBuilder(
+      future: lookup.getPropertyStatuses(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox(
             height: 48,
             child: Center(child: CircularProgressIndicator()),
           );
         }
-
-        if (lookupProvider.error != null && !lookupProvider.hasData) {
+        if (snapshot.hasError) {
           return Container(
             height: 48,
             decoration: BoxDecoration(
@@ -234,39 +175,12 @@ class PropertyStatusDropdown extends StatelessWidget {
           );
         }
 
-        final propertyStatuses = lookupProvider.propertyStatuses;
-
-        if (propertyStatuses.isEmpty) {
-          return Container(
-            height: 48,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Center(
-              child: Text(
-                'No property statuses available',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-          );
-        }
-
-        return DropdownButtonFormField<int>(
+        return LookupDropdown(
+          label: hintText ?? 'Select Property Status',
+          lookupKey: LookupKey.propertyStatus,
           value: selectedValue,
-          onChanged: enabled ? onChanged : null,
-          hint: Text(hintText ?? 'Select Property Status'),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items:
-              propertyStatuses.map((LookupItem status) {
-                return DropdownMenuItem<int>(
-                  value: status.id,
-                  child: Text(status.name),
-                );
-              }).toList(),
+          onChanged: onChanged,
+          enabled: enabled,
           validator: (value) {
             if (value == null) {
               return 'Please select a property status';

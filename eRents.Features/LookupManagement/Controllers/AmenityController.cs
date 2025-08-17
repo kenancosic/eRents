@@ -1,5 +1,5 @@
 using eRents.Domain.Models;
-using eRents.Features.Core.Controllers;
+using eRents.Features.Core;
 using eRents.Features.Core.Models;
 using eRents.Features.LookupManagement.Interfaces;
 using eRents.Features.LookupManagement.Models;

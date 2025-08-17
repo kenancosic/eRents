@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
-import 'package:e_rents_desktop/features/home/widgets/financial_summary_card.dart';
 import 'package:e_rents_desktop/features/home/widgets/kpi_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/constants.dart';
@@ -110,19 +109,20 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     HomeProvider homeProvider,
   ) {
-    // Access properties directly from HomeProvider
-    final totalProperties = homeProvider.totalProperties;
-    final occupancyRate = homeProvider.occupancyRate;
+    // Compact KPI set for the redesigned overview
+    final activeToday = homeProvider.activeBookingsToday;
+    final upcoming7d = homeProvider.upcomingCheckins7d;
     final monthlyRevenue = homeProvider.monthlyRevenue;
+    final emergencyIssues = homeProvider.emergencyMaintenanceIssues;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount =
             constraints.maxWidth > 1200
-                ? 3 // 3 KPIs: Total Properties, Occupancy Rate, Monthly Revenue
-                : constraints.maxWidth > 800
-                ? 2
-                : 1;
+                ? 4 // 4 KPIs: Active Today, Upcoming 7d, Revenue, Emergency Issues
+                : constraints.maxWidth > 900
+                    ? 2
+                    : 1;
         final childAspectRatio =
             constraints.maxWidth > 800
                 ? (constraints.maxWidth / crossAxisCount / 150)
@@ -136,32 +136,29 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSpacing: kDefaultPadding,
           childAspectRatio: childAspectRatio,
           children: [
-            InkWell(
-              onTap: () => context.go('/properties'),
-              child: KpiCard(
-                title: 'Total Properties',
-                value: totalProperties.toString(),
-                icon: Icons.business_outlined,
-                color: Colors.blue,
-              ),
+            KpiCard(
+              title: 'Active Today',
+              value: activeToday.toString(),
+              icon: Icons.event_available_outlined,
+              color: Colors.blue,
             ),
-            InkWell(
-              onTap: () => context.go('/properties'),
-              child: KpiCard(
-                title: 'Occupancy Rate',
-                value: '${(occupancyRate * 100).toStringAsFixed(1)}%',
-                icon: Icons.people_alt_outlined,
-                color: Colors.green,
-              ),
+            KpiCard(
+              title: 'Upcoming Check-ins (7d)',
+              value: upcoming7d.toString(),
+              icon: Icons.login_outlined,
+              color: Colors.teal,
             ),
-            InkWell(
-              onTap: () => context.go('/reports'),
-              child: KpiCard(
-                title: 'Monthly Revenue',
-                value: kCurrencyFormat.format(monthlyRevenue),
-                icon: Icons.attach_money_outlined,
-                color: Colors.purple,
-              ),
+            KpiCard(
+              title: 'Monthly Revenue',
+              value: kCurrencyFormat.format(monthlyRevenue),
+              icon: Icons.attach_money_outlined,
+              color: Colors.purple,
+            ),
+            KpiCard(
+              title: 'Emergency Issues',
+              value: emergencyIssues.toString(),
+              icon: Icons.report_gmailerrorred_outlined,
+              color: Colors.red,
             ),
           ],
         );
@@ -185,9 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 flex: 2,
                 child: Column(
                   children: [
-                    _buildPortfolioOverviewCard(context, homeProvider),
-                    SizedBox(height: kDefaultPadding),
-                    _buildTopPropertiesCard(context, homeProvider),
+                    _buildEmergencyIssuesCard(context, homeProvider),
                   ],
                 ),
               ),
@@ -196,8 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 flex: 1,
                 child: Column(
                   children: [
-                    _buildFinancialSummaryCard(context, homeProvider),
-                    SizedBox(height: kDefaultPadding),
                     _buildQuickActionsCard(context),
                   ],
                 ),
@@ -207,11 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           return Column(
             children: [
-              _buildPortfolioOverviewCard(context, homeProvider),
-              SizedBox(height: kDefaultPadding),
-              _buildFinancialSummaryCard(context, homeProvider),
-              SizedBox(height: kDefaultPadding),
-              _buildTopPropertiesCard(context, homeProvider),
+              _buildEmergencyIssuesCard(context, homeProvider),
               SizedBox(height: kDefaultPadding),
               _buildQuickActionsCard(context),
             ],
@@ -221,16 +210,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPortfolioOverviewCard(
+  Widget _buildEmergencyIssuesCard(
     BuildContext context,
     HomeProvider homeProvider,
   ) {
-    // Access properties directly from HomeProvider
-    final totalProperties = homeProvider.totalProperties;
-    final occupiedProperties = homeProvider.occupiedProperties;
-    final averageRating = homeProvider.averageRating;
-    final available = totalProperties - occupiedProperties;
     final theme = Theme.of(context);
+    final issues = homeProvider.emergencyIssues;
 
     return Card(
       elevation: 2,
@@ -243,157 +228,37 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Portfolio Overview',
+                  'Emergency Maintenance Issues',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.arrow_forward),
-                  onPressed: () => context.go('/properties'),
+                  icon: Icon(Icons.open_in_new),
+                  onPressed: () => context.go('/maintenance'),
                 ),
               ],
             ),
             SizedBox(height: kDefaultPadding),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatColumn(
-                  'Occupied',
-                  occupiedProperties.toString(),
-                  Colors.green,
-                ),
-                _buildStatColumn(
-                  'Available',
-                  available.toString(),
-                  Colors.blue,
-                ),
-                _buildStatColumn(
-                  'Avg. Rating',
-                  averageRating.toStringAsFixed(1),
-                  Colors.amber,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatColumn(String label, String value, Color color) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        Text(
-          value,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.textTheme.bodyMedium?.color?.withAlpha( (0.7 * 255).round()), // Use fixed alpha
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopPropertiesCard(
-    BuildContext context,
-    HomeProvider homeProvider,
-  ) {
-    final theme = Theme.of(context);
-    // Dummy data for top properties as this requires a more complex backend integration
-    // For academic submission, this can be static or simplified.
-    final List<Map<String, dynamic>> topProperties = [
-      {'name': 'Property A', 'bookingCount': 5, 'totalRevenue': 7500.0},
-      {'name': 'Property B', 'bookingCount': 3, 'totalRevenue': 5000.0},
-      {'name': 'Property C', 'bookingCount': 2, 'totalRevenue': 3000.0},
-    ];
-
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: EdgeInsets.all(kDefaultPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Top Performing Properties',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.arrow_forward),
-                  onPressed: () => context.go('/reports'),
-                ),
-              ],
-            ),
-            SizedBox(height: kDefaultPadding),
-            if (topProperties.isEmpty)
+            if (issues.isEmpty)
               Center(
                 child: Text(
-                  'No property data available',
+                  'No emergency maintenance issues',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color?.withAlpha((0.6 * 255).round()), // Use fixed alpha
+                    color: theme.textTheme.bodyMedium?.color?.withAlpha((0.6 * 255).round()),
                   ),
                 ),
               )
             else
-              ...topProperties
-                  .take(3)
-                  .map(
-                    (property) => ListTile(
-                      title: Text(property['name'] ?? ''),
-                      subtitle: Text('${property['bookingCount'] ?? 0} bookings'),
-                      trailing: Text(
-                        kCurrencyFormat.format(property['totalRevenue'] ?? 0.0),
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFinancialSummaryCard(
-    BuildContext context,
-    HomeProvider homeProvider,
-  ) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: EdgeInsets.all(kDefaultPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Financial Summary',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: kDefaultPadding),
-            FinancialSummaryCard(
-              income: homeProvider.monthlyRevenue * 1.1, // Dummy income
-              expenses: homeProvider.monthlyRevenue * 0.1, // Dummy expenses
-              netProfit: homeProvider.monthlyRevenue, // Dummy net profit
-              currencyFormat: kCurrencyFormat,
-            ),
+              ...issues.take(10).map((issue) {
+                return ListTile(
+                  leading: Icon(Icons.report_problem, color: Colors.redAccent),
+                  title: Text(issue.title),
+                  subtitle: Text('Property ${issue.propertyId} • ${issue.priority.name} • ${issue.status.name}'),
+                  trailing: Text(issue.createdAt.toLocal().toString().split(' ').first),
+                  onTap: () => context.go('/maintenance/${issue.maintenanceIssueId}'),
+                );
+              }),
           ],
         ),
       ),

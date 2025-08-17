@@ -1,8 +1,12 @@
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/models/enums/renting_type.dart';
+import 'package:e_rents_desktop/presentation/property_status_ui.dart';
+import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/services/image_service.dart';
+ 
 
 class PropertyCard extends StatelessWidget {
   final Property property;
@@ -27,7 +31,6 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildListCard(BuildContext context) {
     final theme = Theme.of(context);
-    final statusDisplay = _getStatusDisplayProperties(property.status, theme);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -60,7 +63,7 @@ class PropertyCard extends StatelessWidget {
                 children: [
                   _buildActions(context, isGrid: false),
                   const SizedBox(height: 8),
-                  _buildPriceAndStatus(theme, statusDisplay, isGrid: false),
+                  _buildPriceAndStatus(theme, isGrid: false),
                 ],
               ),
             ],
@@ -72,7 +75,6 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildGridCard(BuildContext context) {
     final theme = Theme.of(context);
-    final statusDisplay = _getStatusDisplayProperties(property.status, theme);
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -94,9 +96,9 @@ class PropertyCard extends StatelessWidget {
                     top: 8,
                     right: 8,
                     child: StatusChip(
-                      label: property.status,
-                      backgroundColor: statusDisplay.color,
-                      iconData: statusDisplay.icon,
+                      label: property.status.displayName,
+                      backgroundColor: property.status.uiColor,
+                      iconData: property.status.uiIcon,
                     ),
                   ),
                   Positioned(
@@ -157,13 +159,15 @@ class PropertyCard extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(8.0),
-      child: Image.network(
-        'http://localhost:5000/Image/$imageId',
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder:
-            (context, error, stackTrace) => Container(
+      child: Builder(
+        builder: (context) {
+          final imagesService = context.read<ImageService>();
+          return imagesService.buildImageByIdSimple(
+            imageId,
+            width: width,
+            height: height,
+            fit: BoxFit.cover,
+            errorWidget: Container(
               width: width,
               height: height,
               decoration: BoxDecoration(
@@ -176,6 +180,8 @@ class PropertyCard extends StatelessWidget {
                 color: Colors.grey.shade400,
               ),
             ),
+          );
+        },
       ),
     );
   }
@@ -242,8 +248,7 @@ class PropertyCard extends StatelessWidget {
   }
 
   Widget _buildPriceAndStatus(
-    ThemeData theme,
-    ({Color color, IconData icon}) statusDisplay, {
+    ThemeData theme, {
     required bool isGrid,
   }) {
     final priceStyle = theme.textTheme.titleMedium?.copyWith(
@@ -264,9 +269,9 @@ class PropertyCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         StatusChip(
-          label: property.status,
-          backgroundColor: statusDisplay.color,
-          iconData: statusDisplay.icon,
+          label: property.status.displayName,
+          backgroundColor: property.status.uiColor,
+          iconData: property.status.uiIcon,
         ),
       ],
     );
@@ -308,20 +313,4 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-  ({Color color, IconData icon}) _getStatusDisplayProperties(
-    String status,
-    ThemeData theme,
-  ) {
-    switch (status) {
-      case 'Available':
-        return (color: Colors.green, icon: Icons.check_circle_outline);
-      case 'Rented':
-        return (color: Colors.blue, icon: Icons.person_outline);
-      case 'Maintenance':
-        return (color: Colors.orange, icon: Icons.build_circle_outlined);
-      case 'Unavailable':
-      default:
-        return (color: Colors.grey, icon: Icons.help_outline);
-    }
-  }
 }

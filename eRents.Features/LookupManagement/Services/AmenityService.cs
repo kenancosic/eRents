@@ -1,6 +1,6 @@
 using AutoMapper;
 using eRents.Domain.Models;
-using eRents.Features.Core.Services;
+using eRents.Features.Core;
 using eRents.Features.LookupManagement.Interfaces;
 using eRents.Features.LookupManagement.Models;
 using Microsoft.EntityFrameworkCore;

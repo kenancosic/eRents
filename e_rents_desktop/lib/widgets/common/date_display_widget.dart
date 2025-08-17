@@ -130,20 +130,20 @@ class DateDisplayWidgets {
     );
   }
 
-  /// For maintenance issue dates with urgency indication
+  /// For maintenance issue dates with emergency indication
   static Widget maintenanceDate(
     DateTime? date, {
-    bool isUrgent = false,
+    bool isEmergency = false,
     TextStyle? style,
   }) {
     return DateDisplayWidget(
       date: date,
       mode: DateDisplayMode.relative,
-      icon: isUrgent ? Icons.warning_amber : Icons.build,
-      iconColor: isUrgent ? Colors.red : null,
+      icon: isEmergency ? Icons.warning_amber : Icons.build,
+      iconColor: isEmergency ? Colors.red : null,
       style: style?.copyWith(
-        color: isUrgent ? Colors.red : null,
-        fontWeight: isUrgent ? FontWeight.bold : null,
+        color: isEmergency ? Colors.red : null,
+        fontWeight: isEmergency ? FontWeight.bold : null,
       ),
     );
   }

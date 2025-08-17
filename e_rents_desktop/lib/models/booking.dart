@@ -1,4 +1,5 @@
-/// Booking status enumeration
+import 'package:intl/intl.dart';
+
 enum BookingStatus {
   upcoming,
   active,
@@ -36,7 +37,6 @@ enum BookingStatus {
   String get statusName => name.toLowerCase();
 }
 
-/// Main booking model representing a property rental booking
 class Booking {
   final int bookingId;
   final int? propertyId;
@@ -48,15 +48,13 @@ class Booking {
   final DateTime? bookingDate;
   final BookingStatus status;
 
-  // Navigation properties (loaded from includes)
   final String? propertyName;
   final String? propertyAddress;
-  final int?
-  propertyImageId; // Property's main image ID - construct URL as needed
+  final int? propertyImageId;
   final String? userName;
   final String? userEmail;
-  final String? tenantName; // New DTO field
-  final String? tenantEmail; // New DTO field
+  final String? tenantName;
+  final String? tenantEmail;
 
   // Base entity fields
   final DateTime createdAt;
@@ -87,184 +85,85 @@ class Booking {
     this.modifiedBy,
   });
 
-  /// Create a Booking from JSON response
   factory Booking.fromJson(Map<String, dynamic> json) {
-    return Booking(
-      bookingId: json['bookingId'] ?? 0,
-      propertyId: json['propertyId'],
-      userId: json['userId'],
-      startDate: DateTime.parse(json['startDate']),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
-      minimumStayEndDate:
-          json['minimumStayEndDate'] != null
-              ? DateTime.parse(json['minimumStayEndDate'])
-              : null,
-      totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
-      bookingDate:
-          json['bookingDate'] != null
-              ? DateTime.parse(json['bookingDate'])
-              : null,
-      status: _parseStatus(json),
-      propertyName: json['propertyName'],
-      propertyAddress: json['propertyAddress'],
-      propertyImageId: json['propertyImageId'],
-      // ✅ FIXED: Use exact Entity field names from BookingResponse
-      userName: _buildFullName(json['userFirstName'], json['userLastName']),
-      userEmail: json['userEmail'],
-      tenantName: json['tenantName'],
-      tenantEmail: json['tenantEmail'],
-      createdAt: DateTime.parse(
-        json['createdAt'] ?? DateTime.now().toIso8601String(),
-      ),
-      updatedAt:
-          json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
-      createdBy: json['createdBy'],
-      modifiedBy: json['modifiedBy'],
-    );
-  }
-
-  /// Convert to JSON for API requests
-  Map<String, dynamic> toJson() {
-    return {
-      'bookingId': bookingId,
-      'propertyId': propertyId,
-      'userId': userId,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
-      'minimumStayEndDate': minimumStayEndDate?.toIso8601String(),
-      'totalPrice': totalPrice,
-      'bookingDate': bookingDate?.toIso8601String(),
-      'status': status.statusName,
-    };
-  }
-
-  /// Helper method to parse booking status from JSON
-  static BookingStatus _parseStatus(Map<String, dynamic> json) {
-    final statusString = json['status'] ?? 'upcoming';
-
-    try {
-      return BookingStatus.fromString(statusString);
-    } catch (e) {
-      return BookingStatus.upcoming; // Default fallback
+    DateTime? _parseDate(dynamic v) {
+      if (v == null) return null;
+      if (v is DateTime) return v;
+      final s = v.toString();
+      return s.isEmpty ? null : DateTime.tryParse(s);
     }
-  }
-
-  /// Helper method to build full name from first and last name
-  static String? _buildFullName(String? firstName, String? lastName) {
-    if (firstName == null && lastName == null) return null;
-    return '${firstName ?? ''} ${lastName ?? ''}'.trim();
-  }
-
-  /// Copy with method for updates
-  Booking copyWith({
-    int? bookingId,
-    int? propertyId,
-    int? userId,
-    DateTime? startDate,
-    DateTime? endDate,
-    DateTime? minimumStayEndDate,
-    double? totalPrice,
-    DateTime? bookingDate,
-    BookingStatus? status,
-    String? propertyName,
-    String? propertyAddress,
-    int? propertyImageId,
-    String? userName,
-    String? userEmail,
-    String? tenantName,
-    String? tenantEmail,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? createdBy,
-    String? modifiedBy,
-  }) {
+    double _toDouble(dynamic v) => v is num ? v.toDouble() : double.parse(v.toString());
+    String? _asString(dynamic v) => v == null ? null : v.toString();
+    BookingStatus _parseStatus(dynamic v) {
+      if (v == null) return BookingStatus.upcoming;
+      final s = v.toString();
+      try {
+        return BookingStatus.fromString(s);
+      } catch (_) {
+        // fallback: try enum name match
+        final lower = s.toLowerCase();
+        for (final bs in BookingStatus.values) {
+          if (bs.name.toLowerCase() == lower) return bs;
+        }
+        return BookingStatus.upcoming;
+      }
+    }
     return Booking(
-      bookingId: bookingId ?? this.bookingId,
-      propertyId: propertyId ?? this.propertyId,
-      userId: userId ?? this.userId,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
-      minimumStayEndDate: minimumStayEndDate ?? this.minimumStayEndDate,
-      totalPrice: totalPrice ?? this.totalPrice,
-      bookingDate: bookingDate ?? this.bookingDate,
-      status: status ?? this.status,
-      propertyName: propertyName ?? this.propertyName,
-      propertyAddress: propertyAddress ?? this.propertyAddress,
-      propertyImageId: propertyImageId ?? this.propertyImageId,
-      userName: userName ?? this.userName,
-      userEmail: userEmail ?? this.userEmail,
-      tenantName: tenantName ?? this.tenantName,
-      tenantEmail: tenantEmail ?? this.tenantEmail,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      createdBy: createdBy ?? this.createdBy,
-      modifiedBy: modifiedBy ?? this.modifiedBy,
+      bookingId: (json['bookingId'] as num).toInt(),
+      propertyId: (json['propertyId'] as num?)?.toInt(),
+      userId: (json['userId'] as num?)?.toInt(),
+      startDate: _parseDate(json['startDate']) ?? DateTime.now(),
+      endDate: _parseDate(json['endDate']),
+      minimumStayEndDate: _parseDate(json['minimumStayEndDate']),
+      totalPrice: _toDouble(json['totalPrice']),
+      bookingDate: _parseDate(json['bookingDate']),
+      status: _parseStatus(json['status']),
+      propertyName: _asString(json['propertyName']),
+      propertyAddress: _asString(json['propertyAddress']),
+      propertyImageId: (json['propertyImageId'] as num?)?.toInt(),
+      userName: _asString(json['userName']),
+      userEmail: _asString(json['userEmail']),
+      tenantName: _asString(json['tenantName']),
+      tenantEmail: _asString(json['tenantEmail']),
+      createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDate(json['updatedAt']),
+      createdBy: _asString(json['createdBy']),
+      modifiedBy: _asString(json['modifiedBy']),
     );
   }
 
-  /// Check if booking is currently active
-  bool get isActive {
-    final now = DateTime.now();
-    return status == BookingStatus.active &&
-        startDate.isBefore(now) &&
-        (endDate == null || endDate!.isAfter(now));
-  }
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'bookingId': bookingId,
+        'propertyId': propertyId,
+        'userId': userId,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate?.toIso8601String(),
+        'minimumStayEndDate': minimumStayEndDate?.toIso8601String(),
+        'totalPrice': totalPrice,
+        'bookingDate': bookingDate?.toIso8601String(),
+        'status': status.statusName,
+        'propertyName': propertyName,
+        'propertyAddress': propertyAddress,
+        'propertyImageId': propertyImageId,
+        'userName': userName,
+        'userEmail': userEmail,
+        'tenantName': tenantName,
+        'tenantEmail': tenantEmail,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+        'createdBy': createdBy,
+        'modifiedBy': modifiedBy,
+      };
 
-  /// Get booking duration in days
-  int? get durationInDays {
-    if (endDate == null) return null;
-    return endDate!.difference(startDate).inDays;
-  }
-
-  /// Get formatted date range
+  // Convenience getters for UI
   String get dateRange {
-    final start = startDate.toString().split(' ')[0];
-    if (endDate == null) {
-      return 'From $start (Open-ended)';
+    final startFormatted = DateFormat('MMM dd, yyyy').format(startDate);
+    if (endDate != null) {
+      final endFormatted = DateFormat('MMM dd, yyyy').format(endDate!);
+      return '$startFormatted - $endFormatted';
     }
-    final end = endDate!.toString().split(' ')[0];
-    return '$start - $end';
+    return startFormatted;
   }
 
-  /// Get formatted price with currency
-  String get formattedPrice {
-    return '$totalPrice';
-  }
-
-  /// Get formatted total price (alias for formattedPrice)
-  String get formattedTotalPrice => formattedPrice;
-
-  /// Get formatted start date
-  String get formattedStartDate {
-    return startDate.toString().split(' ')[0]; // YYYY-MM-DD format
-  }
-
-  /// Get formatted end date
-  String get formattedEndDate {
-    if (endDate == null) return 'Open-ended';
-    return endDate!.toString().split(' ')[0]; // YYYY-MM-DD format
-  }
-
-  /// Get duration as a formatted string
-  String? get duration {
-    if (durationInDays == null) return null;
-    final days = durationInDays!;
-    if (days == 1) return '1 day';
-    return '$days days';
-  }
-
-  @override
-  String toString() {
-    return 'Booking(id: $bookingId, property: $propertyId, status: $status, dates: $dateRange)';
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Booking &&
-          runtimeType == other.runtimeType &&
-          bookingId == other.bookingId;
-
-  @override
-  int get hashCode => bookingId.hashCode;
+  String get formattedTotalPrice => '\$${totalPrice.toStringAsFixed(2)}';
 }

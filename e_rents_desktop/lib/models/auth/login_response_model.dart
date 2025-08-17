@@ -1,4 +1,4 @@
-import '../user.dart';
+import 'package:e_rents_desktop/models/user.dart';
 
 class LoginResponseModel {
   final String token;
@@ -6,7 +6,7 @@ class LoginResponseModel {
   final User user;
   final String platform;
 
-  LoginResponseModel({
+  const LoginResponseModel({
     required this.token,
     required this.expiration,
     required this.user,
@@ -14,20 +14,23 @@ class LoginResponseModel {
   });
 
   factory LoginResponseModel.fromJson(Map<String, dynamic> json) {
+    DateTime _reqDate(dynamic v) {
+      final d = (v == null) ? null : (v is DateTime ? v : DateTime.tryParse(v.toString()));
+      return d ?? DateTime.now();
+    }
+    String _str(dynamic v) => v?.toString() ?? '';
     return LoginResponseModel(
-      token: json['token'] as String,
-      expiration: DateTime.parse(json['expiration'] as String),
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
-      platform: json['platform'] as String,
+      token: _str(json['token']),
+      expiration: _reqDate(json['expiration']),
+      user: User.fromJson(Map<String, dynamic>.from(json['user'] as Map)),
+      platform: _str(json['platform']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'token': token,
-      'expiration': expiration.toIso8601String(),
-      'user': user.toJson(),
-      'platform': platform,
-    };
-  }
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'token': token,
+        'expiration': expiration.toIso8601String(),
+        'user': user.toJson(),
+        'platform': platform,
+      };
 }

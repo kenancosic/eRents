@@ -177,17 +177,6 @@ class _ProfileScreenContent extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildFormCards( // Now unused due to simplified layout
-    BuildContext context,
-    bool isEditing,
-    GlobalKey<FormState> personalInfoFormKey,
-  ) {
-    return [
-      _buildPersonalInfoCard(context, isEditing, personalInfoFormKey),
-      const SizedBox(height: 24),
-    ];
-  }
-
   Widget _buildPersonalInfoCard(
     BuildContext context,
     bool isEditing,

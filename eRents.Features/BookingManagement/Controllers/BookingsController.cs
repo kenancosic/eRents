@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using eRents.Features.BookingManagement.Models;
-using eRents.Features.Core.Controllers;
-using eRents.Features.Core.Interfaces;
+using eRents.Features.Core;
 
 namespace eRents.Features.BookingManagement.Controllers;
 

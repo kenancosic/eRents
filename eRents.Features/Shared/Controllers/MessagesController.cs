@@ -119,10 +119,11 @@ namespace eRents.Features.Shared.Controllers
 		{
 			try
 			{
-				var userId = _currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown";
-				_logger.LogInformation("Get contacts request from user {UserId}", userId);
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
+				_logger.LogInformation("Get contacts request from user {UserId}", userIdStr);
 
-				if (_currentUserService.GetUserIdAsInt() <= 0)
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
 					{
@@ -134,10 +135,10 @@ namespace eRents.Features.Shared.Controllers
 					});
 				}
 
-				var contacts = await _messagingService.GetContactsAsync(_currentUserService.GetUserIdAsInt().Value);
+				var contacts = await _messagingService.GetContactsAsync(userIdInt.Value);
 
 				_logger.LogInformation("Retrieved {ContactCount} contacts for user {UserId}",
-					contacts.Count(), _currentUserService.GetUserIdAsInt());
+					contacts.Count(), userIdInt.Value);
 
 				return Ok(new { items = contacts });
 			}
@@ -155,11 +156,12 @@ namespace eRents.Features.Shared.Controllers
 		{
 			try
 			{
-				var userId = _currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown";
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
 				_logger.LogInformation("Get messages request for contact {ContactId} by user {UserId}",
-					contactId, userId);
+					contactId, userIdStr);
 
-				if (_currentUserService.GetUserIdAsInt() <= 0)
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
 					{
@@ -183,7 +185,7 @@ namespace eRents.Features.Shared.Controllers
 					});
 				}
 
-				var messageResponses = await _messagingService.GetConversationAsync(_currentUserService.GetUserIdAsInt().Value, contactId);
+				var messageResponses = await _messagingService.GetConversationAsync(userIdInt.Value, contactId);
 				var sortedMessages = messageResponses.OrderByDescending(m => m.CreatedAt).Skip(page * pageSize).Take(pageSize).ToList();
 
 				_logger.LogInformation("Retrieved {MessageCount} messages for contact {ContactId}",
@@ -205,11 +207,12 @@ namespace eRents.Features.Shared.Controllers
 		{
 			try
 			{
-				var userId = _currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown";
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
 				_logger.LogInformation("Send message request from user {UserId} to user {ReceiverId}",
-					userId, request.ReceiverId);
+					userIdStr, request.ReceiverId);
 
-				if (_currentUserService.GetUserIdAsInt() <= 0)
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
 					{
@@ -221,10 +224,10 @@ namespace eRents.Features.Shared.Controllers
 					});
 				}
 
-				var messageResponse = await _messagingService.SendMessageAsync(_currentUserService.GetUserIdAsInt().Value, request);
+				var messageResponse = await _messagingService.SendMessageAsync(userIdInt.Value, request);
 
 				_logger.LogInformation("Message sent successfully from user {UserId} to user {ReceiverId}",
-					_currentUserService.GetUserIdAsInt(), request.ReceiverId);
+					userIdInt.Value, request.ReceiverId);
 
 				return Ok(messageResponse);
 			}
@@ -238,15 +241,16 @@ namespace eRents.Features.Shared.Controllers
 		/// Send a property offer message
 		/// </summary>
 		[HttpPost("SendPropertyOffer")]
-		public async Task<IActionResult> SendPropertyOffer([FromBody] PropertyOfferRequest request)
+		public IActionResult SendPropertyOffer([FromBody] PropertyOfferRequest request)
 		{
 			try
 			{
-				var userId = _currentUserService.GetUserIdAsInt()?.ToString() ?? "unknown";
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
 				_logger.LogInformation("Send property offer from user {UserId} for property {PropertyId}",
-					userId, request.PropertyId);
+					userIdStr, request.PropertyId);
 
-				if (_currentUserService.GetUserIdAsInt() <= 0)
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
 				{
 					return Unauthorized(new StandardErrorResponse
 					{

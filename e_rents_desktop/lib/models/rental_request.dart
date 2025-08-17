@@ -1,7 +1,8 @@
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/models/enums/rental_request_status.dart';
+import 'package:intl/intl.dart';
 
-/// Model representing an annual rental request (lease)
 class RentalRequest {
   final int requestId;
   final int propertyId;
@@ -11,11 +12,17 @@ class RentalRequest {
   final double proposedMonthlyRent;
   final int leaseDurationMonths;
   final String message;
-  final String status; // "Pending", "Approved", "Rejected"
+  final RentalRequestStatus status;
   final String? landlordResponse;
   final DateTime requestDate;
 
-  // Related entities (populated from joins)
+  // BaseEntity fields
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int? createdBy;
+  final int? modifiedBy;
+
+  // Related entities (populated from joins) - these should be @JsonKey(includeFromJson: false, includeToJson: false)
   final Property? property;
   final User? user;
 
@@ -31,75 +38,83 @@ class RentalRequest {
     required this.status,
     this.landlordResponse,
     required this.requestDate,
+    required this.createdAt,
+    required this.updatedAt,
+    this.createdBy,
+    this.modifiedBy,
     this.property,
     this.user,
   });
 
   factory RentalRequest.fromJson(Map<String, dynamic> json) {
+    DateTime _reqDate(dynamic v) {
+      final d = (v == null)
+          ? null
+          : (v is DateTime)
+              ? v
+              : DateTime.tryParse(v.toString());
+      return d ?? DateTime.now();
+    }
+    DateTime _date(dynamic v) => _reqDate(v);
+    double _toDouble(dynamic v) => v is num ? v.toDouble() : double.parse(v.toString());
+    int _toInt(dynamic v) => v is num ? v.toInt() : int.parse(v.toString());
+    int? _asInt(dynamic v) => v == null ? null : (v is num ? v.toInt() : int.tryParse(v.toString()));
+    String _str(dynamic v) => v?.toString() ?? '';
+    String? _asString(dynamic v) => v == null ? null : v.toString();
+    RentalRequestStatus _parseStatus(dynamic v) {
+      if (v == null) return RentalRequestStatus.pending;
+      if (v is int) {
+        try { return RentalRequestStatus.fromValue(v); } catch (_) { return RentalRequestStatus.pending; }
+      }
+      final s = v.toString();
+      try { return RentalRequestStatus.fromString(s); } catch (_) { return RentalRequestStatus.pending; }
+    }
+    final created = _reqDate(json['createdAt']);
+    final updated = _reqDate(json['updatedAt'] ?? created);
     return RentalRequest(
-      requestId: json['requestId'] ?? 0,
-      propertyId: json['propertyId'] ?? 0,
-      userId: json['userId'] ?? 0,
-      proposedStartDate: DateTime.parse(json['proposedStartDate']),
-      proposedEndDate: DateTime.parse(json['proposedEndDate']),
-      proposedMonthlyRent: (json['proposedMonthlyRent'] ?? 0.0).toDouble(),
-      leaseDurationMonths: json['leaseDurationMonths'] ?? 0,
-      message: json['message'] ?? '',
-      status: json['status'] ?? 'Pending',
-      landlordResponse: json['landlordResponse'],
-      requestDate: DateTime.parse(json['requestDate']),
-      property:
-          json['property'] != null ? Property.fromJson(json['property']) : null,
-      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      requestId: _toInt(json['requestId']),
+      propertyId: _toInt(json['propertyId']),
+      userId: _toInt(json['userId']),
+      proposedStartDate: _date(json['proposedStartDate']),
+      proposedEndDate: _date(json['proposedEndDate']),
+      proposedMonthlyRent: _toDouble(json['proposedMonthlyRent']),
+      leaseDurationMonths: _toInt(json['leaseDurationMonths']),
+      message: _str(json['message']),
+      status: _parseStatus(json['status']),
+      landlordResponse: _asString(json['landlordResponse']),
+      requestDate: _date(json['requestDate']),
+      createdAt: created,
+      updatedAt: updated,
+      createdBy: _asInt(json['createdBy']),
+      modifiedBy: _asInt(json['modifiedBy']),
+      property: null,
+      user: null,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'requestId': requestId,
-      'propertyId': propertyId,
-      'userId': userId,
-      'proposedStartDate': proposedStartDate.toIso8601String(),
-      'proposedEndDate': proposedEndDate.toIso8601String(),
-      'proposedMonthlyRent': proposedMonthlyRent,
-      'leaseDurationMonths': leaseDurationMonths,
-      'message': message,
-      'status': status,
-      'landlordResponse': landlordResponse,
-      'requestDate': requestDate.toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'requestId': requestId,
+        'propertyId': propertyId,
+        'userId': userId,
+        'proposedStartDate': proposedStartDate.toIso8601String(),
+        'proposedEndDate': proposedEndDate.toIso8601String(),
+        'proposedMonthlyRent': proposedMonthlyRent,
+        'leaseDurationMonths': leaseDurationMonths,
+        'message': message,
+        'status': status.name,
+        'landlordResponse': landlordResponse,
+        'requestDate': requestDate.toIso8601String(),
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'createdBy': createdBy,
+        'modifiedBy': modifiedBy,
+      };
 
-  // Helper getters for display
-  String get formattedStartDate =>
-      '${proposedStartDate.day}/${proposedStartDate.month}/${proposedStartDate.year}';
-
-  String get formattedEndDate =>
-      '${proposedEndDate.day}/${proposedEndDate.month}/${proposedEndDate.year}';
-
-  String get formattedRent =>
-      '${proposedMonthlyRent.toStringAsFixed(2)} BAM/month';
-
-  String get propertyName => property?.name ?? 'Property $propertyId';
-
-  String get userName => user?.fullName ?? 'User $userId';
-
-  bool get isPending => status == 'Pending';
-  bool get isApproved => status == 'Approved';
-  bool get isRejected => status == 'Rejected';
-
-  @override
-  String toString() {
-    return 'RentalRequest(requestId: $requestId, propertyId: $propertyId, status: $status)';
-  }
-}
-
-/// Enum for rental request status
-enum RentalRequestStatus {
-  pending('Pending'),
-  approved('Approved'),
-  rejected('Rejected');
-
-  const RentalRequestStatus(this.displayName);
-  final String displayName;
+  // Convenience getters for UI
+  String get propertyName => property?.name ?? 'Unknown Property';
+  String get userName => user?.fullName ?? 'Unknown User';
+  String get formattedStartDate => DateFormat('MMM dd, yyyy').format(proposedStartDate);
+  String get formattedEndDate => DateFormat('MMM dd, yyyy').format(proposedEndDate);
+  String get formattedRent => '\$${proposedMonthlyRent.toStringAsFixed(2)}/month';
+  bool get isPending => status == RentalRequestStatus.pending;
 }

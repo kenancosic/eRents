@@ -14,5 +14,6 @@ namespace eRents.Features.MaintenanceManagement.Models
         public int ReportedByUserId { get; set; }
         public string? ResolutionNotes { get; set; }
         public bool IsTenantComplaint { get; set; }
+        public int[]? ImageIds { get; set; }
     }
 }

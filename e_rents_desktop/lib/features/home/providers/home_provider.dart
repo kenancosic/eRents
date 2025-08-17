@@ -1,50 +1,100 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
-import 'package:e_rents_desktop/base/api_service_extensions.dart';
+import 'dart:convert';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
 
 class HomeProvider extends BaseProvider {
   HomeProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  int _totalProperties = 0;
-  int get totalProperties => _totalProperties;
-  
-  double _occupancyRate = 0.0;
-  double get occupancyRate => _occupancyRate;
+  int _activeBookingsToday = 0;
+  int get activeBookingsToday => _activeBookingsToday;
+
+  int _upcomingCheckins7d = 0;
+  int get upcomingCheckins7d => _upcomingCheckins7d;
 
   double _monthlyRevenue = 0.0;
   double get monthlyRevenue => _monthlyRevenue;
 
-  // For simplified dashboard, we might hardcode or fetch simple counts directly
-  // from very basic API endpoints or just simulate data.
-  // Example for simplified backend:
-  int _totalPropertiesCount = 15; // Example dummy data
-  int _occupiedPropertiesCount = 10; // Example dummy data
-  double _averageRating = 4.2; // Example dummy data
+  int _emergencyMaintenanceIssues = 0;
+  int get emergencyMaintenanceIssues => _emergencyMaintenanceIssues;
 
-  // Provide direct getters for these to avoid recreating complex objects
-  int get occupiedProperties => _occupiedPropertiesCount;
-  double get averageRating => _averageRating;
+  List<MaintenanceIssue> _emergencyIssues = const [];
+  List<MaintenanceIssue> get emergencyIssues => _emergencyIssues;
 
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
   Future<void> fetchDashboardStatistics({bool forceRefresh = false}) async {
-    // For academic submission simplification, we are not fetching complex dashboard stats.
-    // Instead, we populate with dummy data or direct simple API calls.
-    // In a real app, this would involve calling a simplified backend endpoint.
     await executeWithState(() async {
-      // Simulate API call for total properties (e.g., from /api/Properties/count)
-      _totalProperties = 15; 
-      _occupancyRate = 0.75; // 75%
-      _monthlyRevenue = 15000.00; // Example revenue
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final sevenDays = today.add(const Duration(days: 7));
+      final monthStart = DateTime(now.year, now.month, 1);
+      final monthEnd = DateTime(now.year, now.month + 1, 1).subtract(const Duration(days: 1));
 
-      // For portfolio overview card
-      _totalPropertiesCount = 15;
-      _occupiedPropertiesCount = 10;
-      _averageRating = 4.2;
+      String fmt(DateTime d) => d.toIso8601String().split('T').first;
 
-      // Old invalidateAllCaches() call removed as it's not part of BaseProvider
-      // Cache invalidation can be done for specific keys if needed.
+      // 1) Active bookings today: StartDate <= today AND EndDate >= today
+      try {
+        final res = await api.get(
+          'api/Bookings?Page=1&PageSize=1&StartDateTo=${fmt(today)}&EndDateFrom=${fmt(today)}',
+          authenticated: true,
+        );
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        _activeBookingsToday = (data['totalCount'] as int?) ?? 0;
+      } catch (_) {
+        _activeBookingsToday = 0;
+      }
+
+      // 2) Upcoming check-ins next 7 days: StartDate in [today, today+7], Status=Upcoming
+      try {
+        final res = await api.get(
+          'api/Bookings?Page=1&PageSize=1&StartDateFrom=${fmt(today)}&StartDateTo=${fmt(sevenDays)}&Status=Upcoming',
+          authenticated: true,
+        );
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        _upcomingCheckins7d = (data['totalCount'] as int?) ?? 0;
+      } catch (_) {
+        _upcomingCheckins7d = 0;
+      }
+
+      // 3) Monthly revenue: sum payment amounts for current month (Completed)
+      try {
+        final res = await api.get(
+          'api/Payments?Page=1&PageSize=1000&CreatedFrom=${fmt(monthStart)}&CreatedTo=${fmt(monthEnd)}&PaymentStatus=Completed',
+          authenticated: true,
+        );
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final items = (data['items'] as List<dynamic>? ?? const []);
+        double sum = 0.0;
+        for (final it in items) {
+          final m = it as Map<String, dynamic>;
+          final amt = (m['amount'] as num?)?.toDouble() ??
+              (m['Amount'] as num?)?.toDouble() ?? 0.0;
+          sum += amt;
+        }
+        _monthlyRevenue = sum;
+      } catch (_) {
+        _monthlyRevenue = 0.0;
+      }
+
+      // 4) Emergency maintenance issues count and list (Priority == Emergency)
+      try {
+        final res = await api.get(
+          'api/MaintenanceIssues?Page=1&PageSize=20&PriorityMin=Emergency&PriorityMax=Emergency&SortBy=CreatedAt&SortDescending=true',
+          authenticated: true,
+        );
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final items = (data['items'] as List<dynamic>? ?? const []);
+        _emergencyIssues = items
+            .map((e) => MaintenanceIssue.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false);
+        _emergencyMaintenanceIssues = (data['totalCount'] as int?) ?? _emergencyIssues.length;
+      } catch (_) {
+        _emergencyIssues = const [];
+        _emergencyMaintenanceIssues = 0;
+      }
+
       notifyListeners();
     });
   }

@@ -4,11 +4,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using eRents.Domain.Models;
 using eRents.Domain.Models.Enums;
-using eRents.Features.Core.Services;
 using eRents.Features.ReviewManagement.Models;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Features.Core;
+using eRents.Domain.Shared.Interfaces;
 
 namespace eRents.Features.ReviewManagement.Services;
 
@@ -17,8 +18,9 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 	public ReviewService(
 			ERentsContext context,
 			IMapper mapper,
-			ILogger<ReviewService> logger)
-			: base(context, mapper, logger)
+			ILogger<ReviewService> logger,
+			ICurrentUserService? currentUserService = null)
+			: base(context, mapper, logger, currentUserService)
 	{
 	}
 
@@ -84,6 +86,21 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			query = query.Where(x => x.CreatedAt <= to);
 		}
 
+		// Desktop owner/landlord filtering
+		if (CurrentUser?.IsDesktop == true &&
+		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		{
+			var ownerId = CurrentUser.GetUserIdAsInt();
+			if (ownerId.HasValue)
+			{
+				query = query.Where(r => 
+					r.Property != null && r.Property.OwnerId == ownerId.Value ||
+					r.Booking != null && r.Booking.Property != null && r.Booking.Property.OwnerId == ownerId.Value);
+			}
+		}
+
 		return query;
 	}
 
@@ -104,15 +121,14 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 		return query;
 	}
 
-	// Remove 'override' to align with current BaseCrudService contract if it does not declare virtuals.
-	public async Task<ReviewResponse> CreateAsync(ReviewRequest request, CancellationToken cancellationToken = default)
+	protected override async Task BeforeCreateAsync(Review entity, ReviewRequest request)
 	{
 		// Enforce thread/parent existence if reply
 		if (request.ParentReviewId.HasValue)
 		{
 		    var parentExists = await Context.Set<Review>()
 		            .AsNoTracking()
-		            .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value, cancellationToken);
+		            .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value);
 		    if (!parentExists)
 		        throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
 		}
@@ -132,19 +148,44 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			}
 		}
 
-		// Replies do not require StarRating; original reviews may omit rating as per scope
-		return await base.CreateAsync(request);
+		// Ownership enforcement for Desktop owners/landlords
+		if (CurrentUser?.IsDesktop == true &&
+		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		{
+			var ownerId = CurrentUser.GetUserIdAsInt();
+			if (ownerId.HasValue)
+			{
+				if (request.PropertyId.HasValue)
+				{
+					var prop = await Context.Set<Property>()
+						.AsNoTracking()
+						.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
+					if (prop == null || prop.OwnerId != ownerId.Value)
+						throw new KeyNotFoundException("Property not found");
+				}
+				else if (request.BookingId.HasValue)
+				{
+					var booking = await Context.Set<Booking>()
+						.AsNoTracking()
+						.Include(b => b.Property)
+						.FirstOrDefaultAsync(b => b.BookingId == request.BookingId.Value);
+					if (booking == null || booking.Property == null || booking.Property.OwnerId != ownerId.Value)
+						throw new KeyNotFoundException("Booking not found");
+				}
+			}
+		}
 	}
 
-	// Remove 'override' similarly here.
-	public async Task<ReviewResponse> UpdateAsync(int id, ReviewRequest request, CancellationToken cancellationToken = default)
+	protected override async Task BeforeUpdateAsync(Review entity, ReviewRequest request)
 	{
 		// Validate parent existence if reply
 		if (request.ParentReviewId.HasValue)
 		{
 			var parentExists = await Context.Set<Review>()
 			        .AsNoTracking()
-			        .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value, cancellationToken);
+			        .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value);
 			if (!parentExists)
 				throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
 		}
@@ -164,6 +205,60 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			}
 		}
 
-		return await base.UpdateAsync(id, request);
+		// Ownership enforcement for Desktop owners/landlords
+		if (CurrentUser?.IsDesktop == true &&
+		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		{
+			var ownerId = CurrentUser.GetUserIdAsInt();
+			if (ownerId.HasValue)
+			{
+				var propId = request.PropertyId ?? entity.PropertyId;
+				if (propId.HasValue)
+				{
+					var prop = await Context.Set<Property>()
+						.AsNoTracking()
+						.FirstOrDefaultAsync(p => p.PropertyId == propId.Value);
+					if (prop == null || prop.OwnerId != ownerId.Value)
+						throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
+				}
+				else if (request.BookingId.HasValue || entity.BookingId.HasValue)
+				{
+					var bid = request.BookingId ?? entity.BookingId!.Value;
+					var booking = await Context.Set<Booking>()
+						.AsNoTracking()
+						.Include(b => b.Property)
+						.FirstOrDefaultAsync(b => b.BookingId == bid);
+					if (booking == null || booking.Property == null || booking.Property.OwnerId != ownerId.Value)
+						throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
+				}
+			}
+		}
 	}
+
+    public override async Task<ReviewResponse> GetByIdAsync(int id)
+    {
+        var entity = await Context.Set<Review>()
+            .Include(r => r.Property)
+            .Include(r => r.Booking).ThenInclude(b => b!.Property)
+            .FirstOrDefaultAsync(r => r.ReviewId == id);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Review with id {id} not found");
+
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            var owned = (entity.Property?.OwnerId == ownerId)
+                        || (entity.Booking?.Property?.OwnerId == ownerId);
+            if (!ownerId.HasValue || !owned)
+                throw new KeyNotFoundException($"Review with id {id} not found");
+        }
+
+        return Mapper.Map<ReviewResponse>(entity);
+    }
 }

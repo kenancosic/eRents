@@ -4,45 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
-// Auth
-import 'package:e_rents_desktop/features/auth/login_screen.dart';
-import 'package:e_rents_desktop/features/auth/verification_screen.dart';
-import 'package:e_rents_desktop/features/auth/create_password_screen.dart';
-import 'package:e_rents_desktop/features/auth/signup_screen.dart';
-import 'package:e_rents_desktop/features/auth/forgot_password_screen.dart';
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
-
-// Home
-import 'package:e_rents_desktop/features/home/home_screen.dart';
-import 'package:e_rents_desktop/features/home/providers/home_provider.dart';
-
-// Properties
-import 'package:e_rents_desktop/features/properties/screens/property_list_screen.dart';
-import 'package:e_rents_desktop/features/properties/screens/property_detail_screen.dart';
-import 'package:e_rents_desktop/features/properties/screens/property_form_screen.dart';
-import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
-import 'package:e_rents_desktop/features/properties/widgets/property_images_grid.dart';
-
-// Chat
-import 'package:e_rents_desktop/features/chat/chat_screen.dart';
-import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
-
-// Reports
-import 'package:e_rents_desktop/features/reports/reports_screen.dart';
-import 'package:e_rents_desktop/features/reports/providers/reports_provider.dart';
-
-// Profile
-import 'package:e_rents_desktop/features/profile/profile_screen.dart';
-import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-
-// Rents
-import 'package:e_rents_desktop/features/rents/rents_screen.dart';
+// All features through centralized import
+import 'package:e_rents_desktop/features/features.dart';
 
 // Widgets
 import 'package:e_rents_desktop/widgets/app_navigation_bar.dart';
+import 'package:e_rents_desktop/features/properties/widgets/image_carousel_dialog.dart';
 
 // Services
-import 'services/api_service.dart';
 
 // Route names as constants
 class AppRoutes {
@@ -58,6 +27,7 @@ class AppRoutes {
   static const String editProperty = 'edit';
   static const String chat = '/chat';
   static const String reports = '/reports';
+  static const String maintenance = '/maintenance';
   static const String profile = '/profile';
   static const String rents = '/rents';
   static const String propertyImages = '/property-images';
@@ -291,6 +261,74 @@ class AppRouter {
           ),
         ),
 
+        // Maintenance
+        GoRoute(
+          path: AppRoutes.maintenance,
+          builder: (context, _) => _buildWrappedContent(
+            context,
+            'Maintenance',
+            _createMaintenanceScreen,
+          ),
+          routes: [
+            // New Issue
+            GoRoute(
+              path: 'new',
+              builder: (context, _) => _buildWrappedContent(
+                context,
+                'New Maintenance Issue',
+                _createMaintenanceFormScreen,
+              ),
+            ),
+            // Issue Details
+            GoRoute(
+              path: ':id',
+              builder: (context, state) {
+                final issueId = state.pathParameters['id'];
+                if (issueId == null) {
+                  return _buildErrorContent('Missing Maintenance Issue ID');
+                }
+                return _buildWrappedContent(
+                  context,
+                  'Issue Details',
+                  (ctx) => _createMaintenanceIssueDetailsScreen(ctx, issueId),
+                );
+              },
+              routes: [
+                // Edit Issue
+                GoRoute(
+                  path: 'edit',
+                  builder: (context, state) {
+                    final issueId = state.pathParameters['id'];
+                    if (issueId == null) {
+                      return _buildErrorContent('Missing Maintenance Issue ID for Edit');
+                    }
+                    return _buildWrappedContent(
+                      context,
+                      'Edit Maintenance Issue',
+                      (ctx) {
+                        // Ensure the issue is loaded before showing the form
+                        return FutureBuilder<void>(
+                          future: ctx.read<MaintenanceProvider>().getById(issueId),
+                          builder: (ctx2, snap) {
+                            if (snap.connectionState != ConnectionState.done) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            final issue = ctx2.read<MaintenanceProvider>().selectedIssue;
+                            if (issue == null) {
+                              return _buildErrorContent('Issue not found');
+                            }
+                            return MaintenanceFormScreen(issue: issue);
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+
         // Profile
         GoRoute(
           path: AppRoutes.profile,
@@ -341,82 +379,53 @@ class AppRouter {
 
   // Factory methods for creating screens with providers
   Widget _createHomeScreen(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => HomeProvider(context.read<ApiService>()),
-      child: const HomeScreen(),
-    );
+    // Use the globally registered HomeProvider from FeaturesRegistry (main.dart)
+    // Avoid creating a new provider here that reads ApiService from context,
+    // since ApiService is not provided via Provider but passed into providers directly.
+    return const HomeScreen();
   }
 
   Widget _createPropertyDetailsScreen(BuildContext context, String propertyId) {
-    // Use the existing PropertyProvider from the widget tree
-    final propertyProvider = context.read<PropertyProvider>();
-    propertyProvider.loadProperty(int.parse(propertyId));
-    
-    return Consumer<PropertyProvider>(
-      builder: (context, provider, _) {
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (provider.error != null) {
-          return Center(child: Text('Error: ${provider.error}'));
-        }
-        return PropertyDetailScreen(propertyId: int.parse(propertyId));
-      },
-    );
+    // Delegate data loading to the screen to avoid duplicate fetches
+    return PropertyDetailScreen(propertyId: int.parse(propertyId));
   }
 
   Widget _createPropertiesScreen(BuildContext context) {
-    // Use the existing PropertyProvider from the widget tree
-    final propertyProvider = context.read<PropertyProvider>();
-    propertyProvider.loadProperties();
-    
+    // Delegate initial load to the screen/provider to avoid duplicate fetches
     return const PropertyListScreen();
   }
 
   Widget _createPropertyFormScreen(BuildContext context, String? propertyId) {
-    // Use the existing PropertyProvider from the widget tree
-    final propertyProvider = context.read<PropertyProvider>();
-    
+    // Let the form screen handle its own loading logic; prevents duplicate GET-by-id
     if (propertyId != null) {
-      propertyProvider.loadProperty(int.parse(propertyId));
-      return Consumer<PropertyProvider>(
-        builder: (context, provider, _) {
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (provider.error != null) {
-            return Center(child: Text('Error: ${provider.error}'));
-          }
-          return PropertyFormScreen(propertyId: int.parse(propertyId));
-        },
-      );
+      return PropertyFormScreen(propertyId: int.parse(propertyId));
     }
-    
     return const PropertyFormScreen(propertyId: null);
   }
 
   Widget _createChatScreen(BuildContext context, {String? contactId}) {
-    return ChangeNotifierProvider(
-      create: (_) => ChatProvider(context.read<ApiService>())..loadContacts(),
-      child: ChatScreen(contactId: contactId),
-    );
+    // Use the globally registered ChatProvider and trigger initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ChatProvider>().loadContacts();
+    });
+    return ChatScreen(contactId: contactId);
   }
 
   Widget _createReportsScreen(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) =>
-          ReportsProvider(context.read<ApiService>())..fetchCurrentReports(),
-      child: const ReportsScreen(),
-    );
+    // Use the globally registered ReportsProvider and trigger initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReportsProvider>().fetchCurrentReports();
+    });
+    return const ReportsScreen();
   }
 
   // Profile screen factory
   Widget _createProfileScreen(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) =>
-          ProfileProvider(context.read<ApiService>())..loadUserProfile(),
-      child: const ProfileScreen(),
-    );
+    // Use the globally registered ProfileProvider and trigger initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileProvider>().loadUserProfile();
+    });
+    return const ProfileScreen();
   }
 
   // Rents screen factory
@@ -427,5 +436,18 @@ class AppRouter {
   // Image carousel factory
   Widget _createImageCarouselScreen(List<int> images, int initialIndex) {
     return ImageCarouselDialog(images: images, initialIndex: initialIndex);
+  }
+
+  // Maintenance factories
+  Widget _createMaintenanceScreen(BuildContext context) {
+    return const MaintenanceScreen();
+  }
+
+  Widget _createMaintenanceIssueDetailsScreen(BuildContext context, String issueId) {
+    return MaintenanceIssueDetailsScreen(issueId: issueId);
+  }
+
+  Widget _createMaintenanceFormScreen(BuildContext context) {
+    return const MaintenanceFormScreen();
   }
 }

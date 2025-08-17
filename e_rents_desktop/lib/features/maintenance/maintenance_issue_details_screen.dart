@@ -1,11 +1,15 @@
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
-
 import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/services/image_service.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/presentation/extensions.dart';
+import 'package:e_rents_desktop/models/enums/enums.dart';
+import 'package:e_rents_desktop/presentation/badges.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
-import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/base/crud/detail_screen.dart';
 
 class MaintenanceIssueDetailsScreen extends StatelessWidget {
   final MaintenanceIssue? issue;
@@ -19,41 +23,29 @@ class MaintenanceIssueDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MaintenanceProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final provider = context.read<MaintenanceProvider>();
 
-        if (provider.error != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  provider.error!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => provider.getById(issueId),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
+    return DetailScreen<MaintenanceIssue>(
+      title: 'Maintenance Issue',
+      item: issue ?? MaintenanceIssue.empty(),
+      itemId: issueId,
+      fetchItem: (id) async {
+        await provider.getById(id);
+        final fetched = provider.selectedIssue;
+        if (fetched == null) {
+          throw Exception('Issue not found');
         }
-
-        final issue = provider.selectedIssue;
-        if (issue == null) {
-          // Trigger a fetch if the issue is not in the provider
-          // This can happen if the user navigates directly to the page
-          Future.microtask(() => provider.getById(issueId));
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        return _MaintenanceIssueDetailsView(issue: issue);
+        return fetched;
       },
+      onEdit: (item) => context.push('/maintenance/${item.maintenanceIssueId}/edit'),
+      detailBuilder: (ctx, item) => _MaintenanceIssueDetailsView(issue: item),
+      additionalActions: [
+        TextButton.icon(
+          onPressed: () => context.push('/properties/${issue?.propertyId ?? provider.selectedIssue?.propertyId}') ,
+          icon: const Icon(Icons.home),
+          label: const Text('View Property'),
+        ),
+      ],
     );
   }
 }
@@ -93,20 +85,9 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final router = GoRouter.of(context);
+    // App bar is provided by DetailScreen; we show a right-aligned status chip
     return Row(
       children: [
-        IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (router.canPop()) {
-              router.pop();
-            } else {
-              router.go('/maintenance');
-            }
-          },
-          tooltip: 'Go back',
-        ),
         const Spacer(),
         _buildStatusChip(),
       ],
@@ -114,14 +95,8 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
   }
 
   Widget _buildStatusChip() {
-    return Chip(
-      label: Text(
-        issue.status.toString().split('.').last,
-        style: const TextStyle(color: Colors.white),
-      ),
-      backgroundColor: issue.statusColor,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-    );
+    // Softer badge with icon using shared UI extensions
+    return StatusBadge(status: issue.status, showIcon: true, variant: BadgeVariant.solid);
   }
 
   Widget _buildIssueDetails() {
@@ -140,12 +115,12 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
                   height: 8,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: issue.priorityColor,
+                    color: issue.priority.color,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  issue.priority.toString().split('.').last,
+                  issue.priority.displayName,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -189,14 +164,28 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
                     final imageId = issue.imageIds[index];
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          context.read<ApiService>().makeAbsoluteUrl(
-                            'Image/$imageId',
+                      child: GestureDetector(
+                        onTap: () => context.push(
+                          '/property-images',
+                          extra: {
+                            'images': issue.imageIds,
+                            'initialIndex': index,
+                          },
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: context.read<ImageService>().buildImageByIdSimple(
+                            imageId,
+                            width: 200,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            errorWidget: Container(
+                              width: 200,
+                              height: 200,
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.broken_image),
+                            ),
                           ),
-                          width: 200,
-                          fit: BoxFit.cover,
                         ),
                       ),
                     );
@@ -236,9 +225,13 @@ class _ActionCard extends StatefulWidget {
 }
 
 class _ActionCardState extends State<_ActionCard> {
-  late IssueStatus _selectedStatus;
-  final TextEditingController costController = TextEditingController();
-  final TextEditingController notesController = TextEditingController();
+  late MaintenanceIssue issue;
+  late TextEditingController costController;
+  late TextEditingController notesController;
+  late FocusNode costFocusNode;
+  late FocusNode notesFocusNode;
+
+  late MaintenanceIssueStatus _selectedStatus;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -247,9 +240,15 @@ class _ActionCardState extends State<_ActionCard> {
   @override
   void initState() {
     super.initState();
-    _selectedStatus = widget.issue.status;
-    costController.text = widget.issue.cost?.toString() ?? '';
-    notesController.text = widget.issue.resolutionNotes ?? '';
+    issue = widget.issue;
+    costController = TextEditingController();
+    notesController = TextEditingController();
+    costFocusNode = FocusNode();
+    notesFocusNode = FocusNode();
+
+    _selectedStatus = issue.status;
+    costController.text = issue.cost?.toString() ?? '';
+    notesController.text = issue.resolutionNotes ?? '';
 
     costController.addListener(_checkForChanges);
     notesController.addListener(_checkForChanges);
@@ -261,15 +260,17 @@ class _ActionCardState extends State<_ActionCard> {
     notesController.removeListener(_checkForChanges);
     costController.dispose();
     notesController.dispose();
+    costFocusNode.dispose();
+    notesFocusNode.dispose();
     super.dispose();
   }
 
   void _checkForChanges() {
     final costChanged =
-        (double.tryParse(costController.text) ?? 0) != (widget.issue.cost ?? 0);
+        (double.tryParse(costController.text) ?? 0) != (issue.cost ?? 0);
     final notesChanged =
-        notesController.text != (widget.issue.resolutionNotes ?? '');
-    final statusChanged = _selectedStatus != widget.issue.status;
+        notesController.text != (issue.resolutionNotes ?? '');
+    final statusChanged = _selectedStatus != issue.status;
 
     if (mounted) {
       setState(() {
@@ -278,31 +279,25 @@ class _ActionCardState extends State<_ActionCard> {
     }
   }
 
-  void _updateStatus(IssueStatus newStatus) {
-    if (mounted) {
-      setState(() {
-        _selectedStatus = newStatus;
-        _checkForChanges();
-      });
-    }
+  void _updateStatus(MaintenanceIssueStatus newStatus) {
+    setState(() {
+      _selectedStatus = newStatus;
+      _checkForChanges();
+    });
   }
 
   Future<void> _saveChanges() async {
-    if (mounted) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-    }
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       await context.read<MaintenanceProvider>().updateIssueStatus(
-        widget.issue.maintenanceIssueId.toString(),
+        issue.maintenanceIssueId.toString(),
         _selectedStatus,
-        resolutionNotes: notesController.text.isNotEmpty
-            ? notesController.text
-            : null,
-        cost: double.tryParse(costController.text),
+        resolutionNotes: notesController.text.isEmpty ? null : notesController.text,
+        cost: costController.text.isEmpty ? null : double.tryParse(costController.text),
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +342,7 @@ class _ActionCardState extends State<_ActionCard> {
             const SizedBox(height: 16),
             _buildStatusSelection(context),
             const SizedBox(height: 16),
-            if (_selectedStatus == IssueStatus.completed)
+            if (_selectedStatus == MaintenanceIssueStatus.completed)
               Column(
                 children: [
                   TextFormField(
@@ -403,10 +398,10 @@ class _ActionCardState extends State<_ActionCard> {
 
   Widget _buildStatusSelection(BuildContext context) {
     return Column(
-      children: IssueStatus.values.map((status) {
+      children: MaintenanceIssueStatus.values.map((status) {
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
-          child: RadioListTile<IssueStatus>(
+          child: RadioListTile<MaintenanceIssueStatus>(
             title: Row(
               children: [
                 Icon(
@@ -421,7 +416,7 @@ class _ActionCardState extends State<_ActionCard> {
             subtitle: Text(_getStatusDescription(status)),
             value: status,
             groupValue: _selectedStatus,
-            onChanged: (IssueStatus? value) {
+            onChanged: (MaintenanceIssueStatus? value) {
               if (value != null) {
                 _updateStatus(value);
               }
@@ -432,55 +427,31 @@ class _ActionCardState extends State<_ActionCard> {
     );
   }
 
-  IconData _getStatusIcon(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return Icons.pending_actions_outlined;
-      case IssueStatus.inProgress:
-        return Icons.construction_outlined;
-      case IssueStatus.completed:
-        return Icons.check_circle_outline_rounded;
-      case IssueStatus.cancelled:
-        return Icons.cancel_outlined;
-    }
+  IconData _getStatusIcon(MaintenanceIssueStatus status) {
+    // Use centralized UI extension icon
+    return status.icon;
   }
 
-  Color _getStatusColor(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return Colors.orange;
-      case IssueStatus.inProgress:
-        return Colors.blue;
-      case IssueStatus.completed:
-        return Colors.green;
-      case IssueStatus.cancelled:
-        return Colors.red;
-    }
+  Color _getStatusColor(MaintenanceIssueStatus status) {
+    // Use centralized UI extension color
+    return status.color;
   }
 
-  String _getStatusDescription(IssueStatus status) {
+  String _getStatusDescription(MaintenanceIssueStatus status) {
     switch (status) {
-      case IssueStatus.pending:
+      case MaintenanceIssueStatus.pending:
         return 'Issue reported, waiting to be addressed';
-      case IssueStatus.inProgress:
+      case MaintenanceIssueStatus.inProgress:
         return 'Work is currently in progress';
-      case IssueStatus.completed:
+      case MaintenanceIssueStatus.completed:
         return 'Issue has been resolved';
-      case IssueStatus.cancelled:
+      case MaintenanceIssueStatus.cancelled:
         return 'Issue has been cancelled';
     }
   }
 
-  String _getStatusDisplayName(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return 'Pending';
-      case IssueStatus.inProgress:
-        return 'In Progress';
-      case IssueStatus.completed:
-        return 'Completed';
-      case IssueStatus.cancelled:
-        return 'Cancelled';
-    }
+  String _getStatusDisplayName(MaintenanceIssueStatus status) {
+    // Use enum display name extension
+    return status.displayName;
   }
 }

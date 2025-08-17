@@ -1,3 +1,4 @@
+
 class Address {
   final String? streetLine1;
   final String? streetLine2;
@@ -8,7 +9,7 @@ class Address {
   final double? latitude;
   final double? longitude;
 
-  Address({
+  const Address({
     this.streetLine1,
     this.streetLine2,
     this.city,
@@ -19,22 +20,13 @@ class Address {
     this.longitude,
   });
 
-  factory Address.empty() {
-    return Address(
-      streetLine1: '',
-      streetLine2: '',
-      city: '',
-      state: '',
-      country: '',
-      postalCode: '',
-      // ✅ FIXED: Keep coordinates as null for empty addresses
-      // to avoid sending invalid default coordinates to backend
-      latitude: null,
-      longitude: null,
-    );
-  }
-
   factory Address.fromJson(Map<String, dynamic> json) {
+    double? _toDouble(dynamic v) {
+      if (v == null) return null;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+      return null;
+    }
     return Address(
       streetLine1: json['streetLine1'] as String?,
       streetLine2: json['streetLine2'] as String?,
@@ -42,24 +34,33 @@ class Address {
       state: json['state'] as String?,
       country: json['country'] as String?,
       postalCode: json['postalCode'] as String?,
-      // ✅ FIXED: Keep coordinates as null instead of defaulting to 0.0
-      // Only set real coordinate values, not defaults that could cause validation errors
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'streetLine1': streetLine1,
-      'streetLine2': streetLine2,
-      'city': city,
-      'state': state,
-      'country': country,
-      'postalCode': postalCode,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'streetLine1': streetLine1,
+        'streetLine2': streetLine2,
+        'city': city,
+        'state': state,
+        'country': country,
+        'postalCode': postalCode,
+        'latitude': latitude,
+        'longitude': longitude,
+      };
+
+  factory Address.empty() {
+    return const Address(
+      streetLine1: '',
+      streetLine2: '',
+      city: '',
+      state: '',
+      country: '',
+      postalCode: '',
+      latitude: null,
+      longitude: null,
+    );
   }
 
   String getFullAddress() {
@@ -92,61 +93,8 @@ class Address {
   }
 
   bool get isEmpty => (streetLine1?.isEmpty ?? true) && (city?.isEmpty ?? true);
-
   bool get isNotEmpty => !isEmpty;
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Address &&
-        other.streetLine1 == streetLine1 &&
-        other.streetLine2 == streetLine2 &&
-        other.city == city &&
-        other.state == state &&
-        other.country == country &&
-        other.postalCode == postalCode &&
-        other.latitude == latitude &&
-        other.longitude == longitude;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      streetLine1,
-      streetLine2,
-      city,
-      state,
-      country,
-      postalCode,
-      latitude,
-      longitude,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'Address(${getFullAddress()})';
-  }
-
-  Address copyWith({
-    String? streetLine1,
-    String? streetLine2,
-    String? city,
-    String? state,
-    String? country,
-    String? postalCode,
-    double? latitude,
-    double? longitude,
-  }) {
-    return Address(
-      streetLine1: streetLine1 ?? this.streetLine1,
-      streetLine2: streetLine2 ?? this.streetLine2,
-      city: city ?? this.city,
-      state: state ?? this.state,
-      country: country ?? this.country,
-      postalCode: postalCode ?? this.postalCode,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-    );
-  }
+  String toString() => getFullAddress();
 }

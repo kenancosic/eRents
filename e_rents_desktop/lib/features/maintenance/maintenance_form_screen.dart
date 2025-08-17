@@ -1,11 +1,12 @@
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/presentation/extensions.dart';
 
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as picker;
-import 'package:e_rents_desktop/models/image_info.dart' as erents;
+import 'package:e_rents_desktop/base/crud/form_screen.dart';
 
 class MaintenanceFormScreen extends StatefulWidget {
   final int? propertyId;
@@ -24,158 +25,116 @@ class MaintenanceFormScreen extends StatefulWidget {
 }
 
 class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
-  final _formKey = GlobalKey<FormState>();
   late MaintenanceProvider _provider;
 
-  late MaintenanceIssue _issue;
-  List<erents.ImageInfo> _images = [];
-  bool _isLoading = false;
-  String? _errorMessage;
+  // Local form state captured by createNewItem/updateItem closures
+  late MaintenanceIssuePriority _priority;
+  bool _isTenantComplaint = false;
+  List<picker.ImageInfo> _images = [];
 
+  // Controllers
   late final TextEditingController _titleController;
   late final TextEditingController _descriptionController;
-  late final TextEditingController _categoryController;
 
   @override
   void initState() {
     super.initState();
     _provider = context.read<MaintenanceProvider>();
 
-    if (widget.issue != null) {
-      _issue = widget.issue!.copyWith();
-      _images = widget.issue!.imageIds
-          .map((id) => erents.ImageInfo(id: id, url: '/Image/$id'))
-          .toList();
-    } else {
-      _issue = MaintenanceIssue.empty().copyWith(
-        propertyId: widget.propertyId,
-        tenantId: widget.tenantId,
-        createdAt: DateTime.now(),
-      );
-    }
+    final existing = widget.issue;
+    _priority = existing?.priority ?? MaintenanceIssuePriority.medium;
+    _isTenantComplaint = existing?.isTenantComplaint ?? false;
+    _images = (existing?.imageIds ?? const <int>[]) 
+        .map((id) => picker.ImageInfo(id: id, url: '/api/Images/$id'))
+        .toList();
 
-    _titleController = TextEditingController(text: _issue.title);
-    _descriptionController = TextEditingController(text: _issue.description);
-    _categoryController = TextEditingController(text: _issue.category);
-
-    _addListeners();
-  }
-
-  void _addListeners() {
-    _titleController.addListener(() {
-      _issue = _issue.copyWith(title: _titleController.text);
-    });
-    _descriptionController.addListener(() {
-      _issue = _issue.copyWith(description: _descriptionController.text);
-    });
-    _categoryController.addListener(() {
-      _issue = _issue.copyWith(category: _categoryController.text);
-    });
+    _titleController = TextEditingController(text: existing?.title ?? '');
+    _descriptionController = TextEditingController(text: existing?.description ?? '');
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _categoryController.dispose();
     super.dispose();
   }
 
-  void _updatePriority(IssuePriority priority) {
+  void _updatePriority(MaintenanceIssuePriority priority) {
     setState(() {
-      _issue = _issue.copyWith(priority: priority);
+      _priority = priority;
     });
   }
 
   void _updateIsTenantComplaint(bool isComplaint) {
     setState(() {
-      _issue = _issue.copyWith(isTenantComplaint: isComplaint);
+      _isTenantComplaint = isComplaint;
     });
   }
 
-  void _updateImages(List<erents.ImageInfo> updatedImages) {
-    final imageIds = updatedImages
-        .map((img) => img.id)
-        .where((id) => id != null && id > 0)
-        .cast<int>()
-        .toList();
+  void _updateImages(List<picker.ImageInfo> updatedImages) {
     setState(() {
       _images = updatedImages;
-      _issue = _issue.copyWith(imageIds: imageIds);
     });
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) {
-      setState(() {
-        _errorMessage = 'Please fix the errors before saving.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final success = await _provider.save(_issue);
-      if (success && mounted) {
-        final savedIssue = _provider.issues.firstWhere(
-          (i) => i.propertyId == _issue.propertyId && i.title == _issue.title,
-        );
-        context.go('/maintenance/${savedIssue.maintenanceIssueId}');
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
+    final initial = widget.issue;
+    return FormScreen<MaintenanceIssue>(
+      title: initial == null ? 'New Maintenance Issue' : 'Edit Maintenance Issue',
+      initialItem: initial,
+      autovalidate: false,
+      createNewItem: () {
+        final imageIds = _images
+            .map((img) => img.id)
+            .where((id) => id != null && id > 0)
+            .cast<int>()
+            .toList();
+        return MaintenanceIssue.empty().copyWith(
+          propertyId: widget.propertyId ?? initial?.propertyId ?? 0,
+          title: _titleController.text,
+          description: _descriptionController.text,
+          priority: _priority,
+          reportedByUserId: initial?.reportedByUserId ?? 1, // TODO: auth provider
+          isTenantComplaint: _isTenantComplaint,
+          imageIds: imageIds,
+        );
+      },
+      updateItem: (existing) {
+        final imageIds = _images
+            .map((img) => img.id)
+            .where((id) => id != null && id > 0)
+            .cast<int>()
+            .toList();
+        return existing.copyWith(
+          title: _titleController.text,
+          description: _descriptionController.text,
+          priority: _priority,
+          isTenantComplaint: _isTenantComplaint,
+          imageIds: imageIds,
+        );
+      },
+      validator: (item) {
+        if (item.title.trim().isEmpty) return 'Please enter a title';
+        if ((item.description ?? '').trim().isEmpty) return 'Please enter a description';
+        if (item.propertyId <= 0) return 'Invalid property';
+        return null;
+      },
+      onSubmit: (item) async {
+        final ok = await _provider.save(item);
+        return ok;
+      },
+      formBuilder: (context, item, formKey) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_errorMessage != null) ...[
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              const SizedBox(height: 16),
-            ],
-            Text(
-              'Issue Details',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 24),
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Title',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a title';
-                }
-                return null;
-              },
+              validator: (value) => (value == null || value.isEmpty) ? 'Please enter a title' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -185,62 +144,56 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a description';
-                }
-                return null;
-              },
+              validator: (value) => (value == null || value.isEmpty) ? 'Please enter a description' : null,
             ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<IssuePriority>(
-                    value: _issue.priority,
+                  child: DropdownButtonFormField<MaintenanceIssuePriority>(
+                    value: _priority,
                     decoration: const InputDecoration(
                       labelText: 'Priority',
                       border: OutlineInputBorder(),
                     ),
-                    items: IssuePriority.values
+                    items: MaintenanceIssuePriority.values
                         .map(
                           (priority) => DropdownMenuItem(
                             value: priority,
-                            child: Text(
-                              priority.toString().split('.').last,
+                            child: Row(
+                              children: [
+                                Icon(priority.icon, color: priority.color, size: 18),
+                                const SizedBox(width: 8),
+                                Text(priority.displayName),
+                              ],
                             ),
                           ),
                         )
                         .toList(),
+                    selectedItemBuilder: (context) {
+                      return MaintenanceIssuePriority.values.map((priority) {
+                        return Row(
+                          children: [
+                            Icon(priority.icon, color: priority.color, size: 18),
+                            const SizedBox(width: 8),
+                            Text(priority.displayName),
+                          ],
+                        );
+                      }).toList();
+                    },
                     onChanged: (value) {
-                      if (value != null) {
-                        _updatePriority(value);
-                      }
+                      if (value != null) _updatePriority(value);
                     },
                   ),
                 ),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _categoryController,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a category';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
+                const Expanded(child: SizedBox.shrink()),
               ],
             ),
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Tenant Complaint'),
-              value: _issue.isTenantComplaint,
+              value: _isTenantComplaint,
               onChanged: _updateIsTenantComplaint,
             ),
             const SizedBox(height: 32),
@@ -258,41 +211,11 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                       ))
                   .toList(),
               apiService: _provider.apiService,
-              onChanged: (images) => _updateImages(images
-                  .map((img) => erents.ImageInfo(
-                        id: img.id,
-                        url: img.url,
-                        fileName: img.fileName,
-                      ))
-                  .toList()),
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          final propertyId = _issue.propertyId;
-                          if (propertyId > 0) {
-                            context.go('/properties/$propertyId');
-                          } else {
-                            context.go('/maintenance');
-                          }
-                        },
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _save,
-                  child: const Text('Save Issue'),
-                ),
-              ],
+              onChanged: _updateImages,
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

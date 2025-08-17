@@ -1,368 +1,450 @@
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
-import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
-import 'package:e_rents_desktop/widgets/table/table_config.dart';
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/services/api_service.dart';
 
+/// MaintenanceProvider standardizes CRUD, pagination, sorting and error handling
+/// on top of BaseProvider + ApiServiceExtensions.
+/// 
+/// Public surface (new API):
+/// - fetchList, fetchPaged
+/// - getById, create, update, remove
+/// - refresh, select, applyFilters, clearFilters
+/// - getters: items, paged, selected, filters, sortBy, ascending, page, pageSize
+/// 
+/// Backward-compatible shims preserved for current screens:
+/// - loadPagedIssues({ Map<String, dynamic>? params })
+/// - save(MaintenanceIssue issue)  // create or update based on id
+/// - getById(String id)
+/// - updateIssueStatus(String id, MaintenanceIssueStatus status, { String? resolutionNotes, double? cost })
 class MaintenanceProvider extends BaseProvider {
-  final BuildContext? context;
+  // State
+  final List<MaintenanceIssue> _items = <MaintenanceIssue>[];
+  PagedResult<MaintenanceIssue>? _paged;
+  MaintenanceIssue? _selected;
 
-  MaintenanceProvider(super.api, {this.context});
+  Map<String, dynamic> _filters = {};
+  String? _sortBy;
+  bool _ascending = true;
+  int _page = 1;
+  int _pageSize = 20;
 
-  // ─── State ──────────────────────────────────────────────────────────────
-  List<MaintenanceIssue> _issues = [];
-  List<MaintenanceIssue> get issues => _issues;
+  // Config
+  static const String _basePath = '/api/maintenanceissues';
 
-  MaintenanceIssue? _selectedIssue;
-  MaintenanceIssue? get selectedIssue => _selectedIssue;
+  MaintenanceProvider(super.api);
 
-  PagedResult<MaintenanceIssue> _pagedResult = PagedResult.empty();
-  PagedResult<MaintenanceIssue> get pagedResult => _pagedResult;
+  // Getters
+  List<MaintenanceIssue> get items => List.unmodifiable(_items);
+  PagedResult<MaintenanceIssue>? get paged => _paged;
+  MaintenanceIssue? get selectedIssue => _selected;
 
-  // Status update state
-  MaintenanceIssue? _editingIssue;
-  MaintenanceIssue? get editingIssue => _editingIssue;
+  // Back-compat shims expected by existing screens
+  List<MaintenanceIssue> get issues => items;
+  ApiService get apiService => api;
 
-  IssueStatus? _selectedStatus;
-  IssueStatus? get selectedStatus => _selectedStatus;
+  Map<String, dynamic> get filters => Map.unmodifiable(_filters);
+  String? get sortBy => _sortBy;
+  bool get ascending => _ascending;
+  int get page => _page;
+  int get pageSize => _pageSize;
 
-  final TextEditingController costController = TextEditingController();
-  final TextEditingController notesController = TextEditingController();
+  /// Builds a snapshot of the last used query to support refresh
+  Map<String, dynamic> get lastQuery => <String, dynamic>{
+        'filters': Map<String, dynamic>.from(_filters),
+        'sortBy': _sortBy,
+        'ascending': _ascending,
+        'page': _page,
+        'pageSize': _pageSize,
+      };
 
-  // ─── Getters ────────────────────────────────────────────────────────────
+  
 
-  /// Expose ApiService for backward compatibility with form screens
-  get apiService => api;
+  // Core methods
 
-  // ─── Public API - CRUD Operations ──────────────────────────────────────
+  Future<void> fetchList({
+    Map<String, dynamic>? filters,
+    String? sortBy,
+    bool ascending = true,
+  }) async {
+    await executeWithState<void>(() async {
+      _filters = filters ?? {};
+      _sortBy = sortBy;
+      _ascending = ascending;
 
-  /// Load paged maintenance issues
+      final Map<String, dynamic> query = {
+        ..._filters,
+        if (_sortBy != null) 'sortBy': _sortBy,
+        // Backend screen uses sortDescending param; honor both
+        'sortDescending': !ascending,
+        'sortDirection': ascending ? 'asc' : 'desc',
+      };
+
+      final list = await api.getListAndDecode<MaintenanceIssue>(
+        '$_basePath${api.buildQueryString(query)}',
+        MaintenanceIssue.fromJson,
+      );
+
+      _items
+        ..clear()
+        ..addAll(list);
+      // Invalidate paged, since this is a non-paged fetch
+      _paged = null;
+      notifyListeners();
+    });
+  }
+
+  Future<PagedResult<MaintenanceIssue>?> fetchPaged({
+    int page = 1,
+    int pageSize = 20,
+    Map<String, dynamic>? filters,
+    String? sortBy,
+    bool ascending = true,
+  }) async {
+    return executeWithState<PagedResult<MaintenanceIssue>>(() async {
+      // Normalize filters
+      final normalized = Map<String, dynamic>.from(filters ?? {});
+
+      // Convert enum-like query values to PascalCase expected by backend binders
+      String toPascal(String s) => s.isEmpty
+          ? s
+          : s
+              .replaceAll('_', ' ')
+              .split(RegExp(r"[\s_]"))
+              .where((p) => p.isNotEmpty)
+              .map((p) => p[0].toUpperCase() + p.substring(1))
+              .join();
+
+      Map<String, dynamic> pascalize(Map<String, dynamic> src) {
+        final m = Map<String, dynamic>.from(src);
+        if (m['priorityMin'] is String) m['priorityMin'] = toPascal(m['priorityMin']);
+        if (m['priorityMax'] is String) m['priorityMax'] = toPascal(m['priorityMax']);
+        if (m['statuses'] is List) {
+          m['statuses'] = (m['statuses'] as List)
+              .where((e) => e != null)
+              .map((e) => toPascal(e.toString()))
+              .toList();
+        }
+        return m..removeWhere((k, v) => v == null || (v is List && v.isEmpty));
+      }
+
+      _filters = pascalize(normalized);
+      _sortBy = sortBy;
+      _ascending = ascending;
+      _page = page;
+      _pageSize = pageSize;
+
+      final Map<String, dynamic> query = {
+        ..._filters,
+        'page': _page,
+        'pageSize': _pageSize,
+        if (_sortBy != null) 'sortBy': _sortBy,
+        'sortDescending': !ascending,
+        'sortDirection': ascending ? 'asc' : 'desc',
+      };
+
+      final result = await api.getPagedAndDecode<MaintenanceIssue>(
+        '$_basePath${api.buildQueryString(query)}',
+        MaintenanceIssue.fromJson,
+      );
+
+      _paged = result;
+      _items
+        ..clear()
+        ..addAll(result.items);
+      notifyListeners();
+      return result;
+    });
+  }
+
+  Future<void> getById(dynamic id) async {
+    await executeWithState<void>(() async {
+      final MaintenanceIssue issue = await api.getAndDecode<MaintenanceIssue>(
+        '$_basePath/$id',
+        MaintenanceIssue.fromJson,
+      );
+
+      _selected = issue;
+
+      // Update list cache if present
+      final int index = _items.indexWhere(
+          (e) => e.maintenanceIssueId == issue.maintenanceIssueId);
+      if (index >= 0) {
+        _items[index] = issue;
+      } else {
+        _items.add(issue);
+      }
+
+      // Update paged cache if present
+      if (_paged != null) {
+        final List<MaintenanceIssue> updated = List<MaintenanceIssue>.from(_paged!.items);
+        final int pIndex = updated.indexWhere(
+            (e) => e.maintenanceIssueId == issue.maintenanceIssueId);
+        if (pIndex >= 0) {
+          updated[pIndex] = issue;
+        } else {
+          updated.add(issue);
+        }
+        _paged = PagedResult<MaintenanceIssue>(
+          items: updated,
+          page: _paged!.page,
+          pageSize: _paged!.pageSize,
+          totalCount: _paged!.totalCount,
+        );
+      }
+
+      notifyListeners();
+    });
+  }
+
+  Future<MaintenanceIssue?> create(MaintenanceIssue dto) async {
+    return executeWithRetry<MaintenanceIssue>(() async {
+      final created = await api.postAndDecode<MaintenanceIssue>(
+        _basePath,
+        _encodeBody(dto),
+        MaintenanceIssue.fromJson,
+      );
+
+      // Optimistically append
+      _items.add(created);
+
+      if (_paged != null) {
+        final List<MaintenanceIssue> updated = List<MaintenanceIssue>.from(_paged!.items)..add(created);
+        _paged = PagedResult<MaintenanceIssue>(
+          items: updated,
+          page: _paged!.page,
+          pageSize: _paged!.pageSize,
+          totalCount: _paged!.totalCount + 1,
+        );
+      }
+
+      _selected = created;
+      notifyListeners();
+      return created;
+    }, isUpdate: true);
+  }
+
+  Future<MaintenanceIssue?> update(MaintenanceIssue dto) async {
+    return executeWithRetry<MaintenanceIssue>(() async {
+      final id = dto.maintenanceIssueId;
+      final updated = await api.putAndDecode<MaintenanceIssue>(
+        '$_basePath/$id',
+        _encodeBody(dto),
+        MaintenanceIssue.fromJson,
+      );
+
+      // Update in items
+      final int idx =
+          _items.indexWhere((e) => e.maintenanceIssueId == updated.maintenanceIssueId);
+      if (idx >= 0) {
+        _items[idx] = updated;
+      }
+
+      // Update in paged
+      if (_paged != null) {
+        final List<MaintenanceIssue> updatedList =
+            List<MaintenanceIssue>.from(_paged!.items);
+        final int pIndex = updatedList.indexWhere(
+            (e) => e.maintenanceIssueId == updated.maintenanceIssueId);
+        if (pIndex >= 0) {
+          updatedList[pIndex] = updated;
+          _paged = PagedResult<MaintenanceIssue>(
+            items: updatedList,
+            page: _paged!.page,
+            pageSize: _paged!.pageSize,
+            totalCount: _paged!.totalCount,
+          );
+        }
+      }
+
+      if (_selected?.maintenanceIssueId == updated.maintenanceIssueId) {
+        _selected = updated;
+      }
+
+      notifyListeners();
+      return updated;
+    }, isUpdate: true);
+  }
+
+  Future<bool> remove(dynamic id) async {
+    return executeWithStateForSuccess(() async {
+      final success = await api.deleteAndConfirm('$_basePath/$id');
+      if (!success) {
+        throw Exception('Delete failed');
+      }
+
+      _items.removeWhere((e) => e.maintenanceIssueId == id);
+
+      if (_paged != null) {
+        final List<MaintenanceIssue> updated =
+            List<MaintenanceIssue>.from(_paged!.items)
+              ..removeWhere((e) => e.maintenanceIssueId == id);
+        _paged = PagedResult<MaintenanceIssue>(
+          items: updated,
+          page: _paged!.page,
+          pageSize: _paged!.pageSize,
+          totalCount: (_paged!.totalCount > 0) ? _paged!.totalCount - 1 : 0,
+        );
+      }
+
+      if (_selected?.maintenanceIssueId == id) {
+        _selected = null;
+      }
+
+      notifyListeners();
+    }, isUpdate: true);
+  }
+
+  Future<void> refresh() async {
+    // Reuse last query; prefer paged when available
+    if (_paged != null) {
+      await fetchPaged(
+        page: _page,
+        pageSize: _pageSize,
+        filters: _filters,
+        sortBy: _sortBy,
+        ascending: _ascending,
+      );
+    } else {
+      await fetchList(
+        filters: _filters,
+        sortBy: _sortBy,
+        ascending: _ascending,
+      );
+    }
+  }
+
+  void select(MaintenanceIssue? issue) {
+    _selected = issue;
+    notifyListeners();
+  }
+
+  void applyFilters(Map<String, dynamic> map) {
+    _filters = Map<String, dynamic>.from(map);
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _filters = {};
+    notifyListeners();
+  }
+
+  // Backward-compatible shims
+
+  /// Legacy: loadPagedIssues(params: { sortBy, sortDescending, page, pageSize, ... })
+  /// Returns PagedResult to match current screen usage.
   Future<PagedResult<MaintenanceIssue>?> loadPagedIssues({
     Map<String, dynamic>? params,
   }) async {
-    final query = TableQuery(
-      page: params?['page'] ?? 1,
-      pageSize: params?['pageSize'] ?? 25,
-      searchTerm: params?['searchTerm'],
-      filters: params?['filters'] ?? {},
-      sortBy: params?['sortBy'],
-      sortDescending: params?['sortDescending'] ?? false,
-    );
+    params = params ?? <String, dynamic>{};
+    final String? s = params['sortBy'] as String?;
+    final bool sortDescending = (params['sortDescending'] as bool?) ?? false;
+    final bool asc = !sortDescending;
+    final int p = (params['page'] as int?) ?? 1;
+    final int ps = (params['pageSize'] as int?) ?? _pageSize;
 
-    final queryString = api.buildQueryString(query.toQueryParams());
+    // Keep other filters intact (exclude known paging/sort keys)
+    final Map<String, dynamic> remaining = Map<String, dynamic>.from(params)
+      ..remove('sortBy')
+      ..remove('sortDescending')
+      ..remove('page')
+      ..remove('pageSize');
 
-    return executeWithState(
-      () => api.getPagedAndDecode(
-        'api/maintenance$queryString',
-        MaintenanceIssue.fromJson,
-        authenticated: true,
-      ),
-    );
-  }
-
-  /// Load a specific maintenance issue by ID
-  Future<MaintenanceIssue?> loadIssueById(String id) async {
-    return executeWithState(
-      () => api.getAndDecode(
-        'api/maintenance/$id',
-        MaintenanceIssue.fromJson,
-        authenticated: true,
-      ),
+    return fetchPaged(
+      page: p,
+      pageSize: ps,
+      filters: remaining.isEmpty ? null : remaining,
+      sortBy: s,
+      ascending: asc,
     );
   }
 
-  /// Create a new maintenance issue
-  Future<MaintenanceIssue?> createIssue(MaintenanceIssue issue) async {
-    return executeWithState(
-      () => api.postAndDecode(
-        'api/maintenance',
-        issue.toJson(),
-        MaintenanceIssue.fromJson,
-        authenticated: true,
-      ),
-    );
-  }
-
-  /// Update an existing maintenance issue
-  Future<MaintenanceIssue?> updateIssue(MaintenanceIssue issue) async {
-    return executeWithState(() async {
-      final result = await api.putAndDecode(
-        'api/maintenance/${issue.maintenanceIssueId}',
-        issue.toJson(),
-        MaintenanceIssue.fromJson,
-        authenticated: true,
-      );
-
-      return result;
-    });
-  }
-
-  /// Delete a maintenance issue by ID
-  Future<bool> deleteIssue(String id) async {
-    final success = await executeWithState(() async {
-      await api.deleteAndConfirm('api/maintenance/$id', authenticated: true);
-    });
-
-    if (success) {
-      _issues.removeWhere((issue) => issue.maintenanceIssueId.toString() == id);
-      if (_selectedIssue?.maintenanceIssueId.toString() == id) {
-        _selectedIssue = null;
-      }
-      notifyListeners();
+  /// Legacy: save(issue) => create or update by presence of maintenanceIssueId
+  Future<bool> save(MaintenanceIssue issue) async {
+    final bool isCreate = (issue.maintenanceIssueId == 0);
+    if (isCreate) {
+      final created = await create(issue);
+      return created != null;
+    } else {
+      final updated = await update(issue);
+      return updated != null;
     }
-
-    return success;
   }
 
-  /// Update the status of a maintenance issue
-  Future<bool> updateIssueStatus(
+  /// Legacy: update only status/cost/resolutionNotes
+  Future<void> updateIssueStatus(
     String id,
-    IssueStatus newStatus, {
+    MaintenanceIssueStatus status, {
     String? resolutionNotes,
     double? cost,
   }) async {
-    final data = <String, dynamic>{'status': newStatus.name};
+    // Perform a full update to match backend expectations
+    await executeWithRetry(() async {
+      // Ensure we have the latest
+      await getById(id);
+      final current = _selected;
+      if (current == null) return null;
 
-    if (resolutionNotes != null) {
-      data['resolutionNotes'] = resolutionNotes;
-    }
-
-    if (cost != null) {
-      data['cost'] = cost;
-    }
-
-    final success = await executeWithStateForSuccess(() async {
-      await api.putJson(
-        'api/maintenance/$id/status',
-        data,
-        authenticated: true,
+      final merged = current.copyWith(
+        status: status,
+        resolutionNotes: resolutionNotes ?? current.resolutionNotes,
+        cost: cost ?? current.cost,
       );
-    });
 
-    return success;
-  }
-
-  // ─── Legacy Methods for Backward Compatibility ──────────────────────────
-
-  // These methods maintain backward compatibility with existing code
-
-  Future<PagedResult<MaintenanceIssue>> fetchData(TableQuery query) async {
-    final result = await executeWithState<PagedResult<MaintenanceIssue>>(
-      () async {
-        return await api.getPagedAndDecode(
-          'api/maintenance${api.buildQueryString(query.toQueryParams())}',
-          MaintenanceIssue.fromJson,
-          authenticated: true,
-        );
-      },
-    );
-
-    if (result != null) {
-      _pagedResult = result;
-      _issues = result.items;
-      notifyListeners();
-      return result;
-    }
-    return PagedResult.empty();
-  }
-
-  Future<void> getIssueById(String id) async {
-    final result = await executeWithState<MaintenanceIssue>(() async {
-      return await api.getAndDecode(
-        'api/maintenance/$id',
+      final updated = await api.putAndDecode<MaintenanceIssue>(
+        '$_basePath/$id',
+        _encodeBody(merged),
         MaintenanceIssue.fromJson,
-        authenticated: true,
       );
-    });
 
-    if (result != null) {
-      _selectedIssue = result;
-      notifyListeners();
-    }
-  }
+      // Update caches
+      final idx = _items.indexWhere((e) => e.maintenanceIssueId.toString() == id);
+      if (idx >= 0) _items[idx] = updated;
 
-  /// Alias for getIssueById - used by router
-  Future<void> getById(String id) async {
-    await getIssueById(id);
-  }
-
-  /// Get paged maintenance issues - used by router
-  Future<PagedResult<MaintenanceIssue>> getPaged([
-    Map<String, dynamic>? params,
-  ]) async {
-    // Create default TableQuery if no params provided
-    final query = TableQuery(
-      page: params?['page'] ?? 1,
-      pageSize: params?['pageSize'] ?? 25,
-      searchTerm: params?['searchTerm'],
-      filters: params?['filters'] ?? {},
-      sortBy: params?['sortBy'],
-      sortDescending: params?['sortDescending'] ?? false,
-    );
-    return await fetchData(query);
-  }
-
-  Future<bool> saveIssue(MaintenanceIssue issue) async {
-    final result = await executeWithState<Map<String, dynamic>>(() async {
-      if (issue.maintenanceIssueId == 0) {
-        return await api.postJson(
-          'api/maintenance',
-          issue.toJson(),
-          authenticated: true,
-        );
-      } else {
-        return await api.putAndDecode(
-          'api/maintenance/${issue.maintenanceIssueId}',
-          issue.toJson(),
-          (json) => json,
-          authenticated: true,
-        );
+      if (_paged != null) {
+        final list = List<MaintenanceIssue>.from(_paged!.items);
+        final pIdx = list.indexWhere((e) => e.maintenanceIssueId.toString() == id);
+        if (pIdx >= 0) {
+          list[pIdx] = updated;
+          _paged = PagedResult<MaintenanceIssue>(
+            items: list,
+            page: _paged!.page,
+            pageSize: _paged!.pageSize,
+            totalCount: _paged!.totalCount,
+          );
+        }
       }
-    });
 
-    if (result != null) {
-      // Refresh the issues list
-      await getPaged();
-      return true;
+      if (_selected?.maintenanceIssueId.toString() == id) {
+        _selected = updated;
+      }
+
+      notifyListeners();
+      return updated;
+    }, isUpdate: true);
+  }
+
+  // Encode request body ensuring server-compatible enum casing
+  Map<String, dynamic> _encodeBody(MaintenanceIssue dto) {
+    final map = dto.toJson();
+    // Convert enum wire values to PascalCase for backend
+    String toPascal(String s) => s.isEmpty
+        ? s
+        : s
+            .split(RegExp(r'[_\s]'))
+            .map((p) => p.isEmpty ? '' : p[0].toUpperCase() + p.substring(1))
+            .join();
+
+    if (map.containsKey('priority')) {
+      map['priority'] = toPascal(map['priority'].toString());
     }
-    return false;
-  }
-
-  /// Alias for saveIssue - used by maintenance form screen
-  Future<bool> save(MaintenanceIssue issue) async {
-    return await saveIssue(issue);
-  }
-
-  // ─── Editing State Management ──────────────────────────────────────────
-
-  void startEditing(MaintenanceIssue issue) {
-    _editingIssue = issue;
-    _selectedStatus = issue.status;
-    costController.text = issue.cost?.toString() ?? '';
-    notesController.text = issue.resolutionNotes ?? '';
-    notifyListeners();
-  }
-
-  void cancelEditing() {
-    _editingIssue = null;
-    _selectedStatus = null;
-    costController.clear();
-    notesController.clear();
-    notifyListeners();
-  }
-
-  void updateSelectedStatus(IssueStatus newStatus) {
-    _selectedStatus = newStatus;
-    notifyListeners();
-  }
-
-  // ─── Table Configuration (for DesktopDataTable integration) ─────────────
-
-  List<TableColumnConfig<MaintenanceIssue>> getTableColumns(
-    BuildContext tableContext,
-  ) {
-    return [
-      TableColumnConfig(
-        key: 'priority',
-        label: 'Priority',
-        cellBuilder: (issue) => _priorityCell(
-          issue.priority.name,
-          color: _getPriorityColor(issue.priority),
-        ),
-      ),
-      TableColumnConfig(
-        key: 'title',
-        label: 'Title',
-        cellBuilder: (issue) => _textCell(issue.title),
-        width: const FlexColumnWidth(2.0),
-      ),
-      TableColumnConfig(
-        key: 'status',
-        label: 'Status',
-        cellBuilder: (issue) => _statusCell(
-          issue.status.name,
-          color: _getStatusColor(issue.status),
-        ),
-      ),
-      TableColumnConfig(
-        key: 'createdAt',
-        label: 'Reported',
-        cellBuilder: (issue) => _dateCell(issue.createdAt),
-      ),
-      TableColumnConfig(
-        key: 'actions',
-        label: 'Actions',
-        cellBuilder: (issue) => _actionCell([
-          _iconActionCell(
-            icon: Icons.edit,
-            tooltip: 'Edit',
-            onPressed: () =>
-                tableContext.push('/maintenance/${issue.maintenanceIssueId}'),
-          ),
-        ]),
-      ),
-    ];
-  }
-
-  // ─── Private Helpers & UI Builders ──────────────────────────────────
-
-  Widget _priorityCell(String text, {Color? color}) => Container(
-    padding: const EdgeInsets.all(8),
-    color: color,
-    child: Text(text),
-  );
-
-  Widget _statusCell(String text, {Color? color}) => Container(
-    padding: const EdgeInsets.all(8),
-    color: color,
-    child: Text(text),
-  );
-
-  Widget _textCell(String text) => Text(text);
-
-  Widget _dateCell(DateTime? date) =>
-      Text(date?.toLocal().toString().split(' ')[0] ?? 'N/A');
-
-  Widget _actionCell(List<Widget> actions) => Row(children: actions);
-
-  Widget _iconActionCell({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) => IconButton(icon: Icon(icon), tooltip: tooltip, onPressed: onPressed);
-
-  Color _getPriorityColor(IssuePriority priority) {
-    switch (priority) {
-      case IssuePriority.low:
-        return Colors.green.shade100;
-      case IssuePriority.medium:
-        return Colors.orange.shade100;
-      case IssuePriority.high:
-        return Colors.red.shade100;
-      case IssuePriority.emergency:
-        return Colors.purple.shade100;
+    if (map.containsKey('status')) {
+      // Handle inProgress -> InProgress, etc.
+      final raw = map['status'].toString();
+      map['status'] = toPascal(raw.replaceAll('_', ' '));
     }
-  }
-
-  Color _getStatusColor(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return Colors.blue.shade100;
-      case IssueStatus.inProgress:
-        return Colors.yellow.shade100;
-      case IssueStatus.completed:
-        return Colors.green.shade100;
-      case IssueStatus.cancelled:
-        return Colors.red.shade100;
-    }
-  }
-
-  @override
-  void dispose() {
-    costController.dispose();
-    notesController.dispose();
-    super.dispose();
+    return map;
   }
 }

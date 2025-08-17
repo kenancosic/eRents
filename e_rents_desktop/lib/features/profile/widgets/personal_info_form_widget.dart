@@ -236,49 +236,4 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
       validator: validator,
     );
   }
-
-  Widget _buildReadOnlyField( // This is now unused because personal_info is always in editing mode.
-    BuildContext context, {
-    required String label,
-    required String value,
-    IconData? icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withAlpha(77),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withAlpha(51),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 18),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withAlpha(153),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(value, style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

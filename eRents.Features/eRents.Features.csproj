@@ -28,7 +28,8 @@
 		<!-- JWT Authentication packages -->
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.13.1" />
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.13.1" />
-		<!-- Mapster available for compile-time to enable feature mapping registrars -->
+		<!-- Image processing -->
+		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
 	</ItemGroup>
 
 	<!-- Generate ServiceRegistration.cs to wire feature services into DI (consumed by WebApi host) -->

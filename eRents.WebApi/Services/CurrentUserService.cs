@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using eRents.Domain.Shared.Interfaces;
+using Microsoft.AspNetCore.Http;
 
 namespace eRents.WebApi.Services
 {
@@ -23,6 +24,13 @@ namespace eRents.WebApi.Services
 
         public bool IsAuthenticated =>
             _httpContextAccessor.HttpContext?.User?.Identity?.IsAuthenticated ?? false;
+
+        public string? ClientType =>
+            _httpContextAccessor.HttpContext?.Request?.Headers["Client-Type"].FirstOrDefault();
+
+        public bool IsDesktop => string.Equals(ClientType, "Desktop", StringComparison.OrdinalIgnoreCase);
+
+        public bool IsMobile => string.Equals(ClientType, "Mobile", StringComparison.OrdinalIgnoreCase);
 
         public int? GetUserIdAsInt()
         {

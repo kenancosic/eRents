@@ -1,6 +1,6 @@
+import 'package:e_rents_desktop/models/paged_result.dart';
 import 'dart:convert';
 import 'package:e_rents_desktop/services/api_service.dart';
-import 'package:e_rents_desktop/models/paged_result.dart';
 
 /// Extensions for ApiService to reduce boilerplate in providers
 /// 
@@ -288,11 +288,24 @@ extension ApiServiceExtensions on ApiService {
   String buildQueryString(Map<String, dynamic>? params) {
     if (params == null || params.isEmpty) return '';
     
-    final queryParams = params.entries
-        .where((entry) => entry.value != null)
-        .map((entry) => '${Uri.encodeComponent(entry.key)}=${Uri.encodeComponent(entry.value.toString())}')
-        .join('&');
+    // Build query parts with proper handling for list parameters
+    final List<String> parts = <String>[];
+    for (final entry in params.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      if (value == null) continue;
+      if (value is List) {
+        // Emit repeated keys for list values: key=a&key=b
+        for (final v in value) {
+          if (v == null) continue;
+          parts.add('${Uri.encodeComponent(key)}=${Uri.encodeComponent(v.toString())}');
+        }
+      } else {
+        parts.add('${Uri.encodeComponent(key)}=${Uri.encodeComponent(value.toString())}');
+      }
+    }
     
+    final queryParams = parts.join('&');
     return queryParams.isEmpty ? '' : '?$queryParams';
   }
   

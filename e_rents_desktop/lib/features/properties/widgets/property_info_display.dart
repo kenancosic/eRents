@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/property_status.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
 import 'package:e_rents_desktop/utils/formatters.dart';
 import 'package:e_rents_desktop/widgets/status_chip.dart';
+import 'package:e_rents_desktop/presentation/property_status_ui.dart';
 
 /// Standardized property information display widget
 ///
@@ -41,9 +40,9 @@ class PropertyInfoDisplay extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: StatusChip(
-                  label: property.status,
-                  backgroundColor: _getStatusColor(_parseStatus(property.status)),
-                  iconData: _getStatusIcon(_parseStatus(property.status)),
+                  label: property.status.displayName,
+                  backgroundColor: property.status.uiColor,
+                  iconData: property.status.uiIcon,
                 ),
               ),
           ],
@@ -59,7 +58,7 @@ class PropertyInfoDisplay extends StatelessWidget {
         _buildInfoChips(context),
         const SizedBox(height: 12),
         Text(
-          '${kCurrencyFormat.format(property.price)} / ${property.rentingType.displayName.toLowerCase()}',
+          '${kCurrencyFormat.format(property.price)} / ${property.rentingType?.displayName.toLowerCase() ?? 'N/A'}',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
@@ -92,52 +91,11 @@ class PropertyInfoDisplay extends StatelessWidget {
         ),
         _InfoChip(
           icon: Icons.calendar_today_outlined,
-          label: property.rentingType.displayName,
+          label: property.rentingType?.displayName ?? 'N/A',
           color: Theme.of(context).colorScheme.secondary,
         ),
       ],
     );
-  }
-
-  PropertyStatus _parseStatus(String status) {
-    switch (status.toLowerCase()) {
-      case 'available':
-        return PropertyStatus.available;
-      case 'rented':
-        return PropertyStatus.rented;
-      case 'maintenance':
-        return PropertyStatus.maintenance;
-      case 'unavailable':
-        return PropertyStatus.unavailable;
-      default:
-        return PropertyStatus.available;
-    }
-  }
-
-  Color _getStatusColor(PropertyStatus status) {
-    switch (status) {
-      case PropertyStatus.available:
-        return Colors.green;
-      case PropertyStatus.rented:
-        return Colors.orange;
-      case PropertyStatus.maintenance:
-        return Colors.blue;
-      case PropertyStatus.unavailable:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(PropertyStatus status) {
-    switch (status) {
-      case PropertyStatus.available:
-        return Icons.check_circle_outline;
-      case PropertyStatus.rented:
-        return Icons.person_outline;
-      case PropertyStatus.maintenance:
-        return Icons.build_circle_outlined;
-      case PropertyStatus.unavailable:
-        return Icons.help_outline;
-    }
   }
 }
 

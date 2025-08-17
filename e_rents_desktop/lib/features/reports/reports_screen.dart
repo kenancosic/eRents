@@ -122,8 +122,8 @@ class _FinancialReportContent extends StatelessWidget {
                 child: DataTable(
                   columns: columns,
                   rows: rows,
-                  headingRowColor: MaterialStateProperty.resolveWith((states) => Colors.grey[200]),
-                  dataRowColor: MaterialStateProperty.resolveWith((states) => Colors.white),
+                  headingRowColor: WidgetStateProperty.resolveWith((states) => Colors.grey[200]),
+                  dataRowColor: WidgetStateProperty.resolveWith((states) => Colors.white),
                   columnSpacing: 24,
                   horizontalMargin: 24,
                   border: TableBorder.all(color: Colors.grey[300]!),

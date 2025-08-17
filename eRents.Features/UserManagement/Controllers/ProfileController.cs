@@ -2,8 +2,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using eRents.Features.Core.Interfaces;
 using eRents.Features.UserManagement.Models;
+using eRents.Features.Core;
 
 namespace eRents.Features.UserManagement.Controllers;
 

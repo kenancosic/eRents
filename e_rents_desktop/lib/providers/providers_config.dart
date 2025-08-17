@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
 // Core services
 import '../services/api_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/user_preferences_service.dart';
+import '../services/image_service.dart';
 
 // Import all feature providers
 import '../features/auth/providers/auth_provider.dart';
@@ -31,9 +33,13 @@ class ProviderDependencies {
 }
 
 /// Creates and configures all providers with their dependencies
-List<ChangeNotifierProvider> createAppProviders(ProviderDependencies deps) {
+List<SingleChildWidget> createAppProviders(ProviderDependencies deps) {
   return [
     // Core providers
+    // Service: ImageService (stateless), expose via Provider for app-wide access
+    Provider<ImageService>.value(
+      value: ImageService(deps.apiService),
+    ),
     ChangeNotifierProvider<AuthProvider>(
       create: (_) => AuthProvider(
         apiService: deps.apiService,
@@ -68,6 +74,8 @@ List<ChangeNotifierProvider> createAppProviders(ProviderDependencies deps) {
     ChangeNotifierProvider<ReportsProvider>(
       create: (_) => ReportsProvider(deps.apiService),
     ),
+    
+    
   ];
 }
 
@@ -77,10 +85,10 @@ class AppProviders extends StatelessWidget {
   final ProviderDependencies dependencies;
 
   const AppProviders({
-    Key? key,
+    super.key,
     required this.child,
     required this.dependencies,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -13,6 +13,18 @@ public interface ICurrentUserService
     string? UserRole { get; }
     string? Email { get; }
     bool IsAuthenticated { get; }
+    /// <summary>
+    /// Optional client identifier coming from the request header "Client-Type" (e.g., "Desktop" or "Mobile").
+    /// </summary>
+    string? ClientType { get; }
+    /// <summary>
+    /// Convenience flag indicating a desktop client based on Client-Type header.
+    /// </summary>
+    bool IsDesktop { get; }
+    /// <summary>
+    /// Convenience flag indicating a mobile client based on Client-Type header.
+    /// </summary>
+    bool IsMobile { get; }
     int? GetUserIdAsInt();
     IEnumerable<Claim> GetUserClaims();
 }

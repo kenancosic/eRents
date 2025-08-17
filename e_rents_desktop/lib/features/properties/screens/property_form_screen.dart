@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/enums/property_status.dart';
 import 'package:e_rents_desktop/base/crud/form_screen.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as img_input;
+import 'package:e_rents_desktop/services/image_service.dart';
 import 'package:provider/provider.dart';
 
 class PropertyFormScreen extends StatefulWidget {
@@ -16,6 +19,9 @@ class PropertyFormScreen extends StatefulWidget {
 class _PropertyFormScreenState extends State<PropertyFormScreen> {
   Property? _initialProperty;
   bool _isLoading = true;
+  bool _disposed = false;
+  int _loadToken = 0; // prevents late completions from earlier requests
+  List<img_input.ImageInfo> _pickedImages = [];
 
   @override
   void initState() {
@@ -23,21 +29,42 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
     _loadPropertyIfNeeded();
   }
 
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
   Future<void> _loadPropertyIfNeeded() async {
+    final int token = ++_loadToken;
     if (widget.propertyId != null) {
       final propertyProvider = Provider.of<PropertyProvider>(context, listen: false);
       try {
-        _initialProperty = await propertyProvider.loadProperty(widget.propertyId!);
+        final loaded = await propertyProvider.loadProperty(widget.propertyId!);
+        if (!mounted || _disposed || token != _loadToken) return;
+        setState(() {
+          _initialProperty = loaded;
+          _isLoading = false;
+        });
+        return;
       } catch (e) {
-        // Handle error
+        if (!mounted || _disposed || token != _loadToken) return;
+        // Show error, then navigate back if possible
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to load property')),
         );
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+        // Do not call setState here to avoid races after navigation/dispose
+        return;
       }
+    } else {
+      if (!mounted || _disposed || token != _loadToken) return;
+      setState(() {
+        _isLoading = false;
+      });
     }
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -59,12 +86,47 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
         name: '',
         description: '',
         price: 0.0,
-        status: 'Available',
+        status: PropertyStatus.available,
         imageIds: [],
         amenityIds: [],
       ),
       formBuilder: (context, property, formKey) {
-        return _PropertyFormFields(property: property);
+        // Prepare initial images for the picker: convert existing imageIds to simple maps
+        final initialImages = <dynamic>[];
+        final ids = property?.imageIds ?? const <int>[];
+        if (ids.isNotEmpty) {
+          for (final id in ids) {
+            initialImages.add({
+              'imageId': id,
+              'fileName': 'image_$id.jpg',
+              'isCover': false,
+            });
+          }
+        }
+
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PropertyFormFields(property: property),
+                const SizedBox(height: 16),
+                Text('Images', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                img_input.ImagePickerInput(
+                  initialImages: initialImages,
+                  apiService: propertyProvider.api,
+                  onChanged: (List<img_input.ImageInfo> imgs) {
+                    _pickedImages = imgs;
+                  },
+                  allowCoverSelection: true,
+                  maxImages: 20,
+                ),
+              ],
+            ),
+          ),
+        );
       },
       validator: (property) {
         if (property.name.isEmpty) {
@@ -81,15 +143,45 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
       onSubmit: (property) async {
         // Use PropertyProvider instead of mock save operation
         try {
+          Property? saved;
           if (property.propertyId == 0) {
-            // Create new property
-            final result = await propertyProvider.createProperty(property);
-            return result != null;
+            saved = await propertyProvider.createProperty(property);
           } else {
-            // Update existing property
-            final result = await propertyProvider.updateProperty(property);
-            return result != null;
+            saved = await propertyProvider.updateProperty(property);
           }
+
+          if (saved == null) return false;
+
+          // After save, upload newly picked images (client-side compressed)
+          final newImages = _pickedImages.where((i) => i.isNew && i.data != null).toList();
+          if (newImages.isNotEmpty) {
+            try {
+              final imageService = ImageService(propertyProvider.api);
+              // Ensure cover image (if any) is first in the list
+              newImages.sort((a, b) {
+                if (a.isCover == b.isCover) return 0;
+                return a.isCover ? -1 : 1;
+              });
+              final bytesList = newImages.map((i) => i.data!).toList();
+              final uploaded = await imageService.uploadImagesForProperty(
+                saved.propertyId,
+                bytesList,
+              );
+              // Optionally trigger a refresh to reflect new images (best-effort)
+              if (uploaded.isNotEmpty) {
+                await propertyProvider.fetchPropertyImages(saved.propertyId, maxImages: 10);
+              }
+            } catch (e) {
+              // Show non-blocking error; property save already succeeded
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Images upload failed: $e')),
+                );
+              }
+            }
+          }
+
+          return true;
         } catch (e) {
           // Handle error
           return false;
@@ -127,7 +219,7 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
     _descriptionController = TextEditingController(text: widget.property?.description ?? '');
     _locationController = TextEditingController(text: widget.property?.address?.getCityStateCountry() ?? '');
     _priceController = TextEditingController(text: widget.property?.price.toString() ?? '');
-    _statusController = TextEditingController(text: widget.property?.status ?? 'Available');
+    _statusController = TextEditingController(text: widget.property?.status.displayName ?? 'Available');
   }
 
   @override

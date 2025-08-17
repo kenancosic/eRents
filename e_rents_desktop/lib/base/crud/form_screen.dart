@@ -61,7 +61,7 @@ class FormScreen<T> extends StatefulWidget {
   final void Function(String error)? onValidationError;
 
   const FormScreen({
-    Key? key,
+    super.key,
     required this.title,
     this.initialItem,
     required this.formBuilder,
@@ -77,7 +77,7 @@ class FormScreen<T> extends StatefulWidget {
     this.enableFocusTraversal = true,
     this.submitButtonBuilder,
     this.onValidationError,
-  }) : super(key: key);
+  });
 
   @override
   State<FormScreen<T>> createState() => _FormScreenState<T>();

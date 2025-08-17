@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/providers/lookup_provider.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:flutter/material.dart';
@@ -41,10 +42,21 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Future<void> _login(AuthProvider authProvider) async {
-    await authProvider.login(
+    final ok = await authProvider.login(
       _emailController.text,
       _passwordController.text,
     );
+    // On successful login, preload common lookups so lists can render labels immediately
+    if (!mounted) return;
+    if (ok && authProvider.isAuthenticated) {
+      final lookup = context.read<LookupProvider>();
+      // Fire-and-forget; provider will cache results in the registry
+      lookup.getAmenities();
+      lookup.getPropertyTypes();
+      lookup.getRentingTypes();
+      lookup.getPropertyStatuses();
+      lookup.getBookingStatuses();
+    }
     // Navigation is handled by the root router based on auth state
   }
 

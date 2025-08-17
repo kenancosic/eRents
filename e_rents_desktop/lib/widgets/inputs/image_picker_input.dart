@@ -2,7 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
+import 'package:e_rents_desktop/services/image_service.dart';
+import 'package:e_rents_desktop/models/image.dart' as model;
 
 
 /// A widget for picking, displaying, and managing a list of image paths.
@@ -321,21 +324,58 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
         },
       );
     } else if (image.url != null) {
-      // Existing image with URL - use ApiService for proper handling
-      return Image.network(
-        widget.apiService.makeAbsoluteUrl(image.url!),
+      // If URL points to our Images API (JSON), fetch bytes via ImageService
+      final url = image.url!;
+      ImageService? images;
+      try {
+        images = context.read<ImageService>();
+      } catch (_) {
+        images = null;
+      }
+      if (images != null && url.startsWith('/api/Images/')) {
+        final idStr = url.replaceFirst('/api/Images/', '');
+        final id = int.tryParse(idStr);
+        if (id != null) {
+          return images.buildImageById(
+            id,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: 120,
+            errorWidget: _buildErrorWidget(),
+          );
+        }
+      }
+      // Fallback: if this is an API Images JSON endpoint and ImageService is unavailable,
+      // avoid delegating to ApiService.buildImage (would call Image.network on JSON).
+      if (url.startsWith('/api/Images/')) {
+        return _buildErrorWidget();
+      }
+      // Non-API URL: safe to use ApiService.buildImage
+      return widget.apiService.buildImage(
+        url,
         fit: BoxFit.cover,
         width: double.infinity,
         height: 120,
       );
     } else if (image.id != null) {
-      // Existing image with ID - construct URL and use ApiService
-      return Image.network(
-        widget.apiService.makeAbsoluteUrl('/Image/${image.id}'),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: 120,
-      );
+      // Existing image with ID - use ImageService to fetch bytes
+      ImageService? images;
+      try {
+        images = context.read<ImageService>();
+      } catch (_) {
+        images = null;
+      }
+      if (images != null) {
+        return images.buildImageById(
+          image.id!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 120,
+          errorWidget: _buildErrorWidget(),
+        );
+      }
+      // Fallback if no ImageService found: do NOT render /api/Images/* via network
+      return _buildErrorWidget();
     } else {
       return _buildErrorWidget();
     }

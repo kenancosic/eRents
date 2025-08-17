@@ -1,185 +1,195 @@
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../models/maintenance_issue.dart';
+import 'package:e_rents_desktop/models/maintenance_issue.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_desktop/widgets/desktop_data_table.dart';
+import 'package:e_rents_desktop/features/maintenance/ui/maintenance_table_config.dart';
+import 'package:e_rents_desktop/features/maintenance/ui/maintenance_filter_panel.dart';
+import 'package:e_rents_desktop/presentation/extensions.dart';
+import 'package:e_rents_desktop/presentation/badges.dart';
+import 'package:e_rents_desktop/base/crud/list_screen.dart';
+import 'package:e_rents_desktop/presentation/status_pill.dart';
 
-class MaintenanceScreen extends StatefulWidget {
+class MaintenanceScreen extends StatelessWidget {
   const MaintenanceScreen({super.key});
 
   @override
-  State<MaintenanceScreen> createState() => _MaintenanceScreenState();
-}
-
-class _MaintenanceScreenState extends State<MaintenanceScreen> {
-  int? _sortColumnIndex;
-  bool _sortAscending = true;
-  List<MaintenanceIssue> _issues = [];
-  bool _isLoading = true;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadIssues();
-  }
-
-  Future<void> _loadIssues({String? sortBy, bool? ascending}) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final maintenanceProvider = Provider.of<MaintenanceProvider>(
-        context,
-        listen: false,
-      );
-      
-      final params = <String, dynamic>{};
-      if (sortBy != null) {
-        params['sortBy'] = sortBy;
-        params['sortDescending'] = !(ascending ?? true);
-      }
-      
-      final result = await maintenanceProvider.loadPagedIssues(params: params);
-
-      setState(() {
-        _issues = result?.items ?? [];
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _refresh() async {
-    String? sortBy;
-    if (_sortColumnIndex != null) {
-      final sortFields = ['priority', 'title', 'status', 'createdAt'];
-      if (_sortColumnIndex! < sortFields.length) {
-        sortBy = sortFields[_sortColumnIndex!];
-      }
-    }
-
-    await _loadIssues(sortBy: sortBy, ascending: _sortAscending);
-  }
-
-  void _handleSort(int? columnIndex, bool ascending) {
-    if (columnIndex == null) return;
-    
-    setState(() {
-      _sortColumnIndex = columnIndex;
-      _sortAscending = ascending;
-    });
-
-    // Map column index to sort field
-    final sortFields = ['priority', 'title', 'status', 'createdAt'];
-    if (columnIndex < sortFields.length) {
-      _loadIssues(sortBy: sortFields[columnIndex], ascending: ascending);
-    }
-  }
-
-  Color _getPriorityColor(IssuePriority priority) {
-    switch (priority) {
-      case IssuePriority.low:
-        return Colors.green.shade100;
-      case IssuePriority.medium:
-        return Colors.orange.shade100;
-      case IssuePriority.high:
-        return Colors.red.shade100;
-      case IssuePriority.emergency:
-        return Colors.purple.shade100;
-    }
-  }
-
-  Color _getStatusColor(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return Colors.blue.shade100;
-      case IssueStatus.inProgress:
-        return Colors.yellow.shade100;
-      case IssueStatus.completed:
-        return Colors.green.shade100;
-      case IssueStatus.cancelled:
-        return Colors.red.shade100;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Maintenance Issues'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
-          const SizedBox(width: 16),
-          ElevatedButton.icon(
-            onPressed: () => context.go('/maintenance/new'),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('New Issue'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-          ),
-        ],
-      ),
-      body: DesktopDataTable<MaintenanceIssue>(
-        items: _issues,
-        loading: _isLoading,
-        errorMessage: _errorMessage,
-        onRefresh: _refresh,
-        sortColumnIndex: _sortColumnIndex,
-        sortAscending: _sortAscending,
-        onSort: _handleSort,
-        columns: const [
-          DataColumn(label: Text('Priority')),
-          DataColumn(label: Text('Title')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Reported')),
-        ],
-        rowsBuilder: (context, issues) {
-          return issues.map((issue) {
-            return DataRow(
-              cells: [
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    color: _getPriorityColor(issue.priority),
-                    child: Text(issue.priority.name),
-                  ),
-                ),
-                DataCell(Text(issue.title)),
-                DataCell(
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    color: _getStatusColor(issue.status),
-                    child: Text(issue.status.name),
-                  ),
-                ),
-                DataCell(Text(AppDateUtils.formatShort(issue.createdAt))),
-              ],
-              onSelectChanged: (selected) {
-                if (selected ?? false) {
-                  _showMaintenanceQuickActions(issue);
-                }
-              },
-            );
-          }).toList();
-        },
-      ),
-    );
-  }
+    final provider = context.read<MaintenanceProvider>();
 
-  void _showMaintenanceQuickActions(MaintenanceIssue issue) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => MaintenanceQuickActionsSheet(issue: issue),
+    return ListScreen<MaintenanceIssue>(
+      title: 'Maintenance Issues',
+      // Use DataTable mode with our centralized columns
+      tableColumns: MaintenanceTableConfig.columns,
+      tableRowsBuilder: (ctx, issues) {
+        return issues.map((issue) {
+          return DataRow(
+            cells: [
+              DataCell(
+                PriorityBadge(
+                  priority: issue.priority,
+                  showIcon: true,
+                  variant: BadgeVariant.solid,
+                  size: BadgeSize.sm,
+                ),
+              ),
+              DataCell(Text(issue.title)),
+              DataCell(
+                StatusBadge(
+                  status: issue.status,
+                  showIcon: true,
+                  variant: BadgeVariant.solid,
+                  size: BadgeSize.sm,
+                ),
+              ),
+              DataCell(Text(AppDateUtils.formatShort(issue.createdAt))),
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Details',
+                      icon: const Icon(Icons.visibility),
+                      onPressed: () => ctx.push('/maintenance/${issue.maintenanceIssueId}'),
+                    ),
+                    PopupMenuButton<MaintenanceIssueStatus>(
+                      tooltip: 'Change status',
+                      icon: const Icon(Icons.swap_horiz),
+                      onSelected: (newStatus) async {
+                        final messenger = ScaffoldMessenger.of(ctx);
+                        try {
+                          await provider.updateIssueStatus(
+                            issue.maintenanceIssueId.toString(),
+                            newStatus,
+                          );
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Status changed to ${newStatus.displayName}')),
+                          );
+                        } catch (e) {
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Failed to change status: $e')),
+                          );
+                        }
+                      },
+                      itemBuilder: (context) => MaintenanceIssueStatus.values
+                          .map(
+                            (s) => PopupMenuItem<MaintenanceIssueStatus>(
+                              value: s,
+                              child: Row(
+                                children: [
+                                  Icon(s.icon, size: 18, color: s.color),
+                                  const SizedBox(width: 8),
+                                  Text(s.displayName),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    IconButton(
+                      tooltip: 'Delete',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: ctx,
+                          builder: (_) => AlertDialog(
+                            title: const Text('Delete maintenance issue'),
+                            content: Text('Are you sure you want to delete "${issue.title}"?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          final messenger = ScaffoldMessenger.of(ctx);
+                          try {
+                            final ok = await provider.remove(issue.maintenanceIssueId);
+                            if (ok) {
+                              messenger.showSnackBar(const SnackBar(content: Text('Issue deleted')));
+                            }
+                          } catch (e) {
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('Failed to delete: $e')),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            onSelectChanged: (selected) {
+              if (selected ?? false) {
+                showModalBottomSheet(
+                  context: ctx,
+                  builder: (_) => MaintenanceQuickActionsSheet(issue: issue),
+                );
+              }
+            },
+          );
+        }).toList();
+      },
+      enablePagination: true,
+      pageSize: 20,
+      inlineSearchBar: true,
+      inlineSearchHint: 'Search issues...',
+      showFilters: true,
+      filterBuilder: (ctx, currentFilters, controller) => MaintenanceFilterPanel(
+        initialFilters: currentFilters,
+        showSearchField: false,
+        controller: controller,
+      ),
+      // Client-side filtering using the title field
+      filterFunction: (item) {
+        // When using inlineSearchBar, ListScreen manages 'search' filter via _filters['search']
+        // We can't access it here, so provide a permissive filter and rely on server-side later if needed.
+        return true;
+      },
+      // Optional: simple client-side sort by createdAt as default
+      sortFunction: (a, b) => a.createdAt.compareTo(b.createdAt),
+      actions: [
+        ElevatedButton.icon(
+          onPressed: () => context.go('/maintenance/new'),
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('New Issue'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ),
+        ),
+      ],
+      fetchItems: ({int page = 1, int pageSize = 20, Map<String, dynamic>? filters}) async {
+        // Map ListScreen filters to provider.fetchPaged
+        final paged = await provider.fetchPaged(
+          page: page,
+          pageSize: pageSize,
+          filters: filters,
+        );
+        return paged?.items ?? <MaintenanceIssue>[];
+      },
+      onItemTap: (item) => context.push('/maintenance/${item.maintenanceIssueId}'),
+      onItemDoubleTap: (item) => context.push('/maintenance/${item.maintenanceIssueId}'),
+      // Fallback itemBuilder (not used when tableRowsBuilder is provided)
+      itemBuilder: (ctx, issue) => ListTile(
+        title: Text(issue.title),
+        subtitle: Text('Reported: ${AppDateUtils.formatShort(issue.createdAt)}'),
+        trailing: StatusPill(
+          label: issue.status.displayName,
+          backgroundColor: issue.status.color,
+          iconData: issue.status.icon,
+          foregroundColor: Colors.white,
+        ),
+      ),
     );
   }
 }
@@ -230,15 +240,9 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
           _buildDetailRow(
             context,
             'Priority',
-            issue.priority.toString().split('.').last,
+            issue.priority.displayName,
             Icons.priority_high,
-            color: _getPriorityColor(issue.priority),
-          ),
-          _buildDetailRow(
-            context,
-            'Category',
-            issue.category ?? 'General',
-            Icons.category,
+            color: issue.priority.color,
           ),
           _buildDetailRow(
             context,
@@ -287,22 +291,8 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(IssueStatus status) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: _getStatusColor(status),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        status.toString().split('.').last,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
+  Widget _buildStatusBadge(MaintenanceIssueStatus status) {
+    return StatusBadge(status: status, showIcon: true);
   }
 
   Widget _buildDetailRow(
@@ -337,31 +327,6 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
     );
   }
 
-  Color _getPriorityColor(IssuePriority priority) {
-    switch (priority) {
-      case IssuePriority.low:
-        return Colors.green;
-      case IssuePriority.medium:
-        return Colors.orange;
-      case IssuePriority.high:
-        return Colors.red;
-      case IssuePriority.emergency:
-        return Colors.purple;
-    }
-  }
-
-  Color _getStatusColor(IssueStatus status) {
-    switch (status) {
-      case IssueStatus.pending:
-        return Colors.orange;
-      case IssueStatus.inProgress:
-        return Colors.blue;
-      case IssueStatus.completed:
-        return Colors.green;
-      case IssueStatus.cancelled:
-        return Colors.red;
-    }
-  }
 
   String _formatDate(DateTime date) {
     return AppDateUtils.formatShort(date);

@@ -3,13 +3,13 @@ import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_contact.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_message.dart';
-import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/utils/logger.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-
+import 'package:e_rents_desktop/widgets/custom_avatar.dart';
+import 'package:go_router/go_router.dart';
+  
 class ChatScreen extends StatefulWidget {
   final String? contactId;
 
@@ -204,14 +204,22 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundImage: selectedContact.profileImageId != null
-                                ? NetworkImage('/Image/${selectedContact.profileImageId}')
-                                : null,
-                            child: selectedContact.profileImageId == null
-                                ? Text(selectedContact.firstName[0] + selectedContact.lastName[0])
-                                : null,
+                          SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: (selectedContact.profileImageId != null)
+                                ? CustomAvatar(
+                                    imageUrl: '/api/Images/${selectedContact.profileImageId}',
+                                    size: 40,
+                                    borderWidth: 0,
+                                  )
+                                : ClipOval(
+                                    child: Center(
+                                      child: Text(
+                                        selectedContact.firstName![0] + selectedContact.lastName![0],
+                                      ),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           Column(

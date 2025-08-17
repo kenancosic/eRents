@@ -1,6 +1,6 @@
-using eRents.Features.Core.Interfaces;
 using eRents.Features.LookupManagement.Models;
 using eRents.Domain.Models;
+using eRents.Features.Core;
 
 namespace eRents.Features.LookupManagement.Interfaces
 {

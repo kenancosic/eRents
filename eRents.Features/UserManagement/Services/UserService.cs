@@ -1,6 +1,6 @@
 using AutoMapper;
 using eRents.Domain.Models;
-using eRents.Features.Core.Services;
+using eRents.Features.Core;
 using eRents.Features.UserManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

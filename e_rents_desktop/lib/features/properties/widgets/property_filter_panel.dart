@@ -1,8 +1,11 @@
-import 'package:e_rents_desktop/models/lookup_data.dart';
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
+import 'package:e_rents_desktop/models/lookup_item.dart';
 import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/base/crud/list_screen.dart' show FilterController;
+import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
 
 // A data class to hold the state of the filters
 class PropertyFilterState {
@@ -47,13 +50,19 @@ class PropertyFilterState {
 }
 
 class PropertyFilterPanel extends StatefulWidget {
-  final Function(PropertyFilterState) onApplyFilters;
-  final VoidCallback onResetFilters;
+  // Optional: provide initial filters to pre-populate state when reopening panel
+  final Map<String, dynamic>? initialFilters;
+  // Whether to show an embedded search text field in the panel
+  final bool showSearchField;
+  // Optional: when provided, the panel will bind this controller to expose
+  // its current state and a reset method to the parent dialog actions.
+  final FilterController? controller;
 
   const PropertyFilterPanel({
     super.key,
-    required this.onApplyFilters,
-    required this.onResetFilters,
+    this.initialFilters,
+    this.showSearchField = true,
+    this.controller,
   });
 
   @override
@@ -68,15 +77,72 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
   RangeValues _priceRange = const RangeValues(0, 5000);
   final double _maxPriceValue = 10000;
 
+  // Lookup futures
+  late Future<List<LookupItem>> _propertyTypesFuture;
+  late Future<List<LookupItem>> _rentingTypesFuture;
+  late Future<List<LookupItem>> _propertyStatusesFuture;
+
   @override
   void initState() {
     super.initState();
     _filterState = PropertyFilterState();
-    _filterState.minPrice = _priceRange.start;
-    _filterState.maxPrice = _priceRange.end;
+
+    // If initial filters are provided, map them into the local state for persistence
+    final init = widget.initialFilters ?? const <String, dynamic>{};
+    if (init.isNotEmpty) {
+      // Map provider filter keys -> local state keys
+      _filterState.name = (init['nameContains'] as String?)?.trim();
+      _filterState.propertyTypeId = init['propertyType'] as int?;
+      _filterState.rentingTypeId = init['rentingType'] as int?;
+      _filterState.statusId = init['status'] as int?;
+      _filterState.minPrice = (init['minPrice'] as num?)?.toDouble();
+      _filterState.maxPrice = (init['maxPrice'] as num?)?.toDouble();
+
+      // Reflect in text field and range slider
+      if (_filterState.name != null) {
+        _searchController.text = _filterState.name!;
+      }
+      final min = _filterState.minPrice ?? _priceRange.start;
+      final max = _filterState.maxPrice ?? _priceRange.end;
+      _priceRange = RangeValues(min, max);
+    } else {
+      // Do not activate price filters by default; treat full-range as no filter
+      _filterState.minPrice = null;
+      _filterState.maxPrice = null;
+    }
+
     _searchController.addListener(() {
       _filterState.name = _searchController.text;
     });
+
+    // Prime lookup data
+    final lookup = context.read<LookupProvider>();
+    _propertyTypesFuture = lookup.getPropertyTypes();
+    _rentingTypesFuture = lookup.getRentingTypes();
+    _propertyStatusesFuture = lookup.getPropertyStatuses();
+
+    // Bind external controller if provided so parent dialog actions can
+    // retrieve the current filters and reset fields without relying on
+    // the panel's internal buttons.
+    widget.controller?.bind(
+      getFilters: () {
+        final map = <String, dynamic>{
+          'nameContains': _filterState.name?.trim(),
+          'propertyType': _filterState.propertyTypeId,
+          'rentingType': _filterState.rentingTypeId,
+          'status': _filterState.statusId,
+          'minPrice': _filterState.minPrice,
+          'maxPrice': _filterState.maxPrice,
+          'bedrooms': _filterState.bedrooms,
+          'bathrooms': _filterState.bathrooms,
+          'amenityIds': _filterState.amenityIds,
+        }..removeWhere((k, v) => v == null || (v is String && v.isEmpty));
+        return map;
+      },
+      resetFields: () {
+        _resetFilters();
+      },
+    );
   }
 
   @override
@@ -89,16 +155,15 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
     setState(() {
       _filterState = PropertyFilterState();
       _searchController.clear();
-      _priceRange = RangeValues(0, _maxPriceValue / 2);
-      _filterState.minPrice = _priceRange.start;
-      _filterState.maxPrice = _priceRange.end;
+      // Reset range to defaults but treat as no filter unless changed later
+      _priceRange = const RangeValues(0, 5000);
+      _filterState.minPrice = null;
+      _filterState.maxPrice = null;
     });
-    widget.onResetFilters();
   }
 
   @override
   Widget build(BuildContext context) {
-    final lookupProvider = context.watch<LookupProvider>();
     final theme = Theme.of(context);
 
     return Container(
@@ -107,30 +172,71 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 4,
           children: [
-            Text('Filters', style: theme.textTheme.headlineSmall),
-            const Divider(height: 24),
-            _buildSearchField(),
+            if (widget.showSearchField) _buildSearchField(),
             const SizedBox(height: 16),
-            _buildDropdown(
-              'Property Type',
-              lookupProvider.propertyTypes,
-              _filterState.propertyTypeId,
-              (id) => setState(() => _filterState.propertyTypeId = id),
+            FutureBuilder<List<LookupItem>>(
+              future: _propertyTypesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 48,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
+                return LookupDropdown(
+                  label: 'Property Type',
+                  lookupKey: LookupKey.propertyType,
+                  value: _filterState.propertyTypeId,
+                  onChanged: (id) => setState(() => _filterState.propertyTypeId = id),
+                  includeAny: true,
+                  anyLabel: 'Any',
+                  anyValue: null,
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            _buildDropdown(
-              'Renting Type',
-              lookupProvider.rentingTypes,
-              _filterState.rentingTypeId,
-              (id) => setState(() => _filterState.rentingTypeId = id),
+            const SizedBox(height: 12),
+            FutureBuilder<List<LookupItem>>(
+              future: _rentingTypesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 48,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
+                return LookupDropdown(
+                  label: 'Renting Type',
+                  lookupKey: LookupKey.rentingType,
+                  value: _filterState.rentingTypeId,
+                  onChanged: (id) => setState(() => _filterState.rentingTypeId = id),
+                  includeAny: true,
+                  anyLabel: 'Any',
+                  anyValue: null,
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            _buildDropdown(
-              'Status',
-              lookupProvider.propertyStatuses,
-              _filterState.statusId,
-              (id) => setState(() => _filterState.statusId = id),
+            const SizedBox(height: 12),
+            FutureBuilder<List<LookupItem>>(
+              future: _propertyStatusesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 48,
+                    child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  );
+                }
+                return LookupDropdown(
+                  label: 'Status',
+                  lookupKey: LookupKey.propertyStatus,
+                  value: _filterState.statusId,
+                  onChanged: (id) => setState(() => _filterState.statusId = id),
+                  includeAny: true,
+                  anyLabel: 'Any',
+                  anyValue: null,
+                );
+              },
             ),
             const SizedBox(height: 24),
             _buildPriceRangeSlider(),
@@ -138,8 +244,7 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
             _buildRoomCounters(),
             const SizedBox(height: 24),
             _buildAmenitySelector(),
-            const SizedBox(height: 32),
-            _buildActionButtons(),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -159,29 +264,6 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
           _filterState.name = value;
         });
       },
-    );
-  }
-
-  Widget _buildDropdown(
-    String label,
-    List<LookupItem> items,
-    int? selectedValue,
-    ValueChanged<int?> onChanged,
-  ) {
-    return DropdownButtonFormField<int>(
-      value: selectedValue,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-      items: [
-        const DropdownMenuItem<int>(value: null, child: Text('Any')),
-        ...items.map(
-          (item) =>
-              DropdownMenuItem<int>(value: item.id, child: Text(item.name)),
-        ),
-      ],
-      onChanged: onChanged,
     );
   }
 
@@ -296,18 +378,5 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        OutlinedButton(onPressed: _resetFilters, child: const Text('Reset')),
-        const SizedBox(width: 8),
-        ElevatedButton.icon(
-          icon: const Icon(Icons.search),
-          onPressed: () => widget.onApplyFilters(_filterState),
-          label: const Text('Search'),
-        ),
-      ],
-    );
-  }
+  // Legacy action buttons removed; dialog actions manage Apply/Reset
 }

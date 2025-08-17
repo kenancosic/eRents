@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using eRents.WebApi.Hubs;
 using eRents.WebApi.Middleware;
+using eRents.Features.ImageManagement.Services;
 // Updated import to match renamed validation extensions class
 using eRents.Features.Core.Extensions;
 using eRents.Features.Core.Filters;
@@ -27,17 +28,17 @@ builder.Services.AddHttpContextAccessor();
 // Configure controllers; keep coexistence approach and ensure ValidationFilter applied
 builder.Services.AddControllers(x =>
 {
-    x.Filters.Add(new ErrorFilter());
-    // Ensure we reference the ValidationFilter from Features.Core by type to avoid missing generic using errors
-    x.Filters.Add(typeof(eRents.Features.Core.Filters.ValidationFilter));
+	x.Filters.Add(new ErrorFilter());
+	// Ensure we reference the ValidationFilter from Features.Core by type to avoid missing generic using errors
+	x.Filters.Add(typeof(eRents.Features.Core.Filters.ValidationFilter));
 })
 // Ensure controllers in Features are discoverable
 .AddApplicationPart(typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly)
 .AddJsonOptions(options =>
 {
-    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-    options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+	options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+	options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+	options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
 builder.Services.AddLogging(loggingBuilder =>
@@ -48,9 +49,9 @@ builder.Services.AddLogging(loggingBuilder =>
 
 // Add AutoMapper using configuration lambda + assemblies overload
 builder.Services.AddAutoMapper(
-    cfg => { },
-    typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly,
-    typeof(Program).Assembly
+		cfg => { },
+		typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly,
+		typeof(Program).Assembly
 );
 
 // Add SignalR
@@ -106,18 +107,18 @@ builder.Services.AddSwaggerGen(c =>
 		Description = "eRents Property Management System API"
 	});
 
-    // Prefer Basic auth in Swagger for simple manual testing; JWT still supported by API
-    c.AddSecurityDefinition("Basic", new OpenApiSecurityScheme
-    {
-        Type = SecuritySchemeType.Http,
-        Scheme = "basic",
-        In = ParameterLocation.Header,
-        Name = "Authorization",
-        Description = "Basic auth: username/password for manual testing"
-    });
+	// Prefer Basic auth in Swagger for simple manual testing; JWT still supported by API
+	c.AddSecurityDefinition("Basic", new OpenApiSecurityScheme
+	{
+		Type = SecuritySchemeType.Http,
+		Scheme = "basic",
+		In = ParameterLocation.Header,
+		Name = "Authorization",
+		Description = "Basic auth: username/password for manual testing"
+	});
 
 	// Add operation filter to apply security requirements only to endpoints that need it
-    c.OperationFilter<SecurityRequirementsOperationFilter>();
+	c.OperationFilter<SecurityRequirementsOperationFilter>();
 
 	c.DescribeAllParametersInCamelCase();
 });
@@ -139,11 +140,14 @@ builder.Services.AddDbContext<ERentsContext>(options =>
 				"Please check your appsettings.json file.");
 	}
 	Console.WriteLine($"Using connection string: {connectionString}");
-	options.UseSqlServer(connectionString);
+	options.UseSqlServer(connectionString,
+		sql => sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
 });
 
 // Map DbContext base type to ERentsContext for services that depend on DbContext
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ERentsContext>());
+
+// Image processing pipeline removed — frontend will send prepared images (resized/compressed)
 
 var app = builder.Build();
 
@@ -184,16 +188,16 @@ SeedDatabaseAsync(app.Services).GetAwaiter().GetResult();
 // Enable Swagger in all environments to avoid mismatches when the app isn't running as Development
 app.UseSwagger(c =>
 {
-    // Ensure OpenAPI 3 output (default)
-    // c.SerializeAsV2 = false;
+	// Ensure OpenAPI 3 output (default)
+	// c.SerializeAsV2 = false;
 });
 
 // Explicitly point Swagger UI to the generated JSON to avoid version field errors
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "eRents API v1");
-    // Keep default route prefix 'swagger'
-    // c.RoutePrefix = "swagger";
+	c.SwaggerEndpoint("/swagger/v1/swagger.json", "eRents API v1");
+	// Keep default route prefix 'swagger'
+	// c.RoutePrefix = "swagger";
 });
 
 //app.UseHttpsRedirection();

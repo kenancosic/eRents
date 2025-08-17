@@ -4,10 +4,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using eRents.Domain.Models;
 using eRents.Features.BookingManagement.Models;
-using eRents.Features.Core.Services;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Features.Core;
+using eRents.Domain.Shared.Interfaces;
 
 namespace eRents.Features.BookingManagement.Services;
 
@@ -16,9 +17,35 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
     public BookingService(
         ERentsContext context,
         IMapper mapper,
-        ILogger<BookingService> logger)
-        : base(context, mapper, logger)
+        ILogger<BookingService> logger,
+        ICurrentUserService? currentUserService = null)
+        : base(context, mapper, logger, currentUserService)
     {
+    }
+
+    public override async Task<BookingResponse> GetByIdAsync(int id)
+    {
+        // Fetch with property for ownership validation
+        var entity = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .FirstOrDefaultAsync(x => x.BookingId == id);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Booking with id {id} not found");
+
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            {
+                throw new KeyNotFoundException($"Booking with id {id} not found");
+            }
+        }
+
+        return Mapper.Map<BookingResponse>(entity);
     }
 
     protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearch search)
@@ -83,6 +110,19 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             query = query.Where(x => x.Property.Address != null && x.Property.Address.City == search.City);
         }
 
+        // Auto-scope for Desktop owners/landlords: only bookings for properties owned by current user
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (ownerId.HasValue)
+            {
+                query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+            }
+        }
+
         return query;
     }
 
@@ -104,7 +144,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         return query;
     }
 
-    public /*override*/ async Task<BookingResponse> CreateAsync(BookingRequest request, CancellationToken cancellationToken = default)
+    protected override async Task BeforeCreateAsync(Booking entity, BookingRequest request)
     {
         // Optional domain checks (MinimumStayDays)
         if (request.EndDate.HasValue)
@@ -113,7 +153,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 .AsNoTracking()
                 .Where(p => p.PropertyId == request.PropertyId)
                 .Select(p => new { p.MinimumStayDays })
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync();
 
             if (property != null && property.MinimumStayDays.HasValue && property.MinimumStayDays.Value > 0)
             {
@@ -124,11 +164,9 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 }
             }
         }
-
-        return await base.CreateAsync(request);
     }
 
-    public /*override*/ async Task<BookingResponse> UpdateAsync(int id, BookingRequest request, CancellationToken cancellationToken = default)
+    protected override async Task BeforeUpdateAsync(Booking entity, BookingRequest request)
     {
         if (request.EndDate.HasValue)
         {
@@ -136,7 +174,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 .AsNoTracking()
                 .Where(p => p.PropertyId == request.PropertyId)
                 .Select(p => new { p.MinimumStayDays })
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync();
 
             if (property != null && property.MinimumStayDays.HasValue && property.MinimumStayDays.Value > 0)
             {
@@ -147,7 +185,5 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 }
             }
         }
-
-        return await base.UpdateAsync(id, request);
     }
 }

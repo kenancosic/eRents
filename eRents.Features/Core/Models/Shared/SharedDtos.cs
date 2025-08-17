@@ -14,7 +14,6 @@ public class ImageResponse
 	public string? ImageUrl { get; set; }
 	public string? FileName { get; set; }
 	public byte[]? ImageData { get; set; }
-	public byte[]? ThumbnailData { get; set; }
 	public string? ContentType { get; set; }
 	public int? Width { get; set; }
 	public int? Height { get; set; }

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'services/api_service.dart';
 import 'services/secure_storage_service.dart';
 import 'services/user_preferences_service.dart';
+import 'services/image_service.dart';
 
 // Router and theme
 import 'router.dart';
@@ -14,18 +15,18 @@ import 'theme/theme.dart';
 // Widgets
 import 'widgets/global_error_dialog.dart';
 
-// Provider imports
-import 'providers/providers_config.dart';
-import 'features/rents/providers/rents_provider.dart';
-import 'providers/lookup_provider.dart';
-import 'features/auth/providers/auth_provider.dart';
+// Base providers
+import 'base/app_state_providers.dart';
+
+// Comprehensive feature registration system
+import 'features/features.dart' as features;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     print('Loading .env file...');
-    await dotenv.load(fileName: ".env");
+    await dotenv.load(fileName: "lib/.env");
     print('Successfully loaded .env file');
     print('API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
   } catch (e) {
@@ -50,33 +51,45 @@ class ERentsApp extends StatelessWidget {
     final userPrefs = UserPreferencesService();
     final apiService = ApiService(baseUrl, secureStorage);
     
-    // Create provider dependencies
-    final deps = ProviderDependencies(
+    // Create provider dependencies for all features
+    final dependencies = features.ProviderDependencies(
       apiService: apiService,
       secureStorage: secureStorage,
       userPreferences: userPrefs,
     );
 
-    // Wrap the app with all providers
-    return AppProviders(
-      dependencies: deps,
+    // Use the new comprehensive feature registration system
+    return MultiProvider(
+      providers: [
+        // Add the missing AppErrorProvider
+        ChangeNotifierProvider<AppErrorProvider>(
+          create: (_) => AppErrorProvider(),
+        ),
+        // Provide ImageService globally so widgets can read it
+        Provider<ImageService>.value(
+          value: ImageService(apiService),
+        ),
+        ...features.FeaturesRegistry.createFeatureProviders(dependencies),
+      ],
       child: Builder(
         builder: (context) {
-          // Initialize RentsProvider with BuildContext
-          final rentsProvider = RentsProvider(
-            deps.apiService,
+          // LookupProvider now fetches lookup data on-demand via generic API.
+          // No global initialize is needed here.
+          
+          // Handle special case for RentsProvider that needs BuildContext
+          final contextualDependencies = features.ProviderDependencies(
+            apiService: apiService,
+            secureStorage: secureStorage,
+            userPreferences: userPrefs,
             context: context,
           );
-          
-          // Initialize lookup data after first frame
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<LookupProvider>(context, listen: false).initializeLookupData();
-          });
           
           return MultiProvider(
             providers: [
               // Override the RentsProvider with the one that has BuildContext
-              ChangeNotifierProvider<RentsProvider>.value(value: rentsProvider),
+              ChangeNotifierProvider<features.RentsProvider>.value(
+                value: features.RentsProvider(contextualDependencies.apiService, context: context),
+              ),
             ],
             child: const AppWithRouter(),
           );
@@ -100,7 +113,7 @@ class _AppWithRouterState extends State<AppWithRouter> {
   @override
   Widget build(BuildContext context) {
     // Only watch for authentication changes, not all AuthProvider changes
-    final authProvider = context.watch<AuthProvider>();
+    final authProvider = context.watch<features.AuthProvider>();
     final currentAuthState = authProvider.isAuthenticated;
     
     // Only recreate router when authentication state actually changes

@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/widgets/status_dialog.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:go_router/go_router.dart';

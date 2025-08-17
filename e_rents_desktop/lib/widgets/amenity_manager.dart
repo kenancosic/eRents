@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
-import 'package:e_rents_desktop/models/lookup_data.dart';
+import 'package:e_rents_desktop/models/lookup_item.dart';
 
 /// A modern, reusable amenity widget that can work in both view and edit modes.
 /// Uses the new AmenityService to fetch amenities from the AmenitiesController backend.
@@ -52,12 +52,16 @@ class _AmenityManagerState extends State<AmenityManager> {
   Map<int, LookupItem> _amenityMap = {};
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  // Hold the amenities Future once to avoid recreating it every build
+  Future<List<LookupItem>>? _amenitiesFuture;
 
   @override
   void initState() {
     super.initState();
     _selectedAmenityIds = List.from(widget.initialAmenityIds ?? []);
-    // LookupProvider will auto-load data when accessed
+    // Initialize the amenities future once to prevent infinite loading loops
+    // caused by creating a new Future on each build
+    _amenitiesFuture = context.read<LookupProvider>().getAmenities();
   }
 
   @override
@@ -66,13 +70,11 @@ class _AmenityManagerState extends State<AmenityManager> {
     super.dispose();
   }
 
-  void _updateAmenitiesFromProvider(LookupProvider lookupProvider) {
-    _availableAmenities = lookupProvider.amenities;
-
+  void _buildAmenityMap() {
     // Create amenity map from the list
     _amenityMap = {};
     for (final amenity in _availableAmenities) {
-      _amenityMap[amenity.id] = amenity;
+      _amenityMap[amenity.value] = amenity;
     }
   }
 
@@ -108,7 +110,7 @@ class _AmenityManagerState extends State<AmenityManager> {
     return _availableAmenities
         .where(
           (amenity) =>
-              amenity.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+              amenity.text.toLowerCase().contains(_searchQuery.toLowerCase()),
         )
         .toList();
   }
@@ -119,48 +121,54 @@ class _AmenityManagerState extends State<AmenityManager> {
 
     return Consumer<LookupProvider>(
       builder: (context, lookupProvider, child) {
-        // Update amenities from provider
-        _updateAmenitiesFromProvider(lookupProvider);
+        return FutureBuilder<List<LookupItem>>(
+          future: _amenitiesFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
 
-        if (lookupProvider.isLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32.0),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
+            if (snapshot.hasError) {
+              return Card(
+                color: Colors.red.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red.shade700,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Failed to load amenities: ${snapshot.error}',
+                        style: TextStyle(color: Colors.red.shade700),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {}); // Retry by rebuilding
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-        if (lookupProvider.error != null && !lookupProvider.hasData) {
-          return Card(
-            color: Colors.red.shade50,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Colors.red.shade700,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Failed to load amenities: ${lookupProvider.error}',
-                    style: TextStyle(color: Colors.red.shade700),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () => lookupProvider.refreshLookupData(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return _buildContent(theme);
+            _availableAmenities = snapshot.data ?? [];
+            _buildAmenityMap();
+            return _buildContent(theme);
+          },
+        );
       },
     );
   }
@@ -286,34 +294,32 @@ class _AmenityManagerState extends State<AmenityManager> {
     return Wrap(
       spacing: 8.0,
       runSpacing: 8.0,
-      children:
-          selectedAmenities.map((amenity) {
-            final icon = _getFlutterIconFromName(amenity.name);
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.blue.shade200),
+      children: selectedAmenities.map((amenity) {
+        final icon = _getFlutterIconFromName(amenity.text);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: Colors.blue.shade700),
+              const SizedBox(width: 6),
+              Text(
+                amenity.text,
+                style: TextStyle(
+                  color: Colors.blue.shade700,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 16, color: Colors.blue.shade700),
-                  const SizedBox(width: 6),
-                  Text(
-                    amenity.name,
-                    style: TextStyle(
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -341,28 +347,27 @@ class _AmenityManagerState extends State<AmenityManager> {
     return Wrap(
       spacing: 8.0,
       runSpacing: 8.0,
-      children:
-          filtered.map((amenity) {
-            final isSelected = _selectedAmenityIds.contains(amenity.id);
-            final icon = _getFlutterIconFromName(amenity.name);
+      children: filtered.map((amenity) {
+        final isSelected = _selectedAmenityIds.contains(amenity.value);
+        final icon = _getFlutterIconFromName(amenity.text);
 
-            return FilterChip(
-              selected: isSelected,
-              avatar: Icon(
-                icon,
-                size: 18,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-              ),
-              label: Text(amenity.name),
-              onSelected: (_) => _toggleAmenity(amenity.id),
-              selectedColor: Colors.blue.shade600,
-              checkmarkColor: Colors.white,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey.shade800,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            );
-          }).toList(),
+        return FilterChip(
+          selected: isSelected,
+          avatar: Icon(
+            icon,
+            size: 18,
+            color: isSelected ? Colors.white : Colors.grey.shade600,
+          ),
+          label: Text(amenity.text),
+          onSelected: (_) => _toggleAmenity(amenity.value),
+          selectedColor: Colors.blue.shade600,
+          checkmarkColor: Colors.white,
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey.shade800,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        );
+      }).toList(),
     );
   }
 

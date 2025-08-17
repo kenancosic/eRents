@@ -8,7 +8,6 @@ class ChangePasswordRequestModel {
     required this.newPassword,
     required this.confirmPassword,
   });
-
   Map<String, dynamic> toJson() {
     return {
       'oldPassword': oldPassword,

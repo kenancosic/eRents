@@ -1,237 +1,177 @@
 import 'dart:convert';
-import 'package:e_rents_desktop/models/lookup_data.dart';
-import 'package:e_rents_desktop/models/property_type.dart';
-import 'package:e_rents_desktop/models/property_status.dart';
-import 'package:e_rents_desktop/models/renting_type.dart';
+import 'package:e_rents_desktop/models/enums/property_status.dart';
+import 'package:e_rents_desktop/models/enums/property_type.dart';
+import 'package:e_rents_desktop/models/enums/renting_type.dart';
+import 'package:e_rents_desktop/models/lookup_item.dart';
+import 'package:e_rents_desktop/models/enums.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/utils/logger.dart';
+import 'package:e_rents_desktop/utils/name_normalizer.dart';
 
 class LookupService extends ApiService {
   LookupService(super.baseUrl, super.storageService);
 
-  // In-memory cache for lookup data
-  LookupData? _cachedLookupData;
-  DateTime? _cacheTimestamp;
+  // ─── Generic Enum Lookup (Single Source Of Truth) ──────────────────────
 
-  // Cache duration (1 hour - lookup data doesn't change frequently)
-  static const Duration _cacheDuration = Duration(hours: 1);
+  static const Map<EnumGroup, String> _endpoints = {
+    EnumGroup.propertyType: '/api/lookup/property-types',
+    EnumGroup.rentingType: '/api/lookup/rental-types',
+    EnumGroup.propertyStatus: '/api/lookup/property-statuses',
+    EnumGroup.userType: '/api/lookup/user-types',
+    EnumGroup.bookingStatus: '/api/lookup/booking-statuses',
+    EnumGroup.amenity: '/api/lookup/amenities',
+  };
 
-  /// Fetch all lookup data from backend with caching
-  Future<LookupData> getAllLookupData({bool forceRefresh = false}) async {
-    // Return cached data if available and not expired
-    if (!forceRefresh && _cachedLookupData != null && _isCacheValid()) {
-      log.info('LookupService: Returning cached lookup data');
-      return _cachedLookupData!;
+  Future<List<LookupItem>> getEnumItems(EnumGroup group) async {
+    final path = _endpoints[group];
+    if (path == null) {
+      throw ArgumentError('No endpoint configured for group: $group');
     }
-
-    log.info('LookupService: Fetching fresh lookup data from backend');
-
     try {
-      final response = await get('/Lookup/all', authenticated: true);
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
-
-      _cachedLookupData = LookupData.fromJson(jsonResponse);
-      _cacheTimestamp = DateTime.now();
-
-      log.info('LookupService: Successfully cached lookup data');
-      return _cachedLookupData!;
+      final response = await get(path, authenticated: true);
+      final List<dynamic> jsonList = json.decode(response.body);
+      return jsonList
+          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
+          .toList();
     } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching lookup data', e, stackTrace);
-      // If we have cached data, return it even if expired
-      if (_cachedLookupData != null) {
-        log.warning(
-          'LookupService: Returning expired cached data due to error',
-        );
-        return _cachedLookupData!;
-      }
+      log.severe('LookupService: Error fetching items for $group', e, stackTrace);
       rethrow;
     }
+  }
+
+  Future<String?> getName(EnumGroup group, int id) async {
+    final items = await getEnumItems(group);
+    return items.firstWhere(
+      (x) => x.value == id,
+      orElse: () => const LookupItem(value: -1, text: '', description: null),
+    ).text.isEmpty
+        ? null
+        : items.firstWhere((x) => x.value == id).text;
+  }
+
+  Future<int?> getId(EnumGroup group, String name) async {
+    final items = await getEnumItems(group);
+    final target = NameNormalizer.normalize(name);
+    final found = items.firstWhere(
+      (x) => NameNormalizer.normalize(x.text) == target,
+      orElse: () => const LookupItem(value: -1, text: '', description: null),
+    );
+    return found.value == -1 ? null : found.value;
   }
 
   /// Fetch property types only
+  @Deprecated('Use getEnumItems(EnumGroup.propertyType) instead')
   Future<List<LookupItem>> getPropertyTypes({bool forceRefresh = false}) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.propertyTypes;
+    return getEnumItems(EnumGroup.propertyType);
   }
 
   /// Fetch property types from the new enum endpoint
+  @Deprecated('Use getEnumItems(EnumGroup.propertyType) instead')
   Future<List<LookupItem>> getPropertyTypesEnum() async {
-    try {
-      final response = await get('/lookup/enums/PropertyTypeEnum', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList
-          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching property types enum', e, stackTrace);
-      rethrow;
-    }
+    return getEnumItems(EnumGroup.propertyType);
   }
 
   /// Fetch renting types only
+  @Deprecated('Use getEnumItems(EnumGroup.rentingType) instead')
   Future<List<LookupItem>> getRentingTypes({bool forceRefresh = false}) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.rentingTypes;
+    return getEnumItems(EnumGroup.rentingType);
   }
 
   /// Fetch renting types from the new enum endpoint
+  @Deprecated('Use getEnumItems(EnumGroup.rentingType) instead')
   Future<List<LookupItem>> getRentingTypesEnum() async {
-    try {
-      final response = await get('/lookup/enums/RentalType', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList
-          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching renting types enum', e, stackTrace);
-      rethrow;
-    }
+    return getEnumItems(EnumGroup.rentingType);
   }
 
   /// Fetch property statuses only
+  @Deprecated('Use getEnumItems(EnumGroup.propertyStatus) instead')
   Future<List<LookupItem>> getPropertyStatuses({
     bool forceRefresh = false,
   }) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.propertyStatuses;
+    return getEnumItems(EnumGroup.propertyStatus);
   }
 
   /// Fetch property statuses from the new enum endpoint
+  @Deprecated('Use getEnumItems(EnumGroup.propertyStatus) instead')
   Future<List<LookupItem>> getPropertyStatusesEnum() async {
-    try {
-      final response = await get('/lookup/enums/PropertyStatusEnum', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList
-          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching property statuses enum', e, stackTrace);
-      rethrow;
-    }
+    return getEnumItems(EnumGroup.propertyStatus);
   }
 
   /// Fetch user types only
+  @Deprecated('Use getEnumItems(EnumGroup.userType) instead')
   Future<List<LookupItem>> getUserTypes({bool forceRefresh = false}) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.userTypes;
+    return getEnumItems(EnumGroup.userType);
   }
 
   /// Fetch user types from the new enum endpoint
+  @Deprecated('Use getEnumItems(EnumGroup.userType) instead')
   Future<List<LookupItem>> getUserTypesEnum() async {
-    try {
-      final response = await get('/lookup/enums/UserTypeEnum', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList
-          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching user types enum', e, stackTrace);
-      rethrow;
-    }
+    return getEnumItems(EnumGroup.userType);
   }
 
   /// Fetch booking statuses only
+  @Deprecated('Use getEnumItems(EnumGroup.bookingStatus) instead')
   Future<List<LookupItem>> getBookingStatuses({
     bool forceRefresh = false,
   }) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.bookingStatuses;
+    return getEnumItems(EnumGroup.bookingStatus);
   }
 
   /// Fetch booking statuses from the new enum endpoint
+  @Deprecated('Use getEnumItems(EnumGroup.bookingStatus) instead')
   Future<List<LookupItem>> getBookingStatusesEnum() async {
-    try {
-      final response = await get('/lookup/enums/BookingStatusEnum', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList
-          .map((item) => LookupItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching booking statuses enum', e, stackTrace);
-      rethrow;
-    }
+    return getEnumItems(EnumGroup.bookingStatus);
   }
 
   /// Fetch amenities only
+  @Deprecated('Use getEnumItems(EnumGroup.amenity) instead')
   Future<List<LookupItem>> getAmenities({bool forceRefresh = false}) async {
-    final lookupData = await getAllLookupData(forceRefresh: forceRefresh);
-    return lookupData.amenities;
+    return getEnumItems(EnumGroup.amenity);
   }
 
   /// Fetch all available enum types
+  @Deprecated('Use EnumGroup.values.map((e) => e.name) on client')
   Future<List<String>> getAvailableEnumTypes() async {
-    try {
-      final response = await get('/lookup/enums', authenticated: true);
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.cast<String>().toList();
-    } catch (e, stackTrace) {
-      log.severe('LookupService: Error fetching available enum types', e, stackTrace);
-      rethrow;
-    }
+    // Phase 1: return known groups locally
+    return _endpoints.keys.map((e) => e.name).toList();
   }
 
   // Convenience methods for converting enum values to IDs
   /// Convert PropertyType enum to backend ID
   Future<int> getPropertyTypeId(PropertyType propertyType) async {
-    final lookupData = await getAllLookupData();
-
-    // Map enum to expected name
-    String typeName = switch (propertyType) {
-      PropertyType.apartment => 'Apartment',
-      PropertyType.house => 'House',
-      PropertyType.condo => 'Condo',
-      PropertyType.townhouse => 'Townhouse',
-      PropertyType.studio => 'Studio',
-    };
-
-    final id = lookupData.getPropertyTypeIdByName(typeName);
+    final typeName = propertyType.displayName;
+    final id = await getId(EnumGroup.propertyType, typeName);
     if (id == null) {
       log.warning(
         'LookupService: PropertyType $typeName not found, defaulting to Apartment',
       );
-      return lookupData.getPropertyTypeIdByName('Apartment') ?? 1;
+      return (await getId(EnumGroup.propertyType, 'Apartment')) ?? 1;
     }
     return id;
   }
 
   /// Convert RentingType enum to backend ID
   Future<int> getRentingTypeId(RentingType rentingType) async {
-    final lookupData = await getAllLookupData();
-
-    // Map enum to expected name
-    String typeName = switch (rentingType) {
-      RentingType.monthly => 'Monthly',
-      RentingType.daily => 'Daily',
-    };
-
-    final id = lookupData.getRentingTypeIdByName(typeName);
+    final typeName = rentingType.displayName;
+    final id = await getId(EnumGroup.rentingType, typeName);
     if (id == null) {
       log.warning(
         'LookupService: RentingType $typeName not found, defaulting to Monthly',
       );
-      return lookupData.getRentingTypeIdByName('Monthly') ?? 1;
+      return (await getId(EnumGroup.rentingType, 'Monthly')) ?? 1;
     }
     return id;
   }
 
   /// Convert PropertyStatus enum to backend ID
   Future<int> getPropertyStatusId(PropertyStatus propertyStatus) async {
-    final lookupData = await getAllLookupData();
-
-    // Map enum to expected name
-    String statusName = switch (propertyStatus) {
-      PropertyStatus.available => 'Available',
-      PropertyStatus.rented => 'Rented',
-      PropertyStatus.maintenance => 'Maintenance',
-      PropertyStatus.unavailable => 'Unavailable',
-    };
-
-    final id = lookupData.getPropertyStatusIdByName(statusName);
+    final statusName = propertyStatus.displayName;
+    final id = await getId(EnumGroup.propertyStatus, statusName);
     if (id == null) {
       log.warning(
         'LookupService: PropertyStatus $statusName not found, defaulting to Available',
       );
-      return lookupData.getPropertyStatusIdByName('Available') ?? 1;
+      return (await getId(EnumGroup.propertyStatus, 'Available')) ?? 1;
     }
     return id;
   }
@@ -239,86 +179,85 @@ class LookupService extends ApiService {
   // Reverse lookup methods for converting IDs back to enums
   /// Convert backend ID to PropertyType enum
   Future<PropertyType> getPropertyTypeEnum(int id) async {
-    final lookupData = await getAllLookupData();
-    final item = lookupData.getPropertyTypeById(id);
-
-    if (item == null) {
+    final name = await getName(EnumGroup.propertyType, id);
+    if (name == null) {
       log.warning(
         'LookupService: PropertyType ID $id not found, defaulting to apartment',
       );
       return PropertyType.apartment;
     }
-
-    return switch (item.name.toLowerCase()) {
-      'apartment' => PropertyType.apartment,
-      'house' => PropertyType.house,
-      'condo' => PropertyType.condo,
-      'townhouse' => PropertyType.townhouse,
-      'studio' => PropertyType.studio,
-      _ => PropertyType.apartment,
-    };
+    try {
+      return PropertyType.fromString(name);
+    } catch (_) {
+      // Fallback by normalized name
+      final n = NameNormalizer.normalize(name);
+      if (n == 'apartment') return PropertyType.apartment;
+      if (n == 'house') return PropertyType.house;
+      if (n == 'studio') return PropertyType.studio;
+      if (n == 'villa') return PropertyType.villa;
+      if (n == 'room') return PropertyType.room;
+      return PropertyType.apartment;
+    }
   }
 
   /// Convert backend ID to RentingType enum
   Future<RentingType> getRentingTypeEnum(int id) async {
-    final lookupData = await getAllLookupData();
-    final item = lookupData.getRentingTypeById(id);
-
-    if (item == null) {
+    final name = await getName(EnumGroup.rentingType, id);
+    if (name == null) {
       log.warning(
         'LookupService: RentingType ID $id not found, defaulting to monthly',
       );
       return RentingType.monthly;
     }
-
-    return switch (item.name.toLowerCase()) {
-      'daily' => RentingType.daily,
-      'monthly' => RentingType.monthly,
-      _ => RentingType.monthly,
-    };
+    try {
+      return RentingType.fromString(name);
+    } catch (_) {
+      final n = NameNormalizer.normalize(name);
+      if (n == 'daily') return RentingType.daily;
+      if (n == 'monthly') return RentingType.monthly;
+      return RentingType.monthly;
+    }
   }
 
   /// Convert backend ID to PropertyStatus enum
   Future<PropertyStatus> getPropertyStatusEnum(int id) async {
-    final lookupData = await getAllLookupData();
-    final item = lookupData.getPropertyStatusById(id);
-
-    if (item == null) {
+    final name = await getName(EnumGroup.propertyStatus, id);
+    if (name == null) {
       log.warning(
         'LookupService: PropertyStatus ID $id not found, defaulting to available',
       );
       return PropertyStatus.available;
     }
-
-    return switch (item.name.toLowerCase()) {
-      'available' => PropertyStatus.available,
-      'rented' => PropertyStatus.rented,
-      'maintenance' => PropertyStatus.maintenance,
-      'unavailable' => PropertyStatus.unavailable,
-      _ => PropertyStatus.available,
-    };
+    try {
+      return PropertyStatus.fromString(name);
+    } catch (_) {
+      final n = NameNormalizer.normalize(name);
+      switch (n) {
+        case 'available':
+          return PropertyStatus.available;
+        case 'occupied':
+          return PropertyStatus.occupied;
+        case 'under maintenance':
+        case 'maintenance':
+        case 'undermaintenance':
+          return PropertyStatus.underMaintenance;
+        case 'unavailable':
+          return PropertyStatus.unavailable;
+        default:
+          return PropertyStatus.available;
+      }
+    }
   }
 
   /// Get cache status information
   Map<String, dynamic> getCacheInfo() {
+    // Caching disabled
     return {
-      'hasCache': _cachedLookupData != null,
-      'cacheTimestamp': _cacheTimestamp?.toIso8601String(),
-      'isValid': _isCacheValid(),
-      'expiresAt': _cacheTimestamp?.add(_cacheDuration).toIso8601String(),
+      'hasCache': false,
+      'cacheTimestamp': null,
+      'isValid': false,
+      'expiresAt': null,
     };
   }
 
-  /// Check if cached data is still valid
-  bool _isCacheValid() {
-    if (_cacheTimestamp == null) return false;
-    return DateTime.now().difference(_cacheTimestamp!) < _cacheDuration;
-  }
-
-  /// Clear the cache (useful for testing or forced refresh)
-  void clearCache() {
-    _cachedLookupData = null;
-    _cacheTimestamp = null;
-    log.info('LookupService: Cache cleared');
-  }
 }

@@ -37,6 +37,9 @@ namespace eRents.Domain
         public string UserRole { get; set; } = "User";
         public string Email { get; set; } = "test@example.com";
         public bool IsAuthenticated { get; set; } = true;
+        public string? ClientType { get; set; } = "Desktop";
+        public bool IsDesktop => string.Equals(ClientType, "Desktop", System.StringComparison.OrdinalIgnoreCase);
+        public bool IsMobile => string.Equals(ClientType, "Mobile", System.StringComparison.OrdinalIgnoreCase);
 
         public int? GetUserIdAsInt()
         {

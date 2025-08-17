@@ -36,7 +36,7 @@ class DetailScreen<T> extends StatefulWidget {
   final Widget? masterWidget;
 
   const DetailScreen({
-    Key? key,
+    super.key,
     required this.title,
     required this.item,
     this.fetchItem,
@@ -47,7 +47,7 @@ class DetailScreen<T> extends StatefulWidget {
     this.additionalActions,
     this.useMasterDetailLayout = false,
     this.masterWidget,
-  }) : super(key: key);
+  });
 
   @override
   State<DetailScreen<T>> createState() => _DetailScreenState<T>();
@@ -70,6 +70,7 @@ class _DetailScreenState<T> extends State<DetailScreen<T>> {
   Future<void> _refreshItem() async {
     if (widget.fetchItem == null || widget.itemId == null) return;
 
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -77,11 +78,13 @@ class _DetailScreenState<T> extends State<DetailScreen<T>> {
 
     try {
       final refreshedItem = await widget.fetchItem!(widget.itemId!);
+      if (!mounted) return;
       setState(() {
         _item = refreshedItem;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;

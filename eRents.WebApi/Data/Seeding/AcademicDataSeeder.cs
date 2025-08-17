@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
+using System.IO;
 
 namespace eRents.WebApi.Data.Seeding
 {
@@ -1024,20 +1025,60 @@ namespace eRents.WebApi.Data.Seeding
 
 			var images = new List<Image>();
 
+			// Try to load seed image files from disk
+			var propertySeedFiles = GetSeedImageFiles("Properties");
+			var userSeedFiles = GetSeedImageFiles("Users");
+
 			// Property images (3-7 per property)
 			foreach (var property in properties)
 			{
 				var imageCount = _random.Next(3, 8);
 				for (int i = 0; i < imageCount; i++)
 				{
-					images.Add(CreatePropertyImage(property.PropertyId, i == 0)); // First image is cover
+					if (propertySeedFiles.Count > 0)
+					{
+						// Round-robin pick to distribute images
+						var fileIndex = Math.Abs(property.PropertyId * 31 + i) % propertySeedFiles.Count;
+						var filePath = propertySeedFiles[fileIndex];
+						try
+						{
+							var original = File.ReadAllBytes(filePath);
+							byte[] mainBytes = original;
+							string contentType = GetContentTypeFromExtension(Path.GetExtension(filePath));
+							int? width = null;
+							int? height = null;
+							long fileSize = original.LongLength;
+
+							images.Add(new Image
+							{
+								PropertyId = property.PropertyId,
+								ImageData = mainBytes,
+								ContentType = contentType,
+								FileName = Path.GetFileName(filePath),
+								DateUploaded = DateTime.UtcNow.AddDays(-_random.Next(1, 100)),
+								FileSizeBytes = fileSize,
+								Width = width,
+								Height = height,
+								IsCover = i == 0
+							});
+						}
+						catch (Exception ex)
+						{
+							_logger?.LogWarning(ex, $"Failed reading '{filePath}', using placeholder.");
+							images.Add(await CreatePropertyImage(property.PropertyId, i == 0));
+						}
+					}
+					else
+					{
+						images.Add(await CreatePropertyImage(property.PropertyId, i == 0)); // First image is cover
+					}
 				}
 			}
 
 			// Maintenance issue images (for some issues)
 			foreach (var issue in maintenanceIssues.Where(i => _random.Next(3) == 0)) // 33% have images
 			{
-				images.Add(CreateMaintenanceImage(issue.MaintenanceIssueId));
+				images.Add(await CreateMaintenanceImage(issue.MaintenanceIssueId));
 			}
 
 			// Review images removed - no longer supported
@@ -1045,41 +1086,105 @@ namespace eRents.WebApi.Data.Seeding
 			context.Images.AddRange(images);
 			await context.SaveChangesAsync();
 			_logger?.LogInformation($"Seeded {images.Count} images");
+
+			// Assign random user profile images if seed files exist
+			if (userSeedFiles.Count > 0)
+			{
+				var users = await context.Users.ToListAsync();
+				int assigned = 0;
+				foreach (var user in users)
+				{
+					// 70% of users get a profile image
+					if (_random.Next(10) < 7)
+					{
+						var idx = Math.Abs(user.UserId * 13) % userSeedFiles.Count;
+						var userImagePath = userSeedFiles[idx];
+						try
+						{
+							var original = File.ReadAllBytes(userImagePath);
+							byte[] mainBytes = original;
+							string contentType = GetContentTypeFromExtension(Path.GetExtension(userImagePath));
+							int? width = null;
+							int? height = null;
+							long fileSize = original.LongLength;
+
+							var img = new Image
+							{
+								ImageData = mainBytes,
+								ContentType = contentType,
+								FileName = Path.GetFileName(userImagePath),
+								DateUploaded = DateTime.UtcNow.AddDays(-_random.Next(1, 100)),
+								FileSizeBytes = fileSize,
+								Width = width,
+								Height = height,
+								IsCover = false
+							};
+							context.Images.Add(img);
+							await context.SaveChangesAsync(); // ensure ImageId
+							user.ProfileImageId = img.ImageId;
+							assigned++;
+						}
+						catch (Exception ex)
+						{
+							_logger?.LogWarning(ex, $"Failed assigning profile image '{userImagePath}' for user {user.UserId}.");
+						}
+					}
+				}
+				await context.SaveChangesAsync();
+				_logger?.LogInformation($"Assigned profile images to {assigned} users.");
+			}
 		}
 
-		private Image CreatePropertyImage(int propertyId, bool isCover)
+		private async Task<Image> CreatePropertyImage(int propertyId, bool isCover)
 		{
 			var imageNames = new[] { "living_room", "bedroom", "kitchen", "bathroom", "exterior", "balcony", "garden" };
 			var imageName = imageNames[_random.Next(imageNames.Length)];
 
+			// Generate placeholder then run through processor if available
+			var original = GeneratePlaceholderImageData();
+			byte[] mainBytes = original;
+			string contentType = "image/jpeg";
+			int? width = null;
+			int? height = null;
+			long fileSize = original.LongLength;
+
+			// Seeder runs without image processor; keep placeholder bytes as-is
+
 			return new Image
 			{
 				PropertyId = propertyId,
-				ImageData = GeneratePlaceholderImageData(),
-				ThumbnailData = GeneratePlaceholderThumbnailData(),
-				ContentType = "image/jpeg",
+				ImageData = mainBytes,
+				ContentType = contentType,
 				FileName = $"{imageName}_{Guid.NewGuid():N}.jpg",
 				DateUploaded = DateTime.UtcNow.AddDays(-_random.Next(1, 100)),
-				FileSizeBytes = _random.Next(500000, 2000000), // 500KB - 2MB
-				Width = _random.Next(800, 1920),
-				Height = _random.Next(600, 1080),
+				FileSizeBytes = fileSize,
+				Width = width,
+				Height = height,
 				IsCover = isCover
 			};
 		}
 
-		private Image CreateMaintenanceImage(int maintenanceIssueId)
+		private async Task<Image> CreateMaintenanceImage(int maintenanceIssueId)
 		{
+			var original = GeneratePlaceholderImageData();
+			byte[] mainBytes = original;
+			string contentType = "image/jpeg";
+			int? width = null;
+			int? height = null;
+			long fileSize = original.LongLength;
+
+			// Seeder runs without image processor; keep placeholder bytes as-is
+
 			return new Image
 			{
 				MaintenanceIssueId = maintenanceIssueId,
-				ImageData = GeneratePlaceholderImageData(),
-				ThumbnailData = GeneratePlaceholderThumbnailData(),
-				ContentType = "image/jpeg",
+				ImageData = mainBytes,
+				ContentType = contentType,
 				FileName = $"maintenance_{Guid.NewGuid():N}.jpg",
 				DateUploaded = DateTime.UtcNow.AddDays(-_random.Next(1, 30)),
-				FileSizeBytes = _random.Next(200000, 1000000),
-				Width = _random.Next(600, 1200),
-				Height = _random.Next(400, 900),
+				FileSizeBytes = fileSize,
+				Width = width,
+				Height = height,
 				IsCover = false
 			};
 		}
@@ -1094,11 +1199,57 @@ namespace eRents.WebApi.Data.Seeding
 			return data;
 		}
 
-		private byte[] GeneratePlaceholderThumbnailData()
+
+
+		private List<string> GetSeedImageFiles(string subfolder)
 		{
-			var data = new byte[256]; // 256B thumbnail
-			_random.NextBytes(data);
-			return data;
+			var results = new List<string>();
+			try
+			{
+				var candidates = new[]
+				{
+										Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SeedImages", subfolder)),
+										Path.Combine(AppContext.BaseDirectory, "SeedImages", subfolder)
+								};
+				foreach (var dir in candidates)
+				{
+					if (Directory.Exists(dir))
+					{
+						results = Directory.GetFiles(dir)
+								.Where(HasImageExtension)
+								.OrderBy(f => f)
+								.ToList();
+						if (results.Count > 0)
+						{
+							_logger?.LogInformation($"Found {results.Count} seed images in '{dir}' (folder: {subfolder}).");
+							return results;
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger?.LogWarning(ex, $"Error locating seed images for '{subfolder}'.");
+			}
+			return results;
+		}
+
+		private bool HasImageExtension(string path)
+		{
+			var ext = Path.GetExtension(path).ToLowerInvariant();
+			return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp";
+		}
+
+		private string GetContentTypeFromExtension(string? ext)
+		{
+			switch ((ext ?? string.Empty).ToLowerInvariant())
+			{
+				case ".jpg":
+				case ".jpeg": return "image/jpeg";
+				case ".png": return "image/png";
+				case ".webp": return "image/webp";
+				default: return "application/octet-stream";
+			}
 		}
 		#endregion
 

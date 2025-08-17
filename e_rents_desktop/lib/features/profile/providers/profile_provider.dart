@@ -6,14 +6,14 @@ import 'package:e_rents_desktop/models/user.dart';
 class ProfileProvider extends BaseProvider {
   ProfileProvider(super.api);
 
-  // ─── State ──────────────────────────────────────────────────────────────
+  // ─── State (standardized per playbook) ─────────────────────────────────
   User? _currentUser;
   User? get currentUser => _currentUser;
 
   bool _isEditing = false;
   bool get isEditing => _isEditing;
 
-  // Password change state
+  // Password change state (mapped to provider flags where possible)
   bool _isChangingPassword = false;
   bool get isChangingPassword => _isChangingPassword;
 
@@ -37,17 +37,16 @@ class ProfileProvider extends BaseProvider {
     _currentUser = _currentUser!.copyWith(
       firstName: firstName ?? _currentUser!.firstName,
       lastName: lastName ?? _currentUser!.lastName,
-      phone: phone ?? _currentUser!.phone,
+      phoneNumber: phone ?? _currentUser!.phoneNumber,
       address: address ?? _currentUser!.address,
     );
     notifyListeners();
   }
 
   Future<void> loadUserProfile() async {
-    final result = await executeWithState(
-      () => api.getAndDecode('/api/Profile/me', User.fromJson, authenticated: true),
-    );
-    
+    final result = await executeWithState<User>(() async {
+      return await api.getAndDecode('/api/Profile/me', User.fromJson, authenticated: true);
+    });
     if (result != null) {
       _currentUser = result;
       notifyListeners();
@@ -63,13 +62,11 @@ class ProfileProvider extends BaseProvider {
   }
 
   Future<bool> updateProfile(User user) async {
-    final result = await executeWithState<User>(() async {
+    final updated = await executeWithRetry<User>(() async {
       return await api.putAndDecode('/api/Profile/me', user.toJson(), User.fromJson, authenticated: true);
-    });
-    
-    if (result != null) {
-      _currentUser = result;
-      // setCache('user_profile', result); // BaseProvider handles caching
+    }, isUpdate: true);
+    if (updated != null) {
+      _currentUser = updated;
       toggleEditing();
       notifyListeners();
       return true;
@@ -86,30 +83,25 @@ class ProfileProvider extends BaseProvider {
     _passwordChangeError = null;
     notifyListeners();
 
-    try {
-      final result = await executeWithState<bool>(() async {
-        final response = await api.post(
-          '/api/Profile/change-password',
-          {
-            'oldPassword': oldPassword,
-            'newPassword': newPassword,
-            'confirmPassword': confirmPassword,
-          },
-          authenticated: true,
-        );
+    final ok = await executeWithStateForSuccess(() async {
+      await api.postJson(
+        '/api/Profile/change-password',
+        {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+        authenticated: true,
+      );
+    });
 
-        return response.statusCode == 200;
-      });
-
-      _isChangingPassword = false;
-      notifyListeners();
-      return result ?? false;
-    } catch (e) {
-      _isChangingPassword = false;
-      _passwordChangeError = e.toString();
-      notifyListeners();
-      return false;
+    _isChangingPassword = false;
+    if (!ok) {
+      // keep provider.error populated by mixin; mirror into local field for legacy readers
+      _passwordChangeError = error?.toString();
     }
+    notifyListeners();
+    return ok;
   }
 
   void clearUserProfile() {

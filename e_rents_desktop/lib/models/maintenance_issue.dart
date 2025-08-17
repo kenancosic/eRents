@@ -1,99 +1,130 @@
-import 'package:json_annotation/json_annotation.dart';
-import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
 
-part 'maintenance_issue.g.dart';
 
-enum IssuePriority { low, medium, high, emergency }
-
-class IssuePriorityConverter implements JsonConverter<IssuePriority, String> {
-  const IssuePriorityConverter();
-
-  @override
-  IssuePriority fromJson(String json) =>
-      IssuePriority.values.firstWhere((e) => e.name == json);
-
-  @override
-  String toJson(IssuePriority object) => object.name;
-}
-
-enum IssueStatus { pending, inProgress, completed, cancelled }
-
-class IssueStatusConverter implements JsonConverter<IssueStatus, String> {
-  const IssueStatusConverter();
-
-  @override
-  IssueStatus fromJson(String json) =>
-      IssueStatus.values.firstWhere((e) => e.name == json);
-
-  @override
-  String toJson(IssueStatus object) => object.name;
-}
-
-@JsonSerializable()
 class MaintenanceIssue {
   final int maintenanceIssueId;
   final int propertyId;
   final String title;
   final String? description;
-  @IssuePriorityConverter()
-  final IssuePriority priority;
-  @IssueStatusConverter()
-  final IssueStatus status;
+  final MaintenanceIssuePriority priority;
+  final MaintenanceIssueStatus status;
   final DateTime? resolvedAt;
   final double? cost;
   final int? assignedToUserId;
   final int reportedByUserId;
   final String? resolutionNotes;
-  final String? category;
-  final bool requiresInspection;
   final bool isTenantComplaint;
   final List<int> imageIds;
   final DateTime createdAt;
-  final int? tenantId;
+  final DateTime? updatedAt;
+  final int? createdBy;
+  final int? modifiedBy;
 
-  MaintenanceIssue({
+  const MaintenanceIssue({
     required this.maintenanceIssueId,
     required this.propertyId,
     required this.title,
     this.description,
-    required this.priority,
-    required this.status,
+    this.priority = MaintenanceIssuePriority.medium,
+    this.status = MaintenanceIssueStatus.pending,
     this.resolvedAt,
     this.cost,
     this.assignedToUserId,
     required this.reportedByUserId,
     this.resolutionNotes,
-    this.category,
-    required this.requiresInspection,
-    required this.isTenantComplaint,
-    required this.imageIds,
+    this.isTenantComplaint = false,
+    this.imageIds = const [],
     required this.createdAt,
-    this.tenantId,
+    this.updatedAt,
+    this.createdBy,
+    this.modifiedBy,
   });
 
-  factory MaintenanceIssue.fromJson(Map<String, dynamic> json) =>
-      _$MaintenanceIssueFromJson(json);
+  factory MaintenanceIssue.fromJson(Map<String, dynamic> json) {
+    return MaintenanceIssue(
+      maintenanceIssueId: (json['maintenanceIssueId'] as num).toInt(),
+      propertyId: (json['propertyId'] as num).toInt(),
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      priority: MaintenanceIssuePriorityX.parse(json['priority']),
+      status: MaintenanceIssueStatusX.parse(json['status']),
+      resolvedAt: json['resolvedAt'] == null
+          ? null
+          : DateTime.parse(json['resolvedAt'] as String),
+      cost: (json['cost'] as num?)?.toDouble(),
+      assignedToUserId: (json['assignedToUserId'] as num?)?.toInt(),
+      reportedByUserId: (json['reportedByUserId'] as num).toInt(),
+      resolutionNotes: json['resolutionNotes'] as String?,
+      isTenantComplaint: json['isTenantComplaint'] as bool? ?? false,
+      imageIds: (json['imageIds'] as List?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const <int>[],
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: json['updatedAt'] == null
+          ? null
+          : DateTime.parse(json['updatedAt'] as String),
+      createdBy: (json['createdBy'] as num?)?.toInt(),
+      modifiedBy: (json['modifiedBy'] as num?)?.toInt(),
+    ).copyWith(
+      // Ensure updatedAt has a sensible default
+      updatedAt: (json['updatedAt'] == null)
+          ? DateTime.parse(json['createdAt'] as String)
+          : null,
+    );
+  }
 
-  Map<String, dynamic> toJson() => _$MaintenanceIssueToJson(this);
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'maintenanceIssueId': maintenanceIssueId,
+        'propertyId': propertyId,
+        'title': title,
+        'description': description,
+        'priority': priority.name,
+        'status': status.name,
+        'resolvedAt': resolvedAt?.toIso8601String(),
+        'cost': cost,
+        'assignedToUserId': assignedToUserId,
+        'reportedByUserId': reportedByUserId,
+        'resolutionNotes': resolutionNotes,
+        'isTenantComplaint': isTenantComplaint,
+        'imageIds': imageIds,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': (updatedAt ?? createdAt).toIso8601String(),
+        'createdBy': createdBy,
+        'modifiedBy': modifiedBy,
+      };
 
+  // Factory constructor for empty instance
+  factory MaintenanceIssue.empty() => MaintenanceIssue(
+        maintenanceIssueId: 0,
+        propertyId: 0,
+        title: '',
+        reportedByUserId: 0,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+  // CopyWith method for immutable updates
   MaintenanceIssue copyWith({
     int? maintenanceIssueId,
     int? propertyId,
     String? title,
     String? description,
-    IssuePriority? priority,
-    IssueStatus? status,
+    MaintenanceIssuePriority? priority,
+    MaintenanceIssueStatus? status,
     DateTime? resolvedAt,
     double? cost,
     int? assignedToUserId,
     int? reportedByUserId,
     String? resolutionNotes,
-    String? category,
-    bool? requiresInspection,
     bool? isTenantComplaint,
     List<int>? imageIds,
     DateTime? createdAt,
-    int? tenantId,
+    DateTime? updatedAt,
+    int? createdBy,
+    int? modifiedBy,
+    int? tenantId, // For convenience in forms
   }) {
     return MaintenanceIssue(
       maintenanceIssueId: maintenanceIssueId ?? this.maintenanceIssueId,
@@ -107,58 +138,21 @@ class MaintenanceIssue {
       assignedToUserId: assignedToUserId ?? this.assignedToUserId,
       reportedByUserId: reportedByUserId ?? this.reportedByUserId,
       resolutionNotes: resolutionNotes ?? this.resolutionNotes,
-      category: category ?? this.category,
-      requiresInspection: requiresInspection ?? this.requiresInspection,
       isTenantComplaint: isTenantComplaint ?? this.isTenantComplaint,
       imageIds: imageIds ?? this.imageIds,
       createdAt: createdAt ?? this.createdAt,
-      tenantId: tenantId ?? this.tenantId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
+      modifiedBy: modifiedBy ?? this.modifiedBy,
     );
   }
 
-  static MaintenanceIssue empty() {
-    return MaintenanceIssue(
-      maintenanceIssueId: 0,
-      propertyId: 0,
-      title: '',
-      description: '',
-      priority: IssuePriority.medium,
-      status: IssueStatus.pending,
-      reportedByUserId: 0,
-      requiresInspection: false,
-      isTenantComplaint: false,
-      imageIds: [],
-      createdAt: DateTime.now(),
-    );
-  }
+  // Convenience getters for maintenance management
+  // Note: Color/icon UI helpers have been moved to
+  // lib/presentation/extensions/enum_ui_extensions.dart
 
-  // Getters for UI
-  String? get tenantName =>
-      null; // Placeholder, would be fetched from tenant data
-
-  Color get statusColor {
-    switch (status) {
-      case IssueStatus.pending:
-        return Colors.orange;
-      case IssueStatus.inProgress:
-        return Colors.blue;
-      case IssueStatus.completed:
-        return Colors.green;
-      case IssueStatus.cancelled:
-        return Colors.red;
-    }
-  }
-
-  Color get priorityColor {
-    switch (priority) {
-      case IssuePriority.low:
-        return Colors.green;
-      case IssuePriority.medium:
-        return Colors.orange;
-      case IssuePriority.high:
-        return Colors.red;
-      case IssuePriority.emergency:
-        return Colors.purple;
-    }
-  }
+  // Tenant-related getters for UI convenience
+  int get tenantId => reportedByUserId;
+  
+  String get tenantName => 'Tenant'; // Placeholder - would need user lookup in real implementation
 }

@@ -1,5 +1,7 @@
 using eRents.Domain.Models.Enums;
 using System.Collections.Generic;
+using eRents.Features.Shared.DTOs;
+using eRents.Features.ReviewManagement.Models;
 
 namespace eRents.Features.PropertyManagement.Models;
 
@@ -25,13 +27,16 @@ public sealed class PropertyResponse
     // Amenity IDs for list display (chips) on frontend
     public List<int> AmenityIds { get; set; } = new();
 
-    // Address flattened
-    public string? StreetLine1 { get; set; }
-    public string? StreetLine2 { get; set; }
-    public string? City { get; set; }
-    public string? State { get; set; }
-    public string? Country { get; set; }
-    public string? PostalCode { get; set; }
-    public decimal? Latitude { get; set; }
-    public decimal? Longitude { get; set; }
+    // New: images and review summary for desktop frontend
+    public List<int> ImageIds { get; set; } = new();
+    public int? CoverImageId { get; set; }
+    public double? AverageRating { get; set; }
+    public int ReviewCount { get; set; }
+
+    // Optional: recent reviews for display (small subset)
+    public List<ReviewResponse> Reviews { get; set; } = new();
+
+    // New: Nested Address object for modern clients (kept alongside flattened fields for backward compatibility)
+    public AddressResponse? Address { get; set; }
+
 }

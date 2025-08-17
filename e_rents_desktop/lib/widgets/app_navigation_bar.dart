@@ -185,9 +185,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
         onTap: () async {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
           await authProvider.logout();
-          if (context.mounted) {
-            context.go('/login');
-          }
         },
         child: Column(
           children: [

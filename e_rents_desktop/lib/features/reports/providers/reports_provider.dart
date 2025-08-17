@@ -7,7 +7,7 @@ enum ReportType { financial } // Only financial reports for desktop
 class ReportsProvider extends BaseProvider {
   ReportsProvider(super.api);
 
-  // ─── State ──────────────────────────────────────────────────────────────
+  // ─── State (standardized per playbook) ─────────────────────────────────
   ReportType _currentReportType = ReportType.financial;
   ReportType get currentReportType => _currentReportType;
 
@@ -17,7 +17,29 @@ class ReportsProvider extends BaseProvider {
   DateTime _endDate = DateTime.now();
   DateTime get endDate => _endDate;
 
-  List<Map<String, dynamic>> _financialReports = []; // Store raw map data
+  // Filters/sort/paging scaffold for future expansion
+  Map<String, dynamic> _filters = {};
+  String? _sortBy;
+  final bool _ascending = true;
+  final int _page = 1;
+  final int _pageSize = 50;
+  Map<String, dynamic> get filters => _filters;
+  String? get sortBy => _sortBy;
+  bool get ascending => _ascending;
+  int get page => _page;
+  int get pageSize => _pageSize;
+  Map<String, dynamic> get lastQuery => {
+    ..._filters,
+    if (_sortBy != null) 'sortBy': _sortBy,
+    'ascending': _ascending,
+    'page': _page,
+    'pageSize': _pageSize,
+    'from': _startDate.toIso8601String(),
+    'to': _endDate.toIso8601String(),
+  };
+
+  // Store raw map data for financial reports
+  List<Map<String, dynamic>> _financialReports = [];
   List<Map<String, dynamic>> get financialReports => _financialReports;
 
   // ─── Public API ─────────────────────────────────────────────────────────
@@ -26,8 +48,6 @@ class ReportsProvider extends BaseProvider {
     if (_currentReportType == type) return;
     _currentReportType = type;
     notifyListeners();
-    // No need to fetch if it's already the financial type
-    // If future types are added, this might need more logic
     if (currentReports.isEmpty) {
       await fetchCurrentReports();
     }
@@ -43,15 +63,16 @@ class ReportsProvider extends BaseProvider {
   Future<void> fetchCurrentReports({bool forceRefresh = false}) async {
     final endpoint = _buildReportEndpoint(_currentReportType.name, _startDate, _endDate);
 
-    await executeWithState(() async {
+    await executeWithState<List<Map<String, dynamic>>>(() async {
       if (_currentReportType == ReportType.financial) {
         final result = await api.getListAndDecode<Map<String, dynamic>>(
-          endpoint, 
+          endpoint,
           (data) => data,
           authenticated: true,
         );
         _financialReports = result;
       }
+      return _financialReports;
     });
   }
 
@@ -62,8 +83,20 @@ class ReportsProvider extends BaseProvider {
 
   List<dynamic> get currentReports {
     switch (_currentReportType) {
-      case ReportType.financial: return _financialReports;
+      case ReportType.financial:
+        return _financialReports;
     }
+  }
+
+  // Filter helpers for future UI
+  void applyFilters(Map<String, dynamic> map) {
+    _filters = {..._filters, ...map};
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _filters = {};
+    notifyListeners();
   }
 
   static final DateFormat _displayDateFormat = DateFormat('dd/MM/yyyy');

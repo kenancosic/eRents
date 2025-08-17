@@ -1,5 +1,5 @@
+import 'package:e_rents_desktop/models/enums/property_status.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_desktop/models/property_status.dart';
 
 // Refactored reusable StatusChip
 class StatusChip extends StatelessWidget {

@@ -1,4 +1,3 @@
-/// A generic class for representing a paginated list of items.
 class PagedResult<T> {
   final List<T> items;
   final int totalCount;
@@ -12,26 +11,31 @@ class PagedResult<T> {
     required this.pageSize,
   });
 
-  // Empty constructor for initialization
-  PagedResult.empty()
-      : items = [],
-        totalCount = 0,
-        page = 1,
-        pageSize = 10;
-
   factory PagedResult.fromJson(
     Map<String, dynamic> json,
-    T Function(dynamic) fromJsonT,
+    T Function(Object? json) fromJsonT,
   ) {
     return PagedResult<T>(
-      items: (json['items'] as List).map(fromJsonT).toList(),
-      totalCount: json['totalCount'] ?? 0,
-      page: json['page'] ?? 1,
-      pageSize: json['pageSize'] ?? 10,
+      items: (json['items'] as List<dynamic>)
+          .map((item) => fromJsonT(item))
+          .toList(),
+      totalCount: json['totalCount'] as int? ?? 0,
+      page: json['page'] as int? ?? 0,
+      pageSize: json['pageSize'] as int? ?? 0,
     );
   }
 
-  bool get hasNextPage => (page * pageSize) < totalCount;
-  bool get hasPreviousPage => page > 1;
-  int get totalPages => (totalCount / pageSize).ceil();
+  Map<String, dynamic> toJson(Object Function(T value) toJsonT) => {
+        'items': items.map((item) => toJsonT(item)).toList(),
+        'totalCount': totalCount,
+        'page': page,
+        'pageSize': pageSize,
+      };
+
+  factory PagedResult.empty() => PagedResult<T>(
+        items: [],
+        totalCount: 0,
+        page: 0,
+        pageSize: 0,
+      );
 }

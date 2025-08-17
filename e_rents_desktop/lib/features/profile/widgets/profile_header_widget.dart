@@ -48,7 +48,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
     // Determine which image to show
     String? imageUrl;
     if (user?.profileImageId != null) {
-      imageUrl = '/Image/${user!.profileImageId}';
+      imageUrl = '/api/Images/${user!.profileImageId}';
     }
 
     return Container(

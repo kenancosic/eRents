@@ -1,9 +1,11 @@
 using AutoMapper;
 using eRents.Domain.Models;
-using eRents.Features.Core.Services;
+using eRents.Features.Core;
 using eRents.Features.TenantManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Domain.Shared.Interfaces;
+using System.Threading.Tasks;
 
 namespace eRents.Features.TenantManagement.Services
 {
@@ -12,8 +14,9 @@ namespace eRents.Features.TenantManagement.Services
         public TenantService(
             DbContext context,
             IMapper mapper,
-            ILogger<TenantService> logger)
-            : base(context, mapper, logger)
+            ILogger<TenantService> logger,
+            ICurrentUserService? currentUserService = null)
+            : base(context, mapper, logger, currentUserService)
         {
         }
 
@@ -48,6 +51,19 @@ namespace eRents.Features.TenantManagement.Services
             if (search.LeaseEndTo.HasValue)
                 query = query.Where(x => x.LeaseEndDate.HasValue && x.LeaseEndDate.Value <= search.LeaseEndTo.Value);
 
+            // Auto-scope for Desktop owners/landlords: only tenants tied to properties owned by current user
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (ownerId.HasValue)
+                {
+                    query = query.Where(x => x.Property != null && x.Property.OwnerId == ownerId.Value);
+                }
+            }
+
             return query;
         }
 
@@ -65,6 +81,81 @@ namespace eRents.Features.TenantManagement.Services
                 "updatedat"      => desc ? query.OrderByDescending(x => x.UpdatedAt)      : query.OrderBy(x => x.UpdatedAt),
                 _                => desc ? query.OrderByDescending(x => x.TenantId)        : query.OrderBy(x => x.TenantId)
             };
+        }
+
+        public override async Task<TenantResponse> GetByIdAsync(int id)
+        {
+            var entity = await AddIncludes(Context.Set<Tenant>().AsQueryable())
+                .FirstOrDefaultAsync(x => x.TenantId == id);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Tenant with id {id} not found");
+
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException($"Tenant with id {id} not found");
+            }
+
+            return Mapper.Map<TenantResponse>(entity);
+        }
+
+        protected override async Task BeforeCreateAsync(Tenant entity, TenantRequest request)
+        {
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                    throw new KeyNotFoundException("Property not found");
+
+                var property = await Context.Set<Property>().AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+                if (property == null || property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException("Property not found");
+            }
+        }
+
+        protected override async Task BeforeUpdateAsync(Tenant entity, TenantRequest request)
+        {
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                    throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
+
+                var property = await Context.Set<Property>().AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+                if (property == null || property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
+            }
+        }
+
+        protected override async Task BeforeDeleteAsync(Tenant entity)
+        {
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                    throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
+
+                var property = await Context.Set<Property>().AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+                if (property == null || property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
+            }
         }
     }
 }

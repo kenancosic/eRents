@@ -15,9 +15,11 @@ public class ImageResponse
 
     public int? Width { get; set; }
     public int? Height { get; set; }
-    public long? FileSizeBytes { get; set; }
+    // Note: File size and upload date are intentionally not exposed.
+    // Size remains an internal optimization detail; audit fields cover timing.
 
-    public DateTime? DateUploaded { get; set; }
+    // Include binary payloads so existing endpoints can return image bytes
+    public byte[]? ImageData { get; set; }
 
     // Audit fields surfaced via BaseEntity on Domain
     public DateTime CreatedAt { get; set; }

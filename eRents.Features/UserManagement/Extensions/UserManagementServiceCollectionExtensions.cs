@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using eRents.Domain.Models;
-using eRents.Features.Core.Interfaces;
 using eRents.Features.UserManagement.Models;
 using eRents.Features.UserManagement.Services;
+using eRents.Features.Core;
 
 namespace eRents.Features.UserManagement.Extensions;
 

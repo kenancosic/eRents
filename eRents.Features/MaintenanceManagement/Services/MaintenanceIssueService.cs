@@ -2,11 +2,14 @@ using System;
 using System.Linq;
 using eRents.Domain.Models;
 using eRents.Domain.Models.Enums;
-using eRents.Features.Core.Services;
 using eRents.Features.MaintenanceManagement.Models;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Features.Core;
+using eRents.Domain.Shared.Interfaces;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace eRents.Features.MaintenanceManagement.Services
 {
@@ -15,8 +18,9 @@ namespace eRents.Features.MaintenanceManagement.Services
         public MaintenanceIssueService(
             ERentsContext context,
             IMapper mapper,
-            ILogger<MaintenanceIssueService> logger)
-            : base(context, mapper, logger)
+            ILogger<MaintenanceIssueService> logger,
+            ICurrentUserService? currentUserService = null)
+            : base(context, mapper, logger, currentUserService)
         {
         }
 
@@ -25,7 +29,8 @@ namespace eRents.Features.MaintenanceManagement.Services
             return query
                 .Include(x => x.Property)
                 .Include(x => x.AssignedToUser)
-                .Include(x => x.ReportedByUser);
+                .Include(x => x.ReportedByUser)
+                .Include(x => x.Images);
         }
 
         protected override IQueryable<MaintenanceIssue> AddFilter(IQueryable<MaintenanceIssue> query, MaintenanceIssueSearch search)
@@ -62,6 +67,20 @@ namespace eRents.Features.MaintenanceManagement.Services
                 query = query.Where(x => x.CreatedAt <= to);
             }
 
+            // Auto-scope for Desktop owners/landlords
+            // Support both "Owner" and "Landlord" roles for robustness across datasets
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (ownerId.HasValue)
+                {
+                    query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+                }
+            }
+
             return query;
         }
 
@@ -91,6 +110,200 @@ namespace eRents.Features.MaintenanceManagement.Services
                 "createdat" => desc ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt),
                 _ => desc ? query.OrderByDescending(x => x.MaintenanceIssueId) : query.OrderBy(x => x.MaintenanceIssueId)
             };
+        }
+
+        public override async Task<MaintenanceIssueResponse> GetByIdAsync(int id)
+        {
+            // Fetch with includes for ownership validation
+            var query = AddIncludes(Context.Set<MaintenanceIssue>().AsQueryable());
+            var entity = await query.FirstOrDefaultAsync(x => x.MaintenanceIssueId == id);
+            if (entity == null)
+                throw new KeyNotFoundException($"MaintenanceIssue with id {id} not found");
+
+            // Desktop owner/landlord can only access issues for their properties
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+                {
+                    throw new KeyNotFoundException($"MaintenanceIssue with id {id} not found");
+                }
+            }
+
+            return Mapper.Map<MaintenanceIssueResponse>(entity);
+        }
+
+        public override async Task<MaintenanceIssueResponse> CreateAsync(MaintenanceIssueRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            Logger.LogInformation("Creating new {EntityType}", nameof(MaintenanceIssue));
+
+            var entity = Mapper.Map<MaintenanceIssue>(request);
+            SetAuditFieldsForCreate(entity);
+            await BeforeCreateAsync(entity, request);
+
+            await Context.Set<MaintenanceIssue>().AddAsync(entity);
+            await Context.SaveChangesAsync(); // Ensure we have an ID
+
+            // Link images if provided
+            if (request.ImageIds != null && request.ImageIds.Length > 0)
+            {
+                await UpdateIssueImagesAsync(entity.MaintenanceIssueId, request.ImageIds);
+            }
+
+            // Reload with includes for accurate mapping (ImageIds, etc.)
+            var reloaded = await AddIncludes(Context.Set<MaintenanceIssue>().AsQueryable())
+                .FirstAsync(x => x.MaintenanceIssueId == entity.MaintenanceIssueId);
+
+            Logger.LogInformation("Successfully created {EntityType} with ID {Id}", nameof(MaintenanceIssue), entity.MaintenanceIssueId);
+            return Mapper.Map<MaintenanceIssueResponse>(reloaded);
+        }
+
+        public override async Task<MaintenanceIssueResponse> UpdateAsync(int id, MaintenanceIssueRequest request)
+        {
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            Logger.LogInformation("Updating {EntityType} with ID {Id}", nameof(MaintenanceIssue), id);
+
+            var entity = await Context.Set<MaintenanceIssue>().FindAsync(id);
+            if (entity == null)
+            {
+                Logger.LogWarning("Cannot update: {EntityType} with ID {Id} not found", nameof(MaintenanceIssue), id);
+                throw new KeyNotFoundException($"MaintenanceIssue with id {id} not found");
+            }
+
+            Mapper.Map(request, entity);
+            SetAuditFieldsForUpdate(entity);
+            await BeforeUpdateAsync(entity, request);
+
+            Context.Set<MaintenanceIssue>().Update(entity);
+            await Context.SaveChangesAsync();
+
+            // Link/unlink images if provided (null means no change)
+            if (request.ImageIds != null)
+            {
+                await UpdateIssueImagesAsync(entity.MaintenanceIssueId, request.ImageIds);
+            }
+
+            // Reload with includes to ensure ImageIds mapping
+            var reloaded = await AddIncludes(Context.Set<MaintenanceIssue>().AsQueryable())
+                .FirstAsync(x => x.MaintenanceIssueId == entity.MaintenanceIssueId);
+
+            Logger.LogInformation("Successfully updated {EntityType} with ID {Id}", nameof(MaintenanceIssue), id);
+            return Mapper.Map<MaintenanceIssueResponse>(reloaded);
+        }
+
+        private async Task UpdateIssueImagesAsync(int maintenanceIssueId, int[] newImageIds)
+        {
+            var set = Context.Set<Image>();
+
+            var desired = new HashSet<int>(newImageIds);
+
+            // Unlink images currently linked to this issue but not desired
+            var currentlyLinked = await set.Where(i => i.MaintenanceIssueId == maintenanceIssueId)
+                                           .Select(i => new { i.ImageId })
+                                           .ToListAsync();
+            var toUnlink = currentlyLinked.Select(x => x.ImageId).Where(id => !desired.Contains(id)).ToList();
+            if (toUnlink.Count > 0)
+            {
+                var unlinkEntities = await set.Where(i => toUnlink.Contains(i.ImageId)).ToListAsync();
+                foreach (var img in unlinkEntities)
+                {
+                    img.MaintenanceIssueId = null;
+                }
+            }
+
+            // Link desired images to this issue
+            if (desired.Count > 0)
+            {
+                var linkEntities = await set.Where(i => desired.Contains(i.ImageId)).ToListAsync();
+                foreach (var img in linkEntities)
+                {
+                    img.MaintenanceIssueId = maintenanceIssueId;
+                }
+            }
+
+            await Context.SaveChangesAsync();
+        }
+
+        protected override async Task BeforeCreateAsync(MaintenanceIssue entity, MaintenanceIssueRequest request)
+        {
+            // Ensure desktop owner/landlord can only create issues under their own properties
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                {
+                    throw new KeyNotFoundException("Property not found");
+                }
+
+                var property = await Context.Set<Property>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+
+                if (property == null || property.OwnerId != ownerId.Value)
+                {
+                    throw new KeyNotFoundException("Property not found");
+                }
+            }
+        }
+
+        protected override async Task BeforeUpdateAsync(MaintenanceIssue entity, MaintenanceIssueRequest request)
+        {
+            // Enforce ownership on updates for desktop owner/landlord
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                {
+                    throw new KeyNotFoundException($"MaintenanceIssue with id {entity.MaintenanceIssueId} not found");
+                }
+
+                var property = await Context.Set<Property>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+
+                if (property == null || property.OwnerId != ownerId.Value)
+                {
+                    throw new KeyNotFoundException($"MaintenanceIssue with id {entity.MaintenanceIssueId} not found");
+                }
+            }
+        }
+
+        protected override async Task BeforeDeleteAsync(MaintenanceIssue entity)
+        {
+            // Enforce ownership on deletes for desktop owner/landlord
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue)
+                {
+                    throw new KeyNotFoundException($"MaintenanceIssue with id {entity.MaintenanceIssueId} not found");
+                }
+
+                // Ensure we have the property owner
+                var property = await Context.Set<Property>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+
+                if (property == null || property.OwnerId != ownerId.Value)
+                {
+                    throw new KeyNotFoundException($"MaintenanceIssue with id {entity.MaintenanceIssueId} not found");
+                }
+            }
         }
     }
 }

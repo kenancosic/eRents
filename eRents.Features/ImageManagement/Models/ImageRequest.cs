@@ -12,7 +12,6 @@ public class ImageRequest
 
     // Note: Kept as byte[] to match Domain. Large payload handling can be addressed at transport layer.
     public byte[] ImageData { get; set; } = Array.Empty<byte>();
-    public byte[]? ThumbnailData { get; set; }
 
     public bool IsCover { get; set; }
 

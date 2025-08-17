@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'app_error.dart';
 
 /// Represents the current state of a provider
@@ -82,7 +83,7 @@ mixin BaseProviderMixin on ChangeNotifier {
       _state = ProviderState.error;
     }
 
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Set loading state and notify listeners
@@ -99,7 +100,7 @@ mixin BaseProviderMixin on ChangeNotifier {
       _state = _error != null ? ProviderState.error : ProviderState.loaded;
     }
 
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Set error state and notify listeners
@@ -116,7 +117,7 @@ mixin BaseProviderMixin on ChangeNotifier {
       _state = ProviderState.error;
     }
 
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Clear error state and notify listeners if there was an error
@@ -130,7 +131,7 @@ mixin BaseProviderMixin on ChangeNotifier {
       _state = ProviderState.loaded;
     }
 
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Mark the state as updating (for create/update/delete operations)
@@ -140,7 +141,27 @@ mixin BaseProviderMixin on ChangeNotifier {
     _state = isUpdating ? ProviderState.updating : ProviderState.loaded;
     if (isUpdating) _error = null;
 
-    notifyListeners();
+    _notifySafely();
+  }
+
+  /// Notify listeners safely. If we're in the middle of a frame build,
+  /// defer the notification to the next frame to avoid the
+  /// "setState() or markNeedsBuild() called during build" exception.
+  void _notifySafely() {
+    if (_disposed) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.transientCallbacks ||
+        phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      // We're currently building/layout/painting; schedule for next frame
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed) {
+          notifyListeners();
+        }
+      });
+    } else {
+      notifyListeners();
+    }
   }
 
   /// Execute an operation with automatic loading and error state management

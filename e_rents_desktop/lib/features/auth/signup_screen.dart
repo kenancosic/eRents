@@ -1,7 +1,7 @@
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
-import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/models/enums/user_type.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +18,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -27,6 +28,7 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -37,14 +39,15 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup(AuthProvider authProvider) async {
     if (_formKey.currentState?.validate() ?? false) {
       final request = RegisterRequestModel(
-        name: _firstNameController.text,
+        firstName: _firstNameController.text,
         lastName: _lastNameController.text,
+        username: _usernameController.text,
         email: _emailController.text,
         phoneNumber: _phoneController.text,
         password: _passwordController.text,
-        confirmPassword: _passwordController.text,
-        dateOfBirth: DateTime.now().toIso8601String(),
-        role: UserType.tenant.name,
+        confirmPassword: _confirmPasswordController.text,
+        dateOfBirth: DateTime.now(), // Default to today, should add date picker in future
+        userType: UserType.tenant,
       );
       final success = await authProvider.register(request);
       if (success && mounted) {
@@ -89,6 +92,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 decoration: const InputDecoration(labelText: 'Last Name'),
                 validator: (value) =>
                     value!.isEmpty ? 'Last name is required' : null,
+                enabled: !authProvider.isLoading,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: (value) =>
+                    value!.isEmpty ? 'Username is required' : null,
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
