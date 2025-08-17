@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 
@@ -29,8 +29,6 @@ public partial class Image : BaseEntity
     
     public long? FileSizeBytes { get; set; }  // File size for optimization
     
-    public byte[]? ThumbnailData { get; set; } // Thumbnail for mobile optimization
-
     public virtual Property? Property { get; set; }
 
     public virtual MaintenanceIssue? MaintenanceIssue { get; set; }
