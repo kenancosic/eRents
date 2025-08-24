@@ -2,19 +2,47 @@ using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Features.Core;
 using eRents.Features.UserManagement.Models;
+using eRents.Features.UserManagement.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Features.AuthManagement.Interfaces;
 
 namespace eRents.Features.UserManagement.Services
 {
-    public sealed class UserService : BaseCrudService<User, UserRequest, UserResponse, UserSearch>
+    public sealed class UserService : BaseCrudService<User, UserRequest, UserResponse, UserSearch>, IUserService
     {
+        private readonly IPasswordService _passwordService;
+        
         public UserService(
             DbContext context,
             IMapper mapper,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger,
+            IPasswordService passwordService)
             : base(context, mapper, logger)
         {
+            _passwordService = passwordService;
+        }
+        
+        public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
+        {
+            var user = await Context.Set<User>().FirstOrDefaultAsync(u => u.UserId == userId);
+            
+            if (user == null)
+                return false;
+            
+            // Verify old password
+            if (!_passwordService.VerifyPassword(oldPassword, user.PasswordHash, user.PasswordSalt))
+                return false;
+            
+            // Hash new password
+            var newPasswordHash = _passwordService.HashPassword(newPassword, out var newSalt);
+            
+            // Update user with new password
+            user.PasswordHash = newPasswordHash;
+            user.PasswordSalt = newSalt;
+            
+            await Context.SaveChangesAsync();
+            return true;
         }
 
         protected override IQueryable<User> AddIncludes(IQueryable<User> query)
@@ -46,6 +74,19 @@ namespace eRents.Features.UserManagement.Services
 
             if (search.CreatedTo.HasValue)
                 query = query.Where(x => x.CreatedAt <= search.CreatedTo.Value);
+
+            // City filters
+            if (!string.IsNullOrWhiteSpace(search.CityContains))
+                query = query.Where(x => x.Address != null && x.Address.City != null && x.Address.City.Contains(search.CityContains));
+
+            if (search.CitiesIn?.Any() == true)
+            {
+                var citySet = search.CitiesIn
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Select(c => c.Trim())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                query = query.Where(x => x.Address != null && x.Address.City != null && citySet.Contains(x.Address.City));
+            }
 
             return query;
         }

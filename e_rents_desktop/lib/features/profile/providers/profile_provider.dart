@@ -45,7 +45,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<void> loadUserProfile() async {
     final result = await executeWithState<User>(() async {
-      return await api.getAndDecode('/api/Profile/me', User.fromJson, authenticated: true);
+      return await api.getAndDecode('/api/Profile', User.fromJson, authenticated: true);
     });
     if (result != null) {
       _currentUser = result;
@@ -63,7 +63,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> updateProfile(User user) async {
     final updated = await executeWithRetry<User>(() async {
-      return await api.putAndDecode('/api/Profile/me', user.toJson(), User.fromJson, authenticated: true);
+      return await api.putAndDecode('/api/Profile', user.toJson(), User.fromJson, authenticated: true);
     }, isUpdate: true);
     if (updated != null) {
       _currentUser = updated;
@@ -83,13 +83,30 @@ class ProfileProvider extends BaseProvider {
     _passwordChangeError = null;
     notifyListeners();
 
+    // Validate that passwords match before sending request
+    if (newPassword != confirmPassword) {
+      setError('New passwords do not match');
+      _isChangingPassword = false;
+      _passwordChangeError = error?.toString();
+      notifyListeners();
+      return false;
+    }
+
+    // Ensure we have current user data
+    if (_currentUser == null) {
+      setError('User not loaded');
+      _isChangingPassword = false;
+      _passwordChangeError = error?.toString();
+      notifyListeners();
+      return false;
+    }
+
     final ok = await executeWithStateForSuccess(() async {
-      await api.postJson(
-        '/api/Profile/change-password',
+      await api.putJson(
+        '/api/Users/change-password',
         {
           'oldPassword': oldPassword,
           'newPassword': newPassword,
-          'confirmPassword': confirmPassword,
         },
         authenticated: true,
       );

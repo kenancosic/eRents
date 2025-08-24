@@ -15,6 +15,10 @@ public sealed class UserSearch : BaseSearchObject
     public DateTime? CreatedFrom { get; set; }
     public DateTime? CreatedTo { get; set; }
 
+    // City filters for address-based filtering
+    public string? CityContains { get; set; }
+    public IEnumerable<string>? CitiesIn { get; set; }
+
     // Sorting guidance:
     // SortBy: "username" | "email" | "createdat" | "updatedat" | "usertype"
     // Defaults to UserId in service if not provided.

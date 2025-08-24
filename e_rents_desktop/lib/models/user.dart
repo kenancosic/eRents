@@ -1,7 +1,6 @@
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/enums/user_type.dart';
 
- 
 class User {
   final int userId;
   final String email;
@@ -66,6 +65,10 @@ class User {
     }
     final created = _parseDate(json['createdAt']) ?? DateTime.now();
     final updated = _parseDate(json['updatedAt']) ?? created;
+    // Backend flattens address fields; compose Address here for convenience
+    final addr = (json.containsKey('city') || json.containsKey('streetLine1'))
+        ? Address.fromJson(json)
+        : null;
     return User(
       userId: (json['userId'] as num).toInt(),
       email: _asString(json['email']) ?? '',
@@ -83,7 +86,7 @@ class User {
       updatedAt: updated,
       createdBy: _asInt(json['createdBy']),
       modifiedBy: _asInt(json['modifiedBy']),
-      address: null,
+      address: addr,
     );
   }
 

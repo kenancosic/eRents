@@ -34,11 +34,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       path: '/maintenance',
     ),
     NavigationItem(
-      label: 'Statistics',
-      icon: Icons.bar_chart_rounded,
-      path: '/statistics',
-    ),
-    NavigationItem(
       label: 'Reports',
       icon: Icons.summarize_rounded,
       path: '/reports',

@@ -140,6 +140,10 @@ class ListScreen<T> extends StatefulWidget {
   final bool inlineSearchBar;
   final String inlineSearchHint;
 
+  /// When true, renders only the body so this widget can be embedded inside an
+  /// existing Scaffold (e.g., inside TabBarView) without duplicating AppBars.
+  final bool embedded;
+
   const ListScreen({
     super.key,
     required this.title,
@@ -160,6 +164,7 @@ class ListScreen<T> extends StatefulWidget {
     this.inlineSearchBar = false,
     this.inlineSearchHint = 'Search...',
     this.showResetButton = true,
+    this.embedded = false,
   });
 
   @override
@@ -212,6 +217,9 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
         filters: _filters,
       );
 
+      // If the widget was disposed while awaiting, abort further state updates
+      if (!mounted) return;
+
       // Apply client-side filtering if filterFunction is provided
       List<T> filteredItems = items;
       if (widget.filterFunction != null) {
@@ -231,6 +239,8 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
       _content.setHasMore(items.length == widget.pageSize);
       _content.setLoading(false);
     } catch (e) {
+      // If the widget was disposed during the request, avoid touching _content
+      if (!mounted) return;
       _content.setError(e.toString());
       _content.setLoading(false);
     }
@@ -275,6 +285,10 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      // Render only the body content for embedding inside another Scaffold
+      return _buildBody();
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),

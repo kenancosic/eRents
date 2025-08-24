@@ -14,5 +14,13 @@ public class TenantSearch : BaseSearchObject
     public DateOnly? LeaseStartTo { get; set; }
     public DateOnly? LeaseEndFrom { get; set; }
     public DateOnly? LeaseEndTo { get; set; }
+
+    // Server-side filters for desktop UI
+    // Search by tenant's username (User.Username)
+    public string? UsernameContains { get; set; }
+    // Search by tenant's first/last name (User.FirstName/LastName)
+    public string? NameContains { get; set; }
+    // Filter by property's city (Property.Address.City)
+    public string? CityContains { get; set; }
     // SortBy: leasestartdate | leaseenddate | createdat | updatedat (default TenantId)
 }

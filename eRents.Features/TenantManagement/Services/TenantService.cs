@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Shared.Interfaces;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace eRents.Features.TenantManagement.Services
 {
@@ -50,6 +51,30 @@ namespace eRents.Features.TenantManagement.Services
 
             if (search.LeaseEndTo.HasValue)
                 query = query.Where(x => x.LeaseEndDate.HasValue && x.LeaseEndDate.Value <= search.LeaseEndTo.Value);
+
+            // Username contains (case-insensitive)
+            if (!string.IsNullOrWhiteSpace(search.UsernameContains))
+            {
+                var pattern = $"%{search.UsernameContains.Trim()}%";
+                query = query.Where(x => x.User != null && EF.Functions.Like(x.User.Username!, pattern));
+            }
+
+            // Name contains: first or last name (case-insensitive)
+            if (!string.IsNullOrWhiteSpace(search.NameContains))
+            {
+                var pattern = $"%{search.NameContains.Trim()}%";
+                query = query.Where(x => x.User != null &&
+                    (EF.Functions.Like(x.User.FirstName ?? string.Empty, pattern) ||
+                     EF.Functions.Like(x.User.LastName ?? string.Empty, pattern)));
+            }
+
+            // City contains: property's address city
+            if (!string.IsNullOrWhiteSpace(search.CityContains))
+            {
+                var pattern = $"%{search.CityContains.Trim()}%";
+                query = query.Where(x => x.Property != null && x.Property.Address != null &&
+                                         EF.Functions.Like(x.Property.Address.City ?? string.Empty, pattern));
+            }
 
             // Auto-scope for Desktop owners/landlords: only tenants tied to properties owned by current user
             if (CurrentUser?.IsDesktop == true &&

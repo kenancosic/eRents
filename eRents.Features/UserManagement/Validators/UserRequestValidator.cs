@@ -78,5 +78,12 @@ public sealed class UserRequestValidator : BaseValidator<UserRequest>
                 .LessThanOrEqualTo(DateOnly.FromDateTime(DateTime.UtcNow))
                 .WithMessage("DateOfBirth cannot be in the future.");
         });
+
+        // If profile is public, require at least City to be provided
+        When(x => x.IsPublic == true, () =>
+        {
+            RuleFor(x => x.City)
+                .NotEmpty().WithMessage("City is required when profile is public.");
+        });
     }
 }

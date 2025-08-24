@@ -90,6 +90,56 @@ class Tenant {
         return TenantStatus.active;
       }
     }
+    // Try parse nested user/property if backend sends them
+    User? _parseUser() {
+      final u = json['user'];
+      if (u is Map<String, dynamic>) {
+        return User.fromJson(u);
+      }
+      // Fallback: synthesize from lightweight flat fields if present
+      final username = json['username']?.toString();
+      final email = json['email']?.toString();
+      final firstName = json['firstName']?.toString();
+      final lastName = json['lastName']?.toString();
+      if (username != null || email != null || firstName != null || lastName != null) {
+        return User(
+          userId: (json['userId'] as num).toInt(),
+          email: email ?? '',
+          username: username ?? '',
+          firstName: firstName,
+          lastName: lastName,
+          createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
+          updatedAt: _parseDate(json['updatedAt']) ?? DateTime.now(),
+        );
+      }
+      return null;
+    }
+
+    Property? _parseProperty() {
+      final p = json['property'];
+      if (p is Map<String, dynamic>) {
+        return Property.fromJson(p);
+      }
+      // Fallback: synthesize minimal property from flat fields
+      final name = json['propertyName']?.toString();
+      final city = json['city']?.toString();
+      if (name != null || city != null) {
+        return Property.fromJson({
+          'propertyId': (json['propertyId'] as num?)?.toInt() ?? 0,
+          'ownerId': 0,
+          'price': 0,
+          'currency': 'BAM',
+          'name': name ?? '-',
+          'imageIds': const <int>[],
+          'amenityIds': const <int>[],
+          'address': {
+            'city': city,
+          },
+        });
+      }
+      return null;
+    }
+
     return Tenant(
       tenantId: (json['tenantId'] as num).toInt(),
       userId: (json['userId'] as num).toInt(),
@@ -101,9 +151,8 @@ class Tenant {
       updatedAt: _parseDate(json['updatedAt']) ?? (_parseDate(json['createdAt']) ?? DateTime.now()),
       createdBy: (json['createdBy'] as num?)?.toInt(),
       modifiedBy: (json['modifiedBy'] as num?)?.toInt(),
-      // Navigation properties are not parsed from JSON
-      user: null,
-      property: null,
+      user: _parseUser(),
+      property: _parseProperty(),
       payments: null,
     );
   }

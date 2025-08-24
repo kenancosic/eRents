@@ -35,6 +35,15 @@ extension MaintenanceIssuePriorityX on MaintenanceIssuePriority {
         return MaintenanceIssuePriority.high;
       case 'emergency':
         return MaintenanceIssuePriority.emergency;
+      // Handle numeric wire values from backend enums (C#): Low=1, Medium=2, High=3, Emergency=4
+      case '1':
+        return MaintenanceIssuePriority.low;
+      case '2':
+        return MaintenanceIssuePriority.medium;
+      case '3':
+        return MaintenanceIssuePriority.high;
+      case '4':
+        return MaintenanceIssuePriority.emergency;
       default:
         return fallback;
     }

@@ -39,6 +39,15 @@ extension MaintenanceIssueStatusX on MaintenanceIssueStatus {
       case 'cancelled':
       case 'canceled':
         return MaintenanceIssueStatus.cancelled;
+      // Handle numeric wire values from backend enums (C#): Pending=1, InProgress=2, Completed=3, Cancelled=4
+      case '1':
+        return MaintenanceIssueStatus.pending;
+      case '2':
+        return MaintenanceIssueStatus.inProgress;
+      case '3':
+        return MaintenanceIssueStatus.completed;
+      case '4':
+        return MaintenanceIssueStatus.cancelled;
       default:
         return fallback;
     }

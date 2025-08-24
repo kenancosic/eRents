@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using eRents.Domain.Models;
 using eRents.Features.UserManagement.Models;
 using eRents.Features.UserManagement.Services;
+using eRents.Features.UserManagement.Interfaces;
 using eRents.Features.Core;
 
 namespace eRents.Features.UserManagement.Extensions;
@@ -17,6 +18,9 @@ public static class UserManagementServiceCollectionExtensions
     {
         // Service registration for generic CRUD
         services.AddScoped<ICrudService<User, UserRequest, UserResponse, UserSearch>, UserService>();
+
+        // Feature-specific interface
+        services.AddScoped<IUserService, UserService>();
 
         return services;
     }

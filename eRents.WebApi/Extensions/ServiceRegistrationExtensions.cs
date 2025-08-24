@@ -9,7 +9,6 @@ using eRents.Features.Core.Validation;
 using eRents.Features.Core.Extensions;
 using eRents.Features.ImageManagement.Services;
 
-
 using eRents.Features.PropertyManagement.Models;
 using eRents.Features.UserManagement.Services;
 using eRents.Features.UserManagement.Models;
@@ -27,6 +26,15 @@ using eRents.Features.MaintenanceManagement.Services;
 using eRents.Features.MaintenanceManagement.Models;
 using eRents.Features.TenantManagement.Services;
 using eRents.Features.TenantManagement.Models;
+using eRents.Features.UserManagement.Extensions;
+using eRents.Features.PropertyManagement.Extensions;
+using eRents.Features.BookingManagement.Extensions;
+using eRents.Features.ImageManagement.Extensions;
+using eRents.Features.LookupManagement.Extensions;
+using eRents.Features.MaintenanceManagement.Extensions;
+using eRents.Features.PaymentManagement.Extensions;
+using eRents.Features.ReviewManagement.Extensions;
+using eRents.Features.TenantManagement.Extensions;
 using System.Reflection;
 using System.Linq;
 using eRents.Features.Core;
@@ -40,74 +48,30 @@ public static class ServiceRegistrationExtensions
 		// Host-level concerns like DbContext, AutoMapper, and validation are configured in Program.cs
 
 		services.AddScoped<ICurrentUserService, CurrentUserService>();
-
 		// Core/Shared services
 		services.AddScoped<ImageService>();
 		services.AddScoped<IMessagingService, MessagingService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
 
-		// Feature-specific services (register concrete services only)
-		// Property/Financial/Booking/Review
-		services.AddScoped<PropertyService>();
-		services.AddScoped<PaymentService>();
-		services.AddScoped<BookingService>();
-		services.AddScoped<ReviewService>();
+		// All feature services are now registered via extension methods
 
-		// Lookup
-		services.AddScoped<LookupService>();
-		services.AddScoped<AmenityService>();
-
-		// Maintenance
-		services.AddScoped<MaintenanceIssueService>();
-
-		// Tenants
-		services.AddScoped<TenantService>();
-
-		// Users
-		services.AddScoped<UserService>();
-
-		// Map feature interfaces to concrete implementations for controllers injecting ICrudService<...>
-		// Property CRUD
-		services.AddScoped<
-				ICrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>,
-				PropertyService
-		>();
-
-		// Booking CRUD
-		services.AddScoped<
-				ICrudService<Booking, BookingRequest, BookingResponse, BookingSearch>,
-				BookingService
-		>();
-
-		// Review CRUD
-		services.AddScoped<
-				ICrudService<Review, ReviewRequest, ReviewResponse, ReviewSearch>,
-				ReviewService
-		>();
-
-		// Payment CRUD
-		services.AddScoped<
-				ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch>,
-				PaymentService
-		>();
-
-		// MaintenanceIssue CRUD
-		services.AddScoped<
-				ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>,
-				MaintenanceIssueService
-		>();
-
-		// Tenant CRUD
-		services.AddScoped<
-				ICrudService<Tenant, TenantRequest, TenantResponse, TenantSearch>,
-				TenantService
-		>();
+		// Register all feature services via extension methods
+		services.AddBookingManagement();
+		services.AddImageManagement();
+		services.AddLookupManagement();
+		services.AddMaintenanceManagement();
+		services.AddPaymentManagement();
+		services.AddReviewManagement();
+		services.AddTenantManagement();
 
 		// Note: UserService may expose a richer, non-generic interface; don't bind to ICrudService unless implemented
 
 		// Register AuthManagement services
 		services.AddAuthManagement();
+
+		// Register UserManagement feature services explicitly
+		services.AddUserManagement();
 
 		// Auto-register all concrete services in eRents.Features that implement ICrudService<,,,>
 		// This removes the need to manually add mappings for each feature service

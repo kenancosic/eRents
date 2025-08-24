@@ -31,6 +31,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String rents = '/rents';
   static const String propertyImages = '/property-images';
+  static const String tenants = '/tenants';
 }
 
 // Shell layout with navigation
@@ -261,6 +262,16 @@ class AppRouter {
           ),
         ),
 
+        // Tenants
+        GoRoute(
+          path: AppRoutes.tenants,
+          builder: (context, _) => _buildWrappedContent(
+            context,
+            'Tenants',
+            _createTenantsScreen,
+          ),
+        ),
+
         // Maintenance
         GoRoute(
           path: AppRoutes.maintenance,
@@ -426,6 +437,11 @@ class AppRouter {
       context.read<ProfileProvider>().loadUserProfile();
     });
     return const ProfileScreen();
+  }
+
+  // Tenants screen factory
+  Widget _createTenantsScreen(BuildContext context) {
+    return const TenantsListScreen();
   }
 
   // Rents screen factory

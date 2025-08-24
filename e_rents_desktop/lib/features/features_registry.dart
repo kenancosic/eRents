@@ -15,6 +15,7 @@ import 'profile/providers/profile_provider.dart';
 import 'properties/providers/property_provider.dart';
 import 'rents/providers/rents_provider.dart';
 import 'reports/providers/reports_provider.dart';
+import 'tenants/providers/tenants_provider.dart';
 import '../providers/lookup_provider.dart';
 
 /// Helper class to manage provider dependencies
@@ -82,6 +83,11 @@ class FeaturesRegistry {
       
       ChangeNotifierProvider<ReportsProvider>(
         create: (_) => ReportsProvider(deps.apiService),
+      ),
+      
+      // Tenants
+      ChangeNotifierProvider<TenantsProvider>(
+        create: (_) => TenantsProvider(deps.apiService),
       ),
     ];
   }

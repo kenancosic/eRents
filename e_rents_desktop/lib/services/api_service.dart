@@ -193,7 +193,26 @@ class ApiService {
       try {
         final decodedBody = jsonDecode(response.body);
         if (decodedBody is Map<String, dynamic>) {
-          errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? decodedBody['title'] ?? 'Server error occurred.';
+          if (decodedBody['errors'] is Map<String, dynamic>) {
+            final errs = decodedBody['errors'] as Map<String, dynamic>;
+            final parts = <String>[];
+            errs.forEach((field, msgs) {
+              if (msgs is List) {
+                for (final m in msgs) {
+                  parts.add('${field.toString()}: ${m.toString()}');
+                }
+              } else if (msgs != null) {
+                parts.add('${field.toString()}: ${msgs.toString()}');
+              }
+            });
+            if (parts.isNotEmpty) {
+              errorMessage = parts.join('; ');
+            } else {
+              errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? decodedBody['title'] ?? 'Server error occurred.';
+            }
+          } else {
+            errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? decodedBody['title'] ?? 'Server error occurred.';
+          }
         } else {
           errorMessage = 'Unexpected server response format.';
         }

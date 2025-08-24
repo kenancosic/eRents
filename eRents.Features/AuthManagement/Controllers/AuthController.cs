@@ -24,6 +24,37 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Verifies the reset code for a given email without changing the password
+    /// </summary>
+    [HttpPost("verify")]
+    [AllowAnonymous]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> Verify([FromBody] VerifyResetCodeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Email) || string.IsNullOrWhiteSpace(request?.Code))
+        {
+            return BadRequest(new { message = "Email and code are required" });
+        }
+
+        try
+        {
+            var isValid = await _authService.VerifyResetCodeAsync(request.Email, request.Code);
+            if (!isValid)
+            {
+                return BadRequest(new { message = "Invalid or expired reset code" });
+            }
+            return Ok(new { message = "Code is valid" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying reset code for email: {Email}", request.Email);
+            return StatusCode(500, new { message = "An error occurred while verifying the code" });
+        }
+    }
+
+    /// <summary>
     /// Authenticates a user and returns JWT tokens
     /// </summary>
     [HttpPost("login")]

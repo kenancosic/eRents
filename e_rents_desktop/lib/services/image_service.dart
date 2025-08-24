@@ -22,12 +22,10 @@ class ImageService {
     int? maintenanceIssueId,
     int page = 1,
     int pageSize = 20,
-    bool includeFull = false,
   }) async {
     final params = <String, String>{
       'page': page.toString(),
       'pageSize': pageSize.toString(),
-      'includeFull': includeFull.toString(),
     };
     if (propertyId != null) params['propertyId'] = propertyId.toString();
     if (maintenanceIssueId != null) {
@@ -49,7 +47,7 @@ class ImageService {
     if (cached != null) return cached;
 
     // Always fetch full image data
-    final resp = await api.get('api/Images/$id?includeFull=true');
+    final resp = await api.get('api/Images/$id');
     final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
     final image = model.Image.fromJson(decoded);
 
@@ -75,7 +73,6 @@ class ImageService {
     double? height,
     BoxFit? fit,
     Widget? errorWidget,
-    bool preferFull = false, // Added for compatibility
   }) {
     return FutureBuilder<model.Image>(
       future: getImage(imageId),
@@ -112,6 +109,64 @@ class ImageService {
         // Add extra validation to ensure we can create a valid Uint8List
         try {
           final bytes = Uint8List.fromList(imageData);
+          
+          // Log the image size for debugging
+          log.info('ImageService.buildImageByIdSimple: Processing imageId=$imageId with size=${bytes.length} bytes');
+          
+          // Additional validation: check if the image data looks like valid image data
+          // by checking for common image headers
+          if (bytes.length >= 2) {
+            // JPEG signature check
+            if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
+              // Valid JPEG header
+              log.info('ImageService.buildImageByIdSimple: Valid JPEG image for imageId=$imageId');
+            }
+            // PNG signature check
+            else if (bytes.length >= 8 &&
+                bytes[0] == 0x89 &&
+                bytes[1] == 0x50 &&
+                bytes[2] == 0x4E &&
+                bytes[3] == 0x47 &&
+                bytes[4] == 0x0D &&
+                bytes[5] == 0x0A &&
+                bytes[6] == 0x1A &&
+                bytes[7] == 0x0A) {
+              // Valid PNG header
+              log.info('ImageService.buildImageByIdSimple: Valid PNG image for imageId=$imageId');
+            }
+            // GIF signature check
+            else if (bytes.length >= 6 &&
+                (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) &&
+                (bytes[3] == 0x87 || bytes[3] == 0x89)) {
+              // Valid GIF header
+              log.info('ImageService.buildImageByIdSimple: Valid GIF image for imageId=$imageId');
+            }
+            // If it's not a valid image format, treat as invalid data
+            else if (bytes.length < 60) {
+              // If it's very small, it's likely invalid placeholder data
+              log.warning('ImageService.buildImageByIdSimple: image data looks invalid (small size) for imageId=$imageId');
+              return errorWidget ?? SizedBox(
+                width: width,
+                height: height,
+                child: const ColoredBox(color: Color(0xFFE0E0E0)),
+              );
+            }
+          }
+          
+          // Additional safety check: if we have a very small image but it doesn't match
+          // any known image format, return error widget
+          // However, if it's a valid image format (PNG, JPEG, GIF), we should try to display it
+          // Valid minimal PNG files can be as small as ~67 bytes
+          if (bytes.length < 60 && bytes.length > 0) {
+            log.warning('ImageService.buildImageByIdSimple: image data too small to be valid for imageId=$imageId (size: ${bytes.length})');
+            return errorWidget ?? SizedBox(
+              width: width,
+              height: height,
+              child: const ColoredBox(color: Color(0xFFE0E0E0)),
+            );
+          }
+          
+          // If we have valid data, try to create the image
           return Image.memory(
             bytes,
             width: width,
@@ -146,7 +201,6 @@ class ImageService {
     double? height,
     BoxFit? fit,
     Widget? errorWidget,
-    bool preferFull = false, // Added for compatibility
   }) {
     // Delegate to the simplified version
     return buildImageByIdSimple(
@@ -155,7 +209,6 @@ class ImageService {
       height: height,
       fit: fit,
       errorWidget: errorWidget,
-      preferFull: preferFull,
     );
   }
 

@@ -1,6 +1,5 @@
 import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/models/booking.dart';
-import 'package:e_rents_desktop/models/rental_request.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,186 +10,174 @@ class RentsScreen extends StatefulWidget {
   State<RentsScreen> createState() => _RentsScreenState();
 }
 
-class _RentsScreenState extends State<RentsScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _RentsScreenState extends State<RentsScreen> {
+  BookingStatus? _selectedStatus;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(_handleTabSelection);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadData();
+      context.read<RentsProvider>().getPagedBookings();
     });
-  }
-
-  Future<void> _loadData() async {
-    final rentsProvider = context.read<RentsProvider>();
-    await rentsProvider.getPagedStays();
-    await rentsProvider.getPagedLeases();
-  }
-
-  void _handleTabSelection() {
-    if (_tabController.indexIsChanging) {
-      final rentsProvider = context.read<RentsProvider>();
-      rentsProvider.setRentalType(
-        _tabController.index == 0 ? RentalType.stay : RentalType.lease,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_handleTabSelection);
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rental Management'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Stays', icon: Icon(Icons.hotel)),
-            Tab(text: 'Leases', icon: Icon(Icons.house)),
-          ],
-        ),
+        title: const Text('Bookings'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<RentsProvider>().refresh(),
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // Stays Tab (Read-Only List of Bookings)
-          _buildStaysList(context),
-          // Leases Tab (List of Rental Requests with Actions)
-          _buildLeasesList(context),
+          _buildFilters(context),
+          const Divider(height: 1),
+          Expanded(child: _buildTable(context)),
+          const Divider(height: 1),
+          _buildPagingBar(context),
         ],
       ),
     );
   }
 
-  Widget _buildStaysList(BuildContext context) {
+  Widget _buildFilters(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Row(
+        children: [
+          const Text('Status:'),
+          const SizedBox(width: 8),
+          DropdownButton<BookingStatus?>(
+            value: _selectedStatus,
+            items: const [
+              DropdownMenuItem<BookingStatus?>(value: null, child: Text('All')),
+              DropdownMenuItem<BookingStatus?>(value: BookingStatus.upcoming, child: Text('Upcoming')),
+              DropdownMenuItem<BookingStatus?>(value: BookingStatus.active, child: Text('Active')),
+              DropdownMenuItem<BookingStatus?>(value: BookingStatus.completed, child: Text('Completed')),
+              DropdownMenuItem<BookingStatus?>(value: BookingStatus.cancelled, child: Text('Cancelled')),
+            ],
+            onChanged: (val) async {
+              setState(() => _selectedStatus = val);
+              final p = context.read<RentsProvider>();
+              p.setStatusFilter(val);
+              await p.getPagedBookings(params: p.lastQuery);
+            },
+          ),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: () async {
+              setState(() => _selectedStatus = null);
+              final p = context.read<RentsProvider>();
+              p.clearFilters();
+              await p.getPagedBookings(params: p.lastQuery);
+            },
+            icon: const Icon(Icons.filter_alt_off),
+            label: const Text('Clear Filters'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTable(BuildContext context) {
     return Consumer<RentsProvider>(
-      builder: (context, rentsProvider, child) {
-        if (rentsProvider.isLoading) {
+      builder: (context, p, child) {
+        if (p.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-        if (rentsProvider.error != null) {
-          return Center(child: Text('Error: ${rentsProvider.error}'));
+        if (p.error != null) {
+          return Center(child: Text('Error: ${p.error}'));
         }
-        if (rentsProvider.stays.isEmpty) {
-          return const Center(child: Text('No stays found.'));
+        if (p.bookings.isEmpty) {
+          return const Center(child: Text('No bookings found.'));
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: rentsProvider.stays.length,
-          itemBuilder: (context, index) {
-            final Booking stay = rentsProvider.stays[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16.0),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Property: ${stay.propertyName ?? 'N/A'}'),
-                    Text('Tenant: ${stay.userName ?? 'N/A'}'),
-                    Text('Dates: ${stay.dateRange}'),
-                    Text('Status: ${stay.status.displayName}'),
-                    Text('Total Price: ${stay.formattedTotalPrice}'),
-                  ],
-                ),
-              ),
-            );
-          },
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Booking #')),
+              DataColumn(label: Text('Property')),
+              DataColumn(label: Text('Tenant')),
+              DataColumn(label: Text('Dates')),
+              DataColumn(label: Text('Status')),
+              DataColumn(label: Text('Total')),
+            ],
+            rows: p.bookings.map((b) {
+              return DataRow(
+                cells: [
+                  DataCell(Text(b.bookingId.toString())),
+                  DataCell(Text(b.propertyName ?? 'N/A')),
+                  DataCell(Text(b.userName ?? b.tenantName ?? 'N/A')),
+                  DataCell(Text(b.dateRange)),
+                  DataCell(Text(b.status.displayName)),
+                  DataCell(Text(b.formattedTotalPrice)),
+                ],
+              );
+            }).toList(),
+          ),
         );
       },
     );
   }
 
-  Widget _buildLeasesList(BuildContext context) {
+  Widget _buildPagingBar(BuildContext context) {
     return Consumer<RentsProvider>(
-      builder: (context, rentsProvider, child) {
-        if (rentsProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (rentsProvider.error != null) {
-          return Center(child: Text('Error: ${rentsProvider.error}'));
-        }
-        if (rentsProvider.leases.isEmpty) {
-          return const Center(child: Text('No leases found.'));
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: rentsProvider.leases.length,
-          itemBuilder: (context, index) {
-            final RentalRequest lease = rentsProvider.leases[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16.0),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Property: ${lease.propertyName}'),
-                    Text('Applicant: ${lease.userName}'),
-                    Text('Proposed Dates: ${lease.formattedStartDate} - ${lease.formattedEndDate}'),
-                    Text('Monthly Rent: ${lease.formattedRent}'),
-                    Text('Status: ${lease.status}'),
-                    if (lease.isPending)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ElevatedButton(
-                            onPressed: rentsProvider.isLoading
-                                ? null
-                                : () async {
-                                    final success = await rentsProvider.approveLease(lease.requestId, 'Approved by landlord');
-                                    if (context.mounted && success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Lease approved!')),
-                                      );
-                                      await rentsProvider.getPagedLeases(); // Refresh list
-                                    } else if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(rentsProvider.error ?? 'Failed to approve lease.')),
-                                      );
-                                    }
-                                  },
-                            child: const Text('Approve'),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton(
-                            onPressed: rentsProvider.isLoading
-                                ? null
-                                : () async {
-                                    final success = await rentsProvider.rejectLease(lease.requestId, 'Rejected by landlord');
-                                    if (context.mounted && success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Lease rejected!')),
-                                      );
-                                      await rentsProvider.getPagedLeases(); // Refresh list
-                                    } else if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(rentsProvider.error ?? 'Failed to reject lease.')),
-                                      );
-                                    }
-                                  },
-                            child: const Text('Reject'),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+      builder: (context, p, child) {
+        final total = p.pagedBookings.totalCount;
+        final start = ((p.page - 1) * p.pageSize) + 1;
+        final end = (start + p.bookings.length - 1).clamp(0, total);
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Text('Showing $start-$end of $total'),
+              const SizedBox(width: 16),
+              IconButton(
+                tooltip: 'Prev page',
+                icon: const Icon(Icons.chevron_left),
+                onPressed: p.page > 1 && !p.isLoading
+                    ? () async {
+                        p.setPage(p.page - 1);
+                        await p.getPagedBookings(params: p.lastQuery);
+                      }
+                    : null,
               ),
-            );
-          },
+              Text('Page ${p.page}'),
+              IconButton(
+                tooltip: 'Next page',
+                icon: const Icon(Icons.chevron_right),
+                onPressed: !p.isLoading && (start + p.bookings.length - 1) < total
+                    ? () async {
+                        p.setPage(p.page + 1);
+                        await p.getPagedBookings(params: p.lastQuery);
+                      }
+                    : null,
+              ),
+              const Spacer(),
+              const Text('Page size:'),
+              const SizedBox(width: 8),
+              DropdownButton<int>(
+                value: p.pageSize,
+                items: const [10, 20, 50, 100]
+                    .map((s) => DropdownMenuItem<int>(value: s, child: Text('$s')))
+                    .toList(),
+                onChanged: p.isLoading
+                    ? null
+                    : (v) async {
+                        if (v == null) return;
+                        p.setPageSize(v);
+                        await p.getPagedBookings(params: p.lastQuery);
+                      },
+              ),
+            ],
+          ),
         );
       },
     );

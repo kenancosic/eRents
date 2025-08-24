@@ -28,6 +28,11 @@ public interface IAuthService
     Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
 
     /// <summary>
+    /// Verifies whether the provided reset code for the given email is valid and not expired
+    /// </summary>
+    Task<bool> VerifyResetCodeAsync(string email, string code);
+
+    /// <summary>
     /// Refreshes JWT token using refresh token
     /// </summary>
     Task<AuthResponse?> RefreshTokenAsync(string refreshToken);

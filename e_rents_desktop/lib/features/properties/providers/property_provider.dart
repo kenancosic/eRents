@@ -295,7 +295,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> create(Property dto) async {
     return executeWithRetry<Property>(() async {
-      final created = await api.postAndDecode('/api/properties', dto.toJson(), Property.fromJson);
+      final created = await api.postAndDecode('/api/properties', dto.toRequestJson(), Property.fromJson);
       // optimistic local append
       _items = [..._items, created];
       // Safely adjust paged state if present (no copyWith dependency)
@@ -314,7 +314,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> update(Property dto) async {
     return executeWithRetry<Property>(() async {
-      final updated = await api.putAndDecode('/api/properties/${dto.propertyId}', dto.toJson(), Property.fromJson);
+      final updated = await api.putAndDecode('/api/properties/${dto.propertyId}', dto.toRequestJson(), Property.fromJson);
       _items = _items.map((e) => e.propertyId == dto.propertyId ? updated : e).toList();
       if (_paged != null) {
         _paged = PagedResult<Property>(

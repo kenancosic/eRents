@@ -14,6 +14,7 @@ export 'profile/providers/profile_provider.dart';
 export 'properties/providers/property_provider.dart';
 export 'rents/providers/rents_provider.dart';
 export 'reports/providers/reports_provider.dart' hide ReportType;
+export 'tenants/providers/tenants_provider.dart';
 
 // Feature Screens (main entry points)
 export 'auth/login_screen.dart';
@@ -33,6 +34,7 @@ export 'properties/screens/property_detail_screen.dart';
 export 'properties/screens/property_form_screen.dart';
 export 'rents/rents_screen.dart';
 export 'reports/reports_screen.dart';
+export 'tenants/screens/tenants_list_screen.dart';
 
 // Feature Models (commonly used across features)
 export 'reports/models/report_type.dart';

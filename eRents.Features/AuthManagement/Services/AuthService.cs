@@ -216,6 +216,30 @@ public sealed class AuthService : IAuthService
 		}
 	}
 
+	public async Task<bool> VerifyResetCodeAsync(string email, string code)
+	{
+		try
+		{
+			_logger.LogInformation("Verifying reset code for email: {Email}", email);
+
+			var user = await _context.Set<User>()
+				.FirstOrDefaultAsync(u => u.Email == email && u.ResetToken == code);
+
+			if (user == null || user.ResetTokenExpiration == null || user.ResetTokenExpiration < DateTime.UtcNow)
+			{
+				_logger.LogWarning("Invalid or expired reset code for email: {Email}", email);
+				return false;
+			}
+
+			return true;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error verifying reset code for {Email}", email);
+			throw;
+		}
+	}
+
 	public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request)
 	{
 		try

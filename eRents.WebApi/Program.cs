@@ -160,14 +160,22 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 	try
 	{
 		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-		var logger = scope.ServiceProvider.GetService<ILogger<AcademicDataSeeder>>();
-		var seeder = new AcademicDataSeeder(logger);
-
-		await seeder.InitAsync(context);
-
-		// Configuration-based seeding: only force seed in development or when explicitly configured
+		bool useBusinessLogicSeeder = app.Configuration.GetValue<bool>("Database:UseBusinessLogicSeeder", false);
 		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", app.Environment.IsDevelopment());
-		await seeder.SeedAcademicDataAsync(context, forceSeed);
+
+		if (useBusinessLogicSeeder)
+		{
+			var logger = scope.ServiceProvider.GetService<ILogger<BusinessLogicDataSeeder>>();
+			var seeder = new BusinessLogicDataSeeder(logger);
+			await seeder.SeedBusinessDataAsync(context, forceSeed);
+		}
+		else
+		{
+			var logger = scope.ServiceProvider.GetService<ILogger<AcademicDataSeeder>>();
+			var seeder = new AcademicDataSeeder(logger);
+			await seeder.InitAsync(context);
+			await seeder.SeedAcademicDataAsync(context, forceSeed);
+		}
 	}
 	catch (Exception ex)
 	{

@@ -99,7 +99,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> verifyCode(String email, String code) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        '/api/Auth/Verify',
+        '/api/Auth/verify',
         {
           'email': email,
           'code': code,
@@ -117,8 +117,9 @@ class AuthProvider extends BaseProvider {
         '/api/Auth/ResetPassword',
         {
           'email': email,
-          'code': code,
+          'resetCode': code,
           'newPassword': newPassword,
+          'confirmPassword': newPassword,
         },
         authenticated: false,
       );
@@ -129,16 +130,8 @@ class AuthProvider extends BaseProvider {
 
   /// Logout current session. Returns true on success.
   Future<bool> logout() async {
-    // Fire-and-forget: do not propagate or retry errors, always clear local state
-    try {
-      await api.postJson(
-        '/api/Auth/Logout',
-        {},
-        authenticated: true,
-      );
-    } catch (_) {
-      // Ignore server errors for logout; proceed with local clear
-    }
+    // No backend logout endpoint currently; just clear local auth state and tokens
+    // If a server-side logout is added later (e.g., refresh token revocation), call it here.
     // Clear persisted token so ApiService stops authenticating requests
     await api.secureStorageService.clearToken();
     // Clear local state

@@ -108,6 +108,32 @@ class Property {
         'coverImageId': coverImageId,
       };
 
+  // Payload for POST/PUT requests to backend PropertyRequest (flattened address)
+  Map<String, dynamic> toRequestJson() => <String, dynamic>{
+        'name': name,
+        'description': description,
+        'price': price,
+        'currency': currency,
+        'bedrooms': bedrooms,
+        'bathrooms': bathrooms,
+        'area': area,
+        'minimumStayDays': minimumStayDays,
+        'requiresApproval': requiresApproval,
+        // Backend expects enum numeric codes
+        'propertyType': Property._propertyTypeToRequest(propertyType),
+        'rentingType': Property._rentingTypeToRequest(rentingType),
+        'status': Property._statusToRequest(status),
+        // Flattened address
+        'streetLine1': address?.streetLine1,
+        'streetLine2': address?.streetLine2,
+        'city': address?.city,
+        'state': address?.state,
+        'country': address?.country,
+        'postalCode': address?.postalCode,
+        'latitude': address?.latitude,
+        'longitude': address?.longitude,
+      }..removeWhere((k, v) => v == null);
+
   // Legacy compatibility getters
   int? get propertyTypeId => propertyType?.index;
   int? get rentingTypeId => rentingType?.index;
@@ -140,6 +166,7 @@ class Property {
   }
 
   static String _statusToJson(PropertyStatus status) => status.name;
+  static int _statusToRequest(PropertyStatus status) => status.value;
 
   // Custom converters for propertyType and rentingType to support
   // backend sending either int codes or string names.
@@ -169,6 +196,7 @@ class Property {
   }
 
   static String? _propertyTypeToJson(PropertyType? type) => type?.name;
+  static int? _propertyTypeToRequest(PropertyType? type) => type?.value;
 
   static RentingType? _rentingTypeFromJson(dynamic value) {
     if (value == null) return null;
@@ -196,4 +224,5 @@ class Property {
   }
 
   static String? _rentingTypeToJson(RentingType? type) => type?.name;
+  static int? _rentingTypeToRequest(RentingType? type) => type?.value;
 }
