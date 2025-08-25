@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
@@ -8,13 +8,10 @@ import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
 import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 
 /// Consolidated PropertyDetailProvider following the new single-provider pattern
-/// Replaces PropertyDetailProvider, PropertyCollectionProvider, MaintenanceCollectionProvider, and ReviewCollectionProvider
-/// Uses direct ApiService calls with BaseProvider architecture for state management and caching
+/// Refactored to use new standardized BaseProvider without caching
+/// Uses proper state management with loading, success, and error states
 class PropertyDetailProvider extends BaseProvider {
   PropertyDetailProvider(super.api);
-
-  // ─── Loading & Error State ──────────────────────────────────────
-  // Inherited from BaseProviderMixin: isLoading, error, hasError
 
   // ─── Property State ─────────────────────────────────────────────
   Property? _property;
@@ -81,46 +78,34 @@ class PropertyDetailProvider extends BaseProvider {
   Map<DateTime, bool> _propertyAvailability = {};
   Map<DateTime, bool> get propertyAvailability => _propertyAvailability;
 
-  // ─── Cache Management ───────────────────────────────────────────
-  // Using CacheableProviderMixin from BaseProvider for automatic caching
-
   // ─── Main Property Operations ───────────────────────────────────
 
   /// Fetch property details and related data
   Future<void> fetchPropertyDetails(String propertyId, {String? bookingId, bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      invalidateCache('property_$propertyId');
-    }
+    final property = await executeWithState(() async {
+      final response = await api.get('/properties/$propertyId', authenticated: true);
+      return Property.fromJson(jsonDecode(response.body));
+    });
 
-    await executeWithCache(
-      'property_$propertyId',
-      () async {
-        final response = await api.get('/properties/$propertyId', authenticated: true);
-        _property = Property.fromJson(jsonDecode(response.body));
-        
-        if (_property != null) {
-          // Fetch related data in parallel
-          await Future.wait([
-            fetchReviews(propertyId, forceRefresh: forceRefresh),
-            fetchMaintenanceIssues(propertyId, forceRefresh: forceRefresh),
-            fetchSimilarProperties(forceRefresh: forceRefresh),
-            fetchOwnerProperties(forceRefresh: forceRefresh),
-            if (bookingId != null) fetchBookingDetails(bookingId),
-          ]);
-        }
-        notifyListeners();
-        return _property;
-      },
-      cacheTtl: Duration(minutes: 15),
-      errorMessage: 'Failed to load property details',
-    );
+    if (property != null) {
+      _property = property;
+      
+      // Fetch related data in parallel
+      await Future.wait([
+        fetchReviews(propertyId, forceRefresh: forceRefresh),
+        fetchMaintenanceIssues(propertyId, forceRefresh: forceRefresh),
+        fetchSimilarProperties(forceRefresh: forceRefresh),
+        fetchOwnerProperties(forceRefresh: forceRefresh),
+        if (bookingId != null) fetchBookingDetails(bookingId),
+      ]);
+    }
   }
 
   /// Fetch similar properties based on current property
   Future<void> fetchSimilarProperties({bool forceRefresh = false}) async {
     if (_property == null) return;
     
-    try {
+    final properties = await executeWithState(() async {
       final response = await api.get('/properties/search', customHeaders: {
         'propertyTypeId': _property!.propertyTypeId.toString(),
         'minPrice': (_property!.price * 0.8).toString(),
@@ -128,37 +113,41 @@ class PropertyDetailProvider extends BaseProvider {
         'exclude': _property!.propertyId.toString(),
       }, authenticated: true);
       final data = jsonDecode(response.body)['items'] as List;
-      _similarProperties = data.map((p) => Property.fromJson(p)).toList();
-    } catch (e) {
-      debugPrint('Failed to load similar properties: $e');
+      return data.map((p) => Property.fromJson(p)).toList();
+    });
+
+    if (properties != null) {
+      _similarProperties = properties;
     }
-    notifyListeners();
   }
 
   /// Fetch properties by current property owner
   Future<void> fetchOwnerProperties({bool forceRefresh = false}) async {
     if (_property?.ownerId == null) return;
     
-    try {
+    final properties = await executeWithState(() async {
       final response = await api.get('/properties/search', customHeaders: {
         'ownerId': _property!.ownerId.toString(),
         'exclude': _property!.propertyId.toString(),
       }, authenticated: true);
-       final data = jsonDecode(response.body)['items'] as List;
-      _ownerProperties = data.map((p) => Property.fromJson(p)).toList();
-    } catch (e) {
-      debugPrint('Failed to load owner properties: $e');
+      final data = jsonDecode(response.body)['items'] as List;
+      return data.map((p) => Property.fromJson(p)).toList();
+    });
+
+    if (properties != null) {
+      _ownerProperties = properties;
     }
-    notifyListeners();
   }
 
   /// Fetch booking details
   Future<void> fetchBookingDetails(String bookingId) async {
-    try {
+    final booking = await executeWithState(() async {
       final response = await api.get('/bookings/$bookingId', authenticated: true);
-      _booking = Booking.fromJson(jsonDecode(response.body));
-    } catch (e) {
-      debugPrint('Failed to fetch booking details: $e');
+      return Booking.fromJson(jsonDecode(response.body));
+    });
+
+    if (booking != null) {
+      _booking = booking;
     }
   }
 
@@ -166,16 +155,15 @@ class PropertyDetailProvider extends BaseProvider {
 
   /// Load property collection with optional filters
   Future<void> loadPropertyCollection({Map<String, dynamic>? filters, bool forceRefresh = false}) async {
-    setLoading(true);
-    try {
+    final properties = await executeWithState(() async {
       final response = await api.get('/properties/search', customHeaders: filters?.map((key, value) => MapEntry(key, value.toString())), authenticated: true);
       final data = jsonDecode(response.body)['items'] as List;
-      _propertyCollection = data.map((p) => Property.fromJson(p)).toList();
+      return data.map((p) => Property.fromJson(p)).toList();
+    });
+
+    if (properties != null) {
+      _propertyCollection = properties;
       _applyPropertySearchAndFilters();
-    } catch (e) {
-      setError('Failed to load properties: $e');
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -208,30 +196,22 @@ class PropertyDetailProvider extends BaseProvider {
 
   /// Fetch reviews for a property
   Future<void> fetchReviews(String propertyId, {bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      invalidateCache('reviews_$propertyId');
-    }
+    final reviews = await executeWithState(() async {
+      final response = await api.get('/reviews/property/$propertyId', authenticated: true);
+      final data = jsonDecode(response.body) as List;
+      return data.map((r) => Review.fromJson(r)).toList();
+    });
 
-    await executeWithCache(
-      'reviews_$propertyId',
-      () async {
-        final response = await api.get('/reviews/property/$propertyId', authenticated: true);
-        final data = jsonDecode(response.body) as List;
-        _allReviews = data.map((r) => Review.fromJson(r)).toList();
-        _reviews = List.from(_allReviews);
-        _applyReviewSearchAndFilters();
-        notifyListeners();
-        return _allReviews;
-      },
-      cacheTtl: Duration(minutes: 15),
-      errorMessage: 'Failed to load reviews',
-    );
+    if (reviews != null) {
+      _allReviews = reviews;
+      _reviews = List.from(_allReviews);
+      _applyReviewSearchAndFilters();
+    }
   }
 
   /// Add a new review
   Future<bool> addReview(String propertyId, String comment, double rating) async {
-    setLoading(true);
-    try {
+    final success = await executeWithStateForSuccess(() async {
       final response = await api.post('/reviews', {'propertyId': propertyId, 'comment': comment, 'rating': rating}, authenticated: true);
       final newReview = Review.fromJson(jsonDecode(response.body));
       _allReviews.insert(0, newReview);
@@ -240,13 +220,9 @@ class PropertyDetailProvider extends BaseProvider {
       // Optionally, refetch property to update average rating
       final propResponse = await api.get('/properties/$propertyId', authenticated: true);
       _property = Property.fromJson(jsonDecode(propResponse.body));
-      return true;
-    } catch (e) {
-      setError('Failed to add review: $e');
-      return false;
-    } finally {
-      setLoading(false);
-    }
+    }, errorMessage: 'Failed to add review');
+
+    return success;
   }
 
   /// Search reviews
@@ -322,47 +298,34 @@ class PropertyDetailProvider extends BaseProvider {
 
   /// Fetch maintenance issues for a property
   Future<void> fetchMaintenanceIssues(String propertyId, {bool forceRefresh = false}) async {
-    if (forceRefresh) {
-      invalidateCache('maintenance_$propertyId');
-    }
+    final issues = await executeWithState(() async {
+      final response = await api.get('/maintenance/property/$propertyId', authenticated: true);
+      final data = jsonDecode(response.body) as List;
+      return data.map((i) => MaintenanceIssue.fromJson(i)).toList();
+    });
 
-    await executeWithCache(
-      'maintenance_$propertyId',
-      () async {
-        final response = await api.get('/maintenance/property/$propertyId', authenticated: true);
-        final data = jsonDecode(response.body) as List;
-        _allMaintenanceIssues = data.map((i) => MaintenanceIssue.fromJson(i)).toList();
-        _maintenanceIssues = List.from(_allMaintenanceIssues);
-        _applyMaintenanceSearchAndFilters();
-        notifyListeners();
-        return _allMaintenanceIssues;
-      },
-      cacheTtl: Duration(minutes: 15),
-      errorMessage: 'Failed to load maintenance issues',
-    );
+    if (issues != null) {
+      _allMaintenanceIssues = issues;
+      _maintenanceIssues = List.from(_allMaintenanceIssues);
+      _applyMaintenanceSearchAndFilters();
+    }
   }
 
   /// Report a new maintenance issue
   Future<bool> reportMaintenanceIssue(String propertyId, String title, String description) async {
-    setLoading(true);
-    try {
+    final success = await executeWithStateForSuccess(() async {
       final response = await api.post('/maintenance', {'propertyId': propertyId, 'title': title, 'description': description}, authenticated: true);
       final newIssue = MaintenanceIssue.fromJson(jsonDecode(response.body));
       _allMaintenanceIssues.insert(0, newIssue);
       _applyMaintenanceSearchAndFilters();
-      return true;
-    } catch (e) {
-      setError('Failed to report issue: $e');
-      return false;
-    } finally {
-      setLoading(false);
-    }
+    }, errorMessage: 'Failed to report issue');
+
+    return success;
   }
 
   /// Update maintenance issue status
   Future<bool> updateMaintenanceIssueStatus(String issueId, MaintenanceIssueStatus newStatus) async {
-    setLoading(true);
-    try {
+    final success = await executeWithStateForSuccess(() async {
       // Use existing API method to update the issue
       final response = await api.put('/maintenance/$issueId', {
         'status': newStatus.toString().split('.').last,
@@ -374,13 +337,9 @@ class PropertyDetailProvider extends BaseProvider {
         _allMaintenanceIssues[index] = updatedIssue;
         _applyMaintenanceSearchAndFilters();
       }
-      return true;
-    } catch (e) {
-      setError('Failed to update maintenance issue: $e');
-      return false;
-    } finally {
-      setLoading(false);
-    }
+    }, errorMessage: 'Failed to update maintenance issue');
+
+    return success;
   }
 
   int _getStatusId(MaintenanceIssueStatus status) {
@@ -461,7 +420,7 @@ class PropertyDetailProvider extends BaseProvider {
 
   /// Submit a lease extension request
   Future<bool> requestLeaseExtension(LeaseExtensionRequest request) async {
-    try {
+    final success = await executeWithStateForSuccess(() async {
       final response = await api.post(
         '/api/lease-extensions',
         request.toJson(),
@@ -471,20 +430,17 @@ class PropertyDetailProvider extends BaseProvider {
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Refresh lease extension requests after successful submission
         await getLeaseExtensionRequests(request.tenantId);
-        return true;
       } else {
-        setError('Failed to request extension: ${response.statusCode} ${response.body}');
-        return false;
+        throw Exception('Failed to request extension: ${response.statusCode} ${response.body}');
       }
-    } catch (e) {
-      setError('PropertyDetailProvider.requestLeaseExtension: $e');
-      return false;
-    }
+    }, errorMessage: 'Failed to request lease extension');
+
+    return success;
   }
 
   /// Get lease extension requests for a tenant
   Future<void> getLeaseExtensionRequests(int tenantId) async {
-    try {
+    await executeWithState(() async {
       await Future.delayed(const Duration(milliseconds: 800));
 
       // Mock data - replace with real API call
@@ -517,14 +473,12 @@ class PropertyDetailProvider extends BaseProvider {
       */
       
       notifyListeners();
-    } catch (e) {
-      setError('Error getting lease extension requests: $e');
-    }
+    });
   }
 
   /// Cancel a booking
   Future<bool> cancelBooking(int bookingId, String reason) async {
-    try {
+    final success = await executeWithStateForSuccess(() async {
       await Future.delayed(const Duration(milliseconds: 1500));
 
       // In a real app, this would:
@@ -539,19 +493,20 @@ class PropertyDetailProvider extends BaseProvider {
         authenticated: true,
       );
       
-      return response.statusCode == 200;
+      if (response.statusCode != 200) {
+        throw Exception('Failed to cancel booking');
+      }
       */
 
-      return true; // Mock success
-    } catch (e) {
-      setError('Error cancelling booking: $e');
-      return false;
-    }
+      return; // Mock success
+    }, errorMessage: 'Error cancelling booking');
+
+    return success;
   }
 
   /// Get booking details with calendar information
   Future<Booking?> getBookingDetails(int bookingId) async {
-    try {
+    return await executeWithState<Booking?>(() async {
       await Future.delayed(const Duration(milliseconds: 500));
 
       // Mock implementation - would fetch from API
@@ -568,10 +523,7 @@ class PropertyDetailProvider extends BaseProvider {
       }
       return null;
       */
-    } catch (e) {
-      setError('Error getting booking details: $e');
-      return null;
-    }
+    });
   }
 
   // ─── Pricing Methods ────────────────────────────────────────────
@@ -585,16 +537,16 @@ class PropertyDetailProvider extends BaseProvider {
     String? promoCode,
     bool? isDailyRental,
   }) async {
-    try {
-      final requestData = {
-        'propertyId': propertyId,
-        'startDate': startDate.toIso8601String(),
-        'endDate': endDate.toIso8601String(),
-        'numberOfGuests': numberOfGuests,
-        if (promoCode != null) 'promoCode': promoCode,
-        if (isDailyRental != null) 'isDailyRental': isDailyRental,
-      };
+    final requestData = {
+      'propertyId': propertyId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'numberOfGuests': numberOfGuests,
+      if (promoCode != null) 'promoCode': promoCode,
+      if (isDailyRental != null) 'isDailyRental': isDailyRental,
+    };
 
+    final pricing = await executeWithState(() async {
       final response = await api.post(
         '/api/pricing/calculate',
         requestData,
@@ -602,17 +554,19 @@ class PropertyDetailProvider extends BaseProvider {
       );
 
       if (response.statusCode == 200) {
-        _currentPricing = jsonDecode(response.body) as Map<String, dynamic>;
-        notifyListeners();
-        return _currentPricing;
+        return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
-        setError('Failed to get pricing: ${response.statusCode} ${response.body}');
-        return null;
+        throw Exception('Failed to get pricing: ${response.statusCode} ${response.body}');
       }
-    } catch (e) {
-      setError('PricingService.getPricing: Error $e');
-      return null;
+    });
+
+    if (pricing != null) {
+      _currentPricing = pricing;
+      notifyListeners();
+      return _currentPricing;
     }
+
+    return null;
   }
 
   /// Validate pricing parameters before making backend call
@@ -627,12 +581,12 @@ class PropertyDetailProvider extends BaseProvider {
     // Client-side validation only
     final duration = endDate.difference(startDate).inDays;
     if (duration <= 0) {
-      setError('Invalid date range - end date must be after start date');
+      setError(ValidationError(message: 'Invalid date range - end date must be after start date'));
       return null;
     }
 
     if (numberOfGuests <= 0) {
-      setError('Invalid guest count - must be greater than 0');
+      setError(ValidationError(message: 'Invalid guest count - must be greater than 0'));
       return null;
     }
 
@@ -654,14 +608,14 @@ class PropertyDetailProvider extends BaseProvider {
     required DateTime endDate,
     required int numberOfGuests,
   }) async {
-    try {
-      final requestData = {
-        'propertyId': propertyId,
-        'startDate': startDate.toIso8601String(),
-        'endDate': endDate.toIso8601String(),
-        'numberOfGuests': numberOfGuests,
-      };
+    final requestData = {
+      'propertyId': propertyId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'numberOfGuests': numberOfGuests,
+    };
 
+    final estimate = await executeWithState(() async {
       final response = await api.post(
         '/api/pricing/estimate',
         requestData,
@@ -670,17 +624,19 @@ class PropertyDetailProvider extends BaseProvider {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _currentPricingEstimate = (data['estimatedTotal'] as num?)?.toDouble();
-        notifyListeners();
-        return _currentPricingEstimate;
+        return (data['estimatedTotal'] as num?)?.toDouble();
       } else {
-        setError('Failed to get estimate: ${response.statusCode}');
-        return null;
+        throw Exception('Failed to get estimate: ${response.statusCode}');
       }
-    } catch (e) {
-      setError('PricingService.getPricingEstimate: Error $e');
-      return null;
+    });
+
+    if (estimate != null) {
+      _currentPricingEstimate = estimate;
+      notifyListeners();
+      return _currentPricingEstimate;
     }
+
+    return null;
   }
 
   /// Format pricing for display (formatting only, no calculations)
@@ -777,12 +733,12 @@ class PropertyDetailProvider extends BaseProvider {
     DateTime? endDate,
     List<Booking>? existingBookings,
   }) async {
-    try {
+    final availability = await executeWithState(() async {
       await Future.delayed(const Duration(milliseconds: 600));
 
       final start = startDate ?? DateTime.now();
       final end = endDate ?? DateTime.now().add(const Duration(days: 90));
-      final Map<DateTime, bool> availability = {};
+      final Map<DateTime, bool> availabilityMap = {};
 
       // Initialize all dates as available
       for (var i = 0; i <= end.difference(start).inDays; i++) {
@@ -791,11 +747,11 @@ class PropertyDetailProvider extends BaseProvider {
 
         // Mark past dates as unavailable
         if (normalizedDate.isBefore(DateTime.now())) {
-          availability[normalizedDate] = false;
+          availabilityMap[normalizedDate] = false;
           continue;
         }
 
-        availability[normalizedDate] = true;
+        availabilityMap[normalizedDate] = true;
       }
 
       // Block dates based on existing bookings
@@ -803,17 +759,15 @@ class PropertyDetailProvider extends BaseProvider {
         for (final booking in existingBookings) {
           if (booking.propertyId == propertyId &&
               booking.status != BookingStatus.cancelled) {
-            _blockBookingDates(availability, booking);
+            _blockBookingDates(availabilityMap, booking);
           }
         }
       }
 
       // Add some mock maintenance/unavailable periods
-      _addMaintenancePeriods(availability, start, end);
+      _addMaintenancePeriods(availabilityMap, start, end);
 
-      _propertyAvailability = availability;
-      notifyListeners();
-      return availability;
+      return availabilityMap;
 
       /* Real API call would be:
       final response = await api.get(
@@ -823,17 +777,20 @@ class PropertyDetailProvider extends BaseProvider {
       
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        _propertyAvailability = data.map((key, value) => MapEntry(DateTime.parse(key), value as bool));
-        notifyListeners();
-        return _propertyAvailability;
+        return data.map((key, value) => MapEntry(DateTime.parse(key), value as bool));
       } else {
         throw Exception('Failed to load property availability');
       }
       */
-    } catch (e) {
-      setError('Error getting property availability: $e');
-      return {};
+    });
+
+    if (availability != null) {
+      _propertyAvailability = availability;
+      notifyListeners();
+      return availability;
     }
+
+    return <DateTime, bool>{};
   }
 
   /// Block dates for a specific booking
@@ -934,11 +891,7 @@ class PropertyDetailProvider extends BaseProvider {
   List<MaintenanceIssue> get pendingIssues => maintenanceIssues.where((i) => i.status == MaintenanceIssueStatus.pending).toList();
   List<MaintenanceIssue> get inProgressIssues => maintenanceIssues.where((i) => i.status == MaintenanceIssueStatus.inProgress).toList();
   List<MaintenanceIssue> get completedIssues => maintenanceIssues.where((i) => i.status == MaintenanceIssueStatus.completed).toList();
-  List<MaintenanceIssue> get urgentIssues => maintenanceIssues.where((i) => i.priority == MaintenanceIssuePriority.emergency).toList();
-
-  // ─── Private Helpers ────────────────────────────────────────────
-
-
+  List<MaintenanceIssue> get emergencyIssues => maintenanceIssues.where((i) => i.priority == MaintenanceIssuePriority.emergency).toList();
 
   /// Clear all data and reset state
   void clearAll() {
@@ -956,10 +909,8 @@ class PropertyDetailProvider extends BaseProvider {
     _currentPricingEstimate = null;
     _propertyAvailability.clear();
 
-    
-    // Clear BaseProvider state and cache
-    setError(null);
-    invalidateCache();
+    // Clear BaseProvider state
+    clearError();
     notifyListeners();
   }
 }

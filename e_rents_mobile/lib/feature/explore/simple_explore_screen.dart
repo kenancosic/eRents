@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:provider/provider.dart';

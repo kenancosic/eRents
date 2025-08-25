@@ -21,6 +21,7 @@ class User {
   final DateTime? updatedAt; // Backend tracks updates
   final bool? isPaypalLinked; // PayPal integration status
   final String? paypalUserIdentifier; // PayPal user reference
+  final List<String>? paymentMethods; // Available payment methods
 
   User({
     this.userId,
@@ -42,6 +43,7 @@ class User {
     this.updatedAt,
     this.isPaypalLinked,
     this.paypalUserIdentifier,
+    this.paymentMethods,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,9 @@ class User {
           : null,
       isPaypalLinked: json['isPaypalLinked'] as bool?,
       paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
+      paymentMethods: json['paymentMethods'] != null
+          ? List<String>.from(json['paymentMethods'] as List)
+          : null,
     );
   }
 
@@ -97,6 +102,7 @@ class User {
       'updatedAt': updatedAt?.toIso8601String(),
       'isPaypalLinked': isPaypalLinked,
       'paypalUserIdentifier': paypalUserIdentifier,
+      'paymentMethods': paymentMethods,
     };
   }
 
@@ -119,6 +125,7 @@ class User {
     DateTime? updatedAt,
     bool? isPaypalLinked,
     String? paypalUserIdentifier,
+    List<String>? paymentMethods,
   }) {
     return User(
       userId: userId ?? this.userId,
@@ -139,6 +146,7 @@ class User {
       updatedAt: updatedAt ?? this.updatedAt,
       isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
       paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
     );
   }
 

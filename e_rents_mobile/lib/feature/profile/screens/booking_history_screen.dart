@@ -1,6 +1,6 @@
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_bookings_provider.dart';
 import 'package:e_rents_mobile/feature/profile/widgets/booking_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +22,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
     _tabController = TabController(length: 3, vsync: this);
     // Load user bookings when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileProvider>().loadUserBookings();
+      context.read<UserBookingsProvider>().loadUserBookings();
     });
   }
 
@@ -94,19 +94,19 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
           ],
         ),
       ),
-      body: Consumer<ProfileProvider>(
-        builder: (context, profileProvider, child) {
-          if (profileProvider.isLoading) {
+      body: Consumer<UserBookingsProvider>(
+        builder: (context, bookingsProvider, child) {
+          if (bookingsProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (profileProvider.error != null) {
+          if (bookingsProvider.error != null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(profileProvider.error ?? 'Failed to load bookings.'),
+                  Text(bookingsProvider.errorMessage ?? 'Failed to load bookings.'),
                   ElevatedButton(
-                    onPressed: () => profileProvider.loadUserBookings(),
+                    onPressed: () => bookingsProvider.loadUserBookings(),
                     child: const Text('Try Again'),
                   )
                 ],
@@ -118,10 +118,11 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
             controller: _tabController,
             children: [
               _buildBookingList(
-                  profileProvider.upcomingBookings, 'No Upcoming Bookings'),
-              _buildBookingList(profileProvider.pastBookings, 'No Completed Bookings'),
+                  bookingsProvider.upcomingBookings.map((b) => Booking.fromJson(b)).toList(), 'No Upcoming Bookings'),
               _buildBookingList(
-                  profileProvider.cancelledBookings, 'No Cancelled Bookings'),
+                  bookingsProvider.pastBookings.map((b) => Booking.fromJson(b)).toList(), 'No Completed Bookings'),
+              _buildBookingList(
+                  bookingsProvider.cancelledBookings.map((b) => Booking.fromJson(b)).toList(), 'No Cancelled Bookings'),
             ],
           );
         },

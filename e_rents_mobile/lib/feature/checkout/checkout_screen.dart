@@ -125,7 +125,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              provider.error ?? 'Payment failed. Please try again.',
+                              provider.errorMessage.isNotEmpty
+                                ? provider.errorMessage
+                                : 'Payment failed. Please try again.',
                               style: TextStyle(color: Colors.red.shade700),
                             ),
                           ),
@@ -613,7 +615,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Show error message (provider will handle state)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(provider.error ?? 'Payment failed. Please try again.'),
+            content: Text(provider.errorMessage.isNotEmpty
+              ? provider.errorMessage
+              : 'Payment failed. Please try again.'),
             backgroundColor: Colors.red,
           ),
         );

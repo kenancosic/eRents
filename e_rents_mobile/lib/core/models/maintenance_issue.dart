@@ -316,6 +316,6 @@ class MaintenanceIssue {
   }
 
   bool get isResolved => status == MaintenanceIssueStatus.completed;
-  bool get isUrgent => priority == MaintenanceIssuePriority.emergency;
+  bool get isEmergency => priority == MaintenanceIssuePriority.emergency;
   bool get hasImages => images != null && images!.isNotEmpty;
 }

@@ -2,13 +2,8 @@ import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
+import 'package:e_rents_mobile/features/features_registry.dart';
 import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
-
-import 'package:e_rents_mobile/feature/chat/chat_provider.dart';
-import 'package:e_rents_mobile/feature/explore/explore_provider.dart';
-import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
-import 'package:e_rents_mobile/feature/home/providers/home_provider.dart';
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -35,63 +30,26 @@ class MyApp extends StatelessWidget {
       secureStorageService,
     );
     
+    // Initialize dependencies
+    final dependencies = ProviderDependencies(
+      apiService: apiService,
+      secureStorage: secureStorageService,
+    );
+    
     return MultiProvider(
       providers: [
         // Provide shared services
         Provider<SecureStorageService>.value(value: secureStorageService),
         Provider<ApiService>.value(value: apiService),
         
-        // Essential providers that still need manual setup
-        ChangeNotifierProvider<AuthProvider>(
-          create: (context) => AuthProvider(
-            apiService,
-            secureStorageService,
-          ),
-        ),
+        // Core system providers (not feature-specific)
         ChangeNotifierProvider<NavigationProvider>(
           create: (context) => NavigationProvider(),
         ),
         ChangeNotifierProvider(create: (_) => ErrorProvider()),
 
-        // 🎯 REPOSITORY-BASED PROVIDERS - Modern architecture with automatic features
-        ChangeNotifierProvider<ExploreProvider>(
-          create: (context) => ExploreProvider(context.read<ApiService>()),
-        ),
-        ChangeNotifierProvider<ProfileProvider>(
-          create: (context) => ProfileProvider(context.read<ApiService>()),
-        ),
-        ChangeNotifierProvider<HomeProvider>(
-          create: (context) => HomeProvider(context.read<ApiService>()),
-        ),
-        ChangeNotifierProvider<SavedProvider>(
-          create: (context) => SavedProvider(
-            context.read<ApiService>(),
-            context.read<SecureStorageService>(),
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (context) => ChatProvider(context.read<ApiService>()),
-        ),
-
-        // 📝 USAGE EXAMPLES:
-        //
-        // In screens, use these providers like this:
-        //
-        // Consumer<PropertyCollectionProvider>(
-        //   builder: (context, propertyProvider, _) {
-        //     if (propertyProvider.isLoading) return CircularProgressIndicator();
-        //     if (propertyProvider.hasError) return Text('Error: ${propertyProvider.errorMessage}');
-        //
-        //     return ListView.builder(
-        //       itemCount: propertyProvider.items.length,
-        //       itemBuilder: (context, index) => PropertyCard(propertyProvider.items[index]),
-        //     );
-        //   },
-        // )
-        //
-        // For property details, use:
-        // final detailProvider = ServiceLocator.get<PropertyDetailProvider>();
-        // detailProvider.loadItem(propertyId.toString());
+        // Register all feature providers via centralized registry
+        ...FeaturesRegistry.createFeatureProviders(dependencies),
       ],
       child: Builder(
         builder: (context) {

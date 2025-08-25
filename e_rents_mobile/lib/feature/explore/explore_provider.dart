@@ -4,19 +4,16 @@ import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/property_search_object.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:flutter/material.dart';
 
 /// Property exploration provider for searching and filtering properties
-/// Migrated from ChangeNotifier to BaseProvider for consistent state management
-/// Uses built-in caching, error handling, pagination, and type-safe API calls
+/// Refactored to use new standardized BaseProvider without caching
+/// Uses proper state management with loading, success, and error states
 class ExploreProvider extends BaseProvider {
-  ExploreProvider(ApiService api) : super(api);
+  ExploreProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  // Use inherited loading/error state from BaseProvider
-  // isLoading, error, hasError are available from BaseProvider
-
   PagedList<Property>? _properties;
   PropertySearchObject _searchObject = PropertySearchObject();
 
@@ -33,8 +30,7 @@ class ExploreProvider extends BaseProvider {
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
-  /// Fetch properties with built-in caching and pagination support
-  /// Uses BaseProvider's executeWithCache for 10-minute caching
+  /// Fetch properties with proper state management and pagination support
   Future<void> fetchProperties({bool loadMore = false}) async {
     // Skip if already loading or no more pages available for load more
     if (isLoading) return;
@@ -48,21 +44,16 @@ class ExploreProvider extends BaseProvider {
       _searchObject.page = 1;
     }
 
-    // Generate cache key based on search filters
     final searchFilters = _searchObject.toQueryParameters();
-    final cacheKey = generateCacheKey('explore_properties', searchFilters);
+    searchFilters['page'] = _searchObject.page.toString();
     
-    final pagedResult = await executeWithCache(
-      cacheKey,
-      () => api.searchAndDecode(
-        'properties/search',
+    final queryString = api.buildQueryString(searchFilters);
+    final pagedResult = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        'properties/search$queryString',
         Property.fromJson,
-        filters: searchFilters,
-        page: _searchObject.page,
-      ),
-      cacheTtl: const Duration(minutes: 10),
-      errorMessage: 'Failed to load properties',
-    );
+      );
+    });
 
     if (pagedResult != null) {
       if (loadMore && _properties != null) {
@@ -83,7 +74,6 @@ class ExploreProvider extends BaseProvider {
   }
 
   /// Apply filters to property search and refresh results
-  /// Invalidates cache to ensure fresh results with new filters
   void applyFilters(Map<String, dynamic> filters) {
     _searchObject = PropertySearchObject(
       cityName: filters['city'],
@@ -93,9 +83,8 @@ class ExploreProvider extends BaseProvider {
       sortDescending: filters['sortDescending'],
     );
     
-    // Clear existing results and cache for new filter criteria
+    // Clear existing results for new filter criteria
     _properties = null;
-    invalidateCache('explore_properties');
     
     fetchProperties();
     debugPrint('ExploreProvider: Applied filters - city: ${filters['city']}, price: ${filters['minPrice']}-${filters['maxPrice']}');
@@ -106,9 +95,8 @@ class ExploreProvider extends BaseProvider {
   void search(String query) {
     _searchObject = PropertySearchObject(cityName: query);
     
-    // Clear existing results and cache for new search
+    // Clear existing results for new search
     _properties = null;
-    invalidateCache('explore_properties');
     
     fetchProperties();
     debugPrint('ExploreProvider: Searching for properties with query: "$query"');
@@ -123,9 +111,8 @@ class ExploreProvider extends BaseProvider {
   }
 
   /// Refresh current search results
-  /// Forces cache invalidation and reloads current search
+  /// Forces reload of current search
   Future<void> refresh() async {
-    invalidateCache('explore_properties');
     _searchObject.page = 1; // Reset to first page
     _properties = null; // Clear existing results
     await fetchProperties();
@@ -136,7 +123,6 @@ class ExploreProvider extends BaseProvider {
   void clearSearch() {
     _searchObject = PropertySearchObject();
     _properties = null;
-    invalidateCache();
     notifyListeners();
     debugPrint('ExploreProvider: Cleared search criteria and results');
   }
@@ -200,24 +186,17 @@ class ExploreProvider extends BaseProvider {
     // Clear existing results for new location search
     _properties = null;
     _searchObject = PropertySearchObject(); // Reset search object
-    invalidateCache('explore_properties');
-
-    final cacheKey = generateCacheKey('explore_nearby', filters);
     
-    final pagedResult = await executeWithCache(
-      cacheKey,
-      () => api.searchAndDecode(
-        'properties/search/nearby',
+    filters['page'] = '1';
+    filters['pageSize'] = '20';
+    
+    final queryString = api.buildQueryString(filters);
+    final pagedResult = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        'properties/search/nearby$queryString',
         Property.fromJson,
-        filters: filters,
-        page: 1,
-        pageSize: 20,
-        sortBy: sortBy ?? 'distance',
-        authenticated: false,
-      ),
-      cacheTtl: const Duration(minutes: 15), // Longer cache for location searches
-      errorMessage: 'Failed to find nearby properties',
-    );
+      );
+    });
 
     if (pagedResult != null) {
       _properties = pagedResult;
@@ -242,25 +221,17 @@ class ExploreProvider extends BaseProvider {
     // Clear existing results for featured search
     _properties = null;
     _searchObject = PropertySearchObject();
-    invalidateCache('explore_properties');
-
-    final cacheKey = generateCacheKey('explore_featured', filters);
     
-    final pagedResult = await executeWithCache(
-      cacheKey,
-      () => api.searchAndDecode(
-        'properties/featured',
+    filters['page'] = '1';
+    filters['pageSize'] = '15';
+    
+    final queryString = api.buildQueryString(filters);
+    final pagedResult = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        'properties/featured$queryString',
         Property.fromJson,
-        filters: filters,
-        page: 1,
-        pageSize: 15, // Smaller page size for featured content
-        sortBy: 'rating',
-        sortOrder: 'desc',
-        authenticated: false,
-      ),
-      cacheTtl: const Duration(hours: 1), // Longer cache for featured properties
-      errorMessage: 'Failed to load featured properties',
-    );
+      );
+    });
 
     if (pagedResult != null) {
       _properties = pagedResult;
@@ -275,29 +246,24 @@ class ExploreProvider extends BaseProvider {
   /// Returns metadata about available filters including price ranges,
   /// available cities, property types, and amenities
   Future<Map<String, dynamic>> getFilterOptions() async {
-    final cacheKey = 'filter_options';
+    final result = await executeWithState(() async {
+      try {
+        debugPrint('ExploreProvider: Fetching filter options');
+        
+        final response = await api.get(
+          'properties/filters/options',
+          authenticated: false,
+        );
+        
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return _processFilterOptions(data);
+      } catch (e) {
+        debugPrint('ExploreProvider: Error fetching filter options - $e, using defaults');
+        return _getDefaultFilterOptions();
+      }
+    });
     
-    return await executeWithCache(
-      cacheKey,
-      () async {
-        try {
-          debugPrint('ExploreProvider: Fetching filter options');
-          
-          final response = await api.get(
-            'properties/filters/options',
-            authenticated: false,
-          );
-          
-          final data = json.decode(response.body) as Map<String, dynamic>;
-          return _processFilterOptions(data);
-        } catch (e) {
-          debugPrint('ExploreProvider: Error fetching filter options - $e, using defaults');
-          return _getDefaultFilterOptions();
-        }
-      },
-      cacheTtl: const Duration(hours: 6), // Cache filter options for 6 hours
-      errorMessage: 'Using default filter options',
-    ) ?? _getDefaultFilterOptions();
+    return result ?? _getDefaultFilterOptions();
   }
 
   /// Validate and sanitize search filters before applying them
@@ -389,7 +355,7 @@ class ExploreProvider extends BaseProvider {
     
     if (!validation['isValid']) {
       final errors = validation['errors'] as List<String>;
-      setError('Filter validation failed: ${errors.join(', ')}');
+      setError(ValidationError(message: 'Filter validation failed: ${errors.join(', ')}'));
       return;
     }
 
@@ -403,9 +369,8 @@ class ExploreProvider extends BaseProvider {
       sortDescending: validatedFilters['sortDescending'],
     );
     
-    // Clear existing results and cache for new filter criteria
+    // Clear existing results for new filter criteria
     _properties = null;
-    invalidateCache('explore_properties');
     
     fetchProperties();
     debugPrint('ExploreProvider: Applied validated filters - $validatedFilters');
@@ -415,31 +380,26 @@ class ExploreProvider extends BaseProvider {
 
   /// Get detailed property information by ID
   ///
-  /// [property] - Property object to store the detailed information
+  /// [propertyId] - Property ID to fetch details for
   /// [includeReviews] - Whether to include review summary
   Future<Property?> fetchPropertyDetails(
     int propertyId, {
     bool includeReviews = true,
   }) async {
-    final cacheKey = 'property_details_$propertyId';
+    final property = await executeWithState(() async {
+      debugPrint('ExploreProvider: Fetching property details for ID: $propertyId');
+      
+      final queryParams = includeReviews ? '?includeReviews=true' : '';
+      final fetchedProperty = await api.getAndDecode(
+        'properties/$propertyId$queryParams',
+        Property.fromJson,
+        authenticated: false,
+      );
+      
+      return _enhancePropertyData(fetchedProperty);
+    });
     
-    return await executeWithCache(
-      cacheKey,
-      () async {
-        debugPrint('ExploreProvider: Fetching property details for ID: $propertyId');
-        
-        final queryParams = includeReviews ? '?includeReviews=true' : '';
-        final property = await api.getAndDecode(
-          'properties/$propertyId$queryParams',
-          Property.fromJson,
-          authenticated: false,
-        );
-        
-        return _enhancePropertyData(property);
-      },
-      cacheTtl: const Duration(minutes: 30),
-      errorMessage: 'Failed to load property details',
-    );
+    return property;
   }
 
   /// Check property availability for specific dates

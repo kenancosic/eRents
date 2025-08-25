@@ -436,15 +436,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                                 _manualCountryController.text =
                                                     _fetchedCountry ?? '';
 
-                                                print(
+                                                debugPrint(
                                                     'Selected City (from controller): ${_cityController.text}');
-                                                print(
+                                                debugPrint(
                                                     'Selected City Name (parsed): $_selectedCityName');
-                                                print(
+                                                debugPrint(
                                                     'Fetched Zip Code: $_fetchedZipCode');
-                                                print(
+                                                debugPrint(
                                                     'Fetched Country: $_fetchedCountry');
-                                                print(
+                                                debugPrint(
                                                     'Fetched State: $_fetchedState');
                                               });
                                             } else {
@@ -650,9 +650,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                               ScaffoldMessenger.of(context)
                                                   .showSnackBar(
                                                 SnackBar(
-                                                  content: Text(provider
-                                                          .error ??
-                                                      'Registration failed'),
+                                                  content: Text(provider.errorMessage.isNotEmpty
+                                                          ? provider.errorMessage
+                                                          : 'Registration failed'),
                                                 ),
                                               );
                                             }

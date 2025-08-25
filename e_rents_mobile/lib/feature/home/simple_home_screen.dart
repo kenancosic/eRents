@@ -235,8 +235,7 @@ class _SimpleHomeScreenState extends State<SimpleHomeScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (property.price != null)
-                                Text('${property.price} BAM'),
+                              Text('${property.price} BAM'),
                             ],
                           ),
                         ),

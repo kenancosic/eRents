@@ -81,13 +81,13 @@ class _SavedScreenState extends State<SavedScreen> {
       );
     }
 
-    if (provider.error != null) {
+    if (provider.hasError) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              provider.error!,
+              provider.errorMessage,
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),

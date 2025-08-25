@@ -105,7 +105,9 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
             Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
             const SizedBox(height: 16),
             Text(
-              dashboard.error ?? 'Something went wrong',
+              dashboard.errorMessage.isNotEmpty
+                ? dashboard.errorMessage
+                : 'Something went wrong',
               style: const TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
@@ -215,7 +217,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
           dashboard.nearbyProperties,
           dashboard.isLoading,
           dashboard.hasError,
-          dashboard.error,
+          dashboard.errorMessage,
           onRetry: () => dashboard.initializeDashboard(),
         ),
       ],
@@ -236,7 +238,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
           dashboard.featuredProperties,
           dashboard.isLoading,
           dashboard.hasError,
-          dashboard.error,
+          dashboard.errorMessage,
           onRetry: () => dashboard.initializeDashboard(),
         ),
       ],
@@ -258,7 +260,7 @@ class _ModernHomeScreenState extends State<ModernHomeScreen> {
           dashboard.recommendedProperties,
           dashboard.isLoading,
           dashboard.hasError,
-          dashboard.error,
+          dashboard.errorMessage,
           onRetry: () => dashboard.initializeDashboard(),
         ),
       ],

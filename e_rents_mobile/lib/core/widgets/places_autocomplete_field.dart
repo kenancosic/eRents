@@ -48,7 +48,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
 
   void _generateNewSessionToken() {
     _sessionToken = _uuid.v4();
-    print("Generated new session token: $_sessionToken");
+    debugPrint("Generated new session token: $_sessionToken");
   }
 
   @override
@@ -139,7 +139,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
     } else {
       // Handle error or no details, perhaps keep the suggestion description
       // textForController is already suggestion.description
-      print("Failed to get place details for ${suggestion.description}");
+      debugPrint("Failed to get place details for ${suggestion.description}");
     }
 
     widget.controller.text =

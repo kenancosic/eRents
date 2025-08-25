@@ -89,7 +89,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (propertyProvider.error != null && propertyProvider.property == null) {
+              if (propertyProvider.hasError && propertyProvider.property == null) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -97,7 +97,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       const Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
                       Text(
-                        propertyProvider.error ?? 'Failed to load property',
+                        propertyProvider.errorMessage.isNotEmpty
+                          ? propertyProvider.errorMessage
+                          : 'Failed to load property',
                         style: const TextStyle(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),

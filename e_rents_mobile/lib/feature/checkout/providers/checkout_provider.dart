@@ -2,19 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 
 /// Provider for managing checkout flow and payment processing
-/// Extracted from CheckoutScreen to separate business logic from UI
-/// Uses BaseProvider for consistent state management and API handling
+/// Refactored to use new standardized BaseProvider without caching
+/// Uses proper state management with loading, success, and error states
 class CheckoutProvider extends BaseProvider {
-  CheckoutProvider(ApiService api) : super(api);
+  CheckoutProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  // Use inherited loading/error state from BaseProvider
-  // isLoading, error, hasError are available from BaseProvider
 
   // Payment and booking state
   String _selectedPaymentMethod = 'PayPal';
@@ -125,7 +122,7 @@ class CheckoutProvider extends BaseProvider {
       throw Exception('Invalid form data - cannot process payment');
     }
 
-    return await executeWithState(() async {
+    final success = await executeWithStateForSuccess(() async {
       // Create booking request payload
       final bookingData = {
         'propertyId': _currentProperty!.propertyId,
@@ -150,9 +147,9 @@ class CheckoutProvider extends BaseProvider {
       
       // Clear checkout session after successful payment
       _clearCheckoutSession();
-      
-      return true;
-    }) ?? false;
+    }, errorMessage: 'Failed to process payment');
+
+    return success;
   }
 
   /// Calculate price breakdown for display

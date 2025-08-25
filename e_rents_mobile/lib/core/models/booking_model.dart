@@ -158,4 +158,54 @@ class Booking {
     DateTime now = DateTime.now();
     return startDate.isBefore(now) && endDate!.isAfter(now);
   }
+
+  Booking copyWith({
+    int? bookingId,
+    int? propertyId,
+    int? userId,
+    String? propertyName,
+    String? propertyImageUrl,
+    String? propertyThumbnailUrl,
+    DateTime? startDate,
+    DateTime? endDate,
+    DateTime? minimumStayEndDate,
+    double? totalPrice,
+    double? dailyRate,
+    BookingStatus? status,
+    String? currency,
+    DateTime? bookingDate,
+    String? reviewContent,
+    int? reviewRating,
+    String? paymentMethod,
+    String? paymentStatus,
+    String? paymentReference,
+    int? numberOfGuests,
+    String? specialRequests,
+    int? bookingStatusId,
+  }) {
+    return Booking(
+      bookingId: bookingId ?? this.bookingId,
+      propertyId: propertyId ?? this.propertyId,
+      userId: userId ?? this.userId,
+      propertyName: propertyName ?? this.propertyName,
+      propertyImageUrl: propertyImageUrl ?? this.propertyImageUrl,
+      propertyThumbnailUrl: propertyThumbnailUrl ?? this.propertyThumbnailUrl,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      minimumStayEndDate: minimumStayEndDate ?? this.minimumStayEndDate,
+      totalPrice: totalPrice ?? this.totalPrice,
+      dailyRate: dailyRate ?? this.dailyRate,
+      status: status ?? this.status,
+      currency: currency ?? this.currency,
+      bookingDate: bookingDate ?? this.bookingDate,
+      reviewContent: reviewContent ?? this.reviewContent,
+      reviewRating: reviewRating ?? this.reviewRating,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      paymentReference: paymentReference ?? this.paymentReference,
+      numberOfGuests: numberOfGuests ?? this.numberOfGuests,
+      specialRequests: specialRequests ?? this.specialRequests,
+      bookingStatusId: bookingStatusId ?? this.bookingStatusId,
+    );
+  }
 }

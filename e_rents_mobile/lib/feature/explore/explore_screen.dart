@@ -108,8 +108,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       builder: (context, provider, child) {
         final properties = provider.properties?.items ?? [];
         final isLoading = provider.isLoading;
-        final hasError = provider.error != null;
-        final errorMessage = provider.error;
+        final hasError = provider.hasError;
+        final errorMessage = provider.errorMessage;
 
         final searchBar = CustomSearchBar(
           onSearchChanged: (query) => provider.search(query),

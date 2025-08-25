@@ -1,18 +1,17 @@
 import 'dart:convert';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
 
 class AuthProvider extends BaseProvider {
   final SecureStorageService _secureStorageService;
 
-  AuthProvider(ApiService apiService, this._secureStorageService) : super(apiService);
+  AuthProvider(super.api, this._secureStorageService);
 
   // Use inherited loading/error state from BaseProvider
   // isLoading, error, hasError are available
 
-  bool get isAuthenticated => _secureStorageService.getToken() != null;
+  bool get isAuthenticated => _secureStorageService.getToken() == null;
 
   Future<bool> login(String email, String password) async {
     return await executeWithStateAndMessage(() async {
@@ -28,15 +27,15 @@ class AuthProvider extends BaseProvider {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        if (data.containsKey('token')) {
+        if (data.containsKey('token') && data['token'] is String) {
           await _secureStorageService.storeToken(data['token']);
           debugPrint('AuthProvider: Login successful for $email');
           return true;
         }
       }
       
-      throw Exception('Invalid response from server');
-    }, 'Login failed. Please check your credentials.') ?? false;
+      throw Exception('Invalid response from server'); // Or a more specific error
+    }, 'Login failed. Please check your credentials.') as bool;
   }
 
   Future<bool> register(Map<String, dynamic> userData) async {
@@ -53,7 +52,7 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Registration failed');
-    }, 'Registration failed. Please try again.') ?? false;
+    }, 'Registration failed. Please try again.') as bool;
   }
 
   Future<void> logout() async {
@@ -77,7 +76,7 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Failed to send reset email');
-    }, 'Failed to send password reset email.') ?? false;
+    }, 'Failed to send password reset email.') as bool;
   }
 
   Future<bool> resetPassword(String token, String newPassword) async {
@@ -97,6 +96,6 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Password reset failed');
-    }, 'Failed to reset password.') ?? false;
+    }, 'Failed to reset password.') as bool;
   }
 }

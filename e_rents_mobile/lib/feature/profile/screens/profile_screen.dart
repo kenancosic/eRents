@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -23,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     // Initialize user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileProvider>().initUser();
+      context.read<UserProfileProvider>().initUser();
     });
   }
 
@@ -39,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final File imageFile = File(pickedFile.path);
         // Upload image using provider
         final success = await context
-            .read<ProfileProvider>()
+            .read<UserProfileProvider>()
             .uploadProfileImage(imageFile);
 
         if (!success && mounted) {
@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (shouldLogout == true && mounted) {
-      await context.read<ProfileProvider>().logout();
+      await context.read<UserProfileProvider>().logout();
       // Navigate to login screen
       if (mounted) {
         context.go('/login');
@@ -91,7 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ProfileProvider>(
+    return Consumer<UserProfileProvider>(
       builder: (context, profileProvider, _) {
         final user = profileProvider.user;
         final isLoading = profileProvider.isLoading;
@@ -245,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Helper method to build a switch list tile for public profile
   Widget _buildSwitchListTile({
     required BuildContext context,
-    required ProfileProvider profileProvider,
+    required UserProfileProvider profileProvider,
   }) {
     final user = profileProvider.user;
     final bool isPublic = user?.isPublic ?? false;
@@ -284,7 +284,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
         if (confirm == true) {
-          final success = await profileProvider.updateUserPublicStatus(value);
+          String? cityToSend;
+          if (value) {
+            // Making public: ensure city present or ask for it
+            final currentCity = user?.address?.city?.trim() ?? '';
+            if (currentCity.isEmpty) {
+              final controller = TextEditingController();
+              final entered = await showDialog<String?>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Enter your city'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(hintText: 'City'),
+                    autofocus: true,
+                  ),
+                  actions: [
+                    CustomOutlinedButton.compact(
+                      label: 'Cancel',
+                      isLoading: false,
+                      onPressed: () => ctx.pop(null),
+                    ),
+                    CustomButton.compact(
+                      label: 'Save',
+                      isLoading: false,
+                      onPressed: () => ctx.pop(controller.text.trim()),
+                    ),
+                  ],
+                ),
+              );
+              if ((entered ?? '').isEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('City is required to make your profile public.')),
+                  );
+                }
+                return; // Abort toggle
+              }
+              cityToSend = entered;
+            }
+          }
+
+          final success = await profileProvider.updateUserPublicStatus(value, city: cityToSend);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
-import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/feature/chat/models/chat_room.dart';
 import 'package:e_rents_mobile/feature/chat/models/chat_message.dart';
 
 /// Chat provider for managing chat rooms and messages
-/// Migrated from ChangeNotifier to BaseProvider for consistent state management
-/// Uses built-in caching, error handling, and loading states
+/// Migrated to use new standardized BaseProvider without caching
+/// Uses proper state management and error handling
 class ChatProvider extends BaseProvider {
-  ChatProvider(ApiService api) : super(api);
+  ChatProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
   // Use inherited loading/error state from BaseProvider for general operations
-  // isLoading, error, hasError are available from BaseProvider
+  // isLoading, error, isError are available from BaseProvider
 
   // Chat rooms state
   List<ChatRoom> _chatRooms = [];
@@ -29,7 +28,7 @@ class ChatProvider extends BaseProvider {
   // For backward compatibility, provide isLoadingRooms getter
   // This delegates to BaseProvider's isLoading for chat rooms operations
   bool get isLoadingRooms => isLoading;
-  String? get roomsError => error;
+  String? get roomsError => error?.message;
 
   List<ChatMessage> messagesForRoom(String roomId) => _messages[roomId] ?? [];
   bool isLoadingMessages(String roomId) => _isLoadingMessages[roomId] ?? false;
@@ -41,31 +40,25 @@ class ChatProvider extends BaseProvider {
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
-  /// Fetch chat rooms with built-in caching and error handling
-  /// Uses BaseProvider's executeWithCache for 5-minute caching
+  /// Fetch chat rooms with proper error handling
   Future<void> fetchChatRooms({bool forceRefresh = false}) async {
-    if (!forceRefresh) {
-      // Check if we have valid cached data
-      final cachedRooms = getCache<List<ChatRoom>>('chat_rooms');
-      if (cachedRooms != null) {
-        _chatRooms = cachedRooms;
-        return;
-      }
+    // If not forcing refresh and we already have data, skip
+    if (!forceRefresh && _chatRooms.isNotEmpty) {
+      return;
     }
 
-    final rooms = await executeWithCache(
-      'chat_rooms',
+    final rooms = await executeWithState(
       () => api.getListAndDecode('chat/rooms', ChatRoom.fromJson),
-      cacheTtl: const Duration(minutes: 5),
-      errorMessage: 'Failed to load chat rooms',
     );
 
-    _chatRooms = rooms ?? [];
-    debugPrint('ChatProvider: Loaded ${_chatRooms.length} chat rooms');
+    if (rooms != null) {
+      _chatRooms = rooms;
+      debugPrint('ChatProvider: Loaded ${_chatRooms.length} chat rooms');
+    }
   }
 
   /// Fetch messages for a specific room
-  /// Uses per-room loading states and caching for better UX
+  /// Uses per-room loading states for better UX
   Future<void> fetchMessages(String roomId) async {
     _isLoadingMessages[roomId] = true;
     _messagesError[roomId] = null;
@@ -94,7 +87,7 @@ class ChatProvider extends BaseProvider {
   /// Send a message to a specific room
   /// Uses BaseProvider's executeWithState for proper error handling
   Future<bool> sendMessage(String roomId, String text) async {
-    return await executeWithState(() async {
+    final success = await executeWithStateForSuccess(() async {
       // Send message via API
       final newMessage = await api.postAndDecode(
         'chat/rooms/$roomId/messages',
@@ -108,16 +101,14 @@ class ChatProvider extends BaseProvider {
       } else {
         _messages[roomId] = [newMessage];
       }
-
-      // Invalidate chat rooms cache to refresh lastMessage
-      invalidateCache('chat_rooms');
       
       // Optionally refresh chat rooms to update lastMessage
-      fetchChatRooms(forceRefresh: true);
+      unawaited(fetchChatRooms(forceRefresh: true));
 
       debugPrint('ChatProvider: Message sent successfully to room $roomId');
-      return true;
-    }) ?? false; // Return false if executeWithState returns null (error case)
+    }, errorMessage: 'Failed to send message');
+
+    return success;
   }
 
   /// Clear messages for a specific room
@@ -131,7 +122,6 @@ class ChatProvider extends BaseProvider {
 
   /// Refresh all data (rooms and messages)
   Future<void> refreshAllData() async {
-    invalidateCache(); // Clear all cached data
     await fetchChatRooms(forceRefresh: true);
     
     // Refresh messages for currently loaded rooms
@@ -140,5 +130,13 @@ class ChatProvider extends BaseProvider {
     }
     
     debugPrint('ChatProvider: Refreshed all chat data');
+  }
+
+  /// Helper method for fire-and-forget async operations
+  void unawaited(Future<void> future) {
+    // Intentionally not awaiting this future
+    future.catchError((error) {
+      debugPrint('ChatProvider: Background operation failed: $error');
+    });
   }
 }

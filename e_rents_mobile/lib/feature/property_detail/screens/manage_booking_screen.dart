@@ -8,7 +8,7 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_profile_provider.dart';
 
 class ManageBookingScreen extends StatefulWidget {
   final int propertyId;
@@ -175,7 +175,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         LeaseExtensionRequest(
           bookingId: widget.bookingId,
           propertyId: widget.propertyId,
-          tenantId: context.read<ProfileProvider>().currentUser?.userId ?? 1,
+                    tenantId: context.read<UserProfileProvider>().user?.userId ?? 1,
           newEndDate: endExtension,
           reason:
               'Booking extension for additional ${_selectedExtensionDates.length} days',

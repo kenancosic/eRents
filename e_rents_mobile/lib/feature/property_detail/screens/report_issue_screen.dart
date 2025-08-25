@@ -9,7 +9,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/feature/profile/providers/profile_provider.dart';
+import 'package:e_rents_mobile/feature/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/feature/property_detail/providers/property_detail_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
@@ -116,8 +116,8 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
     try {
       // Get current user from provider
-      final userProvider = context.read<ProfileProvider>();
-      final currentUser = userProvider.currentUser;
+      final userProvider = context.read<UserProfileProvider>();
+      final currentUser = userProvider.user;
 
       if (currentUser == null || currentUser.userId == null) {
         if (mounted) {

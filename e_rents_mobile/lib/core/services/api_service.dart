@@ -69,7 +69,7 @@ class ApiService {
 
         _handleResponse(response);
         return response;
-      } catch (e, stackTrace) {
+      } catch (e) {
         // Simple logging for mobile
         debugPrint('ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
         retryCount++;
@@ -226,7 +226,7 @@ class ApiService {
         final response = await http.Response.fromStream(await request.send());
         _handleResponse(response);
         return response;
-      } catch (e, stackTrace) {
+      } catch (e) {
         debugPrint(
           'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
         retryCount++;

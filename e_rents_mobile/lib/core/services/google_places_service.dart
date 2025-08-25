@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // TODO: Consider using flutter_dotenv to load API key from .env file
@@ -18,7 +19,7 @@ class GooglePlacesService {
   GooglePlacesService() {
     // It's good practice to check if the API key is loaded, though for this example it's hardcoded.
     if (_apiKey == '') {
-      print(
+      debugPrint(
           'WARNING: Google Places API Key is not set. Please configure it in google_places_service.dart');
     }
   }
@@ -58,16 +59,16 @@ class GooglePlacesService {
           return data['predictions'] as List<dynamic>;
         }
         // Handle other statuses like ZERO_RESULTS, REQUEST_DENIED, etc.
-        print(
+        debugPrint(
             'Google Places Autocomplete API Error: ${data['status']} - ${data['error_message']}');
         return [];
       } else {
         // Handle HTTP error
-        print('HTTP Error fetching autocomplete: ${response.statusCode}');
+        debugPrint('HTTP Error fetching autocomplete: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      print('Exception fetching autocomplete: $e');
+      debugPrint('Exception fetching autocomplete: $e');
       return [];
     }
   }
@@ -103,16 +104,16 @@ class GooglePlacesService {
           return data['result'] as Map<String, dynamic>;
         }
         // Handle other statuses
-        print(
+        debugPrint(
             'Google Places Details API Error: ${data['status']} - ${data['error_message']}');
         return null;
       } else {
         // Handle HTTP error
-        print('HTTP Error fetching place details: ${response.statusCode}');
+        debugPrint('HTTP Error fetching place details: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Exception fetching place details: $e');
+      debugPrint('Exception fetching place details: $e');
       return null;
     }
   }

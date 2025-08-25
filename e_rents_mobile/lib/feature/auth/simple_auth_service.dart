@@ -21,8 +21,10 @@ class SimpleAuthService {
   Future<bool> signIn(String email, String password) async {
     try {
       final response = await _apiService.post(
-        '/auth/login',
+        '/api/auth/login',
         {
+          // Support both username or email on backend
+          'username': email,
           'email': email,
           'password': password,
         },
