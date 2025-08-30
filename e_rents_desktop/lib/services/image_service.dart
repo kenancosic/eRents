@@ -32,7 +32,7 @@ class ImageService {
       params['maintenanceIssueId'] = maintenanceIssueId.toString();
     }
     final query = params.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&');
-    final resp = await api.get('api/Images?$query');
+    final resp = await api.get('/Images?$query');
     final decoded = jsonDecode(resp.body);
 
     // Backend returns PagedResponse<ImageResponse> with Items property
@@ -47,7 +47,7 @@ class ImageService {
     if (cached != null) return cached;
 
     // Always fetch full image data
-    final resp = await api.get('api/Images/$id');
+    final resp = await api.get('/Images/$id');
     final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
     final image = model.Image.fromJson(decoded);
 
@@ -234,7 +234,7 @@ class ImageService {
       'height': height,
     }..removeWhere((key, value) => value == null);
 
-    final resp = await api.post('api/Images', body);
+    final resp = await api.post('/Images', body);
     final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
     return model.Image.fromJson(decoded);
   }
@@ -263,7 +263,7 @@ class ImageService {
   /// Upload multiple images in one request.
   Future<List<model.Image>> uploadImages(List<_ImageUpload> images) async {
     final payload = images.map((i) => i.toJson()).toList();
-    final resp = await api.postJson('api/Images/bulk', payload);
+    final resp = await api.postJson('/Images/bulk', payload);
     final decoded = jsonDecode(resp.body) as List<dynamic>;
     return decoded.map((e) => model.Image.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
@@ -278,8 +278,8 @@ class ImageService {
     Widget? errorWidget,
   }) {
     // If path points to Images API, use JSON->bytes flow instead of ApiService.buildImage
-    if (pathOrUrl.startsWith('/api/Images/')) {
-      final idStr = pathOrUrl.replaceFirst('/api/Images/', '');
+    if (pathOrUrl.startsWith('/Images/')) {
+      final idStr = pathOrUrl.replaceFirst('/Images/', '');
       final id = int.tryParse(idStr);
       if (id != null) {
         return buildImageById(

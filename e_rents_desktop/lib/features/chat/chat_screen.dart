@@ -1,4 +1,4 @@
-import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart' hide log;
+import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_contact.dart';
 import 'package:e_rents_desktop/features/chat/widgets/chat_input.dart';
@@ -209,7 +209,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             height: 40,
                             child: (selectedContact.profileImageId != null)
                                 ? CustomAvatar(
-                                    imageUrl: '/api/Images/${selectedContact.profileImageId}',
+                                    imageUrl: 'Images/${selectedContact.profileImageId}',
                                     size: 40,
                                     borderWidth: 0,
                                   )

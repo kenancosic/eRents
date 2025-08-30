@@ -48,7 +48,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
     // Determine which image to show
     String? imageUrl;
     if (user?.profileImageId != null) {
-      imageUrl = '/api/Images/${user!.profileImageId}';
+      imageUrl = 'Images/${user!.profileImageId}';
     }
 
     return Container(
@@ -163,27 +163,76 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
             ),
           ),
 
-          // Edit Toggle Button
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha(26),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+          // Action Buttons
+          Row(
+            children: [
+              // PayPal Link/Unlink Button
+              if (user != null)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(26),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: profileProvider.isUpdatingPaypal
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : IconButton(
+                          onPressed: () async {
+                            if (user.isPaypalLinked) {
+                              await profileProvider.unlinkPaypal();
+                            } else {
+                              await profileProvider.startPayPalLinking(context);
+                            }
+                          },
+                          icon: Icon(
+                            user.isPaypalLinked ? Icons.link_off : Icons.link,
+                            color: user.isPaypalLinked
+                                ? Colors.red
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                          tooltip: user.isPaypalLinked
+                              ? 'Unlink PayPal Account'
+                              : 'Link PayPal Account',
+                        ),
                 ),
-              ],
-            ),
-            child: IconButton(
-              onPressed: profileProvider.toggleEditing,
-              icon: Icon(
-                profileProvider.isEditing ? Icons.edit_off : Icons.edit,
-                color: Theme.of(context).colorScheme.primary,
+              const SizedBox(width: 16),
+              // Edit Toggle Button
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(26),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  onPressed: profileProvider.toggleEditing,
+                  icon: Icon(
+                    profileProvider.isEditing ? Icons.edit_off : Icons.edit,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  tooltip:
+                      profileProvider.isEditing ? 'Stop Editing' : 'Edit Profile',
+                ),
               ),
-              tooltip: profileProvider.isEditing ? 'Stop Editing' : 'Edit Profile',
-            ),
+            ],
           ),
         ],
       ),

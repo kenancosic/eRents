@@ -33,7 +33,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> login(String email, String password) async {
     final result = await executeWithRetry<bool>(() async {
       final httpResp = await api.postJson(
-        '/api/Auth/Login',
+        '/Auth/Login',
         {
           'username': email,
           'password': password,
@@ -73,7 +73,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> register(RegisterRequestModel request) async {
     final ok = await executeWithRetry<bool>(() async {
       await api.postJson(
-        '/api/Auth/Register',
+        '/Auth/Register',
         request.toJson(),
         authenticated: false,
       );
@@ -87,7 +87,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> forgotPassword(String email) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        '/api/Auth/ForgotPassword',
+        'Auth/ForgotPassword',
         {'email': email},
         authenticated: false,
       );
@@ -99,7 +99,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> verifyCode(String email, String code) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        '/api/Auth/verify',
+        'Auth/verify',
         {
           'email': email,
           'code': code,
@@ -114,7 +114,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> resetPassword(String email, String code, String newPassword) async {
     final ok = await executeWithRetry<bool>(() async {
       await api.postJson(
-        '/api/Auth/ResetPassword',
+        'Auth/ResetPassword',
         {
           'email': email,
           'resetCode': code,

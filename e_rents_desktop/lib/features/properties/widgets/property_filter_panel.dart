@@ -4,7 +4,7 @@ import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/base/crud/list_screen.dart' show FilterController;
-import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/base/lookups/lookup_key.dart';
 import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
 
 // A data class to hold the state of the filters

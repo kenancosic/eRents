@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/models/property.dart';
+
+/// A reusable widget for selecting unavailable date range for a property
+class PropertyUnavailableDateFields extends StatefulWidget {
+  final Property? property;
+  final Function(DateTime?, DateTime?) onDateChanged;
+
+  const PropertyUnavailableDateFields({super.key, required this.property, required this.onDateChanged});
+
+  @override
+  State<PropertyUnavailableDateFields> createState() => _PropertyUnavailableDateFieldsState();
+}
+
+class _PropertyUnavailableDateFieldsState extends State<PropertyUnavailableDateFields> {
+  DateTime? _unavailableFrom;
+  DateTime? _unavailableTo;
+
+  @override
+  void initState() {
+    super.initState();
+    _unavailableFrom = widget.property?.unavailableFrom;
+    _unavailableTo = widget.property?.unavailableTo;
+  }
+
+  Future<void> _selectDate(bool isFrom) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    
+    if (picked != null) {
+      setState(() {
+        if (isFrom) {
+          _unavailableFrom = picked;
+        } else {
+          _unavailableTo = picked;
+        }
+        widget.onDateChanged(_unavailableFrom, _unavailableTo);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Unavailable Date Range',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => _selectDate(true),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Unavailable From',
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(_unavailableFrom == null
+                      ? 'Select date'
+                      : '${_unavailableFrom!.year}-${_unavailableFrom!.month.toString().padLeft(2, '0')}-${_unavailableFrom!.day.toString().padLeft(2, '0')}'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: () => _selectDate(false),
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Unavailable To',
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(_unavailableTo == null
+                      ? 'Select date'
+                      : '${_unavailableTo!.year}-${_unavailableTo!.month.toString().padLeft(2, '0')}-${_unavailableTo!.day.toString().padLeft(2, '0')}'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}

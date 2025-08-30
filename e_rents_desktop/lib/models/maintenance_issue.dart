@@ -75,13 +75,43 @@ class MaintenanceIssue {
     );
   }
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
+  Map<String, dynamic> toJson() {
+    // Backend expects numeric enum values (System.Text.Json default)
+    // Priority: Low=1, Medium=2, High=3, Emergency=4
+    // Status: Pending=1, InProgress=2, Completed=3, Cancelled=4
+    int priorityToWire(MaintenanceIssuePriority p) {
+      switch (p) {
+        case MaintenanceIssuePriority.low:
+          return 1;
+        case MaintenanceIssuePriority.medium:
+          return 2;
+        case MaintenanceIssuePriority.high:
+          return 3;
+        case MaintenanceIssuePriority.emergency:
+          return 4;
+      }
+    }
+
+    int statusToWire(MaintenanceIssueStatus s) {
+      switch (s) {
+        case MaintenanceIssueStatus.pending:
+          return 1;
+        case MaintenanceIssueStatus.inProgress:
+          return 2;
+        case MaintenanceIssueStatus.completed:
+          return 3;
+        case MaintenanceIssueStatus.cancelled:
+          return 4;
+      }
+    }
+
+    return <String, dynamic>{
         'maintenanceIssueId': maintenanceIssueId,
         'propertyId': propertyId,
         'title': title,
         'description': description,
-        'priority': priority.name,
-        'status': status.name,
+        'priority': priorityToWire(priority),
+        'status': statusToWire(status),
         'resolvedAt': resolvedAt?.toIso8601String(),
         'cost': cost,
         'assignedToUserId': assignedToUserId,
@@ -94,6 +124,7 @@ class MaintenanceIssue {
         'createdBy': createdBy,
         'modifiedBy': modifiedBy,
       };
+  }
 
   // Factory constructor for empty instance
   factory MaintenanceIssue.empty() => MaintenanceIssue(

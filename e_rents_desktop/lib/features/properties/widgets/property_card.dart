@@ -209,8 +209,7 @@ class PropertyCard extends StatelessWidget {
       spacing: 12,
       runSpacing: 4,
       children: [
-        _infoChip(Icons.bed_outlined, '${property.bedrooms} beds'),
-        _infoChip(Icons.bathtub_outlined, '${property.bathrooms} baths'),
+        _infoChip(Icons.bed_outlined, '${property.rooms} rooms'),
         _infoChip(Icons.square_foot_outlined, '${property.area} m²'),
       ],
     );

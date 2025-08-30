@@ -18,6 +18,21 @@ class FilterController {
   Map<String, dynamic> getFilters() => _getFilters?.call() ?? const <String, dynamic>{};
   void resetFields() => _resetFields?.call();
 }
+/// Public controller to allow parent widgets to trigger ListScreen refreshes
+class ListController {
+  Future<void> Function()? _refresh;
+
+  void bind({required Future<void> Function() refresh}) {
+    _refresh = refresh;
+  }
+
+  Future<void> refresh() async {
+    final fn = _refresh;
+    if (fn != null) {
+      await fn();
+    }
+  }
+}
 class _ListContentState<T> extends ChangeNotifier {
   List<T> _items = const [];
   bool _isLoading = false;
@@ -144,6 +159,9 @@ class ListScreen<T> extends StatefulWidget {
   /// existing Scaffold (e.g., inside TabBarView) without duplicating AppBars.
   final bool embedded;
 
+  /// Optional controller to trigger a refresh from parent widgets.
+  final ListController? controller;
+
   const ListScreen({
     super.key,
     required this.title,
@@ -165,6 +183,7 @@ class ListScreen<T> extends StatefulWidget {
     this.inlineSearchHint = 'Search...',
     this.showResetButton = true,
     this.embedded = false,
+    this.controller,
   });
 
   @override
@@ -185,6 +204,16 @@ class _ListScreenState<T> extends State<ListScreen<T>> {
     _loadItems();
     if (widget.enablePagination) {
       _scrollController.addListener(_scrollListener);
+    }
+    // Bind external controller if provided
+    widget.controller?.bind(refresh: _refresh);
+  }
+
+  @override
+  void didUpdateWidget(covariant ListScreen<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller && widget.controller != null) {
+      widget.controller!.bind(refresh: _refresh);
     }
   }
 

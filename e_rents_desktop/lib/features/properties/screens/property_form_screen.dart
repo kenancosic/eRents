@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/enums/property_status.dart';
+import 'package:e_rents_desktop/models/enums/renting_type.dart';
 import 'package:e_rents_desktop/base/crud/form_screen.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as img_input;
+import 'package:e_rents_desktop/widgets/inputs/address_input.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_status_chip.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_renting_type_dropdown.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_unavailable_date_fields.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   final int? propertyId;
@@ -22,6 +28,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
   bool _disposed = false;
   int _loadToken = 0; // prevents late completions from earlier requests
   List<img_input.ImageInfo> _pickedImages = [];
+  final GlobalKey<_PropertyFormFieldsState> _fieldsKey = GlobalKey<_PropertyFormFieldsState>();
 
   @override
   void initState() {
@@ -110,7 +117,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _PropertyFormFields(property: property),
+                _PropertyFormFields(key: _fieldsKey, property: property),
                 const SizedBox(height: 16),
                 Text('Images', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
@@ -128,26 +135,16 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           ),
         );
       },
-      validator: (property) {
-        if (property.name.isEmpty) {
-          return 'Title is required';
-        }
-        if (property.address?.getCityStateCountry().isEmpty ?? true) {
-          return 'Location is required';
-        }
-        if (property.price <= 0) {
-          return 'Price must be greater than 0';
-        }
-        return null;
-      },
       onSubmit: (property) async {
         // Use PropertyProvider instead of mock save operation
         try {
+          // Build DTO from current form field values (works for both create/edit)
+          final dto = _fieldsKey.currentState?.buildUpdatedProperty(base: _initialProperty ?? property) ?? property;
           Property? saved;
-          if (property.propertyId == 0) {
-            saved = await propertyProvider.createProperty(property);
+          if ((dto.propertyId) == 0) {
+            saved = await propertyProvider.createProperty(dto);
           } else {
-            saved = await propertyProvider.updateProperty(property);
+            saved = await propertyProvider.updateProperty(dto);
           }
 
           if (saved == null) return false;
@@ -199,7 +196,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 class _PropertyFormFields extends StatefulWidget {
   final Property? property;
   
-  const _PropertyFormFields({required this.property});
+  const _PropertyFormFields({Key? key, required this.property}) : super(key: key);
 
   @override
   State<_PropertyFormFields> createState() => _PropertyFormFieldsState();
@@ -208,27 +205,48 @@ class _PropertyFormFields extends StatefulWidget {
 class _PropertyFormFieldsState extends State<_PropertyFormFields> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
-  late TextEditingController _locationController;
   late TextEditingController _priceController;
-  late TextEditingController _statusController;
+  late PropertyStatus _selectedStatus;
+  late RentingType _selectedRentingType;
+  DateTime? _unavailableFrom;
+  DateTime? _unavailableTo;
+  
+  // Address controllers
+  late TextEditingController _streetNameController;
+  late TextEditingController _streetNumberController;
+  late TextEditingController _cityController;
+  late TextEditingController _postalCodeController;
+  late TextEditingController _countryController;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.property?.name ?? '');
     _descriptionController = TextEditingController(text: widget.property?.description ?? '');
-    _locationController = TextEditingController(text: widget.property?.address?.getCityStateCountry() ?? '');
     _priceController = TextEditingController(text: widget.property?.price.toString() ?? '');
-    _statusController = TextEditingController(text: widget.property?.status.displayName ?? 'Available');
+    _selectedStatus = widget.property?.status ?? PropertyStatus.available;
+    _selectedRentingType = widget.property?.rentingType ?? RentingType.daily;
+    _unavailableFrom = widget.property?.unavailableFrom;
+    _unavailableTo = widget.property?.unavailableTo;
+    
+    // Initialize address controllers
+    _streetNameController = TextEditingController(text: widget.property?.address?.streetLine1 ?? '');
+    _streetNumberController = TextEditingController(text: widget.property?.address?.streetLine2 ?? '');
+    _cityController = TextEditingController(text: widget.property?.address?.city ?? '');
+    _postalCodeController = TextEditingController(text: widget.property?.address?.postalCode ?? '');
+    _countryController = TextEditingController(text: widget.property?.address?.country ?? '');
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _locationController.dispose();
     _priceController.dispose();
-    _statusController.dispose();
+    _streetNameController.dispose();
+    _streetNumberController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -261,18 +279,19 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
             maxLines: 3,
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _locationController,
-            decoration: const InputDecoration(
-              labelText: 'Location',
-              border: OutlineInputBorder(),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Location is required';
-              }
-              return null;
+          AddressInput(
+            initialAddress: widget.property?.address,
+            onAddressSelected: (address) {
+              // Handle address selection if needed
             },
+            onManualAddressChanged: () {
+              // Handle manual address changes
+            },
+            streetNameController: _streetNameController,
+            streetNumberController: _streetNumberController,
+            cityController: _cityController,
+            postalCodeController: _postalCodeController,
+            countryController: _countryController,
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -296,15 +315,97 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
             },
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _statusController,
-            decoration: const InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(),
-            ),
+          PropertyRentingTypeDropdown(
+            selected: _selectedRentingType,
+            onChanged: (rt) {
+              setState(() => _selectedRentingType = rt);
+            },
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<bool>(
+            future: _hasTenant(widget.property),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const CircularProgressIndicator();
+              }
+              final hasTenant = snapshot.data ?? false;
+              return PropertyStatusTenantAwareDropdown(
+                selected: _selectedStatus,
+                hasTenant: hasTenant,
+                onChanged: (status) {
+                  setState(() => _selectedStatus = status);
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          PropertyUnavailableDateFields(
+            property: widget.property,
+            onDateChanged: (from, to) {
+              setState(() {
+                _unavailableFrom = from;
+                _unavailableTo = to;
+              });
+            },
           ),
         ],
       ),
+    );
+  }
+
+  // Check if property has an active tenant
+  Future<bool> _hasTenant(Property? property) async {
+    if (property == null) return false;
+    
+    try {
+      final provider = Provider.of<PropertyProvider>(context, listen: false);
+      final tenantSummary = await provider.fetchCurrentTenantSummary(property.propertyId);
+      return tenantSummary != null;
+    } catch (e) {
+      // If we can't determine tenant status, default to false for safety
+      return false;
+    }
+  }
+
+  // Build a new Property using current field values, preserving unspecified fields from base
+  Property buildUpdatedProperty({Property? base}) {
+    final parsedPrice = double.tryParse(_priceController.text.trim()) ?? (base?.price ?? 0.0);
+    
+    // Build address from form fields
+    final address = Address(
+      streetLine1: _streetNameController.text.trim().isNotEmpty ? _streetNameController.text.trim() : null,
+      streetLine2: _streetNumberController.text.trim().isNotEmpty ? _streetNumberController.text.trim() : null,
+      city: _cityController.text.trim().isNotEmpty ? _cityController.text.trim() : null,
+      state: base?.address?.state, // State is not in the form, preserve from base if exists
+      country: _countryController.text.trim().isNotEmpty ? _countryController.text.trim() : null,
+      postalCode: _postalCodeController.text.trim().isNotEmpty ? _postalCodeController.text.trim() : null,
+      latitude: base?.address?.latitude, // Latitude is not in the form, preserve from base if exists
+      longitude: base?.address?.longitude, // Longitude is not in the form, preserve from base if exists
+    );
+    
+    return Property(
+      propertyId: base?.propertyId ?? 0,
+      ownerId: base?.ownerId ?? 0,
+      name: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      price: parsedPrice,
+      currency: base?.currency ?? 'BAM',
+      facilities: base?.facilities,
+      status: _selectedStatus,
+      dateAdded: base?.dateAdded,
+      averageRating: base?.averageRating,
+      imageIds: base?.imageIds ?? const [],
+      amenityIds: base?.amenityIds ?? const [],
+      address: address,
+      propertyType: base?.propertyType,
+      rentingType: _selectedRentingType,
+      rooms: base?.rooms,
+      area: base?.area,
+      minimumStayDays: base?.minimumStayDays,
+      requiresApproval: base?.requiresApproval ?? false,
+      unavailableFrom: _unavailableFrom,
+      unavailableTo: _unavailableTo,
+      coverImageId: base?.coverImageId,
     );
   }
 }

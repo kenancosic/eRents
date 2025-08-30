@@ -3,8 +3,8 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/enums.dart';
 import 'package:e_rents_desktop/utils/name_normalizer.dart';
-import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
-import 'package:e_rents_desktop/core/lookups/lookup_registry.dart';
+import 'package:e_rents_desktop/base/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/base/lookups/lookup_registry.dart';
 
 /// Refactored LookupProvider using the new base provider architecture
 /// 
@@ -23,12 +23,12 @@ class LookupProvider extends BaseProvider {
 
   // ─── Generic Enum Lookup (Phase 1) ─────────────────────────────────────
   static const Map<EnumGroup, String> _endpoints = {
-    EnumGroup.propertyType: 'api/lookup/property-types',
-    EnumGroup.rentingType: 'api/lookup/rental-types',
-    EnumGroup.propertyStatus: 'api/lookup/property-statuses',
-    EnumGroup.userType: 'api/lookup/user-types',
-    EnumGroup.bookingStatus: 'api/lookup/booking-statuses',
-    EnumGroup.amenity: 'api/lookup/amenities',
+    EnumGroup.propertyType: '/lookup/property-types',
+    EnumGroup.rentingType: '/lookup/rental-types',
+    EnumGroup.propertyStatus: '/lookup/property-statuses',
+    EnumGroup.userType: '/lookup/user-types',
+    EnumGroup.bookingStatus: '/lookup/booking-statuses',
+    EnumGroup.amenity: '/lookup/amenities',
   };
 
   // Bridge EnumGroup (legacy) to LookupKey (new unified key)
@@ -116,7 +116,7 @@ class LookupProvider extends BaseProvider {
   Future<List<LookupItem>> getMaintenanceIssuePriorities() async {
     // Not part of EnumGroup; keep direct call
     final result = await executeWithState(() async {
-      return await api.getListAndDecode('api/lookup/maintenance-issue-priorities', LookupItem.fromJson, authenticated: true);
+      return await api.getListAndDecode('/lookup/maintenance-issue-priorities', LookupItem.fromJson, authenticated: true);
     });
     return result ?? [];
   }
@@ -125,7 +125,7 @@ class LookupProvider extends BaseProvider {
   Future<List<LookupItem>> getMaintenanceIssueStatuses() async {
     // Not part of EnumGroup; keep direct call
     final result = await executeWithState(() async {
-      return await api.getListAndDecode('api/lookup/maintenance-issue-statuses', LookupItem.fromJson, authenticated: true);
+      return await api.getListAndDecode('/lookup/maintenance-issue-statuses', LookupItem.fromJson, authenticated: true);
     });
     return result ?? [];
   }

@@ -328,7 +328,7 @@ class ApiService {
     Widget? errorWidget,
   }) {
     // Hard guard: never try to render backend Images API JSON endpoints via Image.network
-    if (pathOrUrl.startsWith('/api/Images/') || pathOrUrl.contains('/api/Images/')) {
+    if (pathOrUrl.startsWith('/Images/') || pathOrUrl.contains('/Images/')) {
       log.warning('ApiService.buildImage: blocked rendering JSON endpoint $pathOrUrl');
       return SizedBox(
         width: width,

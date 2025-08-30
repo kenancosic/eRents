@@ -37,7 +37,7 @@ class HomeProvider extends BaseProvider {
       // 1) Active bookings today: StartDate <= today AND EndDate >= today
       try {
         final res = await api.get(
-          'api/Bookings?Page=1&PageSize=1&StartDateTo=${fmt(today)}&EndDateFrom=${fmt(today)}',
+          '/Bookings?Page=1&PageSize=1&StartDateTo=${fmt(today)}&EndDateFrom=${fmt(today)}',
           authenticated: true,
         );
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -49,7 +49,7 @@ class HomeProvider extends BaseProvider {
       // 2) Upcoming check-ins next 7 days: StartDate in [today, today+7], Status=Upcoming
       try {
         final res = await api.get(
-          'api/Bookings?Page=1&PageSize=1&StartDateFrom=${fmt(today)}&StartDateTo=${fmt(sevenDays)}&Status=Upcoming',
+          '/Bookings?Page=1&PageSize=1&StartDateFrom=${fmt(today)}&StartDateTo=${fmt(sevenDays)}&Status=Upcoming',
           authenticated: true,
         );
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -61,7 +61,7 @@ class HomeProvider extends BaseProvider {
       // 3) Monthly revenue: sum payment amounts for current month (Completed)
       try {
         final res = await api.get(
-          'api/Payments?Page=1&PageSize=1000&CreatedFrom=${fmt(monthStart)}&CreatedTo=${fmt(monthEnd)}&PaymentStatus=Completed',
+          '/Payments?Page=1&PageSize=1000&CreatedFrom=${fmt(monthStart)}&CreatedTo=${fmt(monthEnd)}&PaymentStatus=Completed',
           authenticated: true,
         );
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -81,7 +81,7 @@ class HomeProvider extends BaseProvider {
       // 4) Emergency maintenance issues count and list (Priority == Emergency)
       try {
         final res = await api.get(
-          'api/MaintenanceIssues?Page=1&PageSize=20&PriorityMin=Emergency&PriorityMax=Emergency&SortBy=CreatedAt&SortDescending=true',
+          '/MaintenanceIssues?Page=1&PageSize=20&PriorityMin=Emergency&PriorityMax=Emergency&SortBy=CreatedAt&SortDescending=true',
           authenticated: true,
         );
         final data = jsonDecode(res.body) as Map<String, dynamic>;

@@ -3,6 +3,8 @@ import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 
 /// MaintenanceProvider standardizes CRUD, pagination, sorting and error handling
@@ -31,8 +33,16 @@ class MaintenanceProvider extends BaseProvider {
   int _page = 1;
   int _pageSize = 20;
 
+  // Property and tenant data for dropdowns
+  final List<Property> _properties = <Property>[];
+  final List<User> _tenants = <User>[];
+  bool _propertiesLoaded = false;
+  bool _tenantsLoaded = false;
+
   // Config
-  static const String _basePath = '/api/maintenanceissues';
+  static const String _basePath = 'maintenanceissues';
+  static const String _propertiesPath = 'properties';
+  static const String _usersPath = 'users';
 
   MaintenanceProvider(super.api);
 
@@ -40,6 +50,12 @@ class MaintenanceProvider extends BaseProvider {
   List<MaintenanceIssue> get items => List.unmodifiable(_items);
   PagedResult<MaintenanceIssue>? get paged => _paged;
   MaintenanceIssue? get selectedIssue => _selected;
+
+  // Property and tenant getters
+  List<Property> get properties => List.unmodifiable(_properties);
+  List<User> get tenants => List.unmodifiable(_tenants);
+  bool get propertiesLoaded => _propertiesLoaded;
+  bool get tenantsLoaded => _tenantsLoaded;
 
   // Back-compat shims expected by existing screens
   List<MaintenanceIssue> get issues => items;
@@ -393,9 +409,12 @@ class MaintenanceProvider extends BaseProvider {
         cost: cost ?? current.cost,
       );
 
+      final requestBody = _encodeBody(merged);
+      print('[MaintenanceProvider] Updating status to: ${requestBody['status']}, priority: ${requestBody['priority']}');
+      
       final updated = await api.putAndDecode<MaintenanceIssue>(
         '$_basePath/$id',
-        _encodeBody(merged),
+        requestBody,
         MaintenanceIssue.fromJson,
       );
 
@@ -426,25 +445,59 @@ class MaintenanceProvider extends BaseProvider {
     }, isUpdate: true);
   }
 
+  // Property and tenant management methods
+  Future<void> loadProperties() async {
+    if (_propertiesLoaded) return;
+    
+    await executeWithState<void>(() async {
+      final properties = await api.getListAndDecode<Property>(
+        _propertiesPath,
+        Property.fromJson,
+      );
+      
+      _properties
+        ..clear()
+        ..addAll(properties);
+      _propertiesLoaded = true;
+      notifyListeners();
+    });
+  }
+
+  Future<void> loadTenantsForProperty(int propertyId) async {
+    await executeWithState<void>(() async {
+      // Load tenants who have active bookings for this property
+      final tenants = await api.getListAndDecode<User>(
+        '$_usersPath?propertyId=$propertyId&userType=Tenant&hasActiveBooking=true',
+        User.fromJson,
+      );
+      
+      _tenants
+        ..clear()
+        ..addAll(tenants);
+      _tenantsLoaded = true;
+      notifyListeners();
+    });
+  }
+
+  void clearTenants() {
+    _tenants.clear();
+    _tenantsLoaded = false;
+    notifyListeners();
+  }
+
+  String getPropertyDisplayName(Property property) {
+    final city = property.address?.city ?? 'Unknown City';
+    return '${property.name} - $city';
+  }
+
+  String getTenantDisplayName(User tenant) {
+    return '${tenant.firstName} ${tenant.lastName} (${tenant.email})';
+  }
+
   // Encode request body ensuring server-compatible enum casing
   Map<String, dynamic> _encodeBody(MaintenanceIssue dto) {
     final map = dto.toJson();
-    // Convert enum wire values to PascalCase for backend
-    String toPascal(String s) => s.isEmpty
-        ? s
-        : s
-            .split(RegExp(r'[_\s]'))
-            .map((p) => p.isEmpty ? '' : p[0].toUpperCase() + p.substring(1))
-            .join();
-
-    if (map.containsKey('priority')) {
-      map['priority'] = toPascal(map['priority'].toString());
-    }
-    if (map.containsKey('status')) {
-      // Handle inProgress -> InProgress, etc.
-      final raw = map['status'].toString();
-      map['status'] = toPascal(raw.replaceAll('_', ' '));
-    }
+    // The MaintenanceIssue.toJson() now handles PascalCase conversion
     return map;
   }
 }

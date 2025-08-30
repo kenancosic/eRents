@@ -1,4 +1,4 @@
-import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/base/lookups/lookup_key.dart';
 import 'package:e_rents_desktop/models/lookup_item.dart';
 
 /// A lightweight descriptor for static enum-like groups.

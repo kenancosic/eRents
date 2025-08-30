@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
-import 'package:e_rents_desktop/models/image.dart' as model;
 
 
 /// A widget for picking, displaying, and managing a list of image paths.
@@ -332,8 +331,8 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
       } catch (_) {
         images = null;
       }
-      if (images != null && url.startsWith('/api/Images/')) {
-        final idStr = url.replaceFirst('/api/Images/', '');
+      if (images != null && url.startsWith('/Images/')) {
+        final idStr = url.replaceFirst('/Images/', '');
         final id = int.tryParse(idStr);
         if (id != null) {
           return images.buildImageById(
@@ -347,7 +346,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
       }
       // Fallback: if this is an API Images JSON endpoint and ImageService is unavailable,
       // avoid delegating to ApiService.buildImage (would call Image.network on JSON).
-      if (url.startsWith('/api/Images/')) {
+      if (url.startsWith('/Images/')) {
         return _buildErrorWidget();
       }
       // Non-API URL: safe to use ApiService.buildImage
@@ -374,7 +373,7 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
           errorWidget: _buildErrorWidget(),
         );
       }
-      // Fallback if no ImageService found: do NOT render /api/Images/* via network
+      // Fallback if no ImageService found: do NOT render Images/* via network
       return _buildErrorWidget();
     } else {
       return _buildErrorWidget();

@@ -8,6 +8,7 @@ import 'package:e_rents_desktop/base/app_error.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/image.dart' as model;
 import 'package:e_rents_desktop/models/property_tenant_summary.dart';
+import 'package:e_rents_desktop/models/property_status_update_request.dart';
 import 'package:http/http.dart' as http;
 
 /// Property provider aligned with BaseProvider pattern and finalized API
@@ -64,7 +65,7 @@ class PropertyProvider extends BaseProvider {
         'pageSize': maxImages,
         'includeFull': true,
       };
-      final endpoint = '/api/Images${api.buildQueryString(params)}';
+      final endpoint = '/Images${api.buildQueryString(params)}';
       final images = await api.getListAndDecode(endpoint, model.Image.fromJson);
       return images;
     });
@@ -74,7 +75,7 @@ class PropertyProvider extends BaseProvider {
   /// Returns null if there is no active/current tenant (204 from API).
   Future<PropertyTenantSummary?> fetchCurrentTenantSummary(int propertyId) async {
     return executeWithState<PropertyTenantSummary?>(() async {
-      final http.Response res = await api.get('/api/properties/$propertyId/current-tenant');
+      final http.Response res = await api.get('/properties/$propertyId/current-tenant');
       if (res.statusCode == 204 || res.body.isEmpty) {
         return null;
       }
@@ -135,7 +136,7 @@ class PropertyProvider extends BaseProvider {
         if (sortBy != null) 'sortBy': sortBy,
         if (ascending != null) 'sortDirection': ascending ? 'asc' : 'desc',
       };
-      final endpoint = '/api/properties${api.buildQueryString(params)}';
+      final endpoint = '/properties${api.buildQueryString(params)}';
       final list = await api.getListAndDecode(endpoint, Property.fromJson);
       _items = list;
       _paged = null;
@@ -145,7 +146,7 @@ class PropertyProvider extends BaseProvider {
     });
   }
 
-  /// Paged fetch using /api/properties?page=&pageSize= and optional sorting
+  /// Paged fetch using properties?page=&pageSize= and optional sorting
   Future<PagedResult<Property>?> fetchPaged({
     int? page,
     int? pageSize,
@@ -168,7 +169,7 @@ class PropertyProvider extends BaseProvider {
         'sortDirection': _ascending ? 'asc' : 'desc',
       };
 
-      final endpoint = '/api/properties${api.buildQueryString(params)}';
+      final endpoint = 'properties${api.buildQueryString(params)}';
       final paged = await api.getPagedAndDecode(endpoint, Property.fromJson);
       // update local state
       _paged = paged;
@@ -180,7 +181,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> getById(int id) async {
     return executeWithState(() async {
-      final p = await api.getAndDecode('/api/properties/$id', Property.fromJson);
+      final p = await api.getAndDecode('/properties/$id', Property.fromJson);
       _selected = p;
       // Lazy-load reviews for detail view
       // Ignore errors here to not block the detail page
@@ -211,7 +212,7 @@ class PropertyProvider extends BaseProvider {
         'sortDirection': 'desc',
         'pageSize': 50,
       }..removeWhere((k, v) => v == null);
-      final endpoint = '/api/reviews${api.buildQueryString(params)}';
+      final endpoint = '/reviews${api.buildQueryString(params)}';
       final list = await api.getListAndDecode(endpoint, Review.fromJson);
       _propertyReviews[propertyId] = list.where((r) => r.parentReviewId == null).toList();
       notifyListeners();
@@ -236,7 +237,7 @@ class PropertyProvider extends BaseProvider {
       'sortDirection': 'asc',
       'pageSize': 100,
     };
-    final endpoint = '/api/reviews${api.buildQueryString(params)}';
+    final endpoint = '/reviews${api.buildQueryString(params)}';
     final replies = await api.getListAndDecode(endpoint, Review.fromJson);
     // Merge into cached list if present
     final propertyId = _selected?.propertyId;
@@ -284,7 +285,7 @@ class PropertyProvider extends BaseProvider {
           'parentReviewId': parentReviewId,
           // reviewerId, revieweeId resolved by API from auth where applicable
         };
-        final created = await api.postAndDecode('/api/reviews', body, Review.fromJson);
+        final created = await api.postAndDecode('/reviews', body, Review.fromJson);
         // refresh replies for this thread
         await fetchReplies(parentReviewId);
         return created;
@@ -295,7 +296,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> create(Property dto) async {
     return executeWithRetry<Property>(() async {
-      final created = await api.postAndDecode('/api/properties', dto.toRequestJson(), Property.fromJson);
+      final created = await api.postAndDecode('/properties', dto.toRequestJson(), Property.fromJson);
       // optimistic local append
       _items = [..._items, created];
       // Safely adjust paged state if present (no copyWith dependency)
@@ -314,7 +315,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> update(Property dto) async {
     return executeWithRetry<Property>(() async {
-      final updated = await api.putAndDecode('/api/properties/${dto.propertyId}', dto.toRequestJson(), Property.fromJson);
+      final updated = await api.putAndDecode('/properties/${dto.propertyId}', dto.toRequestJson(), Property.fromJson);
       _items = _items.map((e) => e.propertyId == dto.propertyId ? updated : e).toList();
       if (_paged != null) {
         _paged = PagedResult<Property>(
@@ -332,9 +333,38 @@ class PropertyProvider extends BaseProvider {
     }, isUpdate: true);
   }
 
+  Future<Property?> updatePropertyStatus(int propertyId, PropertyStatusUpdateRequest request) async {
+    return executeWithRetry<Property>(() async {
+      final updated = await api.putAndDecode('/properties/$propertyId/status', request.toJson(), Property.fromJson);
+      _items = _items.map((e) => e.propertyId == propertyId ? updated : e).toList();
+      if (_paged != null) {
+        _paged = PagedResult<Property>(
+          items: [..._items],
+          totalCount: _paged!.totalCount,
+          page: _paged!.page,
+          pageSize: _paged!.pageSize,
+        );
+      }
+      if (_selected?.propertyId == propertyId) {
+        _selected = updated;
+      }
+      notifyListeners();
+      
+      // Check if this was a status change that might trigger refunds
+      if ((request.status == 'Unavailable' || request.status == 'UnderMaintenance') && 
+          _selected?.rentingType == 'Daily') {
+        // In a real implementation, we would listen for refund notifications from the backend
+        // For now, we'll just show a message that refunds may be processed
+        // In a production app, this would be handled by a notification service
+      }
+      
+      return updated;
+    }, isUpdate: true);
+  }
+
   Future<bool> remove(int id) async {
     return await executeWithStateForSuccess(() async {
-      final ok = await api.deleteAndConfirm('/api/properties/$id');
+      final ok = await api.deleteAndConfirm('/properties/$id');
       if (!ok) throw AppError.server('Delete failed');
       _items = _items.where((e) => e.propertyId != id).toList();
       if (_paged != null) {
@@ -375,18 +405,18 @@ class PropertyFormProvider extends BaseProvider {
 
   Future<Property?> loadProperty(int id) async {
     return executeWithState(() async {
-      return await api.getAndDecode('/api/properties/$id', Property.fromJson);
+      return await api.getAndDecode('/properties/$id', Property.fromJson);
     });
   }
 
   Future<Property?> saveProperty(Property property) async {
     if (property.propertyId == 0) {
       return executeWithRetry<Property>(() async {
-        return await api.postAndDecode('/api/properties', property.toJson(), Property.fromJson);
+        return await api.postAndDecode('/properties', property.toJson(), Property.fromJson);
       }, isUpdate: true);
     } else {
       return executeWithRetry<Property>(() async {
-        return await api.putAndDecode('/api/properties/${property.propertyId}', property.toJson(), Property.fromJson);
+        return await api.putAndDecode('/properties/${property.propertyId}', property.toJson(), Property.fromJson);
       }, isUpdate: true);
     }
   }

@@ -50,8 +50,8 @@ class CustomAvatar extends StatelessWidget {
                 final url = imageUrl;
 
                 // If url points to backend Images JSON endpoint, use safe builder
-                if (images != null && url != null && url.startsWith('/api/Images/')) {
-                  final idStr = url.replaceFirst('/api/Images/', '');
+                if (images != null && url != null && url.startsWith('/Images/')) {
+                  final idStr = url.replaceFirst('/Images/', '');
                   final id = int.tryParse(idStr);
                   if (id != null) {
                     return images.buildImageById(

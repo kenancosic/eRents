@@ -16,6 +16,7 @@ class PaypalSettingsWidget extends StatelessWidget {
         if (user == null) {
           return const Center(child: CircularProgressIndicator());
         }
+        final isBusy = profileProvider.isUpdatingPaypal;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -111,25 +112,24 @@ class PaypalSettingsWidget extends StatelessWidget {
             ),
             if (isEditing) ...[
               const SizedBox(height: 16),
-              if (!user.isPaypalLinked) ...[
-                const Text(
-                  'PayPal account linking functionality will be available soon.',
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                ),
-                const SizedBox(height: 16),
-              ],
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: user.isPaypalLinked ? () => _showUnlinkDialog(context) : null,
+                  onPressed: isBusy
+                      ? null
+                      : user.isPaypalLinked
+                          ? () => _showUnlinkDialog(context)
+                          : () => _startLink(context),
                   icon: Icon(
                     user.isPaypalLinked ? Icons.link_off : Icons.link,
                     size: 18,
                   ),
                   label: Text(
-                    user.isPaypalLinked
-                        ? 'Unlink PayPal Account'
-                        : 'Link PayPal Account (Coming Soon)',
+                    isBusy
+                        ? 'Please wait...'
+                        : user.isPaypalLinked
+                            ? 'Unlink PayPal Account'
+                            : 'Link PayPal Account',
                   ),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -158,16 +158,35 @@ class PaypalSettingsWidget extends StatelessWidget {
         return AlertDialog(
           title: const Text('Unlink PayPal Account'),
           content: const Text(
-            'PayPal unlinking functionality will be available soon.',
+            'Are you sure you want to unlink your PayPal account?',
           ),
           actions: [
             TextButton(
-              child: const Text('OK'),
+              child: const Text('Cancel'),
               onPressed: () => dialogContext.pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Unlink'),
+              onPressed: () async {
+                final ok = await context.read<ProfileProvider>().unlinkPaypal();
+                if (ok && dialogContext.mounted) {
+                  dialogContext.pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PayPal account unlinked'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
             ),
           ],
         );
       },
     );
+  }
+
+  void _startLink(BuildContext context) {
+    context.read<ProfileProvider>().startPayPalLinking(context);
   }
 }

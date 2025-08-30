@@ -169,4 +169,15 @@ class Tenant {
         'createdBy': createdBy,
         'modifiedBy': modifiedBy,
       };
+
+  // UI helper getters
+  String get propertyName => property?.name ?? 'N/A';
+  String get firstName => user?.firstName ?? '';
+  String get lastName => user?.lastName ?? '';
+  String get email => user?.email ?? 'N/A';
+  String get leasePeriod =>
+      leaseStartDate != null && leaseEndDate != null
+          ? '${leaseStartDate!.year}-${leaseStartDate!.month.toString().padLeft(2, '0')} to ${leaseEndDate!.year}-${leaseEndDate!.month.toString().padLeft(2, '0')}'
+          : 'N/A';
+  String get fullName => '$firstName $lastName'.trim();
 }

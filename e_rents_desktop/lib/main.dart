@@ -32,7 +32,7 @@ void main() async {
   } catch (e) {
     print('Error loading .env file: $e');
     // Initialize with default values if .env loading fails
-    dotenv.env['API_BASE_URL'] = 'http://localhost:5000';
+    dotenv.env['API_BASE_URL'] = 'http://localhost:5000/api';
     print('Using default API_BASE_URL: ${dotenv.env['API_BASE_URL']}');
   }
 

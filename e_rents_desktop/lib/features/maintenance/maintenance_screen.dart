@@ -19,6 +19,7 @@ class MaintenanceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.read<MaintenanceProvider>();
+    final listController = ListController();
 
     return ListScreen<MaintenanceIssue>(
       title: 'Maintenance Issues',
@@ -65,6 +66,8 @@ class MaintenanceScreen extends StatelessWidget {
                             issue.maintenanceIssueId.toString(),
                             newStatus,
                           );
+                          // Refresh the table to reflect updated status
+                          await listController.refresh();
                           messenger.showSnackBar(
                             SnackBar(content: Text('Status changed to ${newStatus.displayName}')),
                           );
@@ -95,16 +98,16 @@ class MaintenanceScreen extends StatelessWidget {
                       onPressed: () async {
                         final confirmed = await showDialog<bool>(
                           context: ctx,
-                          builder: (_) => AlertDialog(
+                          builder: (dialogContext) => AlertDialog(
                             title: const Text('Delete maintenance issue'),
                             content: Text('Are you sure you want to delete "${issue.title}"?'),
                             actions: [
                               TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(false),
+                                onPressed: () => dialogContext.pop(false),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
-                                onPressed: () => Navigator.of(ctx).pop(true),
+                                onPressed: () => dialogContext.pop(true),
                                 child: const Text('Delete'),
                               ),
                             ],
@@ -116,6 +119,8 @@ class MaintenanceScreen extends StatelessWidget {
                             final ok = await provider.remove(issue.maintenanceIssueId);
                             if (ok) {
                               messenger.showSnackBar(const SnackBar(content: Text('Issue deleted')));
+                              // Refresh the table to remove the deleted item
+                              await listController.refresh();
                             }
                           } catch (e) {
                             messenger.showSnackBar(
@@ -177,6 +182,7 @@ class MaintenanceScreen extends StatelessWidget {
         );
         return paged?.items ?? <MaintenanceIssue>[];
       },
+      controller: listController,
       onItemTap: (item) => context.push('/maintenance/${item.maintenanceIssueId}'),
       onItemDoubleTap: (item) => context.push('/maintenance/${item.maintenanceIssueId}'),
       // Fallback itemBuilder (not used when tableRowsBuilder is provided)

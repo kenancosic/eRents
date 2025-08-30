@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/providers/lookup_provider.dart';
-import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
+import 'package:e_rents_desktop/base/lookups/lookup_key.dart';
 import 'package:e_rents_desktop/widgets/inputs/custom_dropdown.dart';
 
 class PropertyTypeDropdown extends StatelessWidget {

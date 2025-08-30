@@ -3,82 +3,32 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:e_rents_desktop/models/property.dart';
-import 'package:e_rents_desktop/models/enums/property_status.dart';
-import 'package:e_rents_desktop/core/lookups/lookup_key.dart';
-import 'package:e_rents_desktop/providers/lookup_provider.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/base/crud/list_screen.dart';
 import 'package:e_rents_desktop/router.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_filter_panel.dart';
-import 'package:e_rents_desktop/presentation/status_pill.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_status_chip.dart';
+import 'package:e_rents_desktop/features/properties/widgets/property_amenities_display.dart';
 
-class PropertyListScreen extends StatelessWidget {
+class PropertyListScreen extends StatefulWidget {
   const PropertyListScreen({super.key});
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  Color _statusColor(PropertyStatus status, BuildContext context) {
-    switch (status) {
-      case PropertyStatus.available:
-        return Colors.green.shade600;
-      case PropertyStatus.occupied:
-        return Colors.deepOrange.shade600;
-      case PropertyStatus.underMaintenance:
-        return Colors.amber.shade700;
-      case PropertyStatus.unavailable:
-        return Colors.grey.shade600;
-    }
+
+  @override
+  State<PropertyListScreen> createState() => _PropertyListScreenState();
+}
+
+class _PropertyListScreenState extends State<PropertyListScreen> {
+  // External controller to trigger refreshes after updates/deletes
+  final ListController listController = ListController();
+
+  @override
+  void initState() {
+    super.initState();
   }
 
-  Widget _statusChip(PropertyStatus status, BuildContext context) {
-    final bg = _statusColor(status, context);
-    final IconData icon;
-    switch (status) {
-      case PropertyStatus.available:
-        icon = Icons.check_circle_outline;
-        break;
-      case PropertyStatus.occupied:
-        icon = Icons.home_work_outlined;
-        break;
-      case PropertyStatus.underMaintenance:
-        icon = Icons.build_outlined;
-        break;
-      case PropertyStatus.unavailable:
-        icon = Icons.block;
-        break;
-    }
-    return StatusPill(
-      label: status.displayName,
-      backgroundColor: bg,
-      iconData: icon,
-      foregroundColor: Colors.white,
-    );
-  }
 
-  List<Widget> _amenityChips(BuildContext context, List<int> amenityIds) {
-    final lookup = context.read<LookupProvider>();
-    // Try registry labels; keep it light in list view
-    final names = amenityIds
-        .map((id) => lookup.label(LookupKey.amenity, id: id) ?? 'ID $id')
-        .toList();
-    // Avoid overloading the row: show up to 3 + "+N"
-    final chips = <Widget>[];
-    for (var i = 0; i < names.length && i < 3; i++) {
-      chips.add(Chip(
-        label: Text(names[i]),
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      ));
-    }
-    final remaining = names.length - 3;
-    if (remaining > 0) {
-      chips.add(Chip(
-        label: Text('+$remaining'),
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      ));
-    }
-    return chips;
+  Widget _statusChip(BuildContext context, Property p) {
+    return PropertyStatusChip(status: p.status);
   }
 
   Future<List<Property>> _fetch(
@@ -99,6 +49,7 @@ class PropertyListScreen extends StatelessWidget {
   void _navigateToAdd(BuildContext context) async {
     final path = '${AppRoutes.properties}/${AppRoutes.addProperty}';
     await context.push(path);
+    await listController.refresh();
   }
 
   void _navigateToDetails(BuildContext context, int id) async {
@@ -109,6 +60,7 @@ class PropertyListScreen extends StatelessWidget {
   void _navigateToEdit(BuildContext context, int id) async {
     final path = '${AppRoutes.properties}/$id/${AppRoutes.editProperty}';
     await context.push(path);
+    await listController.refresh();
   }
 
   Future<void> _confirmAndDelete(BuildContext context, Property property) async {
@@ -135,6 +87,9 @@ class PropertyListScreen extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(ok ? 'Property deleted' : 'Delete failed')),
         );
+        if (ok) {
+          await listController.refresh();
+        }
       }
     }
   }
@@ -166,6 +121,7 @@ class PropertyListScreen extends StatelessWidget {
       ],
       fetchItems: ({int page = 1, int pageSize = 20, Map<String, dynamic>? filters}) =>
           _fetch(context, page: page, pageSize: pageSize, filters: filters),
+      controller: listController,
       onItemTap: (Property item) {},
       onItemDoubleTap: (Property item) => _navigateToDetails(context, item.propertyId),
       itemBuilder: (BuildContext ctx, Property p) {
@@ -176,20 +132,12 @@ class PropertyListScreen extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _statusChip(p.status, ctx),
+              _statusChip(ctx, p),
               const SizedBox(width: 12),
               Text('${p.currency.isNotEmpty ? '' : ''} ${p.price.toStringAsFixed(2)} ${p.currency.isNotEmpty ? p.currency : ''}'
                   ' / ${p.rentingType?.displayName.toLowerCase() ?? 'period'}'),
               const SizedBox(width: 12),
-              if (p.amenityIds.isNotEmpty)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
-                    children: _amenityChips(ctx, p.amenityIds),
-                  ),
-                ),
+              PropertyAmenityChips(amenityIds: p.amenityIds, isListView: true),
               const SizedBox(width: 12),
               IconButton(
                 tooltip: 'Edit',
@@ -221,15 +169,11 @@ class PropertyListScreen extends StatelessWidget {
             cells: [
               DataCell(Text(p.name)),
               DataCell(Text(p.address?.city ?? '-')),
-              DataCell(_statusChip(p.status, ctx)),
+              DataCell(_statusChip(ctx, p)),
               DataCell(
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 260),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 2,
-                    children: _amenityChips(ctx, p.amenityIds),
-                  ),
+                  child: PropertyAmenityChips(amenityIds: p.amenityIds, isListView: true),
                 ),
               ),
               DataCell(Text('${p.currency.isNotEmpty ? '' : ''} ${p.price.toStringAsFixed(2)} ${p.currency.isNotEmpty ? p.currency : ''} / '

@@ -135,7 +135,7 @@ class _MaintenanceIssueDetailsView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Reported by ${issue.tenantName ?? "Tenant ID ${issue.tenantId ?? "Unknown"}"} • ${AppDateUtils.formatRelative(issue.createdAt)}',
+              'Reported by ${issue.tenantName} (Tenant ID: ${issue.tenantId}) • ${AppDateUtils.formatRelative(issue.createdAt)}',
               style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             const SizedBox(height: 24),

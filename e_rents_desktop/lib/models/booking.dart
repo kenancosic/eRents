@@ -1,41 +1,5 @@
 import 'package:intl/intl.dart';
-
-enum BookingStatus {
-  upcoming,
-  active,
-  completed,
-  cancelled;
-
-  static BookingStatus fromString(String status) {
-    switch (status.toLowerCase()) {
-      case 'upcoming':
-        return BookingStatus.upcoming;
-      case 'active':
-        return BookingStatus.active;
-      case 'completed':
-        return BookingStatus.completed;
-      case 'cancelled':
-        return BookingStatus.cancelled;
-      default:
-        throw ArgumentError('Unknown booking status: $status');
-    }
-  }
-
-  String get displayName {
-    switch (this) {
-      case BookingStatus.upcoming:
-        return 'Upcoming';
-      case BookingStatus.active:
-        return 'Active';
-      case BookingStatus.completed:
-        return 'Completed';
-      case BookingStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  String get statusName => name.toLowerCase();
-}
+import 'package:e_rents_desktop/models/enums/booking_status.dart';
 
 class Booking {
   final int bookingId;
@@ -56,11 +20,20 @@ class Booking {
   final String? tenantName;
   final String? tenantEmail;
 
+  // Payment-related (from backend BookingResponse)
+  final String? paymentMethod;
+  final String? currency;
+  final String? paymentStatus;
+  final String? paymentReference;
+  final int? numberOfGuests;
+  final String? specialRequests;
+
   // Base entity fields
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? createdBy;
   final String? modifiedBy;
+  final String? updatedBy;
 
   const Booking({
     required this.bookingId,
@@ -79,10 +52,17 @@ class Booking {
     this.userEmail,
     this.tenantName,
     this.tenantEmail,
+    this.paymentMethod,
+    this.currency,
+    this.paymentStatus,
+    this.paymentReference,
+    this.numberOfGuests,
+    this.specialRequests,
     required this.createdAt,
     this.updatedAt,
     this.createdBy,
     this.modifiedBy,
+    this.updatedBy,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -94,20 +74,7 @@ class Booking {
     }
     double _toDouble(dynamic v) => v is num ? v.toDouble() : double.parse(v.toString());
     String? _asString(dynamic v) => v == null ? null : v.toString();
-    BookingStatus _parseStatus(dynamic v) {
-      if (v == null) return BookingStatus.upcoming;
-      final s = v.toString();
-      try {
-        return BookingStatus.fromString(s);
-      } catch (_) {
-        // fallback: try enum name match
-        final lower = s.toLowerCase();
-        for (final bs in BookingStatus.values) {
-          if (bs.name.toLowerCase() == lower) return bs;
-        }
-        return BookingStatus.upcoming;
-      }
-    }
+    BookingStatus _parseStatus(dynamic v) => BookingStatusX.parse(v);
     return Booking(
       bookingId: (json['bookingId'] as num).toInt(),
       propertyId: (json['propertyId'] as num?)?.toInt(),
@@ -125,10 +92,17 @@ class Booking {
       userEmail: _asString(json['userEmail']),
       tenantName: _asString(json['tenantName']),
       tenantEmail: _asString(json['tenantEmail']),
+      paymentMethod: _asString(json['paymentMethod']),
+      currency: _asString(json['currency']),
+      paymentStatus: _asString(json['paymentStatus']),
+      paymentReference: _asString(json['paymentReference']),
+      numberOfGuests: (json['numberOfGuests'] as num?)?.toInt(),
+      specialRequests: _asString(json['specialRequests']),
       createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
       updatedAt: _parseDate(json['updatedAt']),
       createdBy: _asString(json['createdBy']),
       modifiedBy: _asString(json['modifiedBy']),
+      updatedBy: _asString(json['updatedBy']),
     );
   }
 
@@ -141,7 +115,7 @@ class Booking {
         'minimumStayEndDate': minimumStayEndDate?.toIso8601String(),
         'totalPrice': totalPrice,
         'bookingDate': bookingDate?.toIso8601String(),
-        'status': status.statusName,
+        'status': status.wireValue,
         'propertyName': propertyName,
         'propertyAddress': propertyAddress,
         'propertyImageId': propertyImageId,
@@ -149,10 +123,17 @@ class Booking {
         'userEmail': userEmail,
         'tenantName': tenantName,
         'tenantEmail': tenantEmail,
+        'paymentMethod': paymentMethod,
+        'currency': currency,
+        'paymentStatus': paymentStatus,
+        'paymentReference': paymentReference,
+        'numberOfGuests': numberOfGuests,
+        'specialRequests': specialRequests,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
         'createdBy': createdBy,
         'modifiedBy': modifiedBy,
+        'updatedBy': updatedBy,
       };
 
   // Convenience getters for UI

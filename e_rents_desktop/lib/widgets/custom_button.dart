@@ -8,6 +8,7 @@ class CustomButton extends StatelessWidget {
   final double height;
   final double fontSize;
   final double borderRadius;
+  final IconData? icon;
 
   const CustomButton({
     super.key,
@@ -18,37 +19,62 @@ class CustomButton extends StatelessWidget {
     this.height = 45, // Default button height
     this.fontSize = 16, // Default font size
     this.borderRadius = 12, // Default border radius
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: isLoading || onPressed == null ? null : () async => await onPressed!(), // Disable button if loading
-      style: ElevatedButton.styleFrom(
-        minimumSize: Size(double.infinity, height), // Full width, adjustable height
-        backgroundColor: backgroundColor, // Customizable background color
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius), // Customizable corners
-        ),
+    final buttonStyle = ElevatedButton.styleFrom(
+      backgroundColor: backgroundColor, // Customizable background color
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(borderRadius), // Customizable corners
       ),
-      child: isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
+      padding: const EdgeInsets.symmetric(horizontal: 16), // Add some padding
+    );
+
+    final textLabel = label is String
+        ? Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: fontSize,
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        : label;
+
+    return SizedBox(
+      height: height,
+      child: icon != null
+          ? ElevatedButton.icon(
+              onPressed: isLoading || onPressed == null ? null : () async => await onPressed!(),
+              style: buttonStyle,
+              icon: isLoading ? const SizedBox.shrink() : Icon(icon, size: 18),
+              label: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : textLabel,
             )
-          : label is String ? Text(
-              label, // Dynamic label
-              style: TextStyle(
-                color: Colors.white, // Text color
-                fontSize: fontSize, // Customizable font size
-                fontWeight: FontWeight.bold, // Bold text
-              ),
-            )
-          : label,
+          : ElevatedButton(
+              onPressed: isLoading || onPressed == null ? null : () async => await onPressed!(),
+              style: buttonStyle,
+              child: isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : textLabel,
+            ),
     );
   }
 }

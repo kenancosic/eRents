@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
+import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
+import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 
@@ -74,6 +76,18 @@ class _ProfileScreenContent extends StatelessWidget {
                       context,
                       isEditing,
                       personalInfoFormKey,
+                    ),
+                    const SizedBox(height: 24),
+                    SectionCard(
+                      title: 'Security',
+                      titleIcon: Icons.lock_outline,
+                      child: ChangePasswordWidget(isEditing: isEditing),
+                    ),
+                    const SizedBox(height: 24),
+                    SectionCard(
+                      title: 'Payments',
+                      titleIcon: Icons.account_balance_wallet_outlined,
+                      child: PaypalSettingsWidget(isEditing: isEditing),
                     ),
                     const SizedBox(height: 24),
                     _buildAccountSummaryCard(context),
@@ -218,7 +232,19 @@ class _ProfileScreenContent extends StatelessWidget {
             Icons.calendar_today,
           ),
           const SizedBox(height: 12),
-          // PayPal status removed for simplification
+          // PayPal status
+          _buildSummaryItem(
+            context,
+            'PayPal',
+            user.isPaypalLinked
+                ? (user.paypalUserIdentifier == null || user.paypalUserIdentifier!.isEmpty
+                    ? 'Linked'
+                    : 'Linked (${user.paypalUserIdentifier})')
+                : 'Not linked',
+            Icons.account_balance_wallet_outlined,
+            color: user.isPaypalLinked ? Colors.blue : null,
+          ),
+          const SizedBox(height: 12),
           _buildSummaryItem(
             context,
             'Profile Status',

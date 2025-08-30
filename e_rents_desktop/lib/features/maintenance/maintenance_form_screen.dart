@@ -1,10 +1,13 @@
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
+import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/presentation/extensions.dart';
 
 import 'package:e_rents_desktop/models/maintenance_issue.dart';
+import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as picker;
 import 'package:e_rents_desktop/base/crud/form_screen.dart';
 
@@ -29,8 +32,11 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
 
   // Local form state captured by createNewItem/updateItem closures
   late MaintenanceIssuePriority _priority;
+  late MaintenanceIssueStatus _status;
   bool _isTenantComplaint = false;
   List<picker.ImageInfo> _images = [];
+  Property? _selectedProperty;
+  User? _selectedTenant;
 
   // Controllers
   late final TextEditingController _titleController;
@@ -43,13 +49,19 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
 
     final existing = widget.issue;
     _priority = existing?.priority ?? MaintenanceIssuePriority.medium;
+    _status = existing?.status ?? MaintenanceIssueStatus.pending;
     _isTenantComplaint = existing?.isTenantComplaint ?? false;
     _images = (existing?.imageIds ?? const <int>[]) 
-        .map((id) => picker.ImageInfo(id: id, url: '/api/Images/$id'))
+        .map((id) => picker.ImageInfo(id: id, url: 'Images/$id'))
         .toList();
 
     _titleController = TextEditingController(text: existing?.title ?? '');
     _descriptionController = TextEditingController(text: existing?.description ?? '');
+    
+    // Load properties when form initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _provider.loadProperties();
+    });
   }
 
   @override
@@ -65,9 +77,39 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     });
   }
 
+  void _updateStatus(MaintenanceIssueStatus status) {
+    setState(() {
+      _status = status;
+    });
+  }
+
   void _updateIsTenantComplaint(bool isComplaint) {
     setState(() {
       _isTenantComplaint = isComplaint;
+      if (!isComplaint) {
+        _selectedTenant = null;
+        _provider.clearTenants();
+      } else if (_selectedProperty != null) {
+        _provider.loadTenantsForProperty(_selectedProperty!.propertyId);
+      }
+    });
+  }
+
+  void _updateSelectedProperty(Property? property) {
+    setState(() {
+      _selectedProperty = property;
+      _selectedTenant = null;
+      _provider.clearTenants();
+      
+      if (property != null && _isTenantComplaint) {
+        _provider.loadTenantsForProperty(property.propertyId);
+      }
+    });
+  }
+
+  void _updateSelectedTenant(User? tenant) {
+    setState(() {
+      _selectedTenant = tenant;
     });
   }
 
@@ -91,11 +133,12 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             .cast<int>()
             .toList();
         return MaintenanceIssue.empty().copyWith(
-          propertyId: widget.propertyId ?? initial?.propertyId ?? 0,
+          propertyId: _selectedProperty?.propertyId ?? widget.propertyId ?? initial?.propertyId ?? 0,
           title: _titleController.text,
           description: _descriptionController.text,
           priority: _priority,
-          reportedByUserId: initial?.reportedByUserId ?? 1, // TODO: auth provider
+          status: _status,
+          reportedByUserId: _selectedTenant?.userId ?? initial?.reportedByUserId ?? 1,
           isTenantComplaint: _isTenantComplaint,
           imageIds: imageIds,
         );
@@ -107,17 +150,20 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
             .cast<int>()
             .toList();
         return existing.copyWith(
+          propertyId: _selectedProperty?.propertyId ?? existing.propertyId,
           title: _titleController.text,
           description: _descriptionController.text,
           priority: _priority,
+          status: _status,
+          reportedByUserId: _selectedTenant?.userId ?? existing.reportedByUserId,
           isTenantComplaint: _isTenantComplaint,
           imageIds: imageIds,
         );
       },
       validator: (item) {
         if (item.title.trim().isEmpty) return 'Please enter a title';
-        if ((item.description ?? '').trim().isEmpty) return 'Please enter a description';
-        if (item.propertyId <= 0) return 'Invalid property';
+        if (item.propertyId <= 0) return 'Please select a property';
+        // Status and priority are enums, so they always have values
         return null;
       },
       onSubmit: (item) async {
@@ -125,95 +171,161 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
         return ok;
       },
       formBuilder: (context, item, formKey) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) => (value == null || value.isEmpty) ? 'Please enter a title' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-              validator: (value) => (value == null || value.isEmpty) ? 'Please enter a description' : null,
-            ),
-            const SizedBox(height: 16),
-            Row(
+        return Consumer<MaintenanceProvider>(
+          builder: (context, provider, child) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<MaintenanceIssuePriority>(
-                    value: _priority,
-                    decoration: const InputDecoration(
-                      labelText: 'Priority',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: MaintenanceIssuePriority.values
-                        .map(
-                          (priority) => DropdownMenuItem(
-                            value: priority,
-                            child: Row(
+                // Property Selection Dropdown
+                DropdownButtonFormField<Property>(
+                  value: _selectedProperty,
+                  decoration: const InputDecoration(
+                    labelText: 'Property *',
+                    border: OutlineInputBorder(),
+                    hintText: 'Select a property',
+                  ),
+                  items: provider.properties
+                      .map(
+                        (property) => DropdownMenuItem(
+                          value: property,
+                          child: Text(provider.getPropertyDisplayName(property)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _updateSelectedProperty,
+                  validator: (value) => value == null ? 'Please select a property' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => (value == null || value.isEmpty) ? 'Please enter a title' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<MaintenanceIssuePriority>(
+                        value: _priority,
+                        decoration: const InputDecoration(
+                          labelText: 'Priority *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: MaintenanceIssuePriority.values
+                            .map(
+                              (priority) => DropdownMenuItem(
+                                value: priority,
+                                child: Row(
+                                  children: [
+                                    Icon(priority.icon, color: priority.color, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(priority.displayName),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        selectedItemBuilder: (context) {
+                          return MaintenanceIssuePriority.values.map((priority) {
+                            return Row(
                               children: [
                                 Icon(priority.icon, color: priority.color, size: 18),
                                 const SizedBox(width: 8),
                                 Text(priority.displayName),
                               ],
-                            ),
+                            );
+                          }).toList();
+                        },
+                        validator: (value) => value == null ? 'Please select a priority' : null,
+                        onChanged: (value) {
+                          if (value != null) _updatePriority(value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<MaintenanceIssueStatus>(
+                        value: _status,
+                        decoration: const InputDecoration(
+                          labelText: 'Status *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: MaintenanceIssueStatus.values
+                            .map(
+                              (status) => DropdownMenuItem(
+                                value: status,
+                                child: Text(status.displayName),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) => value == null ? 'Please select a status' : null,
+                        onChanged: (value) {
+                          if (value != null) _updateStatus(value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('Tenant Complaint'),
+                  subtitle: const Text('Check if this is a complaint from a tenant'),
+                  value: _isTenantComplaint,
+                  onChanged: _updateIsTenantComplaint,
+                ),
+                if (_isTenantComplaint && _selectedProperty != null) ...[
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<User>(
+                    value: _selectedTenant,
+                    decoration: const InputDecoration(
+                      labelText: 'Tenant *',
+                      border: OutlineInputBorder(),
+                      hintText: 'Select the tenant who reported this issue',
+                    ),
+                    items: provider.tenants
+                        .map(
+                          (tenant) => DropdownMenuItem(
+                            value: tenant,
+                            child: Text(provider.getTenantDisplayName(tenant)),
                           ),
                         )
                         .toList(),
-                    selectedItemBuilder: (context) {
-                      return MaintenanceIssuePriority.values.map((priority) {
-                        return Row(
-                          children: [
-                            Icon(priority.icon, color: priority.color, size: 18),
-                            const SizedBox(width: 8),
-                            Text(priority.displayName),
-                          ],
-                        );
-                      }).toList();
-                    },
-                    onChanged: (value) {
-                      if (value != null) _updatePriority(value);
-                    },
+                    onChanged: _updateSelectedTenant,
+                    validator: (value) => _isTenantComplaint && value == null ? 'Please select a tenant' : null,
                   ),
+                ],
+                const SizedBox(height: 32),
+                Text(
+                  'Attached Images',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(width: 16),
-                const Expanded(child: SizedBox.shrink()),
+                const SizedBox(height: 16),
+                picker.ImagePickerInput(
+                  initialImages: _images
+                      .map((img) => picker.ImageInfo(
+                            id: img.id,
+                            url: img.url,
+                            fileName: img.fileName,
+                          ))
+                      .toList(),
+                  apiService: _provider.apiService,
+                  onChanged: _updateImages,
+                ),
               ],
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Tenant Complaint'),
-              value: _isTenantComplaint,
-              onChanged: _updateIsTenantComplaint,
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Attached Images',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 16),
-            picker.ImagePickerInput(
-              initialImages: _images
-                  .map((img) => picker.ImageInfo(
-                        id: img.id,
-                        url: img.url,
-                        fileName: img.fileName,
-                      ))
-                  .toList(),
-              apiService: _provider.apiService,
-              onChanged: _updateImages,
-            ),
-          ],
+            );
+          },
         );
       },
     );

@@ -79,11 +79,7 @@ class PropertyInfoDisplay extends StatelessWidget {
       children: [
         _InfoChip(
           icon: Icons.king_bed_outlined,
-          label: '${property.bedrooms} Beds',
-        ),
-        _InfoChip(
-          icon: Icons.bathtub_outlined,
-          label: '${property.bathrooms ?? 0} Baths',
+          label: '${property.rooms} Rooms',
         ),
         _InfoChip(
           icon: Icons.square_foot_outlined,

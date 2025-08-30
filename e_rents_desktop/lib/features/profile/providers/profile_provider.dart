@@ -2,6 +2,10 @@ import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/user.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:webview_windows/webview_windows.dart';
+import 'dart:convert';
 
 class ProfileProvider extends BaseProvider {
   ProfileProvider(super.api);
@@ -19,6 +23,10 @@ class ProfileProvider extends BaseProvider {
 
   String? _passwordChangeError;
   String? get passwordChangeError => _passwordChangeError;
+
+  // PayPal linking state
+  bool _isUpdatingPaypal = false;
+  bool get isUpdatingPaypal => _isUpdatingPaypal;
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
@@ -45,7 +53,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<void> loadUserProfile() async {
     final result = await executeWithState<User>(() async {
-      return await api.getAndDecode('/api/Profile', User.fromJson, authenticated: true);
+      return await api.getAndDecode('Profile', User.fromJson, authenticated: true);
     });
     if (result != null) {
       _currentUser = result;
@@ -63,7 +71,7 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> updateProfile(User user) async {
     final updated = await executeWithRetry<User>(() async {
-      return await api.putAndDecode('/api/Profile', user.toJson(), User.fromJson, authenticated: true);
+      return await api.putAndDecode('Profile', user.toJson(), User.fromJson, authenticated: true);
     }, isUpdate: true);
     if (updated != null) {
       _currentUser = updated;
@@ -103,7 +111,7 @@ class ProfileProvider extends BaseProvider {
 
     final ok = await executeWithStateForSuccess(() async {
       await api.putJson(
-        '/api/Users/change-password',
+        'Users/change-password',
         {
           'oldPassword': oldPassword,
           'newPassword': newPassword,
@@ -119,6 +127,111 @@ class ProfileProvider extends BaseProvider {
     }
     notifyListeners();
     return ok;
+  }
+
+  Future<void> startPayPalLinking(BuildContext context) async {
+    _isUpdatingPaypal = true;
+    clearError();
+    notifyListeners();
+
+    try {
+      final response = await api.get(
+        'PaypalLink/start',
+        authenticated: true,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to start PayPal linking process.');
+      }
+
+      final responseBody = jsonDecode(response.body);
+      final approvalUrl = responseBody['approvalUrl'];
+
+      if (approvalUrl == null) {
+        throw Exception('Approval URL not found in response.');
+      }
+
+      _showPayPalWebView(context, approvalUrl);
+    } catch (e) {
+      setError(e.toString());
+      _isUpdatingPaypal = false;
+      notifyListeners();
+    }
+  }
+
+  void _showPayPalWebView(BuildContext context, String url) {
+    final webview = WebviewController();
+
+    webview.initialize().then((_) {
+      webview.url.listen((currentUrl) {
+        // Check for success or cancel URLs from the backend
+        if (currentUrl.startsWith('http://127.0.0.1:5000/api/PaypalLink/callback?code=')) {
+          context.pop();
+          webview.dispose();
+          // Reload user profile to get updated PayPal status
+          loadUserProfile();
+          _isUpdatingPaypal = false;
+          notifyListeners();
+        } else if (currentUrl.startsWith('http://127.0.0.1:5000/api/PaypalLink/callback?error=')) {
+          context.pop();
+          webview.dispose();
+          setError('PayPal linking cancelled or failed.');
+          _isUpdatingPaypal = false;
+          notifyListeners();
+        }
+      });
+
+      webview.loadUrl(url);
+
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          content: SizedBox(
+            width: 500,
+            height: 600,
+            child: Webview(webview),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                context.pop();
+                webview.dispose();
+                 _isUpdatingPaypal = false;
+                 notifyListeners();
+              },
+            )
+          ],
+        ),
+      );
+    });
+  }
+
+
+  Future<bool> unlinkPaypal() async {
+    _isUpdatingPaypal = true;
+    clearError();
+    notifyListeners();
+
+    try {
+      final response = await api.delete(
+        'PaypalLink',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        await loadUserProfile();
+        return true;
+      } else {
+        throw Exception('Failed to unlink PayPal account');
+      }
+    } catch (e) {
+      setError(e.toString());
+      return false;
+    } finally {
+      _isUpdatingPaypal = false;
+      notifyListeners();
+    }
   }
 
   void clearUserProfile() {

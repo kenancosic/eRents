@@ -14,12 +14,12 @@ class LookupService extends ApiService {
   // ─── Generic Enum Lookup (Single Source Of Truth) ──────────────────────
 
   static const Map<EnumGroup, String> _endpoints = {
-    EnumGroup.propertyType: '/api/lookup/property-types',
-    EnumGroup.rentingType: '/api/lookup/rental-types',
-    EnumGroup.propertyStatus: '/api/lookup/property-statuses',
-    EnumGroup.userType: '/api/lookup/user-types',
-    EnumGroup.bookingStatus: '/api/lookup/booking-statuses',
-    EnumGroup.amenity: '/api/lookup/amenities',
+    EnumGroup.propertyType: '/lookup/property-types',
+    EnumGroup.rentingType: '/lookup/rental-types',
+    EnumGroup.propertyStatus: '/lookup/property-statuses',
+    EnumGroup.userType: '/lookup/user-types',
+    EnumGroup.bookingStatus: '/lookup/booking-statuses',
+    EnumGroup.amenity: '/lookup/amenities',
   };
 
   Future<List<LookupItem>> getEnumItems(EnumGroup group) async {
