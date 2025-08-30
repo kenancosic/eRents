@@ -1,7 +1,7 @@
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/feature/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';

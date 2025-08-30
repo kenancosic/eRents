@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/feature/saved/saved_provider.dart';
+import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';

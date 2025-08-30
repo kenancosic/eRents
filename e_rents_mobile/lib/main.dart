@@ -3,7 +3,7 @@ import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/features/features_registry.dart';
-import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
+import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';

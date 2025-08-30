@@ -6,25 +6,25 @@ import '../core/services/api_service.dart';
 import '../core/services/secure_storage_service.dart';
 
 // Import all feature providers
-import '../feature/auth/auth_provider.dart';
-import '../feature/chat/chat_provider.dart';
-import '../feature/home/providers/home_provider.dart';
-import '../feature/checkout/providers/checkout_provider.dart';
-import '../feature/saved/saved_provider.dart';
-import '../feature/profile/providers/user_profile_provider.dart';
-import '../feature/profile/providers/user_bookings_provider.dart';
-import '../feature/profile/providers/tenant_preferences_provider.dart';
-import '../feature/profile/providers/payment_methods_provider.dart';
-import '../feature/explore/providers/property_search_provider.dart';
-import '../feature/explore/providers/featured_properties_provider.dart';
-import '../feature/explore/providers/property_availability_provider.dart';
-import '../feature/property_detail/providers/property_data_provider.dart';
-import '../feature/property_detail/providers/property_collections_provider.dart';
-import '../feature/property_detail/providers/property_reviews_provider.dart';
-import '../feature/property_detail/providers/maintenance_issues_provider.dart';
-import '../feature/property_detail/providers/property_booking_provider.dart';
-import '../feature/property_detail/providers/lease_extension_provider.dart';
-import '../feature/property_detail/providers/property_pricing_provider.dart';
+import 'auth/auth_provider.dart';
+import 'chat/chat_provider.dart';
+import 'home/providers/home_provider.dart';
+import 'checkout/providers/checkout_provider.dart';
+import 'saved/saved_provider.dart';
+import 'profile/providers/user_profile_provider.dart';
+import 'profile/providers/user_bookings_provider.dart';
+import 'profile/providers/tenant_preferences_provider.dart';
+import 'profile/providers/payment_methods_provider.dart';
+import 'explore/providers/property_search_provider.dart';
+import 'explore/providers/featured_properties_provider.dart';
+import 'explore/providers/property_availability_provider.dart';
+import 'property_detail/providers/property_data_provider.dart';
+import 'property_detail/providers/property_collections_provider.dart';
+import 'property_detail/providers/property_reviews_provider.dart';
+import 'property_detail/providers/maintenance_issues_provider.dart';
+import 'property_detail/providers/property_booking_provider.dart';
+import 'property_detail/providers/lease_extension_provider.dart';
+import 'property_detail/providers/property_pricing_provider.dart';
 
 // Core providers
 import '../core/base/navigation_provider.dart';

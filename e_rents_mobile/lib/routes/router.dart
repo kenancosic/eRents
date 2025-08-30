@@ -1,27 +1,27 @@
-import 'package:e_rents_mobile/feature/auth/screens/login_screen.dart';
-import 'package:e_rents_mobile/feature/auth/screens/signup_screen.dart';
-import 'package:e_rents_mobile/feature/explore/explore_screen.dart';
-import 'package:e_rents_mobile/feature/home/home_screen.dart';
-import 'package:e_rents_mobile/feature/home/screens/modern_home_screen.dart';
-import 'package:e_rents_mobile/feature/chat/chat_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/personal_details_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/profile_screen.dart';
-import 'package:e_rents_mobile/feature/profile/screens/tenant_preferences_screen.dart';
-import 'package:e_rents_mobile/feature/property_detail/screens/property_details_screen.dart';
-import 'package:e_rents_mobile/feature/property_detail/utils/view_context.dart';
-import 'package:e_rents_mobile/feature/property_detail/screens/report_issue_screen.dart';
-import 'package:e_rents_mobile/feature/property_detail/screens/manage_lease_screen.dart';
-import 'package:e_rents_mobile/feature/property_detail/screens/manage_booking_screen.dart';
-import 'package:e_rents_mobile/feature/saved/saved_screen.dart';
+import 'package:e_rents_mobile/features/auth/screens/login_screen.dart';
+import 'package:e_rents_mobile/features/auth/screens/signup_screen.dart';
+import 'package:e_rents_mobile/features/explore/explore_screen.dart';
+import 'package:e_rents_mobile/features/home/home_screen.dart';
+import 'package:e_rents_mobile/features/home/screens/modern_home_screen.dart';
+import 'package:e_rents_mobile/features/chat/chat_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/personal_details_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/profile_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/tenant_preferences_screen.dart';
+import 'package:e_rents_mobile/features/property_detail/screens/property_details_screen.dart';
+import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
+import 'package:e_rents_mobile/features/property_detail/screens/report_issue_screen.dart';
+import 'package:e_rents_mobile/features/property_detail/screens/manage_lease_screen.dart';
+import 'package:e_rents_mobile/features/property_detail/screens/manage_booking_screen.dart';
+import 'package:e_rents_mobile/features/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
-import 'package:e_rents_mobile/feature/checkout/checkout_screen.dart';
+import 'package:e_rents_mobile/features/checkout/checkout_screen.dart';
 import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/feature/auth/auth_provider.dart';
+import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_mobile/feature/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
-import 'package:e_rents_mobile/feature/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
+import 'package:e_rents_mobile/features/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
+import 'package:e_rents_mobile/features/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 
 // Navigator keys
