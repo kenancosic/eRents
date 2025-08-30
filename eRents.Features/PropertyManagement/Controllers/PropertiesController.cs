@@ -30,4 +30,27 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
             return NoContent();
         return Ok(summary);
     }
+
+    [HttpPut("{id}/status")]
+    public async Task<ActionResult<PropertyResponse>> UpdatePropertyStatus(int id, [FromBody] PropertyStatusUpdateRequest request)
+    {
+        try
+        {
+            var result = await _propertyService.UpdatePropertyStatusAsync(id, request.Status, request.UnavailableFrom, request.UnavailableTo);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating property status for property {PropertyId}", id);
+            return StatusCode(500, new { message = "An error occurred while updating property status" });
+        }
+    }
 }

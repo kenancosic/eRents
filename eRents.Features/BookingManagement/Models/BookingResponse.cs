@@ -30,4 +30,8 @@ public class BookingResponse
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
+
+    // Included from navigation properties
+    public string? PropertyName { get; set; }
+    public string? UserName { get; set; }
 }

@@ -5,6 +5,9 @@ using eRents.Features.Core;
 using eRents.Features.BookingManagement.Models;
 using eRents.Features.BookingManagement.Services;
 using eRents.Features.BookingManagement.Validators;
+using AutoMapper;
+using Microsoft.Extensions.Logging;
+using eRents.Domain.Shared.Interfaces;
 
 namespace eRents.Features.BookingManagement.Extensions;
 
@@ -23,6 +26,15 @@ public static class BookingManagementServiceCollectionExtensions
 
         // Generic CRUD mapping
         services.AddScoped<ICrudService<Booking, BookingRequest, BookingResponse, BookingSearch>, BookingService>();
+
+        // Financial Reports Service
+        services.AddScoped<IFinancialReportService>(provider =>
+            new FinancialReportService(
+                provider.GetRequiredService<ERentsContext>(),
+                provider.GetRequiredService<IMapper>(),
+                provider.GetRequiredService<ILogger<FinancialReportService>>(),
+                provider.GetRequiredService<ICurrentUserService>()
+            ));
 
         // Validators
         services.AddScoped<IValidator<BookingRequest>, BookingRequestValidator>();

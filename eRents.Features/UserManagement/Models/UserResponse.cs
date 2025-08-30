@@ -24,7 +24,9 @@ public sealed class UserResponse
 
     // Payments
     public bool IsPaypalLinked { get; set; }
-    public string? PaypalUserIdentifier { get; set; }
+    public string? PaypalAccountEmail { get; set; }
+    public PaypalAccountTypeEnum PaypalAccountType { get; set; } = PaypalAccountTypeEnum.Unknown;
+    public DateTime? PaypalLinkedAt { get; set; }
 
     // Address (flattened)
     public string? StreetLine1 { get; set; }

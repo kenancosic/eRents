@@ -19,10 +19,6 @@ public sealed class UserRequest
     // Account / role
     public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;
 
-    // Payments
-    public bool IsPaypalLinked { get; set; }
-    public string? PaypalUserIdentifier { get; set; }
-
     // Address (owned type flattened)
     public string? StreetLine1 { get; set; }
     public string? StreetLine2 { get; set; }

@@ -50,6 +50,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
     protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearch search)
     {
+        query = query.Include(b => b.User).Include(b => b.Property);
         if (search.UserId.HasValue)
         {
             query = query.Where(x => x.UserId == search.UserId.Value);
@@ -110,6 +111,12 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             query = query.Where(x => x.Property.Address != null && x.Property.Address.City == search.City);
         }
 
+        if (!string.IsNullOrWhiteSpace(search.RentingType))
+        {
+            // Filter via owned type Property.RentingType
+            query = query.Where(x => x.Property.RentingType.ToString() == search.RentingType);
+        }
+
         // Auto-scope for Desktop owners/landlords: only bookings for properties owned by current user
         if (CurrentUser?.IsDesktop == true &&
             !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
@@ -164,6 +171,49 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 }
             }
         }
+
+        // Prevent creating a booking that overlaps an active tenancy for the same property
+        var bookingStart = request.StartDate;
+        var bookingEnd = request.EndDate ?? request.StartDate; // treat 1-day stay when EndDate is null
+
+        var hasActiveTenantOverlap = await Context.Set<Tenant>()
+            .AsNoTracking()
+            .Where(t => t.PropertyId == request.PropertyId)
+            .Where(t => t.LeaseStartDate.HasValue)
+            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .AnyAsync();
+
+        if (hasActiveTenantOverlap)
+        {
+            throw new InvalidOperationException("Cannot create booking: property has an active tenancy overlapping the requested dates.");
+        }
+    }
+
+    public async Task<BookingResponse> CancelBooking(int bookingId)
+    {
+        var entity = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .FirstOrDefaultAsync(x => x.BookingId == bookingId);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            {
+                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+            }
+        }
+
+        entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
+        await Context.SaveChangesAsync();
+        return Mapper.Map<BookingResponse>(entity);
     }
 
     protected override async Task BeforeUpdateAsync(Booking entity, BookingRequest request)
@@ -184,6 +234,23 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                     throw new InvalidOperationException($"EndDate must be at least {property.MinimumStayDays.Value} days after StartDate.");
                 }
             }
+        }
+
+        // Prevent updating a booking into a period that overlaps an active tenancy for the same property
+        var bookingStart = request.StartDate;
+        var bookingEnd = request.EndDate ?? request.StartDate;
+
+        var hasActiveTenantOverlap = await Context.Set<Tenant>()
+            .AsNoTracking()
+            .Where(t => t.PropertyId == request.PropertyId)
+            .Where(t => t.LeaseStartDate.HasValue)
+            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .AnyAsync();
+
+        if (hasActiveTenantOverlap)
+        {
+            throw new InvalidOperationException("Cannot update booking: property has an active tenancy overlapping the requested dates.");
         }
     }
 }

@@ -145,6 +145,29 @@ namespace eRents.Features.TenantManagement.Services
                 if (property == null || property.OwnerId != ownerId.Value)
                     throw new KeyNotFoundException("Property not found");
             }
+
+            // Default LeaseStartDate to today if not provided
+            if (!entity.LeaseStartDate.HasValue)
+            {
+                entity.LeaseStartDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            }
+
+            // Prevent creating a tenancy if there are non-cancelled bookings scheduled from LeaseStartDate onward
+            if (entity.PropertyId.HasValue)
+            {
+                var leaseStart = entity.LeaseStartDate!.Value;
+                var hasFutureBookings = await Context.Set<Booking>()
+                    .AsNoTracking()
+                    .Where(b => b.PropertyId == entity.PropertyId!.Value)
+                    .Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Cancelled)
+                    .Where(b => (b.EndDate.HasValue ? b.EndDate.Value >= leaseStart : b.StartDate >= leaseStart))
+                    .AnyAsync();
+
+                if (hasFutureBookings)
+                {
+                    throw new InvalidOperationException("Cannot start monthly tenancy: property has scheduled bookings from the selected start date.");
+                }
+            }
         }
 
         protected override async Task BeforeUpdateAsync(Tenant entity, TenantRequest request)
@@ -163,6 +186,23 @@ namespace eRents.Features.TenantManagement.Services
                 if (property == null || property.OwnerId != ownerId.Value)
                     throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
             }
+
+            // If lease start is being set/changed and property is assigned, re-check future bookings conflict
+            if (entity.PropertyId.HasValue && entity.LeaseStartDate.HasValue)
+            {
+                var leaseStart = entity.LeaseStartDate.Value;
+                var hasFutureBookings = await Context.Set<Booking>()
+                    .AsNoTracking()
+                    .Where(b => b.PropertyId == entity.PropertyId!.Value)
+                    .Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Cancelled)
+                    .Where(b => (b.EndDate.HasValue ? b.EndDate.Value >= leaseStart : b.StartDate >= leaseStart))
+                    .AnyAsync();
+
+                if (hasFutureBookings)
+                {
+                    throw new InvalidOperationException("Cannot update tenancy: property has scheduled bookings from the lease start date.");
+                }
+            }
         }
 
         protected override async Task BeforeDeleteAsync(Tenant entity)
@@ -180,6 +220,134 @@ namespace eRents.Features.TenantManagement.Services
                     .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
                 if (property == null || property.OwnerId != ownerId.Value)
                     throw new KeyNotFoundException($"Tenant with id {entity.TenantId} not found");
+            }
+        }
+
+        public async Task<TenantResponse> CancelTenantAsync(int tenantId, DateOnly? cancelDate = null)
+        {
+            // Load with property for ownership validation
+            var entity = await AddIncludes(Context.Set<Tenant>().AsQueryable())
+                .FirstOrDefaultAsync(t => t.TenantId == tenantId);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+            }
+
+            // Determine effective cancellation date and compute end of next billing cycle
+            var leaseStart = entity.LeaseStartDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            var cancelOn = cancelDate ?? DateOnly.FromDateTime(DateTime.UtcNow.Date);
+
+            var effectiveEnd = ComputeLeaseEndForCancellation(leaseStart, cancelOn);
+            entity.LeaseEndDate = effectiveEnd;
+            entity.TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.LeaseEnded;
+
+            await Context.SaveChangesAsync();
+            return Mapper.Map<TenantResponse>(entity);
+        }
+
+        private static DateOnly ComputeLeaseEndForCancellation(DateOnly leaseStart, DateOnly cancelOn)
+        {
+            // Billing cycles start each month on the leaseStart's day (adjusted for shorter months)
+            // End date is inclusive: end of the cycle day before the next cycle start
+            // Rule: owe the entire next cycle beyond the current one when cancelling
+
+            // Calculate months difference between cancelOn and leaseStart
+            var monthsBetween = (cancelOn.Year - leaseStart.Year) * 12 + (cancelOn.Month - leaseStart.Month);
+            if (monthsBetween < 0) monthsBetween = 0;
+
+            var currentCycleStart = leaseStart.AddMonths(monthsBetween);
+
+            DateOnly nextCycleStart;
+            if (cancelOn < currentCycleStart)
+            {
+                // Cancellation before the current cycle started -> next cycle is currentCycleStart
+                nextCycleStart = currentCycleStart;
+            }
+            else
+            {
+                // Cancellation within or after the current cycle -> next cycle starts one month after currentCycleStart
+                nextCycleStart = currentCycleStart.AddMonths(1);
+            }
+
+            // Owe one full cycle beyond the nextCycleStart
+            var owedCycleEnd = nextCycleStart.AddMonths(1).AddDays(-1);
+            return owedCycleEnd;
+        }
+
+        /// <summary>
+        /// Accepts a tenant request and automatically rejects all other inactive requests for the same property
+        /// </summary>
+        /// <param name="tenantId">ID of the tenant to accept</param>
+        /// <returns>Updated tenant response</returns>
+        public async Task<TenantResponse> AcceptTenantAndRejectOthersAsync(int tenantId)
+        {
+            using var transaction = await Context.Database.BeginTransactionAsync();
+            try
+            {
+                // Get the tenant to accept
+                var tenantToAccept = await Context.Set<Tenant>()
+                    .Include(t => t.Property)
+                    .FirstOrDefaultAsync(t => t.TenantId == tenantId);
+
+                if (tenantToAccept == null)
+                    throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+
+                // Validate ownership for desktop owner/landlord
+                if (CurrentUser?.IsDesktop == true &&
+                    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var ownerId = CurrentUser.GetUserIdAsInt();
+                    if (!ownerId.HasValue || tenantToAccept.Property == null || tenantToAccept.Property.OwnerId != ownerId.Value)
+                        throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+                }
+
+                // Accept the tenant (set status to Active)
+                tenantToAccept.TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Active;
+                tenantToAccept.UpdatedAt = DateTime.UtcNow;
+
+                // If property exists, update its status to Occupied
+                if (tenantToAccept.PropertyId.HasValue && tenantToAccept.Property != null)
+                {
+                    tenantToAccept.Property.Status = eRents.Domain.Models.Enums.PropertyStatusEnum.Occupied;
+                    tenantToAccept.Property.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Reject all other inactive tenants for the same property
+                if (tenantToAccept.PropertyId.HasValue)
+                {
+                    var otherTenants = await Context.Set<Tenant>()
+                        .Where(t => t.PropertyId == tenantToAccept.PropertyId.Value)
+                        .Where(t => t.TenantId != tenantId)
+                        .Where(t => t.TenantStatus == eRents.Domain.Models.Enums.TenantStatusEnum.Inactive)
+                        .ToListAsync();
+
+                    foreach (var otherTenant in otherTenants)
+                    {
+                        otherTenant.TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Evicted;
+                        otherTenant.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
+                await Context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return Mapper.Map<TenantResponse>(tenantToAccept);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
             }
         }
     }

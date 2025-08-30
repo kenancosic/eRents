@@ -1,8 +1,10 @@
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using eRents.Domain.Models;
 using eRents.Features.Core;
 using eRents.Features.MaintenanceManagement.Models;
 using eRents.Features.MaintenanceManagement.Services;
+using eRents.Features.MaintenanceManagement.Validators;
 
 namespace eRents.Features.MaintenanceManagement.Extensions;
 
@@ -21,6 +23,9 @@ public static class MaintenanceManagementServiceCollectionExtensions
 
         // Generic CRUD mapping
         services.AddScoped<ICrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>, MaintenanceIssueService>();
+
+        // FluentValidation
+        services.AddScoped<IValidator<MaintenanceIssueRequest>, MaintenanceIssueRequestValidator>();
 
         return services;
     }

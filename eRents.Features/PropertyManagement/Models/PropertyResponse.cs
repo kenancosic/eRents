@@ -14,11 +14,12 @@ public sealed class PropertyResponse
     public string? Description { get; set; }
     public decimal Price { get; set; }
     public string Currency { get; set; } = "BAM";
-    public int? Bedrooms { get; set; }
-    public int? Bathrooms { get; set; }
+    public int? Rooms { get; set; }
     public decimal? Area { get; set; }
     public int? MinimumStayDays { get; set; }
     public bool RequiresApproval { get; set; }
+    public DateOnly? UnavailableFrom { get; set; }
+    public DateOnly? UnavailableTo { get; set; }
 
     public PropertyTypeEnum? PropertyType { get; set; }
     public RentalType? RentingType { get; set; }

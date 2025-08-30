@@ -64,12 +64,6 @@ public sealed class UserRequestValidator : BaseValidator<UserRequest>
                 .InclusiveBetween(-180m, 180m).WithMessage("Longitude must be between -180 and 180.");
         });
 
-        // PayPal identifier optional length
-        When(x => !string.IsNullOrWhiteSpace(x.PaypalUserIdentifier), () =>
-        {
-            RuleFor(x => x.PaypalUserIdentifier!)
-                .MaximumLength(255);
-        });
 
         // DateOfBirth logical constraint (optional)
         When(x => x.DateOfBirth.HasValue, () =>

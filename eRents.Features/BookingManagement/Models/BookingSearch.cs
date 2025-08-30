@@ -23,6 +23,9 @@ public class BookingSearch : BaseSearchObject
     // City filter via Property.Address.City (owned type)
     public string? City { get; set; }
 
+    // Renting type filter via Property.RentingType (owned type)
+    public string? RentingType { get; set; }
+
     // SortBy: startdate, totalprice, createdat, updatedat
     // SortDirection: asc|desc (case-insensitive, default from BaseSearchObject semantics)
 }

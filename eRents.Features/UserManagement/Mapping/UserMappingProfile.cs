@@ -25,7 +25,9 @@ public class UserMappingProfile : Profile
             .ForMember(d => d.DateOfBirth, o => o.MapFrom(s => s.DateOfBirth))
             .ForMember(d => d.UserType, o => o.MapFrom(s => s.UserType))
             .ForMember(d => d.IsPaypalLinked, o => o.MapFrom(s => s.IsPaypalLinked))
-            .ForMember(d => d.PaypalUserIdentifier, o => o.MapFrom(s => s.PaypalUserIdentifier))
+            .ForMember(d => d.PaypalAccountEmail, o => o.MapFrom(s => s.PaypalAccountEmail))
+            .ForMember(d => d.PaypalAccountType, o => o.MapFrom(s => s.PaypalAccountType))
+            .ForMember(d => d.PaypalLinkedAt, o => o.MapFrom(s => s.PaypalLinkedAt))
             .ForMember(d => d.StreetLine1, o => o.MapFrom(s => s.Address != null ? s.Address.StreetLine1 : null))
             .ForMember(d => d.StreetLine2, o => o.MapFrom(s => s.Address != null ? s.Address.StreetLine2 : null))
             .ForMember(d => d.City,        o => o.MapFrom(s => s.Address != null ? s.Address.City        : null))
@@ -49,8 +51,14 @@ public class UserMappingProfile : Profile
             .ForMember(d => d.IsPublic, o => o.MapFrom(s => s.IsPublic))
             .ForMember(d => d.DateOfBirth, o => o.MapFrom(s => s.DateOfBirth))
             .ForMember(d => d.UserType, o => o.MapFrom(s => s.UserType))
-            .ForMember(d => d.IsPaypalLinked, o => o.MapFrom(s => s.IsPaypalLinked))
-            .ForMember(d => d.PaypalUserIdentifier, o => o.MapFrom(s => s.PaypalUserIdentifier))
+            // PayPal linkage is managed via dedicated endpoints; ignore any client input
+            .ForMember(d => d.IsPaypalLinked, o => o.Ignore())
+            .ForMember(d => d.PaypalUserIdentifier, o => o.Ignore())
+            .ForMember(d => d.PaypalAccountEmail, o => o.Ignore())
+            .ForMember(d => d.PaypalAccountType, o => o.Ignore())
+            .ForMember(d => d.PaypalLinkedAt, o => o.Ignore())
+            .ForMember(d => d.PaypalMerchantId, o => o.Ignore())
+            .ForMember(d => d.PaypalPayerId, o => o.Ignore())
             .AfterMap((src, dest) =>
             {
                 dest.Address ??= new Address();
