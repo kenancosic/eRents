@@ -17,8 +17,6 @@ public partial class Property : BaseEntity
 
     public string Currency { get; set; } = "BAM";
 
-    public string? Facilities { get; set; }
-
     // Replaced Status string with enum
     public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;
 
@@ -32,14 +30,16 @@ public partial class Property : BaseEntity
     // Replaced RentingTypeId foreign key with enum
     public RentalType? RentingType { get; set; }
 
-    public int? Bedrooms { get; set; }
-
-    public int? Bathrooms { get; set; }
+    public int? Rooms { get; set; }
 
     public decimal? Area { get; set; }
     public int? MinimumStayDays { get; set; }
 
     public bool RequiresApproval { get; set; } = false; // For annual rentals requiring landlord approval
+
+    // For tracking unavailable date ranges
+    public DateOnly? UnavailableFrom { get; set; }
+    public DateOnly? UnavailableTo { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

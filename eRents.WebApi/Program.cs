@@ -32,7 +32,6 @@ builder.Services.AddControllers(x =>
 	// Ensure we reference the ValidationFilter from Features.Core by type to avoid missing generic using errors
 	x.Filters.Add(typeof(eRents.Features.Core.Filters.ValidationFilter));
 })
-// Ensure controllers in Features are discoverable
 .AddApplicationPart(typeof(eRents.Features.PropertyManagement.Controllers.PropertiesController).Assembly)
 .AddJsonOptions(options =>
 {
@@ -161,7 +160,7 @@ async Task SeedDatabaseAsync(IServiceProvider services)
 	{
 		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
 		bool useBusinessLogicSeeder = app.Configuration.GetValue<bool>("Database:UseBusinessLogicSeeder", false);
-		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", app.Environment.IsDevelopment());
+		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", false);
 
 		if (useBusinessLogicSeeder)
 		{

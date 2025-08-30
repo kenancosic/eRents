@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eRents.Domain.Models;
 
@@ -11,9 +12,11 @@ using eRents.Domain.Models;
 namespace eRents.Domain.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    partial class ERentsContextModelSnapshot : ModelSnapshot
+    [Migration("20250826214340_DropRentalRequests")]
+    partial class DropRentalRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -432,6 +435,12 @@ namespace eRents.Domain.Migrations
                     b.Property<decimal?>("Area")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("Bathrooms")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Bedrooms")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -443,6 +452,9 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Facilities")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("MinimumStayDays")
@@ -471,20 +483,11 @@ namespace eRents.Domain.Migrations
                     b.Property<bool>("RequiresApproval")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("Rooms")
-                        .HasColumnType("int");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("Available");
-
-                    b.Property<DateOnly?>("UnavailableFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("UnavailableTo")
-                        .HasColumnType("date");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");

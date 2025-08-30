@@ -18,6 +18,11 @@ public interface IRabbitMQService
     Task PublishBookingNotificationAsync(BookingNotificationMessage message);
 
     /// <summary>
+    /// Publish a refund notification message to the queue
+    /// </summary>
+    Task PublishRefundNotificationAsync(RefundNotificationMessage message);
+
+    /// <summary>
     /// Generic message publishing method
     /// </summary>
     Task PublishMessageAsync<T>(T message, string queueName) where T : class;

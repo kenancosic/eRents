@@ -48,6 +48,7 @@ namespace eRents.RabbitMQMicroservice
 					services.AddTransient<EmailProcessor>();
 					services.AddTransient<BookingNotificationProcessor>();
 					services.AddTransient<ReviewNotificationProcessor>();
+					services.AddTransient<RefundNotificationProcessor>();
 
 					// Register RabbitMQ consumer service
 					services.AddSingleton<RabbitMQConsumerService>(provider =>
@@ -74,6 +75,7 @@ namespace eRents.RabbitMQMicroservice
 			var emailProcessor = serviceProvider.GetRequiredService<EmailProcessor>();
 			var bookingProcessor = serviceProvider.GetRequiredService<BookingNotificationProcessor>();
 			var reviewProcessor = serviceProvider.GetRequiredService<ReviewNotificationProcessor>();
+			var refundProcessor = serviceProvider.GetRequiredService<RefundNotificationProcessor>();
 
 			try
 			{
@@ -147,6 +149,22 @@ namespace eRents.RabbitMQMicroservice
 					}
 				});
 				logger.LogInformation("Started consuming from reviewQueue");
+
+				// 5. Refund notifications
+				rabbitMqService.ConsumeMessages("refundQueue", async (model, ea) =>
+				{
+					try
+					{
+						var body = ea.Body.ToArray();
+						var message = Encoding.UTF8.GetString(body);
+						await refundProcessor.Process(message);
+					}
+					catch (Exception ex)
+					{
+						logger.LogError(ex, "Error processing refund notification");
+					}
+				});
+				logger.LogInformation("Started consuming from refundQueue");
 
 				logger.LogInformation("RabbitMQ Microservice is running. Press Ctrl+C to exit.");
 				

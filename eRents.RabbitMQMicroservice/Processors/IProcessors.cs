@@ -17,8 +17,14 @@ namespace eRents.RabbitMQMicroservice.Processors
 	{
 		Task Process(string message);
 	}
+	
 	public interface IChatMessageProcessor
 	{
 		void Process(object sender, BasicDeliverEventArgs e);
+	}
+	
+	public interface IRefundNotificationProcessor
+	{
+		Task Process(string message);
 	}
 }

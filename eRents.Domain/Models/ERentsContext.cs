@@ -28,7 +28,7 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<Message> Messages { get; set; }
     public virtual DbSet<Payment> Payments { get; set; }
     public virtual DbSet<Property> Properties { get; set; }
-    public virtual DbSet<RentalRequest> RentalRequests { get; set; }
+    // RentalRequest entity removed from simplified model
     public virtual DbSet<Review> Reviews { get; set; }
     public virtual DbSet<Tenant> Tenants { get; set; }
     public virtual DbSet<User> Users { get; set; }
@@ -303,35 +303,7 @@ public partial class ERentsContext : DbContext
 
         // Note: LeaseExtensionRequest configuration removed - simplified to basic lease management
 
-        modelBuilder.Entity<RentalRequest>(entity =>
-        {
-            entity.HasKey(e => e.RequestId);
-            
-            // Core rental request properties
-            entity.Property(e => e.PropertyId).HasColumnName("property_id");
-            entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.ProposedStartDate).HasColumnName("proposed_start_date");
-            entity.Property(e => e.LeaseDurationMonths).HasColumnName("lease_duration_months");
-            entity.Property(e => e.ProposedMonthlyRent).HasColumnType("decimal(10, 2)").HasColumnName("proposed_monthly_rent");
-
-            entity.Property(e => e.NumberOfGuests).HasColumnName("number_of_guests");
-            entity.Property(e => e.Message).HasMaxLength(1000).HasColumnName("message");
-            entity.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasDefaultValue(RentalRequestStatusEnum.Pending);
-            entity.Property(e => e.ResponseDate).HasColumnName("response_date");
-            entity.Property(e => e.LandlordResponse).HasMaxLength(1000).HasColumnName("landlord_response");
-
-            entity.HasOne(d => d.Property)
-                .WithMany()
-                .HasForeignKey(d => d.PropertyId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(d => d.User)
-                .WithMany()
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-        });
+        // RentalRequest entity configuration removed as part of model simplification
 
         modelBuilder.Entity<Notification>(entity =>
         {

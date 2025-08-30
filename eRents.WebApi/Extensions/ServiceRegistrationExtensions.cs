@@ -1,33 +1,10 @@
-using eRents.Domain.Shared;
-using Microsoft.EntityFrameworkCore;
-using eRents.Domain.Models;
 using eRents.Domain.Shared.Interfaces;
-using eRents.WebApi.Services;
-using eRents.Features.Shared.Services;
-
-using eRents.Features.Core.Validation;
-using eRents.Features.Core.Extensions;
-using eRents.Features.ImageManagement.Services;
-
-using eRents.Features.PropertyManagement.Models;
-using eRents.Features.UserManagement.Services;
-using eRents.Features.UserManagement.Models;
-using eRents.Features.ReviewManagement.Models;
-using eRents.Features.ReviewManagement.Services;
-using eRents.Features.BookingManagement.Models;
-using eRents.Features.BookingManagement.Services;
 using eRents.Features.PaymentManagement.Services;
-using eRents.Features.PaymentManagement.Models;
+using eRents.Features.Shared.Services;
+using eRents.Features.ImageManagement.Services;
 using eRents.Features.PropertyManagement.Services;
-using eRents.Features.LookupManagement.Interfaces;
-using eRents.Features.LookupManagement.Services;
 using eRents.Features.AuthManagement.Extensions;
-using eRents.Features.MaintenanceManagement.Services;
-using eRents.Features.MaintenanceManagement.Models;
-using eRents.Features.TenantManagement.Services;
-using eRents.Features.TenantManagement.Models;
 using eRents.Features.UserManagement.Extensions;
-using eRents.Features.PropertyManagement.Extensions;
 using eRents.Features.BookingManagement.Extensions;
 using eRents.Features.ImageManagement.Extensions;
 using eRents.Features.LookupManagement.Extensions;
@@ -35,9 +12,8 @@ using eRents.Features.MaintenanceManagement.Extensions;
 using eRents.Features.PaymentManagement.Extensions;
 using eRents.Features.ReviewManagement.Extensions;
 using eRents.Features.TenantManagement.Extensions;
-using System.Reflection;
-using System.Linq;
 using eRents.Features.Core;
+using eRents.WebApi.Services;
 
 namespace eRents.WebApi.Extensions;
 
@@ -48,6 +24,16 @@ public static class ServiceRegistrationExtensions
 		// Host-level concerns like DbContext, AutoMapper, and validation are configured in Program.cs
 
 		services.AddScoped<ICurrentUserService, CurrentUserService>();
+		// Cross-cutting infrastructure for outbound HTTP and caching (used by PayPal integration)
+		services.AddHttpClient();
+		services.AddMemoryCache();
+
+		// PayPal sandbox/live configuration (Features namespace)
+		services.Configure<PayPalOptions>(configuration.GetSection("PayPal"));
+		services.AddSingleton<PayPalIdentityService>();
+
+		// Feature registration happens below via extension methods block
+
 		// Core/Shared services
 		services.AddScoped<ImageService>();
 		services.AddScoped<IMessagingService, MessagingService>();

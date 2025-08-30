@@ -66,6 +66,11 @@ namespace eRents.RabbitMQMicroservice.Services
             return PublishMessageAsync("bookingQueue", message);
         }
 
+        public Task PublishRefundNotificationAsync(RefundNotificationMessage message)
+        {
+            return PublishMessageAsync("refundQueue", message);
+        }
+
         public Task PublishMessageAsync<T>(T message, string queueName) where T : class
         {
             return PublishMessageAsync(queueName, message);

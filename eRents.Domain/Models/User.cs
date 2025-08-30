@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using eRents.Domain.Shared;
 using eRents.Domain.Models.Enums;
@@ -31,6 +31,18 @@ public partial class User : BaseEntity
 	public bool IsPaypalLinked { get; set; }
 
 	public string? PaypalUserIdentifier { get; set; }
+
+	// PayPal linkage details
+	public string? PaypalAccountEmail { get; set; }
+
+	public PaypalAccountTypeEnum PaypalAccountType { get; set; } = PaypalAccountTypeEnum.Unknown;
+
+	public DateTime? PaypalLinkedAt { get; set; }
+
+	// Optional: store specific identifiers when known
+	public string? PaypalMerchantId { get; set; }
+
+	public string? PaypalPayerId { get; set; }
 
 	public byte[] PasswordSalt { get; set; } = null!;
 

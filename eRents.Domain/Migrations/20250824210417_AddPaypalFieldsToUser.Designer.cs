@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using eRents.Domain.Models;
 
@@ -11,9 +12,11 @@ using eRents.Domain.Models;
 namespace eRents.Domain.Migrations
 {
     [DbContext(typeof(ERentsContext))]
-    partial class ERentsContextModelSnapshot : ModelSnapshot
+    [Migration("20250824210417_AddPaypalFieldsToUser")]
+    partial class AddPaypalFieldsToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -432,6 +435,12 @@ namespace eRents.Domain.Migrations
                     b.Property<decimal?>("Area")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("Bathrooms")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Bedrooms")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -443,6 +452,9 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Facilities")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("MinimumStayDays")
@@ -471,20 +483,11 @@ namespace eRents.Domain.Migrations
                     b.Property<bool>("RequiresApproval")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("Rooms")
-                        .HasColumnType("int");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("Available");
-
-                    b.Property<DateOnly?>("UnavailableFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("UnavailableTo")
-                        .HasColumnType("date");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -511,6 +514,79 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("AmenityId");
 
                     b.ToTable("PropertyAmenities");
+                });
+
+            modelBuilder.Entity("eRents.Domain.Models.RentalRequest", b =>
+                {
+                    b.Property<int>("RequestId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LandlordResponse")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("landlord_response");
+
+                    b.Property<int>("LeaseDurationMonths")
+                        .HasColumnType("int")
+                        .HasColumnName("lease_duration_months");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("message");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NumberOfGuests")
+                        .HasColumnType("int")
+                        .HasColumnName("number_of_guests");
+
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int")
+                        .HasColumnName("property_id");
+
+                    b.Property<decimal>("ProposedMonthlyRent")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("proposed_monthly_rent");
+
+                    b.Property<DateOnly>("ProposedStartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("proposed_start_date");
+
+                    b.Property<DateTime?>("ResponseDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("response_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Pending");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("RequestId");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RentalRequests");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
@@ -943,6 +1019,25 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Amenity");
 
                     b.Navigation("Property");
+                });
+
+            modelBuilder.Entity("eRents.Domain.Models.RentalRequest", b =>
+                {
+                    b.HasOne("eRents.Domain.Models.Property", "Property")
+                        .WithMany()
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eRents.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Review", b =>
