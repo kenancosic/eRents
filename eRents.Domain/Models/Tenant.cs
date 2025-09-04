@@ -24,4 +24,6 @@ public partial class Tenant : BaseEntity
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual Property? Property { get; set; }
+
+    public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 }

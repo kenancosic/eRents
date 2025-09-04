@@ -28,6 +28,7 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<Message> Messages { get; set; }
     public virtual DbSet<Payment> Payments { get; set; }
     public virtual DbSet<Property> Properties { get; set; }
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
     // RentalRequest entity removed from simplified model
     public virtual DbSet<Review> Reviews { get; set; }
     public virtual DbSet<Tenant> Tenants { get; set; }
@@ -83,10 +84,16 @@ public partial class ERentsContext : DbContext
             // UserType enum configuration
             entity.Property(e => e.UserType)
                 .HasConversion<string>()
-                .HasDefaultValue(UserTypeEnum.Guest);
+                .HasDefaultValue(UserTypeEnum.Guest)
+                .HasSentinel((UserTypeEnum)0);
 
 
-            entity.OwnsOne(e => e.Address);
+            entity.OwnsOne(e => e.Address, a =>
+            {
+                a.Property(a => a.StreetLine1).IsRequired();
+                a.Property(a => a.City).IsRequired();
+                a.Property(a => a.Country).IsRequired();
+            });
 
             entity.HasOne(e => e.ProfileImage)
                 .WithOne()
@@ -100,11 +107,13 @@ public partial class ERentsContext : DbContext
             entity.HasKey(e => e.PropertyId);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Area).HasColumnType("decimal(18, 2)");
 
             // Enum configurations
             entity.Property(e => e.Status)
                 .HasConversion<string>()
-                .HasDefaultValue(PropertyStatusEnum.Available);
+                .HasDefaultValue(PropertyStatusEnum.Available)
+                .HasSentinel((PropertyStatusEnum)0);
 
             entity.Property(e => e.PropertyType)
                 .HasConversion<string>();
@@ -112,7 +121,12 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.RentingType)
                 .HasConversion<string>();
 
-            entity.OwnsOne(e => e.Address);
+            entity.OwnsOne(e => e.Address, a =>
+            {
+                a.Property(a => a.StreetLine1).IsRequired();
+                a.Property(a => a.City).IsRequired();
+                a.Property(a => a.Country).IsRequired();
+            });
 
             entity.HasOne(e => e.Owner)
                 .WithMany(u => u.Properties)
@@ -145,7 +159,8 @@ public partial class ERentsContext : DbContext
             // BookingStatus enum configuration
             entity.Property(e => e.Status)
                 .HasConversion<string>()
-                .HasDefaultValue(BookingStatusEnum.Upcoming);
+                .HasDefaultValue(BookingStatusEnum.Upcoming)
+                .HasSentinel((BookingStatusEnum)0);
 
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Bookings)
@@ -194,6 +209,32 @@ public partial class ERentsContext : DbContext
         {
             entity.HasKey(e => e.PaymentId);
             entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Currency).HasMaxLength(3);
+            entity.Property(e => e.PaymentMethod).HasMaxLength(50);
+            entity.Property(e => e.PaymentStatus).HasMaxLength(50);
+            entity.Property(e => e.PaymentReference).HasMaxLength(255);
+            entity.Property(e => e.RefundReason).HasMaxLength(500);
+            entity.Property(e => e.PaymentType).HasMaxLength(50);
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany(t => t.Payments)
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Property)
+                .WithMany(p => p.Payments)
+                .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Booking)
+                .WithMany(b => b.Payments)
+                .HasForeignKey(e => e.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Subscription)
+                .WithMany(s => s.Payments)
+                .HasForeignKey(e => e.SubscriptionId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.OriginalPayment)
                 .WithMany(p => p.Refunds)
@@ -230,11 +271,13 @@ public partial class ERentsContext : DbContext
             // Enum configurations
             entity.Property(e => e.Priority)
                 .HasConversion<string>()
-                .HasDefaultValue(MaintenanceIssuePriorityEnum.Medium);
+                .HasDefaultValue(MaintenanceIssuePriorityEnum.Medium)
+                .HasSentinel((MaintenanceIssuePriorityEnum)0);
 
             entity.Property(e => e.Status)
                 .HasConversion<string>()
-                .HasDefaultValue(MaintenanceIssueStatusEnum.Pending);
+                .HasDefaultValue(MaintenanceIssueStatusEnum.Pending)
+                .HasSentinel((MaintenanceIssueStatusEnum)0);
 
             entity.HasOne(e => e.ReportedByUser)
                 .WithMany(u => u.ReportedMaintenanceIssues)
@@ -319,6 +362,28 @@ public partial class ERentsContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // Subscription Configuration
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.HasKey(e => e.SubscriptionId);
+            entity.Property(e => e.MonthlyAmount).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(e => e.Tenant)
+                .WithMany(t => t.Subscriptions)
+                .HasForeignKey(e => e.TenantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Property)
+                .WithMany(p => p.Subscriptions)
+                .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Booking)
+                .WithOne(b => b.Subscription)
+                .HasForeignKey<Subscription>(s => s.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // Note: PropertyAvailability configuration removed - simplified to Property.Status enum
 
         // Note: Removed configurations for tables converted to enums:
@@ -352,10 +417,12 @@ public partial class ERentsContext : DbContext
                 entry.Entity.CreatedBy = currentUserId;
                 entry.Entity.CreatedAt = now;
             }
-
-            // Always update modification details
-            entry.Entity.ModifiedBy = currentUserId;
-            entry.Entity.UpdatedAt = now;
+            else if (entry.State == EntityState.Modified)
+            {
+                // Only update modification details for modified entities
+                entry.Entity.ModifiedBy = currentUserId;
+                entry.Entity.UpdatedAt = now;
+            }
         }
 
         return await base.SaveChangesAsync(cancellationToken);

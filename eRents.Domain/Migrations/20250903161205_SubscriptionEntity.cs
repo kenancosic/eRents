@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace eRents.Domain.Migrations
 {
     /// <inheritdoc />
-    public partial class EntityChanges : Migration
+    public partial class SubscriptionEntity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,7 +18,6 @@ namespace eRents.Domain.Migrations
                     AmenityId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     AmenityName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -46,9 +45,10 @@ namespace eRents.Domain.Migrations
                     Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PaymentStatus = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PaymentReference = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsSubscription = table.Column<bool>(type: "bit", nullable: false),
+                    SubscriptionId = table.Column<int>(type: "int", nullable: true),
                     NumberOfGuests = table.Column<int>(type: "int", nullable: false),
                     SpecialRequests = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -65,7 +65,6 @@ namespace eRents.Domain.Migrations
                 {
                     ImageId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ReviewId = table.Column<int>(type: "int", nullable: true),
                     PropertyId = table.Column<int>(type: "int", nullable: true),
                     MaintenanceIssueId = table.Column<int>(type: "int", nullable: true),
                     ImageData = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
@@ -76,8 +75,6 @@ namespace eRents.Domain.Migrations
                     Width = table.Column<int>(type: "int", nullable: true),
                     Height = table.Column<int>(type: "int", nullable: true),
                     FileSizeBytes = table.Column<long>(type: "bigint", nullable: true),
-                    ThumbnailData = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -111,16 +108,17 @@ namespace eRents.Domain.Migrations
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsPaypalLinked = table.Column<bool>(type: "bit", nullable: false),
                     PaypalUserIdentifier = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PaypalAccountEmail = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PaypalAccountType = table.Column<int>(type: "int", nullable: false),
+                    PaypalLinkedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    PaypalMerchantId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PaypalPayerId = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     PasswordSalt = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
                     PasswordHash = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
                     ResetToken = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ResetTokenExpiration = table.Column<DateTime>(type: "datetime2", nullable: true),
                     IsPublic = table.Column<bool>(type: "bit", nullable: true),
                     DateOfBirth = table.Column<DateOnly>(type: "date", nullable: true),
-                    Theme = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "light"),
-                    Language = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false, defaultValue: "en"),
-                    NotificationSettings = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -148,7 +146,6 @@ namespace eRents.Domain.Migrations
                     MessageText = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsRead = table.Column<bool>(type: "bit", nullable: true),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -183,7 +180,6 @@ namespace eRents.Domain.Migrations
                     Type = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     ReferenceId = table.Column<int>(type: "int", nullable: true),
                     IsRead = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -210,7 +206,6 @@ namespace eRents.Domain.Migrations
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Facilities = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Available"),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Address_StreetLine1 = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
@@ -223,12 +218,12 @@ namespace eRents.Domain.Migrations
                     Address_Longitude = table.Column<decimal>(type: "decimal(9,6)", nullable: true),
                     PropertyType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     RentingType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Bedrooms = table.Column<int>(type: "int", nullable: true),
-                    Bathrooms = table.Column<int>(type: "int", nullable: true),
+                    Rooms = table.Column<int>(type: "int", nullable: true),
                     Area = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     MinimumStayDays = table.Column<int>(type: "int", nullable: true),
                     RequiresApproval = table.Column<bool>(type: "bit", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    UnavailableFrom = table.Column<DateOnly>(type: "date", nullable: true),
+                    UnavailableTo = table.Column<DateOnly>(type: "date", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -261,10 +256,7 @@ namespace eRents.Domain.Migrations
                     AssignedToUserId = table.Column<int>(type: "int", nullable: true),
                     ReportedByUserId = table.Column<int>(type: "int", nullable: false),
                     ResolutionNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Category = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    RequiresInspection = table.Column<bool>(type: "bit", nullable: false),
                     IsTenantComplaint = table.Column<bool>(type: "bit", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -317,45 +309,6 @@ namespace eRents.Domain.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "RentalRequests",
-                columns: table => new
-                {
-                    RequestId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    property_id = table.Column<int>(type: "int", nullable: false),
-                    user_id = table.Column<int>(type: "int", nullable: false),
-                    proposed_start_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    lease_duration_months = table.Column<int>(type: "int", nullable: false),
-                    proposed_monthly_rent = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
-                    number_of_guests = table.Column<int>(type: "int", nullable: false),
-                    message = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    Status = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Pending"),
-                    response_date = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    landlord_response = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedBy = table.Column<int>(type: "int", nullable: true),
-                    ModifiedBy = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RentalRequests", x => x.RequestId);
-                    table.ForeignKey(
-                        name: "FK_RentalRequests_Properties_property_id",
-                        column: x => x.property_id,
-                        principalTable: "Properties",
-                        principalColumn: "PropertyId",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_RentalRequests_Users_user_id",
-                        column: x => x.user_id,
-                        principalTable: "Users",
-                        principalColumn: "UserId",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Reviews",
                 columns: table => new
                 {
@@ -369,7 +322,6 @@ namespace eRents.Domain.Migrations
                     StarRating = table.Column<decimal>(type: "decimal(2,1)", nullable: true),
                     BookingId = table.Column<int>(type: "int", nullable: true),
                     ParentReviewId = table.Column<int>(type: "int", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -418,7 +370,6 @@ namespace eRents.Domain.Migrations
                     LeaseStartDate = table.Column<DateOnly>(type: "date", nullable: true),
                     LeaseEndDate = table.Column<DateOnly>(type: "date", nullable: true),
                     TenantStatus = table.Column<string>(type: "nvarchar(max)", nullable: false, defaultValue: "Active"),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -446,7 +397,6 @@ namespace eRents.Domain.Migrations
                 {
                     UserId = table.Column<int>(type: "int", nullable: false),
                     PropertyId = table.Column<int>(type: "int", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -470,6 +420,50 @@ namespace eRents.Domain.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Subscriptions",
+                columns: table => new
+                {
+                    SubscriptionId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TenantId = table.Column<int>(type: "int", nullable: false),
+                    PropertyId = table.Column<int>(type: "int", nullable: false),
+                    BookingId = table.Column<int>(type: "int", nullable: false),
+                    MonthlyAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    StartDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    EndDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    PaymentDayOfMonth = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    NextPaymentDate = table.Column<DateOnly>(type: "date", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    ModifiedBy = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Subscriptions", x => x.SubscriptionId);
+                    table.ForeignKey(
+                        name: "FK_Subscriptions_Bookings_BookingId",
+                        column: x => x.BookingId,
+                        principalTable: "Bookings",
+                        principalColumn: "BookingId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Subscriptions_Properties_PropertyId",
+                        column: x => x.PropertyId,
+                        principalTable: "Properties",
+                        principalColumn: "PropertyId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Subscriptions_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "TenantId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Payments",
                 columns: table => new
                 {
@@ -478,15 +472,15 @@ namespace eRents.Domain.Migrations
                     TenantId = table.Column<int>(type: "int", nullable: true),
                     PropertyId = table.Column<int>(type: "int", nullable: true),
                     BookingId = table.Column<int>(type: "int", nullable: true),
+                    SubscriptionId = table.Column<int>(type: "int", nullable: true),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Currency = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PaymentMethod = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PaymentStatus = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PaymentReference = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Currency = table.Column<string>(type: "nvarchar(3)", maxLength: 3, nullable: true),
+                    PaymentMethod = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    PaymentStatus = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    PaymentReference = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     OriginalPaymentId = table.Column<int>(type: "int", nullable: true),
-                    RefundReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PaymentType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false),
+                    RefundReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    PaymentType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     CreatedBy = table.Column<int>(type: "int", nullable: true),
@@ -499,7 +493,8 @@ namespace eRents.Domain.Migrations
                         name: "FK_Payments_Bookings_BookingId",
                         column: x => x.BookingId,
                         principalTable: "Bookings",
-                        principalColumn: "BookingId");
+                        principalColumn: "BookingId",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Payments_Payments_OriginalPaymentId",
                         column: x => x.OriginalPaymentId,
@@ -510,12 +505,20 @@ namespace eRents.Domain.Migrations
                         name: "FK_Payments_Properties_PropertyId",
                         column: x => x.PropertyId,
                         principalTable: "Properties",
-                        principalColumn: "PropertyId");
+                        principalColumn: "PropertyId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Payments_Subscriptions_SubscriptionId",
+                        column: x => x.SubscriptionId,
+                        principalTable: "Subscriptions",
+                        principalColumn: "SubscriptionId",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Payments_Tenants_TenantId",
                         column: x => x.TenantId,
                         principalTable: "Tenants",
-                        principalColumn: "TenantId");
+                        principalColumn: "TenantId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -537,11 +540,6 @@ namespace eRents.Domain.Migrations
                 name: "IX_Images_PropertyId",
                 table: "Images",
                 column: "PropertyId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Images_ReviewId",
-                table: "Images",
-                column: "ReviewId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MaintenanceIssues_AssignedToUserId",
@@ -589,6 +587,11 @@ namespace eRents.Domain.Migrations
                 column: "PropertyId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Payments_SubscriptionId",
+                table: "Payments",
+                column: "SubscriptionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Payments_TenantId",
                 table: "Payments",
                 column: "TenantId");
@@ -602,16 +605,6 @@ namespace eRents.Domain.Migrations
                 name: "IX_PropertyAmenities_amenity_id",
                 table: "PropertyAmenities",
                 column: "amenity_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RentalRequests_property_id",
-                table: "RentalRequests",
-                column: "property_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RentalRequests_user_id",
-                table: "RentalRequests",
-                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Reviews_BookingId",
@@ -637,6 +630,22 @@ namespace eRents.Domain.Migrations
                 name: "IX_Reviews_ReviewerId",
                 table: "Reviews",
                 column: "ReviewerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_BookingId",
+                table: "Subscriptions",
+                column: "BookingId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_PropertyId",
+                table: "Subscriptions",
+                column: "PropertyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Subscriptions_TenantId",
+                table: "Subscriptions",
+                column: "TenantId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tenants_PropertyId",
@@ -701,22 +710,11 @@ namespace eRents.Domain.Migrations
                 column: "PropertyId",
                 principalTable: "Properties",
                 principalColumn: "PropertyId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Images_Reviews_ReviewId",
-                table: "Images",
-                column: "ReviewId",
-                principalTable: "Reviews",
-                principalColumn: "ReviewId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Bookings_Properties_PropertyId",
-                table: "Bookings");
-
             migrationBuilder.DropForeignKey(
                 name: "FK_Images_Properties_PropertyId",
                 table: "Images");
@@ -726,28 +724,12 @@ namespace eRents.Domain.Migrations
                 table: "MaintenanceIssues");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_Reviews_Properties_PropertyId",
-                table: "Reviews");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Bookings_Users_UserId",
-                table: "Bookings");
-
-            migrationBuilder.DropForeignKey(
                 name: "FK_MaintenanceIssues_Users_AssignedToUserId",
                 table: "MaintenanceIssues");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_MaintenanceIssues_Users_ReportedByUserId",
                 table: "MaintenanceIssues");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Reviews_Users_RevieweeId",
-                table: "Reviews");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Reviews_Users_ReviewerId",
-                table: "Reviews");
 
             migrationBuilder.DropTable(
                 name: "Messages");
@@ -762,16 +744,22 @@ namespace eRents.Domain.Migrations
                 name: "PropertyAmenities");
 
             migrationBuilder.DropTable(
-                name: "RentalRequests");
+                name: "Reviews");
 
             migrationBuilder.DropTable(
                 name: "UserSavedProperties");
 
             migrationBuilder.DropTable(
-                name: "Tenants");
+                name: "Subscriptions");
 
             migrationBuilder.DropTable(
                 name: "Amenities");
+
+            migrationBuilder.DropTable(
+                name: "Bookings");
+
+            migrationBuilder.DropTable(
+                name: "Tenants");
 
             migrationBuilder.DropTable(
                 name: "Properties");
@@ -784,12 +772,6 @@ namespace eRents.Domain.Migrations
 
             migrationBuilder.DropTable(
                 name: "MaintenanceIssues");
-
-            migrationBuilder.DropTable(
-                name: "Reviews");
-
-            migrationBuilder.DropTable(
-                name: "Bookings");
         }
     }
 }

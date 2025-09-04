@@ -23,6 +23,24 @@ namespace eRents.Features.UserManagement.Services
             _passwordService = passwordService;
         }
         
+        public override async Task<UserResponse?> GetByIdAsync(int id)
+        {
+            var user = await Context.Set<User>()
+                .Include(u => u.ProfileImage)
+                .Include(u => u.Address)
+                .FirstOrDefaultAsync(u => u.UserId == id);
+
+            if (user == null) return null;
+
+            var response = Mapper.Map<UserResponse>(user);
+            
+            // Get saved properties count
+            response.SavedPropertiesCount = await Context.Set<UserSavedProperty>()
+                .CountAsync(usp => usp.UserId == id);
+            
+            return response;
+        }
+        
         public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword)
         {
             var user = await Context.Set<User>().FirstOrDefaultAsync(u => u.UserId == userId);
@@ -49,7 +67,8 @@ namespace eRents.Features.UserManagement.Services
         {
             // Include ProfileImage if consumers need basic info; safe to include as it's a single ref
             return query
-                .Include(u => u.ProfileImage);
+                .Include(u => u.ProfileImage)
+                .Include(u => u.Address);
         }
 
         protected override IQueryable<User> AddFilter(IQueryable<User> query, UserSearch search)

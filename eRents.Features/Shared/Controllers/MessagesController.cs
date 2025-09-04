@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Features.Shared.Controllers
 {
 	[ApiController]
-	[Route("[controller]")]
+	[Route("api/[controller]")]
 	[Authorize]
 	public class MessagesController : ControllerBase
 	{

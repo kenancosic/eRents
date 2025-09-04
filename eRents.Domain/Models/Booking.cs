@@ -30,6 +30,13 @@ public partial class Booking : BaseEntity
     public string? PaymentStatus { get; set; }  // "Pending", "Completed", "Failed"
     public string? PaymentReference { get; set; }  // PayPal Transaction ID
 
+    // For monthly rentals, track if this is a subscription-based booking
+    public bool IsSubscription { get; set; } = false;
+    
+    // For subscription bookings, link to the subscription
+    public int? SubscriptionId { get; set; }
+    public virtual Subscription? Subscription { get; set; }
+
     // Basic Booking Info
     public int NumberOfGuests { get; set; } = 1;
     public string? SpecialRequests { get; set; }
@@ -37,4 +44,5 @@ public partial class Booking : BaseEntity
     // Navigation Properties
     public virtual Property Property { get; set; } = null!;
     public virtual User User { get; set; } = null!;
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using eRents.Features.PaymentManagement.Models;
 using eRents.Features.Core;
+using eRents.Features.PaymentManagement.Services;
+using eRents.Domain.Shared.Interfaces;
+using System;
+using System.Threading.Tasks;
 
 namespace eRents.Features.PaymentManagement.Controllers;
 
@@ -9,10 +13,89 @@ namespace eRents.Features.PaymentManagement.Controllers;
 [ApiController]
 public class PaymentsController : CrudController<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch>
 {
+    private readonly IPayPalPaymentService _payPal;
+    private readonly ICurrentUserService _currentUser;
+
     public PaymentsController(
         ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
-        ILogger<PaymentsController> logger)
+        ILogger<PaymentsController> logger,
+        IPayPalPaymentService payPal,
+        ICurrentUserService currentUser)
         : base(service, logger)
     {
+        _payPal = payPal;
+        _currentUser = currentUser;
+    }
+
+    [HttpPost("create-order")]
+    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
+    {
+        try
+        {
+            var resp = await _payPal.CreateOrderAsync(request);
+            return Ok(resp);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("capture-order")]
+    public async Task<IActionResult> CaptureOrder([FromBody] CaptureOrderRequest request)
+    {
+        try
+        {
+            var resp = await _payPal.CaptureOrderAsync(request.OrderId);
+            return Ok(resp);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("refund")]
+    public async Task<IActionResult> Refund([FromBody] ProcessRefundRequest request)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(request.PaymentId))
+            return BadRequest(new { Error = "PaymentId is required" });
+
+        try
+        {
+            var refundId = await _payPal.ProcessRefundAsync(request.PaymentId!, request.Amount, request.Currency, request.Reason);
+            return Ok(new { RefundId = refundId, Status = "Success" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("process-payment")]
+    public async Task<IActionResult> ProcessPayment([FromBody] ProcessPaymentRequest request)
+    {
+        var userId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        try
+        {
+            var paymentId = await _payPal.ProcessPaymentAsync(
+                request.BookingId,
+                request.Amount,
+                request.Currency,
+                request.Description);
+
+            return Ok(new { PaymentId = paymentId, Status = "Success" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
     }
 }

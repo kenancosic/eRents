@@ -27,6 +27,9 @@ public static class PaymentManagementServiceCollectionExtensions
         // PayPal payment service
         services.AddScoped<IPayPalPaymentService, PayPalPaymentService>();
 
+        // Subscription service
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
+
         // Validators
         services.AddScoped<IValidator<PaymentRequest>, PaymentRequestValidator>();
 

@@ -18,7 +18,7 @@ namespace eRents.Domain.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .UseCollation("Croatian_CI_AS")
-                .HasAnnotation("ProductVersion", "9.0.8")
+                .HasAnnotation("ProductVersion", "9.0.4")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -74,6 +74,9 @@ namespace eRents.Domain.Migrations
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
+                    b.Property<bool>("IsSubscription")
+                        .HasColumnType("bit");
+
                     b.Property<DateOnly?>("MinimumStayEndDate")
                         .HasColumnType("date");
 
@@ -107,6 +110,9 @@ namespace eRents.Domain.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("Upcoming");
+
+                    b.Property<int?>("SubscriptionId")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18, 2)");
@@ -376,7 +382,8 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Currency")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
 
                     b.Property<int?>("ModifiedBy")
                         .HasColumnType("int");
@@ -385,22 +392,30 @@ namespace eRents.Domain.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("PaymentMethod")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PaymentReference")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<string>("PaymentStatus")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("PaymentType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("PropertyId")
                         .HasColumnType("int");
 
                     b.Property<string>("RefundReason")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("SubscriptionId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("TenantId")
                         .HasColumnType("int");
@@ -416,6 +431,8 @@ namespace eRents.Domain.Migrations
 
                     b.HasIndex("PropertyId");
 
+                    b.HasIndex("SubscriptionId");
+
                     b.HasIndex("TenantId");
 
                     b.ToTable("Payments");
@@ -430,7 +447,7 @@ namespace eRents.Domain.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PropertyId"));
 
                     b.Property<decimal?>("Area")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -571,6 +588,69 @@ namespace eRents.Domain.Migrations
                     b.HasIndex("ReviewerId");
 
                     b.ToTable("Reviews");
+                });
+
+            modelBuilder.Entity("eRents.Domain.Models.Subscription", b =>
+                {
+                    b.Property<int>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubscriptionId"));
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MonthlyAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateOnly>("NextPaymentDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PaymentDayOfMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("SubscriptionId");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("Subscriptions");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
@@ -845,8 +925,9 @@ namespace eRents.Domain.Migrations
             modelBuilder.Entity("eRents.Domain.Models.Payment", b =>
                 {
                     b.HasOne("eRents.Domain.Models.Booking", "Booking")
-                        .WithMany()
-                        .HasForeignKey("BookingId");
+                        .WithMany("Payments")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("eRents.Domain.Models.Payment", "OriginalPayment")
                         .WithMany("Refunds")
@@ -855,17 +936,26 @@ namespace eRents.Domain.Migrations
 
                     b.HasOne("eRents.Domain.Models.Property", "Property")
                         .WithMany("Payments")
-                        .HasForeignKey("PropertyId");
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("eRents.Domain.Models.Subscription", "Subscription")
+                        .WithMany("Payments")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("eRents.Domain.Models.Tenant", "Tenant")
                         .WithMany("Payments")
-                        .HasForeignKey("TenantId");
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Booking");
 
                     b.Navigation("OriginalPayment");
 
                     b.Navigation("Property");
+
+                    b.Navigation("Subscription");
 
                     b.Navigation("Tenant");
                 });
@@ -884,10 +974,12 @@ namespace eRents.Domain.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("City")
+                                .IsRequired()
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("Country")
+                                .IsRequired()
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
@@ -906,6 +998,7 @@ namespace eRents.Domain.Migrations
                                 .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("StreetLine1")
+                                .IsRequired()
                                 .HasMaxLength(255)
                                 .HasColumnType("nvarchar(255)");
 
@@ -980,6 +1073,33 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Reviewer");
                 });
 
+            modelBuilder.Entity("eRents.Domain.Models.Subscription", b =>
+                {
+                    b.HasOne("eRents.Domain.Models.Booking", "Booking")
+                        .WithOne("Subscription")
+                        .HasForeignKey("eRents.Domain.Models.Subscription", "BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eRents.Domain.Models.Property", "Property")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eRents.Domain.Models.Tenant", "Tenant")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Property");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
                 {
                     b.HasOne("eRents.Domain.Models.Property", "Property")
@@ -1010,10 +1130,12 @@ namespace eRents.Domain.Migrations
                                 .HasColumnType("int");
 
                             b1.Property<string>("City")
+                                .IsRequired()
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("Country")
+                                .IsRequired()
                                 .HasMaxLength(100)
                                 .HasColumnType("nvarchar(100)");
 
@@ -1032,6 +1154,7 @@ namespace eRents.Domain.Migrations
                                 .HasColumnType("nvarchar(100)");
 
                             b1.Property<string>("StreetLine1")
+                                .IsRequired()
                                 .HasMaxLength(255)
                                 .HasColumnType("nvarchar(255)");
 
@@ -1071,6 +1194,13 @@ namespace eRents.Domain.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("eRents.Domain.Models.Booking", b =>
+                {
+                    b.Navigation("Payments");
+
+                    b.Navigation("Subscription");
+                });
+
             modelBuilder.Entity("eRents.Domain.Models.MaintenanceIssue", b =>
                 {
                     b.Navigation("Images");
@@ -1093,6 +1223,8 @@ namespace eRents.Domain.Migrations
 
                     b.Navigation("Reviews");
 
+                    b.Navigation("Subscriptions");
+
                     b.Navigation("Tenants");
 
                     b.Navigation("UserSavedProperties");
@@ -1103,9 +1235,16 @@ namespace eRents.Domain.Migrations
                     b.Navigation("Replies");
                 });
 
+            modelBuilder.Entity("eRents.Domain.Models.Subscription", b =>
+                {
+                    b.Navigation("Payments");
+                });
+
             modelBuilder.Entity("eRents.Domain.Models.Tenant", b =>
                 {
                     b.Navigation("Payments");
+
+                    b.Navigation("Subscriptions");
                 });
 
             modelBuilder.Entity("eRents.Domain.Models.User", b =>

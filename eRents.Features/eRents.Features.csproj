@@ -58,6 +58,7 @@
 		<Compile Include="UserManagement\**\*.cs" />
 		<Compile Include="LookupManagement\**\*.cs" />
 		<Compile Include="MaintenanceManagement\**\*.cs" />
+		<Compile Include="RecommendationManagement\**\*.cs" />
 		<Compile Include="Shared\**\*.cs" />
 		<Compile Include="Core\**\*.cs" />
 	</ItemGroup>

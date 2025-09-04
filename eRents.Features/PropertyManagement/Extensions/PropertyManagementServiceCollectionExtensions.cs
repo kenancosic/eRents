@@ -18,11 +18,15 @@ public static class PropertyManagementServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddPropertyManagement(this IServiceCollection services)
     {
-        // Concrete service
+        // Concrete services
         services.AddScoped<PropertyService>();
+        services.AddScoped<PropertyAvailabilityService>();
 
         // Generic CRUD mapping
         services.AddScoped<ICrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>, PropertyService>();
+
+        // Recommendation service
+        services.AddScoped<IPropertyRecommendationService, PropertyRecommendationService>();
 
         // Validators
         services.AddScoped<IValidator<PropertyRequest>, PropertyRequestValidator>();

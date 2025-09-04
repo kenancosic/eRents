@@ -28,6 +28,9 @@ public sealed class UserResponse
     public PaypalAccountTypeEnum PaypalAccountType { get; set; } = PaypalAccountTypeEnum.Unknown;
     public DateTime? PaypalLinkedAt { get; set; }
 
+    // Saved properties
+    public int SavedPropertiesCount { get; set; }
+
     // Address (flattened)
     public string? StreetLine1 { get; set; }
     public string? StreetLine2 { get; set; }

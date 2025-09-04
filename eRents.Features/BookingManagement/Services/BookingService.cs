@@ -9,18 +9,59 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.Core;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Features.PaymentManagement.Services;
 
 namespace eRents.Features.BookingManagement.Services;
 
 public class BookingService : BaseCrudService<Booking, BookingRequest, BookingResponse, BookingSearch>
 {
+    private readonly ISubscriptionService? _subscriptionService;
+
     public BookingService(
         ERentsContext context,
         IMapper mapper,
         ILogger<BookingService> logger,
-        ICurrentUserService? currentUserService = null)
+        ICurrentUserService? currentUserService = null,
+        ISubscriptionService? subscriptionService = null)
         : base(context, mapper, logger, currentUserService)
     {
+        _subscriptionService = subscriptionService;
+    }
+
+    public override async Task<BookingResponse> CreateAsync(BookingRequest request)
+    {
+        // First create the booking using the base implementation
+        var response = await base.CreateAsync(request);
+        
+        // Get the created booking entity
+        var booking = await Context.Set<Booking>().FindAsync(response.BookingId);
+        
+        // For monthly rentals, create the actual subscription after booking is created
+        if (booking != null && booking.IsSubscription && _subscriptionService != null)
+        {
+            try
+            {
+                // Create subscription for monthly rental
+                var subscription = await _subscriptionService.CreateSubscriptionAsync(
+                    booking.UserId, // tenantId (using userId for now, might need to create actual tenant record)
+                    booking.PropertyId,
+                    booking.BookingId,
+                    booking.TotalPrice, // monthly amount
+                    booking.StartDate,
+                    booking.EndDate);
+
+                // Update booking with subscription reference
+                booking.SubscriptionId = subscription.SubscriptionId;
+                await Context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to create subscription for booking {BookingId}", booking.BookingId);
+                // Don't throw here as we still want to complete the booking
+            }
+        }
+        
+        return response;
     }
 
     public override async Task<BookingResponse> GetByIdAsync(int id)
@@ -188,6 +229,18 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         {
             throw new InvalidOperationException("Cannot create booking: property has an active tenancy overlapping the requested dates.");
         }
+
+        // For monthly rentals, create a subscription if the property is set to monthly renting type
+        var bookingProperty = await Context.Set<Property>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId);
+
+        if (bookingProperty != null && bookingProperty.RentingType == Domain.Models.Enums.RentalType.Monthly && 
+            _subscriptionService != null)
+        {
+            // This is a monthly rental, mark the booking as a subscription
+            entity.IsSubscription = true;
+        }
     }
 
     public async Task<BookingResponse> CancelBooking(int bookingId)
@@ -253,4 +306,5 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             throw new InvalidOperationException("Cannot update booking: property has an active tenancy overlapping the requested dates.");
         }
     }
+
 }

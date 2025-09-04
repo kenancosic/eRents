@@ -233,7 +233,7 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     [HttpGet("check-username/{username}")]
     [AllowAnonymous]
-    [ProducesResponseType(200, Type = typeof(AvailabilityResponse))]
+    [ProducesResponseType(200, Type = typeof(AuthAvailabilityResponse))]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> CheckUsernameAvailability(string username)
@@ -246,7 +246,7 @@ public sealed class AuthController : ControllerBase
         try
         {
             var isAvailable = await _authService.IsUsernameAvailableAsync(username);
-            return Ok(new AvailabilityResponse { IsAvailable = isAvailable });
+            return Ok(new AuthAvailabilityResponse { IsAvailable = isAvailable });
         }
         catch (Exception ex)
         {
@@ -260,7 +260,7 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     [HttpGet("check-email/{email}")]
     [AllowAnonymous]
-    [ProducesResponseType(200, Type = typeof(AvailabilityResponse))]
+    [ProducesResponseType(200, Type = typeof(AuthAvailabilityResponse))]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
     public async Task<IActionResult> CheckEmailAvailability(string email)
@@ -273,7 +273,7 @@ public sealed class AuthController : ControllerBase
         try
         {
             var isAvailable = await _authService.IsEmailAvailableAsync(email);
-            return Ok(new AvailabilityResponse { IsAvailable = isAvailable });
+            return Ok(new AuthAvailabilityResponse { IsAvailable = isAvailable });
         }
         catch (Exception ex)
         {
@@ -294,7 +294,7 @@ public sealed class RefreshTokenRequest
 /// <summary>
 /// Response model for availability checks
 /// </summary>
-public sealed class AvailabilityResponse
+public sealed class AuthAvailabilityResponse
 {
     public bool IsAvailable { get; set; }
 }

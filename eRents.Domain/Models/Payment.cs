@@ -14,6 +14,8 @@ public partial class Payment : BaseEntity
 
     public int? BookingId { get; set; }
 
+    public int? SubscriptionId { get; set; }
+
     public decimal Amount { get; set; }
 
     public string? Currency { get; set; }
@@ -37,6 +39,8 @@ public partial class Payment : BaseEntity
     public virtual Property? Property { get; set; }
 
     public virtual Tenant? Tenant { get; set; }
+    
+    public virtual Subscription? Subscription { get; set; }
     
     public virtual Payment? OriginalPayment { get; set; }
     

@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace eRents.Features.Shared.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     public class NotificationsController : ControllerBase
     {
         private readonly INotificationService _notificationService;

@@ -58,4 +58,6 @@ public partial class Property : BaseEntity
     public virtual ICollection<MaintenanceIssue> MaintenanceIssues { get; set; } = new List<MaintenanceIssue>();
 
     public virtual ICollection<Amenity> Amenities { get; set; } = new List<Amenity>();
+
+    public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 }

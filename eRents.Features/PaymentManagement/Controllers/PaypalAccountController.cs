@@ -10,19 +10,19 @@ using eRents.Domain.Models;
 namespace eRents.Features.PaymentManagement.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class PaypalLinkController : ControllerBase
+[Route("api/payments/paypal/account")]
+public class PaypalAccountController : ControllerBase
 {
 	private readonly PayPalIdentityService _paypal;
 	private readonly IMemoryCache _cache;
-	private readonly ILogger<PaypalLinkController> _logger;
+	private readonly ILogger<PaypalAccountController> _logger;
 	private readonly ERentsContext _context;
 	private readonly ICurrentUserService _currentUser;
 
-	public PaypalLinkController(
+	public PaypalAccountController(
 			PayPalIdentityService paypal,
 			IMemoryCache cache,
-			ILogger<PaypalLinkController> logger,
+			ILogger<PaypalAccountController> logger,
 			ERentsContext context,
 			ICurrentUserService currentUser)
 	{
