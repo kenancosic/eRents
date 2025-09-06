@@ -59,6 +59,14 @@ namespace eRents.WebApi.Hubs
 			// Join a group for this user
 			await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
 
+			// Broadcast presence status to all clients
+			await Clients.All.SendAsync("UserStatusChanged", new
+			{
+				userId,
+				isOnline = true,
+				timestamp = DateTime.UtcNow
+			});
+
 			// Notify the user they're connected
 			await Clients.Caller.SendAsync("Connected", new { userId, connectionId = Context.ConnectionId });
 
@@ -84,6 +92,14 @@ namespace eRents.WebApi.Hubs
 
 				// Remove from group
 				await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"user-{userId}");
+
+				// Broadcast presence status to all clients
+				await Clients.All.SendAsync("UserStatusChanged", new
+				{
+					userId,
+					isOnline = false,
+					timestamp = DateTime.UtcNow
+				});
 			}
 
 			await base.OnDisconnectedAsync(exception);

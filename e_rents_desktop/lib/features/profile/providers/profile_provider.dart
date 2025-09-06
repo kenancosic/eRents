@@ -136,7 +136,7 @@ class ProfileProvider extends BaseProvider {
 
     try {
       final response = await api.get(
-        'PaypalLink/start',
+        'payments/paypal/account/start',
         authenticated: true,
       );
 
@@ -164,15 +164,15 @@ class ProfileProvider extends BaseProvider {
 
     webview.initialize().then((_) {
       webview.url.listen((currentUrl) {
-        // Check for success or cancel URLs from the backend
-        if (currentUrl.startsWith('http://127.0.0.1:5000/api/PaypalLink/callback?code=')) {
+        // Check for success or cancel URLs from the backend (host-agnostic)
+        if (currentUrl.contains('/api/payments/paypal/account/callback?code=')) {
           context.pop();
           webview.dispose();
           // Reload user profile to get updated PayPal status
           loadUserProfile();
           _isUpdatingPaypal = false;
           notifyListeners();
-        } else if (currentUrl.startsWith('http://127.0.0.1:5000/api/PaypalLink/callback?error=')) {
+        } else if (currentUrl.contains('/api/payments/paypal/account/callback?error=')) {
           context.pop();
           webview.dispose();
           setError('PayPal linking cancelled or failed.');
@@ -215,11 +215,11 @@ class ProfileProvider extends BaseProvider {
 
     try {
       final response = await api.delete(
-        'PaypalLink',
+        'payments/paypal/account',
         authenticated: true,
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         await loadUserProfile();
         return true;
       } else {

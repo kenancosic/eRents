@@ -6,7 +6,7 @@ using System.Text;
 
 namespace eRents.RabbitMQMicroservice.Processors
 {
-	public class ChatMessageProcessor : IChatMessageProcessor
+	public class ChatMessageProcessor
 	{
 		private readonly IMessageService _messageService;
 

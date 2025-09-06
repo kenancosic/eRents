@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
@@ -108,30 +108,28 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
 
   Future<void> _pickImages() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: true,
-        withData: true,
+      final typeGroup = const XTypeGroup(
+        label: 'images',
+        extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
       );
-
-      if (result != null) {
-        final newImages =
-            result.files.map((file) {
-              return ImageInfo(
-                fileName: file.name,
-                data: file.bytes,
-                isNew: true,
-              );
-            }).toList();
+      final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+      if (files.isNotEmpty) {
+        final newImages = <ImageInfo>[];
+        for (final file in files) {
+          final bytes = await file.readAsBytes();
+          newImages.add(ImageInfo(
+            fileName: file.name,
+            data: bytes,
+            isNew: true,
+          ));
+        }
 
         setState(() {
           _images.addAll(newImages);
-          // Limit to maxImages
           if (_images.length > widget.maxImages) {
             _images = _images.sublist(0, widget.maxImages);
           }
         });
-
         widget.onChanged(_images);
       }
     } catch (e) {

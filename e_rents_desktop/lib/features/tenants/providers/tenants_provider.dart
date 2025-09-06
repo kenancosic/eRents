@@ -6,8 +6,8 @@ import 'package:e_rents_desktop/models/user.dart';
  
 /// TenantsProvider
 /// - Manages two datasets:
-///   1) Current tenants (Tenant entities) via api/tenants
-///   2) Prospective tenants (public Users) via api/users
+///   1) Current tenants (Tenant entities) via /tenants
+///   2) Prospective tenants (public Users) via /users
 class TenantsProvider extends BaseProvider {
   TenantsProvider(super.api);
 
@@ -84,7 +84,7 @@ class TenantsProvider extends BaseProvider {
     notifyListeners();
   }
 
-  // Fetch current tenants (api/tenants)
+  // Fetch current tenants (/tenants)
   Future<PagedResult<Tenant>> getPagedTenants({Map<String, dynamic>? params}) async {
     return _fetchTenants(params: params);
   }
@@ -93,7 +93,7 @@ class TenantsProvider extends BaseProvider {
     await _fetchTenants(params: lastQuery);
   }
 
-  // Fetch prospective tenants (api/users?IsPublic=true)
+  // Fetch prospective tenants (/users?IsPublic=true)
   Future<PagedResult<User>> getPagedProspectives({Map<String, dynamic>? params}) async {
     return _fetchProspectives(params: params);
   }
@@ -121,7 +121,7 @@ class TenantsProvider extends BaseProvider {
         'page': _page,
         'pageSize': _pageSize,
       };
-      _pagedTenants = await api.getPagedAndDecode<Tenant>('api/tenants${api.buildQueryString(query)}', Tenant.fromJson, authenticated: true);
+      _pagedTenants = await api.getPagedAndDecode<Tenant>('/tenants${api.buildQueryString(query)}', Tenant.fromJson, authenticated: true);
       return _pagedTenants;
     });
     if (fetchResult != null) {
@@ -155,7 +155,7 @@ class TenantsProvider extends BaseProvider {
         'page': page,
         'pageSize': pageSize,
       };
-      _pagedProspectives = await api.getPagedAndDecode<User>('api/users${api.buildQueryString(query)}', User.fromJson, authenticated: true);
+      _pagedProspectives = await api.getPagedAndDecode<User>('/users${api.buildQueryString(query)}', User.fromJson, authenticated: true);
       return _pagedProspectives;
     });
     if (fetchResult != null) {

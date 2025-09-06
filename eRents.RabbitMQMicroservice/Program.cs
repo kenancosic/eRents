@@ -46,9 +46,7 @@ namespace eRents.RabbitMQMicroservice
 					// Register processors
 					services.AddTransient<ChatMessageProcessor>();
 					services.AddTransient<EmailProcessor>();
-					services.AddTransient<BookingNotificationProcessor>();
-					services.AddTransient<ReviewNotificationProcessor>();
-					services.AddTransient<RefundNotificationProcessor>();
+					services.AddTransient<NotificationProcessor>();
 
 					// Register RabbitMQ consumer service
 					services.AddSingleton<RabbitMQConsumerService>(provider =>
@@ -73,9 +71,7 @@ namespace eRents.RabbitMQMicroservice
 			// Get processors
 			var chatMessageProcessor = serviceProvider.GetRequiredService<ChatMessageProcessor>();
 			var emailProcessor = serviceProvider.GetRequiredService<EmailProcessor>();
-			var bookingProcessor = serviceProvider.GetRequiredService<BookingNotificationProcessor>();
-			var reviewProcessor = serviceProvider.GetRequiredService<ReviewNotificationProcessor>();
-			var refundProcessor = serviceProvider.GetRequiredService<RefundNotificationProcessor>();
+			var notificationProcessor = serviceProvider.GetRequiredService<NotificationProcessor>();
 
 			try
 			{
@@ -120,14 +116,12 @@ namespace eRents.RabbitMQMicroservice
 				});
 				logger.LogInformation("Started consuming from emailQueue");
 
-				// 3. Booking notifications
-				rabbitMqService.ConsumeMessages("bookingQueue", async (model, ea) =>
+				// 3-5. Unified notification processor for booking/review/refund
+				rabbitMqService.ConsumeMessages("bookingQueue", (model, ea) =>
 				{
 					try
 					{
-						var body = ea.Body.ToArray();
-						var message = Encoding.UTF8.GetString(body);
-						await bookingProcessor.Process(message);
+						notificationProcessor.Process("bookingQueue", model, ea).GetAwaiter().GetResult();
 					}
 					catch (Exception ex)
 					{
@@ -136,12 +130,11 @@ namespace eRents.RabbitMQMicroservice
 				});
 				logger.LogInformation("Started consuming from bookingQueue");
 
-				// 4. Review notifications
-				rabbitMqService.ConsumeMessages("reviewQueue", async (model, ea) =>
+				rabbitMqService.ConsumeMessages("reviewQueue", (model, ea) =>
 				{
 					try
 					{
-						await reviewProcessor.Process(model, ea);
+						notificationProcessor.Process("reviewQueue", model, ea).GetAwaiter().GetResult();
 					}
 					catch (Exception ex)
 					{
@@ -150,14 +143,11 @@ namespace eRents.RabbitMQMicroservice
 				});
 				logger.LogInformation("Started consuming from reviewQueue");
 
-				// 5. Refund notifications
-				rabbitMqService.ConsumeMessages("refundQueue", async (model, ea) =>
+				rabbitMqService.ConsumeMessages("refundQueue", (model, ea) =>
 				{
 					try
 					{
-						var body = ea.Body.ToArray();
-						var message = Encoding.UTF8.GetString(body);
-						await refundProcessor.Process(message);
+						notificationProcessor.Process("refundQueue", model, ea).GetAwaiter().GetResult();
 					}
 					catch (Exception ex)
 					{

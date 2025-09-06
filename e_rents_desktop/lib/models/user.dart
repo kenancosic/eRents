@@ -69,19 +69,23 @@ class User {
     final addr = (json.containsKey('city') || json.containsKey('streetLine1'))
         ? Address.fromJson(json)
         : null;
+    // Be tolerant of different ID key names/casing from backend (e.g., 'Id' in chat contacts)
+    final parsedUserId = _asInt(
+          json['userId'] ?? json['UserId'] ?? json['id'] ?? json['Id']
+        ) ?? 0;
     return User(
-      userId: (json['userId'] as num).toInt(),
-      email: _asString(json['email']) ?? '',
-      username: _asString(json['username']) ?? '',
-      firstName: _asString(json['firstName']),
-      lastName: _asString(json['lastName']),
+      userId: parsedUserId,
+      email: _asString(json['email'] ?? json['Email']) ?? '',
+      username: _asString(json['username'] ?? json['Username']) ?? '',
+      firstName: _asString(json['firstName'] ?? json['FirstName']),
+      lastName: _asString(json['lastName'] ?? json['LastName']),
       phoneNumber: _asString(json['phoneNumber']),
-      userType: UserType.fromDynamic(json['userType']),
-      profileImageId: _asInt(json['profileImageId']),
-      dateOfBirth: _parseDate(json['dateOfBirth']),
-      isPublic: _asBool(json['isPublic']),
-      isPaypalLinked: _asBool(json['isPaypalLinked']) ?? false,
-      paypalUserIdentifier: _asString(json['paypalUserIdentifier']),
+      userType: UserType.fromDynamic(json['userType'] ?? json['UserType']),
+      profileImageId: _asInt(json['profileImageId'] ?? json['ProfileImageId']),
+      dateOfBirth: _parseDate(json['dateOfBirth'] ?? json['DateOfBirth']),
+      isPublic: _asBool(json['isPublic'] ?? json['IsPublic']),
+      isPaypalLinked: _asBool(json['isPaypalLinked'] ?? json['IsPaypalLinked']) ?? false,
+      paypalUserIdentifier: _asString(json['paypalUserIdentifier'] ?? json['PaypalUserIdentifier']),
       createdAt: created,
       updatedAt: updated,
       createdBy: _asInt(json['createdBy']),

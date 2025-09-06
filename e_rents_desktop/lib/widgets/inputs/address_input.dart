@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_form_fields.dart';
 import 'package:e_rents_desktop/services/google_places_service.dart';
-import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart';
 
 class AddressInput extends StatefulWidget {
   final Address? initialAddress;

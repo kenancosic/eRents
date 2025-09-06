@@ -55,7 +55,13 @@ namespace eRents.WebApi.Middleware
 				DetailedMessage = detailedMessage
 			};
 
-			return context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse));
+			var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                // Allow named floating point literals to handle infinity values
+                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals
+            };
+            return context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse, options));
 		}
 	}
 }

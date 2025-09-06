@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/message.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/models/paged_result.dart';
+import 'package:signalr_core/signalr_core.dart';
 
 class ChatProvider extends BaseProvider {
   ChatProvider(super.api);
@@ -18,6 +19,15 @@ class ChatProvider extends BaseProvider {
   final Map<int, int> _currentPage = {};
   final Map<int, bool> _hasMoreMessages = {};
   static const int _pageSize = 50;
+
+  // Presence
+  final Map<int, bool> _online = {};
+  bool isOnline(int userId) => _online[userId] ?? false;
+
+  // Real-time (SignalR)
+  HubConnection? _hub;
+  bool _isRealtimeConnected = false;
+  bool get isRealtimeConnected => _isRealtimeConnected;
 
   // ─── Getters ────────────────────────────────────────────────────────────
   bool get isLoadingContacts => isLoading;
@@ -44,7 +54,7 @@ class ChatProvider extends BaseProvider {
 
   Future<void> loadContacts() async {
     final result = await executeWithState(
-      () => api.getListAndDecode('/Chat/Contacts', User.fromJson, authenticated: true),
+      () => api.getListAndDecode('/Messages/Contacts', User.fromJson, authenticated: true),
     );
     
     if (result != null) {
@@ -63,8 +73,8 @@ class ChatProvider extends BaseProvider {
     }
 
     final page = _currentPage[contactId] ?? 0;
-    final endpoint = '/Chat/$contactId/Messages';
-    final params = {'page': page + 1, 'pageSize': _pageSize};
+    final endpoint = '/Messages/$contactId/Messages';
+    final params = {'page': page, 'pageSize': _pageSize};
 
     final result = await executeWithState<PagedResult<Message>>(() async {
       return await api.getPagedAndDecode('$endpoint${api.buildQueryString(params)}', Message.fromJson, authenticated: true);
@@ -94,7 +104,7 @@ class ChatProvider extends BaseProvider {
   Future<bool> sendMessage(int receiverId, String messageText) async {
     final result = await executeWithState<Message>(() async {
       return await api.postAndDecode(
-        '/Chat/SendMessage',
+        '/Messages/SendMessage',
         {'receiverId': receiverId, 'messageText': messageText},
         Message.fromJson,
         authenticated: true,
@@ -108,6 +118,105 @@ class ChatProvider extends BaseProvider {
       return true;
     }
     return false;
+  }
+
+  // ─── Real-time (SignalR) ────────────────────────────────────────────────
+  Future<void> connectRealtime() async {
+    if (_hub != null && _isRealtimeConnected) return;
+    String _buildHubUrl() {
+      final uri = Uri.parse(api.baseUrl);
+      var path = uri.path;
+      if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+      if (path.endsWith('/api')) path = path.substring(0, path.length - 4);
+      final cleanPath = path.isEmpty ? '/' : path;
+      final hub = uri.replace(path: '${cleanPath == '/' ? '' : cleanPath}/chatHub');
+      return hub.toString();
+    }
+    final hubUrl = _buildHubUrl();
+    final token = await api.secureStorageService.getToken();
+
+    _hub = HubConnectionBuilder()
+        .withUrl(
+          hubUrl,
+          HttpConnectionOptions(
+            accessTokenFactory: token == null ? null : () async => token,
+            transport: HttpTransportType.webSockets,
+          ),
+        )
+        .withAutomaticReconnect()
+        .build();
+
+    _registerHubHandlers();
+
+    await _hub!.start();
+    _isRealtimeConnected = _hub!.state == HubConnectionState.connected;
+    notifyListeners();
+  }
+
+  Future<void> disconnectRealtime() async {
+    final hub = _hub;
+    if (hub != null) {
+      try {
+        await hub.stop();
+      } finally {
+        _isRealtimeConnected = false;
+        _hub = null;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _registerHubHandlers() {
+    final hub = _hub;
+    if (hub == null) return;
+
+    hub.on('ReceiveMessage', (args) {
+      if (args == null || args.isEmpty) return;
+      final data = args.first;
+      if (data is Map) {
+        final senderId = (data['senderId'] as num?)?.toInt();
+        final receiverId = (data['receiverId'] as num?)?.toInt();
+        final messageText = data['messageText'] as String?;
+        final createdAt = data['createdAt'] as String?;
+        if (senderId != null && receiverId != null && messageText != null) {
+          final sentAt = createdAt != null ? DateTime.tryParse(createdAt) ?? DateTime.now() : DateTime.now();
+          final msg = Message(
+            messageId: 0,
+            senderId: senderId,
+            receiverId: receiverId,
+            messageText: messageText,
+            createdAt: sentAt,
+            updatedAt: sentAt,
+            isRead: false,
+          );
+          (_conversations[senderId] ??= []).add(msg);
+          notifyListeners();
+        }
+      }
+    });
+
+    hub.on('UserStatusChanged', (args) {
+      if (args == null || args.isEmpty) return;
+      final data = args.first;
+      if (data is Map) {
+        final userId = (data['userId'] as num?)?.toInt();
+        final isOnline = data['isOnline'] as bool?;
+        if (userId != null && isOnline != null) {
+          _online[userId] = isOnline;
+          notifyListeners();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    final hub = _hub;
+    if (hub != null) {
+      hub.stop();
+      _hub = null;
+    }
+    super.dispose();
   }
 
   Future<void> markMessageAsRead(int messageId, int contactId) async {

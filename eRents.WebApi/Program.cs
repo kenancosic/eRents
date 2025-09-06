@@ -38,6 +38,8 @@ builder.Services.AddControllers(x =>
 	options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 	options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 	options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+	// Allow named floating point literals to handle infinity values
+	options.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals;
 });
 
 builder.Services.AddLogging(loggingBuilder =>
@@ -127,22 +129,25 @@ builder.Services.ConfigureServices(builder.Configuration);
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("eRentsConnection")}");
+Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("DefaultConnection")}");
 
 builder.Services.AddDbContext<ERentsContext>(options =>
 {
-	var connectionString = builder.Configuration.GetConnectionString("eRentsConnection");
-	if (string.IsNullOrEmpty(connectionString))
-	{
-		throw new InvalidOperationException(
-				"Connection string 'eRentsConnection' is missing in configuration. " +
-				"Please check your appsettings.json file.");
-	}
-	Console.WriteLine($"Using connection string: {connectionString}");
-	options.UseSqlServer(connectionString,
-		sql => sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' is missing in configuration. " +
+                "Please check your appsettings.json file.");
+    }
+    Console.WriteLine($"Using connection string: {connectionString}");
+    options.UseSqlServer(connectionString,
+        sql =>
+        {
+            sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            sql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
+        });
 });
-
 // Map DbContext base type to ERentsContext for services that depend on DbContext
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<ERentsContext>());
 
@@ -154,38 +159,34 @@ var app = builder.Build();
 // Wrap in a function to allow async/await
 async Task SeedDatabaseAsync(IServiceProvider services)
 {
-	Console.WriteLine("--- Starting Database Seeding ---");
-	using var scope = services.CreateScope();
-	try
-	{
-		var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
-		bool useBusinessLogicSeeder = app.Configuration.GetValue<bool>("Database:UseBusinessLogicSeeder", false);
-		bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", false);
+    Console.WriteLine("--- Starting Database Seeding ---");
+    using var scope = services.CreateScope();
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
+        
+        // Apply migrations to ensure database schema is up to date
+        Console.WriteLine("Applying database migrations...");
+        await context.Database.MigrateAsync();
+        
+        bool forceSeed = app.Configuration.GetValue<bool>("Database:ForceSeed", false);
 
-		if (useBusinessLogicSeeder)
-		{
-			var logger = scope.ServiceProvider.GetService<ILogger<BusinessLogicDataSeeder>>();
-			var seeder = new BusinessLogicDataSeeder(logger);
-			await seeder.SeedBusinessDataAsync(context, forceSeed);
-		}
-		else
-		{
-			var logger = scope.ServiceProvider.GetService<ILogger<AcademicDataSeeder>>();
-			var seeder = new AcademicDataSeeder(logger);
-			await seeder.InitAsync(context);
-			await seeder.SeedAcademicDataAsync(context, forceSeed);
-		}
-	}
-	catch (Exception ex)
-	{
-		var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-		logger.LogError(ex, "An error occurred while initializing the database.");
-		Console.WriteLine($"Database initialization error: {ex.Message}");
-		if (ex.InnerException != null)
-		{
-			Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-		}
-	}
+        var dataSeeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+        await dataSeeder.SeedAllAsync(context, forceSeed: forceSeed);
+        
+        // Save all changes made by seeders
+        await context.SaveChangesAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while initializing the database.");
+        Console.WriteLine($"Database initialization error: {ex.Message}");
+        if (ex.InnerException != null)
+        {
+            Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+        }
+    }
 }
 
 // Call the async seeding logic and wait for it to complete before starting the app
