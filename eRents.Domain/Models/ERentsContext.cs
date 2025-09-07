@@ -29,6 +29,7 @@ public partial class ERentsContext : DbContext
     public virtual DbSet<Payment> Payments { get; set; }
     public virtual DbSet<Property> Properties { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<LeaseExtensionRequest> LeaseExtensionRequests { get; set; }
     // RentalRequest entity removed from simplified model
     public virtual DbSet<Review> Reviews { get; set; }
     public virtual DbSet<Tenant> Tenants { get; set; }
@@ -94,6 +95,23 @@ public partial class ERentsContext : DbContext
                 a.Property(a => a.City).IsRequired();
                 a.Property(a => a.Country).IsRequired();
             });
+
+        // LeaseExtensionRequest Configuration
+        modelBuilder.Entity<LeaseExtensionRequest>(entity =>
+        {
+            entity.HasKey(e => e.LeaseExtensionRequestId);
+            entity.Property(e => e.NewMonthlyAmount).HasColumnType("decimal(18, 2)");
+            // Store enum as string consistently
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasDefaultValue(Enums.LeaseExtensionStatusEnum.Pending)
+                .HasSentinel((Enums.LeaseExtensionStatusEnum)0);
+
+            entity.HasOne(e => e.Booking)
+                .WithMany()
+                .HasForeignKey(e => e.BookingId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
             entity.HasOne(e => e.ProfileImage)
                 .WithOne()

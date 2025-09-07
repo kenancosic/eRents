@@ -28,6 +28,122 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         _subscriptionService = subscriptionService;
     }
 
+    public async Task<BookingResponse> ExtendBookingAsync(int bookingId, BookingExtensionRequest request)
+    {
+        // Restrict direct extension to desktop landlord/owner contexts
+        if (CurrentUser?.IsDesktop != true)
+        {
+            throw new InvalidOperationException("Only landlords can extend bookings directly. Tenants should submit an extension request.");
+        }
+
+        // Load booking with related property and subscription
+        var entity = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .Include(b => b.Subscription)
+            .FirstOrDefaultAsync(x => x.BookingId == bookingId);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+
+        // Ownership scope for desktop landlords/owners
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            {
+                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+            }
+        }
+
+        // Only allow extensions for monthly rentals that are subscription based
+        if (entity.Property == null || entity.Property.RentingType != Domain.Models.Enums.RentalType.Monthly || !entity.IsSubscription)
+        {
+            throw new InvalidOperationException("Only monthly subscription-based bookings can be extended.");
+        }
+
+        // Determine target end date
+        DateOnly currentEnd = entity.EndDate ?? entity.StartDate;
+        DateOnly? targetEnd = request.NewEndDate;
+        if (!targetEnd.HasValue && request.ExtendByMonths.HasValue)
+        {
+            targetEnd = currentEnd.AddMonths(request.ExtendByMonths.Value);
+        }
+
+        if (!targetEnd.HasValue)
+        {
+            throw new InvalidOperationException("Provide either NewEndDate or ExtendByMonths.");
+        }
+
+        // Validate target end is not earlier than current end
+        if (entity.EndDate.HasValue && targetEnd.Value < entity.EndDate.Value)
+        {
+            throw new InvalidOperationException("New end date must be later than or equal to the current end date.");
+        }
+
+        // Respect MinimumStayDays if defined
+        var propertyInfo = await Context.Set<Property>()
+            .AsNoTracking()
+            .Where(p => p.PropertyId == entity.PropertyId)
+            .Select(p => new { p.MinimumStayDays })
+            .FirstOrDefaultAsync();
+
+        if (propertyInfo != null && propertyInfo.MinimumStayDays.HasValue && propertyInfo.MinimumStayDays.Value > 0)
+        {
+            var minEnd = entity.StartDate.AddDays(propertyInfo.MinimumStayDays.Value);
+            if (targetEnd.Value < minEnd)
+            {
+                throw new InvalidOperationException($"EndDate must be at least {propertyInfo.MinimumStayDays.Value} days after StartDate.");
+            }
+        }
+
+        // Overlap protection with active tenancies (reuse logic as in BeforeUpdateAsync)
+        var bookingStart = entity.StartDate;
+        var bookingEnd = targetEnd.Value;
+
+        var hasActiveTenantOverlap = await Context.Set<Tenant>()
+            .AsNoTracking()
+            .Where(t => t.PropertyId == entity.PropertyId)
+            .Where(t => t.LeaseStartDate.HasValue)
+            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .AnyAsync();
+
+        if (hasActiveTenantOverlap)
+        {
+            throw new InvalidOperationException("Cannot extend booking: property has an active tenancy overlapping the requested dates.");
+        }
+
+        // Apply updates
+        entity.EndDate = targetEnd;
+
+        if (entity.Subscription != null)
+        {
+            entity.Subscription.EndDate = targetEnd;
+            if (request.NewMonthlyAmount.HasValue)
+            {
+                entity.Subscription.MonthlyAmount = request.NewMonthlyAmount.Value;
+            }
+
+            // Update subscription status if next payment is beyond new end
+            if (entity.Subscription.EndDate.HasValue && entity.Subscription.NextPaymentDate > entity.Subscription.EndDate.Value)
+            {
+                entity.Subscription.Status = Domain.Models.Enums.SubscriptionStatusEnum.Completed;
+            }
+            else if (entity.Subscription.Status == Domain.Models.Enums.SubscriptionStatusEnum.Completed)
+            {
+                // Re-activate if previously completed and now extended beyond next payment
+                entity.Subscription.Status = Domain.Models.Enums.SubscriptionStatusEnum.Active;
+            }
+        }
+
+        await Context.SaveChangesAsync();
+
+        return Mapper.Map<BookingResponse>(entity);
+    }
+
     public override async Task<BookingResponse> CreateAsync(BookingRequest request)
     {
         // First create the booking using the base implementation

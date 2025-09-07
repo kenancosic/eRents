@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/presentation/booking_status_ui.dart';
 import 'package:e_rents_desktop/presentation/status_pill.dart';
 import 'package:e_rents_desktop/models/booking.dart';
+import 'package:e_rents_desktop/models/lease_extension_request.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
 import 'package:e_rents_desktop/models/enums/booking_status.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -76,6 +77,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
           tabs: const [
             Tab(text: 'Daily Rentals'),
             Tab(text: 'Monthly Rentals'),
+            Tab(text: 'Extension Requests'),
           ],
         ),
       ),
@@ -84,6 +86,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
         children: [
           _buildDailyRentalsTab(context),
           _buildMonthlyRentalsTab(context),
+          _buildExtensionRequestsTab(context),
         ],
       ),
     );
@@ -277,7 +280,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                             );
                             if (confirmed == true) {
                               await ctx.read<RentsProvider>().acceptTenantRequest(t.tenantId, t.propertyId!);
-                              _monthlyListController?.refresh();
+                              _monthlyListController.refresh();
                             }
                           }
                         },
@@ -290,6 +293,105 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
         }).toList();
       },
     );
+  }
+
+  Widget _buildExtensionRequestsTab(BuildContext context) {
+    return FutureBuilder<List<LeaseExtensionRequest>>(
+      future: context.read<RentsProvider>().getExtensionRequests(status: 'Pending'),
+      builder: (ctx, snap) {
+        final items = snap.data ?? const <LeaseExtensionRequest>[];
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (items.isEmpty) {
+          return const Center(child: Text('No pending extension requests'));
+        }
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: DataTable(
+              columns: const [
+                DataColumn(label: Text('Property')),
+                DataColumn(label: Text('Requested By')),
+                DataColumn(label: Text('Old End')),
+                DataColumn(label: Text('New End / +Months')),
+                DataColumn(label: Text('New Monthly')),
+                DataColumn(label: Text('Requested At')),
+                DataColumn(label: Text('Actions')),
+              ],
+              rows: items.map((r) {
+                final newEndOrMonths = r.newEndDate != null
+                    ? _fmtDate(r.newEndDate!)
+                    : (r.extendByMonths != null ? '+${r.extendByMonths} mo' : '—');
+                return DataRow(
+                  cells: [
+                    DataCell(Text(r.propertyName)),
+                    DataCell(Text('#${r.requestedByUserId}')),
+                    DataCell(Text(r.oldEndDate != null ? _fmtDate(r.oldEndDate!) : '—')),
+                    DataCell(Text(newEndOrMonths)),
+                    DataCell(Text(r.newMonthlyAmount != null ? r.newMonthlyAmount!.toStringAsFixed(2) : '—')),
+                    DataCell(Text(_fmtDateTime(r.createdAt))),
+                    DataCell(Row(
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.check),
+                          label: const Text('Approve'),
+                          onPressed: () async {
+                            final ok = await ctx.read<RentsProvider>().approveExtension(r.requestId);
+                            if (ok && mounted) setState(() {});
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.close),
+                          label: const Text('Reject'),
+                          onPressed: () async {
+                            String? reason;
+                            final res = await showDialog<String?>(
+                              context: ctx,
+                              builder: (dctx) {
+                                final ctrl = TextEditingController();
+                                return AlertDialog(
+                                  title: const Text('Reject Extension'),
+                                  content: TextField(
+                                    controller: ctrl,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Reason (optional)'
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
+                                    TextButton(onPressed: () => Navigator.pop(dctx, ctrl.text.trim()), child: const Text('Reject')),
+                                  ],
+                                );
+                              },
+                            );
+                            reason = res;
+                            final ok = await ctx.read<RentsProvider>().rejectExtension(r.requestId, reason: reason);
+                            if (ok && mounted) setState(() {});
+                          },
+                        ),
+                      ],
+                    )),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _fmtDate(DateTime d) {
+    return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  String _fmtDateTime(DateTime d) {
+    final date = _fmtDate(d);
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mm = d.minute.toString().padLeft(2, '0');
+    return '$date $hh:$mm';
   }
 
   Widget _buildBookingFilterPanel(

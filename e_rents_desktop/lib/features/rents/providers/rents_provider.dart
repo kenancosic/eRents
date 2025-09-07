@@ -6,6 +6,7 @@ import 'package:e_rents_desktop/models/enums/booking_status.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/enums/renting_type.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
+import 'package:e_rents_desktop/models/lease_extension_request.dart';
 import 'package:flutter/material.dart';
 
 class RentsProvider extends BaseProvider {
@@ -105,6 +106,46 @@ class RentsProvider extends BaseProvider {
     if (success == true) {
       await refresh();
     }
+  }
+
+  // ─── Lease Extension Requests ───────────────────────────────────────────
+
+  Future<List<LeaseExtensionRequest>> getExtensionRequests({String status = 'Pending'}) async {
+    final list = await executeWithState<List<LeaseExtensionRequest>>(() async {
+      final items = await api.getListAndDecode<LeaseExtensionRequest>(
+        '/LeaseExtensions?status=$status',
+        (j) => LeaseExtensionRequest.fromJson(j),
+        authenticated: true,
+      );
+      return items;
+    });
+    return list ?? <LeaseExtensionRequest>[];
+  }
+
+  Future<bool> approveExtension(int requestId) async {
+    final ok = await executeWithState<bool>(() async {
+      await api.post('/LeaseExtensions/$requestId/approve', {}, authenticated: true);
+      return true;
+    });
+    if (ok == true) {
+      await refresh();
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> rejectExtension(int requestId, {String? reason}) async {
+    final ok = await executeWithState<bool>(() async {
+      await api.post('/LeaseExtensions/$requestId/reject', {
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      }, authenticated: true);
+      return true;
+    });
+    if (ok == true) {
+      await refresh();
+      return true;
+    }
+    return false;
   }
 
   Future<void> acceptTenantRequest(int tenantId, int propertyId) async {

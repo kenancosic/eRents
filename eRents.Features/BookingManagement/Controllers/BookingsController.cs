@@ -39,4 +39,28 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }
+
+    [HttpPost("{id}/extend")]
+    public async Task<ActionResult<BookingResponse>> Extend(int id, [FromBody] BookingExtensionRequest request)
+    {
+        if (_service is not Services.BookingService bookingService)
+        {
+            return StatusCode(500, "Service is not of expected type.");
+        }
+
+        try
+        {
+            var result = await bookingService.ExtendBookingAsync(id, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extending booking with ID {Id}", id);
+            return StatusCode(500, "An error occurred while processing your request.");
+        }
+    }
 }
