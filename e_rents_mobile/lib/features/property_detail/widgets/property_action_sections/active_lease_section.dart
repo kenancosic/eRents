@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
@@ -9,7 +9,7 @@ import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 /// Section shown when user has an active lease (currently residing)
 /// Shows lease management options for long-term tenants
 class ActiveLeaseSection extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
   final Booking booking;
 
   const ActiveLeaseSection({

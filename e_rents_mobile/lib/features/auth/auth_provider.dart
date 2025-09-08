@@ -5,43 +5,70 @@ import 'package:flutter/material.dart';
 
 class AuthProvider extends BaseProvider {
   final SecureStorageService _secureStorageService;
+  String? _accessToken;
+  String? _refreshToken;
 
-  AuthProvider(super.api, this._secureStorageService);
+  AuthProvider(super.api, this._secureStorageService) {
+    // Initialize the access token from secure storage
+    _initializeToken();
+  }
+
+  /// Initialize the access token from secure storage
+  Future<void> _initializeToken() async {
+    _accessToken = await _secureStorageService.getToken();
+  }
 
   // Use inherited loading/error state from BaseProvider
   // isLoading, error, hasError are available
 
-  bool get isAuthenticated => _secureStorageService.getToken() == null;
+  bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
 
-  Future<bool> login(String email, String password) async {
-    return await executeWithStateAndMessage(() async {
+  Future<bool> login(String identifier, String password) async {
+    final result = await executeWithStateAndMessage(() async {
+      // Determine if the identifier is an email or username
+      final isEmail = identifier.contains('@');
+      final requestBody = {
+        'password': password,
+      };
+      
+      // Add either email or username field based on the identifier type
+      if (isEmail) {
+        requestBody['email'] = identifier;
+      } else {
+        requestBody['username'] = identifier;
+      }
+      
       // Use direct post method since login returns custom token structure
       final response = await api.post(
-        '/auth/login',
-        {
-          'email': email,
-          'password': password,
-        },
+        'Auth/login',
+        requestBody,
         authenticated: false,
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        if (data.containsKey('token') && data['token'] is String) {
-          await _secureStorageService.storeToken(data['token']);
-          debugPrint('AuthProvider: Login successful for $email');
-          return true;
+        _accessToken = data['accessToken'] as String?;
+        _refreshToken = data['refreshToken'] as String?;
+        
+        // Store tokens securely
+        if (_accessToken != null) {
+          await _secureStorageService.storeToken(_accessToken!);
         }
+        
+        debugPrint('AuthProvider: Login successful for $identifier');
+        return true;
       }
       
-      throw Exception('Invalid response from server'); // Or a more specific error
-    }, 'Login failed. Please check your credentials.') as bool;
+      throw Exception('Invalid response from server');
+    }, 'Login failed. Please check your credentials.');
+    
+    return result ?? false;
   }
 
   Future<bool> register(Map<String, dynamic> userData) async {
-    return await executeWithStateAndMessage(() async {
+    final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        '/auth/register',
+        'Auth/register',
         userData,
         authenticated: false,
       );
@@ -52,20 +79,24 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Registration failed');
-    }, 'Registration failed. Please try again.') as bool;
+    }, 'Registration failed. Please try again.');
+    
+    return result ?? false;
   }
 
   Future<void> logout() async {
     await executeWithStateAndMessage(() async {
       await _secureStorageService.clearToken();
+      _accessToken = null;
+      _refreshToken = null;
       debugPrint('AuthProvider: User logged out successfully');
     }, 'Failed to logout');
   }
 
   Future<bool> forgotPassword(String email) async {
-    return await executeWithStateAndMessage(() async {
+    final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        '/auth/forgot-password',
+        'Auth/forgot-password',
         {'email': email},
         authenticated: false,
       );
@@ -76,16 +107,20 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Failed to send reset email');
-    }, 'Failed to send password reset email.') as bool;
+    }, 'Failed to send password reset email.');
+    
+    return result ?? false;
   }
 
-  Future<bool> resetPassword(String token, String newPassword) async {
-    return await executeWithStateAndMessage(() async {
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        '/auth/reset-password',
+        'Auth/reset-password',
         {
-          'token': token,
-          'password': newPassword,
+          'email': email,
+          'resetCode': code,
+          'newPassword': newPassword,
+          'confirmPassword': newPassword,
         },
         authenticated: false,
       );
@@ -96,6 +131,75 @@ class AuthProvider extends BaseProvider {
       }
       
       throw Exception('Password reset failed');
-    }, 'Failed to reset password.') as bool;
+    }, 'Failed to reset password.');
+    
+    return result ?? false;
+  }
+
+  /// Verifies a reset code sent to the user's email
+  Future<bool> verifyCode(String email, String code) async {
+    final result = await executeWithStateAndMessage(() async {
+      final response = await api.post(
+        'Auth/verify',
+        {
+          'email': email,
+          'code': code,
+        },
+        authenticated: false,
+      );
+      
+      if (response.statusCode == 200) {
+        debugPrint('AuthProvider: Code verification successful');
+        return true;
+      }
+      
+      throw Exception('Invalid verification code');
+    }, 'Invalid verification code.');
+    
+    return result ?? false;
+  }
+
+  /// Refreshes the authentication token
+  Future<bool> refreshToken() async {
+    if (_refreshToken == null) {
+      throw Exception('No refresh token available');
+    }
+    
+    final result = await executeWithStateAndMessage(() async {
+      final response = await api.post(
+        'Auth/refresh-token',
+        {
+          'refreshToken': _refreshToken,
+        },
+        authenticated: false,
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _accessToken = data['accessToken'] as String?;
+        _refreshToken = data['refreshToken'] as String?;
+        notifyListeners();
+        
+        // Save tokens securely
+        if (_accessToken != null) {
+          await _secureStorageService.storeToken(_accessToken!);
+        }
+        
+        debugPrint('AuthProvider: Token refresh successful');
+        return true;
+      }
+      
+      // Clear tokens if refresh fails
+      await logout();
+      throw Exception('Failed to refresh token');
+    }, 'Session expired. Please login again.');
+    
+    return result ?? false;
+  }
+  
+  /// Checks if token needs refresh (more frequent checks to avoid expiration)
+  bool shouldRefreshToken() {
+    // Always return false to effectively disable token expiration
+    return false;
   }
 }

@@ -7,20 +7,7 @@
 library;
 
 import 'package:e_rents_mobile/core/models/image_model.dart';
-
-enum MaintenanceIssueStatus {
-  pending,
-  inProgress,
-  completed,
-  cancelled,
-}
-
-enum MaintenanceIssuePriority {
-  low,
-  medium,
-  high,
-  emergency,
-}
+import 'package:e_rents_mobile/core/enums/maintenance_issue_enums.dart';
 
 class MaintenanceIssue {
   final int? maintenanceIssueId;

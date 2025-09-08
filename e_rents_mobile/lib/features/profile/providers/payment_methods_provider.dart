@@ -82,7 +82,7 @@ class PaymentMethodsProvider extends BaseProvider {
     notifyListeners();
 
     final url = await executeWithState<String?>(() async {
-      final response = await api.get('/PaypalLink/start', authenticated: true);
+      final response = await api.get('/payments/paypal/account/start', authenticated: true);
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         return responseData['approvalUrl'];
@@ -99,8 +99,8 @@ class PaymentMethodsProvider extends BaseProvider {
   /// Unlink PayPal account
   Future<bool> unlinkPaypal() async {
     return await executeWithStateForSuccess(() async {
-      final response = await api.delete('/PaypalLink', authenticated: true);
-      if (response.statusCode != 200) {
+      final response = await api.delete('/payments/paypal/account', authenticated: true);
+      if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception('Failed to unlink PayPal account');
       }
       // You might want to refresh user profile data here to reflect the change

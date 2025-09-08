@@ -1,5 +1,5 @@
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
@@ -42,8 +42,8 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
     });
 
     try {
-      final propertyDetailProvider = context.read<PropertyDetailProvider>();
-      final success = await propertyDetailProvider.cancelBooking(
+      final bookingProvider = context.read<PropertyRentalProvider>();
+      final success = await bookingProvider.cancelBooking(
         widget.booking.bookingId,
         _reasonController.text.trim(),
       );

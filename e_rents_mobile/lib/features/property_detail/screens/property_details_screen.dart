@@ -1,15 +1,15 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
-import 'package:e_rents_mobile/features/property_detail/widgets/facilities.dart';
-import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/property_action_factory.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_description.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_detail.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_header.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_image_slider.dart';
-import 'package:e_rents_mobile/features/property_detail/widgets/property_owner.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_price_footer.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/property_action_factory.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_owner.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_reviews/property_review.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -40,8 +40,6 @@ class PropertyDetailScreen extends StatefulWidget {
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
-  Booking? _currentBooking;
-
   @override
   void initState() {
     super.initState();
@@ -52,14 +50,31 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.bookingId != null) {
-      final propertyProvider = context.read<PropertyDetailProvider>();
-      _currentBooking = propertyProvider.booking;
-      if (_currentBooking == null) {
-        debugPrint(
-            "Booking with ID ${widget.bookingId} not found during didChangeDependencies.");
+    final provider = context.read<PropertyRentalProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      provider.fetchPropertyDetails(widget.propertyId);
+      provider.fetchReviews(widget.propertyId);
+      if (widget.bookingId != null) {
+        provider.fetchBookings(widget.propertyId);
+      }
+    });
+  }
+
+  Booking? _findBookingForProperty(PropertyRentalProvider bookingProvider, int propertyId) {
+    if (bookingProvider.selectedBooking != null && bookingProvider.selectedBooking!.propertyId == propertyId) {
+      return bookingProvider.selectedBooking;
+    }
+    
+    if (bookingProvider.bookings.isNotEmpty) {
+      try {
+        return bookingProvider.bookings.firstWhere((b) => b.propertyId == propertyId);
+      } catch (e) {
+        // No booking found for this property
+        return null;
       }
     }
+    
+    return null;
   }
 
   @override
@@ -78,18 +93,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       child: BaseScreen(
         appBar: appBar,
         body: Scaffold(
-          body: Consumer<PropertyDetailProvider>(
-            builder: (context, propertyProvider, child) {
-              // Fetch property details when screen loads
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                propertyProvider.fetchPropertyDetails(widget.propertyId.toString(), bookingId: widget.bookingId?.toString());
-              });
-              
-              if (propertyProvider.isLoading && propertyProvider.property == null) {
+          body: Consumer<PropertyRentalProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoading && provider.property == null) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              if (propertyProvider.hasError && propertyProvider.property == null) {
+              if (provider.hasError && provider.property == null) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -97,64 +107,30 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       const Icon(Icons.error_outline, size: 64, color: Colors.red),
                       const SizedBox(height: 16),
                       Text(
-                        propertyProvider.errorMessage.isNotEmpty
-                          ? propertyProvider.errorMessage
-                          : 'Failed to load property',
+                        provider.errorMessage.isNotEmpty
+                            ? provider.errorMessage
+                            : 'Failed to load property',
                         style: const TextStyle(fontSize: 16),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       CustomButton(
                         label: 'Retry',
-                        onPressed: () => propertyProvider.fetchPropertyDetails(widget.propertyId.toString()),
+                        onPressed: () => provider.fetchPropertyDetails(widget.propertyId),
                         width: ButtonWidth.content,
-                        isLoading: propertyProvider.isLoading,
+                        isLoading: provider.isLoading,
                       ),
                     ],
                   ),
                 );
               }
 
-              final property = propertyProvider.property;
+              final property = provider.property;
               if (property == null) {
                 return const Center(child: Text('Property not found'));
               }
 
-              final List<Review> uiReviews = [
-                Review(
-                  reviewId: 1,
-                  reviewType: ReviewType.propertyReview,
-                  propertyId: property.propertyId,
-                  revieweeId: property.ownerId,
-                  reviewerId: 123,
-                  description:
-                      'Great property! Very clean and comfortable. The location is perfect and the host was very responsive.',
-                  starRating: 4.5,
-                  dateCreated: DateTime(2023, 10, 15),
-                ),
-                Review(
-                  reviewId: 2,
-                  reviewType: ReviewType.propertyReview,
-                  propertyId: property.propertyId,
-                  revieweeId: property.ownerId,
-                  reviewerId: 124,
-                  description:
-                      'Absolutely loved my stay here. The amenities were top-notch and everything was as described.',
-                  starRating: 5.0,
-                  dateCreated: DateTime(2023, 9, 28),
-                ),
-                Review(
-                  reviewId: 3,
-                  reviewType: ReviewType.propertyReview,
-                  propertyId: property.propertyId,
-                  revieweeId: property.ownerId,
-                  reviewerId: 125,
-                  description:
-                      'Good value for money. The property is well-maintained and in a nice neighborhood.',
-                  starRating: 4.0,
-                  dateCreated: DateTime(2023, 8, 12),
-                ),
-              ];
+              final uiReviews = provider.reviews;
 
               return SingleChildScrollView(
                 child: Column(
@@ -162,9 +138,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   children: [
                     PropertyImageSlider(
                       property: property,
-                      onPageChanged: (index) {
-                        // Image index changed - no action needed
-                      },
+                      onPageChanged: (index) {},
                     ),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -173,12 +147,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         children: [
                           PropertyHeader(property: property),
                           const SizedBox(height: 16),
-                                                                              PropertyDetails(
+                          PropertyDetails(
                             averageRating: property.averageRating ?? 0.0,
-                            numberOfReviews: propertyProvider.reviews.length,
+                            numberOfReviews: uiReviews.length,
                             city: property.address?.city ?? 'Unknown City',
                             address: property.address?.streetLine1,
-                            rooms: property.specificationsDisplay,
+                            rooms: property.rooms,
                             area: (property.area ?? 0) > 0
                                 ? '${(property.area!).toStringAsFixed(0)} m²'
                                 : 'N/A',
@@ -186,26 +160,30 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                                                    PropertyDescriptionSection(
+                          PropertyDescriptionSection(
                             description: property.description ??
                                 'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                                                    PropertyActionFactory.createActionSection(
-                            property: property,
-                            viewContext: widget.viewContext,
-                            booking: propertyProvider.booking,
+                          Builder(
+                            builder: (context) {
+                              final currentBooking = _findBookingForProperty(provider, property.propertyId);
+                              return PropertyActionFactory.createActionSection(
+                                property: property,
+                                viewContext: widget.viewContext,
+                                booking: currentBooking,
+                              );
+                            }
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
                           PropertyOwnerSection(
                             propertyId: property.propertyId,
-                            ownerName: 'Property Owner', // Generic name for now
-                            ownerEmail:
-                                null, // Owner email not available in current model
+                            ownerName: 'Property Owner',
+                            ownerEmail: null,
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
@@ -225,7 +203,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             isLoading: false,
                             width: ButtonWidth.expanded,
                             onPressed: () {
-                              _showAddReviewDialog(context, propertyProvider);
+                              _showAddReviewDialog(context, provider);
                             },
                           ),
                         ],
@@ -236,13 +214,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               );
             },
           ),
-          bottomNavigationBar: Consumer<PropertyDetailProvider>(
-            builder: (context, propertyProvider, child) {
-              final property = propertyProvider.property!;
+          bottomNavigationBar: Consumer<PropertyRentalProvider>(
+            builder: (context, provider, child) {
+              if (provider.property == null) return const SizedBox.shrink();
+              final property = provider.property!;
               if (widget.viewContext == ViewContext.browsing) {
                 return PropertyPriceFooter(
                   property: property,
-                  onCheckoutPressed: () => checkoutPressed(propertyProvider),
+                  onCheckoutPressed: () => checkoutPressed(provider),
                 );
               }
 
@@ -261,7 +240,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     return sum / reviews.length;
   }
 
-  void checkoutPressed(PropertyDetailProvider provider) {
+  void checkoutPressed(PropertyRentalProvider provider) {
     final property = provider.property;
     if (property == null) return;
 
@@ -284,7 +263,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   }
 
   void _showAddReviewDialog(
-      BuildContext context, PropertyDetailProvider provider) {
+      BuildContext context, PropertyRentalProvider provider) {
     double rating = 5.0;
     final commentController = TextEditingController();
 
@@ -341,11 +320,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               isLoading: false,
               onPressed: () {
                 if (commentController.text.isNotEmpty) {
-                                    provider.addReview(
-                    widget.propertyId.toString(),
-                    commentController.text,
-                    rating,
-                  );
+                  provider.addReview(widget.propertyId, commentController.text, rating);
                   context.pop();
                 }
               },

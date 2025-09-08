@@ -1,5 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 
 /// Provider for managing property collections
@@ -8,18 +8,18 @@ class PropertyCollectionsProvider extends BaseProvider {
   PropertyCollectionsProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  List<Property> _similarProperties = [];
-  List<Property> _ownerProperties = [];
-  List<Property> _propertyCollection = [];
+  List<PropertyDetail> _similarProperties = [];
+  List<PropertyDetail> _ownerProperties = [];
+  List<PropertyDetail> _propertyCollection = [];
   
   // Collection search/filter state
   String _propertySearchQuery = '';
   Map<String, dynamic> _propertyFilters = {};
 
   // ─── Getters ────────────────────────────────────────────────────────────
-  List<Property> get similarProperties => _similarProperties;
-  List<Property> get ownerProperties => _ownerProperties;
-  List<Property> get propertyCollection => _propertyCollection;
+  List<PropertyDetail> get similarProperties => _similarProperties;
+  List<PropertyDetail> get ownerProperties => _ownerProperties;
+  List<PropertyDetail> get propertyCollection => _propertyCollection;
   String get propertySearchQuery => _propertySearchQuery;
   Map<String, dynamic> get propertyFilters => _propertyFilters;
 
@@ -31,14 +31,15 @@ class PropertyCollectionsProvider extends BaseProvider {
     
     final properties = await executeWithState(() async {
       final filters = {
-        'propertyTypeId': propertyTypeId?.toString(),
-        'minPrice': (price != null ? price * 0.8 : null)?.toString(),
-        'maxPrice': (price != null ? price * 1.2 : null)?.toString(),
-        'exclude': propertyId.toString(),
+        // Backend expects PropertySearch model keys
+        'PropertyType': propertyTypeId?.toString(),
+        'MinPrice': (price != null ? price * 0.8 : null)?.toString(),
+        'MaxPrice': (price != null ? price * 1.2 : null)?.toString(),
+        // Not supported server-side but harmless to include; client can filter if needed
+        'ExcludeId': propertyId.toString(),
       };
-      
-      final endpoint = '/properties/search${api.buildQueryString(filters)}';
-      return await api.getListAndDecode(endpoint, Property.fromJson, authenticated: true);
+      final endpoint = '/properties${api.buildQueryString(filters)}';
+      return await api.getListAndDecode(endpoint, PropertyDetail.fromJson, authenticated: true);
     });
 
     if (properties != null) {
@@ -52,12 +53,12 @@ class PropertyCollectionsProvider extends BaseProvider {
     
     final properties = await executeWithState(() async {
       final filters = {
-        'ownerId': ownerId.toString(),
-        'exclude': excludePropertyId.toString(),
+        // OwnerId is not part of PropertySearch; include for potential backend support
+        'OwnerId': ownerId.toString(),
+        'ExcludeId': excludePropertyId.toString(),
       };
-      
-      final endpoint = '/properties/search${api.buildQueryString(filters)}';
-      return await api.getListAndDecode(endpoint, Property.fromJson, authenticated: true);
+      final endpoint = '/properties${api.buildQueryString(filters)}';
+      return await api.getListAndDecode(endpoint, PropertyDetail.fromJson, authenticated: true);
     });
 
     if (properties != null) {
@@ -68,8 +69,8 @@ class PropertyCollectionsProvider extends BaseProvider {
   /// Load property collection with optional filters
   Future<void> loadPropertyCollection({Map<String, dynamic>? filters}) async {
     final properties = await executeWithState(() async {
-      final endpoint = '/properties/search${api.buildQueryString(filters)}';
-      return await api.getListAndDecode(endpoint, Property.fromJson, authenticated: true);
+      final endpoint = '/properties${api.buildQueryString(filters)}';
+      return await api.getListAndDecode(endpoint, PropertyDetail.fromJson, authenticated: true);
     });
 
     if (properties != null) {

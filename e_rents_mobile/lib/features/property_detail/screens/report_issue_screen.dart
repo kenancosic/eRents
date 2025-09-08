@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
+import 'package:e_rents_mobile/core/enums/maintenance_issue_enums.dart';
 
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/maintenance_issues_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final int propertyId;
@@ -131,10 +131,10 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         return;
       }
 
-      final propertyDetailProvider = context.read<PropertyDetailProvider>();
+      final maintenanceProvider = context.read<MaintenanceIssuesProvider>();
 
-      final success = await propertyDetailProvider.reportMaintenanceIssue(
-        widget.propertyId.toString(),
+      final success = await maintenanceProvider.reportMaintenanceIssue(
+        widget.propertyId,
         _titleController.text.trim(),
         _descriptionController.text.trim(),
       );
@@ -204,7 +204,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
             // Priority selector
             DropdownButtonFormField<MaintenanceIssuePriority>(
-              value: _selectedPriority,
+              initialValue: _selectedPriority,
               decoration: const InputDecoration(
                 labelText: 'Priority Level *',
                 border: OutlineInputBorder(),

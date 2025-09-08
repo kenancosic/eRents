@@ -1,169 +1,377 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
+import 'dart:async';
+import 'package:signalr_core/signalr_core.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart';
-import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/address.dart';
-import 'package:e_rents_mobile/features/home/widgets/upcoming_stays_section.dart';
-import 'package:e_rents_mobile/features/home/widgets/currently_residing_section.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
+import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  Property _createMockProperty(
-      int id, String name, PropertyRentalType rentalType,
-      {double? dailyRate}) {
-    return Property(
-      propertyId: id,
-      ownerId: 1,
-      name: name,
-      price:
-          rentalType == PropertyRentalType.daily ? (dailyRate ?? 75.0) : 526.0,
-      dailyRate:
-          rentalType == PropertyRentalType.daily ? (dailyRate ?? 75.0) : null,
-      description: 'A beautiful property with great amenities',
-      averageRating: 4.8,
-      imageIds: [id],
-      amenityIds: [1, 2, 3, 4],
-      address: Address(
-        streetLine1: id == 1
-            ? 'Lukavac Street'
-            : id == 300
-                ? 'Downtown Street'
-                : 'Paradise Beach Road',
-        city: id == 1
-            ? 'Lukavac'
-            : id == 300
-                ? 'Downtown'
-                : 'Paradise City',
-        state: id == 1
-            ? 'BiH'
-            : id == 300
-                ? 'NY'
-                : 'FL',
-        country: 'USA',
-      ),
-      facilities: "Wi-Fi, Kitchen, Air Conditioning",
-      status: PropertyStatus.available,
-      dateAdded: DateTime.now().subtract(Duration(days: id * 10)),
-      rentalType: rentalType,
-      minimumStayDays: rentalType == PropertyRentalType.monthly ? 30 : 3,
-    );
-  }
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-  List<Widget> _buildPropertyCards(BuildContext context, int count) {
-    return List.generate(
-      count,
-      (index) => PropertyCard(
-        property: _createMockProperty(
-            1 + index,
-            'Small cottage with great view of Bagmati',
-            PropertyRentalType.monthly),
-        onTap: () {
-          context.push('/property/1');
-        },
-      ),
-    );
-  }
-
-  List<Widget> _buildMixedPropertyCards(BuildContext context) {
-    return [
-      // Daily rental property
-      PropertyCard(
-        property: _createMockProperty(
-          1,
-          'Cozy Cottage - Daily Rental',
-          PropertyRentalType.daily,
-          dailyRate: 75.0,
-        ),
-        onTap: () {
-          context.push('/property/1');
-        },
-      ),
-      // Monthly lease property
-      PropertyCard(
-        property: _createMockProperty(
-          300,
-          'Modern Downtown Apartment - Monthly Lease',
-          PropertyRentalType.monthly,
-        ),
-        onTap: () {
-          context.push('/property/300');
-        },
-      ),
-      // Another daily rental
-      PropertyCard(
-        property: _createMockProperty(
-          102,
-          'Beachside Villa Getaway',
-          PropertyRentalType.daily,
-          dailyRate: 120.0,
-        ),
-        onTap: () {
-          context.push('/property/102');
-        },
-      ),
-    ];
-  }
+class _HomeScreenState extends State<HomeScreen> {
+  Timer? _pendingRefreshTimer;
+  HubConnection? _notifHub;
 
   void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
-    // TODO: Implement actual filter logic (e.g., update provider, refetch data)
-    // You might want to show a snackbar or some feedback
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Filters applied!')),
     );
   }
 
   Widget _buildRecommendedSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(
-          title: 'Recommended for you',
-          onSeeAll: () {
-            context.push('/explore');
-          },
-        ),
-        // Use vertical cards for recommended section for variety
-        SizedBox(
-          height: 240, // Fixed height for vertical cards
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: 3,
-            itemBuilder: (context, index) {
-              final property = _createMockProperty(
-                104 + index,
-                'Recommended Property ${index + 1}',
-                PropertyRentalType.monthly,
-                dailyRate: 85.0 + (index * 10),
-              );
-              return SizedBox(
-                width: 180, // Fixed width for vertical cards
-                child: PropertyCard.vertical(
-                  property: property,
-                  onTap: () {
-                    context.push('/property/${property.propertyId}');
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        // If we have no recommended properties or are still loading, show a loading indicator or empty state
+        if (provider.recommendedCards.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Recommended for you',
+              onSeeAll: () {
+                context.push('/explore');
+              },
+            ),
+            // Use vertical cards for recommended section for variety
+            SizedBox(
+              height: 240, // Fixed height for vertical cards
+              child: ListView.builder(
+                primary: false,
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                itemCount: provider.recommendedCards.length,
+                itemBuilder: (context, index) {
+                  final card = provider.recommendedCards[index];
+                  return SizedBox(
+                    width: 180, // Fixed width for vertical cards
+                    child: PropertyCard(
+                      layout: PropertyCardLayout.vertical,
+                      property: card,
+                      onTap: () {
+                        context.push('/property/${card.propertyId}');
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCurrentResidencesSection(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        final items = provider.currentResidences;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              title: 'Currently residing properties',
+            ),
+            if (items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  "You're not currently residing in any property.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              SizedBox(
+                height: 240,
+                child: ListView.builder(
+                  primary: false,
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final card = items[index];
+                    return SizedBox(
+                      width: 180,
+                      child: PropertyCard.vertical(
+                        property: card,
+                        onTap: () {
+                          context.push('/property/${card.propertyId}');
+                        },
+                      ),
+                    );
                   },
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+              ),
+          ],
+        );
+      },
     );
+  }
+
+  Widget _buildUpcomingBookingsSection(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Upcoming Bookings',
+              onSeeAll: () {
+                context.push('/bookings');
+              },
+            ),
+            if (provider.upcomingBookings.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Text(
+                  'No upcoming bookings found.',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              SizedBox(
+                // Match the visual design of Current Residences/Recommended
+                height: 240,
+                child: ListView.builder(
+                  primary: false,
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: provider.upcomingBookings.length,
+                  itemBuilder: (context, index) {
+                    final booking = provider.upcomingBookings[index];
+                    // Create a minimal Property object from booking data
+                    final card = PropertyCardModel(
+                      propertyId: booking.propertyId,
+                      name: booking.propertyName,
+                      price: booking.dailyRate,
+                      currency: booking.currency ?? 'BAM',
+                      averageRating: null,
+                      coverImageId: null,
+                      address: Address(city: '', streetLine1: ''),
+                      rentalType: PropertyRentalType.daily,
+                    );
+                    return SizedBox(
+                      width: 180,
+                      child: PropertyCard.vertical(
+                        property: card,
+                        onTap: () {
+                          context.push('/property/${booking.propertyId}');
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPendingBookingsSection(BuildContext context) {
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        if (provider.pendingBookings.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionHeader(
+              title: 'Pending Monthly Bookings',
+              onSeeAll: () {
+                context.push('/bookings');
+              },
+            ),
+            SizedBox(
+              // Match the visual design of Current Residences/Recommended
+              height: 240,
+              child: ListView.builder(
+                primary: false,
+                shrinkWrap: true,
+                physics: const ClampingScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                itemCount: provider.pendingBookings.length,
+                itemBuilder: (context, index) {
+                  final booking = provider.pendingBookings[index];
+                  // Create a minimal Property object from booking data
+                  final card = PropertyCardModel(
+                    propertyId: booking.propertyId,
+                    name: booking.propertyName,
+                    price: booking.dailyRate,
+                    currency: booking.currency ?? 'BAM',
+                    averageRating: null,
+                    coverImageId: 0,
+                    address: Address(city: '', streetLine1: ''),
+                    rentalType: PropertyRentalType.monthly,
+                  );
+                  return SizedBox(
+                    width: 180,
+                    child: Stack(
+                      children: [
+                        PropertyCard(
+                          layout: PropertyCardLayout.vertical,
+                          property: card,
+                          onTap: () {
+                            context.push('/property/${booking.propertyId}');
+                          },
+                        ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Awaiting acceptance',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize dashboard data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDashboard();
+      // Start periodic refresh of pending monthly bookings so user sees acceptance updates
+      _pendingRefreshTimer?.cancel();
+      _pendingRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+        if (!mounted) return;
+        await context.read<HomeProvider>().refreshPendingBookings();
+      });
+      _connectNotifications();
+    });
+  }
+
+  Future<void> _initializeDashboard() async {
+    try {
+      await context.read<HomeProvider>().initializeDashboard();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load dashboard data: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pendingRefreshTimer?.cancel();
+    final hub = _notifHub;
+    if (hub != null) {
+      hub.stop();
+      _notifHub = null;
+    }
+    super.dispose();
+  }
+
+  Future<void> _connectNotifications() async {
+    // Build hub URL by stripping trailing '/api' from baseUrl
+    String _buildHubUrl(String baseUrl) {
+      final uri = Uri.parse(baseUrl);
+      var path = uri.path;
+      if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+      if (path.endsWith('/api')) path = path.substring(0, path.length - 4);
+      final cleanPath = path.isEmpty ? '/' : path;
+      final hub = uri.replace(path: '${cleanPath == '/' ? '' : cleanPath}/chatHub');
+      return hub.toString();
+    }
+
+    try {
+      final api = context.read<ApiService>();
+      final token = await api.secureStorageService.getToken();
+      if (token == null || token.isEmpty) return;
+
+      final hubUrl = _buildHubUrl(api.baseUrl);
+      final hub = HubConnectionBuilder()
+          .withUrl(
+            hubUrl,
+            HttpConnectionOptions(
+              accessTokenFactory: () async => token,
+              transport: HttpTransportType.webSockets,
+            ),
+          )
+          .withAutomaticReconnect([0, 2000, 10000, 30000])
+          .build();
+
+      // Register notification handler
+      hub.on('ReceiveNotification', (args) async {
+        if (!mounted) return;
+        if (args == null || args.isEmpty) return;
+        final data = args.first;
+        if (data is Map) {
+          final type = (data['type'] ?? '').toString();
+          final title = (data['title'] ?? '').toString();
+          final message = (data['message'] ?? '').toString();
+          if (type == 'booking') {
+            // Refresh pending bookings immediately on booking notifications
+            await context.read<HomeProvider>().refreshPendingBookings();
+          }
+          // Show toast
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(title.isNotEmpty ? '$title: $message' : message)),
+            );
+          }
+        }
+      });
+
+      await hub.start();
+      _notifHub = hub;
+    } catch (_) {
+      // Fail silently; polling still works
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final properties = _buildPropertyCards(context, 3);
-    final mixedProperties = _buildMixedPropertyCards(context);
-
     final searchBar = CustomSearchBar(
       hintText: 'Search properties...',
       onSearchChanged: (query) {
@@ -178,57 +386,71 @@ class HomeScreen extends StatelessWidget {
       },
     );
 
-    final locationWidgetForAppBar =
-        const LocationWidget(title: 'Welcome back, User', location: 'Lukavac');
-
     final appBar = CustomAppBar(
       showSearch: true,
       searchWidget: searchBar,
       showAvatar: true,
-      avatarWidget: Builder(builder: (BuildContext avatarContext) {
-        return CustomAvatar(
+      avatarWidget: Builder(
+        builder: (avatarContext) => CustomAvatar(
           imageUrl: 'assets/images/user-image.png',
           onTap: () {
             BaseScreenState.of(avatarContext)?.toggleDrawer();
           },
-        );
-      }),
+        ),
+      ),
       showBackButton: false,
-      userLocationWidget: locationWidgetForAppBar,
-      actions: [],
+      userLocationWidget: Consumer<HomeProvider>(
+        builder: (context, provider, _) => LocationWidget(
+          title: 'Welcome back, ${provider.currentUser?.firstName ?? 'User'}',
+          location: provider.userLocation,
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: () {
+            context.push('/notifications');
+          },
+        ),
+      ],
     );
 
     return BaseScreen(
       showAppBar: true,
       useSlidingDrawer: true,
       appBar: appBar,
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Currently Residing Section
-              const CurrentlyResidingSection(),
-              const SizedBox(height: 20),
-
-              // Upcoming Stays Section
-              const UpcomingStaysSection(),
-              const SizedBox(height: 20),
-
-              SectionHeader(title: 'Near your location', onSeeAll: () {}),
-              CustomSlider(items: properties),
-              const SizedBox(height: 20),
-              SectionHeader(
-                  title: 'Featured Properties (Daily & Monthly)',
-                  onSeeAll: () {}),
-              CustomSlider(items: mixedProperties),
-              const SizedBox(height: 20),
-
-              _buildRecommendedSection(context),
-            ],
-          ),
-        ),
+      body: Consumer<HomeProvider>(
+        builder: (context, provider, child) {
+          return RefreshIndicator(
+            onRefresh: () async {
+              // Refresh all dashboard data
+              try {
+                await provider.initializeDashboard();
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to refresh data: ${error.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCurrentResidencesSection(context),
+                  _buildRecommendedSection(context),
+                  _buildUpcomingBookingsSection(context),
+                  _buildPendingBookingsSection(context),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

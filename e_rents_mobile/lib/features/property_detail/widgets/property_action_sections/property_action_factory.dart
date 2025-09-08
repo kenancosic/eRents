@@ -1,6 +1,7 @@
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/browse_property_section.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/active_booking_section.dart';
@@ -9,12 +10,14 @@ import 'package:e_rents_mobile/features/property_detail/widgets/property_action_
 
 class PropertyActionFactory {
   static Widget createActionSection({
-    required Property property,
+    required PropertyDetail property,
     required ViewContext viewContext,
     Booking? booking,
   }) {
     switch (viewContext) {
       case ViewContext.browsing:
+        // For browsing, both daily and monthly now use the standard browse section.
+        // Monthly rentals proceed to checkout from the booking availability widget.
         return BrowsePropertySection(property: property);
 
       case ViewContext.upcomingBooking:

@@ -1,7 +1,9 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
+import 'package:e_rents_mobile/core/widgets/custom_dialogs.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -60,24 +62,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Function to handle logout
   void _handleLogout() async {
     // Show confirmation dialog
-    final shouldLogout = await showDialog<bool>(
+    final shouldLogout = await CustomDialogs.showConfirmationDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          CustomOutlinedButton.compact(
-            label: 'Cancel',
-            isLoading: false,
-            onPressed: () => context.pop(false),
-          ),
-          CustomButton.compact(
-            label: 'Logout',
-            isLoading: false,
-            onPressed: () => context.pop(true),
-          ),
-        ],
-      ),
+      title: 'Logout',
+      content: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      isDestructive: true,
     );
 
     if (shouldLogout == true && mounted) {
@@ -113,32 +103,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     const SizedBox(height: 20),
                     // User profile section
-                    GestureDetector(
-                      onTap: _updateProfileImage,
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage: const AssetImage(
-                                'assets/images/user-image.png'), // Default image
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Center(
+                      child: CustomAvatar(
+                        imageUrl: 'assets/images/user-image.png',
+                        size: 100,
+                        onTap: _updateProfileImage,
+                        showCameraIcon: true,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -178,14 +148,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             },
                           ),
                           _buildListTile(
-                            icon: Icons.home_work_outlined,
-                            title: 'Accommodation Preferences',
-                            onTap: () {
-                              context
-                                  .push('/profile/accommodation-preferences');
-                            },
-                          ),
-                          _buildListTile(
                             icon: Icons.history,
                             title: 'Booking History',
                             onTap: () {
@@ -196,6 +158,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             context: context,
                             profileProvider: profileProvider,
                           ),
+                          const SizedBox(height: 20),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.0),
+                            child: PaypalSettingsWidget(isEditing: true),
+                          ),
+                          const SizedBox(height: 20),
                           _buildListTile(
                             icon: Icons.help_outline,
                             title: 'FAQ',
@@ -255,32 +223,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       value: isPublic,
       onChanged: (bool value) async {
         // Show a confirmation dialog before changing the status
-        final confirm = await showDialog<bool>(
+        final confirm = await CustomDialogs.showConfirmationDialog(
           context: context,
-          builder: (BuildContext dialogContext) {
-            return AlertDialog(
-              title: Text(
-                  value ? 'Make Profile Public?' : 'Make Profile Private?'),
-              content: Text(
-                  'Are you sure you want to ${value ? 'make your profile public' : 'make your profile private'}?'),
-              actions: <Widget>[
-                CustomOutlinedButton.compact(
-                  label: 'Cancel',
-                  isLoading: false,
-                  onPressed: () {
-                    dialogContext.pop(false); // User cancelled
-                  },
-                ),
-                CustomButton.compact(
-                  label: 'Confirm',
-                  isLoading: false,
-                  onPressed: () {
-                    dialogContext.pop(true); // User confirmed
-                  },
-                ),
-              ],
-            );
-          },
+          title: value ? 'Make Profile Public?' : 'Make Profile Private?',
+          content: 'Are you sure you want to ${value ? 'make your profile public' : 'make your profile private'}?',
+          confirmText: 'Confirm',
         );
 
         if (confirm == true) {
@@ -289,34 +236,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Making public: ensure city present or ask for it
             final currentCity = user?.address?.city?.trim() ?? '';
             if (currentCity.isEmpty) {
-              final controller = TextEditingController();
-              final entered = await showDialog<String?>(
+              final entered = await CustomDialogs.showInputDialog(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Enter your city'),
-                  content: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(hintText: 'City'),
-                    autofocus: true,
-                  ),
-                  actions: [
-                    CustomOutlinedButton.compact(
-                      label: 'Cancel',
-                      isLoading: false,
-                      onPressed: () => ctx.pop(null),
-                    ),
-                    CustomButton.compact(
-                      label: 'Save',
-                      isLoading: false,
-                      onPressed: () => ctx.pop(controller.text.trim()),
-                    ),
-                  ],
-                ),
+                title: 'Enter your city',
+                hintText: 'City',
               );
               if ((entered ?? '').isEmpty) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('City is required to make your profile public.')),
+                  CustomDialogs.showCustomSnackBar(
+                    context: context,
+                    message: 'City is required to make your profile public.',
+                    isError: true,
                   );
                 }
                 return; // Abort toggle
@@ -327,12 +257,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           final success = await profileProvider.updateUserPublicStatus(value, city: cityToSend);
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(success
-                    ? 'Profile status updated successfully!'
-                    : 'Failed to update profile status.'),
-              ),
+            CustomDialogs.showCustomSnackBar(
+              context: context,
+              message: success
+                  ? 'Profile status updated successfully!'
+                  : 'Failed to update profile status.',
+              isError: !success,
             );
           }
         }

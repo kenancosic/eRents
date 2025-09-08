@@ -22,14 +22,14 @@ class _PaypalWebViewScreenState extends State<PaypalWebViewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: (NavigationRequest request) {
-            // Check for the success URL from the backend
-            if (request.url.startsWith('http://localhost:5000/capture')) {
+            // Host-agnostic success URL detection (backend should redirect to a path containing '/capture')
+            if (request.url.contains('/capture')) {
               // Pop the webview and return success
               Navigator.of(context).pop(true);
               return NavigationDecision.prevent;
             }
-            // Check for the cancel URL from the backend
-            if (request.url.startsWith('http://localhost:5000/cancel')) {
+            // Host-agnostic cancel URL detection (backend should redirect to a path containing '/cancel')
+            if (request.url.contains('/cancel')) {
               // Pop the webview and return failure
               Navigator.of(context).pop(false);
               return NavigationDecision.prevent;

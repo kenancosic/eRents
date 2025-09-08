@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 
 class SavedScreen extends StatefulWidget {
@@ -26,10 +26,10 @@ class _SavedScreenState extends State<SavedScreen> {
     });
   }
 
-  Future<void> _removeFromSaved(Property property) async {
+  Future<void> _removeFromSaved(PropertyCardModel property) async {
     try {
       final provider = context.read<SavedProvider>();
-      await provider.unsaveProperty(property);
+      await provider.unsaveProperty(property.propertyId);
       
       if (mounted) {
         // Show a snackbar to confirm removal
@@ -40,7 +40,7 @@ class _SavedScreenState extends State<SavedScreen> {
               label: 'UNDO',
               onPressed: () async {
                 // Add the property back if user taps UNDO
-                await provider.saveProperty(property);
+                await provider.saveProperty(property.propertyId);
               },
             ),
           ),
@@ -141,12 +141,17 @@ class _SavedScreenState extends State<SavedScreen> {
       );
     }
 
-    // Use a simple ListView instead of more complex nesting
-    return SingleChildScrollView(
+    // Use ListView to avoid unbounded height issues
+    final items = provider.items;
+    return ListView.separated(
       physics: const ClampingScrollPhysics(),
-      child: Column(
-        children: [
-          Padding(
+      padding: EdgeInsets.zero,
+      itemCount: items.length + 2, // header + items + footer spacer
+      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          // Header with refresh button
+          return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6.0),
             child: Center(
               child: ElevatedTextButton.icon(
@@ -156,36 +161,40 @@ class _SavedScreenState extends State<SavedScreen> {
                 onPressed: () => provider.refreshSavedProperties(),
               ),
             ),
+          );
+        }
+        if (index == items.length + 1) {
+          // Footer spacer
+          return const SizedBox(height: 12);
+        }
+
+        final property = items[index - 1];
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 0),
+          child: Dismissible(
+            key: Key('saved_property_${property.propertyId}'),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              color: Colors.red,
+              child: const Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
+            ),
+            onDismissed: (direction) {
+              _removeFromSaved(property);
+            },
+            child: PropertyCard(
+              property: property,
+              onTap: () {
+                context.push('/property/${property.propertyId}');
+              },
+            ),
           ),
-          // Convert ListView.builder to direct list of widgets
-          ...provider.items.map((property) => Padding(
-                padding: const EdgeInsets.only(bottom: 6.0),
-                child: Dismissible(
-                  key: Key('saved_property_${property.propertyId}'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    color: Colors.red,
-                    child: const Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
-                  ),
-                  onDismissed: (direction) {
-                    _removeFromSaved(property);
-                  },
-                  child: PropertyCard(
-                    property: property,
-                    onTap: () {
-                      context.push('/property/${property.propertyId}');
-                    },
-                  ),
-                ),
-              )),
-          const SizedBox(height: 12),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -224,7 +224,6 @@ class CustomButton extends StatelessWidget {
       case ButtonWidth.expanded:
         return SizedBox(width: double.infinity, child: button);
       case ButtonWidth.flexible:
-      default:
         return button; // Let parent decide
     }
   }

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 
 /// Provider for managing checkout flow and payment processing
 /// Refactored to use new standardized BaseProvider without caching
@@ -15,16 +15,14 @@ class CheckoutProvider extends BaseProvider {
 
   // Payment and booking state
   String _selectedPaymentMethod = 'PayPal';
-  int _numberOfGuests = 1;
-  String _specialRequests = '';
-  bool _showPriceBreakdown = false;
 
   // Checkout session data
-  Property? _currentProperty;
+  PropertyDetail? _currentProperty;
   DateTime? _startDate;
   DateTime? _endDate;
   bool _isDailyRental = false;
   double _totalPrice = 0.0;
+  int? _pendingBookingId; // store booking id created before payment
 
   // PayPal payment flow state
   String? _payPalApprovalUrl;
@@ -32,23 +30,18 @@ class CheckoutProvider extends BaseProvider {
 
   // ─── Getters ────────────────────────────────────────────────────────────
   String get selectedPaymentMethod => _selectedPaymentMethod;
-  int get numberOfGuests => _numberOfGuests;
-  String get specialRequests => _specialRequests;
-  bool get showPriceBreakdown => _showPriceBreakdown;
   
-  Property? get currentProperty => _currentProperty;
+  PropertyDetail? get currentProperty => _currentProperty;
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
   bool get isDailyRental => _isDailyRental;
   double get totalPrice => _totalPrice;
   String? get payPalApprovalUrl => _payPalApprovalUrl;
   String? get payPalOrderId => _payPalOrderId;
+  int? get pendingBookingId => _pendingBookingId;
 
-  // Price breakdown calculations
-  double get basePrice => _totalPrice / 1.1; // Remove 10% markup to get base
-  double get serviceFee => basePrice * 0.05; // 5% service fee
-  double get taxes => basePrice * 0.05; // 5% taxes
-  double get cleaningFee => 25.0; // Fixed cleaning fee
+  // Simplified pricing - only show property price
+  double get propertyPrice => _totalPrice;
   int get nights => _endDate != null && _startDate != null 
       ? _endDate!.difference(_startDate!).inDays 
       : 0;
@@ -58,14 +51,13 @@ class CheckoutProvider extends BaseProvider {
       _currentProperty != null &&
       _startDate != null &&
       _endDate != null &&
-      _numberOfGuests > 0 &&
       _selectedPaymentMethod.isNotEmpty;
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
   /// Initialize checkout session with property and booking details
   void initializeCheckout({
-    required Property property,
+    required PropertyDetail property,
     required DateTime startDate,
     required DateTime endDate,
     required bool isDailyRental,
@@ -76,13 +68,11 @@ class CheckoutProvider extends BaseProvider {
     _endDate = endDate;
     _isDailyRental = isDailyRental;
     _totalPrice = totalPrice;
+    _pendingBookingId = null;
     
     // Reset form state
     _selectedPaymentMethod = 'PayPal';
-    _numberOfGuests = 1;
-    _specialRequests = '';
-    _showPriceBreakdown = false;
-    
+
     notifyListeners();
     debugPrint('CheckoutProvider: Initialized checkout for property ${property.name}');
   }
@@ -94,31 +84,6 @@ class CheckoutProvider extends BaseProvider {
       notifyListeners();
       debugPrint('CheckoutProvider: Selected payment method: $paymentMethod');
     }
-  }
-
-  /// Update number of guests
-  void updateNumberOfGuests(int guests) {
-    if (guests > 0 && _numberOfGuests != guests) {
-      _numberOfGuests = guests;
-      notifyListeners();
-      debugPrint('CheckoutProvider: Updated guests count to $guests');
-    }
-  }
-
-  /// Update special requests
-  void updateSpecialRequests(String requests) {
-    if (_specialRequests != requests) {
-      _specialRequests = requests;
-      notifyListeners();
-      debugPrint('CheckoutProvider: Updated special requests');
-    }
-  }
-
-  /// Toggle price breakdown visibility
-  void togglePriceBreakdown() {
-    _showPriceBreakdown = !_showPriceBreakdown;
-    notifyListeners();
-    debugPrint('CheckoutProvider: Toggled price breakdown to ${_showPriceBreakdown ? 'visible' : 'hidden'}');
   }
 
   /// Process payment and create booking
@@ -141,14 +106,14 @@ class CheckoutProvider extends BaseProvider {
       // Step 1: Create booking with 'Pending' status to get a bookingId
       final bookingData = {
         'propertyId': _currentProperty!.propertyId,
-        'startDate': _startDate!.toIso8601String(),
-        'endDate': _endDate!.toIso8601String(),
-        'numberOfGuests': _numberOfGuests,
+        // Use DateOnly-friendly format to match backend binder
+        'startDate': _startDate!.toIso8601String().split('T').first,
+        'endDate': _endDate?.toIso8601String().split('T').first,
         'totalPrice': _totalPrice,
         'paymentMethod': _selectedPaymentMethod,
-        'specialRequests': _specialRequests.isNotEmpty ? _specialRequests : null,
-        'isDailyRental': _isDailyRental,
-        'status': 'Pending', // Assuming the backend handles this status
+        // Currency required by backend validator
+        'currency': 'BAM',
+        // NOTE: UserId is expected by backend validator; recommend inferring from auth on server.
       };
 
       final booking = await api.postAndDecode(
@@ -159,10 +124,11 @@ class CheckoutProvider extends BaseProvider {
       );
 
       debugPrint('CheckoutProvider: Created pending booking ID: ${booking.bookingId}');
+      _pendingBookingId = booking.bookingId;
 
       // Step 2: Create PayPal order
       final orderResponse = await api.postAndDecode(
-        'Payment/paypal/create-order',
+        'payments/create-order',
         {'bookingId': booking.bookingId},
         (json) => {
           'orderId': json['orderId'],
@@ -184,23 +150,18 @@ class CheckoutProvider extends BaseProvider {
   /// Capture the PayPal order after user approval
   Future<bool> capturePayPalOrder(String orderId) async {
     final success = await executeWithStateForSuccess(() async {
-      await api.post('Payment/paypal/capture-order', {'orderId': orderId}, authenticated: true);
+      await api.post('payments/capture-order', {'orderId': orderId}, authenticated: true);
       debugPrint('CheckoutProvider: Successfully captured PayPal order ID: $orderId');
+      // Backend will handle subscription creation for monthly rentals.
       _clearCheckoutSession();
     }, errorMessage: 'Failed to capture PayPal payment');
 
     return success;
   }
 
-  /// Calculate price breakdown for display
-  Map<String, double> getPriceBreakdown() {
-    return {
-      'basePrice': basePrice,
-      'serviceFee': serviceFee,
-      'taxes': taxes,
-      'cleaningFee': cleaningFee,
-      'total': _totalPrice,
-    };
+  /// Get property price for display
+  double getPropertyPrice() {
+    return _totalPrice;
   }
 
   /// Get formatted price string
@@ -215,10 +176,8 @@ class CheckoutProvider extends BaseProvider {
       'startDate': _startDate?.toIso8601String().split('T')[0],
       'endDate': _endDate?.toIso8601String().split('T')[0],
       'nights': nights,
-      'guests': _numberOfGuests,
       'paymentMethod': _selectedPaymentMethod,
       'totalPrice': formatPrice(_totalPrice),
-      'specialRequests': _specialRequests.isNotEmpty ? _specialRequests : null,
     };
   }
 
@@ -230,9 +189,6 @@ class CheckoutProvider extends BaseProvider {
     _isDailyRental = false;
     _totalPrice = 0.0;
     _selectedPaymentMethod = 'PayPal';
-    _numberOfGuests = 1;
-    _specialRequests = '';
-    _showPriceBreakdown = false;
     _payPalApprovalUrl = null;
     _payPalOrderId = null;
     notifyListeners();

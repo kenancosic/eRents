@@ -122,6 +122,8 @@ class ForgotPasswordScreen extends StatelessWidget {
                                             content: Text(
                                                 'Password reset email sent.')),
                                       );
+                                      // Navigate to verification screen
+                                      context.push('/verification?email=${_emailController.text}');
                                     } else {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(

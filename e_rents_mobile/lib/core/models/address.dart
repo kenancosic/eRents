@@ -24,27 +24,66 @@ class Address {
     if (json.containsKey('geoRegion')) {
       // Legacy AddressDetail format - transform to new structure
       final geoRegion = json['geoRegion'] as Map<String, dynamic>?;
+      
+      // Handle numeric parsing with type conversion
+      double? latitude;
+      if (json['latitude'] != null) {
+        if (json['latitude'] is num) {
+          latitude = json['latitude'].toDouble();
+        } else {
+          latitude = double.tryParse(json['latitude'].toString());
+        }
+      }
+      
+      double? longitude;
+      if (json['longitude'] != null) {
+        if (json['longitude'] is num) {
+          longitude = json['longitude'].toDouble();
+        } else {
+          longitude = double.tryParse(json['longitude'].toString());
+        }
+      }
+      
       return Address(
-        streetLine1: json['streetLine1'] as String?,
-        streetLine2: json['streetLine2'] as String?,
-        city: geoRegion?['city'] as String?,
-        state: geoRegion?['state'] as String?,
-        country: geoRegion?['country'] as String?,
-        postalCode: geoRegion?['postalCode'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
+        streetLine1: json['streetLine1']?.toString(),
+        streetLine2: json['streetLine2']?.toString(),
+        city: geoRegion?['city']?.toString(),
+        state: geoRegion?['state']?.toString(),
+        country: geoRegion?['country']?.toString(),
+        postalCode: geoRegion?['postalCode']?.toString(),
+        latitude: latitude,
+        longitude: longitude,
       );
     } else {
       // New flat Address format
+      // Handle numeric parsing with type conversion
+      double? latitude;
+      if (json['latitude'] != null) {
+        if (json['latitude'] is num) {
+          latitude = json['latitude'].toDouble();
+        } else {
+          latitude = double.tryParse(json['latitude'].toString());
+        }
+      }
+      
+      double? longitude;
+      if (json['longitude'] != null) {
+        if (json['longitude'] is num) {
+          longitude = json['longitude'].toDouble();
+        } else {
+          longitude = double.tryParse(json['longitude'].toString());
+        }
+      }
+      
       return Address(
-        streetLine1: json['streetLine1'] as String?,
-        streetLine2: json['streetLine2'] as String?,
-        city: json['city'] as String?,
-        state: json['state'] as String?,
-        country: json['country'] as String?,
-        postalCode: json['postalCode'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
+        streetLine1: json['streetLine1']?.toString(),
+        streetLine2: json['streetLine2']?.toString(),
+        city: json['city']?.toString(),
+        state: json['state']?.toString(),
+        country: json['country']?.toString(),
+        postalCode: json['postalCode']?.toString(),
+        latitude: latitude,
+        longitude: longitude,
       );
     }
   }

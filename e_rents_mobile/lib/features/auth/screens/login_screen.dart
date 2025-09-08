@@ -165,7 +165,17 @@ class LoginScreen extends StatelessWidget {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
                                             content: Text(
-                                                'Please enter both email and password.')),
+                                                'Please enter both email/username and password.')),
+                                      );
+                                      return;
+                                    }
+
+                                    // Validate email format if it looks like an email
+                                    if (email.contains('@') && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Please enter a valid email address.')),
                                       );
                                       return;
                                     }

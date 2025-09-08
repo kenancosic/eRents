@@ -6,7 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
-  const BookingHistoryScreen({super.key});
+  final int initialTabIndex;
+  const BookingHistoryScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<BookingHistoryScreen> createState() => _BookingHistoryScreenState();
@@ -19,7 +20,8 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    final safeIndex = widget.initialTabIndex.clamp(0, 2);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: safeIndex);
     // Load user bookings when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserBookingsProvider>().loadUserBookings();

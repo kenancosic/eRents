@@ -1,27 +1,29 @@
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/features/auth/screens/login_screen.dart';
 import 'package:e_rents_mobile/features/auth/screens/signup_screen.dart';
 import 'package:e_rents_mobile/features/explore/explore_screen.dart';
 import 'package:e_rents_mobile/features/home/home_screen.dart';
-import 'package:e_rents_mobile/features/home/screens/modern_home_screen.dart';
-import 'package:e_rents_mobile/features/chat/chat_screen.dart';
+import 'package:e_rents_mobile/features/chat/screens/contacts_screen.dart';
+import 'package:e_rents_mobile/features/chat/screens/conversation_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/personal_details_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/profile_screen.dart';
-import 'package:e_rents_mobile/features/profile/screens/tenant_preferences_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/property_details_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/report_issue_screen.dart';
-import 'package:e_rents_mobile/features/property_detail/screens/manage_lease_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/manage_booking_screen.dart';
 import 'package:e_rents_mobile/features/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/features/checkout/checkout_screen.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:e_rents_mobile/features/auth/screens/forgot_password_screen.dart'; // Import ForgotPasswordScreen
-import 'package:e_rents_mobile/features/auth/screens/password_reset_confirmation_screen.dart'; // Import PasswordResetConfirmationScreen
+import 'package:e_rents_mobile/features/auth/screens/forgot_password_screen.dart';
+import 'package:e_rents_mobile/features/auth/screens/password_reset_confirmation_screen.dart';
+import 'package:e_rents_mobile/features/auth/screens/verification_screen.dart';
+import 'package:e_rents_mobile/features/auth/screens/create_password_screen.dart';
+import 'package:e_rents_mobile/features/faq/screens/faq_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 
 // Navigator keys
@@ -64,20 +66,20 @@ class AppRouter {
       routes: [
         // StatefulShellRoute for tabbed navigation
         StatefulShellRoute.indexedStack(
-        builder: (BuildContext context, GoRouterState state,
-            StatefulNavigationShell navigationShell) {
-          // This is where you'd build your main scaffold with the CustomBottomNavigationBar
-          // The navigationShell is used to display the correct page for the current tab
-          // and to handle tab changes via the CustomBottomNavigationBar's onTap
-          return Scaffold(
-            body: navigationShell,
-            bottomNavigationBar: CustomBottomNavigationBar(
-              currentIndex: navigationShell.currentIndex,
-              onTap: (index) => navigationShell.goBranch(index),
-            ),
-          );
-        },
-        branches: <StatefulShellBranch>[
+          builder: (BuildContext context, GoRouterState state,
+              StatefulNavigationShell navigationShell) {
+            // This is where you'd build your main scaffold with the CustomBottomNavigationBar
+            // The navigationShell is used to display the correct page for the current tab
+            // and to handle tab changes via the CustomBottomNavigationBar's onTap
+            return Scaffold(
+              body: navigationShell,
+              bottomNavigationBar: CustomBottomNavigationBar(
+                currentIndex: navigationShell.currentIndex,
+                onTap: (index) => navigationShell.goBranch(index),
+              ),
+            );
+          },
+          branches: <StatefulShellBranch>[
           // Branch A: Home
           StatefulShellBranch(
             navigatorKey: _shellNavigatorAKey,
@@ -112,11 +114,20 @@ class AppRouter {
               GoRoute(
                   path: '/chat',
                   name: 'chat',
-                  builder: (context, state) => const ChatScreen(
-                        roomId: 'placeholder_room_id',
-                        userName: 'Placeholder User',
-                        userImage: 'assets/images/placeholder.png',
-                      )),
+                  builder: (context, state) => const ContactsScreen(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: ':contactId',
+                      name: 'conversation',
+                      builder: (context, state) {
+                        final contactId = int.parse(state.pathParameters['contactId']!);
+                        final extras = state.extra as Map<String, dynamic>?;
+                        final contactName = extras?['name'] as String? ?? 'Conversation';
+                        return ConversationScreen(contactId: contactId, contactName: contactName);
+                      },
+                    ),
+                  ],
+              ),
             ],
           ),
           // Branch D: Saved
@@ -143,19 +154,11 @@ class AppRouter {
                         name: 'personal_details', // name was personal_details
                         builder: (context, state) =>
                             const PersonalDetailsScreen()),
-                    GoRoute(
-                      path: 'accommodation-preferences',
-                      name: 'accommodation_preferences',
-                      builder: (context, state) =>
-                          const TenantPreferencesScreen(),
-                    ),
                   ]),
               GoRoute(
                   path: '/faq', // FAQ as part of the profile shell
                   name: 'faq',
-                  builder: (context, state) => const Scaffold(
-                        body: Center(child: Text('FAQ Screen - Coming Soon')),
-                      )),
+                  builder: (context, state) => const FAQScreen()),
             ],
           ),
         ],
@@ -182,11 +185,24 @@ class AppRouter {
         name: 'password_reset_confirmation',
         builder: (context, state) => const PasswordResetConfirmationScreen(),
       ),
-      // NEW: Modern home screen for testing repository architecture
+      // NEW: Verification screen for password reset
       GoRoute(
-        path: '/modern-home',
-        name: 'modern_home',
-        builder: (context, state) => const ModernHomeScreen(),
+        path: '/verification',
+        name: 'verification',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          return VerificationScreen(email: email);
+        },
+      ),
+      // NEW: Create password screen
+      GoRoute(
+        path: '/create-password',
+        name: 'create_password',
+        builder: (context, state) {
+          final email = state.uri.queryParameters['email'] ?? '';
+          final code = state.uri.queryParameters['code'] ?? '';
+          return CreatePasswordScreen(email: email, code: code);
+        },
       ),
       GoRoute(
         path: '/property/:id', // Moved to be a top-level route
@@ -216,22 +232,6 @@ class AppRouter {
               return ReportIssueScreen(
                 propertyId: propertyId,
                 bookingId: bookingId,
-              );
-            },
-          ),
-          GoRoute(
-            path: 'manage-lease',
-            name: 'manage_lease',
-            builder: (context, state) {
-              final propertyId = int.parse(state.pathParameters['id']!);
-              final extras = state.extra as Map<String, dynamic>?;
-              final bookingId = extras?['bookingId'] as int? ?? 0;
-              final booking = extras?['booking'] as Booking;
-
-              return ManageLeaseScreen(
-                propertyId: propertyId,
-                bookingId: bookingId,
-                booking: booking,
               );
             },
           ),
@@ -274,6 +274,15 @@ class AppRouter {
         },
       ),
       GoRoute(
+        path: '/bookings',
+        name: 'bookings',
+        builder: (BuildContext context, GoRouterState state) {
+          final tabStr = state.uri.queryParameters['tab'];
+          final initialTab = int.tryParse(tabStr ?? '') ?? 0;
+          return BookingHistoryScreen(initialTabIndex: initialTab);
+        },
+      ),
+      GoRoute(
         path: '/checkout',
         name: 'checkout',
         builder: (BuildContext context, GoRouterState state) {
@@ -282,7 +291,7 @@ class AppRouter {
             return const Text(
                 'Error: Checkout arguments missing'); // Or an error screen
           }
-          final property = arguments['property'] as Property?;
+          final property = arguments['property'] as PropertyDetail?;
           final startDate = arguments['startDate'] as DateTime?;
           final endDate = arguments['endDate'] as DateTime?;
           final isDailyRental = arguments['isDailyRental'] as bool?;

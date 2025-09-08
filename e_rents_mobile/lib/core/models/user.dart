@@ -47,37 +47,117 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    // Handle ID parsing with type conversion
+    int? userId;
+    if (json['userId'] != null) {
+      userId = json['userId'] is int 
+          ? json['userId'] 
+          : int.tryParse(json['userId'].toString());
+    }
+    
+    int? profileImageId;
+    if (json['profileImageId'] != null) {
+      profileImageId = json['profileImageId'] is int 
+          ? json['profileImageId'] 
+          : int.tryParse(json['profileImageId'].toString());
+    }
+    
+    int? userTypeId;
+    if (json['userTypeId'] != null) {
+      userTypeId = json['userTypeId'] is int 
+          ? json['userTypeId'] 
+          : int.tryParse(json['userTypeId'].toString());
+    }
+    
+    // Handle date parsing with better error handling
+    DateTime? dateOfBirth;
+    try {
+      if (json['dateOfBirth'] != null) {
+        dateOfBirth = DateTime.parse(json['dateOfBirth'] is String 
+            ? json['dateOfBirth'] 
+            : json['dateOfBirth'].toString());
+      }
+    } catch (e) {
+      print('Error parsing user dateOfBirth: $e');
+    }
+    
+    DateTime? createdAt;
+    try {
+      if (json['createdAt'] != null) {
+        createdAt = DateTime.parse(json['createdAt'] is String 
+            ? json['createdAt'] 
+            : json['createdAt'].toString());
+      }
+    } catch (e) {
+      print('Error parsing user createdAt: $e');
+    }
+    
+    DateTime? updatedAt;
+    try {
+      if (json['updatedAt'] != null) {
+        updatedAt = DateTime.parse(json['updatedAt'] is String 
+            ? json['updatedAt'] 
+            : json['updatedAt'].toString());
+      }
+    } catch (e) {
+      print('Error parsing user updatedAt: $e');
+    }
+    
+    // Handle boolean parsing with type conversion
+    bool? isPublic;
+    if (json['isPublic'] != null) {
+      isPublic = json['isPublic'] is bool 
+          ? json['isPublic'] 
+          : json['isPublic'].toString().toLowerCase() == 'true';
+    }
+    
+    bool? isPaypalLinked;
+    if (json['isPaypalLinked'] != null) {
+      isPaypalLinked = json['isPaypalLinked'] is bool 
+          ? json['isPaypalLinked'] 
+          : json['isPaypalLinked'].toString().toLowerCase() == 'true';
+    }
+    
+    // Handle list parsing
+    List<String>? paymentMethods;
+    if (json['paymentMethods'] != null) {
+      try {
+        if (json['paymentMethods'] is List) {
+          paymentMethods = List<String>.from(json['paymentMethods']);
+        } else {
+          // Handle case where it might be a string representation of a list
+          paymentMethods = List<String>.from(json['paymentMethods'].toString()
+              .split(',')
+              .map((s) => s.trim()));
+        }
+      } catch (e) {
+        print('Error parsing user paymentMethods: $e');
+      }
+    }
+    
     return User(
-      userId: json['userId'] as int?,
-      username: json['username'] as String,
-      email: json['email'] as String,
-      phoneNumber: json['phoneNumber'] as String?,
-      dateOfBirth: json['dateOfBirth'] != null
-          ? DateTime.parse(json['dateOfBirth'] as String)
-          : null,
-      role: json['role'] ?? json['userType'],
-      firstName: json['firstName'] ?? json['name'],
-      lastName: json['lastName'] as String?,
-      profileImageId: json['profileImageId'] as int?,
-      password: json['password'] as String?,
-      token: json['resetToken'] as String?,
-      isPublic: json['isPublic'] as bool?,
+      userId: userId,
+      username: json['username']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phoneNumber: json['phoneNumber']?.toString(),
+      dateOfBirth: dateOfBirth,
+      role: json['role']?.toString() ?? json['userType']?.toString(),
+      firstName: json['firstName']?.toString() ?? json['name']?.toString(),
+      lastName: json['lastName']?.toString(),
+      profileImageId: profileImageId,
+      password: json['password']?.toString(),
+      token: json['resetToken']?.toString(),
+      isPublic: isPublic,
       address: json['addressDetail'] != null
           ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
           : null,
       // New fields parsing
-      userTypeId: json['userTypeId'] as int?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : null,
-      isPaypalLinked: json['isPaypalLinked'] as bool?,
-      paypalUserIdentifier: json['paypalUserIdentifier'] as String?,
-      paymentMethods: json['paymentMethods'] != null
-          ? List<String>.from(json['paymentMethods'] as List)
-          : null,
+      userTypeId: userTypeId,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      isPaypalLinked: isPaypalLinked,
+      paypalUserIdentifier: json['paypalUserIdentifier']?.toString(),
+      paymentMethods: paymentMethods,
     );
   }
 

@@ -1,12 +1,12 @@
 // lib/feature/property_detail/widgets/property_image_slider.dart
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/widgets/custom_slider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:provider/provider.dart';
 
 class PropertyImageSlider extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
   final Function(int) onPageChanged;
 
   const PropertyImageSlider({

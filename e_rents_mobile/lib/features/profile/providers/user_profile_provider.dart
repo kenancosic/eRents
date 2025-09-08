@@ -6,35 +6,55 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Provider for managing user profile data
-/// Handles loading user data, updating personal details, and profile image management
+///
+/// This provider handles all user profile related functionality including
+/// loading user data, updating personal details, profile image management,
+/// and user authentication state.
 class UserProfileProvider extends BaseProvider {
+  /// Creates a new UserProfileProvider instance
+  ///
+  /// Requires an ApiService instance for making API calls
   UserProfileProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
+  
+  /// The current user object
   User? _currentUser;
+  
+  /// Getter for the current user object
   User? get currentUser => _currentUser;
+  
+  /// Compatibility alias for the current user object
   User? get user => _currentUser; // Compatibility alias
 
   // ─── Convenience Getters ───────────────────────────────────────────────
 
   /// Get user's full name
+  ///
+  /// Returns 'Unknown User' if no user is loaded
   String get fullName {
     if (_currentUser == null) return 'Unknown User';
     return _currentUser!.fullName;
   }
 
   /// Get user's display name (first name or username)
+  ///
+  /// Returns 'Guest' if no user is loaded
   String get displayName {
     if (_currentUser == null) return 'Guest';
     return _currentUser!.firstName ?? _currentUser!.username;
   }
 
   /// Check if user has profile image
+  ///
+  /// Returns true if the user has a profile image ID set
   bool get hasProfileImage {
     return _currentUser?.profileImageId != null;
   }
 
   /// Get user's role/type
+  ///
+  /// Returns 'guest' if no user is loaded
   String get userRole {
     return _currentUser?.role ?? 'guest';
   }
@@ -42,6 +62,14 @@ class UserProfileProvider extends BaseProvider {
   // ─── User Profile Methods ──────────────────────────────────────────────
 
   /// Load current user profile
+  ///
+  /// Loads the current user profile from the API. If [forceRefresh] is false
+  /// and user data already exists, it will skip loading.
+  ///
+  /// Example:
+  /// ```dart
+  /// await profileProvider.loadCurrentUser();
+  /// ```
   Future<void> loadCurrentUser({bool forceRefresh = false}) async {
     // If not forcing refresh and we already have data, skip
     if (!forceRefresh && _currentUser != null) {
@@ -68,22 +96,35 @@ class UserProfileProvider extends BaseProvider {
   }
 
   /// Load user profile data from API
+  ///
+  /// This is a compatibility method that calls [loadCurrentUser]
   Future<void> loadUserProfile() async {
     await loadCurrentUser();
   }
 
-  /// Initialize user (compatibility method)
+  /// Initialize user
+  ///
+  /// This is a compatibility method that calls [loadCurrentUser]
   Future<void> initUser() async {
     await loadCurrentUser();
   }
 
   /// Update current user profile
+  ///
+  /// Updates the current user profile with the provided [updatedUser] object.
+  /// Returns true if the update was successful, false otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// final updatedUser = user.copyWith(firstName: 'John', lastName: 'Doe');
+  /// final success = await profileProvider.updateUserProfile(updatedUser);
+  /// ```
   Future<bool> updateUserProfile(User updatedUser) async {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Updating user profile');
 
       final response = await api.put(
-        '/users/current',
+        '/Profile',
         updatedUser.toJson(),
         authenticated: true,
       );
@@ -100,7 +141,19 @@ class UserProfileProvider extends BaseProvider {
     return success;
   }
 
-  /// Update specific user fields (optimistic updates)
+  /// Update specific user fields
+  ///
+  /// Updates specific fields of the current user profile. Only the provided
+  /// fields will be updated, others will retain their current values.
+  /// Returns true if the update was successful, false otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// final success = await profileProvider.updateUserField(
+  ///   firstName: 'John',
+  ///   lastName: 'Doe',
+  /// );
+  /// ```
   Future<bool> updateUserField({
     String? firstName,
     String? lastName,
@@ -123,7 +176,7 @@ class UserProfileProvider extends BaseProvider {
       );
 
       final response = await api.put(
-        '/users/current',
+        '/Profile',
         updatedUser.toJson(),
         authenticated: true,
       );
@@ -141,6 +194,15 @@ class UserProfileProvider extends BaseProvider {
   }
 
   /// Update user's public status
+  ///
+  /// Updates the user's public profile status. If making the profile public
+  /// and a [city] is provided, it will also update the user's city.
+  /// Returns true if the update was successful, false otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// final success = await profileProvider.updateUserPublicStatus(true, city: 'New York');
+  /// ```
   Future<bool> updateUserPublicStatus(bool isPublic, {String? city}) async {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Updating user public status to $isPublic');
@@ -149,15 +211,22 @@ class UserProfileProvider extends BaseProvider {
         throw Exception('No current user to update');
       }
 
-      // Send minimal payload aligned with backend UserRequest (flattened fields)
+      // Send payload aligned with backend UserRequest required fields.
+      // Backend expects at least username and email to be present.
       final Map<String, dynamic> payload = {
+        'username': _currentUser!.username,
+        'email': _currentUser!.email,
+        'firstName': _currentUser!.firstName,
+        'lastName': _currentUser!.lastName,
+        'phoneNumber': _currentUser!.phoneNumber,
+        'profileImageId': _currentUser!.profileImageId,
         'isPublic': isPublic,
       };
       if (isPublic && city != null && city.trim().isNotEmpty) {
         payload['city'] = city.trim();
       }
 
-      final response = await api.put('/users/current', payload, authenticated: true);
+      final response = await api.put('/Profile', payload, authenticated: true);
 
       if (response.statusCode == 200) {
         // Refresh to ensure we have latest server-side values
@@ -172,13 +241,38 @@ class UserProfileProvider extends BaseProvider {
     return success;
   }
 
-  /// Ensure City is set on the profile (used when making profile public)
+  /// Ensure City is set on the profile
+  ///
+  /// Ensures that a city is set on the user's profile when making it public.
+  /// Returns true if the update was successful, false otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// final success = await profileProvider.ensureCityOnProfile('New York');
+  /// ```
   Future<bool> ensureCityOnProfile(String city) async {
     final trimmed = city.trim();
     if (trimmed.isEmpty) return false;
     return await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Ensuring city "$trimmed" on profile');
-      final response = await api.put('/users/current', {'city': trimmed}, authenticated: true);
+      if (_currentUser == null) {
+        throw Exception('No current user to update');
+      }
+      final response = await api.put(
+        '/Profile',
+        {
+          'username': _currentUser!.username,
+          'email': _currentUser!.email,
+          'firstName': _currentUser!.firstName,
+          'lastName': _currentUser!.lastName,
+          'phoneNumber': _currentUser!.phoneNumber,
+          'profileImageId': _currentUser!.profileImageId,
+          'city': trimmed,
+          // keep current public status if any
+          'isPublic': _currentUser!.isPublic,
+        },
+        authenticated: true,
+      );
       if (response.statusCode == 200) {
         await loadCurrentUser(forceRefresh: true);
       } else {
@@ -188,6 +282,15 @@ class UserProfileProvider extends BaseProvider {
   }
 
   /// Upload profile image
+  ///
+  /// Uploads a new profile image for the current user.
+  /// Returns true if the upload was successful, false otherwise.
+  ///
+  /// Example:
+  /// ```dart
+  /// final imageFile = File('path/to/image.jpg');
+  /// final success = await profileProvider.uploadProfileImage(imageFile);
+  /// ```
   Future<bool> uploadProfileImage(File imageFile) async {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Uploading profile image');
@@ -224,23 +327,62 @@ class UserProfileProvider extends BaseProvider {
     return success;
   }
 
-  /// Logout - clear all user data
+  /// Logout
+  ///
+  /// Clears all user data and logs the user out of the application.
+  /// This method clears the authentication token and resets the user state.
+  ///
+  /// Example:
+  /// ```dart
+  /// await profileProvider.logout();
+  /// ```
   Future<void> logout() async {
     await executeWithState(() async {
       debugPrint('UserProfileProvider: Logging out user');
 
-      try {
-        // Call logout endpoint
-        await api.post('/auth/logout', {}, authenticated: true);
-      } catch (e) {
-        debugPrint('UserProfileProvider: Logout API call failed: $e');
-        // Continue with local logout even if API fails
-      }
-
+      // Clear persisted token so ApiService stops authenticating requests
+      await api.secureStorageService.clearToken();
+      
       // Clear all local data
       _currentUser = null;
 
       debugPrint('UserProfileProvider: User logged out successfully');
     });
+  }
+
+  /// Start PayPal linking process and return the approval URL
+  Future<String?> startPayPalLinking() async {
+    final url = await executeWithState<String?>(() async {
+      debugPrint('UserProfileProvider: Starting PayPal linking');
+      final response = await api.get('/payments/paypal/account/start', authenticated: true);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        debugPrint('UserProfileProvider: PayPal linking started successfully');
+        return responseData['approvalUrl'];
+      } else {
+        debugPrint('UserProfileProvider: Failed to start PayPal linking');
+        throw Exception('Failed to start PayPal linking process.');
+      }
+    });
+
+    return url;
+  }
+
+  /// Unlink PayPal account
+  Future<bool> unlinkPaypal() async {
+    final success = await executeWithStateForSuccess(() async {
+      debugPrint('UserProfileProvider: Unlinking PayPal account');
+      final response = await api.delete('/payments/paypal/account', authenticated: true);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Refresh user profile to reflect the change
+        await loadCurrentUser(forceRefresh: true);
+        debugPrint('UserProfileProvider: PayPal account unlinked successfully');
+      } else {
+        debugPrint('UserProfileProvider: Failed to unlink PayPal account');
+        throw Exception('Failed to unlink PayPal account');
+      }
+    }, errorMessage: 'Failed to unlink PayPal account');
+
+    return success;
   }
 }

@@ -3,14 +3,7 @@
 /// Backend Review Entity fields:
 /// - ReviewId, ReviewType (enum), PropertyId, RevieweeId, ReviewerId
 /// - Description, DateCreated, StarRating, BookingId, ParentReviewId
-library;
-
-enum ReviewType {
-  propertyReview, // Review of a property by a tenant
-  tenantReview, // Review of a tenant by a landlord
-  landlordReview, // Review of a landlord by a tenant
-  responseReview, // Response to another review
-}
+import 'package:e_rents_mobile/core/enums/review_enums.dart';
 
 class Review {
   final int reviewId;
@@ -48,28 +41,74 @@ class Review {
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
-    return Review(
-      reviewId: json['reviewId'] as int,
-      reviewType: ReviewType.values.firstWhere(
-        (e) =>
-            e.name.toLowerCase() ==
-            (json['reviewType'] as String).toLowerCase(),
+    // Handle both current API format and backend DTO format
+    final reviewId = json['reviewId'] as int? ?? json['ReviewId'] as int? ?? 0;
+    final propertyId = json['propertyId'] as int? ?? json['PropertyId'] as int?;
+    final revieweeId = json['revieweeId'] as int? ?? json['RevieweeId'] as int? ?? 0;
+    final reviewerId = json['reviewerId'] as int? ?? json['ReviewerId'] as int? ?? 0;
+    final description = json['description'] as String? ?? json['Description'] as String?;
+    final bookingId = json['bookingId'] as int? ?? json['BookingId'] as int?;
+    final parentReviewId = json['parentReviewId'] as int? ?? json['ParentReviewId'] as int?;
+    final isVerified = json['isVerified'] as bool? ?? json['IsVerified'] as bool?;
+    final isResponse = json['isResponse'] as bool? ?? json['IsResponse'] as bool?;
+    final moderatorNotes = json['moderatorNotes'] as String? ?? json['ModeratorNotes'] as String?;
+    
+    // Handle star rating from both formats
+    final starRating = json['starRating'] != null 
+        ? (json['starRating'] as num?)?.toDouble() 
+        : (json['StarRating'] as num?)?.toDouble();
+    
+    // Handle date fields from both formats
+    DateTime? dateCreated;
+    DateTime? lastModified;
+    
+    if (json['dateCreated'] != null) {
+      dateCreated = DateTime.parse(json['dateCreated'] as String);
+    } else if (json['CreatedAt'] != null) {
+      dateCreated = DateTime.parse(json['CreatedAt'] as String);
+    } else {
+      dateCreated = DateTime.now();
+    }
+    
+    if (json['lastModified'] != null) {
+      lastModified = DateTime.parse(json['lastModified'] as String);
+    } else if (json['UpdatedAt'] != null) {
+      lastModified = DateTime.parse(json['UpdatedAt'] as String);
+    }
+    
+    // Handle review type from both formats
+    ReviewType reviewType;
+    if (json['reviewType'] != null) {
+      reviewType = ReviewType.values.firstWhere(
+        (e) => e.name.toLowerCase() == (json['reviewType'] as String).toLowerCase(),
         orElse: () => ReviewType.propertyReview,
-      ),
-      propertyId: json['propertyId'] as int?,
-      revieweeId: json['revieweeId'] as int,
-      reviewerId: json['reviewerId'] as int,
-      description: json['description'] as String?,
-      dateCreated: DateTime.parse(json['dateCreated'] as String),
-      starRating: (json['starRating'] as num?)?.toDouble(),
-      bookingId: json['bookingId'] as int?,
-      parentReviewId: json['parentReviewId'] as int?,
-      isVerified: json['isVerified'] as bool?,
-      isResponse: json['isResponse'] as bool?,
-      lastModified: json['lastModified'] != null
-          ? DateTime.parse(json['lastModified'] as String)
-          : null,
-      moderatorNotes: json['moderatorNotes'] as String?,
+      );
+    } else if (json['ReviewType'] != null) {
+      // Handle enum from DTO format
+      final reviewTypeStr = (json['ReviewType'] as String?)?.toLowerCase();
+      reviewType = ReviewType.values.firstWhere(
+        (e) => e.name.toLowerCase() == reviewTypeStr,
+        orElse: () => ReviewType.propertyReview,
+      );
+    } else {
+      reviewType = ReviewType.propertyReview;
+    }
+    
+    return Review(
+      reviewId: reviewId,
+      reviewType: reviewType,
+      propertyId: propertyId,
+      revieweeId: revieweeId,
+      reviewerId: reviewerId,
+      description: description,
+      dateCreated: dateCreated,
+      starRating: starRating,
+      bookingId: bookingId,
+      parentReviewId: parentReviewId,
+      isVerified: isVerified,
+      isResponse: isResponse,
+      lastModified: lastModified,
+      moderatorNotes: moderatorNotes,
     );
   }
 
@@ -89,6 +128,23 @@ class Review {
       'isResponse': isResponse,
       'lastModified': lastModified?.toIso8601String(),
       'moderatorNotes': moderatorNotes,
+    };
+  }
+  
+  /// Convert to DTO format for API requests that expect backend DTO structure
+  Map<String, dynamic> toDtoJson() {
+    return {
+      'ReviewId': reviewId,
+      'ReviewType': reviewType.name,
+      'PropertyId': propertyId,
+      'RevieweeId': revieweeId,
+      'ReviewerId': reviewerId,
+      'Description': description,
+      'StarRating': starRating,
+      'BookingId': bookingId,
+      'ParentReviewId': parentReviewId,
+      'CreatedAt': dateCreated.toIso8601String(),
+      'UpdatedAt': lastModified?.toIso8601String() ?? DateTime.now().toIso8601String(),
     };
   }
 

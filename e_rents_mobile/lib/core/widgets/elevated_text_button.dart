@@ -10,6 +10,7 @@ class ElevatedTextButton extends StatelessWidget {
   final FontWeight? fontWeight;
   final EdgeInsets? padding;
   final bool isCompact;
+  final bool isLoading;
 
   const ElevatedTextButton({
     super.key,
@@ -22,6 +23,7 @@ class ElevatedTextButton extends StatelessWidget {
     this.fontWeight,
     this.padding,
     this.isCompact = false,
+    this.isLoading = false,
   });
 
   const ElevatedTextButton.icon({
@@ -35,6 +37,7 @@ class ElevatedTextButton extends StatelessWidget {
     this.fontWeight,
     this.padding,
     this.isCompact = false,
+    this.isLoading = false,
   });
 
   @override
@@ -50,7 +53,16 @@ class ElevatedTextButton extends StatelessWidget {
             : const EdgeInsets.symmetric(horizontal: 16, vertical: 10));
 
     Widget buttonChild;
-    if (icon != null) {
+    if (isLoading) {
+      buttonChild = SizedBox(
+        width: defaultFontSize * 1.2,
+        height: defaultFontSize * 1.2,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(defaultTextColor),
+        ),
+      );
+    } else if (icon != null) {
       buttonChild = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -111,7 +123,7 @@ class ElevatedTextButton extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
-          onTap: onPressed,
+          onTap: isLoading ? null : onPressed,
           borderRadius: BorderRadius.circular(8),
           splashColor: defaultTextColor.withValues(alpha: 0.1),
           highlightColor: defaultTextColor.withValues(alpha: 0.05),

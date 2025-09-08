@@ -8,10 +8,10 @@ class UserMessage {
 
   factory UserMessage.fromJson(Map<String, dynamic> json) {
     return UserMessage(
-      senderUsername: json['senderUsername'],
-      recipientUsername: json['recipientUsername'],
-      subject: json['subject'],
-      body: json['body'],
+      senderUsername: json['senderUsername'] as String? ?? '',
+      recipientUsername: json['recipientUsername'] as String? ?? '',
+      subject: json['subject'] as String? ?? '',
+      body: json['body'] as String? ?? '',
     );
   }
 

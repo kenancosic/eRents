@@ -1,8 +1,10 @@
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 
 enum PropertyCardLayout {
   horizontal, // Original horizontal layout
@@ -11,7 +13,8 @@ enum PropertyCardLayout {
 }
 
 class PropertyCard extends StatelessWidget {
-  final Property property;
+  // New API: accept only PropertyCardModel
+  final PropertyCardModel property;
   final VoidCallback? onTap;
   final PropertyCardLayout layout;
 
@@ -19,7 +22,7 @@ class PropertyCard extends StatelessWidget {
     super.key,
     required this.property,
     this.onTap,
-    this.layout = PropertyCardLayout.horizontal, // Default to full horizontal
+    this.layout = PropertyCardLayout.vertical, // Default to full horizontal
   });
 
   // Legacy constructor for backward compatibility
@@ -50,7 +53,8 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildVerticalCard(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      // Reduced vertical margin so the card fits within 180px tall list items
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -60,10 +64,12 @@ class PropertyCard extends StatelessWidget {
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image section
             SizedBox(
-              height: 120,
+              // Slightly reduced to help avoid overflow in compact lists
+              height: 104,
               width: double.infinity,
               child: Stack(
                 children: [
@@ -91,39 +97,38 @@ class PropertyCard extends StatelessWidget {
               ),
             ),
             // Content section
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        PropertyTitle(title: property.name, isCompact: true),
-                        const SizedBox(height: 4),
-                        PropertyLocation(
-                            location: _getLocationString(), isCompact: true),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: PropertyRating(
-                            rating: _getRatingString(),
-                            review: _getReviewCount(),
-                            isCompact: true,
-                          ),
+            Padding(
+              // Slightly reduced vertical padding to save space
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      PropertyTitle(title: property.name, isCompact: true),
+                      const SizedBox(height: 2),
+                      PropertyLocation(
+                          location: _getLocationString(), isCompact: true),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: PropertyRating(
+                          rating: _getRatingString(),
+                          review: _getReviewCount(),
+                          isCompact: true,
                         ),
-                        PropertyPrice(
-                            price: _getPriceString(), isCompact: true),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      PropertyPrice(price: _getPriceString(), isCompact: true),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -183,13 +188,13 @@ class PropertyCard extends StatelessWidget {
   }
 
   String _getImageUrl() {
-    if (property.imageIds.isNotEmpty) {
-      // In production, this would fetch from ImageController: '/Image/${property.imageIds.first}'
-      // For now, using fallback image since we don't have full image service integration
-      return 'assets/images/house.jpg';
+    if (property.coverImageId != null && property.coverImageId! > 0) {
+      // Use backend raw bytes endpoint relative to baseUrl. Since baseUrl ends with '/api',
+      // using 'Images/...' will resolve to '<baseUrl>/Images/...'
+      return 'Images/${property.coverImageId}/content';
     }
-    // Fallback image
-    return 'assets/images/house.jpg';
+    // Fallback asset image
+    return 'assets/images/placeholder.png';
   }
 
   String _getLocationString() {
@@ -203,10 +208,7 @@ class PropertyCard extends StatelessWidget {
   }
 
   String _getPriceString() {
-    if (property.rentalType == PropertyRentalType.daily &&
-        property.dailyRate != null) {
-      return '\$${property.dailyRate!.toStringAsFixed(0)}';
-    }
+    // Card model may not carry dailyRate consistently; prefer price for list
     return '\$${property.price.toStringAsFixed(0)}';
   }
 
@@ -313,31 +315,28 @@ class PropertyImageVertical extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.hardEdge,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(imageUrl),
-          fit: BoxFit.cover,
-        ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+    final api = context.read<ApiService>();
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Image with loading/error handling
+          api.buildImage(
+            imageUrl,
+            fit: BoxFit.cover,
+          ),
+          if (rentalType != null)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: RentalTypeBadge(
+                rentalType: rentalType!,
+                isCompact: true,
+              ),
+            ),
+        ],
       ),
-      child: rentalType != null
-          ? Stack(
-              children: [
-                // Rental type badge
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: RentalTypeBadge(
-                    rentalType: rentalType!,
-                    isCompact: true,
-                  ),
-                ),
-              ],
-            )
-          : null,
     );
   }
 }
@@ -356,11 +355,15 @@ class PropertyImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final api = context.read<ApiService>();
+    final resolvedUrl = api.makeAbsoluteUrl(imageUrl);
     return Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(imageUrl),
+          image: imageUrl.startsWith('assets/')
+              ? AssetImage(imageUrl) as ImageProvider
+              : NetworkImage(resolvedUrl),
           fit: BoxFit.cover,
         ),
         borderRadius: const BorderRadius.only(
@@ -450,7 +453,7 @@ class RentalTypeBadge extends StatelessWidget {
 }
 
 class BookmarkButton extends StatelessWidget {
-  final Property property;
+  final PropertyCardModel property;
   final bool isCompact;
 
   const BookmarkButton({
@@ -472,7 +475,7 @@ class BookmarkButton extends StatelessWidget {
           onTap: isLoading
               ? null
               : () async {
-                  await savedProvider.toggleSavedStatus(property);
+                  await savedProvider.toggleSavedStatus(property.propertyId);
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

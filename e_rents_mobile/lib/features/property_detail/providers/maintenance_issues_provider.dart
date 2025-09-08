@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/enums/maintenance_issue_enums.dart';
 import 'package:e_rents_mobile/core/models/maintenance_issue.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 
@@ -26,7 +27,8 @@ class MaintenanceIssuesProvider extends BaseProvider {
   /// Fetch maintenance issues for a property
   Future<void> fetchMaintenanceIssues(int propertyId) async {
     final issues = await executeWithState(() async {
-      return await api.getListAndDecode('/maintenance/property/$propertyId', MaintenanceIssue.fromJson, authenticated: true);
+      final qs = api.buildQueryString({'PropertyId': propertyId.toString()});
+      return await api.getListAndDecode('/maintenanceissues$qs', MaintenanceIssue.fromJson, authenticated: true);
     });
 
     if (issues != null) {
@@ -39,8 +41,14 @@ class MaintenanceIssuesProvider extends BaseProvider {
   /// Report a new maintenance issue
   Future<bool> reportMaintenanceIssue(int propertyId, String title, String description) async {
     final success = await executeWithStateForSuccess(() async {
-      final newIssue = await api.postAndDecode('/maintenance', 
-        {'propertyId': propertyId, 'title': title, 'description': description}, 
+      final newIssue = await api.postAndDecode('/maintenanceissues', 
+        {
+          'propertyId': propertyId,
+          'title': title,
+          'description': description,
+          // Mark as tenant-originated; backend may still require ReportedByUserId
+          'isTenantComplaint': true,
+        }, 
         MaintenanceIssue.fromJson, authenticated: true);
       _allMaintenanceIssues.insert(0, newIssue);
       _applyMaintenanceSearchAndFilters();
@@ -52,7 +60,7 @@ class MaintenanceIssuesProvider extends BaseProvider {
   /// Update maintenance issue status
   Future<bool> updateMaintenanceIssueStatus(String issueId, MaintenanceIssueStatus newStatus) async {
     final success = await executeWithStateForSuccess(() async {
-      final updatedIssue = await api.putAndDecode('/maintenance/$issueId', {
+      final updatedIssue = await api.putAndDecode('/maintenanceissues/$issueId', {
         'status': newStatus.toString().split('.').last,
         'statusId': _getStatusId(newStatus),
       }, MaintenanceIssue.fromJson, authenticated: true);

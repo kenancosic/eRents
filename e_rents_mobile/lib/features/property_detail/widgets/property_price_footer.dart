@@ -1,10 +1,10 @@
 // lib/feature/property_detail/widgets/property_price_footer.dart
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 class PropertyPriceFooter extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
   final VoidCallback onCheckoutPressed;
 
   const PropertyPriceFooter({

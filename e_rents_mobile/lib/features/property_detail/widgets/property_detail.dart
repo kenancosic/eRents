@@ -5,7 +5,7 @@ class PropertyDetails extends StatelessWidget {
   final double? averageRating;
   final String? city;
   final String? address;
-  final String rooms;
+  final int rooms;
   final String area;
   final int numberOfReviews;
 
@@ -43,7 +43,7 @@ class PropertyDetails extends StatelessWidget {
                 spacing: 10,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDetailItem(icon: Icons.bed, text: rooms, color: const Color(0xFF7D7F88)),
+                  _buildDetailItem(icon: Icons.bed, text: rooms.toString(), color: const Color(0xFF7D7F88)),
                   _buildDetailItem(icon: Icons.square_foot_rounded, text: area, color: const Color(0xFF7D7F88)),
                 ],
               ),

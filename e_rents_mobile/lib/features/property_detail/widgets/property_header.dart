@@ -1,11 +1,11 @@
 // lib/feature/property_detail/widgets/property_header.dart
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:provider/provider.dart';
 
 class PropertyHeader extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
 
   const PropertyHeader({
     super.key,
@@ -38,7 +38,7 @@ class PropertyHeader extends StatelessWidget {
               onPressed: savedProvider.isLoading
                   ? null
                   : () async {
-                      await savedProvider.toggleSavedStatus(property);
+                      await savedProvider.toggleSavedStatus(property.propertyId);
 
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

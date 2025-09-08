@@ -1,4 +1,5 @@
-enum BookingStatus { upcoming, completed, cancelled, active }
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
+import 'package:flutter/foundation.dart';
 
 class Booking {
   final int bookingId;
@@ -23,11 +24,7 @@ class Booking {
   final String? paymentStatus; // "Pending", "Completed", "Failed"
   final String? paymentReference; // PayPal Transaction ID
 
-  // New Phase 2 fields - Booking details
-  final int numberOfGuests;
-  final String? specialRequests;
-
-  // ✅ NEW CRITICAL FIELD for backend alignment
+  // Backend alignment
   final int? bookingStatusId; // Backend expects bookingStatusId for filtering
 
   Booking({
@@ -51,8 +48,6 @@ class Booking {
     this.paymentMethod = 'PayPal',
     this.paymentStatus,
     this.paymentReference,
-    this.numberOfGuests = 1,
-    this.specialRequests,
     // Backend alignment
     this.bookingStatusId,
   });
@@ -75,54 +70,181 @@ class Booking {
   bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
   bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
 
-  // Helper methods for booking details
-  String get guestCountDisplay =>
-      numberOfGuests == 1 ? '1 Guest' : '$numberOfGuests Guests';
-  bool get hasSpecialRequests => specialRequests?.isNotEmpty == true;
-
   factory Booking.fromJson(Map<String, dynamic> json) {
-    String statusString = json['bookingStatus']?['statusName'] ??
-        json['status'] ?? // Direct status string fallback
-        'Upcoming'; // Default status
+    // Handle status parsing for multiple backend shapes: object, string, or int code
+    BookingStatus parseStatus(dynamic raw) {
+      if (raw == null) return BookingStatus.upcoming;
+      // Object with statusName
+      if (raw is Map<String, dynamic>) {
+        final name = raw['statusName']?.toString();
+        if (name != null) {
+          return BookingStatus.values.firstWhere(
+            (e) => e.name.toLowerCase() == name.toLowerCase(),
+            orElse: () => BookingStatus.upcoming,
+          );
+        }
+      }
+      // Direct string
+      if (raw is String) {
+        final s = raw.toLowerCase();
+        switch (s) {
+          case 'upcoming':
+            return BookingStatus.upcoming;
+          case 'active':
+            return BookingStatus.active;
+          case 'cancelled':
+          case 'canceled':
+            return BookingStatus.cancelled;
+          case 'completed':
+          case 'done':
+            return BookingStatus.completed;
+          default:
+            return BookingStatus.upcoming;
+        }
+      }
+      // Numeric code from backend enum
+      if (raw is int) {
+        switch (raw) {
+          case 1:
+            return BookingStatus.upcoming;
+          case 2:
+            return BookingStatus.active;
+          case 3:
+            return BookingStatus.cancelled;
+          case 4:
+            return BookingStatus.completed;
+          default:
+            return BookingStatus.upcoming;
+        }
+      }
+      // Fallback
+      final s = raw.toString();
+      return BookingStatus.values.firstWhere(
+        (e) => e.name.toLowerCase() == s.toLowerCase(),
+        orElse: () => BookingStatus.upcoming,
+      );
+    }
 
-    BookingStatus statusEnum = BookingStatus.values.firstWhere(
-      (e) => e.name.toLowerCase() == statusString.toLowerCase(),
-      orElse: () => BookingStatus.upcoming, // Default if parsing fails
-    );
+    final dynamic rawStatus = json['bookingStatus']?['statusName'] ?? json['status'];
+    final BookingStatus statusEnum = parseStatus(rawStatus);
+
+    // Handle ID parsing with type conversion
+    int bookingId = 0;
+    if (json['bookingId'] != null) {
+      bookingId = json['bookingId'] is int 
+          ? json['bookingId'] 
+          : int.tryParse(json['bookingId'].toString()) ?? 0;
+    }
+    
+    int propertyId = 0;
+    if (json['propertyId'] != null) {
+      propertyId = json['propertyId'] is int 
+          ? json['propertyId'] 
+          : int.tryParse(json['propertyId'].toString()) ?? 0;
+    }
+    
+    int userId = 0;
+    if (json['userId'] != null) {
+      userId = json['userId'] is int 
+          ? json['userId'] 
+          : int.tryParse(json['userId'].toString()) ?? 0;
+    }
+    
+    // Handle numeric parsing with type conversion
+    double totalPrice = 0.0;
+    if (json['totalPrice'] != null) {
+      if (json['totalPrice'] is num) {
+        totalPrice = json['totalPrice'].toDouble();
+      } else {
+        totalPrice = double.tryParse(json['totalPrice'].toString()) ?? 0.0;
+      }
+    }
+    
+    double dailyRate = 0.0;
+    if (json['dailyRate'] != null) {
+      if (json['dailyRate'] is num) {
+        dailyRate = json['dailyRate'].toDouble();
+      } else {
+        dailyRate = double.tryParse(json['dailyRate'].toString()) ?? 0.0;
+      }
+    }
+    
+    // Handle date parsing with better error handling
+    DateTime? startDate;
+    try {
+      if (json['startDate'] != null) {
+        startDate = DateTime.parse(json['startDate'] is String 
+            ? json['startDate'] 
+            : json['startDate'].toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing startDate: $e');
+    }
+    
+    DateTime? endDate;
+    try {
+      if (json['endDate'] != null) {
+        endDate = DateTime.parse(json['endDate'] is String 
+            ? json['endDate'] 
+            : json['endDate'].toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing endDate: $e');
+    }
+    
+    DateTime? minimumStayEndDate;
+    try {
+      if (json['minimumStayEndDate'] != null) {
+        minimumStayEndDate = DateTime.parse(json['minimumStayEndDate'] is String 
+            ? json['minimumStayEndDate'] 
+            : json['minimumStayEndDate'].toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing minimumStayEndDate: $e');
+    }
+    
+    DateTime? bookingDate;
+    try {
+      if (json['bookingDate'] != null) {
+        bookingDate = DateTime.parse(json['bookingDate'] is String 
+            ? json['bookingDate'] 
+            : json['bookingDate'].toString());
+      }
+    } catch (e) {
+      debugPrint('Error parsing bookingDate: $e');
+    }
 
     return Booking(
-      bookingId: json['bookingId'] as int,
-      propertyId: json['propertyId'] as int,
-      userId: json['userId'] as int,
-      propertyName: json['propertyName'] as String? ?? 'N/A',
-      propertyImageUrl: json['propertyImageUrl'] as String?,
-      propertyThumbnailUrl: json['propertyThumbnailUrl'] ??
-          json['propertyImageUrl']
-              as String?, // Use thumbnail if available, else fallback to imageURL
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: json['endDate'] != null
-          ? DateTime.parse(json['endDate'] as String)
-          : null,
-      minimumStayEndDate: json['minimumStayEndDate'] != null
-          ? DateTime.parse(json['minimumStayEndDate'] as String)
-          : null,
-      totalPrice: (json['totalPrice'] as num).toDouble(),
-      dailyRate: (json['dailyRate'] as num).toDouble(),
+      bookingId: bookingId,
+      propertyId: propertyId,
+      userId: userId,
+      propertyName: json['propertyName']?.toString() ?? 'N/A',
+      propertyImageUrl: json['propertyImageUrl']?.toString(),
+      propertyThumbnailUrl: (json['propertyThumbnailUrl'] ?? json['propertyImageUrl'])?.toString(),
+      startDate: startDate ?? DateTime.now(),
+      endDate: endDate,
+      minimumStayEndDate: minimumStayEndDate,
+      totalPrice: totalPrice,
+      dailyRate: dailyRate,
       status: statusEnum,
-      currency: json['currency'] as String?,
-      bookingDate: json['bookingDate'] != null
-          ? DateTime.parse(json['bookingDate'] as String)
-          : null,
-      reviewContent: json['reviewContent'] as String?,
-      reviewRating: json['reviewRating'] as int?,
+      currency: json['currency']?.toString(),
+      bookingDate: bookingDate,
+      reviewContent: json['reviewContent']?.toString(),
+      reviewRating: json['reviewRating'] is int 
+          ? json['reviewRating'] 
+          : (json['reviewRating'] != null
+              ? int.tryParse(json['reviewRating'].toString())
+              : null),
       // New fields with safe parsing
-      paymentMethod: json['paymentMethod'] as String? ?? 'PayPal',
-      paymentStatus: json['paymentStatus'] as String?,
-      paymentReference: json['paymentReference'] as String?,
-      numberOfGuests: json['numberOfGuests'] as int? ?? 1,
-      specialRequests: json['specialRequests'] as String?,
+      paymentMethod: json['paymentMethod']?.toString() ?? 'PayPal',
+      paymentStatus: json['paymentStatus']?.toString(),
+      paymentReference: json['paymentReference']?.toString(),
       // Backend alignment
-      bookingStatusId: json['bookingStatusId'] as int?,
+      bookingStatusId: json['bookingStatusId'] is int 
+          ? json['bookingStatusId'] 
+          : (json['bookingStatusId'] != null
+              ? int.tryParse(json['bookingStatusId'].toString())
+              : null),
     );
   }
 
@@ -147,8 +269,6 @@ class Booking {
         'paymentMethod': paymentMethod,
         'paymentStatus': paymentStatus,
         'paymentReference': paymentReference,
-        'numberOfGuests': numberOfGuests,
-        'specialRequests': specialRequests,
         // Backend alignment
         'bookingStatusId': bookingStatusId,
       };
@@ -179,8 +299,6 @@ class Booking {
     String? paymentMethod,
     String? paymentStatus,
     String? paymentReference,
-    int? numberOfGuests,
-    String? specialRequests,
     int? bookingStatusId,
   }) {
     return Booking(
@@ -203,8 +321,6 @@ class Booking {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentReference: paymentReference ?? this.paymentReference,
-      numberOfGuests: numberOfGuests ?? this.numberOfGuests,
-      specialRequests: specialRequests ?? this.specialRequests,
       bookingStatusId: bookingStatusId ?? this.bookingStatusId,
     );
   }

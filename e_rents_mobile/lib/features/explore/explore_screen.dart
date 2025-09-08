@@ -4,8 +4,9 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart'; // Added
 import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart'; // Added for searchWidget
 // Import FilterScreen
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
-import 'package:e_rents_mobile/features/explore/explore_provider.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
+// import 'package:e_rents_mobile/core/enums/property_enums.dart';
+import 'package:e_rents_mobile/features/explore/providers/property_search_provider.dart';
 
 
 import 'package:flutter/material.dart';
@@ -31,16 +32,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ExploreProvider>().fetchProperties();
+      context.read<PropertySearchProvider>().fetchProperties();
     });
   }
 
-  Set<Marker> _getMarkers(List<Property> properties) {
+  Set<Marker> _getMarkers(List<PropertyCardModel> properties) {
     if (properties.isEmpty) return {};
 
     return properties.asMap().entries.map((entry) {
       int index = entry.key;
-      Property property = entry.value;
+      final property = entry.value;
 
       LatLng position = LatLng(
         property.address?.latitude ?? _center.latitude,
@@ -82,9 +83,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _selectedPropertyIndex = index;
     });
 
-    final properties = context.read<ExploreProvider>().properties?.items ?? [];
+    final properties = context.read<PropertySearchProvider>().properties?.items ?? [];
     if (index < properties.length) {
-      Property property = properties[index];
+      final property = properties[index];
       LatLng position = LatLng(
         property.address?.latitude ?? _center.latitude,
         property.address?.longitude ?? _center.longitude,
@@ -98,13 +99,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void _handleFilterButtonPressed() {
     context.push('/filter', extra: {
       'onApplyFilters': (Map<String, dynamic> filters) =>
-          context.read<ExploreProvider>().applyFilters(filters),
+          context.read<PropertySearchProvider>().applyFilters(filters),
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ExploreProvider>(
+    return Consumer<PropertySearchProvider>(
       builder: (context, provider, child) {
         final properties = provider.properties?.items ?? [];
         final isLoading = provider.isLoading;
@@ -112,7 +113,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final errorMessage = provider.errorMessage;
 
         final searchBar = CustomSearchBar(
-          onSearchChanged: (query) => provider.search(query),
+          onSearchChanged: (query) {
+            // For search, we'll apply a filter with the search query
+            final filters = <String, dynamic>{'searchTerm': query};
+            provider.applyFilters(filters);
+          },
           hintText: 'Search places...',
           showFilterIcon: true,
           onFilterIconPressed: _handleFilterButtonPressed,
@@ -195,7 +200,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ? const SizedBox.shrink()
                       : hasError
                           ? Center(
-                              child: Text(errorMessage ?? 'An error occurred'))
+                              child: Text(errorMessage.isEmpty ? 'An error occurred' : errorMessage))
                           : properties.isEmpty
                               ? const Center(
                                   child: Text('No properties found.'))
@@ -207,16 +212,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                         onPageChanged: _onPropertyCardChanged,
                                         itemCount: properties.length,
                                         itemBuilder: (context, index) {
-                                          final property = properties[index];
+                                          final card = properties[index];
                                           return Padding(
                                             padding: const EdgeInsets.symmetric(
                                                 horizontal: 16),
                                             child: PropertyCard(
                                               layout: PropertyCardLayout
                                                   .compactHorizontal,
-                                              property: property,
+                                              property: card,
                                               onTap: () => context.push(
-                                                  '/property/${property.propertyId}'),
+                                                  '/property/${card.propertyId}'),
                                             ),
                                           );
                                         },

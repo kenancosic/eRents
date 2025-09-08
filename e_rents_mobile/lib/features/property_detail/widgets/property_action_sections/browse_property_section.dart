@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_availability/booking_availability_widget.dart';
 
 /// Section shown when a user is browsing a property (no existing booking)
 /// Shows booking availability and allows new bookings
 class BrowsePropertySection extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
 
   const BrowsePropertySection({
     super.key,

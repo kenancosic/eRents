@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/features/explore/providers/property_search_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
@@ -66,7 +66,7 @@ class FilterDialogState extends State<FilterDialog> {
           label: 'Apply',
           isLoading: false,
           onPressed: () {
-            context.read<PropertyDetailProvider>().applyPropertyFilters({
+            context.read<PropertySearchProvider>().applyPropertyFilters({
               if (_selectedCity != null) 'city': _selectedCity,
               if (_minPrice != null) 'minPrice': _minPrice,
               if (_maxPrice != null) 'maxPrice': _maxPrice,

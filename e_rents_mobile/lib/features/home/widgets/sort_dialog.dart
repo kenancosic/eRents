@@ -1,4 +1,4 @@
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/features/explore/providers/property_search_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
@@ -22,36 +22,9 @@ class SortDialogState extends State<SortDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          RadioListTile(
-            title: const Text('Price: Low to High'),
-            value: 'price',
-            groupValue: _selectedSort,
-            onChanged: (value) {
-              setState(() {
-                _selectedSort = value;
-              });
-            },
-          ),
-          RadioListTile(
-            title: const Text('Price: High to Low'),
-            value: 'price_desc',
-            groupValue: _selectedSort,
-            onChanged: (value) {
-              setState(() {
-                _selectedSort = value;
-              });
-            },
-          ),
-          RadioListTile(
-            title: const Text('Rating: High to Low'),
-            value: 'rating',
-            groupValue: _selectedSort,
-            onChanged: (value) {
-              setState(() {
-                _selectedSort = value;
-              });
-            },
-          ),
+          _buildOption(title: 'Price: Low to High', value: 'price'),
+          _buildOption(title: 'Price: High to Low', value: 'price_desc'),
+          _buildOption(title: 'Rating: High to Low', value: 'rating'),
         ],
       ),
       actions: [
@@ -67,18 +40,31 @@ class SortDialogState extends State<SortDialog> {
           isLoading: false,
           onPressed: () {
             if (_selectedSort != null) {
-              bool descending = _selectedSort!.endsWith('_desc');
-              String sortBy = _selectedSort!.replaceAll('_desc', '');
-              final provider = context.read<PropertyDetailProvider>();
-              provider.applyPropertyFilters({
-                'sortBy': sortBy,
-                'sortDescending': descending,
-              });
+              final provider = context.read<PropertySearchProvider>();
+              provider.applySortOption(_selectedSort);
             }
             context.pop();
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildOption({required String title, required String value}) {
+    final bool selected = _selectedSort == value;
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        selected ? Icons.radio_button_checked : Icons.radio_button_off,
+        color: selected ? Theme.of(context).colorScheme.primary : Colors.grey,
+      ),
+      title: Text(title),
+      onTap: () {
+        setState(() {
+          _selectedSort = value;
+        });
+      },
     );
   }
 }

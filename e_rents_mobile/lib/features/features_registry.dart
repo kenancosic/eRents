@@ -7,24 +7,16 @@ import '../core/services/secure_storage_service.dart';
 
 // Import all feature providers
 import 'auth/auth_provider.dart';
-import 'chat/chat_provider.dart';
+import 'chat/backend_chat_provider.dart';
 import 'home/providers/home_provider.dart';
 import 'checkout/providers/checkout_provider.dart';
 import 'saved/saved_provider.dart';
 import 'profile/providers/user_profile_provider.dart';
 import 'profile/providers/user_bookings_provider.dart';
-import 'profile/providers/tenant_preferences_provider.dart';
 import 'profile/providers/payment_methods_provider.dart';
 import 'explore/providers/property_search_provider.dart';
 import 'explore/providers/featured_properties_provider.dart';
-import 'explore/providers/property_availability_provider.dart';
-import 'property_detail/providers/property_data_provider.dart';
-import 'property_detail/providers/property_collections_provider.dart';
-import 'property_detail/providers/property_reviews_provider.dart';
-import 'property_detail/providers/maintenance_issues_provider.dart';
-import 'property_detail/providers/property_booking_provider.dart';
-import 'property_detail/providers/lease_extension_provider.dart';
-import 'property_detail/providers/property_pricing_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 // Core providers
 import '../core/base/navigation_provider.dart';
@@ -69,8 +61,8 @@ class FeaturesRegistry {
       ),
       
       // Feature Providers (alphabetical order for maintainability)
-      ChangeNotifierProvider<ChatProvider>(
-        create: (_) => ChatProvider(deps.apiService),
+      ChangeNotifierProvider<BackendChatProvider>(
+        create: (_) => BackendChatProvider(deps.apiService),
       ),
       
       ChangeNotifierProvider<CheckoutProvider>(
@@ -90,10 +82,6 @@ class FeaturesRegistry {
         create: (_) => UserBookingsProvider(deps.apiService),
       ),
       
-      ChangeNotifierProvider<TenantPreferencesProvider>(
-        create: (_) => TenantPreferencesProvider(deps.apiService),
-      ),
-      
       ChangeNotifierProvider<PaymentMethodsProvider>(
         create: (_) => PaymentMethodsProvider(deps.apiService),
       ),
@@ -107,45 +95,13 @@ class FeaturesRegistry {
         create: (_) => FeaturedPropertiesProvider(deps.apiService),
       ),
       
-      ChangeNotifierProvider<PropertyAvailabilityProvider>(
-        create: (_) => PropertyAvailabilityProvider(deps.apiService),
-      ),
-      
       // Property Detail Feature Providers
-      ChangeNotifierProvider<PropertyDataProvider>(
-        create: (_) => PropertyDataProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<PropertyCollectionsProvider>(
-        create: (_) => PropertyCollectionsProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<PropertyReviewsProvider>(
-        create: (_) => PropertyReviewsProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<MaintenanceIssuesProvider>(
-        create: (_) => MaintenanceIssuesProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<PropertyBookingProvider>(
-        create: (_) => PropertyBookingProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<LeaseExtensionProvider>(
-        create: (_) => LeaseExtensionProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<PropertyPricingProvider>(
-        create: (_) => PropertyPricingProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<PropertyAvailabilityProvider>(
-        create: (_) => PropertyAvailabilityProvider(deps.apiService),
+      ChangeNotifierProvider<PropertyRentalProvider>(
+        create: (_) => PropertyRentalProvider(deps.apiService),
       ),
       
       ChangeNotifierProvider<SavedProvider>(
-        create: (_) => SavedProvider(deps.apiService, deps.secureStorage),
+        create: (_) => SavedProvider(deps.apiService),
       ),
     ];
   }

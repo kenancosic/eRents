@@ -72,6 +72,14 @@ class ApiService {
       } catch (e) {
         // Simple logging for mobile
         debugPrint('ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
+        
+        // Check if this is a network connectivity issue
+        if (e.toString().contains('SocketException') && e.toString().contains('semaphore timeout period has expired')) {
+          if (retryCount + 1 == maxRetries) {
+            throw Exception('Unable to connect to the server. Please check your internet connection and ensure the server is running.');
+          }
+        }
+        
         retryCount++;
         if (retryCount == maxRetries) {
           rethrow;
@@ -229,6 +237,14 @@ class ApiService {
       } catch (e) {
         debugPrint(
           'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
+        
+        // Check if this is a network connectivity issue
+        if (e.toString().contains('SocketException') && e.toString().contains('semaphore timeout period has expired')) {
+          if (retryCount + 1 == maxRetries) {
+            throw Exception('Unable to connect to the server. Please check your internet connection and ensure the server is running.');
+          }
+        }
+        
         retryCount++;
         if (retryCount == maxRetries) {
           rethrow;

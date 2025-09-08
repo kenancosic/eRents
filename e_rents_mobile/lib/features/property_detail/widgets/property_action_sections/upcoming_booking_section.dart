@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/cancel_stay_dialog.dart';
-import 'package:e_rents_mobile/features/property_detail/providers/property_detail_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/extend_booking_dialog.dart';
 
 /// Section shown when user has an upcoming booking
 /// Shows booking details and management options
 class UpcomingBookingSection extends StatelessWidget {
-  final Property property;
+  final PropertyDetail property;
   final Booking booking;
 
   const UpcomingBookingSection({
@@ -72,7 +73,6 @@ class UpcomingBookingSection extends StatelessWidget {
                 _buildInfoRow('Stay Type', 'Open-ended lease'),
               _buildInfoRow(
                   'Total Price', '\$${booking.totalPrice.toStringAsFixed(2)}'),
-              _buildInfoRow('Guests', booking.guestCountDisplay),
               if (booking.minimumStayEndDate != null)
                 _buildInfoRow('Minimum Stay Until',
                     DateFormat.yMMMd().format(booking.minimumStayEndDate!)),
@@ -80,12 +80,6 @@ class UpcomingBookingSection extends StatelessWidget {
               // Payment status section
               const SizedBox(height: 8),
               _buildPaymentStatusRow(),
-
-              // Special requests if available
-              if (booking.hasSpecialRequests) ...[
-                const SizedBox(height: 8),
-                _buildSpecialRequestsSection(),
-              ],
             ],
           ),
         ),
@@ -102,6 +96,14 @@ class UpcomingBookingSection extends StatelessWidget {
               label: 'Manage Booking',
               icon: Icons.edit_calendar,
               onPressed: () => _navigateToManageBooking(context),
+              isLoading: false,
+              width: OutlinedButtonWidth.flexible,
+              size: OutlinedButtonSize.compact,
+            ),
+            CustomOutlinedButton(
+              label: 'Extend Booking',
+              icon: Icons.update,
+              onPressed: () => _showExtendDialog(context),
               isLoading: false,
               width: OutlinedButtonWidth.flexible,
               size: OutlinedButtonSize.compact,
@@ -169,10 +171,23 @@ class UpcomingBookingSection extends StatelessWidget {
         booking: booking,
         onCancellationConfirmed: () {
           // Refresh the bookings to get updated data
-          context.read<PropertyDetailProvider>().getBookingDetails(property.propertyId);
+          context.read<PropertyRentalProvider>().getBookingDetails(booking.bookingId);
 
           // Navigate back to home or bookings screen
           context.go('/home');
+        },
+      ),
+    );
+  }
+
+  void _showExtendDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ExtendBookingDialog(
+        booking: booking,
+        onExtended: () {
+          // Refresh booking details after extension
+          context.read<PropertyRentalProvider>().getBookingDetails(booking.bookingId);
         },
       ),
     );
@@ -230,41 +245,6 @@ class UpcomingBookingSection extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSpecialRequestsSection() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.note, color: Colors.grey[600], size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'Special Requests',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            booking.specialRequests!,
-            style: const TextStyle(fontSize: 13),
-          ),
         ],
       ),
     );

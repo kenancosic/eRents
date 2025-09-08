@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'core/base/error_provider.dart';
 import 'core/widgets/global_error_dialog.dart';
+import 'config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,8 @@ class MyApp extends StatelessWidget {
     // Create shared service instances
     final secureStorageService = SecureStorageService();
     final apiService = ApiService(
-      dotenv.env['API_BASE_URL'] ?? 'http://localhost:8080',
+      // dotenv.env['API_BASE_URL'] ?? 
+      Config.baseLocalhostUrl,
       secureStorageService,
     );
     
@@ -35,6 +37,13 @@ class MyApp extends StatelessWidget {
       apiService: apiService,
       secureStorage: secureStorageService,
     );
+    
+    // Create the AuthProvider instance for the router
+    final authProvider = AuthProvider(apiService, secureStorageService);
+    
+    // Create the AppRouter instance outside of the Builder to prevent
+    // duplicate GlobalKey issues
+    final appRouter = AppRouter(authProvider);
     
     return MultiProvider(
       providers: [
@@ -51,28 +60,22 @@ class MyApp extends StatelessWidget {
         // Register all feature providers via centralized registry
         ...FeaturesRegistry.createFeatureProviders(dependencies),
       ],
-      child: Builder(
-        builder: (context) {
-          final authProvider = context.watch<AuthProvider>();
-          final appRouter = AppRouter(authProvider);
-          return Stack(
-            textDirection: TextDirection.ltr,
-            children: [
-              MaterialApp.router(
-                title: 'eRents',
-                theme: appTheme,
-                routerConfig: appRouter.router,
-                debugShowCheckedModeBanner: false,
-                builder: (context, child) => Stack(
-                  children: [
-                    child!,
-                    const GlobalErrorDialog(),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
+      child: Stack(
+        textDirection: TextDirection.ltr,
+        children: [
+          MaterialApp.router(
+            title: 'eRents',
+            theme: appTheme,
+            routerConfig: appRouter.router,
+            debugShowCheckedModeBanner: false,
+            builder: (context, child) => Stack(
+              children: [
+                child!,
+                const GlobalErrorDialog(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

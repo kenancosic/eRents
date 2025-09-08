@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 /// Widget for displaying a booking item in a list
@@ -103,7 +104,7 @@ class BookingListItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${booking.numberOfGuests ?? 1} guests',
+                    'N/A',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],

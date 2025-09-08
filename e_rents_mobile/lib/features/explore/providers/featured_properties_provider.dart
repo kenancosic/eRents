@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 
 /// Provider for managing featured properties
@@ -9,10 +9,10 @@ class FeaturedPropertiesProvider extends BaseProvider {
   FeaturedPropertiesProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  List<Property> _featuredProperties = [];
+  List<PropertyCardModel> _featuredProperties = [];
 
   // ─── Getters ────────────────────────────────────────────────────────────
-  List<Property> get featuredProperties => _featuredProperties;
+  List<PropertyCardModel> get featuredProperties => _featuredProperties;
   int get featuredPropertiesCount => _featuredProperties.length;
 
   // ─── Public API ─────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ class FeaturedPropertiesProvider extends BaseProvider {
   /// Load featured properties
   Future<void> loadFeaturedProperties() async {
     final properties = await executeWithState(() async {
-      return await api.getListAndDecode('properties/featured', Property.fromJson, authenticated: false);
+      return await api.getListAndDecode('properties/featured', PropertyCardModel.fromJson, authenticated: false);
     });
     
     if (properties != null) {

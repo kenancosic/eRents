@@ -6,7 +6,7 @@ class BasicPropertySearch {
   final double? maxPrice;
   final int? propertyTypeId;
   final String? cityName;
-  final int? bedrooms;
+  final int? rooms;
   final String? searchText;
   final String? status;
   
@@ -24,7 +24,7 @@ class BasicPropertySearch {
     this.maxPrice,
     this.propertyTypeId,
     this.cityName,
-    this.bedrooms,
+    this.rooms,
     this.searchText,
     this.status,
     this.page = 1,
@@ -42,7 +42,7 @@ class BasicPropertySearch {
     if (maxPrice != null) params['maxPrice'] = maxPrice!.toString();
     if (propertyTypeId != null) params['propertyTypeId'] = propertyTypeId!.toString();
     if (cityName != null) params['cityName'] = cityName!;
-    if (bedrooms != null) params['bedrooms'] = bedrooms!.toString();
+    if (rooms != null) params['rooms'] = rooms!.toString();
     if (searchText != null) params['searchText'] = searchText!;
     if (status != null) params['status'] = status!;
     if (sortBy != null) params['sortBy'] = sortBy!;
@@ -61,7 +61,7 @@ class BasicPropertySearch {
     double? maxPrice,
     int? propertyTypeId,
     String? cityName,
-    int? bedrooms,
+    int? rooms,
     String? searchText,
     String? status,
     int? page,
@@ -75,7 +75,7 @@ class BasicPropertySearch {
       maxPrice: maxPrice ?? this.maxPrice,
       propertyTypeId: propertyTypeId ?? this.propertyTypeId,
       cityName: cityName ?? this.cityName,
-      bedrooms: bedrooms ?? this.bedrooms,
+      rooms: rooms ?? this.rooms,
       searchText: searchText ?? this.searchText,
       status: status ?? this.status,
       page: page ?? this.page,
@@ -92,7 +92,7 @@ class BasicPropertySearch {
            maxPrice != null ||
            propertyTypeId != null ||
            cityName != null ||
-           bedrooms != null ||
+           rooms != null ||
            searchText != null ||
            status != null;
   }

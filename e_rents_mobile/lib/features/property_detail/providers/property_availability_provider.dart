@@ -23,17 +23,34 @@ class PropertyDetailAvailabilityProvider extends BaseProvider {
   
   /// Fetch availability data for a property
   Future<void> fetchAvailabilityData(int propertyId, DateTime startDate, DateTime endDate) async {
-    final availability = await executeWithState(() async {
+    final result = await executeWithState(() async {
       final queryString = api.buildQueryString({
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
       });
-      return await api.getListAndDecode('/properties/$propertyId/availability$queryString', Availability.fromJson,
-        authenticated: true);
+      // Backend returns AvailabilityRangeResponse { availability: [] }
+      final json = await api.getJson('/properties/$propertyId/availability$queryString', authenticated: true);
+      final list = (json['availability'] as List? ?? const [])
+          .cast<Map<String, dynamic>>();
+      // Map backend entries (Date, IsAvailable, Price, Status) to our Availability model
+      return list.map((e) {
+        final dateStr = e['date']?.toString();
+        final date = dateStr != null ? DateTime.parse(dateStr).toUtc() : startDate.toUtc();
+        final isAvailable = (e['isAvailable'] as bool?) ?? false;
+        final status = e['status'] as String?;
+        return Availability(
+          availabilityId: null,
+          propertyId: propertyId,
+          startDate: date,
+          endDate: date,
+          isAvailable: isAvailable,
+          reason: status,
+        );
+      }).toList();
     });
 
-    if (availability != null) {
-      _availabilityData = availability;
+    if (result != null) {
+      _availabilityData = result;
     }
   }
 
@@ -49,8 +66,21 @@ class PropertyDetailAvailabilityProvider extends BaseProvider {
         'endDate': endDate.toIso8601String(),
       });
       final response = await api.get('/properties/$propertyId/check-availability$queryString', authenticated: true);
-      
-      final isAvailable = response.toString().toLowerCase() == 'true';
+      final body = response.body.trim();
+      bool isAvailable;
+      // Try JSON bool first, then plain text fallback
+      if (body == 'true' || body == 'false') {
+        isAvailable = body == 'true';
+      } else {
+        try {
+          final decoded = body.toLowerCase() == '"true"' || body.toLowerCase() == '"false"'
+              ? body.substring(1, body.length - 1)
+              : body;
+          isAvailable = decoded.toLowerCase() == 'true';
+        } catch (_) {
+          isAvailable = false;
+        }
+      }
       _isDateRangeAvailable = isAvailable;
       if (!isAvailable) {
         _availabilityError = 'Selected dates are not available for booking';

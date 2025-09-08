@@ -1,6 +1,7 @@
 import 'package:e_rents_mobile/core/models/booking_model.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 
@@ -11,19 +12,22 @@ class HomeProvider extends BaseProvider {
 
   // Data state
   User? _currentUser;
-  List<Booking> _currentStays = [];
-  List<Booking> _upcomingStays = [];
-  List<Property> _nearbyProperties = [];
-  List<Property> _recommendedProperties = [];
-  List<Property> _featuredProperties = [];
+  List<Booking> _upcomingBookings = [];
+  List<Booking> _pendingBookings = [];
+  List<PropertyCardModel> _recommendedCards = [];
+  List<PropertyCardModel> _featuredCards = [];
+  List<PropertyCardModel> _currentResidences = [];
 
   // Getters
   User? get currentUser => _currentUser;
-  List<Booking> get currentStays => _currentStays;
-  List<Booking> get upcomingStays => _upcomingStays;
-  List<Property> get nearbyProperties => _nearbyProperties;
-  List<Property> get recommendedProperties => _recommendedProperties;
-  List<Property> get featuredProperties => _featuredProperties;
+  List<Booking> get currentStays => _upcomingBookings; // For backward compatibility
+  List<Booking> get upcomingStays => _upcomingBookings; // For backward compatibility
+  List<Booking> get upcomingBookings => _upcomingBookings;
+  List<Booking> get pendingBookings => _pendingBookings;
+  // Card lists for UI
+  List<PropertyCardModel> get recommendedCards => _recommendedCards;
+  List<PropertyCardModel> get featuredCards => _featuredCards;
+  List<PropertyCardModel> get currentResidences => _currentResidences;
 
   String get welcomeMessage {
     if (_currentUser?.firstName != null) {
@@ -45,10 +49,10 @@ class HomeProvider extends BaseProvider {
     await executeWithState(() async {
       await Future.wait([
         _loadCurrentUser(),
-        _loadUserBookings(),
-        _loadNearbyProperties(),
+        _loadCurrentResidences(),
+        _loadUpcomingBookings(),
+        _loadPendingBookings(),
         _loadRecommendedProperties(),
-        _loadFeaturedProperties(),
       ]);
     });
   }
@@ -60,7 +64,7 @@ class HomeProvider extends BaseProvider {
 
   Future<void> _loadCurrentUser() async {
     final user = await executeWithState(() async {
-      return await api.getAndDecode('profile/me', User.fromJson, authenticated: true);
+      return await api.getAndDecode('/profile', User.fromJson, authenticated:   true);
     });
     
     if (user != null) {
@@ -68,117 +72,197 @@ class HomeProvider extends BaseProvider {
     }
   }
 
-  Future<void> _loadUserBookings() async {
-    final results = await executeWithState(() async {
-      return await Future.wait([
-        api.getListAndDecode('bookings/current', Booking.fromJson, authenticated: true),
-        api.getListAndDecode('bookings/upcoming', Booking.fromJson, authenticated: true),
-      ]);
-    });
-    
-    if (results != null) {
-      _currentStays = results[0];
-      _upcomingStays = results[1];
-    }
-  }
-
-  Future<void> _loadNearbyProperties() async {
-    final filters = <String, dynamic>{'PageSize': '5'};
-    if (_currentUser?.address?.city != null) {
-      filters['City'] = _currentUser!.address!.city!;
-    }
-    
+  Future<void> _loadUpcomingBookings() async {
+    // Use BookingSearch: Status=Upcoming & StartDateFrom = tomorrow
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final filters = {
+      'Status': 'Upcoming',
+      'StartDateFrom': _formatDate(today.add(const Duration(days: 1))),
+      'PageSize': '10',
+      'SortBy': 'startdate',
+      'SortDirection': 'asc',
+    };
     final queryString = api.buildQueryString(filters);
-    final pagedResult = await executeWithState(() async {
+    final upcoming = await executeWithState(() async {
       return await api.getPagedAndDecode(
-        'properties/search$queryString', 
-        Property.fromJson,
+        '/bookings$queryString',
+        Booking.fromJson,
+        authenticated: true,
       );
     });
     
-    if (pagedResult != null) {
-      _nearbyProperties = pagedResult.items;
+    if (upcoming != null) {
+      _upcomingBookings = upcoming.items;
     }
   }
+
+  Future<void> _loadCurrentResidences() async {
+    // Active stays where StartDate <= today and EndDate >= today
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final filters = {
+      'Status': 'Active',
+      'StartDateTo': _formatDate(today),
+      'EndDateFrom': _formatDate(today),
+      'PageSize': '10',
+      'SortBy': 'startdate',
+      'SortDirection': 'asc',
+    };
+    final queryString = api.buildQueryString(filters);
+    final current = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        '/bookings$queryString',
+        Booking.fromJson,
+        authenticated: true,
+      );
+    });
+
+    if (current != null) {
+      _currentResidences = current.items.map(_bookingToCard).toList();
+    }
+  }
+
+  Future<void> _loadPendingBookings() async {
+    // Fetch upcoming monthly bookings
+    final filters = {
+      'Status': 'Upcoming',
+      'RentingType': 'Monthly',
+      'PageSize': '10',
+      'SortBy': 'startdate',
+      'SortDirection': 'asc',
+    };
+    final queryString = api.buildQueryString(filters);
+    final pending = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        '/bookings$queryString',
+        Booking.fromJson,
+        authenticated: true,
+      );
+    });
+    
+    if (pending != null) {
+      _pendingBookings = pending.items;
+    }
+  }
+
+  /// Public refresh for only pending monthly bookings (used by HomeScreen timer)
+  Future<void> refreshPendingBookings() async {
+    final filters = {
+      'Status': 'Upcoming',
+      'RentingType': 'Monthly',
+      'PageSize': '10',
+      'SortBy': 'startdate',
+      'SortDirection': 'asc',
+    };
+    final queryString = api.buildQueryString(filters);
+    final pending = await executeWithState(() async {
+      return await api.getPagedAndDecode(
+        '/bookings$queryString',
+        Booking.fromJson,
+        authenticated: true,
+      );
+    });
+
+    if (pending != null) {
+      _pendingBookings = pending.items;
+      notifyListeners();
+    }
+  }
+
+  
+
 
   Future<void> _loadRecommendedProperties() async {
-    final filters = <String, dynamic>{
-      'IsRecommended': 'true',
-      'PageSize': '6',
-      'SortBy': 'rating',
-    };
-    
-    final queryString = api.buildQueryString(filters);
-    final pagedResult = await executeWithState(() async {
-      return await api.getPagedAndDecode(
-        'properties/search$queryString',
-        Property.fromJson,
+    // Fetch personalized recommendations as PropertyCardModel for UI
+    final recommendedCards = await executeWithState(() async {
+      return await api.getListAndDecode(
+        '/properties/me/recommendations?count=6',
+        PropertyCardModel.fromJson,
+        authenticated: true,
       );
     });
-    
-    if (pagedResult != null) {
-      _recommendedProperties = pagedResult.items;
-    }
-  }
 
-  Future<void> _loadFeaturedProperties() async {
-    final filters = <String, dynamic>{
-      'IsFeatured': 'true',
-      'PageSize': '8',
-      'SortBy': 'popularity',
-    };
-    
-    final queryString = api.buildQueryString(filters);
-    final pagedResult = await executeWithState(() async {
-      return await api.getPagedAndDecode(
-        'properties/search$queryString',
-        Property.fromJson,
-      );
-    });
-    
-    if (pagedResult != null) {
-      _featuredProperties = pagedResult.items;
+    if (recommendedCards != null) {
+      _recommendedCards = recommendedCards;
+    }
+
+    // Fallback: if no recommendations returned, try location-based available properties
+    if (_recommendedCards.isEmpty && _currentUser?.address?.city != null) {
+      final city = _currentUser!.address!.city!;
+      final filters = <String, dynamic>{
+        'City': city,
+        'Status': 'Available',
+        'PageSize': '8',
+        'SortBy': 'createdat',
+      };
+      final queryString = api.buildQueryString(filters);
+      final pagedResult = await executeWithState(() async {
+        return await api.getPagedAndDecode(
+          '/properties$queryString',
+          PropertyCardModel.fromJson,
+          authenticated: true,
+        );
+      });
+      if (pagedResult != null) {
+        _recommendedCards = pagedResult.items;
+      }
     }
   }
 
   Future<void> searchProperties(String query) async {
     if (query.trim().isEmpty) {
-      await _loadFeaturedProperties();
       return;
     }
 
     final filters = <String, dynamic>{
-      'Query': query,
+      'NameContains': query,
       'PageSize': '8',
     };
     
     final queryString = api.buildQueryString(filters);
     final pagedResult = await executeWithState(() async {
       return await api.getPagedAndDecode(
-        'properties/search$queryString',
-        Property.fromJson,
+        '/properties$queryString',
+        PropertyCardModel.fromJson,
       );
     });
-    
+
     if (pagedResult != null) {
-      _featuredProperties = pagedResult.items;
+      _featuredCards = pagedResult.items;
     }
   }
 
   Future<void> applyPropertyFilters(Map<String, dynamic> filters) async {
     final searchFilters = Map<String, dynamic>.from(filters);
-    searchFilters['IsFeatured'] = 'true';
     
     final queryString = api.buildQueryString(searchFilters);
     final pagedResult = await executeWithState(() async {
       return await api.getPagedAndDecode(
-        'properties/search$queryString',
-        Property.fromJson,
+        '/properties$queryString',
+        PropertyCardModel.fromJson,
       );
     });
-    
+
     if (pagedResult != null) {
-      _featuredProperties = pagedResult.items;
+      _featuredCards = pagedResult.items;
     }
+  }
+
+  // --- Helpers ---
+  String _formatDate(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+  PropertyCardModel _bookingToCard(Booking booking) {
+    return PropertyCardModel(
+      propertyId: booking.propertyId,
+      name: booking.propertyName,
+      price: booking.dailyRate,
+      currency: booking.currency ?? 'BAM',
+      averageRating: null,
+      coverImageId: null,
+      address: null,
+      rentalType: PropertyRentalType.daily,
+    );
   }
 }

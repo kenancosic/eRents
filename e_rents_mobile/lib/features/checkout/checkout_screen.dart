@@ -1,11 +1,11 @@
 // lib/feature/checkout/checkout_screen.dart
+import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/core/models/property.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/checkout/providers/checkout_provider.dart';
@@ -14,7 +14,7 @@ import 'package:e_rents_mobile/features/checkout/paypal_webview_screen.dart';
 
 
 class CheckoutScreen extends StatefulWidget {
-  final Property property;
+  final PropertyDetail property;
   final DateTime startDate;
   final DateTime endDate;
   final bool isDailyRental;
@@ -34,7 +34,6 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  late final TextEditingController _specialRequestsController;
   
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
@@ -42,7 +41,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
-    _specialRequestsController = TextEditingController();
     
     // Initialize checkout provider with widget data
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -58,7 +56,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   
   @override
   void dispose() {
-    _specialRequestsController.dispose();
     super.dispose();
   }
 
@@ -79,9 +76,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Property card using the existing PropertyCard widget
+                  // Property card using the new PropertyCardModel
                   PropertyCard(
-                    property: widget.property,
+                    property: PropertyCardModel(
+                      propertyId: widget.property.propertyId,
+                      name: widget.property.name,
+                      price: widget.property.price,
+                      currency: widget.property.currency,
+                      averageRating: widget.property.averageRating,
+                      coverImageId: widget.property.coverImageId!,
+                      address: widget.property.address,
+                      rentalType: widget.property.rentalType,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   // Price details section
@@ -161,49 +167,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                provider.showPriceBreakdown ? 'Hide details' : 'Show details',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              CustomOutlinedButton.compact(
-                label: provider.showPriceBreakdown ? 'Less info' : 'More info',
-                isLoading: false,
-                width: OutlinedButtonWidth.content,
-                textColor: accentColor,
-                borderColor: accentColor,
-                onPressed: () {
-                  provider.togglePriceBreakdown();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Price breakdown (expandable)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: provider.showPriceBreakdown ? null : 0,
-            child: provider.showPriceBreakdown ? _buildExpandedPriceBreakdown(provider) : null,
-          ),
-
-          // Total price (always visible)
+          // Simplified price display - only show total price
           Container(
-            margin: EdgeInsets.only(top: provider.showPriceBreakdown ? 16 : 0),
             padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: Colors.grey.withAlpha((255 * 0.3).round()),
-                  width: 1,
-                ),
-              ),
-            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -215,7 +181,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                 ),
                 Text(
-                  '\$${widget.totalPrice.toStringAsFixed(0)}',
+                  '\$${provider.propertyPrice.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -225,44 +191,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpandedPriceBreakdown(CheckoutProvider provider) {
-    return Column(
-      children: [
-        const SizedBox(height: 16),
-        _buildPriceRow(
-          '\$${(provider.basePrice / provider.nights).toStringAsFixed(0)} × ${provider.nights} night${provider.nights > 1 ? 's' : ''}',
-          provider.basePrice,
-        ),
-        _buildPriceRow('Cleaning fee', provider.cleaningFee),
-        _buildPriceRow('Service fee', provider.serviceFee),
-        _buildPriceRow('Taxes', provider.taxes),
-      ],
-    );
-  }
-
-  Widget _buildPriceRow(String label, double amount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
-            ),
-          ),
-          Text(
-            '\$${amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+          // Fixed pricing note: per-night or monthly subscription
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              provider.isDailyRental
+                  ? 'Pricing model: billed per night'
+                  : 'Pricing model: billed monthly (subscription)',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
         ],
@@ -295,93 +235,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Number of guests selector
+          // Dates overview only (guests and special requests removed)
           Row(
             children: [
-              Icon(Icons.group, color: Colors.grey[600]),
+              Icon(Icons.calendar_today, color: Colors.grey[600]),
               const SizedBox(width: 8),
               const Text(
-                'Number of guests',
+                'Dates',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const Spacer(),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: provider.numberOfGuests > 1
-                          ? () => provider.updateNumberOfGuests(provider.numberOfGuests - 1)
-                          : null,
-                      icon: const Icon(Icons.remove),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                    SizedBox(
-                      width: 40,
-                      child: Text(
-                        '${provider.numberOfGuests}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: provider.numberOfGuests < 10
-                          ? () => provider.updateNumberOfGuests(provider.numberOfGuests + 1)
-                          : null,
-                      icon: const Icon(Icons.add),
-                      constraints:
-                          const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Special requests field
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.note_alt, color: Colors.grey[600]),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Special requests (optional)',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _specialRequestsController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText:
-                      'Any special requests or preferences for your stay...',
-                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: accentColor),
-                  ),
-                  contentPadding: const EdgeInsets.all(12),
-                ),
+              Text(
+                '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
+                '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
+                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
               ),
             ],
           ),
@@ -607,12 +474,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         );
 
+        // Persist rental type flag before provider clears its state during capture
+        final isDaily = provider.isDailyRental;
         final captureSuccess = await provider.capturePayPalOrder(provider.payPalOrderId!);
         if (!mounted) return;
         context.pop(); // Close loading dialog
 
         if (captureSuccess) {
-          _showSuccessDialog();
+          // For monthly rentals, show an immediate notification toast
+          if (!isDaily) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Lease application submitted. You\'ll be notified when the landlord responds.'),
+              ),
+            );
+          }
+          _showSuccessDialog(isDaily);
         } else {
           _showErrorSnackBar('Failed to finalize payment. Please contact support.');
         }
@@ -627,13 +504,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(bool isDailyRental) {
     if (!mounted) return;
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Payment Successful'),
-        content: const Text('Your booking has been confirmed. You will receive a confirmation email shortly.'),
+        content: Text(
+          isDailyRental
+              ? 'Your booking has been confirmed. You will receive a confirmation email shortly.'
+              : 'Your lease application has been submitted. You\'ll be notified when the landlord reviews and accepts your request.',
+        ),
         actions: [
           CustomButton.compact(
             label: 'OK',
