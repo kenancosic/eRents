@@ -160,7 +160,7 @@ class FinancialReportResponse {
         orElse: () => RentalType.daily,
       ),
       totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
-      currency: json['currency'] ?? 'BAM',
+      currency: json['currency'] ?? 'USD',
       groupKey: json['groupKey'],
       groupLabel: json['groupLabel'],
       groupTotal: json['groupTotal']?.toDouble(),

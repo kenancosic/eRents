@@ -17,7 +17,7 @@ class PropertyCardModel {
     required this.propertyId,
     required this.name,
     required this.price,
-    this.currency = 'BAM',
+    this.currency = 'USD',
     this.averageRating,
     this.coverImageId,
     this.address,
@@ -44,11 +44,18 @@ class PropertyCardModel {
     }
 
     PropertyRentalType parseRentalType(dynamic v) {
-      final s = v?.toString();
-      return PropertyRentalType.values.firstWhere(
-        (e) => e.toString().split('.').last.toLowerCase() == (s ?? 'monthly').toLowerCase(),
-        orElse: () => PropertyRentalType.monthly,
-      );
+      if (v is num) {
+        switch (v.toInt()) {
+          case 1:
+            return PropertyRentalType.daily;
+          case 2:
+            return PropertyRentalType.monthly;
+        }
+      }
+      final s = v?.toString().toLowerCase();
+      if (s == 'daily') return PropertyRentalType.daily;
+      if (s == 'monthly') return PropertyRentalType.monthly;
+      return PropertyRentalType.monthly;
     }
 
     // Support both camelCase and PascalCase
@@ -57,7 +64,7 @@ class PropertyCardModel {
       propertyId: parseInt(id),
       name: (json['name'] ?? json['Name'] ?? json['PropertyName'] ?? '').toString(),
       price: parseDouble(json['price'] ?? json['Price']) ?? 0.0,
-      currency: (json['currency'] ?? json['Currency'] ?? 'BAM').toString(),
+      currency: (json['currency'] ?? json['Currency'] ?? 'USD').toString(),
       averageRating: parseDouble(json['averageRating'] ?? json['AverageRating'] ?? json['PredictedRating']),
       coverImageId: parseInt(json['coverImageId'] ?? json['CoverImageId']),
       address: (json['address'] ?? json['Address']) is Map<String, dynamic>

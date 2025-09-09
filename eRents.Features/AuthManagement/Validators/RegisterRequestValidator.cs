@@ -47,5 +47,18 @@ public sealed class RegisterRequestValidator : BaseValidator<RegisterRequest>
             .LessThan(DateOnly.FromDateTime(DateTime.Today.AddYears(-13)))
             .WithMessage("User must be at least 13 years old")
             .When(x => x.DateOfBirth.HasValue);
+
+        // Address requirements
+        RuleFor(x => x.City)
+            .NotEmpty().WithMessage("City is required")
+            .MaximumLength(100).WithMessage("City must not exceed 100 characters");
+
+        RuleFor(x => x.ZipCode)
+            .NotEmpty().WithMessage("Zip code is required")
+            .MaximumLength(20).WithMessage("Zip code must not exceed 20 characters");
+
+        RuleFor(x => x.Country)
+            .NotEmpty().WithMessage("Country is required")
+            .MaximumLength(100).WithMessage("Country must not exceed 100 characters");
     }
 }

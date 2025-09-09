@@ -258,7 +258,7 @@ class HomeProvider extends BaseProvider {
       propertyId: booking.propertyId,
       name: booking.propertyName,
       price: booking.dailyRate,
-      currency: booking.currency ?? 'BAM',
+      currency: booking.currency ?? 'USD',
       averageRating: null,
       coverImageId: null,
       address: null,

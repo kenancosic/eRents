@@ -3,6 +3,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_dialogs.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:e_rents_mobile/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -71,6 +72,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (shouldLogout == true && mounted) {
+      // Clear tokens and user state via both providers
+      await context.read<AuthProvider>().logout();
       await context.read<UserProfileProvider>().logout();
       // Navigate to login screen
       if (mounted) {
@@ -138,6 +141,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: 'Personal details',
                             onTap: () {
                               context.push('/profile/details');
+                            },
+                          ),
+                          _buildListTile(
+                            icon: Icons.lock_outline,
+                            title: 'Change Password',
+                            onTap: () {
+                              context.push('/profile/change-password');
                             },
                           ),
                           _buildListTile(

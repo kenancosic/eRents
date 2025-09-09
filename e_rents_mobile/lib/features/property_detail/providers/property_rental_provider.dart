@@ -5,6 +5,8 @@ import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
+import 'package:e_rents_mobile/core/models/user.dart';
+import 'package:e_rents_mobile/core/models/amenity.dart';
 
 /// Provider for managing property rentals (both daily and monthly)
 /// Product decision:
@@ -32,6 +34,8 @@ class PropertyRentalProvider extends BaseProvider {
   // Property Details and Reviews
   PropertyDetail? _property;
   List<Review> _reviews = [];
+  User? _owner;
+  List<Amenity> _amenities = [];
 
   // ─── Getters ────────────────────────────────────────────────────────────
   
@@ -51,6 +55,8 @@ class PropertyRentalProvider extends BaseProvider {
   // Property Details and Reviews getters
   PropertyDetail? get property => _property;
   List<Review> get reviews => _reviews;
+  User? get owner => _owner;
+  List<Amenity> get amenities => _amenities;
 
   // ─── Public API ─────────────────────────────────────────────────────────
   
@@ -101,6 +107,38 @@ class PropertyRentalProvider extends BaseProvider {
     _isUpdatingBooking = false;
     notifyListeners();
     return success;
+  }
+
+  /// Fetch the property's owner information by ownerId
+  Future<void> fetchOwner(int ownerId) async {
+    final user = await executeWithState(() async {
+      return await api.getAndDecode('/users/$ownerId', User.fromJson, authenticated: true);
+    });
+    if (user != null) {
+      _owner = user;
+      notifyListeners();
+    }
+  }
+
+  /// Fetch amenity details for the given amenity IDs
+  Future<void> fetchAmenitiesByIds(List<int> amenityIds) async {
+    if (amenityIds.isEmpty) {
+      _amenities = [];
+      notifyListeners();
+      return;
+    }
+
+    final results = <Amenity>[];
+    for (final id in amenityIds) {
+      final amenity = await executeWithState(() async {
+        return await api.getAndDecode('/amenity/$id', Amenity.fromJson, authenticated: true);
+      });
+      if (amenity != null) {
+        results.add(amenity);
+      }
+    }
+    _amenities = results;
+    notifyListeners();
   }
 
   /// Fetch bookings for a property
@@ -232,9 +270,12 @@ class PropertyRentalProvider extends BaseProvider {
   Future<bool> addReview(int propertyId, String comment, double rating) async {
     final success = await executeWithStateForSuccess(() async {
       final newReview = await api.postAndDecode('/reviews', {
+        // Backend expects enum as an integer (no JsonStringEnumConverter configured)
+        // 0 = PropertyReview per eRents.Domain.Models.Enums.ReviewType
+        'reviewType': 0,
         'propertyId': propertyId,
-        'comment': comment,
-        'rating': rating,
+        'description': comment,
+        'starRating': rating,
       }, Review.fromJson, authenticated: true);
       _reviews.insert(0, newReview);
     }, errorMessage: 'Failed to submit review');

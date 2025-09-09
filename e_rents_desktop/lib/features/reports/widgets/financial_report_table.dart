@@ -56,7 +56,7 @@ class FinancialReportTable extends StatelessWidget {
           child: _buildSummaryCard(
             context,
             'Total Revenue',
-            '${currencyFormat.format(reportSummary.totalRevenue)} BAM',
+            '${currencyFormat.format(reportSummary.totalRevenue)} USD',
             Icons.monetization_on_outlined,
             Colors.green,
           ),
@@ -76,7 +76,7 @@ class FinancialReportTable extends StatelessWidget {
           child: _buildSummaryCard(
             context,
             'Average Booking Value',
-            '${currencyFormat.format(reportSummary.averageBookingValue)} BAM',
+            '${currencyFormat.format(reportSummary.averageBookingValue)} USD',
             Icons.trending_up,
             Colors.orange,
           ),
@@ -234,7 +234,7 @@ class FinancialReportTable extends StatelessWidget {
               const DataCell(Text('')), // Empty cells for alignment
               DataCell(
                 Text(
-                  '${currencyFormat.format(firstReport.groupTotal ?? 0)} BAM',
+                  '${currencyFormat.format(firstReport.groupTotal ?? 0)} USD',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.blue,

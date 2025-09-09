@@ -43,7 +43,7 @@ public class SubscriptionService : ISubscriptionService
             PropertyId = propertyId,
             BookingId = bookingId,
             MonthlyAmount = monthlyAmount,
-            Currency = "BAM",
+            Currency = "USD",
             StartDate = startDate,
             EndDate = endDate,
             PaymentDayOfMonth = startDate.Day,

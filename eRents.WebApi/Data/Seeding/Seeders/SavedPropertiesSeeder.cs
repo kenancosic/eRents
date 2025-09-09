@@ -37,7 +37,12 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
 
-            var properties = await context.Properties.AsNoTracking().Take(2).Select(p => p.PropertyId).ToListAsync();
+            var properties = await context.Properties
+                .AsNoTracking()
+                .OrderBy(p => p.PropertyId)
+                .Take(2)
+                .Select(p => p.PropertyId)
+                .ToListAsync();
             if (properties.Count == 0)
             {
                 logger?.LogWarning("[{Seeder}] No properties found.", Name);

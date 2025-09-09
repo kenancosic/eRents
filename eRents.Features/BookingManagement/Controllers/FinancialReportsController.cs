@@ -75,7 +75,7 @@ public class FinancialReportsController : ControllerBase
 				totalRevenue = result.TotalRevenue,
 				totalBookings = result.TotalBookings,
 				averageBookingValue = result.AverageBookingValue,
-				currency = "BAM"
+				currency = "USD"
 			});
 		}
 		catch (Exception ex)

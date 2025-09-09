@@ -40,6 +40,30 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
         }
     }
 
+    [HttpPost("{id}/approve")]
+    public async Task<ActionResult<BookingResponse>> Approve(int id)
+    {
+        if (_service is not Services.BookingService bookingService)
+        {
+            return StatusCode(500, "Service is not of expected type.");
+        }
+
+        try
+        {
+            var result = await bookingService.ApproveBookingAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving booking with ID {Id}", id);
+            return StatusCode(500, "An error occurred while processing your request.");
+        }
+    }
+
     [HttpPost("{id}/extend")]
     public async Task<ActionResult<BookingResponse>> Extend(int id, [FromBody] BookingExtensionRequest request)
     {

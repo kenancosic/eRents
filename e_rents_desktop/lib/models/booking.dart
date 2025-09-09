@@ -25,8 +25,6 @@ class Booking {
   final String? currency;
   final String? paymentStatus;
   final String? paymentReference;
-  final int? numberOfGuests;
-  final String? specialRequests;
 
   // Base entity fields
   final DateTime createdAt;
@@ -56,8 +54,6 @@ class Booking {
     this.currency,
     this.paymentStatus,
     this.paymentReference,
-    this.numberOfGuests,
-    this.specialRequests,
     required this.createdAt,
     this.updatedAt,
     this.createdBy,
@@ -96,8 +92,6 @@ class Booking {
       currency: _asString(json['currency']),
       paymentStatus: _asString(json['paymentStatus']),
       paymentReference: _asString(json['paymentReference']),
-      numberOfGuests: (json['numberOfGuests'] as num?)?.toInt(),
-      specialRequests: _asString(json['specialRequests']),
       createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
       updatedAt: _parseDate(json['updatedAt']),
       createdBy: _asString(json['createdBy']),
@@ -127,8 +121,6 @@ class Booking {
         'currency': currency,
         'paymentStatus': paymentStatus,
         'paymentReference': paymentReference,
-        'numberOfGuests': numberOfGuests,
-        'specialRequests': specialRequests,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
         'createdBy': createdBy,

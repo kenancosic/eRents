@@ -18,13 +18,22 @@ class PropertyImageSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final apiService = context.read<ApiService>();
+    // Lightweight prefetch of first few images to reduce perceived loading time
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final toPrefetch = property.imageIds.take(3);
+      for (final imageId in toPrefetch) {
+        final url = apiService.makeAbsoluteUrl('/api/Images/$imageId/content');
+        precacheImage(NetworkImage(url), context);
+      }
+    });
     
     return Stack(
       children: [
         CustomSlider(
           items: property.imageIds
               .map((imageId) => apiService.buildImage(
-                    '/Image/$imageId',
+                    // Serve raw bytes from backend ImagesController content endpoint
+                    '/api/Images/$imageId/content',
                     width: double.infinity,
                     height: 350,
                     fit: BoxFit.cover,

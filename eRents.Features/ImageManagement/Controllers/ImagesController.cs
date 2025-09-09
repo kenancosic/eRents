@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using eRents.Features.ImageManagement.Models;
 using eRents.Features.Core;
@@ -41,6 +42,22 @@ public class ImagesController : CrudController<eRents.Domain.Models.Image, Image
         var item = await _service.GetByIdAsync(id);
         if (item == null) return NotFound();
         return Ok(item);
+    }
+
+    // Serve raw image bytes for direct image rendering in clients
+    [AllowAnonymous]
+    [HttpGet("{id}/content")]
+    public async Task<IActionResult> GetImageContent(int id)
+    {
+        var item = await _service.GetByIdAsync(id);
+        if (item == null || item.ImageData == null || item.ImageData.Length == 0)
+        {
+            return NotFound();
+        }
+
+        var contentType = string.IsNullOrWhiteSpace(item.ContentType) ? "image/jpeg" : item.ContentType!;
+        Response.Headers["Cache-Control"] = "public, max-age=86400";
+        return File(item.ImageData, contentType);
     }
 
     // Bulk fetch by IDs; always return full ImageData

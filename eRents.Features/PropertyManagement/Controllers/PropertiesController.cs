@@ -63,25 +63,7 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
         }
     }
 
-    /// <summary>
-    /// Get property recommendations for a user
-    /// </summary>
-    /// <param name="userId">The ID of the user to get recommendations for</param>
-    /// <param name="count">The number of recommendations to return (default: 10)</param>
-    /// <returns>A list of recommended properties</returns>
-    [HttpGet("user/{userId}/recommendations")]
-    public async Task<ActionResult<List<PropertyRecommendation>>> GetRecommendations(int userId, [FromQuery] int count = 10)
-    {
-        try
-        {
-            var recommendations = await _recommendationService.GetRecommendationsAsync(userId, count);
-            return Ok(recommendations);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred while generating recommendations", Error = ex.Message });
-        }
-    }
+    
 
     /// <summary>
     /// Get property recommendations for the current authenticated user
@@ -89,7 +71,7 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
     /// <param name="count">The number of recommendations to return (default: 10)</param>
     /// <returns>A list of recommended properties</returns>
     [HttpGet("me/recommendations")]
-    public async Task<ActionResult<List<PropertyRecommendation>>> GetMyRecommendations([FromQuery] int count = 10)
+    public async Task<ActionResult<List<PropertyCardResponse>>> GetMyRecommendations([FromQuery] int count = 10)
     {
         try
         {
@@ -97,7 +79,18 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
             if (userId == null) return Unauthorized();
 
             var recommendations = await _recommendationService.GetRecommendationsAsync(userId.Value, count);
-            return Ok(recommendations);
+            var ids = recommendations.Select(r => r.PropertyId).Distinct().ToList();
+
+            // Project to card DTOs
+            var cards = await _propertyService.GetPropertyCardsByIdsAsync(ids);
+
+            // Preserve original recommendation order
+            var order = ids.Select((id, idx) => new { id, idx }).ToDictionary(x => x.id, x => x.idx);
+            var sorted = cards
+                .OrderBy(c => order[(int)c.GetType().GetProperty("PropertyId")!.GetValue(c)!])
+                .ToList();
+
+            return Ok(sorted);
         }
         catch (Exception ex)
         {
@@ -105,23 +98,7 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
         }
     }
 
-    /// <summary>
-    /// Train the recommendation model
-    /// </summary>
-    /// <returns>Success message when training is complete</returns>
-    [HttpPost("recommendations/train")]
-    public async Task<ActionResult> TrainModel()
-    {
-        try
-        {
-            await _recommendationService.TrainModelAsync();
-            return Ok(new { Message = "Recommendation model trained successfully" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Message = "An error occurred while training the model", Error = ex.Message });
-        }
-    }
+    
 
     /// <summary>
     /// Checks if a property is available for the specified date range

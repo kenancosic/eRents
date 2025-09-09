@@ -1,7 +1,6 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/features/profile/providers/payment_methods_provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,51 +14,57 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
+  bool _isUpdatingPaypal = false;
   @override
   void initState() {
     super.initState();
-    // Optionally, load payment methods when the screen initializes
-    // context.read<PaymentMethodsProvider>().loadPaymentMethods();
   }
 
   Future<void> _linkPayPalAccount() async {
-    final provider = context.read<PaymentMethodsProvider>();
-    final approvalUrl = await provider.startPayPalLinking();
-
-    if (approvalUrl != null && mounted) {
-      final uri = Uri.parse(approvalUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
+    final provider = context.read<UserProfileProvider>();
+    setState(() => _isUpdatingPaypal = true);
+    try {
+      final approvalUrl = await provider.startPayPalLinking();
+      if (approvalUrl != null && mounted) {
+        final uri = Uri.parse(approvalUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open PayPal to complete linking.')),
+          );
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open PayPal to complete linking.')),
+          SnackBar(
+            content: Text(provider.error?.message ?? 'Failed to start PayPal linking.'),
+          ),
         );
       }
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.error?.message ?? 'Failed to start PayPal linking.'),
-        ),
-      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingPaypal = false);
     }
   }
 
   Future<void> _unlinkPayPalAccount() async {
-    final provider = context.read<PaymentMethodsProvider>();
-    final success = await provider.unlinkPaypal();
-
-    if (success && mounted) {
-      // Refresh user data to reflect the change
-      await context.read<UserProfileProvider>().initUser();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PayPal account unlinked successfully')),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.error?.message ?? 'Failed to unlink PayPal account.'),
-        ),
-      );
+    final provider = context.read<UserProfileProvider>();
+    setState(() => _isUpdatingPaypal = true);
+    try {
+      final success = await provider.unlinkPaypal();
+      if (success && mounted) {
+        await provider.initUser();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PayPal account unlinked successfully')),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error?.message ?? 'Failed to unlink PayPal account.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdatingPaypal = false);
     }
   }
 
@@ -70,8 +75,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       showBackButton: true,
     );
 
-    return Consumer2<PaymentMethodsProvider, UserProfileProvider>(
-      builder: (context, paymentProvider, userProvider, _) {
+    return Consumer<UserProfileProvider>(
+      builder: (context, userProvider, _) {
         return BaseScreen(
           appBar: appBar,
           body: SingleChildScrollView(
@@ -95,7 +100,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _buildPayPalStatusCard(paymentProvider, userProvider),
+                _buildPayPalStatusCard(userProvider),
               ],
             ),
           ),
@@ -104,10 +109,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildPayPalStatusCard(
-      PaymentMethodsProvider paymentProvider, UserProfileProvider userProvider) {
+  Widget _buildPayPalStatusCard(UserProfileProvider userProvider) {
     final isLinked = userProvider.user?.isPaypalLinked ?? false;
-    final isLoading = paymentProvider.isUpdatingPaypal;
+    final isLoading = _isUpdatingPaypal;
 
     return Card(
       elevation: 2,

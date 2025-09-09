@@ -40,10 +40,10 @@ public sealed class PropertyMappingProfile : Profile
 								.OrderByDescending(r => r.CreatedAt)
 								.Take(5)
 								.ToList()
-					  )))
+						)))
 				.ForMember(d => d.Address, o => o.MapFrom(s => s.Address == null
 						? null
-						: new AddressResponse
+						: new Shared.DTOs.AddressResponse
 						{
 							Street = string.Join(", ", new[] { s.Address.StreetLine1, s.Address.StreetLine2 }
 									.Where(x => !string.IsNullOrWhiteSpace(x))),

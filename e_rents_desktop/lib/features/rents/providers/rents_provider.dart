@@ -108,6 +108,42 @@ class RentsProvider extends BaseProvider {
     }
   }
 
+  /// Helper to find the most recent booking for a given tenant (userId) and property
+  /// Returns bookingId or null if none exist
+  Future<int?> getLatestBookingIdForTenantProperty(int userId, int propertyId) async {
+    final paged = await executeWithState<PagedResult<Booking>>(() async {
+      final query = {
+        'UserId': userId.toString(),
+        'PropertyId': propertyId.toString(),
+        'SortBy': 'createdat',
+        'SortDirection': 'desc',
+        'Page': '1',
+        'PageSize': '1',
+      };
+      return await api.getPagedAndDecode<Booking>(
+        '/Bookings${api.buildQueryString(query)}',
+        Booking.fromJson,
+        authenticated: true,
+      );
+    });
+
+    if (paged != null && paged.items.isNotEmpty) {
+      return paged.items.first.bookingId;
+    }
+    return null;
+  }
+
+  Future<void> approveBooking(int bookingId) async {
+    final success = await executeWithState<bool>(() async {
+      await api.post('/Bookings/$bookingId/approve', {}, authenticated: true);
+      return true;
+    });
+
+    if (success == true) {
+      await refresh();
+    }
+  }
+
   // ─── Lease Extension Requests ───────────────────────────────────────────
 
   Future<List<LeaseExtensionRequest>> getExtensionRequests({String status = 'Pending'}) async {

@@ -10,22 +10,26 @@ using Microsoft.Extensions.Logging;
 using eRents.Features.Core;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.PaymentManagement.Services;
+using eRents.Features.Shared.Services;
 
 namespace eRents.Features.BookingManagement.Services;
 
 public class BookingService : BaseCrudService<Booking, BookingRequest, BookingResponse, BookingSearch>
 {
     private readonly ISubscriptionService? _subscriptionService;
+    private readonly INotificationService? _notificationService;
 
     public BookingService(
         ERentsContext context,
         IMapper mapper,
         ILogger<BookingService> logger,
         ICurrentUserService? currentUserService = null,
-        ISubscriptionService? subscriptionService = null)
+        ISubscriptionService? subscriptionService = null,
+        INotificationService? notificationService = null)
         : base(context, mapper, logger, currentUserService)
     {
         _subscriptionService = subscriptionService;
+        _notificationService = notificationService;
     }
 
     public async Task<BookingResponse> ExtendBookingAsync(int bookingId, BookingExtensionRequest request)
@@ -310,6 +314,35 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
     protected override async Task BeforeCreateAsync(Booking entity, BookingRequest request)
     {
+        // Infer UserId from authenticated user if not provided by client
+        if ((entity.UserId == 0 || entity.UserId == default) && CurrentUser != null)
+        {
+            var currentUserId = CurrentUser.GetUserIdAsInt();
+            if (currentUserId.HasValue)
+            {
+                entity.UserId = currentUserId.Value;
+            }
+        }
+
+        // Mobile-only restriction: owners cannot book their own properties via mobile client
+        if (CurrentUser?.IsDesktop != true)
+        {
+            var currentUserId = CurrentUser?.GetUserIdAsInt();
+            if (currentUserId.HasValue)
+            {
+                var ownerInfo = await Context.Set<Property>()
+                    .AsNoTracking()
+                    .Where(p => p.PropertyId == request.PropertyId)
+                    .Select(p => new { p.OwnerId })
+                    .FirstOrDefaultAsync();
+
+                if (ownerInfo != null && ownerInfo.OwnerId == currentUserId.Value)
+                {
+                    throw new InvalidOperationException("Owners cannot book their own properties.");
+                }
+            }
+        }
+
         // Optional domain checks (MinimumStayDays)
         if (request.EndDate.HasValue)
         {
@@ -382,6 +415,61 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
         await Context.SaveChangesAsync();
+        return Mapper.Map<BookingResponse>(entity);
+    }
+
+    public async Task<BookingResponse> ApproveBookingAsync(int bookingId)
+    {
+        // Only landlords/owners from desktop can approve
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            !(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+              string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("Only landlords can approve bookings.");
+        }
+
+        var entity = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .FirstOrDefaultAsync(x => x.BookingId == bookingId);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+
+        // If desktop landlord, ensure ownership
+        if (CurrentUser?.IsDesktop == true &&
+            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            {
+                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+            }
+        }
+
+        // Set status to Upcoming on approval (frontend treats Upcoming monthly bookings as accepted/pending start)
+        entity.Status = Domain.Models.Enums.BookingStatusEnum.Upcoming;
+        await Context.SaveChangesAsync();
+
+        // Notify tenant if service is available
+        if (_notificationService != null)
+        {
+            try
+            {
+                await _notificationService.CreateBookingNotificationAsync(
+                    entity.UserId,
+                    entity.BookingId,
+                    "Lease Accepted",
+                    "Your lease application was accepted by the landlord.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to send approval notification for booking {BookingId}", bookingId);
+            }
+        }
+
         return Mapper.Map<BookingResponse>(entity);
     }
 

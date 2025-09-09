@@ -39,7 +39,7 @@ class PropertyDetail {
     required this.name,
     this.description,
     required this.price,
-    this.currency = 'BAM',
+    this.currency = 'USD',
     this.averageRating,
     this.reviewCount,
     required this.imageIds,
@@ -93,6 +93,56 @@ class PropertyDetail {
       return [];
     }
 
+    PropertyRentalType parseRentalTypeVal(dynamic v) {
+      if (v is num) {
+        switch (v.toInt()) {
+          case 1:
+            return PropertyRentalType.daily;
+          case 2:
+            return PropertyRentalType.monthly;
+        }
+      }
+      final parsed = parseEnum<PropertyRentalType>(PropertyRentalType.values, v);
+      return parsed ?? PropertyRentalType.monthly;
+    }
+
+    PropertyType? parsePropertyTypeVal(dynamic v) {
+      if (v is num) {
+        switch (v.toInt()) {
+          case 1:
+            return PropertyType.apartment;
+          case 2:
+            return PropertyType.house;
+          case 3:
+            return PropertyType.studio;
+          case 4:
+            return PropertyType.villa;
+          case 5:
+            return PropertyType.room;
+        }
+      }
+      return parseEnum<PropertyType>(PropertyType.values, v);
+    }
+
+    PropertyStatus parseStatusVal(dynamic v) {
+      if (v is num) {
+        switch (v.toInt()) {
+          case 1:
+            return PropertyStatus.available;
+          case 2:
+            return PropertyStatus.rented; // Occupied -> rented
+          case 3:
+            return PropertyStatus.maintenance; // UnderMaintenance -> maintenance
+          case 4:
+            return PropertyStatus.unavailable;
+        }
+      }
+      final s = v?.toString().toLowerCase();
+      if (s == 'occupied') return PropertyStatus.rented;
+      if (s == 'undermaintenance' || s == 'under_maintenance' || s == 'under maintenance') return PropertyStatus.maintenance;
+      return parseEnum<PropertyStatus>(PropertyStatus.values, v) ?? PropertyStatus.available;
+    }
+
     final id = json['propertyId'] ?? json['PropertyId'] ?? json['id'];
     final owner = json['ownerId'] ?? json['OwnerId'];
 
@@ -102,7 +152,7 @@ class PropertyDetail {
       name: (json['name'] ?? json['Name'] ?? '').toString(),
       description: (json['description'] ?? json['Description'])?.toString(),
       price: parseDouble(json['price'] ?? json['Price']) ?? 0.0,
-      currency: (json['currency'] ?? json['Currency'] ?? 'BAM').toString(),
+      currency: (json['currency'] ?? json['Currency'] ?? 'USD').toString(),
       averageRating: parseDouble(json['averageRating'] ?? json['AverageRating']),
       reviewCount: json['reviewCount'] is int
           ? json['reviewCount']
@@ -115,9 +165,9 @@ class PropertyDetail {
       address: (json['address'] ?? json['Address']) is Map<String, dynamic>
           ? Address.fromJson((json['address'] ?? json['Address']) as Map<String, dynamic>)
           : null,
-      rentalType: parseEnum(PropertyRentalType.values, json['rentalType'] ?? json['RentingType']) ?? PropertyRentalType.monthly,
-      propertyType: parseEnum(PropertyType.values, json['propertyType'] ?? json['PropertyType']),
-      status: parseEnum(PropertyStatus.values, json['status'] ?? json['Status']) ?? PropertyStatus.available,
+      rentalType: parseRentalTypeVal(json['rentalType'] ?? json['RentingType']),
+      propertyType: parsePropertyTypeVal(json['propertyType'] ?? json['PropertyType']),
+      status: parseStatusVal(json['status'] ?? json['Status']),
       rooms: parseInt(json['rooms'] ?? json['Rooms'] ?? '0'),
       area: parseDouble(json['area'] ?? json['Area']),
       dailyRate: parseDouble(json['dailyRate'] ?? json['DailyRate']),

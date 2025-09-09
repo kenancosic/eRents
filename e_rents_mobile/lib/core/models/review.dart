@@ -76,20 +76,59 @@ class Review {
       lastModified = DateTime.parse(json['UpdatedAt'] as String);
     }
     
-    // Handle review type from both formats
+    // Handle review type from both formats (string or numeric)
     ReviewType reviewType;
-    if (json['reviewType'] != null) {
-      reviewType = ReviewType.values.firstWhere(
-        (e) => e.name.toLowerCase() == (json['reviewType'] as String).toLowerCase(),
-        orElse: () => ReviewType.propertyReview,
-      );
-    } else if (json['ReviewType'] != null) {
-      // Handle enum from DTO format
-      final reviewTypeStr = (json['ReviewType'] as String?)?.toLowerCase();
-      reviewType = ReviewType.values.firstWhere(
-        (e) => e.name.toLowerCase() == reviewTypeStr,
-        orElse: () => ReviewType.propertyReview,
-      );
+    dynamic rtClient = json['reviewType'];
+    dynamic rtDto = json['ReviewType'];
+    if (rtClient != null) {
+      if (rtClient is String) {
+        reviewType = ReviewType.values.firstWhere(
+          (e) => e.name.toLowerCase() == rtClient.toLowerCase(),
+          orElse: () => ReviewType.propertyReview,
+        );
+      } else if (rtClient is int) {
+        // Backend numeric mapping (Domain enum):
+        // 0 = PropertyReview, 1 = TenantReview, 2 = ResponseReview
+        switch (rtClient) {
+          case 0:
+            reviewType = ReviewType.propertyReview;
+            break;
+          case 1:
+            reviewType = ReviewType.tenantReview;
+            break;
+          case 2:
+            reviewType = ReviewType.responseReview;
+            break;
+          default:
+            reviewType = ReviewType.propertyReview;
+        }
+      } else {
+        reviewType = ReviewType.propertyReview;
+      }
+    } else if (rtDto != null) {
+      if (rtDto is String) {
+        final reviewTypeStr = rtDto.toLowerCase();
+        reviewType = ReviewType.values.firstWhere(
+          (e) => e.name.toLowerCase() == reviewTypeStr,
+          orElse: () => ReviewType.propertyReview,
+        );
+      } else if (rtDto is int) {
+        switch (rtDto) {
+          case 0:
+            reviewType = ReviewType.propertyReview;
+            break;
+          case 1:
+            reviewType = ReviewType.tenantReview;
+            break;
+          case 2:
+            reviewType = ReviewType.responseReview;
+            break;
+          default:
+            reviewType = ReviewType.propertyReview;
+        }
+      } else {
+        reviewType = ReviewType.propertyReview;
+      }
     } else {
       reviewType = ReviewType.propertyReview;
     }

@@ -15,7 +15,7 @@ public partial class Property : BaseEntity
 
     public decimal Price { get; set; }
 
-    public string Currency { get; set; } = "BAM";
+    public string Currency { get; set; } = "USD";
 
     // Replaced Status string with enum
     public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;

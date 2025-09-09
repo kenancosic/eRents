@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 
 class PropertyPriceFooter extends StatelessWidget {
   final PropertyDetail property;
@@ -15,6 +16,10 @@ class PropertyPriceFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDaily = property.rentalType == PropertyRentalType.daily;
+    final priceAmount = isDaily ? (property.dailyRate ?? property.price) : property.price;
+    final suffix = isDaily ? '/day' : '/month';
+    final currency = property.currency.isNotEmpty ? ' ${property.currency}' : '';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -36,14 +41,14 @@ class PropertyPriceFooter extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '\$${property.price}/month',
+                    '${priceAmount.toStringAsFixed(0)}$currency $suffix',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).primaryColor,
                         ),
                   ),
                   Text(
-                    'All bills included',
+                    isDaily ? 'Flexible daily booking' : 'All bills included',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey,
                         ),
@@ -57,7 +62,7 @@ class PropertyPriceFooter extends StatelessWidget {
                   isLoading: false,
                   onPressed: onCheckoutPressed,
                   label: Text(
-                    'Checkout',
+                    isDaily ? 'Book Now' : 'Apply',
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge

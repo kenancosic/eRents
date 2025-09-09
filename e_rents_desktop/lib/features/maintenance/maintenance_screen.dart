@@ -260,7 +260,7 @@ class MaintenanceQuickActionsSheet extends StatelessWidget {
             _buildDetailRow(
               context,
               'Cost',
-              '${issue.cost!.toStringAsFixed(2)} BAM',
+              '${issue.cost!.toStringAsFixed(2)} USD',
               Icons.attach_money,
             ),
 

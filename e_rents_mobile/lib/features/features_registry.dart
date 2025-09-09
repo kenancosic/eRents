@@ -13,10 +13,10 @@ import 'checkout/providers/checkout_provider.dart';
 import 'saved/saved_provider.dart';
 import 'profile/providers/user_profile_provider.dart';
 import 'profile/providers/user_bookings_provider.dart';
-import 'profile/providers/payment_methods_provider.dart';
 import 'explore/providers/property_search_provider.dart';
 import 'explore/providers/featured_properties_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'users/providers/public_user_provider.dart';
 
 // Core providers
 import '../core/base/navigation_provider.dart';
@@ -42,24 +42,8 @@ class FeaturesRegistry {
   /// This method handles all provider registration, including core services
   static List<InheritedProvider> createFeatureProviders(ProviderDependencies deps) {
     return [
-      // Core Services - provided as values since they're already instantiated
-      Provider<ApiService>.value(value: deps.apiService),
-      Provider<SecureStorageService>.value(value: deps.secureStorage),
-      
-      // Core System Providers
-      ChangeNotifierProvider<NavigationProvider>(
-        create: (_) => NavigationProvider(),
-      ),
-      
-      ChangeNotifierProvider<ErrorProvider>(
-        create: (_) => ErrorProvider(),
-      ),
-      
-      // Core Authentication Provider (must be first for dependency chain)
-      ChangeNotifierProvider<AuthProvider>(
-        create: (_) => AuthProvider(deps.apiService, deps.secureStorage),
-      ),
-      
+      // Core providers are expected to be provided in main.dart to avoid duplicates.
+      // Feature Providers (alphabetical order for maintainability)
       // Feature Providers (alphabetical order for maintainability)
       ChangeNotifierProvider<BackendChatProvider>(
         create: (_) => BackendChatProvider(deps.apiService),
@@ -82,10 +66,6 @@ class FeaturesRegistry {
         create: (_) => UserBookingsProvider(deps.apiService),
       ),
       
-      ChangeNotifierProvider<PaymentMethodsProvider>(
-        create: (_) => PaymentMethodsProvider(deps.apiService),
-      ),
-      
       // Explore Feature Providers
       ChangeNotifierProvider<PropertySearchProvider>(
         create: (_) => PropertySearchProvider(deps.apiService),
@@ -102,6 +82,11 @@ class FeaturesRegistry {
       
       ChangeNotifierProvider<SavedProvider>(
         create: (_) => SavedProvider(deps.apiService),
+      ),
+      
+      // Public user profile feature
+      ChangeNotifierProvider<PublicUserProvider>(
+        create: (_) => PublicUserProvider(deps.apiService),
       ),
     ];
   }

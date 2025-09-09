@@ -12,7 +12,7 @@ public class FinancialReportResponse
     public DateTime? EndDate { get; set; }
     public RentalType? RentalType { get; set; }
     public decimal TotalPrice { get; set; }
-    public string Currency { get; set; } = "BAM";
+    public string Currency { get; set; } = "USD";
     public BookingStatusEnum Status { get; set; }
     
     // Grouping fields (populated when grouped)

@@ -135,6 +135,15 @@ class User {
       }
     }
     
+    // Build address from either legacy nested object or new flattened fields
+    Address? parsedAddress;
+    if (json['addressDetail'] != null && json['addressDetail'] is Map<String, dynamic>) {
+      parsedAddress = Address.fromJson(json['addressDetail'] as Map<String, dynamic>);
+    } else if (json.containsKey('streetLine1') || json.containsKey('city') || json.containsKey('country')) {
+      // Backend UserResponse flattens address fields on root; Address.fromJson can handle flat maps
+      parsedAddress = Address.fromJson(json);
+    }
+
     return User(
       userId: userId,
       username: json['username']?.toString() ?? '',
@@ -148,9 +157,7 @@ class User {
       password: json['password']?.toString(),
       token: json['resetToken']?.toString(),
       isPublic: isPublic,
-      address: json['addressDetail'] != null
-          ? Address.fromJson(json['addressDetail'] as Map<String, dynamic>)
-          : null,
+      address: parsedAddress,
       // New fields parsing
       userTypeId: userTypeId,
       createdAt: createdAt,

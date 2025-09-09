@@ -389,7 +389,7 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
       name: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       price: parsedPrice,
-      currency: base?.currency ?? 'BAM',
+      currency: base?.currency ?? 'USD',
       facilities: base?.facilities,
       status: _selectedStatus,
       dateAdded: base?.dateAdded,

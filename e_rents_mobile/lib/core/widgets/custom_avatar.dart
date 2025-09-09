@@ -38,6 +38,13 @@ class CustomAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider avatarImage;
+    if (imageUrl.startsWith('assets/')) {
+      avatarImage = AssetImage(imageUrl);
+    } else {
+      avatarImage = NetworkImage(imageUrl);
+    }
+
     final avatar = GestureDetector(
       onTap: onTap,
       child: Container(
@@ -57,7 +64,7 @@ class CustomAvatar extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(borderWidth),
           child: CircleAvatar(
-            backgroundImage: AssetImage(imageUrl),
+            backgroundImage: avatarImage,
             radius: size / 2 - borderWidth,
           ),
         ),

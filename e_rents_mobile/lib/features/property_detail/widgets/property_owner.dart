@@ -3,200 +3,82 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
-import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_snack_bar.dart';
+// Removed legacy Make Offer flow; booking proceeds via Checkout
 
 class PropertyOwnerSection extends StatelessWidget {
+  final int? ownerId;
   final int? propertyId; // Add property ID for offers
   final String? ownerName;
   final String? ownerEmail;
+  final String? profileImageUrl;
 
   const PropertyOwnerSection({
     super.key,
+    this.ownerId,
     this.propertyId,
     this.ownerName,
     this.ownerEmail,
+    this.profileImageUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          children: [
-            const CustomAvatar(
-              imageUrl: 'assets/images/user-image.png',
-              size: 40,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ownerName ?? 'Facility Owner',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    'Property Owner',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: () => _contactPropertyOwner(context),
-              icon: SvgPicture.asset('assets/icons/message.svg'),
-              tooltip: 'Message Owner',
-            ),
-          ],
-        ),
-        if (propertyId != null) ...[
-          const SizedBox(height: 12),
-          Row(
+        InkWell(
+          onTap: () {
+            if (ownerId != null && ownerId! > 0) {
+              context.push('/user/${ownerId!.toString()}', extra: {
+                'displayName': ownerName ?? 'User',
+              });
+            }
+          },
+          child: Row(
             children: [
+              CustomAvatar(
+                imageUrl: profileImageUrl ?? 'assets/images/user-image.png',
+                size: 40,
+              ),
+              const SizedBox(width: 16),
               Expanded(
-                child: CustomButton(
-                  label: 'Make Offer',
-                  isLoading: false,
-                  onPressed: () => _makePropertyOffer(context),
-                  icon: Icons.local_offer,
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ownerName ?? 'Facility Owner',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      ownerEmail ?? 'Property Owner',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
+              ),
+              IconButton(
+                onPressed: () => _contactPropertyOwner(context),
+                icon: SvgPicture.asset('assets/icons/message.svg'),
+                tooltip: 'Message Owner',
               ),
             ],
           ),
-        ],
+        ),
+        // Legacy 'Make Offer' flow removed in favor of direct Checkout booking.
       ],
     );
   }
 
   void _contactPropertyOwner(BuildContext context) {
-    context.push('/chat', extra: {
-      'name': ownerName ?? 'Property Owner',
-      'imageUrl': 'assets/images/user-image.png',
-    });
-  }
-
-  void _makePropertyOffer(BuildContext context) {
-    if (propertyId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        CustomSnackBar.showErrorSnackBar(
-          'Unable to send offer - property information not available',
-        ),
-      );
-      return;
+    if (ownerId != null && ownerId! > 0) {
+      context.push('/chat/${ownerId!.toString()}', extra: {
+        'name': ownerName ?? 'Property Owner',
+      });
+    } else {
+      context.push('/chat', extra: {
+        'name': ownerName ?? 'Property Owner',
+        'imageUrl': profileImageUrl ?? 'assets/images/user-image.png',
+      });
     }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return _PropertyOfferDialog(
-          propertyId: propertyId!,
-          ownerName: ownerName ?? 'Property Owner',
-        );
-      },
-    );
-  }
-}
-
-class _PropertyOfferDialog extends StatefulWidget {
-  final int propertyId;
-  final String ownerName;
-
-  const _PropertyOfferDialog({
-    required this.propertyId,
-    required this.ownerName,
-  });
-
-  @override
-  State<_PropertyOfferDialog> createState() => _PropertyOfferDialogState();
-}
-
-class _PropertyOfferDialogState extends State<_PropertyOfferDialog> {
-  final TextEditingController _messageController = TextEditingController();
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _sendOffer() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Replace with actual API call when property offer service is implemented
-      // For now, simulate the API call
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Show success message
-      if (mounted) {
-        context.pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          CustomSnackBar.showSuccessSnackBar(
-            'Property offer sent successfully!',
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          CustomSnackBar.showErrorSnackBar(
-            'Failed to send offer. Please try again.',
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('Make Offer to ${widget.ownerName}'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Express your interest in this property with a personal message:',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _messageController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              hintText:
-                  'Hi! I\'m interested in your property. Could we discuss rental terms?',
-              border: OutlineInputBorder(),
-              labelText: 'Your message (optional)',
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => context.pop(),
-          child: const Text('Cancel'),
-        ),
-        CustomButton(
-          label: _isLoading ? 'Sending...' : 'Send Offer',
-          isLoading: _isLoading,
-          onPressed: _isLoading ? () {} : () => _sendOffer(),
-        ),
-      ],
-    );
   }
 }

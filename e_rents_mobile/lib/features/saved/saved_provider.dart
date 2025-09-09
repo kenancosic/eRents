@@ -44,7 +44,7 @@ class SavedProvider extends BaseProvider {
           propertyId: (json['propertyId'] ?? json['PropertyId']) as int,
           name: (json['name'] ?? json['Name'] ?? '').toString(),
           price: ((json['price'] ?? json['Price']) as num?)?.toDouble() ?? 0,
-          currency: (json['currency'] ?? json['Currency'] ?? 'BAM').toString(),
+          currency: (json['currency'] ?? json['Currency'] ?? 'USD').toString(),
           averageRating: ((json['averageRating'] ?? json['AverageRating']) as num?)?.toDouble(),
           coverImageId: (json['coverImageId'] ?? json['CoverImageId'] ?? 0) as int,
           address: Address(

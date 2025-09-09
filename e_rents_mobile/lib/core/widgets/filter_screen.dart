@@ -26,6 +26,11 @@ class _FilterScreenState extends State<FilterScreen> {
   String _rentalPeriod = 'Monthly';
   final List<String> _selectedFacilities = [];
 
+  // City and Sort state
+  final TextEditingController _cityController = TextEditingController();
+  String _city = '';
+  String _priceSort = 'None'; // 'None' | 'LowToHigh' | 'HighToLow'
+
   // Constants
   final List<String> _propertyTypes = [
     'Any',
@@ -63,7 +68,32 @@ class _FilterScreenState extends State<FilterScreen> {
       _selectedFacilities.clear();
       _selectedFacilities.addAll(
           List<String>.from(widget.initialFilters!['facilities'] ?? ['Any']));
+
+      // City
+      _city = (widget.initialFilters!['city'] ?? widget.initialFilters!['City'] ?? '').toString();
+      _cityController.text = _city;
+
+      // Sort by price
+      final sortBy = (widget.initialFilters!['sortBy'] ?? widget.initialFilters!['SortBy'])
+          ?.toString()
+          .toLowerCase();
+      final sortDir = (widget.initialFilters!['sortDirection'] ?? widget.initialFilters!['SortDirection'])
+          ?.toString()
+          .toLowerCase();
+      if (sortBy == 'price') {
+        if (sortDir == 'asc') {
+          _priceSort = 'LowToHigh';
+        } else if (sortDir == 'desc') {
+          _priceSort = 'HighToLow';
+        }
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _cityController.dispose();
+    super.dispose();
   }
 
   void _resetFilters() {
@@ -73,25 +103,63 @@ class _FilterScreenState extends State<FilterScreen> {
       _rentalPeriod = 'Monthly';
       _selectedFacilities.clear();
       _selectedFacilities.add('Any');
+      // Clear city and sort selections
+      _city = '';
+      _cityController.text = '';
+      _priceSort = 'None';
     });
   }
 
   void _applyFilters() {
-    final filters = {
-      'propertyType': _selectedPropertyType,
-      'priceRange': _priceRange,
-      'rentalPeriod': _rentalPeriod,
-      'facilities': _selectedFacilities,
-      'dateFilterEnabled': _isDateFilterEnabled,
-      'startDate': _isDateFilterEnabled ? _startDate : null,
-      'endDate':
-          _isDateFilterEnabled && (_useEndDate || _rentalPeriod == 'Per day')
-              ? _endDate
-              : null,
-      'isMonthlyRental': _rentalPeriod == 'Monthly',
-      'useEndDate': _useEndDate,
+    // Map UI selections to provider/backend-friendly keys
+    String? mapPropertyType(String value) {
+      switch (value) {
+        case 'Apartment':
+        case 'House':
+        case 'Studio':
+          return value; // valid backend enum names
+        case 'Cabin':
+          // Not a backend enum; skip
+          return null;
+        case 'Any':
+        default:
+          return null;
+      }
+    }
+
+    String? mapRentingType(String value) {
+      switch (value) {
+        case 'Monthly':
+          return 'Monthly';
+        case 'Per day':
+          return 'Daily';
+        default:
+          return null; // 'Any' or unknown
+      }
+    }
+
+    final mapped = <String, dynamic>{
+      // Price range maps to min/maxPrice recognized by PropertySearchProvider._translateFilters()
+      'minPrice': _priceRange.start.round(),
+      'maxPrice': _priceRange.end.round(),
+      // Property type maps to backend enum name when applicable
+      if (mapPropertyType(_selectedPropertyType) != null)
+        'propertyType': mapPropertyType(_selectedPropertyType),
+      // Renting type maps to backend enum name
+      if (mapRentingType(_rentalPeriod) != null)
+        'rentingType': mapRentingType(_rentalPeriod),
+      // City override
+      if (_city.trim().isNotEmpty) 'city': _city.trim(),
+      // Sort by price
+      if (_priceSort != 'None') 'sortBy': 'price',
+      if (_priceSort == 'LowToHigh') 'sortDirection': 'asc',
+      if (_priceSort == 'HighToLow') 'sortDirection': 'desc',
+      // Dates are optional and currently not supported server-side for search; include for future use
+      if (_isDateFilterEnabled) 'startDate': _startDate.toIso8601String(),
+      if (_isDateFilterEnabled && (_useEndDate || _rentalPeriod == 'Per day'))
+        'endDate': _endDate.toIso8601String(),
     };
-    widget.onApplyFilters(filters);
+    widget.onApplyFilters(mapped);
     context.pop();
   }
 
@@ -155,6 +223,24 @@ class _FilterScreenState extends State<FilterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // City Section
+              Text(
+                'City',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _cityController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter city (optional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.location_city),
+                ),
+                onChanged: (val) => _city = val,
+              ),
+
+              const SizedBox(height: 24),
+
               // Property Type Section
               Text(
                 'Property type',

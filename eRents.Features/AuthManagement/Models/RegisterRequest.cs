@@ -38,6 +38,21 @@ public sealed class RegisterRequest
     public string? PhoneNumber { get; set; }
 
     /// <summary>
+    /// Address - required fields for registration
+    /// </summary>
+    [Required]
+    [StringLength(100)]
+    public string City { get; set; } = null!;
+
+    [Required]
+    [StringLength(20)]
+    public string ZipCode { get; set; } = null!;
+
+    [Required]
+    [StringLength(100)]
+    public string Country { get; set; } = null!;
+
+    /// <summary>
     /// User type - defaults to Guest
     /// </summary>
     public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;

@@ -79,7 +79,7 @@ public class FinancialReportService : BaseReadService<Booking, FinancialReportRe
                 EndDate = b.EndDate.HasValue ? b.EndDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null,
                 RentalType = b.Property.RentingType,
                 TotalPrice = b.TotalPrice,
-                Currency = "BAM",
+                Currency = "USD",
                 Status = b.Status
             })
             .ToListAsync();

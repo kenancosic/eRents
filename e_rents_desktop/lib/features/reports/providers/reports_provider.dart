@@ -236,7 +236,7 @@ class ReportsProvider extends BaseProvider {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text('Total Revenue:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text('${reportData.totalRevenue.toStringAsFixed(2)} BAM'),
+                      pw.Text('${reportData.totalRevenue.toStringAsFixed(2)} USD'),
                     ],
                   ),
                   pw.SizedBox(height: 4),
@@ -252,7 +252,7 @@ class ReportsProvider extends BaseProvider {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text('Average Booking Value:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text('${reportData.averageBookingValue.toStringAsFixed(2)} BAM'),
+                      pw.Text('${reportData.averageBookingValue.toStringAsFixed(2)} USD'),
                     ],
                   ),
                 ],
@@ -287,7 +287,7 @@ class ReportsProvider extends BaseProvider {
                       _buildTableCell('Start Date', isHeader: true),
                       _buildTableCell('End Date', isHeader: true),
                       _buildTableCell('Type', isHeader: true),
-                      _buildTableCell('Price (BAM)', isHeader: true),
+                      _buildTableCell('Price (USD)', isHeader: true),
                     ],
                   ),
                   // Data rows
@@ -320,7 +320,7 @@ class ReportsProvider extends BaseProvider {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(entry.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                    pw.Text('${entry.value.toStringAsFixed(2)} BAM'),
+                    pw.Text('${entry.value.toStringAsFixed(2)} USD'),
                   ],
                 ),
               ),

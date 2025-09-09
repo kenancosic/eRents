@@ -232,6 +232,37 @@ namespace eRents.Features.MaintenanceManagement.Services
 
         protected override async Task BeforeCreateAsync(MaintenanceIssue entity, MaintenanceIssueRequest request)
         {
+            // Mobile (non-desktop) clients: auto-tenant complaint and enforce tenant-only creation
+            if (CurrentUser?.IsDesktop != true)
+            {
+                // Infer reporter from the authenticated user
+                var currentUserId = CurrentUser?.GetUserIdAsInt();
+                if (!currentUserId.HasValue)
+                {
+                    throw new InvalidOperationException("Authentication required");
+                }
+
+                // Force tenant-originated flags regardless of client payload
+                request.IsTenantComplaint = true;
+                request.ReportedByUserId = currentUserId.Value;
+
+                // Only allow creation if the current user is a tenant of this property (active booking/lease)
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+                var isCurrentTenant = await Context.Set<Booking>()
+                    .AsNoTracking()
+                    .Where(b => b.PropertyId == entity.PropertyId && b.UserId == currentUserId.Value)
+                    .Where(b => b.Status != BookingStatusEnum.Cancelled)
+                    .Where(b => b.StartDate <= today)
+                    .Where(b => !b.EndDate.HasValue || b.EndDate!.Value >= today)
+                    .AnyAsync();
+
+                if (!isCurrentTenant)
+                {
+                    throw new InvalidOperationException("Only current tenants can file maintenance requests for this property.");
+                }
+            }
+
             // Ensure desktop owner/landlord can only create issues under their own properties
             if (CurrentUser?.IsDesktop == true &&
                 !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&

@@ -8,10 +8,13 @@ import 'package:e_rents_mobile/features/chat/screens/conversation_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/personal_details_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/profile_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/payment_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/change_password_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/property_details_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/report_issue_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/manage_booking_screen.dart';
+import 'package:e_rents_mobile/features/users/screens/public_user_screen.dart';
 import 'package:e_rents_mobile/features/saved/saved_screen.dart';
 import 'package:e_rents_mobile/core/widgets/filter_screen.dart';
 import 'package:e_rents_mobile/features/checkout/checkout_screen.dart';
@@ -47,11 +50,16 @@ class AppRouter {
     router = GoRouter(
       initialLocation: '/login',
       navigatorKey: _rootNavigatorKey,
+      refreshListenable: authProvider,
       redirect: (context, state) {
         final isAuthenticated = authProvider.isAuthenticated;
-        final isAuthRoute = state.uri.path == '/login' ||
-            state.uri.path == '/signup' ||
-            state.uri.path == '/forgot_password';
+        final path = state.uri.path;
+        final isAuthRoute = path == '/login' ||
+            path == '/signup' ||
+            path == '/forgot_password' ||
+            path == '/verification' ||
+            path == '/create-password' ||
+            path == '/password_reset_confirmation';
 
         if (isAuthenticated && isAuthRoute) {
           return '/';
@@ -154,6 +162,18 @@ class AppRouter {
                         name: 'personal_details', // name was personal_details
                         builder: (context, state) =>
                             const PersonalDetailsScreen()),
+                    GoRoute(
+                        path: 'change-password',
+                        name: 'change_password',
+                        builder: (context, state) => const ChangePasswordScreen()),
+                    GoRoute(
+                        path: 'payment',
+                        name: 'profile_payment',
+                        builder: (context, state) => const PaymentScreen()),
+                    GoRoute(
+                        path: 'booking-history',
+                        name: 'profile_booking_history',
+                        builder: (context, state) => const BookingHistoryScreen()),
                   ]),
               GoRoute(
                   path: '/faq', // FAQ as part of the profile shell
@@ -162,6 +182,17 @@ class AppRouter {
             ],
           ),
         ],
+      ),
+      // Public user profile
+      GoRoute(
+        path: '/user/:id',
+        name: 'public_user',
+        builder: (context, state) {
+          final id = int.parse(state.pathParameters['id']!);
+          final extras = state.extra as Map<String, dynamic>?;
+          final displayName = extras?['displayName'] as String?;
+          return PublicUserScreen(userId: id, displayName: displayName);
+        },
       ),
 
       // Top-level routes (not part of the bottom navigation bar)

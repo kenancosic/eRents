@@ -1,4 +1,6 @@
 import 'package:e_rents_mobile/features/chat/backend_chat_provider.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -81,10 +83,38 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final chat = context.watch<BackendChatProvider>();
+    final api = context.read<ApiService>();
+    // Find matching contact if available
+    var contact = chat.contacts.where((u) => (u.userId ?? 0) == widget.contactId);
+    final hasContact = contact.isNotEmpty;
+    final avatarUrl = hasContact && (contact.first.profileImageId != null) && (contact.first.profileImageId! > 0)
+        ? api.makeAbsoluteUrl('/api/Images/${contact.first.profileImageId}/content')
+        : 'assets/images/user-image.png';
+    final displayName = widget.contactName;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
-        title: Text(widget.contactName),
+        title: GestureDetector(
+          onTap: () {
+            context.push('/user/${widget.contactId.toString()}', extra: {
+              'displayName': displayName,
+            });
+          },
+          child: Row(
+            children: [
+              CustomAvatar(imageUrl: avatarUrl, size: 32),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  displayName,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: Column(
         children: [

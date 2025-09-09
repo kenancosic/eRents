@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 /// Provider for managing user profile data
 ///
@@ -79,7 +78,7 @@ class UserProfileProvider extends BaseProvider {
 
     final user = await executeWithState(() async {
       debugPrint('UserProfileProvider: Loading current user');
-      final response = await api.get('/Profile', authenticated: true);
+      final response = await api.get('/profile', authenticated: true);
 
       if (response.statusCode == 200) {
         final userData = jsonDecode(response.body);
@@ -123,9 +122,28 @@ class UserProfileProvider extends BaseProvider {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Updating user profile');
 
+      // Build flattened payload matching backend UserRequest
+      final Map<String, dynamic> payload = {
+        'username': updatedUser.username,
+        'email': updatedUser.email,
+        'firstName': updatedUser.firstName,
+        'lastName': updatedUser.lastName,
+        'phoneNumber': updatedUser.phoneNumber,
+        'profileImageId': updatedUser.profileImageId,
+        'isPublic': updatedUser.isPublic,
+        'streetLine1': updatedUser.address?.streetLine1,
+        'streetLine2': updatedUser.address?.streetLine2,
+        'city': updatedUser.address?.city,
+        'state': updatedUser.address?.state,
+        'country': updatedUser.address?.country,
+        'postalCode': updatedUser.address?.postalCode,
+        'latitude': updatedUser.address?.latitude,
+        'longitude': updatedUser.address?.longitude,
+      };
+
       final response = await api.put(
-        '/Profile',
-        updatedUser.toJson(),
+        '/profile',
+        payload,
         authenticated: true,
       );
 
@@ -175,9 +193,28 @@ class UserProfileProvider extends BaseProvider {
         phoneNumber: phoneNumber ?? _currentUser!.phoneNumber,
       );
 
+      // Build flattened payload matching backend UserRequest
+      final Map<String, dynamic> payload = {
+        'username': updatedUser.username,
+        'email': updatedUser.email,
+        'firstName': updatedUser.firstName,
+        'lastName': updatedUser.lastName,
+        'phoneNumber': updatedUser.phoneNumber,
+        'profileImageId': updatedUser.profileImageId,
+        'isPublic': updatedUser.isPublic,
+        'streetLine1': updatedUser.address?.streetLine1,
+        'streetLine2': updatedUser.address?.streetLine2,
+        'city': updatedUser.address?.city,
+        'state': updatedUser.address?.state,
+        'country': updatedUser.address?.country,
+        'postalCode': updatedUser.address?.postalCode,
+        'latitude': updatedUser.address?.latitude,
+        'longitude': updatedUser.address?.longitude,
+      };
+
       final response = await api.put(
-        '/Profile',
-        updatedUser.toJson(),
+        '/profile',
+        payload,
         authenticated: true,
       );
 
@@ -226,7 +263,7 @@ class UserProfileProvider extends BaseProvider {
         payload['city'] = city.trim();
       }
 
-      final response = await api.put('/Profile', payload, authenticated: true);
+      final response = await api.put('/profile', payload, authenticated: true);
 
       if (response.statusCode == 200) {
         // Refresh to ensure we have latest server-side values
@@ -259,7 +296,7 @@ class UserProfileProvider extends BaseProvider {
         throw Exception('No current user to update');
       }
       final response = await api.put(
-        '/Profile',
+        '/profile',
         {
           'username': _currentUser!.username,
           'email': _currentUser!.email,
@@ -281,6 +318,32 @@ class UserProfileProvider extends BaseProvider {
     }, errorMessage: 'Failed to set city on profile');
   }
 
+  /// Change password for current user
+  ///
+  /// Calls PUT /api/users/change-password with { oldPassword, newPassword, confirmPassword }
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    return await executeWithStateForSuccess(() async {
+      debugPrint('UserProfileProvider: Changing password');
+      final response = await api.put(
+        '/users/change-password',
+        {
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+        authenticated: true,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to change password');
+      }
+    }, errorMessage: 'Failed to change password');
+  }
+
   /// Upload profile image
   ///
   /// Uploads a new profile image for the current user.
@@ -295,32 +358,75 @@ class UserProfileProvider extends BaseProvider {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Uploading profile image');
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${api.baseUrl}/users/current/profile-image'),
+      // Ensure current user is loaded (needed for profile update payload)
+      if (_currentUser == null) {
+        await loadCurrentUser();
+      }
+      if (_currentUser == null) {
+        throw Exception('Unable to load current user for profile update');
+      }
+
+      // Prepare image payload for /api/images (JSON with base64-encoded bytes)
+      final bytes = await imageFile.readAsBytes();
+      final b64 = base64Encode(bytes);
+      final filePath = imageFile.path;
+      final fileName = filePath.split('/').last.split('\\').last; // handle both separators
+      String contentType = 'image/jpeg';
+      final lower = fileName.toLowerCase();
+      if (lower.endsWith('.png')) contentType = 'image/png';
+      if (lower.endsWith('.webp')) contentType = 'image/webp';
+
+      final imgResponse = await api.post(
+        '/images',
+        {
+          'fileName': fileName,
+          'contentType': contentType,
+          'imageData': b64,
+          'isCover': false,
+        },
+        authenticated: true,
       );
 
-      final token = await api.secureStorageService.getToken();
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+      if (imgResponse.statusCode != 200 && imgResponse.statusCode != 201) {
+        debugPrint('UserProfileProvider: Failed to upload image to /images');
+        throw Exception('Failed to upload image');
       }
-      request.headers['Content-Type'] = 'multipart/form-data';
 
-      request.files.add(await http.MultipartFile.fromPath(
-        'image',
-        imageFile.path,
-      ));
+      final imgJson = jsonDecode(imgResponse.body) as Map<String, dynamic>;
+      final imageId = imgJson['imageId'] is int
+          ? imgJson['imageId']
+          : int.tryParse(imgJson['imageId']?.toString() ?? '');
+      if (imageId == null) {
+        throw Exception('Invalid image response');
+      }
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
+      // Now update user profile with new profileImageId via /api/profile
+      final updatePayload = {
+        'username': _currentUser!.username,
+        'email': _currentUser!.email,
+        'firstName': _currentUser!.firstName,
+        'lastName': _currentUser!.lastName,
+        'phoneNumber': _currentUser!.phoneNumber,
+        'profileImageId': imageId,
+        'isPublic': _currentUser!.isPublic,
+        // Preserve address fields (flattened) to avoid data loss
+        'streetLine1': _currentUser!.address?.streetLine1,
+        'streetLine2': _currentUser!.address?.streetLine2,
+        'city': _currentUser!.address?.city,
+        'state': _currentUser!.address?.state,
+        'country': _currentUser!.address?.country,
+        'postalCode': _currentUser!.address?.postalCode,
+        'latitude': _currentUser!.address?.latitude,
+        'longitude': _currentUser!.address?.longitude,
+      };
 
-      if (response.statusCode == 200) {
-        // Update user profile with new image data
+      final profResp = await api.put('/profile', updatePayload, authenticated: true);
+      if (profResp.statusCode == 200) {
         await loadCurrentUser(forceRefresh: true);
-        debugPrint('UserProfileProvider: Profile image uploaded successfully');
+        debugPrint('UserProfileProvider: Profile image updated successfully');
       } else {
-        debugPrint('UserProfileProvider: Failed to upload profile image');
-        throw Exception('Failed to upload profile image');
+        debugPrint('UserProfileProvider: Failed to update profile with image');
+        throw Exception('Failed to update profile image');
       }
     }, errorMessage: 'Failed to upload profile image');
 

@@ -47,5 +47,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires camera access to let you take a profile photo during signup.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires photo library access to let you choose a profile photo during signup.</string>
 </dict>
 </plist>

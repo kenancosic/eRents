@@ -2,6 +2,7 @@ import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -167,9 +168,9 @@ class CustomSlidingDrawer extends StatelessWidget {
 
           if (confirmLogout == true) {
             if (!context.mounted) return;
-            // Note: logout functionality should be handled by AuthService/AuthProvider
-            // await context.read<UserDetailProvider>().logout();
-            // For now, just navigate to login
+            // Clear tokens and user state
+            await context.read<AuthProvider>().logout();
+            await context.read<UserProfileProvider>().logout();
             if (!context.mounted) return;
             context.go('/login');
           }

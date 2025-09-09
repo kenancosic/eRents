@@ -14,7 +14,7 @@ public partial class Subscription : BaseEntity
     
     // Monthly amount to charge
     public decimal MonthlyAmount { get; set; }
-    public string Currency { get; set; } = "BAM";
+    public string Currency { get; set; } = "USD";
     
     // Subscription dates
     public DateOnly StartDate { get; set; }

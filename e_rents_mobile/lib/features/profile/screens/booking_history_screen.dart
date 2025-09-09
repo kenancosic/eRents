@@ -106,7 +106,9 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(bookingsProvider.errorMessage ?? 'Failed to load bookings.'),
+                  Text(bookingsProvider.errorMessage.isNotEmpty
+                      ? bookingsProvider.errorMessage
+                      : 'Failed to load bookings.'),
                   ElevatedButton(
                     onPressed: () => bookingsProvider.loadUserBookings(),
                     child: const Text('Try Again'),

@@ -123,6 +123,24 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 
 	protected override async Task BeforeCreateAsync(Review entity, ReviewRequest request)
 	{
+		// Mobile-only restriction: owners cannot review their own properties from mobile client
+		if (CurrentUser?.IsDesktop != true && request.PropertyId.HasValue)
+		{
+			var currentUserId = CurrentUser?.GetUserIdAsInt();
+			if (currentUserId.HasValue)
+			{
+				var prop = await Context.Set<Property>()
+					.AsNoTracking()
+					.Select(p => new { p.PropertyId, p.OwnerId })
+					.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
+
+				if (prop != null && prop.OwnerId == currentUserId.Value)
+				{
+					throw new InvalidOperationException("Owners cannot review their own properties.");
+				}
+			}
+		}
+
 		// Enforce thread/parent existence if reply
 		if (request.ParentReviewId.HasValue)
 		{

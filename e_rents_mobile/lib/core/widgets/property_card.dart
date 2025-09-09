@@ -123,9 +123,14 @@ class PropertyCard extends StatelessWidget {
                           rating: _getRatingString(),
                           review: _getReviewCount(),
                           isCompact: true,
+                          showReviewCount: false,
                         ),
                       ),
-                      PropertyPrice(price: _getPriceString(), isCompact: true),
+                      PropertyPrice(
+                  price: _getPriceString(),
+                  isCompact: true,
+                  rentalType: property.rentalType,
+                ),
                     ],
                   ),
                 ],
@@ -190,8 +195,9 @@ class PropertyCard extends StatelessWidget {
   String _getImageUrl() {
     if (property.coverImageId != null && property.coverImageId! > 0) {
       // Use backend raw bytes endpoint relative to baseUrl. Since baseUrl ends with '/api',
-      // using 'Images/...' will resolve to '<baseUrl>/Images/...'
-      return 'Images/${property.coverImageId}/content';
+      // using 'Images/...' will resolve to '<baseUrl>/Images...'
+      // Use absolute API path to guarantee correct routing regardless of baseUrl formatting
+      return '/api/Images/${property.coverImageId}/content';
     }
     // Fallback asset image
     return 'assets/images/placeholder.png';
@@ -208,8 +214,10 @@ class PropertyCard extends StatelessWidget {
   }
 
   String _getPriceString() {
-    // Card model may not carry dailyRate consistently; prefer price for list
-    return '\$${property.price.toStringAsFixed(0)}';
+    // Show price with provided currency (e.g., 600 USD)
+    final amount = property.price.toStringAsFixed(0);
+    final currency = property.currency.isNotEmpty ? ' ${property.currency}' : '';
+    return '$amount$currency';
   }
 
   String _getRatingString() {
@@ -217,21 +225,8 @@ class PropertyCard extends StatelessWidget {
   }
 
   int _getReviewCount() {
-    // This would typically come from a separate reviews count field
-    // For now, using a mock value or could be calculated from related data
-    return 12; // Mock value - in real app this should come from the property or be passed separately
-  }
-
-  int _getRoomCount() {
-    // This would typically be parsed from facilities or be a separate field
-    // For now, using a mock value
-    return 2; // Mock value - in real app this should come from property facilities or separate field
-  }
-
-  int _getAreaValue() {
-    // This would typically be a separate field in the property model
-    // For now, using a mock value
-    return 874; // Mock value - in real app this should come from property
+    // Review count not available on PropertyCardModel; avoid misleading data
+    return 0;
   }
 
   Widget _buildCompactLayout() {
@@ -246,7 +241,8 @@ class PropertyCard extends StatelessWidget {
               child: PropertyRating(
                   rating: _getRatingString(),
                   review: _getReviewCount(),
-                  isCompact: true),
+                  isCompact: true,
+                  showReviewCount: false),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -255,7 +251,11 @@ class PropertyCard extends StatelessWidget {
                   property: property,
                   isCompact: true,
                 ),
-                PropertyPrice(price: _getPriceString(), isCompact: true),
+                PropertyPrice(
+                  price: _getPriceString(),
+                  isCompact: true,
+                  rentalType: property.rentalType,
+                ),
               ],
             ),
           ],
@@ -269,9 +269,7 @@ class PropertyCard extends StatelessWidget {
         // Location
         PropertyLocation(location: _getLocationString(), isCompact: true),
         const Spacer(),
-        // Amenities at bottom
-        PropertyAmenities(
-            rooms: _getRoomCount(), area: _getAreaValue(), isCompact: true),
+        // Hide amenities row (rooms/area) because data is not provided on card model
       ],
     );
   }
@@ -286,7 +284,9 @@ class PropertyCard extends StatelessWidget {
           children: [
             Flexible(
               child: PropertyRating(
-                  rating: _getRatingString(), review: _getReviewCount()),
+                  rating: _getRatingString(),
+                  review: _getReviewCount(),
+                  showReviewCount: false),
             ),
             BookmarkButton(
               property: property,
@@ -296,8 +296,8 @@ class PropertyCard extends StatelessWidget {
         ),
         PropertyTitle(title: property.name),
         PropertyLocation(location: _getLocationString()),
-        PropertyAmenities(rooms: _getRoomCount(), area: _getAreaValue()),
-        PropertyPrice(price: _getPriceString()),
+        // Hide amenities row (rooms/area) because data is not provided on card model
+        PropertyPrice(price: _getPriceString(), rentalType: property.rentalType),
       ],
     );
   }
@@ -517,11 +517,13 @@ class PropertyRating extends StatelessWidget {
   final String rating;
   final int review;
   final bool isCompact;
+  final bool showReviewCount;
   const PropertyRating({
     super.key,
     required this.rating,
     required this.review,
     this.isCompact = false,
+    this.showReviewCount = true,
   });
 
   @override
@@ -551,15 +553,16 @@ class PropertyRating extends StatelessWidget {
             fontWeight: FontWeight.w400,
           ),
         ),
-        Text(
-          ' ($review)',
-          style: TextStyle(
-            color: const Color(0xFF7D7F88),
-            fontSize: fontSize,
-            fontFamily: 'Hind',
-            fontWeight: FontWeight.w400,
+        if (showReviewCount && review > 0)
+          Text(
+            ' ($review)',
+            style: TextStyle(
+              color: const Color(0xFF7D7F88),
+              fontSize: fontSize,
+              fontFamily: 'Hind',
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
       ],
     );
   }
@@ -688,10 +691,12 @@ class PropertyAmenities extends StatelessWidget {
 class PropertyPrice extends StatelessWidget {
   final String price;
   final bool isCompact;
+  final PropertyRentalType? rentalType;
   const PropertyPrice({
     super.key,
     required this.price,
     this.isCompact = false,
+    this.rentalType,
   });
 
   @override
@@ -712,7 +717,7 @@ class PropertyPrice extends StatelessWidget {
             ),
           ),
           TextSpan(
-            text: isCompact ? '/mo' : ' / month',
+            text: _suffixText(),
             style: TextStyle(
               color: const Color(0xFF7D7F88),
               fontSize: suffixSize,
@@ -723,5 +728,13 @@ class PropertyPrice extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _suffixText() {
+    final isMonthly = rentalType == null || rentalType == PropertyRentalType.monthly;
+    if (isCompact) {
+      return isMonthly ? '/mo' : '/day';
+    }
+    return isMonthly ? ' / month' : ' / day';
   }
 }

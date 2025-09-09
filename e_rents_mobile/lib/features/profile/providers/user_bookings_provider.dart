@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/models/booking_model.dart';
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:flutter/foundation.dart';
 
 /// Provider for managing user bookings
@@ -17,8 +19,12 @@ class UserBookingsProvider extends BaseProvider {
   List<dynamic> get upcomingBookings {
     if (_bookingHistory == null) return [];
     return _bookingHistory!.where((booking) {
-      final status = booking['status'] as String;
-      return status == 'Confirmed' || status == 'Pending';
+      try {
+        final parsed = Booking.fromJson(booking as Map<String, dynamic>);
+        return parsed.status == BookingStatus.upcoming || parsed.status == BookingStatus.active;
+      } catch (_) {
+        return false;
+      }
     }).toList();
   }
 
@@ -26,7 +32,12 @@ class UserBookingsProvider extends BaseProvider {
   List<dynamic> get pastBookings {
     if (_bookingHistory == null) return [];
     return _bookingHistory!.where((booking) {
-      return booking['status'] == 'Completed';
+      try {
+        final parsed = Booking.fromJson(booking as Map<String, dynamic>);
+        return parsed.status == BookingStatus.completed;
+      } catch (_) {
+        return false;
+      }
     }).toList();
   }
 
@@ -34,7 +45,12 @@ class UserBookingsProvider extends BaseProvider {
   List<dynamic> get cancelledBookings {
     if (_bookingHistory == null) return [];
     return _bookingHistory!.where((booking) {
-      return booking['status'] == 'Cancelled';
+      try {
+        final parsed = Booking.fromJson(booking as Map<String, dynamic>);
+        return parsed.status == BookingStatus.cancelled;
+      } catch (_) {
+        return false;
+      }
     }).toList();
   }
 
@@ -51,12 +67,33 @@ class UserBookingsProvider extends BaseProvider {
     final bookings = await executeWithState(() async {
       debugPrint('UserBookingsProvider: Loading booking history');
 
-      final response = await api.get('/users/current/bookings', authenticated: true);
+      // Fetch current user to get their userId
+      final meResp = await api.get('/profile', authenticated: true);
+      if (meResp.statusCode != 200) {
+        throw Exception('Failed to resolve current user');
+      }
+      final meJson = jsonDecode(meResp.body) as Map<String, dynamic>;
+      final int userId = meJson['userId'] is int
+          ? meJson['userId']
+          : int.tryParse(meJson['userId']?.toString() ?? '') ?? 0;
+      if (userId <= 0) {
+        throw Exception('Invalid current user id');
+      }
+
+      final response = await api.get('/bookings?userId=$userId&page=1&pageSize=50&sortBy=createdAt&sortDirection=desc', authenticated: true);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         debugPrint('UserBookingsProvider: Booking history loaded successfully');
-        return data['bookings'] as List<dynamic>;
+        if (data is Map<String, dynamic> && data['items'] is List) {
+          return data['items'] as List<dynamic>;
+        } else if (data is List) {
+          return data;
+        } else if (data is Map<String, dynamic> && data['bookings'] is List) {
+          // Fallback shape
+          return data['bookings'] as List<dynamic>;
+        }
+        return <dynamic>[];
       } else {
         debugPrint('UserBookingsProvider: Failed to load booking history');
         throw Exception('Failed to load booking history: ${response.statusCode}');

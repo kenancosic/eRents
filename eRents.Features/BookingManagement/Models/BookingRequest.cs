@@ -10,13 +10,10 @@ public class BookingRequest
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
-    public int NumberOfGuests { get; set; } = 1;
-    public string? SpecialRequests { get; set; }
-
     public decimal TotalPrice { get; set; }
 
     public string PaymentMethod { get; set; } = "PayPal";
-    public string Currency { get; set; } = "BAM";
+    public string Currency { get; set; } = "USD";
 
     // Status excluded from request per requirements
 }

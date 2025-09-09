@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
@@ -23,19 +22,14 @@ class PropertyAvailabilityProvider extends BaseProvider {
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
       };
-      
-      // Build URL with query parameters
+
       final queryString = api.buildQueryString(queryParams);
-      final response = await api.get('properties/$propertyId/availability$queryString', authenticated: false);
-      
-      if (response.statusCode == 200) {
-        final body = json.decode(response.body) as Map<String, dynamic>;
-        final isAvailable = body['isAvailable'] as bool?;
-        _availabilityCache[propertyId] = isAvailable ?? false;
-        return isAvailable;
-      }
-      
-      return null;
+      // Backend returns a plain boolean for check-availability
+      final response = await api.get('properties/$propertyId/check-availability$queryString');
+      final body = response.body.trim().toLowerCase();
+      final isAvailable = body == 'true' || body == '"true"';
+      _availabilityCache[propertyId] = isAvailable;
+      return isAvailable;
     });
     
     debugPrint('PropertyAvailabilityProvider: Checked availability for property $propertyId: ${result ?? 'unknown'}');

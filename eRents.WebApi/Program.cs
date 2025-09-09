@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using eRents.WebApi.Hubs;
 using eRents.WebApi.Middleware;
+using eRents.WebApi.Services;
 using eRents.Features.ImageManagement.Services;
 // Updated import to match renamed validation extensions class
 using eRents.Features.Core.Extensions;
@@ -128,6 +129,9 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.ConfigureServices(builder.Configuration);
 
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Background processing for monthly subscription payments
+builder.Services.AddHostedService<MonthlyPaymentBackgroundService>();
 
 Console.WriteLine($"Connection string: {builder.Configuration.GetConnectionString("DefaultConnection")}");
 

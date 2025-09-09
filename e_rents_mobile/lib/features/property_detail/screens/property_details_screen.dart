@@ -1,6 +1,8 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_availability_provider.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_description.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_detail.dart';
@@ -11,6 +13,7 @@ import 'package:e_rents_mobile/features/property_detail/widgets/property_action_
 import 'package:e_rents_mobile/features/property_detail/widgets/property_owner.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_reviews/property_review.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +24,7 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -89,6 +93,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         ChangeNotifierProvider<SavedProvider>.value(
           value: context.read<SavedProvider>(),
         ),
+        // Local provider for availability used by BookingAvailabilityWidget
+        ChangeNotifierProvider<PropertyDetailAvailabilityProvider>(
+          create: (context) => PropertyDetailAvailabilityProvider(
+            context.read<ApiService>(),
+          ),
+        ),
       ],
       child: BaseScreen(
         appBar: appBar,
@@ -130,6 +140,31 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 return const Center(child: Text('Property not found'));
               }
 
+              // Determine if current user is the owner (mobile-only UI guard)
+              final userProvider = context.read<UserProfileProvider>();
+              final currentUserId = userProvider.currentUser?.userId;
+              final bool isOwner = currentUserId != null && currentUserId == property.ownerId;
+
+              // Ensure owner details are fetched once property is loaded
+              if (provider.owner == null || provider.owner?.userId != property.ownerId) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    context.read<PropertyRentalProvider>().fetchOwner(property.ownerId);
+                  }
+                });
+              }
+
+              // Ensure amenities are fetched for this property
+              if (provider.amenities.isEmpty && property.amenityIds.isNotEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    context.read<PropertyRentalProvider>().fetchAmenitiesByIds(property.amenityIds);
+                  }
+                });
+              }
+
+              final api = context.read<ApiService>();
+
               final uiReviews = provider.reviews;
 
               return SingleChildScrollView(
@@ -148,7 +183,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           PropertyHeader(property: property),
                           const SizedBox(height: 16),
                           PropertyDetails(
-                            averageRating: property.averageRating ?? 0.0,
+                            // Use computed average from fetched reviews to ensure rating is shown
+                            averageRating: calculateAverageRating(uiReviews),
                             numberOfReviews: uiReviews.length,
                             city: property.address?.city ?? 'Unknown City',
                             address: property.address?.streetLine1,
@@ -181,14 +217,18 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
                           PropertyOwnerSection(
+                            ownerId: property.ownerId,
                             propertyId: property.propertyId,
-                            ownerName: 'Property Owner',
-                            ownerEmail: null,
+                            ownerName: provider.owner?.fullName ?? 'Property Owner',
+                            ownerEmail: provider.owner?.email,
+                            profileImageUrl: (provider.owner?.profileImageId != null)
+                                ? api.makeAbsoluteUrl('/api/Images/${provider.owner!.profileImageId}/content')
+                                : null,
                           ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          const FacilitiesSection(),
+                          FacilitiesSection(amenities: provider.amenities),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
@@ -197,15 +237,38 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                             averageRating: calculateAverageRating(uiReviews),
                           ),
                           const SizedBox(height: 16),
-                          CustomButton(
-                            label: 'Leave a Review',
-                            icon: Icons.rate_review,
-                            isLoading: false,
-                            width: ButtonWidth.expanded,
-                            onPressed: () {
-                              _showAddReviewDialog(context, provider);
-                            },
-                          ),
+                          if (!isOwner)
+                            CustomButton(
+                              label: 'Leave a Review',
+                              icon: Icons.rate_review,
+                              isLoading: false,
+                              width: ButtonWidth.expanded,
+                              onPressed: () {
+                                _showAddReviewDialog(context, provider);
+                              },
+                            )
+                          else
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Owners cannot leave reviews on their own properties.',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -218,7 +281,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             builder: (context, provider, child) {
               if (provider.property == null) return const SizedBox.shrink();
               final property = provider.property!;
+              // Recompute owner status for clarity in this scope
+              final userProvider = context.read<UserProfileProvider>();
+              final currentUserId = userProvider.currentUser?.userId;
+              final bool isOwner = currentUserId != null && currentUserId == property.ownerId;
               if (widget.viewContext == ViewContext.browsing) {
+                if (isOwner) {
+                  return const SizedBox.shrink();
+                }
                 return PropertyPriceFooter(
                   property: property,
                   onCheckoutPressed: () => checkoutPressed(provider),
@@ -237,7 +307,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     if (reviews.isEmpty) return 0.0;
     double sum =
         reviews.fold(0.0, (prev, review) => prev + (review.starRating ?? 0.0));
-    return sum / reviews.length;
+    final avg = sum / reviews.length;
+    // Round to 2 decimal places
+    return double.parse(avg.toStringAsFixed(2));
   }
 
   void checkoutPressed(PropertyRentalProvider provider) {
@@ -246,12 +318,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
     final now = DateTime.now();
     final startDate = DateTime(now.year, now.month, now.day + 1);
-    final endDate = DateTime(now.year, now.month, now.day + 6);
-    final isDailyRental = true;
+    final bool isDailyRental = property.rentalType == PropertyRentalType.daily;
 
-    final duration = endDate.difference(startDate).inDays;
-    final basePrice = property.price * duration;
-    final totalPrice = basePrice * 1.1;
+    DateTime endDate;
+    double totalPrice;
+
+    if (isDailyRental) {
+      endDate = startDate.add(const Duration(days: 7));
+      final nights = endDate.difference(startDate).inDays;
+      final unitPrice = property.dailyRate ?? property.price;
+      totalPrice = (nights > 0 ? nights : 0) * unitPrice;
+    } else {
+      final minStayDays = property.minimumStayDays ?? 30;
+      final months = (minStayDays / 30).ceil();
+      endDate = startDate.add(Duration(days: 30 * months));
+      totalPrice = property.price * months;
+    }
 
     context.push('/checkout', extra: {
       'property': property,

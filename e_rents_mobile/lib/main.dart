@@ -15,6 +15,9 @@ import 'config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "lib/.env");
+  // Clear any persisted auth token on app restart per requirement
+  // Note: This will log out the user on every fresh app start.
+  await SecureStorageService().clearToken();
 
   runApp(MyApp());
 }
@@ -50,6 +53,8 @@ class MyApp extends StatelessWidget {
         // Provide shared services
         Provider<SecureStorageService>.value(value: secureStorageService),
         Provider<ApiService>.value(value: apiService),
+        // Provide the shared AuthProvider instance used by the router
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
         
         // Core system providers (not feature-specific)
         ChangeNotifierProvider<NavigationProvider>(

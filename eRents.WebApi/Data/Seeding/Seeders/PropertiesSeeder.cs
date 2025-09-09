@@ -193,7 +193,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     postalCode: GetPostalCodeForCity(city)
                 ),
                 Price = price,
-                Currency = "BAM",
+                Currency = "USD",
                 Rooms = rooms,
                 Area = area,
                 Status = status,

@@ -128,7 +128,7 @@ class Tenant {
           'propertyId': (json['propertyId'] as num?)?.toInt() ?? 0,
           'ownerId': 0,
           'price': 0,
-          'currency': 'BAM',
+          'currency': 'USD',
           'name': name ?? '-',
           'imageIds': const <int>[],
           'amenityIds': const <int>[],

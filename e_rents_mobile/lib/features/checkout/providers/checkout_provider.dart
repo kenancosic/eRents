@@ -111,8 +111,8 @@ class CheckoutProvider extends BaseProvider {
         'endDate': _endDate?.toIso8601String().split('T').first,
         'totalPrice': _totalPrice,
         'paymentMethod': _selectedPaymentMethod,
-        // Currency required by backend validator
-        'currency': 'BAM',
+        // Currency required by backend validator (using USD for PayPal testing)
+        'currency': 'USD',
         // NOTE: UserId is expected by backend validator; recommend inferring from auth on server.
       };
 

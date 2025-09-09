@@ -4,13 +4,13 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 class NextStepButton extends StatelessWidget {
   final String label;
   final bool isLoading;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const NextStepButton({
     super.key,
     required this.label,
     this.isLoading = false,
-    required this.onPressed,
+    this.onPressed,
   });
 
   @override

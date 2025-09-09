@@ -41,6 +41,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             // Take first 3-5 properties and ensure 1 cover image each
             var properties = await context.Properties
                 .AsNoTracking()
+                .OrderBy(p => p.PropertyId)
                 .Select(p => new { p.PropertyId, p.Name })
                 .Take(5)
                 .ToListAsync();
@@ -86,7 +87,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             }
 
             // Add maintenance issue images
-            var maintenanceIssues = await context.MaintenanceIssues.AsNoTracking().Take(2).ToListAsync();
+            var maintenanceIssues = await context.MaintenanceIssues
+                .AsNoTracking()
+                .OrderBy(mi => mi.MaintenanceIssueId)
+                .Take(2)
+                .ToListAsync();
             for (int i = 0; i < Math.Min(maintenanceIssues.Count, maintenanceImages.Length); i++)
             {
                 var issue = maintenanceIssues[i];

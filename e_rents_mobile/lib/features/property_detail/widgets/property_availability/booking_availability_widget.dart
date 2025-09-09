@@ -6,6 +6,7 @@ import 'package:e_rents_mobile/features/property_detail/providers/property_avail
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 
 class BookingAvailabilityWidget extends StatefulWidget {
   final PropertyDetail property;
@@ -26,12 +27,28 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   bool _isLoading = true;
   String? _errorMessage;
   Map<String, dynamic>? _pricingDetails;
+  int _months = 1; // For monthly leases
 
   @override
   void initState() {
     super.initState();
     _initializeDates();
-    _loadAvailability();
+    // Defer provider-driven state changes until after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadAvailability();
+    });
+  }
+
+  void _setMonths(int months) {
+    final minimumStayDays = widget.property.minimumStayDays ?? 30;
+    final minMonths = (minimumStayDays / 30).ceil();
+    final clamped = months < minMonths ? minMonths : months;
+    setState(() {
+      _months = clamped;
+      _endDate = _startDate.add(Duration(days: 30 * _months));
+    });
+    _calculatePricing();
   }
 
   void _initializeDates() {
@@ -39,7 +56,11 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     if (widget.property.rentalType == PropertyRentalType.daily) {
       _endDate = _startDate.add(const Duration(days: 7)); // 1 week default
     } else {
-      _endDate = _startDate.add(const Duration(days: 30)); // 1 month default
+      // Monthly: default months respects minimumStayDays if provided
+      final minimumStayDays = widget.property.minimumStayDays ?? 30;
+      final minMonths = (minimumStayDays / 30).ceil();
+      _months = _months < minMonths ? minMonths : _months;
+      _endDate = _startDate.add(Duration(days: 30 * _months));
     }
     _calculatePricing();
   }
@@ -105,9 +126,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       } else {
         // Monthly: charge a single monthly amount up-front via checkout
         pricing = {
-          'unitCount': 1,
-          'unitLabel': 'month',
-          'total': widget.property.price,
+          'unitCount': _months,
+          'unitLabel': _months == 1 ? 'month' : 'months',
+          'total': widget.property.price * _months,
         };
       }
 
@@ -193,19 +214,31 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     );
 
     if (pickedStart != null) {
-      // For monthly rentals, set end date to at least minimum stay
-      final minimumStay = widget.property.minimumStayDays ?? 30;
-      final suggestedEnd = pickedStart.add(Duration(days: minimumStay));
-
+      // For monthly rentals, compute end date based on selected months (respect minimum stay)
+      final minimumStayDays = widget.property.minimumStayDays ?? 30;
+      final minMonths = (minimumStayDays / 30).ceil();
+      if (_months < minMonths) {
+        _months = minMonths;
+      }
       setState(() {
         _startDate = pickedStart;
-        _endDate = suggestedEnd;
+        _endDate = pickedStart.add(Duration(days: 30 * _months));
       });
       _calculatePricing();
     }
   }
 
   void _proceedToCheckout() {
+    // Guard: owners cannot proceed to checkout on their own properties
+    final userProvider = context.read<UserProfileProvider>();
+    final currentUserId = userProvider.currentUser?.userId;
+    final bool isOwner = currentUserId != null && currentUserId == widget.property.ownerId;
+    if (isOwner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Owners cannot book their own properties.')),
+      );
+      return;
+    }
     final isDailyRental =
         widget.property.rentalType == PropertyRentalType.daily;
 
@@ -220,6 +253,10 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Determine if current user is the owner for UI disabling
+    final userProvider = context.read<UserProfileProvider>();
+    final currentUserId = userProvider.currentUser?.userId;
+    final bool isOwner = currentUserId != null && currentUserId == widget.property.ownerId;
     if (_isLoading) {
       return const Center(
         child: Padding(
@@ -249,6 +286,29 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (isOwner)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'As the owner, you cannot book or apply for your own property.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
         // Header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -319,6 +379,38 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
               ),
               const SizedBox(height: 16),
 
+              // Months selector for monthly leases
+              if (widget.property.rentalType == PropertyRentalType.monthly)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Lease Length',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: () {
+                              if (_months > 1) _setMonths(_months - 1);
+                            },
+                            tooltip: 'Decrease months',
+                          ),
+                          Text('$_months month${_months == 1 ? '' : 's'}'),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: () => _setMonths(_months + 1),
+                            tooltip: 'Increase months',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
               // Pricing summary
               if (_pricingDetails != null) _buildPricingSummary(),
 
@@ -336,7 +428,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                             ? 'Change Dates'
                             : 'Change Start Date',
                     icon: Icons.edit_calendar,
-                    onPressed: _selectDates,
+                    onPressed: isOwner ? () {} : () => _selectDates(),
                     isLoading: false,
                     width: OutlinedButtonWidth.flexible,
                     size: OutlinedButtonSize.compact,
@@ -350,7 +442,11 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                     icon: widget.property.rentalType == PropertyRentalType.daily
                         ? Icons.check
                         : Icons.home_work,
-                    onPressed: _proceedToCheckout,
+                    onPressed: isOwner ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Owners cannot perform this action on their own property.')),
+                      );
+                    } : _proceedToCheckout,
                     isLoading: false,
                     width: ButtonWidth.flexible,
                     size: ButtonSize.compact,

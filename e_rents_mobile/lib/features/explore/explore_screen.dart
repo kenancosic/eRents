@@ -32,7 +32,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PropertySearchProvider>().fetchProperties();
+      // Initialize with current user's city and sensible defaults
+      context.read<PropertySearchProvider>().initializeWithUserCity();
     });
   }
 
@@ -97,9 +98,37 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _handleFilterButtonPressed() {
+    final provider = context.read<PropertySearchProvider>();
+    final current = provider.currentFilters;
+
+    String mapRentalToUi(dynamic rentingType) {
+      final v = rentingType?.toString().toLowerCase();
+      if (v == 'daily') return 'Per day';
+      if (v == 'monthly') return 'Monthly';
+      return 'Any';
+    }
+
+    final double minPrice = (current['minPrice'] ?? current['MinPrice'] ?? 0).toDouble();
+    final double maxPrice = (current['maxPrice'] ?? current['MaxPrice'] ?? 5000).toDouble();
+    final String propertyTypeUi = (current['propertyType'] ?? current['PropertyType'] ?? 'Any').toString();
+    final String rentalUi = mapRentalToUi(current['rentingType'] ?? current['RentingType']);
+    final String city = (current['city'] ?? current['City'] ?? '').toString();
+    final String? sortBy = (current['sortBy'] ?? current['SortBy'])?.toString();
+    final String? sortDir = (current['sortDirection'] ?? current['SortDirection'])?.toString();
+
+    final initialFilters = {
+      'propertyType': propertyTypeUi,
+      'priceRange': RangeValues(minPrice, maxPrice),
+      'rentalPeriod': rentalUi,
+      if (city.isNotEmpty) 'city': city,
+      if (sortBy != null) 'sortBy': sortBy,
+      if (sortDir != null) 'sortDirection': sortDir,
+      // 'facilities' omitted; defaults handled in FilterScreen
+    };
+
     context.push('/filter', extra: {
-      'onApplyFilters': (Map<String, dynamic> filters) =>
-          context.read<PropertySearchProvider>().applyFilters(filters),
+      'onApplyFilters': (Map<String, dynamic> filters) => provider.applyFilters(filters),
+      'initialFilters': initialFilters,
     });
   }
 

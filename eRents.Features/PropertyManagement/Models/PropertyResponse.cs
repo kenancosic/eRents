@@ -13,7 +13,7 @@ public sealed class PropertyResponse
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public decimal Price { get; set; }
-    public string Currency { get; set; } = "BAM";
+    public string Currency { get; set; } = "USD";
     public int? Rooms { get; set; }
     public decimal? Area { get; set; }
     public int? MinimumStayDays { get; set; }
@@ -38,6 +38,6 @@ public sealed class PropertyResponse
     public List<ReviewResponse> Reviews { get; set; } = new();
 
     // New: Nested Address object for modern clients (kept alongside flattened fields for backward compatibility)
-    public AddressResponse? Address { get; set; }
+    public eRents.Features.Shared.DTOs.AddressResponse? Address { get; set; }
 
 }

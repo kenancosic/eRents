@@ -272,7 +272,7 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Price Range (BAM)',
+          'Price Range (USD)',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         RangeSlider(
@@ -296,8 +296,8 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('BAM ${_priceRange.start.round()}'),
-            Text('BAM ${_priceRange.end.round()}'),
+            Text('USD ${_priceRange.start.round()}'),
+            Text('USD ${_priceRange.end.round()}'),
           ],
         ),
       ],

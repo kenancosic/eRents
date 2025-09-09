@@ -324,8 +324,12 @@ class ApiService {
 
   String _extractImageIdFromUrl(String? url) {
     if (url == null) return 'Unknown';
-    final match = RegExp(r'/Image/(\d+)').firstMatch(url);
-    return match?.group(1) ?? 'Unknown';
+    // Support both singular and plural route segments, absolute or relative URLs
+    final match = RegExp(r'/(?:Image|Images)/(\d+)').firstMatch(url);
+    if (match != null) return match.group(1) ?? 'Unknown';
+    // Fallback: try query parameter pattern like ...?id=123
+    final q = RegExp(r'[?&]id=(\d+)').firstMatch(url);
+    return q?.group(1) ?? 'Unknown';
   }
 
   Widget _buildLoadingImage(double? width, double? height) {

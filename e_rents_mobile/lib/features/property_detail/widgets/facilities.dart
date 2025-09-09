@@ -1,11 +1,16 @@
 // lib/feature/property_detail/widgets/facilities_section.dart
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/models/amenity.dart';
 
 class FacilitiesSection extends StatelessWidget {
-  const FacilitiesSection({super.key});
+  final List<Amenity> amenities;
+
+  const FacilitiesSection({super.key, required this.amenities});
 
   @override
   Widget build(BuildContext context) {
+    final Color grayColor = Colors.grey.shade600;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -14,27 +19,24 @@ class FacilitiesSection extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            _buildFacilityItem(context, Icons.wifi, 'WiFi'),
-            _buildFacilityItem(context, Icons.local_parking, 'Parking'),
-            _buildFacilityItem(context, Icons.ac_unit, 'AC'),
-            _buildFacilityItem(context, Icons.tv, 'TV'),
-            _buildFacilityItem(context, Icons.kitchen, 'Kitchen'),
-            _buildFacilityItem(context, Icons.pool, 'Pool'),
-            _buildFacilityItem(context, Icons.local_laundry_service, 'Laundry'),
-            _buildFacilityItem(context, Icons.security, 'Security'),
-          ],
-        ),
+        if (amenities.isEmpty)
+          Text(
+            'No amenities listed',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          )
+        else
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: amenities
+                .map((a) => _buildFacilityItem(context, grayColor, a.amenityName))
+                .toList(),
+          ),
       ],
     );
   }
 
-  Widget _buildFacilityItem(BuildContext context, IconData icon, String label) {
-    final Color grayColor = Colors.grey.shade600;
-    
+  Widget _buildFacilityItem(BuildContext context, Color grayColor, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -44,7 +46,7 @@ class FacilitiesSection extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: grayColor),
+          Icon(Icons.check_circle, size: 16, color: grayColor),
           const SizedBox(width: 6),
           Text(
             label,

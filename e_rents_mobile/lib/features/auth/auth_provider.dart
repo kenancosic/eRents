@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 class AuthProvider extends BaseProvider {
   final SecureStorageService _secureStorageService;
   String? _accessToken;
-  String? _refreshToken;
 
   AuthProvider(super.api, this._secureStorageService) {
     // Initialize the access token from secure storage
@@ -40,7 +39,7 @@ class AuthProvider extends BaseProvider {
       
       // Use direct post method since login returns custom token structure
       final response = await api.post(
-        'Auth/login',
+        '/Auth/login',
         requestBody,
         authenticated: false,
       );
@@ -48,7 +47,6 @@ class AuthProvider extends BaseProvider {
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         _accessToken = data['accessToken'] as String?;
-        _refreshToken = data['refreshToken'] as String?;
         
         // Store tokens securely
         if (_accessToken != null) {
@@ -68,7 +66,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> register(Map<String, dynamic> userData) async {
     final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        'Auth/register',
+        '/Auth/register',
         userData,
         authenticated: false,
       );
@@ -88,7 +86,6 @@ class AuthProvider extends BaseProvider {
     await executeWithStateAndMessage(() async {
       await _secureStorageService.clearToken();
       _accessToken = null;
-      _refreshToken = null;
       debugPrint('AuthProvider: User logged out successfully');
     }, 'Failed to logout');
   }
@@ -96,7 +93,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> forgotPassword(String email) async {
     final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        'Auth/forgot-password',
+        '/Auth/forgot-password',
         {'email': email},
         authenticated: false,
       );
@@ -115,7 +112,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> resetPassword(String email, String code, String newPassword) async {
     final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        'Auth/reset-password',
+        '/Auth/reset-password',
         {
           'email': email,
           'resetCode': code,
@@ -140,7 +137,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> verifyCode(String email, String code) async {
     final result = await executeWithStateAndMessage(() async {
       final response = await api.post(
-        'Auth/verify',
+        '/Auth/verify',
         {
           'email': email,
           'code': code,
@@ -159,47 +156,5 @@ class AuthProvider extends BaseProvider {
     return result ?? false;
   }
 
-  /// Refreshes the authentication token
-  Future<bool> refreshToken() async {
-    if (_refreshToken == null) {
-      throw Exception('No refresh token available');
-    }
-    
-    final result = await executeWithStateAndMessage(() async {
-      final response = await api.post(
-        'Auth/refresh-token',
-        {
-          'refreshToken': _refreshToken,
-        },
-        authenticated: false,
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _accessToken = data['accessToken'] as String?;
-        _refreshToken = data['refreshToken'] as String?;
-        notifyListeners();
-        
-        // Save tokens securely
-        if (_accessToken != null) {
-          await _secureStorageService.storeToken(_accessToken!);
-        }
-        
-        debugPrint('AuthProvider: Token refresh successful');
-        return true;
-      }
-      
-      // Clear tokens if refresh fails
-      await logout();
-      throw Exception('Failed to refresh token');
-    }, 'Session expired. Please login again.');
-    
-    return result ?? false;
-  }
-  
-  /// Checks if token needs refresh (more frequent checks to avoid expiration)
-  bool shouldRefreshToken() {
-    // Always return false to effectively disable token expiration
-    return false;
-  }
+  // Token refresh is disabled by design. Backend handles expiration (60 minutes) automatically.
 }

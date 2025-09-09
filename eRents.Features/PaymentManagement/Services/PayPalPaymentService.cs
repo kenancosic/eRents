@@ -269,12 +269,52 @@ namespace eRents.Features.PaymentManagement.Services
             }
 
             using var doc = JsonDocument.Parse(json);
-            var capture = doc.RootElement.GetProperty("purchase_units")[0].GetProperty("payments").GetProperty("captures")[0];
+            var purchaseUnits = doc.RootElement.GetProperty("purchase_units");
+            var capture = purchaseUnits[0].GetProperty("payments").GetProperty("captures")[0];
             var captureId = capture.GetProperty("id").GetString();
             var status = doc.RootElement.GetProperty("status").GetString();
             var payer = doc.RootElement.GetProperty("payer");
             var payerEmail = payer.GetProperty("email_address").GetString();
             var payerName = $"{payer.GetProperty("name").GetProperty("given_name").GetString()} {payer.GetProperty("name").GetProperty("surname").GetString()}";
+
+            // Persist Payment and update Booking when possible
+            try
+            {
+                // reference_id was set to BookingId when creating the order
+                var referenceId = purchaseUnits[0].GetProperty("reference_id").GetString();
+                if (!string.IsNullOrWhiteSpace(referenceId) && int.TryParse(referenceId, out var bookingId))
+                {
+                    var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingId);
+                    if (booking != null)
+                    {
+                        // Create Payment record
+                        var payment = new Payment
+                        {
+                            BookingId = booking.BookingId,
+                            PropertyId = booking.PropertyId,
+                            Amount = booking.TotalPrice,
+                            Currency = string.IsNullOrWhiteSpace(booking.Currency) ? "USD" : booking.Currency,
+                            PaymentMethod = "PayPal",
+                            PaymentStatus = "Completed",
+                            PaymentReference = captureId,
+                            PaymentType = "BookingPayment"
+                        };
+
+                        _context.Payments.Add(payment);
+
+                        // Update booking payment info
+                        booking.PaymentStatus = "Completed";
+                        booking.PaymentReference = captureId;
+
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist payment for captured order {OrderId}", orderId);
+                // Non-fatal: we still return capture details to the caller
+            }
 
             return new CaptureOrderResponse
             {

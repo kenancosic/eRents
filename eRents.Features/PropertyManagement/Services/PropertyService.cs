@@ -13,6 +13,7 @@ using eRents.Domain.Models.Enums;
 using static eRents.Domain.Models.Enums.TenantStatusEnum;
 using eRents.Shared.DTOs;
 using eRents.Shared.Services;
+using System.Collections.Generic;
 
 namespace eRents.Features.PropertyManagement.Services
 {
@@ -186,6 +187,43 @@ namespace eRents.Features.PropertyManagement.Services
 			return Task.CompletedTask;
 		}
 
+		/// <summary>
+		/// Projects a list of property IDs into a card-friendly DTO shape used by mobile clients.
+		/// The shape matches PropertyCardModel on the frontend.
+		/// </summary>
+		public async Task<List<PropertyCardResponse>> GetPropertyCardsByIdsAsync(IEnumerable<int> propertyIds)
+		{
+			var ids = propertyIds?.Distinct().ToList() ?? new List<int>();
+			if (ids.Count == 0)
+			{
+				return new List<PropertyCardResponse>();
+			}
+
+			var query = AddIncludes(Context.Set<Property>().AsQueryable())
+				.Include(p => p.Reviews)
+				.Where(p => ids.Contains(p.PropertyId));
+
+			var cards = await query
+				.Select(p => new PropertyCardResponse
+				{
+					PropertyId = p.PropertyId,
+					Name = p.Name,
+					Price = p.Price,
+					Currency = p.Currency,
+					AverageRating = p.Reviews.Any() ? (double?)p.Reviews.Average(r => r.StarRating) : null,
+					CoverImageId = p.Images.OrderBy(i => i.ImageId).Select(i => (int?)i.ImageId).FirstOrDefault(),
+					Address = p.Address == null ? null : new eRents.Features.Shared.DTOs.AddressResponse
+					{
+						Street = p.Address.StreetLine1,
+						City = p.Address.City,
+						Country = p.Address.Country
+					},
+					RentingType = p.RentingType.ToString()
+				})
+				.ToListAsync();
+
+			return cards;
+		}
 		protected override Task BeforeUpdateAsync(Property entity, PropertyRequest request)
 		{
 			// Enforce ownership on updates for desktop owner/landlord
@@ -263,7 +301,7 @@ namespace eRents.Features.PropertyManagement.Services
 			{
 				// If UnavailableFrom is null, default to today's date
 				property.UnavailableFrom = unavailableFrom ?? DateOnly.FromDateTime(DateTime.Today);
-				
+
 				// If UnavailableTo is null, it remains null (indefinite duration)
 				property.UnavailableTo = unavailableTo;
 			}
@@ -304,7 +342,7 @@ namespace eRents.Features.PropertyManagement.Services
 			// Use the business validator to check all other rules
 			var validator = new PropertyStatusBusinessValidator(Context);
 			var (isValid, errorMessage) = await validator.ValidateStatusChangeAsync(property, newStatus, unavailableFrom, unavailableTo);
-			
+
 			if (!isValid)
 			{
 				throw new InvalidOperationException(errorMessage);

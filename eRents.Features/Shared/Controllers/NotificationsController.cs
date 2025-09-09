@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using eRents.Features.Shared.Services;
 using Microsoft.Extensions.Logging;
+// NOTE: Do not reference WebApi from Features to avoid circular dependencies
 
 namespace eRents.Features.Shared.Controllers
 {
@@ -32,6 +33,8 @@ namespace eRents.Features.Shared.Controllers
                     "message", 
                     notification.SenderId);
 
+                // Real-time broadcast is handled in WebApi layer to avoid dependency here
+
                 _logger.LogInformation("Message notification sent to user {ReceiverId}", notification.ReceiverId);
                 return Ok();
             }
@@ -48,6 +51,8 @@ namespace eRents.Features.Shared.Controllers
             try
             {
                 await _notificationService.CreateBookingNotificationAsync(notification.UserId, notification.BookingId, "Booking Update", notification.Notification);
+                // Real-time broadcast is handled in WebApi layer to avoid dependency here
+
                 _logger.LogInformation("Booking notification sent to user {UserId}", notification.UserId);
                 return Ok();
             }
@@ -64,6 +69,8 @@ namespace eRents.Features.Shared.Controllers
             try
             {
                 await _notificationService.CreateReviewNotificationAsync(notification.PropertyOwnerId, notification.ReviewId, "New Review", notification.Notification);
+                // Real-time broadcast is handled in WebApi layer to avoid dependency here
+
                 _logger.LogInformation("Review notification sent to property owner {PropertyOwnerId}", notification.PropertyOwnerId);
                 return Ok();
             }
@@ -80,6 +87,8 @@ namespace eRents.Features.Shared.Controllers
             try
             {
                 await _notificationService.CreateSystemNotificationAsync(notification.UserId, "System Notification", notification.Notification);
+                // Real-time broadcast is handled in WebApi layer to avoid dependency here
+
                 return Ok();
             }
             catch (Exception ex)

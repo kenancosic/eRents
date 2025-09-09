@@ -1,4 +1,6 @@
 import 'package:e_rents_mobile/features/chat/backend_chat_provider.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -35,6 +37,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
           if (contacts.isEmpty) {
             return const Center(child: Text('No contacts yet'));
           }
+          final api = context.read<ApiService>();
           return RefreshIndicator(
             onRefresh: chat.loadContacts,
             child: ListView.separated(
@@ -44,19 +47,25 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 final u = contacts[index];
                 final userId = u.userId ?? 0;
                 final isOnline = chat.isOnline(userId);
-                final initials = (u.firstName ?? u.username)
-                    .trim()
-                    .split(' ')
-                    .where((p) => p.isNotEmpty)
-                    .map((p) => p[0].toUpperCase())
-                    .take(2)
-                    .join();
                 final displayName = (u.fullName.isNotEmpty ? u.fullName : (u.username.isNotEmpty ? u.username : (userId > 0 ? 'User #$userId' : 'Unknown User')));
                 final subtitleText = (u.email.isNotEmpty ? u.email : (u.username.isNotEmpty ? '@${u.username}' : ''));
+                final avatarUrl = (u.profileImageId != null && u.profileImageId! > 0)
+                    ? api.makeAbsoluteUrl('/api/Images/${u.profileImageId}/content')
+                    : 'assets/images/user-image.png';
                 return ListTile(
                   leading: Stack(
                     children: [
-                      CircleAvatar(child: Text(initials)),
+                      CustomAvatar(
+                        imageUrl: avatarUrl,
+                        size: 40,
+                        onTap: () {
+                          if (userId > 0) {
+                            context.push('/user/${userId.toString()}', extra: {
+                              'displayName': displayName,
+                            });
+                          }
+                        },
+                      ),
                       Positioned(
                         right: 0,
                         bottom: 0,
