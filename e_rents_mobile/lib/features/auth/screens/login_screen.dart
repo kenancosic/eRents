@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 class LoginScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   LoginScreen({super.key});
 
@@ -56,7 +57,10 @@ class LoginScreen extends StatelessWidget {
                 top: 80.0, // Space to avoid overlapping the logo
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
               ),
-              child: Column(
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
@@ -116,7 +120,7 @@ class LoginScreen extends StatelessWidget {
                             const SizedBox(height: 20),
                             const Align(
                               alignment: Alignment.centerLeft,
-                              child: Text('Email',
+                              child: Text('Email or Username',
                                   style: TextStyle(
                                       fontSize: 14, color: Colors.white)),
                             ),
@@ -124,6 +128,23 @@ class LoginScreen extends StatelessWidget {
                               controller: _emailController,
                               hintText: 'hi@example.com',
                               keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                final val = v?.trim() ?? '';
+                                if (val.isEmpty) {
+                                  return 'Email or username is required';
+                                }
+                                if (val.contains('@')) {
+                                  final emailRe = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                                  if (!emailRe.hasMatch(val)) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                } else {
+                                  if (val.length < 3) {
+                                    return 'Username must be at least 3 characters';
+                                  }
+                                }
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 10),
                             const Align(
@@ -140,6 +161,12 @@ class LoginScreen extends StatelessWidget {
                               obscureText: true,
                               hasSuffixIcon: true,
                               suffixIcon: Icons.visibility_off,
+                              validator: (v) {
+                                final val = v ?? '';
+                                if (val.isEmpty) return 'Password is required';
+                                if (val.length < 6) return 'Password must be at least 6 characters';
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 15),
                             ElevatedTextButton(
@@ -158,29 +185,12 @@ class LoginScreen extends StatelessWidget {
                                   label: "Login",
                                   isLoading: provider.isLoading,
                                   onPressed: () async {
-                                    final email = _emailController.text.trim();
+                                    if (!(_formKey.currentState?.validate() ?? false)) {
+                                      return;
+                                    }
+                                    final identifier = _emailController.text.trim();
                                     final password = _passwordController.text.trim();
-
-                                    if (email.isEmpty || password.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Please enter both email/username and password.')),
-                                      );
-                                      return;
-                                    }
-
-                                    // Validate email format if it looks like an email
-                                    if (email.contains('@') && !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Please enter a valid email address.')),
-                                      );
-                                      return;
-                                    }
-
-                                    final success = await provider.login(email, password);
+                                    final success = await provider.login(identifier, password);
                                     if (context.mounted) {
                                         if (success) {
                                             context.go('/');
@@ -225,6 +235,7 @@ class LoginScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+                ),
               ),
             ),
           ),

@@ -27,6 +27,7 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -42,9 +43,10 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Future<void> _login(AuthProvider authProvider) async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final ok = await authProvider.login(
-      _emailController.text,
-      _passwordController.text,
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
     );
     // On successful login, preload common lookups so lists can render labels immediately
     if (!mounted) return;
@@ -83,6 +85,8 @@ class _LoginViewState extends State<LoginView> {
           ),
           child: SingleChildScrollView(
             child: Form(
+              key: _formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -96,15 +100,20 @@ class _LoginViewState extends State<LoginView> {
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      labelText: 'Email',
+                      labelText: 'Email or Username',
                       prefixIcon: Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     enabled: !authProvider.isLoading,
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                      final val = value?.trim() ?? '';
+                      if (val.isEmpty) return 'Email or username is required';
+                      if (val.contains('@')) {
+                        final emailRe = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                        if (!emailRe.hasMatch(val)) return 'Please enter a valid email address';
+                      } else {
+                        if (val.length < 3) return 'Username must be at least 3 characters';
                       }
                       return null;
                     },
@@ -121,9 +130,9 @@ class _LoginViewState extends State<LoginView> {
                     onFieldSubmitted: (_) => _login(authProvider),
                     enabled: !authProvider.isLoading,
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
-                      }
+                      final val = value ?? '';
+                      if (val.isEmpty) return 'Please enter your password';
+                      if (val.length < 6) return 'Password must be at least 6 characters';
                       return null;
                     },
                   ),

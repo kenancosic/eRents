@@ -5,6 +5,19 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // TODO: Consider using flutter_dotenv to load API key from .env file
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+/// Result wrapper for Places Autocomplete to carry both predictions and error context
+class PlacesAutocompleteResult {
+  final List<dynamic> predictions;
+  final String status;
+  final String? errorMessage;
+
+  const PlacesAutocompleteResult({
+    required this.predictions,
+    required this.status,
+    this.errorMessage,
+  });
+}
+
 class GooglePlacesService {
   // TODO: Load API key securely, e.g., from environment variables
   // final String _apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? 'YOUR_API_KEY_FALLBACK';
@@ -24,6 +37,8 @@ class GooglePlacesService {
     }
   }
 
+ 
+
   /// Fetches place autocomplete suggestions from the Google Places API.
   ///
   /// [input] The text string on which to search.
@@ -33,7 +48,7 @@ class GooglePlacesService {
   /// [language] The language code, indicating in which language the results should be returned, if possible.
   /// [components] A grouping of places to which you would like to restrict your results.
   ///              Currently, you can use components to filter by up to 5 countries (e.g., "country:us|country:ca").
-  Future<List<dynamic>> getAutocompleteSuggestions(
+  Future<PlacesAutocompleteResult> getAutocompleteSuggestions(
     String input,
     String sessionToken, {
     String? types, // e.g., '(cities)' to search for cities
@@ -41,7 +56,7 @@ class GooglePlacesService {
     String? components, // e.g., 'country:us'
   }) async {
     if (input.isEmpty) {
-      return [];
+      return PlacesAutocompleteResult(predictions: const [], status: 'NO_INPUT');
     }
 
     String url =
@@ -56,20 +71,35 @@ class GooglePlacesService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'OK') {
-          return data['predictions'] as List<dynamic>;
+          return PlacesAutocompleteResult(
+            predictions: (data['predictions'] as List<dynamic>),
+            status: 'OK',
+          );
         }
         // Handle other statuses like ZERO_RESULTS, REQUEST_DENIED, etc.
         debugPrint(
             'Google Places Autocomplete API Error: ${data['status']} - ${data['error_message']}');
-        return [];
+        return PlacesAutocompleteResult(
+          predictions: const [],
+          status: (data['status'] as String?) ?? 'ERROR',
+          errorMessage: (data['error_message'] as String?) ?? 'Autocomplete failed',
+        );
       } else {
         // Handle HTTP error
         debugPrint('HTTP Error fetching autocomplete: ${response.statusCode}');
-        return [];
+        return PlacesAutocompleteResult(
+          predictions: const [],
+          status: 'HTTP_${response.statusCode}',
+          errorMessage: 'HTTP ${response.statusCode} while fetching autocomplete',
+        );
       }
     } catch (e) {
       debugPrint('Exception fetching autocomplete: $e');
-      return [];
+      return PlacesAutocompleteResult(
+        predictions: const [],
+        status: 'EXCEPTION',
+        errorMessage: e.toString(),
+      );
     }
   }
 

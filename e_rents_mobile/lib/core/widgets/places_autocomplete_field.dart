@@ -35,6 +35,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
   bool _isLoading = false;
   bool _isMounted = false; // To prevent setState calls after dispose
   bool _isSelecting = false; // Flag to indicate a selection is in progress
+  String? _errorMessage; // Friendly error shown when Places API fails
 
   @override
   void initState() {
@@ -75,7 +76,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
         });
       }
 
-      final rawPredictions = await _placesService.getAutocompleteSuggestions(
+      final result = await _placesService.getAutocompleteSuggestions(
         query,
         _sessionToken!,
         types: widget.searchType,
@@ -89,9 +90,28 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
       if (!_isMounted) return;
 
       setState(() {
-        _predictions = rawPredictions
-            .map((p) => PlacePrediction.fromJson(p as Map<String, dynamic>))
-            .toList();
+        if (result.status == 'OK') {
+          _predictions = result.predictions
+              .map((p) => PlacePrediction.fromJson(p as Map<String, dynamic>))
+              .toList();
+          _errorMessage = null;
+        } else if (result.status == 'ZERO_RESULTS' || result.predictions.isEmpty) {
+          _predictions = [];
+          _errorMessage = null; // Not an error; just no matches
+        } else {
+          _predictions = [];
+          // Friendly fallback message
+          final status = result.status;
+          if (status == 'REQUEST_DENIED') {
+            _errorMessage = 'Place suggestions are unavailable. Please check your Google Places API key and billing.';
+          } else if (status.startsWith('HTTP_')) {
+            _errorMessage = 'Unable to reach Places service (HTTP). Please try again later.';
+          } else if (status == 'EXCEPTION') {
+            _errorMessage = 'Error contacting Places service. Please try again.';
+          } else {
+            _errorMessage = 'Place suggestions are currently unavailable.';
+          }
+        }
         _isLoading = false;
       });
     } else {
@@ -99,6 +119,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
         setState(() {
           _predictions = [];
           _isLoading = false;
+          _errorMessage = null;
         });
       }
     }
@@ -115,6 +136,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
       setState(() {
         _predictions = []; // Clear predictions immediately
         _isLoading = true; // Show loading for place details fetch
+        _errorMessage = null;
       });
     }
 
@@ -151,6 +173,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
       setState(() {
         // _predictions is already empty
         _isLoading = false; // Done with loading details
+        _errorMessage = null;
       });
     }
     _generateNewSessionToken(); // Generate a new token for the next session
@@ -192,6 +215,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
                           setState(() {
                             _predictions = [];
                             _isLoading = false;
+                            _errorMessage = null;
                           });
                           _generateNewSessionToken(); // New session as input is cleared
                         },
@@ -199,6 +223,22 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
                     : null,
           ),
         ),
+        if (_errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0, left: 4.0),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 14, color: Colors.redAccent),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            ),
+          ),
         if (_predictions.isNotEmpty)
           Material(
             // Wrap with Material for proper theming of ListTiles

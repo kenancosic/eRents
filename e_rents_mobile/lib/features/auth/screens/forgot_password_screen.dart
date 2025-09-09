@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 class ForgotPasswordScreen extends StatelessWidget {
   final TextEditingController _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   ForgotPasswordScreen({super.key});
 
@@ -56,7 +57,10 @@ class ForgotPasswordScreen extends StatelessWidget {
                 top: 80.0, // Space to avoid overlapping the logo
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20.0,
               ),
-              child: Column(
+              child: Form(
+                key: _formKey,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
@@ -105,6 +109,13 @@ class ForgotPasswordScreen extends StatelessWidget {
                               controller: _emailController,
                               hintText: 'hi@example.com',
                               keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                final val = v?.trim() ?? '';
+                                if (val.isEmpty) return 'Email is required';
+                                final emailRe = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                                if (!emailRe.hasMatch(val)) return 'Please enter a valid email address';
+                                return null;
+                              },
                             ),
                             const SizedBox(height: 20),
                             Consumer<AuthProvider>(
@@ -113,8 +124,11 @@ class ForgotPasswordScreen extends StatelessWidget {
                                   label: "Submit",
                                   isLoading: provider.isLoading,
                                   onPressed: () async {
+                                    if (!(_formKey.currentState?.validate() ?? false)) {
+                                      return;
+                                    }
                                     bool success = await provider
-                                        .forgotPassword(_emailController.text);
+                                        .forgotPassword(_emailController.text.trim());
                                     if (success) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -123,7 +137,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                                                 'Password reset email sent.')),
                                       );
                                       // Navigate to verification screen
-                                      context.push('/verification?email=${_emailController.text}');
+                                      context.push('/verification?email=${_emailController.text.trim()}');
                                     } else {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -158,7 +172,8 @@ class ForgotPasswordScreen extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ),
+      ],
       ),
     );
   }

@@ -76,88 +76,88 @@ class _CustomInputFieldState extends State<CustomInputField> {
     final double iconSize = widget.height * 0.4;
     final double borderRadius = widget.height * 0.2;
 
-    // Directly return the TextFormField with styling
+    // Directly return the TextFormField (no fixed height) so error text can layout correctly
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
-      child: SizedBox(
-        height: widget.height,
-        child: TextFormField(
-          controller: widget.controller,
-          obscureText: _obscureText,
-          keyboardType: widget.keyboardType,
-          validator: widget.validator,
-          textAlignVertical: TextAlignVertical.center,
-          style: TextStyle(
-            color: textColor,
+      child: TextFormField(
+        controller: widget.controller,
+        obscureText: _obscureText,
+        keyboardType: widget.keyboardType,
+        validator: widget.validator,
+        textAlignVertical: TextAlignVertical.center,
+        style: TextStyle(
+          color: textColor,
+          fontSize: fontSize,
+        ),
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          hintStyle: TextStyle(
+            color: hintColor,
             fontSize: fontSize,
           ),
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            hintStyle: TextStyle(
-              color: hintColor,
-              fontSize: fontSize,
-            ),
-            isDense: true,
-            filled: true,
-            fillColor: backgroundColor,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: borderColor, width: 1.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: borderColor, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: focusedBorderColor, width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(
-                width: 1,
-                color: Colors.red.withAlpha((255 * 0.7).round()),
-              ),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(
-                width: 1.5,
-                color: Colors.red.withAlpha((255 * 0.7).round()),
-              ),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(
-                width: 1,
-                color: Colors.red.withAlpha((255 * 0.7)
-                    .round()), // Assuming disabled looks like error, or use grey
-              ),
-            ),
-            errorStyle: TextStyle(
-              color: Colors.redAccent,
-              fontSize: fontSize * 0.75,
-            ),
-            suffixIcon: widget.hasSuffixIcon
-                ? IconButton(
-                    icon: Icon(
-                      widget.suffixIcon ??
-                          (_obscureText
-                              ? Icons.visibility_off
-                              : Icons.visibility),
-                      color: iconColor,
-                      size: iconSize,
-                    ),
-                    onPressed: widget.obscureText ? _toggleObscureText : null,
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    constraints: BoxConstraints(
-                      minWidth: widget.height * 0.8,
-                      minHeight: widget.height * 0.8,
-                    ),
-                  )
-                : null,
+          isDense: true,
+          filled: true,
+          fillColor: backgroundColor,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: widget.height * 0.3, // approximate field height without constraining error text
+            horizontal: 12,
           ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(color: borderColor, width: 1.25),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(color: borderColor, width: 1.25),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(color: focusedBorderColor, width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(
+              width: 1,
+              color: Colors.red.withAlpha((255 * 0.7).round()),
+            ),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(
+              width: 1.5,
+              color: Colors.red.withAlpha((255 * 0.7).round()),
+            ),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
+            borderSide: BorderSide(
+              width: 1,
+              color: Colors.grey[300]!,
+            ),
+          ),
+          errorStyle: TextStyle(
+            color: Colors.redAccent,
+            fontSize: fontSize * 0.75,
+          ),
+          suffixIcon: widget.hasSuffixIcon
+              ? IconButton(
+                  icon: Icon(
+                    widget.suffixIcon ??
+                        (_obscureText
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                    color: iconColor,
+                    size: iconSize,
+                  ),
+                  onPressed: widget.obscureText ? _toggleObscureText : null,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  constraints: BoxConstraints(
+                    minWidth: widget.height * 0.8,
+                    minHeight: widget.height * 0.8,
+                  ),
+                )
+              : null,
         ),
       ),
     );

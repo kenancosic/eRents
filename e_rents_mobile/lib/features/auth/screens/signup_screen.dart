@@ -262,6 +262,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_currentStep < 2) {
       setState(() {
         _currentStep++;
+        _showErrors = false; // reset for next step
       });
       _pageController.animateToPage(
         _currentStep,
@@ -275,6 +276,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_currentStep > 0) {
       setState(() {
         _currentStep--;
+        _showErrors = false;
       });
       _pageController.animateToPage(
         _currentStep,
@@ -360,7 +362,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             horizontal: 16.0, vertical: 20.0),
                         child: Form(
                           key: _formKey,
-                          autovalidateMode: _showErrors ? AutovalidateMode.always : AutovalidateMode.disabled,
+                          autovalidateMode: _showErrors ? AutovalidateMode.always : AutovalidateMode.onUserInteraction,
                           child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
@@ -939,7 +941,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       return NextStepButton(
                                         label: _currentStep == 2 ? "Sign Up" : "Next",
                                         isLoading: provider.isLoading,
-                                        onPressed: !isValid ? null : () { _handleNextOrSubmit(provider); },
+                                        onPressed: () {
+                                          if (!isValid) {
+                                            setState(() { _showErrors = true; });
+                                            return;
+                                          }
+                                          _handleNextOrSubmit(provider);
+                                        },
                                       );
                                     },
                                   ),

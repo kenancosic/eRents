@@ -18,6 +18,7 @@ class PublicUserProvider extends BaseProvider {
   final int _pageSize = 10;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  int? _currentOwnerId; // Track which owner's properties are currently displayed
 
   // Getters
   User? get user => _user;
@@ -28,10 +29,13 @@ class PublicUserProvider extends BaseProvider {
   bool get isLoadingMore => _isLoadingMore;
 
   List<PropertyDetail> get filteredProperties {
-    if (!_onlyAvailable) return _ownerProperties;
-    return _ownerProperties
-        .where((p) => p.status == PropertyStatus.available)
-        .toList();
+    // Always scope results to the current owner to avoid leaking previous owner's items
+    final scoped = _currentOwnerId != null
+        ? _ownerProperties.where((p) => p.ownerId == _currentOwnerId).toList()
+        : List<PropertyDetail>.from(_ownerProperties);
+
+    if (!_onlyAvailable) return scoped;
+    return scoped.where((p) => p.status == PropertyStatus.available).toList();
   }
 
   // API
@@ -57,6 +61,7 @@ class PublicUserProvider extends BaseProvider {
       }, authenticated: true);
     });
     if (result != null) {
+      _currentOwnerId = result.userId; // Set current owner context
       _user = result;
       notifyListeners();
     }
@@ -64,6 +69,7 @@ class PublicUserProvider extends BaseProvider {
 
   Future<void> loadOwnerProperties(int ownerId, {bool refresh = false}) async {
     if (refresh) {
+      _currentOwnerId = ownerId; // Reset scope to this owner
       _currentPage = 1;
       _hasMore = true;
       _ownerProperties = [];
@@ -120,9 +126,10 @@ class PublicUserProvider extends BaseProvider {
     _onlyAvailable = value;
     // Force refresh with server-side filtering
     // Note: userId may be needed; if user is loaded, use its id
-    if (_user?.userId != null && _user!.userId! > 0) {
+    final id = _user?.userId ?? _currentOwnerId;
+    if (id != null && id > 0) {
       // ignore: discarded_futures
-      loadOwnerProperties(_user!.userId!, refresh: true);
+      loadOwnerProperties(id, refresh: true);
     } else {
       notifyListeners();
     }
@@ -130,9 +137,10 @@ class PublicUserProvider extends BaseProvider {
 
   void setSort(PublicUserSort sort) {
     _sort = sort;
-    if (_user?.userId != null && _user!.userId! > 0) {
+    final id = _user?.userId ?? _currentOwnerId;
+    if (id != null && id > 0) {
       // ignore: discarded_futures
-      loadOwnerProperties(_user!.userId!, refresh: true);
+      loadOwnerProperties(id, refresh: true);
     } else {
       notifyListeners();
     }

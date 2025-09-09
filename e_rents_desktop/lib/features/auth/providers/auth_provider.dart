@@ -12,6 +12,7 @@ class AuthProvider extends BaseProvider {
   User? _currentUser;
   String? _accessToken;
   String? _refreshToken;
+  Map<String, String> _fieldErrors = <String, String>{};
 
   // Optional dependency for token persistence; kept generic so existing tests can pass it
   final dynamic storage;
@@ -26,18 +27,33 @@ class AuthProvider extends BaseProvider {
   // Optional: expose tokens if needed by interceptors (or keep private and use ApiService)
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
+  Map<String, String> get fieldErrors => _fieldErrors;
+  String? getFieldError(String field) => _fieldErrors[field.toLowerCase()];
+  void clearFieldError(String field) {
+    final removed = _fieldErrors.remove(field.toLowerCase());
+    if (removed != null) {
+      notifyListeners();
+    }
+  }
 
   // region: Core auth workflows
 
   /// Login and set auth state. Returns true on success.
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String identifier, String password) async {
     final result = await executeWithRetry<bool>(() async {
+      // Determine if identifier is email or username to align with backend LoginRequest
+      final body = <String, dynamic>{
+        'password': password,
+      };
+      if (identifier.contains('@')) {
+        body['email'] = identifier;
+      } else {
+        body['username'] = identifier;
+      }
+
       final httpResp = await api.postJson(
-        '/Auth/Login',
-        {
-          'username': email,
-          'password': password,
-        },
+        '/Auth/login',
+        body,
         authenticated: false,
       );
 
@@ -71,23 +87,54 @@ class AuthProvider extends BaseProvider {
 
   /// Register a new user. Returns true on success.
   Future<bool> register(RegisterRequestModel request) async {
-    final ok = await executeWithRetry<bool>(() async {
+    // Custom flow to capture server-side field errors for UI mapping
+    _fieldErrors = <String, String>{};
+    setUpdating(true);
+    try {
       await api.postJson(
-        '/Auth/Register',
+        '/Auth/register',
         request.toJson(),
         authenticated: false,
       );
-      // Usually backend sends verification code via email
+      // Mark update finished successfully
+      setUpdating(false);
       return true;
-    }, isUpdate: true);
-    return ok ?? false;
+    } catch (e) {
+      // ApiService aggregates validation errors like "Field: Message; Field2: Message2"
+      final msg = e.toString();
+      _fieldErrors = _parseFieldErrors(msg);
+      // Set a concise top-level error for banners
+      final summary = _fieldErrors.isNotEmpty
+          ? _fieldErrors.values.first
+          : (msg.isNotEmpty ? msg : 'Registration failed');
+      setError(summary);
+      return false;
+    }
+  }
+
+  Map<String, String> _parseFieldErrors(String message) {
+    final Map<String, String> map = <String, String>{};
+    // Expected aggregated format: "Field: Message; Field2: Message2"
+    for (final part in message.split(';')) {
+      final trimmed = part.trim();
+      if (trimmed.isEmpty) continue;
+      final idx = trimmed.indexOf(':');
+      if (idx > 0 && idx < trimmed.length - 1) {
+        final field = trimmed.substring(0, idx).trim().toLowerCase();
+        final msg = trimmed.substring(idx + 1).trim();
+        if (field.isNotEmpty && msg.isNotEmpty) {
+          map[field] = msg;
+        }
+      }
+    }
+    return map;
   }
 
   /// Start forgot password flow. Returns true on success.
   Future<bool> forgotPassword(String email) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        'Auth/ForgotPassword',
+        'Auth/forgot-password',
         {'email': email},
         authenticated: false,
       );
@@ -114,7 +161,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> resetPassword(String email, String code, String newPassword) async {
     final ok = await executeWithRetry<bool>(() async {
       await api.postJson(
-        'Auth/ResetPassword',
+        'Auth/reset-password',
         {
           'email': email,
           'resetCode': code,

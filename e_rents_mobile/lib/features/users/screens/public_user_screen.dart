@@ -71,9 +71,19 @@ class _PublicUserScreenState extends State<PublicUserScreen> {
     // Defer to next frame to ensure provider available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PublicUserProvider>();
-      provider.loadUser(widget.userId);
-      provider.loadOwnerProperties(widget.userId);
+      provider.refreshOwner(widget.userId);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant PublicUserScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      // When navigating to the same screen with a different userId, refresh data
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<PublicUserProvider>().refreshOwner(widget.userId);
+      });
+    }
   }
 
   @override
@@ -100,8 +110,7 @@ class _PublicUserScreenState extends State<PublicUserScreen> {
             return _ErrorState(
               message: errorMessage.isNotEmpty ? errorMessage : 'Failed to load user',
               onRetry: () {
-                provider.loadUser(widget.userId);
-                provider.loadOwnerProperties(widget.userId);
+                provider.refreshOwner(widget.userId);
               },
             );
           }
@@ -161,20 +170,23 @@ class _PublicUserScreenState extends State<PublicUserScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Properties', style: Theme.of(context).textTheme.titleMedium),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('All'),
-                          selected: !provider.onlyAvailable,
-                          onSelected: (sel) => provider.setOnlyAvailable(false),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Available'),
-                          selected: provider.onlyAvailable,
-                          onSelected: (sel) => provider.setOnlyAvailable(true),
-                        ),
-                      ],
+                    Flexible(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('All'),
+                            selected: !provider.onlyAvailable,
+                            onSelected: (sel) => provider.setOnlyAvailable(false),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Available'),
+                            selected: provider.onlyAvailable,
+                            onSelected: (sel) => provider.setOnlyAvailable(true),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -185,30 +197,33 @@ class _PublicUserScreenState extends State<PublicUserScreen> {
                   children: [
                     Text('Sort:', style: Theme.of(context).textTheme.bodyMedium),
                     const SizedBox(width: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Available first'),
-                          selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.availableFirst),
-                          onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.availableFirst),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Newest'),
-                          selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.newest),
-                          onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.newest),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Price ↑'),
-                          selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.priceLowToHigh),
-                          onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.priceLowToHigh),
-                        ),
-                        ChoiceChip(
-                          label: const Text('Price ↓'),
-                          selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.priceHighToLow),
-                          onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.priceHighToLow),
-                        ),
-                      ],
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Available first'),
+                            selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.availableFirst),
+                            onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.availableFirst),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Newest'),
+                            selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.newest),
+                            onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.newest),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Price ↑'),
+                            selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.priceLowToHigh),
+                            onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.priceLowToHigh),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Price ↓'),
+                            selected: context.select<PublicUserProvider, bool>((p) => p.sort == PublicUserSort.priceHighToLow),
+                            onSelected: (_) => context.read<PublicUserProvider>().setSort(PublicUserSort.priceHighToLow),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

@@ -18,16 +18,32 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Initialize user data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<UserProfileProvider>().initUser();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && mounted) {
+      // On returning to the app (e.g., from PayPal), refresh user profile
+      context.read<UserProfileProvider>().loadCurrentUser(forceRefresh: true);
+    }
   }
 
   // Function to pick and upload profile image

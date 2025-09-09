@@ -10,6 +10,10 @@ class RegisterRequestModel {
   final String confirmPassword;
   final DateTime dateOfBirth;
   final UserType userType;
+  // Address (required by backend)
+  final String city;
+  final String zipCode;
+  final String country;
 
   const RegisterRequestModel({
     required this.username,
@@ -21,6 +25,9 @@ class RegisterRequestModel {
     required this.confirmPassword,
     required this.dateOfBirth,
     required this.userType,
+    required this.city,
+    required this.zipCode,
+    required this.country,
   });
 
   factory RegisterRequestModel.fromJson(Map<String, dynamic> json) {
@@ -39,6 +46,9 @@ class RegisterRequestModel {
       confirmPassword: _str(json['confirmPassword']),
       dateOfBirth: _reqDate(json['dateOfBirth']),
       userType: UserType.fromDynamic(json['userType']),
+      city: _str(json['city']),
+      zipCode: _str(json['zipCode']),
+      country: _str(json['country']),
     );
   }
 
@@ -52,5 +62,8 @@ class RegisterRequestModel {
         'confirmPassword': confirmPassword,
         'dateOfBirth': dateOfBirth.toIso8601String(),
         'userType': userType.name,
+        'city': city,
+        'zipCode': zipCode,
+        'country': country,
       };
 }

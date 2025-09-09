@@ -47,6 +47,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       builder: (context, authProvider, child) {
         return Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),

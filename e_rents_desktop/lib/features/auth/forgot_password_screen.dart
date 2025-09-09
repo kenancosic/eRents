@@ -44,6 +44,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       builder: (context, authProvider, child) {
         return Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,9 +68,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   prefixIcon: Icon(Icons.email),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty || !value.contains('@')) {
-                    return 'Please enter a valid email address';
-                  }
+                  final val = value?.trim() ?? '';
+                  if (val.isEmpty) return 'Please enter your email';
+                  final emailRe = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRe.hasMatch(val)) return 'Please enter a valid email address';
                   return null;
                 },
                 enabled: !authProvider.isLoading,

@@ -23,6 +23,10 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  // Address fields required by backend
+  final _cityController = TextEditingController();
+  final _zipCodeController = TextEditingController();
+  final _countryController = TextEditingController();
 
   @override
   void dispose() {
@@ -33,6 +37,9 @@ class _SignupScreenState extends State<SignupScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _cityController.dispose();
+    _zipCodeController.dispose();
+    _countryController.dispose();
     super.dispose();
   }
 
@@ -48,11 +55,17 @@ class _SignupScreenState extends State<SignupScreen> {
         confirmPassword: _confirmPasswordController.text,
         dateOfBirth: DateTime.now(), // Default to today, should add date picker in future
         userType: UserType.tenant,
+        city: _cityController.text,
+        zipCode: _zipCodeController.text,
+        country: _countryController.text,
       );
       final success = await authProvider.register(request);
       if (success && mounted) {
         // Navigate to the verification screen
         context.push('/verification?email=${_emailController.text}');
+      } else {
+        // Trigger re-validation to show server-side field errors inline
+        _formKey.currentState?.validate();
       }
     }
   }
@@ -69,6 +82,7 @@ class _SignupScreenState extends State<SignupScreen> {
       builder: (context, authProvider, child) {
         return Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -82,40 +96,122 @@ class _SignupScreenState extends State<SignupScreen> {
               TextFormField(
                 controller: _firstNameController,
                 decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) =>
-                    value!.isEmpty ? 'First name is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('firstName');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'First name is required';
+                  if (v.length > 100) return 'First name must not exceed 100 characters';
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _lastNameController,
                 decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Last name is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('lastName');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Last name is required';
+                  if (v.length > 100) return 'Last name must not exceed 100 characters';
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(labelText: 'Username'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Username is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('username');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Username is required';
+                  if (v.length < 3 || v.length > 50) {
+                    return 'Username must be between 3 and 50 characters';
+                  }
+                  final re = RegExp(r'^[a-zA-Z0-9_]+$');
+                  if (!re.hasMatch(v)) {
+                    return 'Username can only contain letters, numbers, and underscores';
+                  }
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Email is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('email');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Email is required';
+                  final emailRe = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                  if (!emailRe.hasMatch(v)) return 'Invalid email format';
+                  if (v.length > 100) return 'Email must not exceed 100 characters';
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(labelText: 'Phone'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Phone number is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('phoneNumber');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Phone number is required';
+                  if (v.length > 20) return 'Phone number must not exceed 20 characters';
+                  final phoneRe = RegExp(r'^\+?[1-9]\d{1,14}');
+                  if (!phoneRe.hasMatch(v)) return 'Invalid phone number format';
+                  return null;
+                },
+                enabled: !authProvider.isLoading,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _cityController,
+                decoration: const InputDecoration(labelText: 'City'),
+                validator: (value) {
+                  final server = authProvider.getFieldError('city');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'City is required';
+                  if (v.length > 100) return 'City must not exceed 100 characters';
+                  return null;
+                },
+                enabled: !authProvider.isLoading,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _zipCodeController,
+                decoration: const InputDecoration(labelText: 'Zip Code'),
+                validator: (value) {
+                  final server = authProvider.getFieldError('zipCode');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Zip code is required';
+                  if (v.length > 20) return 'Zip code must not exceed 20 characters';
+                  return null;
+                },
+                enabled: !authProvider.isLoading,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _countryController,
+                decoration: const InputDecoration(labelText: 'Country'),
+                validator: (value) {
+                  final server = authProvider.getFieldError('country');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'Country is required';
+                  if (v.length > 100) return 'Country must not exceed 100 characters';
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
@@ -123,8 +219,20 @@ class _SignupScreenState extends State<SignupScreen> {
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Password'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Password is required' : null,
+                validator: (value) {
+                  final server = authProvider.getFieldError('password');
+                  if (server != null) return server;
+                  final v = value ?? '';
+                  if (v.isEmpty) return 'Password is required';
+                  if (v.length < 8 || v.length > 100) {
+                    return 'Password must be between 8 and 100 characters';
+                  }
+                  final pwdRe = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]');
+                  if (!pwdRe.hasMatch(v)) {
+                    return 'Password must contain lower, upper, digit and special character';
+                  }
+                  return null;
+                },
                 enabled: !authProvider.isLoading,
               ),
               const SizedBox(height: 16),
@@ -133,6 +241,8 @@ class _SignupScreenState extends State<SignupScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Confirm Password'),
                 validator: (value) {
+                  final server = authProvider.getFieldError('confirmPassword');
+                  if (server != null) return server;
                   if (value!.isEmpty) return 'Please confirm your password';
                   if (value != _passwordController.text) return 'Passwords do not match';
                   return null;
