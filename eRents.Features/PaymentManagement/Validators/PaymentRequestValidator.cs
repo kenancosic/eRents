@@ -51,5 +51,10 @@ public class PaymentRequestValidator : BaseValidator<PaymentRequest>
             .GreaterThan(0)
             .When(x => x.BookingId.HasValue)
             .WithMessage("BookingId must be greater than 0 when provided.");
+
+        RuleFor(x => x.SubscriptionId)
+            .GreaterThan(0)
+            .When(x => x.SubscriptionId.HasValue)
+            .WithMessage("SubscriptionId must be greater than 0 when provided.");
     }
 }

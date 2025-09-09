@@ -77,6 +77,13 @@ public class SubscriptionService : ISubscriptionService
 
         try
         {
+            // Pre-check PayPal linkage for both parties to fail fast with clearer reason
+            if (subscription.Property?.Owner?.PaypalUserIdentifier == null)
+                throw new InvalidOperationException("Property owner does not have a PayPal account linked.");
+
+            if (subscription.Tenant?.User?.PaypalUserIdentifier == null)
+                throw new InvalidOperationException("Tenant does not have a PayPal account linked.");
+
             // Process payment through PayPal
             var paymentReference = await _payPalService.ProcessPaymentAsync(
                 subscription.BookingId,
@@ -90,6 +97,7 @@ public class SubscriptionService : ISubscriptionService
                 TenantId = subscription.TenantId,
                 PropertyId = subscription.PropertyId,
                 BookingId = subscription.BookingId,
+                SubscriptionId = subscription.SubscriptionId,
                 Amount = subscription.MonthlyAmount,
                 Currency = subscription.Currency,
                 PaymentMethod = "PayPal",
@@ -128,6 +136,7 @@ public class SubscriptionService : ISubscriptionService
                 TenantId = subscription.TenantId,
                 PropertyId = subscription.PropertyId,
                 BookingId = subscription.BookingId,
+                SubscriptionId = subscription.SubscriptionId,
                 Amount = subscription.MonthlyAmount,
                 Currency = subscription.Currency,
                 PaymentMethod = "PayPal",

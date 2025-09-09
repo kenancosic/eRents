@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
+import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 
@@ -102,7 +103,9 @@ class CheckoutProvider extends BaseProvider {
   }
 
   Future<bool> _initiatePayPalPayment() async {
-    final success = await executeWithStateForSuccess(() async {
+    // Use manual state handling so we can surface friendly messages
+    setLoading();
+    try {
       // Step 1: Create booking with 'Pending' status to get a bookingId
       final bookingData = {
         'propertyId': _currentProperty!.propertyId,
@@ -113,7 +116,6 @@ class CheckoutProvider extends BaseProvider {
         'paymentMethod': _selectedPaymentMethod,
         // Currency required by backend validator (using USD for PayPal testing)
         'currency': 'USD',
-        // NOTE: UserId is expected by backend validator; recommend inferring from auth on server.
       };
 
       final booking = await api.postAndDecode(
@@ -142,9 +144,38 @@ class CheckoutProvider extends BaseProvider {
 
       debugPrint('CheckoutProvider: Created PayPal order ID: $_payPalOrderId');
       notifyListeners(); // Notify UI to open the approval URL
-    }, errorMessage: 'Failed to initiate PayPal payment');
 
-    return success;
+      setSuccess();
+      return true;
+    } catch (e, st) {
+      final friendly = _mapPaymentInitiationError(e);
+      setError(GenericError(message: friendly, originalError: e, stackTrace: st));
+      return false;
+    }
+  }
+
+  String _mapPaymentInitiationError(Object e) {
+    final raw = e.toString();
+    final msg = raw.startsWith('Exception: ')
+        ? raw.substring('Exception: '.length)
+        : raw;
+    final m = msg.toLowerCase();
+
+    // Detect PayPal linkage issues from backend message
+    final ownerNotLinked =
+        m.contains('owner') && m.contains('paypal') && m.contains('link');
+    final tenantNotLinked =
+        m.contains('tenant') && m.contains('paypal') && m.contains('link');
+
+    if (ownerNotLinked) {
+      return 'This property\'s owner hasn\'t linked a PayPal account yet. Please choose a different property or contact the owner.';
+    }
+    if (tenantNotLinked) {
+      return 'You need to link your PayPal account before paying. Go to Profile → Payment methods to link your account.';
+    }
+
+    // Default friendly fallback including original brief reason
+    return 'Failed to initiate PayPal payment: $msg';
   }
 
   /// Capture the PayPal order after user approval

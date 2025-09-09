@@ -9,6 +9,7 @@ public class PaymentResponse
     public int? TenantId { get; set; }
     public int? PropertyId { get; set; }
     public int? BookingId { get; set; }
+    public int? SubscriptionId { get; set; }
 
     public decimal Amount { get; set; }
     public string? Currency { get; set; }

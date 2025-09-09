@@ -72,7 +72,7 @@ namespace eRents.Features.PaymentManagement.Services
         {
             var booking = await _context.Bookings
                 .Include(b => b.User)
-                .Include(b => b.Property)
+                .Include(b => b.Property).ThenInclude(p => p.Owner)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
                 
             if (booking == null)
