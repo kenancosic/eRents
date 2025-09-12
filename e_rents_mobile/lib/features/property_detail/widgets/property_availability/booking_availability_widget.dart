@@ -5,8 +5,8 @@ import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_availability_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
-import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 class BookingAvailabilityWidget extends StatefulWidget {
   final PropertyDetail property;
@@ -28,6 +28,8 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   String? _errorMessage;
   Map<String, dynamic>? _pricingDetails;
   int _months = 1; // For monthly leases
+  // Normalized day -> availability flag (UTC date-only)
+  final Map<DateTime, bool> _availabilityMap = <DateTime, bool>{};
 
   @override
   void initState() {
@@ -36,6 +38,12 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     // Defer provider-driven state changes until after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Persist initial selection in shared provider AFTER first frame to avoid notify during build
+      try {
+        context
+            .read<PropertyRentalProvider>()
+            .setBookingDateRange(_startDate, _endDate);
+      } catch (_) {}
       _loadAvailability();
     });
   }
@@ -48,7 +56,13 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       _months = clamped;
       _endDate = _startDate.add(Duration(days: 30 * _months));
     });
+    // Persist selection in shared provider so footer checkout uses it
+    try {
+      // ignore: use_build_context_synchronously
+      context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+    } catch (_) {}
     _calculatePricing();
+    _validateCurrentSelection();
   }
 
   void _initializeDates() {
@@ -81,14 +95,14 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         DateTime.now().add(const Duration(days: 90)),
       );
 
-      // Convert availability data to map format for UI usage
-      // Since Availability has startDate and endDate, we need to create entries for each day
-      final availabilityMap = <DateTime, bool>{};
+      // Convert availability data to normalized map for quick per-day checks
+      // Normalize keys to UTC 00:00 to avoid timezone mismatches
       for (var availability in availabilityProvider.availabilityData) {
         // Create entries for each day in the range
         DateTime currentDate = availability.startDate;
         while (currentDate.isBefore(availability.endDate) || currentDate.isAtSameMomentAs(availability.endDate)) {
-          availabilityMap[currentDate] = availability.isAvailable;
+          final normalized = DateTime.utc(currentDate.year, currentDate.month, currentDate.day);
+          _availabilityMap[normalized] = availability.isAvailable;
           currentDate = currentDate.add(const Duration(days: 1));
         }
       }
@@ -122,13 +136,15 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           'unitCount': nights,
           'unitLabel': 'days',
           'total': total,
+          'isMonthly': false,
         };
       } else {
-        // Monthly: charge a single monthly amount up-front via checkout
+        // Monthly: no upfront payment; tenant sends a request for landlord approval
         pricing = {
           'unitCount': _months,
           'unitLabel': _months == 1 ? 'month' : 'months',
-          'total': widget.property.price * _months,
+          'total': widget.property.price, // display monthly price for information
+          'isMonthly': true,
         };
       }
 
@@ -144,12 +160,39 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   }
 
   void _validateCurrentSelection() {
-    // We'll need to implement our own availability checking logic
-    // For now, we'll skip this validation as the specialized provider handles
-    // availability checking differently
-    
-    // TODO: Implement proper date range availability validation
-    // This would require checking the availability data we fetched
+    // Validate only for daily rentals; monthly flow is request-based and validated server-side
+    if (widget.property.rentalType != PropertyRentalType.daily) {
+      setState(() {
+        _errorMessage = null;
+      });
+      return;
+    }
+
+    // Normalize selected range to date-only and check each day is available
+    final DateTime start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    final DateTime end = DateTime(_endDate.year, _endDate.month, _endDate.day);
+    bool ok = true;
+    DateTime? firstBlocked;
+    DateTime cursor = start;
+    while (!cursor.isAfter(end.subtract(const Duration(days: 1)))) {
+      final key = DateTime.utc(cursor.year, cursor.month, cursor.day);
+      final isAvailable = _availabilityMap[key];
+      if (isAvailable == false) {
+        ok = false;
+        firstBlocked = cursor;
+        break;
+      }
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    setState(() {
+      if (ok) {
+        _errorMessage = null;
+      } else {
+        final fb = firstBlocked!;
+        _errorMessage = 'Selected dates include an unavailable day on ${fb.day}/${fb.month}/${fb.year}. Please pick different dates.';
+      }
+    });
   }
 
   Future<void> _selectDates() async {
@@ -188,7 +231,13 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         _startDate = picked.start;
         _endDate = picked.end;
       });
+      // Persist selection in shared provider so footer checkout uses it
+      try {
+        // ignore: use_build_context_synchronously
+        context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+      } catch (_) {}
       _calculatePricing();
+      _validateCurrentSelection();
     }
   }
 
@@ -224,32 +273,16 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         _startDate = pickedStart;
         _endDate = pickedStart.add(Duration(days: 30 * _months));
       });
+      // Persist selection in shared provider so footer checkout uses it
+      try {
+        // ignore: use_build_context_synchronously
+        context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+      } catch (_) {}
       _calculatePricing();
     }
   }
 
-  void _proceedToCheckout() {
-    // Guard: owners cannot proceed to checkout on their own properties
-    final userProvider = context.read<UserProfileProvider>();
-    final currentUserId = userProvider.currentUser?.userId;
-    final bool isOwner = currentUserId != null && currentUserId == widget.property.ownerId;
-    if (isOwner) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Owners cannot book their own properties.')),
-      );
-      return;
-    }
-    final isDailyRental =
-        widget.property.rentalType == PropertyRentalType.daily;
-
-    context.push('/checkout', extra: {
-      'property': widget.property,
-      'startDate': _startDate,
-      'endDate': _endDate,
-      'isDailyRental': isDailyRental,
-      'totalPrice': _pricingDetails?['total'] ?? 0.0,
-    });
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -377,6 +410,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                   ),
                 ],
               ),
+              // Pricing summary
+              if (_pricingDetails != null) _buildPricingSummary(),
+
               const SizedBox(height: 16),
 
               // Months selector for monthly leases
@@ -411,45 +447,23 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                   ),
                 ),
 
-              // Pricing summary
-              if (_pricingDetails != null) _buildPricingSummary(),
-
               const SizedBox(height: 16),
 
-              // Action buttons
+              // Action controls (primary checkout button moved to sticky footer)
               Wrap(
                 alignment: WrapAlignment.center,
                 spacing: 12,
                 runSpacing: 4,
                 children: [
                   CustomOutlinedButton(
-                    label:
-                        widget.property.rentalType == PropertyRentalType.daily
-                            ? 'Change Dates'
-                            : 'Change Start Date',
+                    label: widget.property.rentalType == PropertyRentalType.daily
+                        ? 'Change Dates'
+                        : 'Change Start Date',
                     icon: Icons.edit_calendar,
                     onPressed: isOwner ? () {} : () => _selectDates(),
                     isLoading: false,
                     width: OutlinedButtonWidth.flexible,
                     size: OutlinedButtonSize.compact,
-                  ),
-                  const SizedBox(width: 12),
-                  CustomButton(
-                    label:
-                        widget.property.rentalType == PropertyRentalType.daily
-                            ? 'Book Now'
-                            : 'Apply for Lease',
-                    icon: widget.property.rentalType == PropertyRentalType.daily
-                        ? Icons.check
-                        : Icons.home_work,
-                    onPressed: isOwner ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Owners cannot perform this action on their own property.')),
-                      );
-                    } : _proceedToCheckout,
-                    isLoading: false,
-                    width: ButtonWidth.flexible,
-                    size: ButtonSize.compact,
                   ),
                 ],
               ),
@@ -538,7 +552,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Total Price',
+              details['isMonthly'] == true ? 'Monthly Price' : 'Total Price',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -552,6 +566,19 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
             ),
           ],
         ),
+        if (details['isMonthly'] == true) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'No upfront payment. Send a request to the landlord for approval.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+            ),
+          ),
+        ],
       ],
     ),
   );

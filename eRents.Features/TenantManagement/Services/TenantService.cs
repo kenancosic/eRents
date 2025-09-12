@@ -146,6 +146,40 @@ namespace eRents.Features.TenantManagement.Services
                     throw new KeyNotFoundException("Property not found");
             }
 
+            // For mobile/client users (non-desktop), ensure the UserId comes from the authenticated context,
+            // not from the incoming payload, and mark the request as Inactive (pending) by default.
+            if (CurrentUser?.IsDesktop != true)
+            {
+                var userId = CurrentUser?.GetUserIdAsInt();
+                if (!userId.HasValue)
+                {
+                    throw new InvalidOperationException("Authenticated user context is required to create a tenant request.");
+                }
+                entity.UserId = userId.Value;
+                // A tenant request is pending by default until landlord accepts
+                entity.TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Inactive;
+            }
+
+            // Validate that a property exists and is monthly rental when provided
+            if (entity.PropertyId.HasValue)
+            {
+                var property = await Context.Set<Property>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId!.Value);
+                if (property == null)
+                {
+                    throw new KeyNotFoundException("Property not found");
+                }
+                if (property.RentingType != eRents.Domain.Models.Enums.RentalType.Monthly)
+                {
+                    throw new InvalidOperationException("Tenant requests can only be created for monthly rentals.");
+                }
+                if (property.Status != eRents.Domain.Models.Enums.PropertyStatusEnum.Available)
+                {
+                    throw new InvalidOperationException("Property is not available for new tenants.");
+                }
+            }
+
             // Default LeaseStartDate to today if not provided
             if (!entity.LeaseStartDate.HasValue)
             {
@@ -168,6 +202,40 @@ namespace eRents.Features.TenantManagement.Services
                     throw new InvalidOperationException("Cannot start monthly tenancy: property has scheduled bookings from the selected start date.");
                 }
             }
+        }
+
+        /// <summary>
+        /// Reject a pending (Inactive) tenant request.
+        /// </summary>
+        public async Task<TenantResponse> RejectTenantRequestAsync(int tenantId)
+        {
+            var entity = await AddIncludes(Context.Set<Tenant>().AsQueryable())
+                .FirstOrDefaultAsync(t => t.TenantId == tenantId);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+
+            // Validate ownership for desktop owner/landlord
+            if (CurrentUser?.IsDesktop == true &&
+                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            {
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+                    throw new KeyNotFoundException($"Tenant with id {tenantId} not found");
+            }
+
+            if (entity.TenantStatus != eRents.Domain.Models.Enums.TenantStatusEnum.Inactive)
+            {
+                throw new InvalidOperationException("Only pending tenant requests can be rejected.");
+            }
+
+            entity.TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Evicted;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+
+            return Mapper.Map<TenantResponse>(entity);
         }
 
         protected override async Task BeforeUpdateAsync(Tenant entity, TenantRequest request)

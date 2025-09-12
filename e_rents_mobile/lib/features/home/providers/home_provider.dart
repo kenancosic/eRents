@@ -17,6 +17,8 @@ class HomeProvider extends BaseProvider {
   List<PropertyCardModel> _recommendedCards = [];
   List<PropertyCardModel> _featuredCards = [];
   List<PropertyCardModel> _currentResidences = [];
+  List<PropertyCardModel> _upcomingCards = [];
+  List<PropertyCardModel> _pendingCards = [];
 
   // Getters
   User? get currentUser => _currentUser;
@@ -28,6 +30,8 @@ class HomeProvider extends BaseProvider {
   List<PropertyCardModel> get recommendedCards => _recommendedCards;
   List<PropertyCardModel> get featuredCards => _featuredCards;
   List<PropertyCardModel> get currentResidences => _currentResidences;
+  List<PropertyCardModel> get upcomingCards => _upcomingCards;
+  List<PropertyCardModel> get pendingCards => _pendingCards;
 
   String get welcomeMessage {
     if (_currentUser?.firstName != null) {
@@ -47,8 +51,9 @@ class HomeProvider extends BaseProvider {
 
   Future<void> initializeDashboard() async {
     await executeWithState(() async {
+      // Load current user first to enable UserId-based scoping on bookings
+      await _loadCurrentUser();
       await Future.wait([
-        _loadCurrentUser(),
         _loadCurrentResidences(),
         _loadUpcomingBookings(),
         _loadPendingBookings(),
@@ -76,7 +81,9 @@ class HomeProvider extends BaseProvider {
     // Use BookingSearch: Status=Upcoming & StartDateFrom = tomorrow
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final userId = _currentUser?.userId;
     final filters = {
+      'UserId': userId?.toString(),
       'Status': 'Upcoming',
       'StartDateFrom': _formatDate(today.add(const Duration(days: 1))),
       'PageSize': '10',
@@ -94,6 +101,7 @@ class HomeProvider extends BaseProvider {
     
     if (upcoming != null) {
       _upcomingBookings = upcoming.items;
+      _upcomingCards = await _enrichBookingsToCards(_upcomingBookings);
     }
   }
 
@@ -101,7 +109,9 @@ class HomeProvider extends BaseProvider {
     // Active stays where StartDate <= today and EndDate >= today
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final userId = _currentUser?.userId;
     final filters = {
+      'UserId': userId?.toString(),
       'Status': 'Active',
       'StartDateTo': _formatDate(today),
       'EndDateFrom': _formatDate(today),
@@ -119,13 +129,15 @@ class HomeProvider extends BaseProvider {
     });
 
     if (current != null) {
-      _currentResidences = current.items.map(_bookingToCard).toList();
+      _currentResidences = await _enrichBookingsToCards(current.items);
     }
   }
 
   Future<void> _loadPendingBookings() async {
     // Fetch upcoming monthly bookings
+    final userId = _currentUser?.userId;
     final filters = {
+      'UserId': userId?.toString(),
       'Status': 'Upcoming',
       'RentingType': 'Monthly',
       'PageSize': '10',
@@ -143,12 +155,15 @@ class HomeProvider extends BaseProvider {
     
     if (pending != null) {
       _pendingBookings = pending.items;
+      _pendingCards = await _enrichBookingsToCards(_pendingBookings, forceMonthly: true);
     }
   }
 
   /// Public refresh for only pending monthly bookings (used by HomeScreen timer)
   Future<void> refreshPendingBookings() async {
+    final userId = _currentUser?.userId;
     final filters = {
+      'UserId': userId?.toString(),
       'Status': 'Upcoming',
       'RentingType': 'Monthly',
       'PageSize': '10',
@@ -166,6 +181,7 @@ class HomeProvider extends BaseProvider {
 
     if (pending != null) {
       _pendingBookings = pending.items;
+      _pendingCards = await _enrichBookingsToCards(_pendingBookings, forceMonthly: true);
       notifyListeners();
     }
   }
@@ -253,16 +269,48 @@ class HomeProvider extends BaseProvider {
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
-  PropertyCardModel _bookingToCard(Booking booking) {
-    return PropertyCardModel(
-      propertyId: booking.propertyId,
-      name: booking.propertyName,
-      price: booking.dailyRate,
-      currency: booking.currency ?? 'USD',
-      averageRating: null,
-      coverImageId: null,
-      address: null,
-      rentalType: PropertyRentalType.daily,
-    );
+
+  Future<List<PropertyCardModel>> _enrichBookingsToCards(List<Booking> bookings, {bool forceMonthly = false}) async {
+    if (bookings.isEmpty) return [];
+
+    // Collect unique property IDs
+    final ids = bookings.map((b) => b.propertyId).where((id) => id > 0).toSet().toList();
+    Map<int, PropertyCardModel> cardMap = {};
+
+    try {
+      final cards = await api.postListAndDecode(
+        '/properties/cards/batch',
+        {'ids': ids},
+        PropertyCardModel.fromJson,
+        authenticated: true,
+      );
+      cardMap = {for (final c in cards) c.propertyId: c};
+    } catch (_) {
+      // Fallback to minimal mapping if batch endpoint fails
+      cardMap = {};
+    }
+
+    PropertyCardModel mergeCard(PropertyCardModel? base, Booking booking) {
+      final rentalType = forceMonthly
+          ? PropertyRentalType.monthly
+          : (base?.rentalType ?? PropertyRentalType.monthly);
+      // Pricing strategy: if monthly section, prefer property's base (monthly) price.
+      // Otherwise prefer booking.dailyRate, falling back to card price when dailyRate is missing.
+      final double effectivePrice = forceMonthly
+          ? (base?.price ?? (booking.dailyRate > 0 ? booking.dailyRate : 0))
+          : ((booking.dailyRate > 0) ? booking.dailyRate : (base?.price ?? 0));
+      return PropertyCardModel(
+        propertyId: booking.propertyId,
+        name: base?.name ?? booking.propertyName,
+        price: effectivePrice,
+        currency: booking.currency ?? (base?.currency ?? 'USD'),
+        averageRating: base?.averageRating,
+        coverImageId: base?.coverImageId,
+        address: base?.address,
+        rentalType: rentalType,
+      );
+    }
+
+    return bookings.map((b) => mergeCard(cardMap[b.propertyId], b)).toList();
   }
 }

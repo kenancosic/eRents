@@ -64,6 +64,60 @@ namespace eRents.Features.PropertyManagement.Services
 			if (search.Status.HasValue)
 				query = query.Where(x => x.Status == search.Status.Value);
 
+			// Server-side availability filtering for Daily rentals
+			if (search.RentingType.HasValue && search.RentingType.Value == RentalType.Daily &&
+				search.StartDate.HasValue && search.EndDate.HasValue && search.EndDate > search.StartDate)
+			{
+				var start = search.StartDate.Value.Date;
+				var end = search.EndDate.Value.Date;
+				var startD = DateOnly.FromDateTime(start);
+				var endD = DateOnly.FromDateTime(end);
+
+				// Always require property to be generally available
+				query = query.Where(p => p.Status == PropertyStatusEnum.Available);
+
+				// Booking/Unavailable overlap predicates
+				bool includePartial = search.IncludePartialDaily == true;
+
+				if (!includePartial)
+				{
+					// Exclude any overlap with Unavailable period
+					query = query.Where(p =>
+						!(p.UnavailableFrom.HasValue &&
+						  startD <= (p.UnavailableTo.HasValue ? p.UnavailableTo.Value : DateOnly.MaxValue) &&
+						  endD >= p.UnavailableFrom.Value));
+				}
+				else
+				{
+					// For partial allowed, exclude only if Unavailable fully covers the entire requested range
+					query = query.Where(p =>
+						!(p.UnavailableFrom.HasValue &&
+						  p.UnavailableFrom.Value <= startD &&
+						  (p.UnavailableTo ?? DateOnly.MaxValue) >= endD));
+				}
+
+				if (!includePartial)
+				{
+					// Require full availability across the entire range: there must be NO overlapping bookings
+					query = query.Where(p => !p.Bookings.Any(b =>
+						b.Status != BookingStatusEnum.Cancelled && b.Status != BookingStatusEnum.Completed &&
+						b.StartDate < endD &&
+						(b.EndDate ?? DateOnly.MaxValue) > startD
+					));
+				}
+				else
+				{
+					// IncludePartialDaily = true
+					// Keep properties unless they are blocked for the ENTIRE requested range by a single booking or global unavailability.
+					// Note: This is an approximation and does not merge multiple bookings; can be enhanced if needed.
+					query = query.Where(p => !p.Bookings.Any(b =>
+						b.Status != BookingStatusEnum.Cancelled && b.Status != BookingStatusEnum.Completed &&
+						b.StartDate <= startD &&
+						(b.EndDate ?? DateOnly.MaxValue) >= endD
+					));
+				}
+			}
+
 			// Auto-scope for Desktop owners/landlords
 			// Note: Seeded  user "desktop" has role "Owner" (UserTypeEnum.Owner)
 			// Support both "Owner" and "Landlord" to be robust across datasets

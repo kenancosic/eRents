@@ -11,6 +11,8 @@ using eRents.Domain.Shared.Interfaces;
 using Microsoft.Extensions.Logging;
 using eRents.Features.PaymentManagement.Models;
 using System.Linq;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace eRents.Features.PaymentManagement.Services
 {
@@ -34,6 +36,18 @@ namespace eRents.Features.PaymentManagement.Services
             _context = context;
             _currentUserService = currentUserService;
             _logger = logger;
+        }
+
+        private static bool IsValidMerchantId(string merchantId)
+        {
+            if (string.IsNullOrWhiteSpace(merchantId)) return false;
+            var s = merchantId.Trim();
+            if (s.Length < 13 || s.Length > 20) return false;
+            foreach (var ch in s)
+            {
+                if (!char.IsLetterOrDigit(ch)) return false;
+            }
+            return true;
         }
 
         public async Task<string> GetAccessTokenAsync()
@@ -80,39 +94,37 @@ namespace eRents.Features.PaymentManagement.Services
                 
             if (booking.Property?.Owner?.PaypalUserIdentifier == null)
                 throw new InvalidOperationException("Property owner does not have PayPal account linked.");
-                
-            if (booking.User?.PaypalUserIdentifier == null)
-                throw new InvalidOperationException("Tenant does not have PayPal account linked.");
 
             var accessToken = await GetAccessTokenAsync();
             var http = _httpClientFactory.CreateClient();
             var paymentUrl = _options.ApiBase.TrimEnd('/') + "/v2/payments/captures";
 
-            var paymentRequest = new
+            // Build request dynamically to omit payer when tenant is not linked
+            var paymentRequest = new Dictionary<string, object?>();
+            paymentRequest["intent"] = "CAPTURE";
+
+            var unit = new Dictionary<string, object?>
             {
-                intent = "CAPTURE",
-                purchase_units = new[]
+                ["reference_id"] = bookingId.ToString(),
+                ["description"] = description,
+                ["amount"] = new
                 {
-                    new
-                    {
-                        reference_id = bookingId.ToString(),
-                        description = description,
-                        amount = new
-                        {
-                            currency_code = currency,
-                            value = amount.ToString("0.00")
-                        },
-                        payee = new
-                        {
-                            merchant_id = booking.Property.Owner.PaypalUserIdentifier
-                        }
-                    }
-                },
-                payer = new
-                {
-                    payer_id = booking.User.PaypalUserIdentifier
+                    currency_code = currency,
+                    value = amount.ToString("0.00", CultureInfo.InvariantCulture)
                 }
             };
+
+            var ownerMerchantId2 = booking.Property.Owner.PaypalUserIdentifier;
+            if (!string.IsNullOrWhiteSpace(ownerMerchantId2) && IsValidMerchantId(ownerMerchantId2))
+            {
+                unit["payee"] = new { merchant_id = ownerMerchantId2 };
+            }
+
+            paymentRequest["purchase_units"] = new[] { unit };
+            if (!string.IsNullOrWhiteSpace(booking.User?.PaypalUserIdentifier))
+            {
+                paymentRequest["payer"] = new { payer_id = booking.User!.PaypalUserIdentifier };
+            }
 
             using var req = new HttpRequestMessage(HttpMethod.Post, paymentUrl);
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -153,7 +165,7 @@ namespace eRents.Features.PaymentManagement.Services
                 amount = new
                 {
                     currency_code = currency,
-                    value = amount.ToString("0.00")
+                    value = amount.ToString("0.00", CultureInfo.InvariantCulture)
                 },
                 note = reason
             };
@@ -202,27 +214,45 @@ namespace eRents.Features.PaymentManagement.Services
             var http = _httpClientFactory.CreateClient();
             var ordersUrl = _options.ApiBase.TrimEnd('/') + "/v2/checkout/orders";
 
-            var orderRequest = new
+            // Determine amount/currency/description using overrides when provided
+            var amount = createRequest.Amount ?? booking.TotalPrice;
+            var currency = string.IsNullOrWhiteSpace(createRequest.Currency)
+                ? (string.IsNullOrWhiteSpace(booking.Currency) ? "USD" : booking.Currency)
+                : createRequest.Currency!;
+            var description = string.IsNullOrWhiteSpace(createRequest.Description)
+                ? $"Payment for booking #{booking.BookingId}"
+                : createRequest.Description!;
+
+            if (amount <= 0m)
             {
-                intent = "CAPTURE",
-                purchase_units = new[]
+                _logger.LogError("Attempted to create PayPal order with non-positive amount for booking {BookingId}. Amount: {Amount}", booking.BookingId, amount);
+                throw new InvalidOperationException("Booking amount must be greater than zero.");
+            }
+
+            var amountStr = amount.ToString("0.00", CultureInfo.InvariantCulture);
+
+            var purchaseUnit = new Dictionary<string, object?>
+            {
+                ["reference_id"] = booking.BookingId.ToString(),
+                ["description"] = description,
+                ["amount"] = new
                 {
-                    new
-                    {
-                        reference_id = booking.BookingId.ToString(),
-                        description = $"Payment for booking #{booking.BookingId}",
-                        amount = new
-                        {
-                            currency_code = "USD", // Assuming USD, can be dynamic
-                            value = booking.TotalPrice.ToString("0.00")
-                        },
-                        payee = new
-                        {
-                            merchant_id = booking.Property.Owner.PaypalUserIdentifier
-                        }
-                    }
-                },
-                application_context = new
+                    currency_code = currency,
+                    value = amountStr
+                }
+            };
+
+            var ownerMerchantId = booking.Property.Owner.PaypalUserIdentifier;
+            if (!string.IsNullOrWhiteSpace(ownerMerchantId) && IsValidMerchantId(ownerMerchantId))
+            {
+                purchaseUnit["payee"] = new { merchant_id = ownerMerchantId };
+            }
+
+            var orderRequest = new Dictionary<string, object?>
+            {
+                ["intent"] = "CAPTURE",
+                ["purchase_units"] = new[] { purchaseUnit },
+                ["application_context"] = new
                 {
                     return_url = "http://localhost:5000/capture", // Placeholder URLs
                     cancel_url = "http://localhost:5000/cancel"
@@ -239,6 +269,75 @@ namespace eRents.Features.PaymentManagement.Services
             if (!resp.IsSuccessStatusCode)
             {
                 _logger.LogError("PayPal order creation failed: {Response}", json);
+                throw new InvalidOperationException($"PayPal order creation failed: {json}");
+            }
+
+            using var doc = JsonDocument.Parse(json);
+            var orderId = doc.RootElement.GetProperty("id").GetString();
+            var approvalUrl = doc.RootElement.GetProperty("links").EnumerateArray().FirstOrDefault(l => l.GetProperty("rel").GetString() == "approve").GetProperty("href").GetString();
+
+            return new CreateOrderResponse { OrderId = orderId, ApprovalUrl = approvalUrl };
+        }
+
+        public async Task<CreateOrderResponse> CreateOrderForPaymentAsync(int paymentId)
+        {
+            // Load payment with necessary relations
+            var payment = await _context.Payments
+                .Include(p => p.Property).ThenInclude(prop => prop!.Owner)
+                .Include(p => p.Subscription).ThenInclude(s => s!.Tenant).ThenInclude(t => t!.User)
+                .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+            if (payment == null)
+                throw new ArgumentException($"Payment with ID {paymentId} not found.");
+
+            if (payment.Property?.Owner?.PaypalUserIdentifier == null)
+                throw new InvalidOperationException("Property owner does not have a PayPal account linked.");
+
+            var accessToken = await GetAccessTokenAsync();
+            var http = _httpClientFactory.CreateClient();
+            var ordersUrl = _options.ApiBase.TrimEnd('/') + "/v2/checkout/orders";
+
+            var currency = string.IsNullOrWhiteSpace(payment.Currency) ? "USD" : payment.Currency;
+            var amountStr = payment.Amount.ToString("0.00", CultureInfo.InvariantCulture);
+
+            var pu = new Dictionary<string, object?>
+            {
+                ["reference_id"] = payment.PaymentId.ToString(),
+                ["description"] = $"Subscription invoice #{payment.PaymentId}",
+                ["amount"] = new
+                {
+                    currency_code = currency,
+                    value = amountStr
+                }
+            };
+
+            var merchantId = payment.Property.Owner.PaypalUserIdentifier;
+            if (!string.IsNullOrWhiteSpace(merchantId) && IsValidMerchantId(merchantId))
+            {
+                pu["payee"] = new { merchant_id = merchantId };
+            }
+
+            var orderRequest = new Dictionary<string, object?>
+            {
+                ["intent"] = "CAPTURE",
+                ["purchase_units"] = new[] { pu },
+                ["application_context"] = new
+                {
+                    return_url = "http://localhost:5000/api/payments/return", // TODO: externalize
+                    cancel_url = "http://localhost:5000/api/payments/cancel"
+                }
+            };
+
+            using var req = new HttpRequestMessage(HttpMethod.Post, ordersUrl);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            req.Content = new StringContent(JsonSerializer.Serialize(orderRequest), Encoding.UTF8, "application/json");
+
+            var resp = await http.SendAsync(req);
+            var json = await resp.Content.ReadAsStringAsync();
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogError("PayPal invoice order creation failed: {Response}", json);
                 throw new InvalidOperationException($"PayPal order creation failed: {json}");
             }
 
@@ -269,25 +368,101 @@ namespace eRents.Features.PaymentManagement.Services
             }
 
             using var doc = JsonDocument.Parse(json);
-            var purchaseUnits = doc.RootElement.GetProperty("purchase_units");
-            var capture = purchaseUnits[0].GetProperty("payments").GetProperty("captures")[0];
-            var captureId = capture.GetProperty("id").GetString();
-            var status = doc.RootElement.GetProperty("status").GetString();
-            var payer = doc.RootElement.GetProperty("payer");
-            var payerEmail = payer.GetProperty("email_address").GetString();
-            var payerName = $"{payer.GetProperty("name").GetProperty("given_name").GetString()} {payer.GetProperty("name").GetProperty("surname").GetString()}";
+            return await PersistCaptureAndBuildResponseAsync(orderId, doc);
+        }
 
-            // Persist Payment and update Booking when possible
+        public async Task<CaptureOrderResponse> VerifyOrCaptureOrderAsync(string orderId)
+        {
             try
             {
-                // reference_id was set to BookingId when creating the order
-                var referenceId = purchaseUnits[0].GetProperty("reference_id").GetString();
-                if (!string.IsNullOrWhiteSpace(referenceId) && int.TryParse(referenceId, out var bookingId))
+                // First, try capturing normally
+                return await CaptureOrderAsync(orderId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // If already captured, PayPal typically returns a 422 with name ORDER_ALREADY_CAPTURED
+                var message = ex.Message ?? string.Empty;
+                var alreadyCaptured = message.Contains("ORDER_ALREADY_CAPTURED", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("already captured", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("COMPLETED", StringComparison.OrdinalIgnoreCase);
+
+                if (!alreadyCaptured)
                 {
-                    var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == bookingId);
+                    throw; // propagate other failures
+                }
+
+                // Fetch order details and persist capture info idempotently
+                var accessToken = await GetAccessTokenAsync();
+                var http = _httpClientFactory.CreateClient();
+                var getUrl = $"{_options.ApiBase.TrimEnd('/')}/v2/checkout/orders/{orderId}";
+                using var getReq = new HttpRequestMessage(HttpMethod.Get, getUrl);
+                getReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+                using var getResp = await http.SendAsync(getReq);
+                var getJson = await getResp.Content.ReadAsStringAsync();
+                if (!getResp.IsSuccessStatusCode)
+                {
+                    _logger.LogError("PayPal get order failed: {Response}", getJson);
+                    throw new InvalidOperationException($"PayPal order retrieval failed: {getJson}");
+                }
+
+                using var getDoc = JsonDocument.Parse(getJson);
+                return await PersistCaptureAndBuildResponseAsync(orderId, getDoc);
+            }
+        }
+
+        private async Task<CaptureOrderResponse> PersistCaptureAndBuildResponseAsync(string orderId, JsonDocument doc)
+        {
+            try
+            {
+                var root = doc.RootElement;
+                var status = root.TryGetProperty("status", out var statusProp) ? statusProp.GetString() : null;
+                var payerEmail = root.TryGetProperty("payer", out var payerNode) && payerNode.TryGetProperty("email_address", out var emailNode)
+                    ? emailNode.GetString()
+                    : null;
+                var payerName = (root.TryGetProperty("payer", out var payerNode2)
+                                 && payerNode2.TryGetProperty("name", out var nameNode))
+                                 ? $"{nameNode.GetProperty("given_name").GetString()} {nameNode.GetProperty("surname").GetString()}"
+                                 : null;
+
+                var purchaseUnits = root.GetProperty("purchase_units");
+                var pu0 = purchaseUnits[0];
+                string? referenceId = pu0.TryGetProperty("reference_id", out var refNode) ? refNode.GetString() : null;
+
+                // Get capture id regardless of source (capture call or get order)
+                string? captureId = null;
+                if (pu0.TryGetProperty("payments", out var paymentsNode) && paymentsNode.TryGetProperty("captures", out var capturesNode) && capturesNode.GetArrayLength() > 0)
+                {
+                    captureId = capturesNode[0].GetProperty("id").GetString();
+                }
+
+                // Idempotency: if we already have a Payment with this captureId, return response directly
+                if (!string.IsNullOrWhiteSpace(captureId))
+                {
+                    var existing = await _context.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.PaymentReference == captureId);
+                    if (existing != null)
+                    {
+                        return new CaptureOrderResponse
+                        {
+                            CaptureId = captureId,
+                            Status = status,
+                            PayerEmail = payerEmail,
+                            PayerName = payerName
+                        };
+                    }
+                }
+
+                // Try to determine whether referenceId points to BookingId or PaymentId (for monthly invoice)
+                int parsedId;
+                var parsed = int.TryParse(referenceId, out parsedId);
+
+                if (parsed)
+                {
+                    // Prefer booking if it exists
+                    var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.BookingId == parsedId);
                     if (booking != null)
                     {
-                        // Create Payment record
+                        // Persist payment for booking capture
                         var payment = new Payment
                         {
                             BookingId = booking.BookingId,
@@ -299,30 +474,85 @@ namespace eRents.Features.PaymentManagement.Services
                             PaymentReference = captureId,
                             PaymentType = "BookingPayment"
                         };
-
                         _context.Payments.Add(payment);
 
-                        // Update booking payment info
                         booking.PaymentStatus = "Completed";
                         booking.PaymentReference = captureId;
 
                         await _context.SaveChangesAsync();
+
+                        return new CaptureOrderResponse
+                        {
+                            CaptureId = captureId,
+                            Status = status,
+                            PayerEmail = payerEmail,
+                            PayerName = payerName
+                        };
+                    }
+
+                    // Otherwise, treat as PaymentId for monthly invoice
+                    var pendingPayment = await _context.Payments
+                        .Include(p => p.Subscription)
+                        .FirstOrDefaultAsync(p => p.PaymentId == parsedId);
+
+                    if (pendingPayment != null)
+                    {
+                        pendingPayment.PaymentStatus = "Completed";
+                        pendingPayment.PaymentReference = captureId;
+                        // Keep amount/currency as originally recorded for invoice
+
+                        // Update subscription next date if applicable
+                        if (pendingPayment.Subscription != null)
+                        {
+                            var sub = pendingPayment.Subscription;
+                            sub.NextPaymentDate = sub.NextPaymentDate.AddMonths(1);
+                            if (sub.EndDate.HasValue && sub.NextPaymentDate > sub.EndDate.Value)
+                            {
+                                sub.Status = Domain.Models.Enums.SubscriptionStatusEnum.Completed;
+                            }
+                        }
+
+                        await _context.SaveChangesAsync();
+
+                        return new CaptureOrderResponse
+                        {
+                            CaptureId = captureId,
+                            Status = status,
+                            PayerEmail = payerEmail,
+                            PayerName = payerName
+                        };
                     }
                 }
+
+                // Fallback: persist minimal payment record
+                if (!string.IsNullOrWhiteSpace(captureId))
+                {
+                    var payment = new Payment
+                    {
+                        Amount = 0m,
+                        Currency = "USD",
+                        PaymentMethod = "PayPal",
+                        PaymentStatus = "Completed",
+                        PaymentReference = captureId,
+                        PaymentType = "BookingPayment"
+                    };
+                    _context.Payments.Add(payment);
+                    await _context.SaveChangesAsync();
+                }
+
+                return new CaptureOrderResponse
+                {
+                    CaptureId = captureId,
+                    Status = status,
+                    PayerEmail = payerEmail,
+                    PayerName = payerName
+                };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to persist payment for captured order {OrderId}", orderId);
-                // Non-fatal: we still return capture details to the caller
+                _logger.LogError(ex, "Failed to persist/verify payment for order {OrderId}", orderId);
+                throw;
             }
-
-            return new CaptureOrderResponse
-            {
-                CaptureId = captureId,
-                Status = status,
-                PayerEmail = payerEmail,
-                PayerName = payerName
-            };
         }
     }
 }

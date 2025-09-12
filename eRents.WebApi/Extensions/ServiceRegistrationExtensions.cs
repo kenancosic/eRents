@@ -70,16 +70,28 @@ public static class ServiceRegistrationExtensions
 		// Register UserManagement feature services explicitly
 		services.AddUserManagement();
 
-		// Seeding registrations
+		        // Seeding registrations
 			services.AddScoped<IDataSeeder, AmenitySeeder>();
 			services.AddScoped<IDataSeeder, UsersSeeder>();
 			services.AddScoped<IDataSeeder, UserProfileImagesSeeder>();
+			// New: ensure PayPal linkage for owners/tenants before properties/bookings
+			services.AddScoped<IDataSeeder, PaypalLinkSeeder>();
 			services.AddScoped<IDataSeeder, PropertiesSeeder>();
 			services.AddScoped<IDataSeeder, ImageSeeder>();
 			services.AddScoped<IDataSeeder, BookingsSeeder>();
+			// New: diversify booking statuses (Completed/Cancelled)
+			services.AddScoped<IDataSeeder, BookingsVarietySeeder>();
 			services.AddScoped<IDataSeeder, SubscriptionsSeeder>();
+			// Ensure pending lease extension requests exist for demo
+			services.AddScoped<IDataSeeder, LeaseExtensionRequestsSeeder>();
 			services.AddScoped<IDataSeeder, ReviewsSeeder>();
+			// New: add threaded replies and tenant reviews
+			services.AddScoped<IDataSeeder, ReviewRepliesSeeder>();
+			// New: seed historical payments and a refund linkage
+			services.AddScoped<IDataSeeder, PaymentsSeeder>();
 			services.AddScoped<IDataSeeder, MaintenanceIssuesSeeder>();
+			// New: enhance maintenance issues with assignment/resolution and extra images
+			services.AddScoped<IDataSeeder, MaintenanceEnhancementsSeeder>();
 			services.AddScoped<IDataSeeder, SavedPropertiesSeeder>();
 			services.AddScoped<IDataSeeder, MessagesSeeder>();
 			services.AddScoped<IDataSeeder, NotificationsSeeder>();

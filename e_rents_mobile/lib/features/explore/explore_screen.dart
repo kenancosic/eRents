@@ -115,6 +115,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final String city = (current['city'] ?? current['City'] ?? '').toString();
     final String? sortBy = (current['sortBy'] ?? current['SortBy'])?.toString();
     final String? sortDir = (current['sortDirection'] ?? current['SortDirection'])?.toString();
+    // Date and partial availability (if previously applied)
+    final String? startDate = (current['StartDate'] ?? current['startDate'])?.toString();
+    final String? endDate = (current['EndDate'] ?? current['endDate'])?.toString();
+    final bool? includePartialDaily = (current['IncludePartialDaily'] is bool)
+        ? current['IncludePartialDaily'] as bool
+        : (current['includePartialDaily'] is bool)
+            ? current['includePartialDaily'] as bool
+            : null;
 
     final initialFilters = {
       'propertyType': propertyTypeUi,
@@ -123,6 +131,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (city.isNotEmpty) 'city': city,
       if (sortBy != null) 'sortBy': sortBy,
       if (sortDir != null) 'sortDirection': sortDir,
+      if (startDate != null) 'startDate': startDate,
+      if (endDate != null) 'endDate': endDate,
+      if (includePartialDaily != null) 'includePartialDaily': includePartialDaily,
       // 'facilities' omitted; defaults handled in FilterScreen
     };
 

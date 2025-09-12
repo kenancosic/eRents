@@ -44,5 +44,24 @@ namespace eRents.Features.PaymentManagement.Services
         /// <param name="orderId">The ID of the order to capture.</param>
         /// <returns>Details of the captured payment.</returns>
         Task<CaptureOrderResponse> CaptureOrderAsync(string orderId);
+
+        /// <summary>
+        /// Verifies a PayPal order created/captured on the mobile client and ensures
+        /// a corresponding Payment record and Booking update are persisted. This will
+        /// attempt to capture the order first; if it is already captured, it will
+        /// fetch order details and persist the payment based on capture information.
+        /// </summary>
+        /// <param name="orderId">The PayPal order ID to verify or capture.</param>
+        /// <returns>Details of the captured payment.</returns>
+        Task<CaptureOrderResponse> VerifyOrCaptureOrderAsync(string orderId);
+
+        /// <summary>
+        /// Creates a PayPal order for a previously created Payment (invoice) identified by PaymentId.
+        /// The purchase unit reference_id will be set to the PaymentId so that later capture can map
+        /// back to the invoice and update subscription/payment state accordingly.
+        /// </summary>
+        /// <param name="paymentId">The internal PaymentId to build an order for.</param>
+        /// <returns>A response containing the order ID and approval URL.</returns>
+        Task<CreateOrderResponse> CreateOrderForPaymentAsync(int paymentId);
     }
 }

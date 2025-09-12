@@ -208,49 +208,58 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 ),
               if (_recentlyApprovedTenants.contains(t.tenantId)) const SizedBox(width: 12),
               if (t.tenantStatus == TenantStatus.inactive && t.propertyId != null)
-                ElevatedButton(
-                  onPressed: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Approve Booking'),
-                        content: const Text('Approve the latest booking request for this tenant and property?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: const Text('No'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(true),
-                            child: const Text('Yes'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      final provider = context.read<RentsProvider>();
-                      final bookingId = await provider.getLatestBookingIdForTenantProperty(t.userId, t.propertyId!);
-                      if (bookingId != null) {
-                        await provider.approveBooking(bookingId);
-                        _monthlyListController.refresh();
-                        if (mounted) {
-                          setState(() {
-                            _recentlyApprovedTenants.add(t.tenantId);
-                          });
-                        }
-                      } else {
-                        if (!mounted) return;
-                        showDialog<void>(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
                           context: context,
-                          builder: (ctx) => const AlertDialog(
-                            title: Text('No Booking Found'),
-                            content: Text('No recent booking found for this tenant and property.'),
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Accept Tenant'),
+                            content: const Text('Accept this tenant request and reject all other pending requests for this property?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+                              TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Yes')),
+                            ],
                           ),
                         );
-                      }
-                    }
-                  },
-                  child: const Text('Approve Booking'),
+                        if (confirmed == true) {
+                          final provider = context.read<RentsProvider>();
+                          await provider.acceptTenantRequest(t.tenantId, t.propertyId!);
+                          _monthlyListController.refresh();
+                          if (mounted) {
+                            setState(() {
+                              _recentlyApprovedTenants.add(t.tenantId);
+                            });
+                          }
+                        }
+                      },
+                      child: const Text('Accept Tenant'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () async {
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Reject Tenant'),
+                            content: const Text('Reject this tenant request?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+                              TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Yes')),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          final provider = context.read<RentsProvider>();
+                          await provider.rejectTenantRequest(t.tenantId);
+                          _monthlyListController.refresh();
+                        }
+                      },
+                      child: const Text('Reject'),
+                    ),
+                  ],
                 ),
             ],
           ),
@@ -290,51 +299,56 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                           backgroundColor: Colors.green,
                         ),
                       ),
-                    if (t.tenantStatus == TenantStatus.inactive && t.propertyId != null)
+                    if (t.tenantStatus == TenantStatus.inactive && t.propertyId != null) ...[
                       ElevatedButton(
                         onPressed: () async {
                           final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Approve Booking'),
-                              content: const Text('Approve the latest booking request for this tenant and property?'),
+                            context: ctx,
+                            builder: (dctx) => AlertDialog(
+                              title: const Text('Accept Tenant'),
+                              content: const Text('Accept this tenant request and reject all other pending requests for this property?'),
                               actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: const Text('No'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: const Text('Yes'),
-                                ),
+                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('No')),
+                                TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Yes')),
                               ],
                             ),
                           );
                           if (confirmed == true) {
                             final provider = ctx.read<RentsProvider>();
-                            final bookingId = await provider.getLatestBookingIdForTenantProperty(t.userId, t.propertyId!);
-                            if (bookingId != null) {
-                              await provider.approveBooking(bookingId);
-                              _monthlyListController.refresh();
-                              if (mounted) {
-                                setState(() {
-                                  _recentlyApprovedTenants.add(t.tenantId);
-                                });
-                              }
-                            } else {
-                              if (!mounted) return;
-                              showDialog<void>(
-                                context: ctx,
-                                builder: (d) => const AlertDialog(
-                                  title: Text('No Booking Found'),
-                                  content: Text('No recent booking found for this tenant and property.'),
-                                ),
-                              );
+                            await provider.acceptTenantRequest(t.tenantId, t.propertyId!);
+                            _monthlyListController.refresh();
+                            if (mounted) {
+                              setState(() {
+                                _recentlyApprovedTenants.add(t.tenantId);
+                              });
                             }
                           }
                         },
-                        child: const Text('Approve Booking'),
+                        child: const Text('Accept Tenant'),
                       ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dctx) => AlertDialog(
+                              title: const Text('Reject Tenant'),
+                              content: const Text('Reject this tenant request?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('No')),
+                                TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Yes')),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            final provider = ctx.read<RentsProvider>();
+                            await provider.rejectTenantRequest(t.tenantId);
+                            _monthlyListController.refresh();
+                          }
+                        },
+                        child: const Text('Reject'),
+                      ),
+                    ],
                   ],
                 ),
               ),

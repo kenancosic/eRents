@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using eRents.Features.PropertyManagement.Services;
 using System.Security.Claims;
 using System.Collections.Generic;
+using eRents.Features.LookupManagement.Models;
 
 namespace eRents.Features.PropertyManagement.Controllers;
 
@@ -29,6 +30,29 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
         _propertyService = service as PropertyService ?? throw new System.InvalidOperationException("PropertyService not registered correctly");
         _recommendationService = recommendationService;
         _propertyAvailabilityService = propertyAvailabilityService;
+    }
+
+    /// <summary>
+    /// Batch endpoint returning property cards for a list of property IDs.
+    /// </summary>
+    [HttpPost("cards/batch")]
+    public async Task<ActionResult<List<PropertyCardResponse>>> GetCardsBatch([FromBody] BatchIdsRequest request)
+    {
+        try
+        {
+            if (request == null || request.Ids == null || request.Ids.Count == 0)
+            {
+                return BadRequest(new { Message = "Ids must be provided" });
+            }
+
+            var cards = await _propertyService.GetPropertyCardsByIdsAsync(request.Ids);
+            return Ok(cards);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching property cards batch");
+            return StatusCode(500, new { Message = "An error occurred while fetching property cards" });
+        }
     }
 
     [HttpGet("{id}/current-tenant")]

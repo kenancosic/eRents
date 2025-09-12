@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
@@ -36,6 +37,9 @@ class PropertyRentalProvider extends BaseProvider {
   List<Review> _reviews = [];
   User? _owner;
   List<Amenity> _amenities = [];
+  bool _isFetchingAmenities = false;
+  bool _isFetchingOwner = false;
+  final Map<int, Amenity> _amenityCache = {};
 
   // ─── Getters ────────────────────────────────────────────────────────────
   
@@ -57,6 +61,23 @@ class PropertyRentalProvider extends BaseProvider {
   List<Review> get reviews => _reviews;
   User? get owner => _owner;
   List<Amenity> get amenities => _amenities;
+
+  /// Return amenities for the provided IDs using the in-memory cache when possible
+  List<Amenity> getAmenitiesFor(List<int> amenityIds) {
+    if (amenityIds.isEmpty) return const [];
+    final ids = amenityIds.where((e) => e > 0).toList();
+    final results = <Amenity>[];
+    for (final id in ids) {
+      final cached = _amenityCache[id];
+      if (cached != null) {
+        results.add(cached);
+      } else {
+        final idx = _amenities.indexWhere((a) => a.amenityId == id);
+        if (idx != -1) results.add(_amenities[idx]);
+      }
+    }
+    return results;
+  }
 
   // ─── Public API ─────────────────────────────────────────────────────────
   
@@ -111,34 +132,106 @@ class PropertyRentalProvider extends BaseProvider {
 
   /// Fetch the property's owner information by ownerId
   Future<void> fetchOwner(int ownerId) async {
-    final user = await executeWithState(() async {
-      return await api.getAndDecode('/users/$ownerId', User.fromJson, authenticated: true);
-    });
-    if (user != null) {
-      _owner = user;
-      notifyListeners();
+    if (_isFetchingOwner) return;
+    if (_owner?.userId == ownerId) return;
+
+    _isFetchingOwner = true;
+    try {
+      final user = await executeWithState(() async {
+        return await api.getAndDecode('/users/$ownerId', User.fromJson, authenticated: true);
+      });
+      if (user != null) {
+        _owner = user;
+        notifyListeners();
+      }
+    } finally {
+      _isFetchingOwner = false;
     }
   }
 
   /// Fetch amenity details for the given amenity IDs
   Future<void> fetchAmenitiesByIds(List<int> amenityIds) async {
-    if (amenityIds.isEmpty) {
-      _amenities = [];
+    // Normalize and guard
+    final ids = amenityIds.where((e) => e > 0).toSet();
+    if (ids.isEmpty) {
+      if (_amenities.isNotEmpty) {
+        _amenities = [];
+        notifyListeners();
+      }
+      return;
+    }
+
+    // Avoid duplicate fetches during rebuilds
+    if (_isFetchingAmenities) return;
+
+    // If we already have all requested amenities, reuse in-memory data and update the visible list
+    final existingIds = _amenities.map((a) => a.amenityId).toSet();
+    if (ids.difference(existingIds).isEmpty) {
+      final results = <Amenity>[];
+      for (final id in ids) {
+        final fromCache = _amenityCache[id];
+        if (fromCache != null) {
+          results.add(fromCache);
+        } else {
+          final idx = _amenities.indexWhere((a) => a.amenityId == id);
+          if (idx != -1) {
+            final a = _amenities[idx];
+            results.add(a);
+            _amenityCache[a.amenityId] = a;
+          }
+        }
+      }
+      _amenities = results;
       notifyListeners();
       return;
     }
 
-    final results = <Amenity>[];
-    for (final id in amenityIds) {
-      final amenity = await executeWithState(() async {
-        return await api.getAndDecode('/amenity/$id', Amenity.fromJson, authenticated: true);
-      });
-      if (amenity != null) {
-        results.add(amenity);
+    _isFetchingAmenities = true;
+    try {
+      // 1) Try new batch endpoint first
+      final batch = await api.postListAndDecode(
+        '/amenity/batch',
+        {'ids': ids.toList()},
+        Amenity.fromJson,
+        authenticated: true,
+      );
+
+      // Preserve original ID order
+      final byId = {for (final a in batch) a.amenityId: a};
+      final results = <Amenity>[];
+      for (final id in ids) {
+        final a = byId[id];
+        if (a != null) results.add(a);
       }
+      for (final a in results) {
+        _amenityCache[a.amenityId] = a;
+      }
+      _amenities = results;
+      notifyListeners();
+    } catch (e) {
+      // 2) Fallback to a single paginated fetch and filter locally
+      debugPrint('Amenity batch fetch failed, falling back to paged fetch. Error: $e');
+      try {
+        final qs = api.buildQueryString({'page': 1, 'pageSize': 500});
+        final paged = await api.getPagedAndDecode('/amenity$qs', Amenity.fromJson, authenticated: true);
+        final byId = {for (final a in paged.items) a.amenityId: a};
+        final results = <Amenity>[];
+        for (final id in ids) {
+          final a = byId[id];
+          if (a != null) results.add(a);
+        }
+        for (final a in results) {
+          _amenityCache[a.amenityId] = a;
+        }
+        _amenities = results;
+        notifyListeners();
+      } catch (e2) {
+        // Do not bubble up; leave existing amenities as-is
+        debugPrint('Failed to fetch amenities via fallback: $e2');
+      }
+    } finally {
+      _isFetchingAmenities = false;
     }
-    _amenities = results;
-    notifyListeners();
   }
 
   /// Fetch bookings for a property
@@ -191,10 +284,13 @@ class PropertyRentalProvider extends BaseProvider {
 
   /// Set booking date range
   void setBookingDateRange(DateTime? start, DateTime? end) {
+    final changed = _startDate != start || _endDate != end;
     _startDate = start;
     _endDate = end;
     _validateDateRange();
-    notifyListeners();
+    if (changed) {
+      notifyListeners();
+    }
   }
 
   /// Clear booking form
@@ -247,6 +343,10 @@ class PropertyRentalProvider extends BaseProvider {
 
   /// Fetch property details by ID
   Future<void> fetchPropertyDetails(int propertyId) async {
+    // Avoid redundant fetch if we already have this property's details
+    if (_property?.propertyId == propertyId) {
+      return;
+    }
     final property = await executeWithState(() async {
       return await api.getAndDecode('/properties/$propertyId', PropertyDetail.fromJson, authenticated: true);
     });
@@ -257,6 +357,10 @@ class PropertyRentalProvider extends BaseProvider {
 
   /// Fetch reviews for a property
   Future<void> fetchReviews(int propertyId) async {
+    // Avoid redundant fetch on rebuilds if reviews are already loaded for this property
+    if (_property?.propertyId == propertyId && _reviews.isNotEmpty) {
+      return;
+    }
     final reviews = await executeWithState(() async {
       final qs = api.buildQueryString({'PropertyId': propertyId.toString()});
       return await api.getListAndDecode('/reviews$qs', Review.fromJson, authenticated: true);

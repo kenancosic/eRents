@@ -13,6 +13,7 @@ import 'checkout/providers/checkout_provider.dart';
 import 'saved/saved_provider.dart';
 import 'profile/providers/user_profile_provider.dart';
 import 'profile/providers/user_bookings_provider.dart';
+import 'profile/providers/invoices_provider.dart';
 import 'explore/providers/property_search_provider.dart';
 import 'explore/providers/featured_properties_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
@@ -64,6 +65,10 @@ class FeaturesRegistry {
       
       ChangeNotifierProvider<UserBookingsProvider>(
         create: (_) => UserBookingsProvider(deps.apiService),
+      ),
+      
+      ChangeNotifierProvider<InvoicesProvider>(
+        create: (_) => InvoicesProvider(deps.apiService),
       ),
       
       // Explore Feature Providers

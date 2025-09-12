@@ -6,6 +6,7 @@ using eRents.Features.PaymentManagement.Services;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using eRents.Domain.Models;
+using eRents.Features.PaymentManagement.Models;
 
 namespace eRents.Features.PaymentManagement.Controllers;
 
@@ -101,4 +102,5 @@ public class PaypalAccountController : ControllerBase
 		await _context.SaveChangesAsync();
 		return NoContent();
 	}
-}
+
+	}

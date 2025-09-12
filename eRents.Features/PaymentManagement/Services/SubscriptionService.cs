@@ -75,56 +75,31 @@ public class SubscriptionService : ISubscriptionService
         if (subscription.NextPaymentDate > DateOnly.FromDateTime(DateTime.Today))
             throw new InvalidOperationException("Payment is not due yet.");
 
+        // Create pending payment for manual processing (no PayPal linking required)
+        var pendingPaymentRequest = new PaymentRequest
+        {
+            TenantId = subscription.TenantId,
+            PropertyId = subscription.PropertyId,
+            BookingId = subscription.BookingId,
+            SubscriptionId = subscription.SubscriptionId,
+            Amount = subscription.MonthlyAmount,
+            Currency = subscription.Currency,
+            PaymentMethod = "PayPal",
+            PaymentStatus = "Pending",
+            PaymentReference = null, // Will be set when tenant completes payment
+            PaymentType = "SubscriptionPayment"
+        };
+
         try
         {
-            // Pre-check PayPal linkage for both parties to fail fast with clearer reason
-            if (subscription.Property?.Owner?.PaypalUserIdentifier == null)
-                throw new InvalidOperationException("Property owner does not have a PayPal account linked.");
+            var pendingPaymentResponse = await _paymentService.CreateAsync(pendingPaymentRequest);
+            var pendingPayment = await _context.Payments.FindAsync(pendingPaymentResponse.PaymentId)
+                      ?? throw new InvalidOperationException("Failed to retrieve created pending payment entity.");
 
-            if (subscription.Tenant?.User?.PaypalUserIdentifier == null)
-                throw new InvalidOperationException("Tenant does not have a PayPal account linked.");
+            _logger.LogInformation("Created pending payment {PaymentId} for subscription {SubscriptionId}. Tenant must complete payment manually.", 
+                pendingPayment.PaymentId, subscriptionId);
 
-            // Process payment through PayPal
-            var paymentReference = await _payPalService.ProcessPaymentAsync(
-                subscription.BookingId,
-                subscription.MonthlyAmount,
-                subscription.Currency,
-                $"Monthly rent payment for {subscription.Property.Name}");
-
-            // Create payment record
-            var paymentRequest = new PaymentRequest
-            {
-                TenantId = subscription.TenantId,
-                PropertyId = subscription.PropertyId,
-                BookingId = subscription.BookingId,
-                SubscriptionId = subscription.SubscriptionId,
-                Amount = subscription.MonthlyAmount,
-                Currency = subscription.Currency,
-                PaymentMethod = "PayPal",
-                PaymentStatus = "Completed",
-                PaymentReference = paymentReference,
-                PaymentType = "SubscriptionPayment"
-            };
-
-            var paymentResponse = await _paymentService.CreateAsync(paymentRequest);
-            
-            // Fetch the actual Payment entity from database
-            var payment = await _context.Payments.FindAsync(paymentResponse.PaymentId);
-            if (payment == null)
-                throw new InvalidOperationException("Failed to retrieve created payment entity.");
-
-            // Update subscription for next payment
-            subscription.NextPaymentDate = subscription.NextPaymentDate.AddMonths(1);
-            
-            // Check if subscription has ended
-            if (subscription.EndDate.HasValue && subscription.NextPaymentDate > subscription.EndDate.Value)
-            {
-                subscription.Status = SubscriptionStatusEnum.Completed;
-            }
-
-            await _context.SaveChangesAsync();
-
-            return payment;
+            return pendingPayment;
         }
         catch (Exception ex)
         {

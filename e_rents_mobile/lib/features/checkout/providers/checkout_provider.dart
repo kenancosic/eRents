@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
@@ -5,6 +6,7 @@ import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
+// Native PayPal plugin removed; using server-driven WebView flow
 
 /// Provider for managing checkout flow and payment processing
 /// Refactored to use new standardized BaseProvider without caching
@@ -78,44 +80,62 @@ class CheckoutProvider extends BaseProvider {
     debugPrint('CheckoutProvider: Initialized checkout for property ${property.name}');
   }
 
-  /// Update selected payment method
-  void selectPaymentMethod(String paymentMethod) {
-    if (_selectedPaymentMethod != paymentMethod) {
-      _selectedPaymentMethod = paymentMethod;
-      notifyListeners();
-      debugPrint('CheckoutProvider: Selected payment method: $paymentMethod');
+  /// Submits a tenant request for MONTHLY rentals (no upfront payment).
+  /// Backend will set UserId from auth context and default status to Inactive.
+  Future<bool> submitTenantRequest() async {
+    if (_currentProperty == null || _startDate == null) {
+      setError(GenericError(message: 'Missing property or start date.'));
+      return false;
     }
+    if (_isDailyRental) {
+      setError(GenericError(message: 'Tenant requests are only for monthly rentals.'));
+      return false;
+    }
+
+    final y = _startDate!.year.toString().padLeft(4, '0');
+    final m = _startDate!.month.toString().padLeft(2, '0');
+    final d = _startDate!.day.toString().padLeft(2, '0');
+    final payload = <String, dynamic>{
+      'propertyId': _currentProperty!.propertyId,
+      'leaseStartDate': '$y-$m-$d',
+      if (_endDate != null)
+        'leaseEndDate': '${_endDate!.year.toString().padLeft(4, '0')}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}',
+      // TenantStatus is ignored by backend for mobile; defaults to Inactive
+    };
+
+    final ok = await executeWithStateForSuccess(() async {
+      await api.post('tenants', payload, authenticated: true);
+    }, errorMessage: 'Failed to submit tenant request');
+
+    return ok;
   }
 
-  /// Process payment and create booking
-  /// Uses BaseProvider's executeWithState for proper error handling
-  Future<bool> processPayment() async {
+  // ─── WebView PayPal Flow (server-driven) ────────────────────────────────
+
+  /// Create server-side PayPal order and return approvalUrl + orderId
+  /// This is used by the WebView-based checkout flow on mobile devices
+  Future<Map<String, String>> createPayPalOrder() async {
+    if (!_isDailyRental) {
+      throw Exception('PayPal flow is only available for daily rentals.');
+    }
     if (!isFormValid) {
-      throw Exception('Invalid form data - cannot process payment');
+      throw Exception('Invalid form data - cannot create order');
+    }
+    if (_totalPrice <= 0) {
+      // Prevent backend/PayPal UNPROCESSABLE_ENTITY for zero/negative amounts
+      throw Exception('Total price must be greater than zero.');
     }
 
-    if (_selectedPaymentMethod == 'PayPal') {
-      return await _initiatePayPalPayment();
-    } else {
-      // Handle other payment methods if any
-      throw Exception('Selected payment method is not supported.');
-    }
-  }
-
-  Future<bool> _initiatePayPalPayment() async {
-    // Use manual state handling so we can surface friendly messages
     setLoading();
     try {
       // Step 1: Create booking with 'Pending' status to get a bookingId
       final bookingData = {
         'propertyId': _currentProperty!.propertyId,
-        // Use DateOnly-friendly format to match backend binder
         'startDate': _startDate!.toIso8601String().split('T').first,
         'endDate': _endDate?.toIso8601String().split('T').first,
         'totalPrice': _totalPrice,
         'paymentMethod': _selectedPaymentMethod,
-        // Currency required by backend validator (using USD for PayPal testing)
-        'currency': 'USD',
+        'currency': currentProperty?.currency ?? 'USD',
       };
 
       final booking = await api.postAndDecode(
@@ -128,31 +148,69 @@ class CheckoutProvider extends BaseProvider {
       debugPrint('CheckoutProvider: Created pending booking ID: ${booking.bookingId}');
       _pendingBookingId = booking.bookingId;
 
-      // Step 2: Create PayPal order
-      final orderResponse = await api.postAndDecode(
+      // Step 2: Ask backend to create PayPal order and return approvalUrl
+      final orderResp = await api.postJson(
         'payments/create-order',
-        {'bookingId': booking.bookingId},
-        (json) => {
-          'orderId': json['orderId'],
-          'approvalUrl': json['approvalUrl'],
+        {
+          'bookingId': booking.bookingId,
+          // Provide server with explicit amount/currency to avoid relying on stale booking values
+          'amount': _totalPrice,
+          'currency': currentProperty?.currency ?? 'USD',
+          'description': 'Payment for booking #${booking.bookingId}',
         },
         authenticated: true,
       );
 
-      _payPalOrderId = orderResponse['orderId'];
-      _payPalApprovalUrl = orderResponse['approvalUrl'];
+      final orderId = (orderResp['orderId'] ?? '').toString();
+      final approvalUrl = (orderResp['approvalUrl'] ?? '').toString();
+      if (orderId.isEmpty || approvalUrl.isEmpty) {
+        throw Exception('Backend did not return approval URL or order ID.');
+      }
 
-      debugPrint('CheckoutProvider: Created PayPal order ID: $_payPalOrderId');
-      notifyListeners(); // Notify UI to open the approval URL
+      _payPalOrderId = orderId;
+      _payPalApprovalUrl = approvalUrl;
 
       setSuccess();
-      return true;
+      return {'orderId': orderId, 'approvalUrl': approvalUrl};
     } catch (e, st) {
       final friendly = _mapPaymentInitiationError(e);
       setError(GenericError(message: friendly, originalError: e, stackTrace: st));
-      return false;
+      rethrow;
     }
   }
+
+  // Native flow removed
+
+  /// Update selected payment method
+  void selectPaymentMethod(String paymentMethod) {
+    if (_selectedPaymentMethod != paymentMethod) {
+      _selectedPaymentMethod = paymentMethod;
+      notifyListeners();
+      debugPrint('CheckoutProvider: Selected payment method: $paymentMethod');
+    }
+  }
+
+  /// Process payment and create booking
+  /// Uses BaseProvider's executeWithState for proper error handling
+  Future<bool> processPayment() async {
+    if (!_isDailyRental) {
+      throw Exception('Payment is not required for monthly rentals.');
+    }
+    if (!isFormValid) {
+      throw Exception('Invalid form data - cannot process payment');
+    }
+
+    if (_selectedPaymentMethod == 'PayPal') {
+      // For WebView flow, UI should call createPayPalOrder() and then open WebView
+      await createPayPalOrder();
+      return true;
+    } else {
+      // Handle other payment methods if any
+      throw Exception('Selected payment method is not supported.');
+    }
+  }
+
+  // Obsolete native method removed
 
   String _mapPaymentInitiationError(Object e) {
     final raw = e.toString();
@@ -172,6 +230,11 @@ class CheckoutProvider extends BaseProvider {
     }
     if (tenantNotLinked) {
       return 'You need to link your PayPal account before paying. Go to Profile → Payment methods to link your account.';
+    }
+
+    // PayPal amount validation errors
+    if (m.contains('cannot_be_zero_or_negative') || m.contains('greater than zero')) {
+      return 'Payment amount must be greater than zero. Please adjust your booking or contact support.';
     }
 
     // Default friendly fallback including original brief reason

@@ -6,6 +6,7 @@ using eRents.Features.PaymentManagement.Services;
 using eRents.Domain.Shared.Interfaces;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace eRents.Features.PaymentManagement.Controllers;
 
@@ -15,6 +16,7 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 {
     private readonly IPayPalPaymentService _payPal;
     private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
         ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
@@ -25,6 +27,7 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
     {
         _payPal = payPal;
         _currentUser = currentUser;
+        _logger = logger;
     }
 
     [HttpPost("create-order")]
@@ -41,12 +44,27 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
         }
     }
 
+    [HttpPost("create-payment-order")]
+    public async Task<IActionResult> CreatePaymentOrder([FromBody] CreatePaymentOrderRequest request)
+    {
+        try
+        {
+            var resp = await _payPal.CreateOrderForPaymentAsync(request.PaymentId);
+            return Ok(resp);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
     [HttpPost("capture-order")]
     public async Task<IActionResult> CaptureOrder([FromBody] CaptureOrderRequest request)
     {
         try
         {
-            var resp = await _payPal.CaptureOrderAsync(request.OrderId);
+            // Use verification flow which captures if needed, or persists if already captured on client
+            var resp = await _payPal.VerifyOrCaptureOrderAsync(request.OrderId);
             return Ok(resp);
         }
         catch (Exception ex)

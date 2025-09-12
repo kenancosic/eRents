@@ -47,7 +47,7 @@ dependencies:
   intl: ^0.20.2
   google_maps_flutter: ^2.9.0
   smooth_page_indicator: ^1.2.0+3
-  flutter_dotenv: ^5.0.2
+  flutter_dotenv: ^6.0.0
   flutter_slider_drawer: ^3.0.2
   sliding_up_panel: ^2.0.0+1
   flutter_chat_types: ^3.6.2

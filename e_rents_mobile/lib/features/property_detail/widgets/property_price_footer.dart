@@ -62,7 +62,7 @@ class PropertyPriceFooter extends StatelessWidget {
                   isLoading: false,
                   onPressed: onCheckoutPressed,
                   label: Text(
-                    isDaily ? 'Book Now' : 'Apply',
+                    isDaily ? 'Book Now' : 'Start Lease',
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge

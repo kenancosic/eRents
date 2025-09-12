@@ -10,7 +10,8 @@ import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/checkout/providers/checkout_provider.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:e_rents_mobile/features/checkout/paypal_webview_screen.dart';
+import 'package:e_rents_mobile/features/checkout/paypal_webview_page.dart';
+// WebView-based PayPal approval handled via PaypalWebViewPage
 
 
 class CheckoutScreen extends StatefulWidget {
@@ -53,6 +54,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
     });
   }
+
+  Future<void> _submitMonthlyRequest(CheckoutProvider provider) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
+            SizedBox(height: 16),
+            Text('Submitting request...'),
+          ],
+        ),
+      ),
+    );
+
+    bool ok = false;
+    try {
+      ok = await provider.submitTenantRequest();
+    } catch (_) {}
+
+    if (!mounted) return;
+    context.pop();
+
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request sent. The landlord will review your request.')),
+      );
+      _showSuccessDialog(false);
+    } else {
+      _showErrorSnackBar(provider.errorMessage.isNotEmpty
+          ? provider.errorMessage
+          : 'Failed to submit request. Please try again.');
+    }
+  }
   
   @override
   void dispose() {
@@ -62,7 +99,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final appBar = CustomAppBar(
-      title: 'Advance Payment',
+      title: 'Checkout',
       showBackButton: true,
     );
 
@@ -84,7 +121,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       price: widget.property.price,
                       currency: widget.property.currency,
                       averageRating: widget.property.averageRating,
-                      coverImageId: widget.property.coverImageId!,
+                      coverImageId: widget.property.coverImageId,
                       address: widget.property.address,
                       rentalType: widget.property.rentalType,
                     ),
@@ -96,17 +133,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   // Booking details section
                   _buildBookingDetails(provider),
                   const SizedBox(height: 24),
-                  // Payment methods section
-                  _buildPaymentMethods(provider),
+                  // Payment methods section (daily rentals only)
+                  if (provider.isDailyRental) _buildPaymentMethods(provider),
                   const SizedBox(height: 32),
                   // Pay button
                   SizedBox(
                     width: double.infinity,
                     child: CustomButton(
                       isLoading: provider.isLoading,
-                      onPressed: provider.isLoading ? null : () { _processPayment(provider); },
+                      onPressed: provider.isLoading
+                          ? null
+                          : () {
+                              if (provider.isDailyRental) {
+                                _processPayment(provider);
+                              } else {
+                                _submitMonthlyRequest(provider);
+                              }
+                            },
                       label: Text(
-                        provider.isLoading ? 'Processing...' : 'Pay in Advance',
+                        provider.isLoading
+                            ? 'Processing...'
+                            : (provider.isDailyRental ? 'Pay and Book' : 'Send Request'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -315,7 +362,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     Icon(Icons.security, color: Colors.blue[600], size: 16),
                     const SizedBox(width: 6),
                     Text(
-                      'PayPal Benefits',
+                      'Why PayPal',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -327,7 +374,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   '• Secure payment processing\n'
-                  '• Buyer protection coverage\n'
+                  '• Buyer protection\n'
                   '• No need to share card details',
                   style: TextStyle(
                     fontSize: 12,
@@ -427,7 +474,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _processPayment(CheckoutProvider provider) async {
-    // Show loading dialog for payment initiation
+    // Step 1: Create order on server
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -437,70 +484,49 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
             SizedBox(height: 16),
-            Text('Initiating payment...'),
+            Text('Preparing PayPal checkout...'),
           ],
         ),
       ),
     );
 
-    final initiationSuccess = await provider.processPayment();
-
-    if (!mounted) return;
-    context.pop(); // Close loading dialog
-
-    if (initiationSuccess && provider.payPalApprovalUrl != null) {
-      // Navigate to PayPal WebView
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaypalWebViewScreen(approvalUrl: provider.payPalApprovalUrl!),
-        ),
-      );
-
-      if (result == true) {
-        // Show loading dialog for payment capture
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
-                SizedBox(height: 16),
-                Text('Finalizing payment...'),
-              ],
-            ),
-          ),
-        );
-
-        // Persist rental type flag before provider clears its state during capture
-        final isDaily = provider.isDailyRental;
-        final captureSuccess = await provider.capturePayPalOrder(provider.payPalOrderId!);
-        if (!mounted) return;
-        context.pop(); // Close loading dialog
-
-        if (captureSuccess) {
-          // For monthly rentals, show an immediate notification toast
-          if (!isDaily) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Lease application submitted. You\'ll be notified when the landlord responds.'),
-              ),
-            );
-          }
-          _showSuccessDialog(isDaily);
-        } else {
-          _showErrorSnackBar('Failed to finalize payment. Please contact support.');
-        }
-      } else {
-        _showErrorSnackBar('Payment was cancelled or failed.');
-      }
-    } else {
-      // Show initiation error
+    Map<String, String> order;
+    try {
+      order = await provider.createPayPalOrder();
+    } catch (_) {
+      if (!mounted) return;
+      context.pop();
       _showErrorSnackBar(provider.errorMessage.isNotEmpty
           ? provider.errorMessage
-          : 'Failed to initiate PayPal payment.');
+          : 'Failed to create PayPal order.');
+      return;
+    }
+
+    if (!mounted) return;
+    context.pop(); // Close preparing dialog
+
+    // Step 2: Open WebView for approval
+    final approved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PaypalWebViewPage(
+          approvalUrl: order['approvalUrl']!,
+          orderId: order['orderId']!,
+        ),
+      ),
+    );
+
+    if (approved == true) {
+      // Success
+      if (!provider.isDailyRental) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lease application submitted. You\'ll be notified when the landlord responds.'),
+          ),
+        );
+      }
+      _showSuccessDialog(provider.isDailyRental);
+    } else {
+      _showErrorSnackBar('Payment cancelled or failed.');
     }
   }
 

@@ -23,7 +23,7 @@ class _FilterScreenState extends State<FilterScreen> {
   // Filter state variables
   String _selectedPropertyType = 'Any';
   RangeValues _priceRange = const RangeValues(1200, 3000);
-  String _rentalPeriod = 'Monthly';
+  String _rentalPeriod = 'Any';
   final List<String> _selectedFacilities = [];
 
   // City and Sort state
@@ -55,6 +55,7 @@ class _FilterScreenState extends State<FilterScreen> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
   bool _isDateFilterEnabled = false;
   bool _useEndDate = true;
+  bool _includePartialDaily = false; // Only meaningful for Per day rentals
 
   @override
   void initState() {
@@ -87,6 +88,34 @@ class _FilterScreenState extends State<FilterScreen> {
           _priceSort = 'HighToLow';
         }
       }
+
+      // Include partial availability (daily only)
+      final includePartial = widget.initialFilters!['includePartialDaily'] ?? widget.initialFilters!['partialAvailability'];
+      if (includePartial is bool) {
+        _includePartialDaily = includePartial;
+      }
+
+      // Initialize date filters if provided
+      final start = widget.initialFilters!['startDate'];
+      final end = widget.initialFilters!['endDate'];
+      DateTime? parsedStart;
+      DateTime? parsedEnd;
+      if (start is String) {
+        parsedStart = DateTime.tryParse(start);
+      } else if (start is DateTime) {
+        parsedStart = start;
+      }
+      if (end is String) {
+        parsedEnd = DateTime.tryParse(end);
+      } else if (end is DateTime) {
+        parsedEnd = end;
+      }
+
+      if (parsedStart != null && parsedEnd != null && parsedEnd.isAfter(parsedStart)) {
+        _startDate = parsedStart;
+        _endDate = parsedEnd;
+        _isDateFilterEnabled = true;
+      }
     }
   }
 
@@ -100,7 +129,7 @@ class _FilterScreenState extends State<FilterScreen> {
     setState(() {
       _selectedPropertyType = 'Any';
       _priceRange = const RangeValues(1200, 3000);
-      _rentalPeriod = 'Monthly';
+      _rentalPeriod = 'Any';
       _selectedFacilities.clear();
       _selectedFacilities.add('Any');
       // Clear city and sort selections
@@ -158,6 +187,8 @@ class _FilterScreenState extends State<FilterScreen> {
       if (_isDateFilterEnabled) 'startDate': _startDate.toIso8601String(),
       if (_isDateFilterEnabled && (_useEndDate || _rentalPeriod == 'Per day'))
         'endDate': _endDate.toIso8601String(),
+      // Daily rentals: allow partial availability inclusion when date filter is enabled
+      if (_isDateFilterEnabled && _rentalPeriod == 'Per day') 'includePartialDaily': _includePartialDaily,
     };
     widget.onApplyFilters(mapped);
     context.pop();
@@ -380,6 +411,28 @@ class _FilterScreenState extends State<FilterScreen> {
                 _rentalPeriod == 'Per day'
                     ? _buildDailyDatePicker()
                     : _buildMonthlyDatePicker(),
+
+                // Partial availability option (daily only)
+                if (_rentalPeriod == 'Per day') ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.filter_alt_outlined, size: 18),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Include properties with partial availability in the selected dates',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      Switch(
+                        value: _includePartialDaily,
+                        onChanged: (val) => setState(() => _includePartialDaily = val),
+                        activeColor: primaryColor,
+                      ),
+                    ],
+                  ),
+                ],
               ],
 
               const SizedBox(height: 24),

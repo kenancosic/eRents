@@ -26,6 +26,11 @@ class PropertyCardModel {
 
   factory PropertyCardModel.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic v) => v is int ? v : int.tryParse(v?.toString() ?? '') ?? 0;
+    int? parseIntOrNull(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      return int.tryParse(v.toString());
+    }
     double? parseDouble(dynamic v) => v == null
         ? null
         : (v is num
@@ -66,7 +71,7 @@ class PropertyCardModel {
       price: parseDouble(json['price'] ?? json['Price']) ?? 0.0,
       currency: (json['currency'] ?? json['Currency'] ?? 'USD').toString(),
       averageRating: parseDouble(json['averageRating'] ?? json['AverageRating'] ?? json['PredictedRating']),
-      coverImageId: parseInt(json['coverImageId'] ?? json['CoverImageId']),
+      coverImageId: parseIntOrNull(json['coverImageId'] ?? json['CoverImageId']),
       address: (json['address'] ?? json['Address']) is Map<String, dynamic>
           ? Address.fromJson((json['address'] ?? json['Address']) as Map<String, dynamic>)
           : null,

@@ -30,13 +30,25 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.Notifications.IgnoreQueryFilters().ExecuteDeleteAsync();
                 await context.Messages.IgnoreQueryFilters().ExecuteDeleteAsync();
                 await context.Set<UserSavedProperty>().IgnoreQueryFilters().ExecuteDeleteAsync();
-                await context.MaintenanceIssues.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Reviews may reference bookings/properties/users
                 await context.Reviews.IgnoreQueryFilters().ExecuteDeleteAsync();
-                await context.Subscriptions.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Lease extension requests reference bookings
+                await context.LeaseExtensionRequests.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Payments reference Subscriptions, Bookings, Tenants, Properties
                 await context.Payments.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Subscriptions reference Tenants/Bookings/Properties
+                await context.Subscriptions.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Tenants reference Users/Properties (and are referenced by Subscriptions/Payments already cleared)
                 await context.Tenants.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Bookings reference Users/Properties and are referenced by Payments/Subscriptions/LeaseRequests already cleared
                 await context.Bookings.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Images reference Properties and MaintenanceIssues; delete images BEFORE issues to satisfy FK constraints
                 await context.Images.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // MaintenanceIssues are referenced by Images, so delete AFTER images
+                await context.MaintenanceIssues.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Junction table for properties-amenities
+                await context.PropertyAmenities.IgnoreQueryFilters().ExecuteDeleteAsync();
+                // Now properties and finally users
                 await context.Properties.IgnoreQueryFilters().ExecuteDeleteAsync();
                 await context.Users.IgnoreQueryFilters().ExecuteDeleteAsync();
             }

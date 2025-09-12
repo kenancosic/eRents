@@ -62,10 +62,12 @@ class PropertyCard extends StatelessWidget {
       elevation: 4,
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: SizedBox(
+          height: 180, // Match recommended visual height
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
+            children: [
             // Image section
             SizedBox(
               // Slightly reduced to help avoid overflow in compact lists
@@ -136,7 +138,8 @@ class PropertyCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -76,12 +76,12 @@ class Address {
       }
       
       return Address(
-        streetLine1: json['streetLine1']?.toString(),
+        streetLine1: (json['streetLine1'] ?? json['Street'] ?? json['street'])?.toString(),
         streetLine2: json['streetLine2']?.toString(),
-        city: json['city']?.toString(),
-        state: json['state']?.toString(),
-        country: json['country']?.toString(),
-        postalCode: json['postalCode']?.toString(),
+        city: (json['city'] ?? json['City'])?.toString(),
+        state: (json['state'] ?? json['State'])?.toString(),
+        country: (json['country'] ?? json['Country'])?.toString(),
+        postalCode: (json['postalCode'] ?? json['PostalCode'])?.toString(),
         latitude: latitude,
         longitude: longitude,
       );

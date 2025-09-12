@@ -13,7 +13,6 @@ import 'package:e_rents_mobile/features/property_detail/widgets/property_action_
 import 'package:e_rents_mobile/features/property_detail/widgets/property_owner.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/facilities.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_reviews/property_review.dart';
-import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +24,7 @@ import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/features/checkout/checkout_utils.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -154,13 +154,21 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 });
               }
 
-              // Ensure amenities are fetched for this property
-              if (provider.amenities.isEmpty && property.amenityIds.isNotEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (context.mounted) {
-                    context.read<PropertyRentalProvider>().fetchAmenitiesByIds(property.amenityIds);
-                  }
-                });
+              // Ensure amenities are fetched for THIS property (not from a previous screen)
+              if (property.amenityIds.isNotEmpty) {
+                final currentIds = provider.amenities.map((a) => a.amenityId).toSet();
+                final requiredIds = property.amenityIds.where((e) => e > 0).toSet();
+                final bool needsFetch = currentIds.length != requiredIds.length ||
+                    currentIds.difference(requiredIds).isNotEmpty ||
+                    requiredIds.difference(currentIds).isNotEmpty;
+
+                if (needsFetch) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (context.mounted) {
+                      context.read<PropertyRentalProvider>().fetchAmenitiesByIds(property.amenityIds);
+                    }
+                  });
+                }
               }
 
               final api = context.read<ApiService>();
@@ -228,7 +236,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
-                          FacilitiesSection(amenities: provider.amenities),
+                          FacilitiesSection(
+                            amenities: provider.getAmenitiesFor(property.amenityIds),
+                          ),
                           const SizedBox(height: 16),
                           const Divider(color: Color(0xFFE0E0E0), height: 16),
                           const SizedBox(height: 16),
@@ -316,32 +326,9 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final property = provider.property;
     if (property == null) return;
 
-    final now = DateTime.now();
-    final startDate = DateTime(now.year, now.month, now.day + 1);
-    final bool isDailyRental = property.rentalType == PropertyRentalType.daily;
+    final payload = buildCheckoutPayload(property);
 
-    DateTime endDate;
-    double totalPrice;
-
-    if (isDailyRental) {
-      endDate = startDate.add(const Duration(days: 7));
-      final nights = endDate.difference(startDate).inDays;
-      final unitPrice = property.dailyRate ?? property.price;
-      totalPrice = (nights > 0 ? nights : 0) * unitPrice;
-    } else {
-      final minStayDays = property.minimumStayDays ?? 30;
-      final months = (minStayDays / 30).ceil();
-      endDate = startDate.add(Duration(days: 30 * months));
-      totalPrice = property.price * months;
-    }
-
-    context.push('/checkout', extra: {
-      'property': property,
-      'startDate': startDate,
-      'endDate': endDate,
-      'isDailyRental': isDailyRental,
-      'totalPrice': totalPrice,
-    });
+    context.push('/checkout', extra: payload);
   }
 
   void _showAddReviewDialog(

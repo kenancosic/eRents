@@ -8,9 +8,6 @@ import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/core/models/address.dart';
-import 'package:e_rents_mobile/core/models/property_card_model.dart';
-import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -63,12 +60,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   final card = provider.recommendedCards[index];
                   return SizedBox(
                     width: 180, // Fixed width for vertical cards
-                    child: PropertyCard(
-                      layout: PropertyCardLayout.vertical,
-                      property: card,
-                      onTap: () {
-                        context.push('/property/${card.propertyId}');
-                      },
+                    child: Stack(
+                      children: [
+                        PropertyCard(
+                          layout: PropertyCardLayout.vertical,
+                          property: card,
+                          onTap: () {
+                            context.push('/property/${card.propertyId}');
+                          },
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -111,11 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     final card = items[index];
                     return SizedBox(
                       width: 180,
-                      child: PropertyCard.vertical(
-                        property: card,
-                        onTap: () {
-                          context.push('/property/${card.propertyId}');
-                        },
+                      child: Stack(
+                        children: [
+                          PropertyCard(
+                            layout: PropertyCardLayout.vertical,
+                            property: card,
+                            onTap: () {
+                              context.push('/property/${card.propertyId}');
+                            },
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -139,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context.push('/bookings');
               },
             ),
-            if (provider.upcomingBookings.isEmpty)
+            if (provider.upcomingCards.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Text(
@@ -149,33 +155,21 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             else
               SizedBox(
-                // Match the visual design of Current Residences/Recommended
-                height: 240,
+                height: 190,
                 child: ListView.builder(
                   primary: false,
                   shrinkWrap: true,
                   physics: const ClampingScrollPhysics(),
                   scrollDirection: Axis.horizontal,
-                  itemCount: provider.upcomingBookings.length,
+                  itemCount: provider.upcomingCards.length,
                   itemBuilder: (context, index) {
-                    final booking = provider.upcomingBookings[index];
-                    // Create a minimal Property object from booking data
-                    final card = PropertyCardModel(
-                      propertyId: booking.propertyId,
-                      name: booking.propertyName,
-                      price: booking.dailyRate,
-                      currency: booking.currency ?? 'USD',
-                      averageRating: null,
-                      coverImageId: null,
-                      address: Address(city: '', streetLine1: ''),
-                      rentalType: PropertyRentalType.daily,
-                    );
+                    final card = provider.upcomingCards[index];
                     return SizedBox(
                       width: 180,
                       child: PropertyCard.vertical(
                         property: card,
                         onTap: () {
-                          context.push('/property/${booking.propertyId}');
+                          context.push('/property/${card.propertyId}');
                         },
                       ),
                     );
@@ -191,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPendingBookingsSection(BuildContext context) {
     return Consumer<HomeProvider>(
       builder: (context, provider, child) {
-        if (provider.pendingBookings.isEmpty) {
+        if (provider.pendingCards.isEmpty) {
           return const SizedBox.shrink();
         }
         
@@ -206,26 +200,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SizedBox(
               // Match the visual design of Current Residences/Recommended
-              height: 240,
+              height: 190,
               child: ListView.builder(
                 primary: false,
                 shrinkWrap: true,
                 physics: const ClampingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
-                itemCount: provider.pendingBookings.length,
+                itemCount: provider.pendingCards.length,
                 itemBuilder: (context, index) {
-                  final booking = provider.pendingBookings[index];
-                  // Create a minimal Property object from booking data
-                  final card = PropertyCardModel(
-                    propertyId: booking.propertyId,
-                    name: booking.propertyName,
-                    price: booking.dailyRate,
-                    currency: booking.currency ?? 'USD',
-                    averageRating: null,
-                    coverImageId: 0,
-                    address: Address(city: '', streetLine1: ''),
-                    rentalType: PropertyRentalType.monthly,
-                  );
+                  final card = provider.pendingCards[index];
                   return SizedBox(
                     width: 180,
                     child: Stack(
@@ -234,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           layout: PropertyCardLayout.vertical,
                           property: card,
                           onTap: () {
-                            context.push('/property/${booking.propertyId}');
+                            context.push('/property/${card.propertyId}');
                           },
                         ),
                         Positioned(

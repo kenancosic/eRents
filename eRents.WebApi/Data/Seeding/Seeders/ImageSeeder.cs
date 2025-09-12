@@ -64,26 +64,32 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 Directory.GetFiles(maintenanceImagesPath, "*.jpg").ToArray() : 
                 new string[0];
 
-            // Add property images
-            for (int i = 0; i < Math.Min(properties.Count, propertyImages.Length); i++)
+            // Add property image galleries: up to 3 images for first 4 properties (first image as cover)
+            int perProperty = 3;
+            int propertyCount = Math.Min(properties.Count, 4);
+            for (int i = 0; i < propertyCount; i++)
             {
                 var p = properties[i];
-                var hasImages = await context.Images.AnyAsync(img => img.PropertyId == p.PropertyId);
-                if (hasImages) continue;
+                var existingCount = await context.Images.CountAsync(img => img.PropertyId == p.PropertyId);
+                if (existingCount > 0) continue; // idempotent: skip if images already exist for this property
 
-                var imagePath = propertyImages[i];
-                var imageData = await File.ReadAllBytesAsync(imagePath);
-                var contentType = imagePath.EndsWith(".png") ? "image/png" : "image/jpeg";
-
-                imagesToAdd.Add(new Image
+                int startIndex = i * perProperty;
+                for (int k = 0; k < perProperty && (startIndex + k) < propertyImages.Length; k++)
                 {
-                    PropertyId = p.PropertyId,
-                    ImageData = imageData,
-                    ContentType = contentType,
-                    FileName = Path.GetFileName(imagePath),
-                    DateUploaded = DateTime.UtcNow,
-                    IsCover = true
-                });
+                    var imagePath = propertyImages[startIndex + k];
+                    var imageData = await File.ReadAllBytesAsync(imagePath);
+                    var contentType = imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
+
+                    imagesToAdd.Add(new Image
+                    {
+                        PropertyId = p.PropertyId,
+                        ImageData = imageData,
+                        ContentType = contentType,
+                        FileName = Path.GetFileName(imagePath),
+                        DateUploaded = DateTime.UtcNow,
+                        IsCover = (k == 0)
+                    });
+                }
             }
 
             // Add maintenance issue images

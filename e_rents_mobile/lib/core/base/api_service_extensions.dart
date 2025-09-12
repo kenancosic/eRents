@@ -179,6 +179,43 @@ extension ApiServiceExtensions on ApiService {
     return decoder(data);
   }
   
+  /// POST request with automatic JSON decoding to list of objects
+  ///
+  /// Usage:
+  /// ```dart
+  /// final items = await api.postListAndDecode('/amenity/batch', {'ids': [1,2,3]}, Amenity.fromJson);
+  /// ```
+  Future<List<T>> postListAndDecode<T>(
+    String endpoint,
+    Map<String, dynamic> body,
+    T Function(Map<String, dynamic>) decoder, {
+    bool authenticated = false,
+    Map<String, String>? customHeaders,
+  }) async {
+    final response = await post(
+      endpoint,
+      body,
+      authenticated: authenticated,
+      customHeaders: customHeaders,
+    );
+    final dynamic data = json.decode(response.body);
+    if (data is List) {
+      return data.map((e) => decoder(e as Map<String, dynamic>)).toList();
+    } else if (data is Map<String, dynamic>) {
+      // Some APIs wrap list in a property
+      if (data.containsKey('items') && data['items'] is List) {
+        return (data['items'] as List).map((e) => decoder(e as Map<String, dynamic>)).toList();
+      }
+      if (data.containsKey('data') && data['data'] is List) {
+        return (data['data'] as List).map((e) => decoder(e as Map<String, dynamic>)).toList();
+      }
+      // Fallback: single item wrapped
+      return [decoder(data)];
+    } else {
+      throw Exception('Unexpected response format: expected List or Map, got ${data.runtimeType}');
+    }
+  }
+  
   /// PUT request with automatic JSON encoding/decoding
   /// 
   /// Usage:

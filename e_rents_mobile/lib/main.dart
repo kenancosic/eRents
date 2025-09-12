@@ -6,6 +6,7 @@ import 'package:e_rents_mobile/features/features_registry.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'core/base/error_provider.dart';
@@ -29,11 +30,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Create shared service instances
     final secureStorageService = SecureStorageService();
-    final apiService = ApiService(
-      // dotenv.env['API_BASE_URL'] ?? 
-      Config.baseLocalhostUrl,
-      secureStorageService,
-    );
+    // Choose API base dynamically: Android emulator uses 10.0.2.2, others use localhost
+    final apiBase = ((!kIsWeb || defaultTargetPlatform == TargetPlatform.windows) && defaultTargetPlatform == TargetPlatform.android)
+        ? Config.baseUrl
+        : Config.baseLocalhostUrl;
+    final apiService = ApiService(apiBase, secureStorageService);
     
     // Initialize dependencies
     final dependencies = ProviderDependencies(

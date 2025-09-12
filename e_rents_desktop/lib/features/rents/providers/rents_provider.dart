@@ -196,6 +196,17 @@ class RentsProvider extends BaseProvider {
     }
   }
 
+  Future<void> rejectTenantRequest(int tenantId) async {
+    final success = await executeWithState<bool>(() async {
+      await api.post('/Tenants/$tenantId/reject', {}, authenticated: true);
+      return true;
+    });
+
+    if (success == true) {
+      await refresh();
+    }
+  }
+
 
   void clearFilters() {
     _filters = {};

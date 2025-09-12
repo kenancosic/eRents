@@ -456,39 +456,4 @@ class UserProfileProvider extends BaseProvider {
     });
   }
 
-  /// Start PayPal linking process and return the approval URL
-  Future<String?> startPayPalLinking() async {
-    final url = await executeWithState<String?>(() async {
-      debugPrint('UserProfileProvider: Starting PayPal linking');
-      final response = await api.get('/payments/paypal/account/start', authenticated: true);
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        debugPrint('UserProfileProvider: PayPal linking started successfully');
-        return responseData['approvalUrl'];
-      } else {
-        debugPrint('UserProfileProvider: Failed to start PayPal linking');
-        throw Exception('Failed to start PayPal linking process.');
-      }
-    });
-
-    return url;
-  }
-
-  /// Unlink PayPal account
-  Future<bool> unlinkPaypal() async {
-    final success = await executeWithStateForSuccess(() async {
-      debugPrint('UserProfileProvider: Unlinking PayPal account');
-      final response = await api.delete('/payments/paypal/account', authenticated: true);
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        // Refresh user profile to reflect the change
-        await loadCurrentUser(forceRefresh: true);
-        debugPrint('UserProfileProvider: PayPal account unlinked successfully');
-      } else {
-        debugPrint('UserProfileProvider: Failed to unlink PayPal account');
-        throw Exception('Failed to unlink PayPal account');
-      }
-    }, errorMessage: 'Failed to unlink PayPal account');
-
-    return success;
-  }
 }

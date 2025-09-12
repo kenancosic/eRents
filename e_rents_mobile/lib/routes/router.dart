@@ -9,6 +9,7 @@ import 'package:e_rents_mobile/features/profile/screens/personal_details_screen.
 import 'package:e_rents_mobile/features/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/profile_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/payment_screen.dart';
+import 'package:e_rents_mobile/features/profile/screens/invoices_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/change_password_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/property_details_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
@@ -174,6 +175,10 @@ class AppRouter {
                         path: 'booking-history',
                         name: 'profile_booking_history',
                         builder: (context, state) => const BookingHistoryScreen()),
+                    GoRoute(
+                        path: 'invoices',
+                        name: 'profile_invoices',
+                        builder: (context, state) => const InvoicesScreen()),
                   ]),
               GoRoute(
                   path: '/faq', // FAQ as part of the profile shell

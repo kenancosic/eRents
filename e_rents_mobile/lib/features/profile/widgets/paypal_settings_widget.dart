@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class PaypalSettingsWidget extends StatelessWidget {
   final bool isEditing;
@@ -89,34 +88,43 @@ class PaypalSettingsWidget extends StatelessWidget {
             ),
             if (isEditing) ...[
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: isBusy
-                      ? null
-                      : user.isPaypalLinked == true
-                          ? () => _showUnlinkDialog(context, profileProvider)
-                          : () => _startLink(context, profileProvider),
-                  icon: Icon(
-                    user.isPaypalLinked == true ? Icons.link_off : Icons.link,
-                    size: 18,
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
                   ),
-                  label: Text(
-                    isBusy
-                        ? 'Please wait...'
-                        : user.isPaypalLinked == true
-                            ? 'Unlink PayPal Account'
-                            : 'Link PayPal Account',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    backgroundColor: user.isPaypalLinked == true
-                        ? Theme.of(context).colorScheme.errorContainer
-                        : Theme.of(context).colorScheme.primary,
-                    foregroundColor: user.isPaypalLinked == true
-                        ? Theme.of(context).colorScheme.onErrorContainer
-                        : Theme.of(context).colorScheme.onPrimary,
-                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'PayPal Integration',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'PayPal account linking is no longer required. When rent payments are due, you\'ll receive notifications to pay directly through the app using PayPal checkout.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -126,71 +134,4 @@ class PaypalSettingsWidget extends StatelessWidget {
     );
   }
 
-  void _showUnlinkDialog(BuildContext context, UserProfileProvider profileProvider) {
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Unlink PayPal Account'),
-          content: const Text(
-            'Are you sure you want to unlink your PayPal account?',
-          ),
-          actions: [
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
-            ),
-            ElevatedButton(
-              child: const Text('Unlink'),
-              onPressed: () async {
-                final success = await profileProvider.unlinkPaypal();
-                if (success && dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('PayPal account unlinked'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _startLink(BuildContext context, UserProfileProvider profileProvider) async {
-    final approvalUrl = await profileProvider.startPayPalLinking();
-    
-    if (approvalUrl != null && context.mounted) {
-      final uri = Uri.parse(approvalUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open PayPal to complete linking.')),
-          );
-        }
-      }
-    } else if (context.mounted) {
-      if (profileProvider.error != null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(profileProvider.error!.message)),
-          );
-        }
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to start PayPal linking.')),
-          );
-        }
-      }
-    }
-  }
 }

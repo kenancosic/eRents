@@ -5,7 +5,9 @@ using eRents.Features.LookupManagement.Interfaces;
 using eRents.Features.LookupManagement.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace eRents.Features.LookupManagement.Services
 {
@@ -68,6 +70,25 @@ namespace eRents.Features.LookupManagement.Services
         protected override int GetEntityId(Amenity entity)
         {
             return entity.AmenityId;
+        }
+
+        public async Task<IEnumerable<AmenityResponse>> GetByIdsAsync(IEnumerable<int> ids)
+        {
+            var idSet = ids?.Where(id => id > 0).Distinct().ToHashSet() ?? new HashSet<int>();
+            if (idSet.Count == 0)
+            {
+                return Enumerable.Empty<AmenityResponse>();
+            }
+
+            // Fetch all requested amenities in a single query
+            var amenities = await Context.Set<Amenity>()
+                .AsNoTracking()
+                .Where(a => idSet.Contains(a.AmenityId))
+                .ToListAsync();
+
+            // Map to responses
+            var mapped = Mapper.Map<List<AmenityResponse>>(amenities);
+            return mapped;
         }
     }
 }

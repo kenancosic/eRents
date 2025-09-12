@@ -161,9 +161,27 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         {
             try
             {
-                // Create subscription for monthly rental
+                // Ensure a Tenant exists for this user/property pair
+                var tenant = await Context.Set<Tenant>()
+                    .FirstOrDefaultAsync(t => t.UserId == booking.UserId && t.PropertyId == booking.PropertyId);
+
+                if (tenant == null)
+                {
+                    tenant = new Tenant
+                    {
+                        UserId = booking.UserId,
+                        PropertyId = booking.PropertyId,
+                        LeaseStartDate = booking.StartDate,
+                        LeaseEndDate = booking.EndDate,
+                        TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Active
+                    };
+                    Context.Set<Tenant>().Add(tenant);
+                    await Context.SaveChangesAsync(); // obtain TenantId
+                }
+
+                // Create subscription for monthly rental using the TenantId
                 var subscription = await _subscriptionService.CreateSubscriptionAsync(
-                    booking.UserId, // tenantId (using userId for now, might need to create actual tenant record)
+                    tenant.TenantId,
                     booking.PropertyId,
                     booking.BookingId,
                     booking.TotalPrice, // monthly amount
@@ -276,6 +294,17 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         {
             // Filter via owned type Property.RentingType
             query = query.Where(x => x.Property.RentingType.ToString() == search.RentingType);
+        }
+
+        // Auto-scope for Mobile clients: ensure non-desktop callers see only their own bookings
+        // Frontend also passes UserId explicitly now, but this enforces correctness even if omitted.
+        if (CurrentUser?.IsDesktop != true)
+        {
+            var currentUserId = CurrentUser?.GetUserIdAsInt();
+            if (currentUserId.HasValue)
+            {
+                query = query.Where(x => x.UserId == currentUserId.Value);
+            }
         }
 
         // Auto-scope for Desktop owners/landlords: only bookings for properties owned by current user

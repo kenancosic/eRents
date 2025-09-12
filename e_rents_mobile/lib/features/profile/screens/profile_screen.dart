@@ -174,6 +174,13 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                             },
                           ),
                           _buildListTile(
+                            icon: Icons.receipt_long_outlined,
+                            title: 'Invoices',
+                            onTap: () {
+                              context.push('/profile/invoices');
+                            },
+                          ),
+                          _buildListTile(
                             icon: Icons.history,
                             title: 'Booking History',
                             onTap: () {

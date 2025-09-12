@@ -45,6 +45,32 @@ public class TenantsController : CrudController<eRents.Domain.Models.Tenant, Ten
         }
     }
 
+    [HttpPost("{id}/reject")]
+    [ProducesResponseType(200, Type = typeof(TenantResponse))]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(500)]
+    public async Task<ActionResult<TenantResponse>> Reject(int id)
+    {
+        try
+        {
+            var result = await _tenantService.RejectTenantRequestAsync(id);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting Tenant with ID {Id}", id);
+            return StatusCode(500, "An error occurred while processing your request.");
+        }
+    }
+
     [HttpPost("{id}/cancel")]
     [ProducesResponseType(200, Type = typeof(TenantResponse))]
     [ProducesResponseType(404)]

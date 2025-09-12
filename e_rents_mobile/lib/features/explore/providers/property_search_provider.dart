@@ -50,6 +50,7 @@ class PropertySearchProvider extends BaseProvider {
     });
     
     if (properties != null) {
+      // Trust backend for all filtering, including availability
       _properties = properties;
       _hasMorePages = properties.hasNextPage;
       debugPrint('PropertySearchProvider: Loaded ${properties.items.length} properties');
@@ -179,6 +180,14 @@ class PropertySearchProvider extends BaseProvider {
 
     final rentingType = raw['RentingType'] ?? raw['rentalType'] ?? raw['rentingType'];
     if (rentingType != null) out['RentingType'] = rentingType;
+
+    // Date availability filters (backend expects StartDate/EndDate/IncludePartialDaily)
+    final startDate = raw['StartDate'] ?? raw['startDate'];
+    final endDate = raw['EndDate'] ?? raw['endDate'];
+    final includePartial = raw['IncludePartialDaily'] ?? raw['includePartialDaily'];
+    if (startDate != null) out['StartDate'] = startDate is DateTime ? startDate.toIso8601String() : startDate.toString();
+    if (endDate != null) out['EndDate'] = endDate is DateTime ? endDate.toIso8601String() : endDate.toString();
+    if (includePartial != null) out['IncludePartialDaily'] = includePartial;
 
     // Sorting
     var sortBy = raw['SortBy'] ?? raw['sortBy'];
