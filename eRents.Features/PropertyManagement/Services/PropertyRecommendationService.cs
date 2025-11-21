@@ -34,7 +34,21 @@ namespace eRents.Features.PropertyManagement.Services
 			}
 
 			var predictions = new List<(int PropertyId, float Score)>();
-			var properties = await _context.Properties.Where(p => p.Status == PropertyStatusEnum.Available).ToListAsync();
+		
+			// Get properties that are available AND don't have conflicts
+			// For monthly properties: exclude those with any active bookings or tenants
+			// For daily properties: just check status (availability is date-specific)
+			var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+			var properties = await _context.Properties
+				.Include(p => p.Bookings)
+				.Where(p => p.Status == PropertyStatusEnum.Available)
+				.Where(p => 
+					// For monthly rentals: exclude properties with any non-cancelled bookings from today onward
+					p.RentingType != RentalType.Monthly ||
+					!p.Bookings.Any(b => 
+						b.Status != BookingStatusEnum.Cancelled &&
+						(b.EndDate.HasValue ? b.EndDate.Value >= today : b.StartDate >= today)))
+				.ToListAsync();
 
 			foreach (var property in properties)
 			{

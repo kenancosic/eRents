@@ -58,6 +58,18 @@ class UserProfileProvider extends BaseProvider {
     return _currentUser?.role ?? 'guest';
   }
 
+  /// Get the user's profile image URL or a default placeholder
+  ///
+  /// Builds an absolute URL for the profile image content endpoint when
+  /// `profileImageId` is available; otherwise returns the local asset path.
+  String get profileImageUrlOrPlaceholder {
+    final id = _currentUser?.profileImageId;
+    if (id != null && id > 0) {
+      return api.makeAbsoluteUrl('/api/Images/$id/content');
+    }
+    return 'assets/images/user-image.png';
+  }
+
   // ─── User Profile Methods ──────────────────────────────────────────────
 
   /// Load current user profile

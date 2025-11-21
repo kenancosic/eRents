@@ -28,21 +28,12 @@ public partial class User : BaseEntity
 
 	public string? PhoneNumber { get; set; }
 
-	public bool IsPaypalLinked { get; set; }
-
-	public string? PaypalUserIdentifier { get; set; }
-
-	// PayPal linkage details
-	public string? PaypalAccountEmail { get; set; }
-
-	public PaypalAccountTypeEnum PaypalAccountType { get; set; } = PaypalAccountTypeEnum.Unknown;
-
-	public DateTime? PaypalLinkedAt { get; set; }
-
-	// Optional: store specific identifiers when known
-	public string? PaypalMerchantId { get; set; }
-
-	public string? PaypalPayerId { get; set; }
+	// Stripe payment fields
+	public string? StripeCustomerId { get; set; }
+	
+	public string? StripeAccountId { get; set; }
+	
+	public string? StripeAccountStatus { get; set; }
 
 	public byte[] PasswordSalt { get; set; } = null!;
 

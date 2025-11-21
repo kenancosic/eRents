@@ -76,7 +76,11 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
       itemCount: bookings.length,
       itemBuilder: (context, index) {
         final booking = bookings[index];
-        return BookingListItem(booking: booking);
+        return BookingListItem(
+          booking: booking,
+          onCancel: () => _confirmCancellation(booking),
+          onViewDetails: null,
+        );
       },
     );
   }
@@ -132,5 +136,91 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
         },
       ),
     );
+  }
+
+  Future<void> _confirmCancellation(Booking booking) async {
+    DateTime? selectedDate;
+    bool includeDate = false;
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Cancel Booking'),
+          content: StatefulBuilder(
+            builder: (ctx, setState) => SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: includeDate,
+                        onChanged: (v) => setState(() => includeDate = v ?? false),
+                      ),
+                      const Expanded(
+                        child: Text('Specify cancellation date (needed for in-stay monthly leases).'),
+                      ),
+                    ],
+                  ),
+                  if (includeDate)
+                    Row(
+                      children: [
+                        Text(selectedDate == null
+                            ? 'No date selected'
+                            : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () async {
+                            final now = DateTime.now();
+                            final first = now;
+                            final last = booking.endDate ?? now.add(const Duration(days: 365));
+                            final picked = await showDatePicker(
+                              context: ctx,
+                              initialDate: now,
+                              firstDate: first,
+                              lastDate: last,
+                            );
+                            if (picked != null) setState(() => selectedDate = picked);
+                          },
+                          child: const Text('Pick date'),
+                        )
+                      ],
+                    ),
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 4),
+                  const Text('Policies:'),
+                  const SizedBox(height: 4),
+                  const Text('• Daily: Full refund if cancelled at least 3 days before start.'),
+                  const Text('• Monthly: Before start – free; In-stay – contract adjusted; next month is still due.'),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Close')),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (res == true && mounted) {
+      final provider = context.read<UserBookingsProvider>();
+      final ok = await provider.cancelBooking(
+        booking.bookingId.toString(),
+        cancellationDate: selectedDate,
+      );
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Booking cancelled')), 
+        );
+      }
+    }
   }
 }

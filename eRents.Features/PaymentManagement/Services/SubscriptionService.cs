@@ -14,18 +14,15 @@ namespace eRents.Features.PaymentManagement.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly ERentsContext _context;
-    private readonly IPayPalPaymentService _payPalService;
     private readonly ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch> _paymentService;
     private readonly ILogger<SubscriptionService> _logger;
 
     public SubscriptionService(
         ERentsContext context,
-        IPayPalPaymentService payPalService,
         ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch> paymentService,
         ILogger<SubscriptionService> logger)
     {
         _context = context;
-        _payPalService = payPalService;
         _paymentService = paymentService;
         _logger = logger;
     }
@@ -75,7 +72,7 @@ public class SubscriptionService : ISubscriptionService
         if (subscription.NextPaymentDate > DateOnly.FromDateTime(DateTime.Today))
             throw new InvalidOperationException("Payment is not due yet.");
 
-        // Create pending payment for manual processing (no PayPal linking required)
+        // Create pending payment for manual processing
         var pendingPaymentRequest = new PaymentRequest
         {
             TenantId = subscription.TenantId,
@@ -84,7 +81,7 @@ public class SubscriptionService : ISubscriptionService
             SubscriptionId = subscription.SubscriptionId,
             Amount = subscription.MonthlyAmount,
             Currency = subscription.Currency,
-            PaymentMethod = "PayPal",
+            PaymentMethod = "Stripe",
             PaymentStatus = "Pending",
             PaymentReference = null, // Will be set when tenant completes payment
             PaymentType = "SubscriptionPayment"
@@ -114,7 +111,7 @@ public class SubscriptionService : ISubscriptionService
                 SubscriptionId = subscription.SubscriptionId,
                 Amount = subscription.MonthlyAmount,
                 Currency = subscription.Currency,
-                PaymentMethod = "PayPal",
+                PaymentMethod = "Stripe",
                 PaymentStatus = "Failed",
                 PaymentReference = null,
                 PaymentType = "SubscriptionPayment"

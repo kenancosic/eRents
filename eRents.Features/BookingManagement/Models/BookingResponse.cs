@@ -18,7 +18,7 @@ public class BookingResponse
 
     public BookingStatusEnum Status { get; set; }
 
-    public string PaymentMethod { get; set; } = "PayPal";
+    public string PaymentMethod { get; set; } = "Stripe";
     public string Currency { get; set; } = "USD";
     public string? PaymentStatus { get; set; }
     public string? PaymentReference { get; set; }

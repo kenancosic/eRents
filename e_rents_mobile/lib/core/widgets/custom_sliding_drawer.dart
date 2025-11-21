@@ -1,8 +1,10 @@
-import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -36,35 +38,42 @@ class CustomSlidingDrawer extends StatelessWidget {
         child: Drawer(
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.only(
-              topRight: Radius.zero,
+              topRight: Radius.circular(16),
               bottomRight: Radius.circular(16),
             ),
           ),
           child: Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/polygon.jpg'),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.black54,
-                  BlendMode.darken,
-                ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.05),
+                  AppColors.surfaceLight,
+                ],
               ),
             ),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildCustomDrawerHeader(context),
-                _buildMenuItem(context, Icons.history, "My Bookings"),
-                _buildMenuItem(
-                    context, Icons.person_outline, "Personal details"),
-                _buildMenuItem(
-                    context, Icons.payment_outlined, "Payment details"),
-                _buildMenuItem(context, Icons.help_outline, "FAQ"),
-                const Divider(color: Colors.white30),
-                _buildMenuItem(context, Icons.logout, "Log out",
-                    isLogout: true),
-              ],
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildCustomDrawerHeader(context),
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      children: [
+                        SizedBox(height: AppSpacing.sm),
+                        _buildMenuItem(context, Icons.person_outline, "Profile", '/profile'),
+                        _buildMenuItem(context, Icons.calendar_today_outlined, "My Bookings", '/profile/booking-history'),
+                        _buildMenuItem(context, Icons.payment_outlined, "Payment Methods", '/profile/payment'),
+                        _buildMenuItem(context, Icons.help_outline, "Help & FAQ", '/faq'),
+                        SizedBox(height: AppSpacing.md),
+                        _buildLogoutButton(context),
+                        SizedBox(height: AppSpacing.lg),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -77,73 +86,158 @@ class CustomSlidingDrawer extends StatelessWidget {
     final user = userProvider.user;
 
     return Container(
-      padding: const EdgeInsets.only(
-          top: 50.0, bottom: 20.0, left: 16.0, right: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      margin: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
         children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: Colors.white.withValues(alpha: 0.3),
-            child: CircleAvatar(
-              radius: 38,
-              backgroundImage: const AssetImage('assets/images/user-image.png'),
-            ),
+          CustomAvatar(
+            imageUrl: userProvider.profileImageUrlOrPlaceholder,
+            size: 56,
           ),
-          const SizedBox(height: 12),
-          Text(
-            user?.name != null && user?.lastName != null
-                ? "${user!.name} ${user.lastName}"
-                : "User Name",
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              overflow: TextOverflow.ellipsis,
+          SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user?.name != null && user?.lastName != null
+                      ? "${user!.name} ${user.lastName}"
+                      : "User Name",
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Text(
+                  user?.email ?? "user@example.com",
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
             ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 8),
-          ElevatedTextButton.icon(
-            text: "Edit profile",
-            icon: Icons.edit,
-            isCompact: true,
-            textColor: Colors.white,
-            backgroundColor: Colors.transparent,
-            onPressed: () {
-              if (context.mounted) {
-                context.go('/profile');
-                onDrawerToggle();
-              }
-            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, IconData icon, String title,
-      {bool isLogout = false}) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isLogout ? Colors.red : Colors.white,
+  Widget _buildMenuItem(BuildContext context, IconData icon, String title, String route) {
+    return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isLogout ? Colors.red : Colors.white,
-          fontWeight: isLogout ? FontWeight.bold : null,
+      child: ListTile(
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: Container(
+          padding: EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: AppColors.primary,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Icon(
+          Icons.chevron_right,
+          color: AppColors.textSecondary,
+          size: 20,
+        ),
+        onTap: () {
+          if (context.mounted) {
+            context.go(route);
+            onDrawerToggle();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.red.withValues(alpha: 0.2),
+          width: 1,
         ),
       ),
-      onTap: () async {
-        if (isLogout) {
+      child: ListTile(
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: Container(
+          padding: EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.logout,
+            color: Colors.red,
+            size: 20,
+          ),
+        ),
+        title: const Text(
+          'Log out',
+          style: TextStyle(
+            color: Colors.red,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onTap: () async {
           if (!context.mounted) return;
           final bool? confirmLogout = await showDialog<bool>(
             context: context,
             builder: (BuildContext dialogContext) {
               return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 title: const Text('Confirm Logout'),
                 content: const Text('Are you sure you want to log out?'),
                 actions: <Widget>[
@@ -168,33 +262,17 @@ class CustomSlidingDrawer extends StatelessWidget {
 
           if (confirmLogout == true) {
             if (!context.mounted) return;
-            // Clear tokens and user state
             await context.read<AuthProvider>().logout();
             await context.read<UserProfileProvider>().logout();
             if (!context.mounted) return;
             context.go('/login');
           }
-        } else if (title == "Payment") {
-          if (!context.mounted) return;
-          context.go('/profile/payment');
-        } else if (title == "Personal details") {
-          if (!context.mounted) return;
-          context.go('/profile/details');
-        } else if (title == "Payment details") {
-          if (!context.mounted) return;
-          context.go('/profile/payment');
-        } else if (title == "FAQ") {
-          if (!context.mounted) return;
-          context.go('/faq');
-        } else if (title == "My Bookings") {
-          if (!context.mounted) return;
-          context.go('/profile/booking-history');
-        }
 
-        if (context.mounted) {
-          onDrawerToggle();
-        }
-      },
+          if (context.mounted) {
+            onDrawerToggle();
+          }
+        },
+      ),
     );
   }
 }

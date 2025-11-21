@@ -82,9 +82,6 @@ namespace eRents.Features.UserManagement.Services
             if (search.UserType.HasValue)
                 query = query.Where(x => x.UserType == search.UserType.Value);
 
-            if (search.IsPaypalLinked.HasValue)
-                query = query.Where(x => x.IsPaypalLinked == search.IsPaypalLinked.Value);
-
             if (search.IsPublic.HasValue)
                 query = query.Where(x => x.IsPublic == search.IsPublic.Value);
 

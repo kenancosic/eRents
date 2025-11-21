@@ -1,9 +1,13 @@
-import 'package:e_rents_mobile/core/base/base_screen.dart';
-import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/custom_input_field.dart';
+import 'package:e_rents_mobile/features/auth/auth_provider.dart';
+import 'package:e_rents_mobile/core/utils/theme.dart';
+import 'package:e_rents_mobile/features/auth/widgets/auth_screen_layout.dart';
+import 'package:e_rents_mobile/features/auth/widgets/auth_form_container.dart';
+import 'package:e_rents_mobile/features/auth/widgets/auth_header.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 
 class CreatePasswordScreen extends StatefulWidget {
   final String email;
@@ -56,184 +60,118 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      body: _buildCreatePasswordForm(context),
+    return AuthScreenLayout(
+      child: _buildCreatePasswordForm(context),
     );
   }
 
   Widget _buildCreatePasswordForm(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        return Form(
-          key: _formKey,
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // App logo or icon
-                  const Icon(
-                    Icons.lock_reset,
-                    size: 80,
-                    color: Color(0xFF7065F0),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Title
-                  const Text(
-                    'Create New Password',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 30),
+            AuthFormContainer(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const AuthHeader(
+                      title: 'Create New Password',
+                      subtitle: 'Please create a new password for your account.',
+                      showLogo: false,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                   
-                  // Description
-                  const Text(
-                    'Please create a new password for your account.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Password input field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'New Password',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      prefixIcon: const Icon(Icons.lock, color: Colors.white70),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white70,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.white30),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF7065F0)),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a password';
-                      }
-                      if (value.length < 8) {
-                        return 'Password must be at least 8 characters';
-                      }
-                      if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]')
-                          .hasMatch(value)) {
-                        return 'Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character';
-                      }
-                      return null;
-                    },
-                    enabled: !authProvider.isLoading,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Confirm password input field
-                  TextFormField(
-                    controller: _confirmPasswordController,
-                    obscureText: _obscureConfirmPassword,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Confirm Password',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      prefixIcon: const Icon(Icons.lock, color: Colors.white70),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                          color: Colors.white70,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.white30),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF7065F0)),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Passwords do not match';
-                      }
-                      return null;
-                    },
-                    enabled: !authProvider.isLoading,
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Create password button
-                  ElevatedTextButton(
-                    text: 'Create Password',
-                    onPressed: () async {
-                      await _createPassword(authProvider);
-                    },
-                    isLoading: authProvider.isLoading,
-                  ),
-                  
-                  // Error message
-                  if (authProvider.hasError)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
+                    const Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
-                        authProvider.errorMessage,
-                        style: const TextStyle(color: Colors.red, fontSize: 16),
-                        textAlign: TextAlign.center,
+                        'New Password',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: authLabelColor,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Back button
-                  TextButton(
-                    onPressed: () => context.pop(),
-                    child: const Text(
-                      'Back',
-                      style: TextStyle(color: Colors.white70),
+                    CustomInputField(
+                      controller: _passwordController,
+                      hintText: 'Enter new password',
+                      obscureText: _obscurePassword,
+                      hasSuffixIcon: true,
+                      suffixIcon: _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter a password';
+                        }
+                        if (value.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        }
+                        if (!RegExp(
+                                r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]')
+                            .hasMatch(value)) {
+                          return 'Password must contain lowercase, uppercase, digit, and special character';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Confirm Password',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: authLabelColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    CustomInputField(
+                      controller: _confirmPasswordController,
+                      hintText: 'Confirm new password',
+                      obscureText: _obscureConfirmPassword,
+                      hasSuffixIcon: true,
+                      suffixIcon: _obscureConfirmPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please confirm your password';
+                        }
+                        if (value != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    CustomButton(
+                      label: 'Create Password',
+                      isLoading: authProvider.isLoading,
+                      onPressed: () async {
+                        await _createPassword(authProvider);
+                      },
+                    ),
+                    if (authProvider.hasError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          authProvider.errorMessage,
+                          style: const TextStyle(
+                              color: Colors.redAccent, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );

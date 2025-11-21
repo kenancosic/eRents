@@ -4,9 +4,12 @@ using eRents.Features.PaymentManagement.Models;
 using eRents.Features.Core;
 using eRents.Features.PaymentManagement.Services;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Domain.Models;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 namespace eRents.Features.PaymentManagement.Controllers;
 
@@ -14,105 +17,266 @@ namespace eRents.Features.PaymentManagement.Controllers;
 [ApiController]
 public class PaymentsController : CrudController<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch>
 {
-    private readonly IPayPalPaymentService _payPal;
+    private readonly Interfaces.IStripePaymentService _stripe;
+    private readonly Interfaces.IStripeConnectService _stripeConnect;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<PaymentsController> _logger;
+    private readonly ERentsContext _context;
 
     public PaymentsController(
         ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
         ILogger<PaymentsController> logger,
-        IPayPalPaymentService payPal,
-        ICurrentUserService currentUser)
+        Interfaces.IStripePaymentService stripe,
+        Interfaces.IStripeConnectService stripeConnect,
+        ICurrentUserService currentUser,
+        ERentsContext context)
         : base(service, logger)
     {
-        _payPal = payPal;
+        _stripe = stripe;
+        _stripeConnect = stripeConnect;
         _currentUser = currentUser;
         _logger = logger;
+        _context = context;
     }
 
-    [HttpPost("create-order")]
-    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
+    // ═══════════════════════════════════════════════════════════════
+    // PayPal endpoints removed - Stripe is now the primary payment processor
+    // Legacy PayPal data remains in database for historical records
+    // ═══════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════
+    // Stripe Payment Endpoints
+    // ═══════════════════════════════════════════════════════════════
+
+    [HttpPost("stripe/create-intent")]
+    [Authorize]
+    public async Task<IActionResult> CreatePaymentIntent([FromBody] CreateStripeIntentRequest request)
     {
         try
         {
-            var resp = await _payPal.CreateOrderAsync(request);
-            return Ok(resp);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
-    }
-
-    [HttpPost("create-payment-order")]
-    public async Task<IActionResult> CreatePaymentOrder([FromBody] CreatePaymentOrderRequest request)
-    {
-        try
-        {
-            var resp = await _payPal.CreateOrderForPaymentAsync(request.PaymentId);
-            return Ok(resp);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
-    }
-
-    [HttpPost("capture-order")]
-    public async Task<IActionResult> CaptureOrder([FromBody] CaptureOrderRequest request)
-    {
-        try
-        {
-            // Use verification flow which captures if needed, or persists if already captured on client
-            var resp = await _payPal.VerifyOrCaptureOrderAsync(request.OrderId);
-            return Ok(resp);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
-    }
-
-    [HttpPost("refund")]
-    public async Task<IActionResult> Refund([FromBody] ProcessRefundRequest request)
-    {
-        var userId = _currentUser.UserId;
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        if (string.IsNullOrWhiteSpace(request.PaymentId))
-            return BadRequest(new { Error = "PaymentId is required" });
-
-        try
-        {
-            var refundId = await _payPal.ProcessRefundAsync(request.PaymentId!, request.Amount, request.Currency, request.Reason);
-            return Ok(new { RefundId = refundId, Status = "Success" });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { Error = ex.Message });
-        }
-    }
-
-    [HttpPost("process-payment")]
-    public async Task<IActionResult> ProcessPayment([FromBody] ProcessPaymentRequest request)
-    {
-        var userId = _currentUser.UserId;
-        if (string.IsNullOrEmpty(userId))
-            return Unauthorized();
-
-        try
-        {
-            var paymentId = await _payPal.ProcessPaymentAsync(
+            var response = await _stripe.CreatePaymentIntentAsync(
                 request.BookingId,
                 request.Amount,
-                request.Currency,
-                request.Description);
+                request.Currency ?? "USD",
+                request.Metadata);
 
-            return Ok(new { PaymentId = paymentId, Status = "Success" });
+            if (!string.IsNullOrEmpty(response.ErrorMessage))
+            {
+                return BadRequest(new { Error = response.ErrorMessage });
+            }
+
+            return Ok(response);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating Stripe payment intent");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("stripe/create-intent-for-invoice")]
+    [Authorize]
+    public async Task<IActionResult> CreatePaymentIntentForInvoice([FromBody] CreateInvoiceIntentRequest request)
+    {
+        try
+        {
+            // Get the pending payment
+            var payment = await _context.Payments
+                .Include(p => p.Subscription)
+                .Include(p => p.Booking)
+                .FirstOrDefaultAsync(p => p.PaymentId == request.PaymentId);
+
+            if (payment == null)
+                return NotFound(new { Error = "Payment not found" });
+
+            if (payment.PaymentStatus != "Pending")
+                return BadRequest(new { Error = "Payment is not pending" });
+
+            if (payment.PaymentType != "SubscriptionPayment")
+                return BadRequest(new { Error = "This endpoint is only for subscription payments" });
+
+            // Verify tenant owns this payment
+            if (!int.TryParse(_currentUser.UserId, out var userId))
+                return Unauthorized();
+
+            if (payment.TenantId != userId)
+                return Forbid();
+
+            // Create payment intent using existing service (reuse daily rental logic!)
+            var response = await _stripe.CreatePaymentIntentForInvoiceAsync(
+                payment.PaymentId,
+                payment.Amount,
+                payment.Currency ?? "USD");
+
+            if (!string.IsNullOrEmpty(response.ErrorMessage))
+            {
+                return BadRequest(new { Error = response.ErrorMessage });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Stripe payment intent for invoice");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("stripe/refund")]
+    [Authorize]
+    public async Task<IActionResult> ProcessStripeRefund([FromBody] StripeRefundRequest request)
+    {
+        try
+        {
+            var response = await _stripe.ProcessRefundAsync(
+                request.PaymentId,
+                request.Amount,
+                request.Reason);
+
+            if (!string.IsNullOrEmpty(response.ErrorMessage))
+            {
+                return BadRequest(new { Error = response.ErrorMessage });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing Stripe refund");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpPost("stripe/webhook")]
+    [AllowAnonymous]
+    public async Task<IActionResult> HandleStripeWebhook()
+    {
+        try
+        {
+            var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+            var signature = Request.Headers["Stripe-Signature"].ToString();
+
+            if (string.IsNullOrEmpty(signature))
+            {
+                return BadRequest(new { Error = "Missing Stripe signature" });
+            }
+
+            var success = await _stripe.HandleWebhookEventAsync(json, signature);
+            
+            return success ? Ok() : BadRequest();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling Stripe webhook");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Stripe Connect Endpoints (Landlord Payouts)
+    // ═══════════════════════════════════════════════════════════════
+
+    [HttpPost("stripe/connect/onboard")]
+    [Authorize]
+    public async Task<IActionResult> CreateConnectOnboarding([FromBody] ConnectOnboardingRequest request)
+    {
+        try
+        {
+            if (!int.TryParse(_currentUser.UserId, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var response = await _stripeConnect.CreateOnboardingLinkAsync(
+                userId,
+                request.RefreshUrl,
+                request.ReturnUrl);
+
+            if (!string.IsNullOrEmpty(response.ErrorMessage))
+            {
+                return BadRequest(new { Error = response.ErrorMessage });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Connect onboarding link");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpGet("stripe/connect/status")]
+    [Authorize]
+    public async Task<IActionResult> GetConnectStatus()
+    {
+        try
+        {
+            if (!int.TryParse(_currentUser.UserId, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var response = await _stripeConnect.GetAccountStatusAsync(userId);
+
+            if (!string.IsNullOrEmpty(response.ErrorMessage))
+            {
+                return BadRequest(new { Error = response.ErrorMessage });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving Connect account status");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpDelete("stripe/connect/disconnect")]
+    [Authorize]
+    public async Task<IActionResult> DisconnectStripeAccount()
+    {
+        try
+        {
+            if (!int.TryParse(_currentUser.UserId, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var success = await _stripeConnect.DisconnectAccountAsync(userId);
+            
+            return success 
+                ? Ok(new { Message = "Stripe account disconnected successfully" })
+                : BadRequest(new { Error = "Failed to disconnect Stripe account" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disconnecting Stripe account");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
+    [HttpGet("stripe/connect/dashboard")]
+    [Authorize]
+    public async Task<IActionResult> GetDashboardLink()
+    {
+        try
+        {
+            if (!int.TryParse(_currentUser.UserId, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var url = await _stripeConnect.CreateDashboardLinkAsync(userId);
+            
+            return url != null
+                ? Ok(new { Url = url })
+                : BadRequest(new { Error = "Failed to create dashboard link" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating dashboard link");
             return BadRequest(new { Error = ex.Message });
         }
     }

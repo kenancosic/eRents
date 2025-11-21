@@ -6,7 +6,6 @@ import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/change_password_widget.dart';
-import 'package:e_rents_desktop/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:e_rents_desktop/widgets/common/section_card.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 
@@ -84,10 +83,44 @@ class _ProfileScreenContent extends StatelessWidget {
                       child: ChangePasswordWidget(isEditing: isEditing),
                     ),
                     const SizedBox(height: 24),
-                    SectionCard(
+                    const SectionCard(
                       title: 'Payments',
                       titleIcon: Icons.account_balance_wallet_outlined,
-                      child: PaypalSettingsWidget(isEditing: isEditing),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.credit_card, color: Colors.blue),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Stripe Payment',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Secure payments powered by Stripe',
+                                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Payment methods are managed at checkout. Stripe integration for desktop is coming soon.',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     _buildAccountSummaryCard(context),

@@ -62,6 +62,8 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
+        // Note: ExtendBooking is restricted to desktop landlords earlier; no mobile/tenant scope needed here
+
         // Only allow extensions for monthly rentals that are subscription based
         if (entity.Property == null || entity.Property.RentingType != Domain.Models.Enums.RentalType.Monthly || !entity.IsSubscription)
         {
@@ -421,15 +423,17 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         }
     }
 
-    public async Task<BookingResponse> CancelBooking(int bookingId)
+    public async Task<BookingResponse> CancelBooking(int bookingId, CancelBookingRequest? request)
     {
         var entity = await Context.Set<Booking>()
             .Include(b => b.Property)
+            .Include(b => b.Subscription)
             .FirstOrDefaultAsync(x => x.BookingId == bookingId);
 
         if (entity == null)
             throw new KeyNotFoundException($"Booking with id {bookingId} not found");
 
+        // Ownership scope for desktop landlords/owners
         if (CurrentUser?.IsDesktop == true &&
             !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
             (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
@@ -442,9 +446,86 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
-        await Context.SaveChangesAsync();
-        return Mapper.Map<BookingResponse>(entity);
+        // Mobile/tenant scope: only the booking owner can cancel on non-desktop clients
+        if (CurrentUser?.IsDesktop != true)
+        {
+            var currentUserId = CurrentUser?.GetUserIdAsInt();
+            if (!currentUserId.HasValue || entity.UserId != currentUserId.Value)
+            {
+                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+            }
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Daily rentals: refund if cancelled at least 3 days before start
+        if (entity.Property.RentingType == Domain.Models.Enums.RentalType.Daily)
+        {
+            var eligibleForRefund = today <= entity.StartDate.AddDays(-3);
+            
+            // TODO: Implement Stripe refund processing through Stripe API
+            // For now, manual refund processing is required
+            if (eligibleForRefund)
+            {
+                Logger.LogInformation(
+                    "Booking {BookingId} is eligible for refund. Manual Stripe refund processing required for payment {PaymentRef}",
+                    bookingId, entity.PaymentReference);
+            }
+
+            entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+            return Mapper.Map<BookingResponse>(entity);
+        }
+
+        // Monthly rentals
+        if (today < entity.StartDate)
+        {
+            // Before stay commences: free cancellation
+            if (entity.SubscriptionId.HasValue && _subscriptionService != null)
+            {
+                try { await _subscriptionService.CancelSubscriptionAsync(entity.SubscriptionId.Value); }
+                catch (Exception ex) { Logger.LogError(ex, "Failed to cancel subscription for booking {BookingId}", bookingId); }
+            }
+
+            entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await Context.SaveChangesAsync();
+            return Mapper.Map<BookingResponse>(entity);
+        }
+        else
+        {
+            // In-stay: adjust contract end; require cancellation date
+            var cancelDate = request?.CancellationDate ?? today;
+            if (entity.EndDate.HasValue && cancelDate > entity.EndDate.Value)
+            {
+                throw new InvalidOperationException("Cancellation date cannot be after current contract end date.");
+            }
+            if (cancelDate < today) cancelDate = today;
+
+            // Update booking end date (contract)
+            entity.EndDate = cancelDate;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            // Ensure one additional month charge by extending subscription end date minimally by one month
+            if (entity.Subscription != null)
+            {
+                var extraEnd = cancelDate.AddMonths(1);
+                if (entity.Subscription.EndDate.HasValue)
+                {
+                    // Do not extend beyond existing contract
+                    var currentEnd = entity.Subscription.EndDate.Value;
+                    entity.Subscription.EndDate = extraEnd <= currentEnd ? extraEnd : currentEnd;
+                }
+                else
+                {
+                    entity.Subscription.EndDate = extraEnd;
+                }
+            }
+
+            await Context.SaveChangesAsync();
+            return Mapper.Map<BookingResponse>(entity);
+        }
     }
 
     public async Task<BookingResponse> ApproveBookingAsync(int bookingId)

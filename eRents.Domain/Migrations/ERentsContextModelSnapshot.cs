@@ -468,6 +468,12 @@ namespace eRents.Domain.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("StripeChargeId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("SubscriptionId")
                         .HasColumnType("int");
 
@@ -780,9 +786,6 @@ namespace eRents.Domain.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsPaypalLinked")
-                        .HasColumnType("bit");
-
                     b.Property<bool?>("IsPublic")
                         .HasColumnType("bit");
 
@@ -801,24 +804,6 @@ namespace eRents.Domain.Migrations
                         .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<string>("PaypalAccountEmail")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PaypalAccountType")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("PaypalLinkedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PaypalMerchantId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PaypalPayerId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PaypalUserIdentifier")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -830,6 +815,15 @@ namespace eRents.Domain.Migrations
 
                     b.Property<DateTime?>("ResetTokenExpiration")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StripeAccountId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripeAccountStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");

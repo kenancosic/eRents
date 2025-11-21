@@ -26,6 +26,11 @@ public partial class Payment : BaseEntity
 
     public string? PaymentReference { get; set; }
 
+    // Stripe payment fields
+    public string? StripePaymentIntentId { get; set; }
+    
+    public string? StripeChargeId { get; set; }
+
     // Additional fields for refund support
     public int? OriginalPaymentId { get; set; }
     

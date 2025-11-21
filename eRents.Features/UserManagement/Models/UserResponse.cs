@@ -22,11 +22,10 @@ public sealed class UserResponse
     // Account / role
     public UserTypeEnum UserType { get; set; } = UserTypeEnum.Guest;
 
-    // Payments
-    public bool IsPaypalLinked { get; set; }
-    public string? PaypalAccountEmail { get; set; }
-    public PaypalAccountTypeEnum PaypalAccountType { get; set; } = PaypalAccountTypeEnum.Unknown;
-    public DateTime? PaypalLinkedAt { get; set; }
+    // Payments - Stripe
+    public string? StripeCustomerId { get; set; }
+    public string? StripeAccountId { get; set; }
+    public string? StripeAccountStatus { get; set; }
 
     // Saved properties
     public int SavedPropertiesCount { get; set; }

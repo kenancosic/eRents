@@ -6,9 +6,8 @@ import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
-// Native PayPal plugin removed; using server-driven WebView flow
-
-/// Provider for managing checkout flow and payment processing
+/// Provider for managing checkout flow and Stripe payment processing
+/// Uses Stripe as the primary payment method
 /// Refactored to use new standardized BaseProvider without caching
 /// Uses proper state management with loading, success, and error states
 class CheckoutProvider extends BaseProvider {
@@ -17,7 +16,7 @@ class CheckoutProvider extends BaseProvider {
   // ─── State ──────────────────────────────────────────────────────────────
 
   // Payment and booking state
-  String _selectedPaymentMethod = 'PayPal';
+  final String _selectedPaymentMethod = 'Stripe'; // Stripe is now the only payment method
 
   // Checkout session data
   PropertyDetail? _currentProperty;
@@ -27,9 +26,9 @@ class CheckoutProvider extends BaseProvider {
   double _totalPrice = 0.0;
   int? _pendingBookingId; // store booking id created before payment
 
-  // PayPal payment flow state
-  String? _payPalApprovalUrl;
-  String? _payPalOrderId;
+  // Stripe payment flow state
+  String? _stripeClientSecret;
+  String? _stripePaymentIntentId;
 
   // ─── Getters ────────────────────────────────────────────────────────────
   String get selectedPaymentMethod => _selectedPaymentMethod;
@@ -39,9 +38,9 @@ class CheckoutProvider extends BaseProvider {
   DateTime? get endDate => _endDate;
   bool get isDailyRental => _isDailyRental;
   double get totalPrice => _totalPrice;
-  String? get payPalApprovalUrl => _payPalApprovalUrl;
-  String? get payPalOrderId => _payPalOrderId;
   int? get pendingBookingId => _pendingBookingId;
+  String? get stripeClientSecret => _stripeClientSecret;
+  String? get stripePaymentIntentId => _stripePaymentIntentId;
 
   // Simplified pricing - only show property price
   double get propertyPrice => _totalPrice;
@@ -73,8 +72,9 @@ class CheckoutProvider extends BaseProvider {
     _totalPrice = totalPrice;
     _pendingBookingId = null;
     
-    // Reset form state
-    _selectedPaymentMethod = 'PayPal';
+    // Reset Stripe payment state
+    _stripeClientSecret = null;
+    _stripePaymentIntentId = null;
 
     notifyListeners();
     debugPrint('CheckoutProvider: Initialized checkout for property ${property.name}');
@@ -110,19 +110,17 @@ class CheckoutProvider extends BaseProvider {
     return ok;
   }
 
-  // ─── WebView PayPal Flow (server-driven) ────────────────────────────────
+  // ─── Stripe Payment Flow ────────────────────────────────────────────────
 
-  /// Create server-side PayPal order and return approvalUrl + orderId
-  /// This is used by the WebView-based checkout flow on mobile devices
-  Future<Map<String, String>> createPayPalOrder() async {
+  /// Create Stripe payment intent for daily rentals
+  Future<Map<String, String>> createStripePaymentIntent() async {
     if (!_isDailyRental) {
-      throw Exception('PayPal flow is only available for daily rentals.');
+      throw Exception('Stripe flow is only available for daily rentals.');
     }
     if (!isFormValid) {
-      throw Exception('Invalid form data - cannot create order');
+      throw Exception('Invalid form data - cannot create payment intent');
     }
     if (_totalPrice <= 0) {
-      // Prevent backend/PayPal UNPROCESSABLE_ENTITY for zero/negative amounts
       throw Exception('Total price must be greater than zero.');
     }
 
@@ -145,52 +143,87 @@ class CheckoutProvider extends BaseProvider {
         authenticated: true,
       );
 
-      debugPrint('CheckoutProvider: Created pending booking ID: ${booking.bookingId}');
+      debugPrint('CheckoutProvider: Created pending booking ID: \${booking.bookingId}');
       _pendingBookingId = booking.bookingId;
 
-      // Step 2: Ask backend to create PayPal order and return approvalUrl
-      final orderResp = await api.postJson(
-        'payments/create-order',
+      // Step 2: Create Stripe payment intent
+      final intentResp = await api.postJson(
+        'payments/stripe/create-intent',
         {
           'bookingId': booking.bookingId,
-          // Provide server with explicit amount/currency to avoid relying on stale booking values
           'amount': _totalPrice,
           'currency': currentProperty?.currency ?? 'USD',
-          'description': 'Payment for booking #${booking.bookingId}',
+          'metadata': {
+            'propertyId': _currentProperty!.propertyId.toString(),
+            'propertyName': _currentProperty!.name,
+          },
         },
         authenticated: true,
       );
 
-      final orderId = (orderResp['orderId'] ?? '').toString();
-      final approvalUrl = (orderResp['approvalUrl'] ?? '').toString();
-      if (orderId.isEmpty || approvalUrl.isEmpty) {
-        throw Exception('Backend did not return approval URL or order ID.');
+      final clientSecret = (intentResp['clientSecret'] ?? '').toString();
+      final paymentIntentId = (intentResp['paymentIntentId'] ?? '').toString();
+      
+      if (clientSecret.isEmpty || paymentIntentId.isEmpty) {
+        throw Exception('Backend did not return valid payment intent.');
       }
 
-      _payPalOrderId = orderId;
-      _payPalApprovalUrl = approvalUrl;
+      _stripeClientSecret = clientSecret;
+      _stripePaymentIntentId = paymentIntentId;
 
       setSuccess();
-      return {'orderId': orderId, 'approvalUrl': approvalUrl};
+      return {
+        'clientSecret': clientSecret,
+        'paymentIntentId': paymentIntentId,
+      };
     } catch (e, st) {
-      final friendly = _mapPaymentInitiationError(e);
+      final friendly = _mapPaymentError(e);
       setError(GenericError(message: friendly, originalError: e, stackTrace: st));
       rethrow;
     }
   }
 
-  // Native flow removed
+  /// Map payment errors to user-friendly messages
+  String _mapPaymentError(Object e) {
+    final raw = e.toString();
+    final msg = raw.startsWith('Exception: ')
+        ? raw.substring('Exception: '.length)
+        : raw;
+    final m = msg.toLowerCase();
 
-  /// Update selected payment method
-  void selectPaymentMethod(String paymentMethod) {
-    if (_selectedPaymentMethod != paymentMethod) {
-      _selectedPaymentMethod = paymentMethod;
-      notifyListeners();
-      debugPrint('CheckoutProvider: Selected payment method: $paymentMethod');
+    // Amount validation errors
+    if (m.contains('cannot_be_zero_or_negative') || m.contains('greater than zero')) {
+      return 'Payment amount must be greater than zero. Please adjust your booking or contact support.';
     }
+
+    // Generic Stripe errors
+    if (m.contains('stripe') && m.contains('error')) {
+      return 'Payment processing error: $msg';
+    }
+
+    // Default friendly fallback
+    return 'Failed to process payment: $msg';
   }
 
-  /// Process payment and create booking
+  /// Confirm Stripe payment completion (called after Stripe SDK confirmation)
+  Future<bool> confirmStripePayment() async {
+    if (_stripePaymentIntentId == null) {
+      setError(GenericError(message: 'No Stripe payment intent to confirm'));
+      return false;
+    }
+
+    final success = await executeWithStateForSuccess(() async {
+      debugPrint('CheckoutProvider: Confirming Stripe payment intent: \$_stripePaymentIntentId');
+      // The payment intent is confirmed by Stripe SDK on client side
+      // Backend webhook will handle the payment_intent.succeeded event
+      // We just need to clear the checkout session
+      _clearCheckoutSession();
+    }, errorMessage: 'Failed to confirm Stripe payment');
+
+    return success;
+  }
+
+  /// Process payment with Stripe
   /// Uses BaseProvider's executeWithState for proper error handling
   Future<bool> processPayment() async {
     if (!_isDailyRental) {
@@ -200,57 +233,9 @@ class CheckoutProvider extends BaseProvider {
       throw Exception('Invalid form data - cannot process payment');
     }
 
-    if (_selectedPaymentMethod == 'PayPal') {
-      // For WebView flow, UI should call createPayPalOrder() and then open WebView
-      await createPayPalOrder();
-      return true;
-    } else {
-      // Handle other payment methods if any
-      throw Exception('Selected payment method is not supported.');
-    }
-  }
-
-  // Obsolete native method removed
-
-  String _mapPaymentInitiationError(Object e) {
-    final raw = e.toString();
-    final msg = raw.startsWith('Exception: ')
-        ? raw.substring('Exception: '.length)
-        : raw;
-    final m = msg.toLowerCase();
-
-    // Detect PayPal linkage issues from backend message
-    final ownerNotLinked =
-        m.contains('owner') && m.contains('paypal') && m.contains('link');
-    final tenantNotLinked =
-        m.contains('tenant') && m.contains('paypal') && m.contains('link');
-
-    if (ownerNotLinked) {
-      return 'This property\'s owner hasn\'t linked a PayPal account yet. Please choose a different property or contact the owner.';
-    }
-    if (tenantNotLinked) {
-      return 'You need to link your PayPal account before paying. Go to Profile → Payment methods to link your account.';
-    }
-
-    // PayPal amount validation errors
-    if (m.contains('cannot_be_zero_or_negative') || m.contains('greater than zero')) {
-      return 'Payment amount must be greater than zero. Please adjust your booking or contact support.';
-    }
-
-    // Default friendly fallback including original brief reason
-    return 'Failed to initiate PayPal payment: $msg';
-  }
-
-  /// Capture the PayPal order after user approval
-  Future<bool> capturePayPalOrder(String orderId) async {
-    final success = await executeWithStateForSuccess(() async {
-      await api.post('payments/capture-order', {'orderId': orderId}, authenticated: true);
-      debugPrint('CheckoutProvider: Successfully captured PayPal order ID: $orderId');
-      // Backend will handle subscription creation for monthly rentals.
-      _clearCheckoutSession();
-    }, errorMessage: 'Failed to capture PayPal payment');
-
-    return success;
+    // Only Stripe is supported now
+    await createStripePaymentIntent();
+    return true;
   }
 
   /// Get property price for display
@@ -282,9 +267,8 @@ class CheckoutProvider extends BaseProvider {
     _endDate = null;
     _isDailyRental = false;
     _totalPrice = 0.0;
-    _selectedPaymentMethod = 'PayPal';
-    _payPalApprovalUrl = null;
-    _payPalOrderId = null;
+    _stripeClientSecret = null;
+    _stripePaymentIntentId = null;
     notifyListeners();
     debugPrint('CheckoutProvider: Cleared checkout session');
   }

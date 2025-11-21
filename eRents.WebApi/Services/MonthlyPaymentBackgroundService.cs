@@ -34,7 +34,6 @@ public class MonthlyPaymentBackgroundService : BackgroundService
             {
                 using var scope = _serviceProvider.CreateScope();
                 var subscriptionService = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
-                var payPal = scope.ServiceProvider.GetRequiredService<IPayPalPaymentService>();
                 var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
                 var context = scope.ServiceProvider.GetRequiredService<ERentsContext>();
                 
@@ -51,9 +50,6 @@ public class MonthlyPaymentBackgroundService : BackgroundService
                         var payment = await subscriptionService.ProcessMonthlyPaymentAsync(subscription.SubscriptionId);
                         _logger.LogInformation("Created pending invoice payment {PaymentId} for subscription {SubscriptionId}", payment.PaymentId, subscription.SubscriptionId);
 
-                        // Generate approval URL for email/out-of-app payment
-                        var order = await payPal.CreateOrderForPaymentAsync(payment.PaymentId);
-
                         // Fetch tenant email
                         var tenant = await context.Tenants
                             .Include(t => t.User)
@@ -66,7 +62,7 @@ public class MonthlyPaymentBackgroundService : BackgroundService
                             {
                                 To = tenantEmail,
                                 Subject = $"Invoice for Subscription #{subscription.SubscriptionId}",
-                                Body = $"Hello,\n\nYour monthly rent invoice is ready. Amount: {payment.Amount:0.00} {payment.Currency}.\nYou can pay using PayPal with this link: {order.ApprovalUrl}\n\nThank you.\n",
+                                Body = $"Hello,\n\nYour monthly rent invoice is ready. Amount: {payment.Amount:0.00} {payment.Currency}.\n\nPlease log in to the app to complete payment via Stripe.\n\nThank you.\n",
                                 IsHtml = false
                             };
                             await emailService.SendEmailNotificationAsync(email, stoppingToken);

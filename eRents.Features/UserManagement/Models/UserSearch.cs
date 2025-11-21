@@ -8,7 +8,6 @@ public sealed class UserSearch : BaseSearchObject
     public string? UsernameContains { get; set; }
     public string? EmailContains { get; set; }
     public UserTypeEnum? UserType { get; set; }
-    public bool? IsPaypalLinked { get; set; }
     public bool? IsPublic { get; set; }
 
     // Date range filters (CreatedAt)

@@ -165,7 +165,7 @@ class PropertyDetail {
       address: (json['address'] ?? json['Address']) is Map<String, dynamic>
           ? Address.fromJson((json['address'] ?? json['Address']) as Map<String, dynamic>)
           : null,
-      rentalType: parseRentalTypeVal(json['rentalType'] ?? json['RentingType']),
+      rentalType: parseRentalTypeVal(json["rentalType"] ?? json['rentingType'] ?? json['RentingType']),
       propertyType: parsePropertyTypeVal(json['propertyType'] ?? json['PropertyType']),
       status: parseStatusVal(json['status'] ?? json['Status']),
       rooms: parseInt(json['rooms'] ?? json['Rooms'] ?? '0'),

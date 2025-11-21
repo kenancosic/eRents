@@ -25,14 +25,15 @@ public class PropertyAvailabilityService
     /// </summary>
     /// <param name="propertyId">ID of the property to check</param>
     /// <param name="startDate">Start date of the requested booking</param>
-    /// <param name="endDate">End date of the requested booking</param>
+    /// <param name="endDate">End date of the requested booking (for daily) or null (for monthly)</param>
     /// <returns>True if available, false otherwise</returns>
-    public async Task<bool> CheckAvailabilityAsync(int propertyId, DateTime startDate, DateTime endDate)
+    public async Task<bool> CheckAvailabilityAsync(int propertyId, DateTime startDate, DateTime? endDate = null)
     {
         try
         {
             // First check if property exists
             var property = await _context.Set<Property>()
+                .Include(p => p.Bookings)
                 .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
             if (property == null)
@@ -42,33 +43,48 @@ public class PropertyAvailabilityService
             if (property.Status != PropertyStatusEnum.Available)
                 return false;
 
-            // Check if the requested dates fall within any unavailable period
-            if (property.UnavailableFrom.HasValue && property.UnavailableTo.HasValue)
-            {
-                var unavailableFrom = property.UnavailableFrom.Value.ToDateTime(TimeOnly.MinValue);
-                var unavailableTo = property.UnavailableTo.Value.ToDateTime(TimeOnly.MaxValue);
+            // Convert to DateOnly for consistent comparisons
+            var startDateOnly = DateOnly.FromDateTime(startDate.Date);
+            var endDateOnly = endDate.HasValue ? DateOnly.FromDateTime(endDate.Value.Date) : (DateOnly?)null;
 
+            // Determine rental type behavior
+            bool isMonthly = property.RentingType == RentalType.Monthly;
+
+            // Check if the requested dates fall within any unavailable period (daily rentals only)
+            if (!isMonthly && property.UnavailableFrom.HasValue)
+            {
+                var unavailableTo = property.UnavailableTo ?? DateOnly.MaxValue;
                 // Check if the requested period overlaps with the unavailable period
-                if (startDate <= unavailableTo && endDate >= unavailableFrom)
+                if (endDateOnly.HasValue && startDateOnly <= unavailableTo && endDateOnly.Value >= property.UnavailableFrom.Value)
                     return false;
             }
 
-            // Check for conflicting bookings
-            var bookings = await _context.Set<Booking>()
-                .Where(b => b.PropertyId == propertyId &&
-                           b.Status != BookingStatusEnum.Cancelled &&
-                           b.Status != BookingStatusEnum.Completed)
-                .ToListAsync();
+            // Check for conflicting bookings based on rental type
+            bool hasConflict;
+            
+            if (isMonthly)
+            {
+                // Monthly: Any non-cancelled booking from the lease start date onward is a conflict
+                // Matches TenantService validation logic
+                hasConflict = property.Bookings.Any(b =>
+                    b.Status != BookingStatusEnum.Cancelled &&
+                    (b.EndDate.HasValue ? b.EndDate.Value >= startDateOnly : b.StartDate >= startDateOnly));
+            }
+            else
+            {
+                // Daily: Standard overlap check - booking conflicts if ranges overlap
+                // Simplified logic: overlap occurs when b.Start < requestEnd AND b.End > requestStart
+                if (!endDateOnly.HasValue)
+                    return false; // Daily rentals require end date
 
-            var hasConflictingBooking = bookings.Any(b =>
-                (b.StartDate.ToDateTime(TimeOnly.MinValue) < endDate && 
-                 (b.EndDate.HasValue ? b.EndDate.Value.ToDateTime(TimeOnly.MaxValue) : DateTime.MaxValue) > startDate) ||
-                (b.StartDate.ToDateTime(TimeOnly.MinValue) >= startDate && 
-                 b.StartDate.ToDateTime(TimeOnly.MinValue) < endDate) ||
-                ((b.EndDate.HasValue ? b.EndDate.Value.ToDateTime(TimeOnly.MaxValue) : DateTime.MaxValue) > startDate && 
-                 (b.EndDate.HasValue ? b.EndDate.Value.ToDateTime(TimeOnly.MaxValue) : DateTime.MaxValue) <= endDate));
+                hasConflict = property.Bookings.Any(b =>
+                    b.Status != BookingStatusEnum.Cancelled &&
+                    b.Status != BookingStatusEnum.Completed &&
+                    b.StartDate < endDateOnly.Value &&
+                    (b.EndDate ?? DateOnly.MaxValue) > startDateOnly);
+            }
 
-            return !hasConflictingBooking;
+            return !hasConflict;
         }
         catch (Exception ex)
         {
@@ -103,6 +119,7 @@ public class PropertyAvailabilityService
                 var availability = new AvailabilityResponse
                 {
                     Date = date,
+                    // For daily availability check, always pass both start and end date
                     IsAvailable = await CheckAvailabilityAsync(propertyId, date, date.AddDays(1)),
                     Price = property.Price,
                     Status = GetDateStatus(property, date)

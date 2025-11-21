@@ -24,9 +24,6 @@ public static class PaymentManagementServiceCollectionExtensions
         // Generic CRUD mapping
         services.AddScoped<ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch>, PaymentService>();
 
-        // PayPal payment service
-        services.AddScoped<IPayPalPaymentService, PayPalPaymentService>();
-
         // Subscription service
         services.AddScoped<ISubscriptionService, SubscriptionService>();
 

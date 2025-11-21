@@ -143,8 +143,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 			// Now that BookingIds exist, create payments safely
 			var payments = new List<Payment>();
 			var monthly = Math.Max(1m, property.Price);
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "PayPal", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "PayPal", PaymentStatus = "Paid", PaymentType = "BookingPayment" });
+			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
+			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Paid", PaymentType = "BookingPayment" });
 
 			if (properties.Count > 1 && tenantSarajevo != null)
 			{

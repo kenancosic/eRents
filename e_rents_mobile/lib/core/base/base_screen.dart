@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart'; // REMOVE if NavigationProvider is no longer needed here
 // import 'package:go_router/go_router.dart'; // REMOVE if context.go is no longer needed for _onItemTapped
@@ -15,6 +16,11 @@ class BaseScreen extends StatefulWidget {
   final PreferredSizeWidget? appBar;
   // final Widget? bottomNavigationBarWidget; // REMOVED
 
+  // NEW: Design system parameters
+  final EdgeInsets? bodyPadding;
+  final bool enableScroll;
+  final bool applyScreenPadding;
+
   const BaseScreen({
     super.key,
     required this.body,
@@ -25,6 +31,9 @@ class BaseScreen extends StatefulWidget {
     this.resizeToAvoidBottomInset = true,
     this.appBar,
     // this.bottomNavigationBarWidget, // REMOVED
+    this.bodyPadding,
+    this.enableScroll = false,
+    this.applyScreenPadding = false,
   });
 
   @override
@@ -114,6 +123,29 @@ class BaseScreenState extends State<BaseScreen>
     );
   }
 
+  // NEW: Build body with optional padding and scrolling
+  Widget _buildBody() {
+    Widget content = widget.body;
+
+    // Apply standard padding if requested
+    if (widget.applyScreenPadding) {
+      content = Padding(
+        padding: widget.bodyPadding ?? AppSpacing.screenPadding,
+        child: content,
+      );
+    }
+
+    // Enable scroll if requested
+    if (widget.enableScroll) {
+      content = SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: content,
+      );
+    }
+
+    return content;
+  }
+
   @override
   Widget build(BuildContext context) {
     final PreferredSizeWidget? effectiveAppBar =
@@ -124,7 +156,7 @@ class BaseScreenState extends State<BaseScreen>
           widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       appBar: effectiveAppBar,
-      body: widget.body,
+      body: _buildBody(),
       // bottomNavigationBar: widget.bottomNavigationBarWidget ?? // REMOVED
       //     (widget.showBottomNavBar // REMOVED
       //         ? Consumer<NavigationProvider>( // REMOVED

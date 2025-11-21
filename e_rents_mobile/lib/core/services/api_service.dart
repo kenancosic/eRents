@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/services/secure_storage_service.dart';
+import 'package:e_rents_mobile/core/widgets/property_image_placeholder.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -351,36 +352,10 @@ class ApiService {
   }
 
   Widget _buildPlaceholderImage(double? width, double? height, String text) {
-    return Container(
+    return PropertyImagePlaceholder(
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.image_outlined,
-            color: Colors.grey[500],
-            size: (width != null && width < 100) ? 20 : 32,
-          ),
-          if ((width == null || width >= 60) &&
-              (height == null || height >= 60))
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: (width != null && width < 100) ? 8 : 10,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-        ],
-      ),
+      borderRadius: BorderRadius.circular(8),
     );
   }
 

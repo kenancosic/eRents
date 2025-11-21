@@ -10,8 +10,10 @@ public class TenantRequestValidator : BaseValidator<TenantRequest>
 {
     public TenantRequestValidator()
     {
+        // UserId can be 0 for mobile/client requests - the service will populate it from auth context
+        // Desktop landlords must provide a valid userId when creating tenant records
         RuleFor(x => x.UserId)
-            .GreaterThan(0).WithMessage("UserId must be greater than 0.");
+            .GreaterThanOrEqualTo(0).WithMessage("UserId cannot be negative.");
 
         RuleFor(x => x.TenantStatus)
             .IsInEnum().WithMessage("TenantStatus must be a valid enum value.");

@@ -22,14 +22,14 @@ class CancelStayDialog extends StatefulWidget {
 }
 
 class _CancelStayDialogState extends State<CancelStayDialog> {
-  final _reasonController = TextEditingController();
   final _confirmationController = TextEditingController();
   bool _isSubmitting = false;
   bool _hasAcceptedTerms = false;
+  bool _includeDate = false;
+  DateTime? _selectedDate;
 
   @override
   void dispose() {
-    _reasonController.dispose();
     _confirmationController.dispose();
     super.dispose();
   }
@@ -45,7 +45,7 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
       final bookingProvider = context.read<PropertyRentalProvider>();
       final success = await bookingProvider.cancelBooking(
         widget.booking.bookingId,
-        _reasonController.text.trim(),
+        cancellationDate: _includeDate ? _selectedDate : null,
       );
 
       if (mounted) {
@@ -83,14 +83,6 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
   }
 
   bool _validateForm() {
-    if (_reasonController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please provide a reason for cancellation')),
-      );
-      return false;
-    }
-
     if (_confirmationController.text.trim().toLowerCase() != 'cancel') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please type "CANCEL" to confirm')),
@@ -101,6 +93,13 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
     if (!_hasAcceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please accept the cancellation terms')),
+      );
+      return false;
+    }
+
+    if (_includeDate && _selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please pick a cancellation date or uncheck the date option.')),
       );
       return false;
     }
@@ -231,11 +230,9 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '• No refunds will be issued for cancelled bookings\n'
-                      '• This action cannot be undone\n'
-                      '• You will lose access to the property immediately\n'
-                      '• Any additional fees or deposits will not be refunded\n'
-                      '• You are responsible for removing all personal belongings',
+                      '• Daily: Full refund if cancelled at least 3 days before check-in.\n'
+                      '• Monthly: Before start – free; In-stay – contract end is adjusted and the following month remains due.\n'
+                      '• This action cannot be undone.',
                       style: TextStyle(fontSize: 14),
                     ),
                   ],
@@ -243,24 +240,48 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Reason for cancellation
-              const Text(
-                'Reason for Cancellation *',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+              // Optional cancellation date (for in-stay monthly)
+              Row(
+                children: [
+                  Checkbox(
+                    value: _includeDate,
+                    onChanged: (v) => setState(() => _includeDate = v ?? false),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Specify cancellation date (for in-stay monthly leases).',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
               ),
+              if (_includeDate)
+                Row(
+                  children: [
+                    Text(
+                      _selectedDate == null
+                          ? 'No date selected'
+                          : DateFormat('yyyy-MM-dd').format(_selectedDate!),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () async {
+                        final now = DateTime.now();
+                        final first = now;
+                        final last = widget.booking.endDate ?? now.add(const Duration(days: 365));
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: now,
+                          firstDate: first,
+                          lastDate: last,
+                        );
+                        if (picked != null) setState(() => _selectedDate = picked);
+                      },
+                      child: const Text('Pick date'),
+                    ),
+                  ],
+                ),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _reasonController,
-                decoration: const InputDecoration(
-                  hintText: 'Please explain why you want to cancel...',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
 
               // Confirmation field
               const Text(
@@ -290,11 +311,46 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
                   });
                 },
                 title: const Text(
-                  'I understand that this cancellation is permanent and no refunds will be issued',
+                  'I understand that this cancellation is permanent and the policy above applies.',
                   style: TextStyle(fontSize: 14),
                 ),
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const SizedBox(height: 12),
+
+              // Subtle maintenance link (only while staying)
+              Builder(
+                builder: (ctx) {
+                  final now = DateTime.now();
+                  final isActive = widget.booking.statusDisplay == 'Active';
+                  final withinDates = widget.booking.startDate.isBefore(now) &&
+                      (widget.booking.endDate == null || widget.booking.endDate!.isAfter(now));
+                  final canReport = isActive && withinDates;
+                  if (!canReport) return const SizedBox.shrink();
+                  return Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        // Close dialog and navigate to report issue screen
+                        context.pop();
+                        context.push(
+                          '/property/${widget.booking.propertyId}/report-issue',
+                          extra: {
+                            'propertyId': widget.booking.propertyId,
+                            'bookingId': widget.booking.bookingId,
+                          },
+                        );
+                      },
+                      icon: const Icon(Icons.build, size: 16),
+                      label: const Text('Report a maintenance issue instead'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[700],
+                        textStyle: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
 

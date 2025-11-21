@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
 
 // Primary color palette
 const Color primaryColor = Color(
@@ -12,6 +14,10 @@ const Color accentLightColor = Color(0xFFE9D5FF); // Light purple for gradients
 const Color textPrimaryColor = Color(0xFF1F2937); // Dark text
 const Color textSecondaryColor = Color(0xFF6B7280); // Gray text
 const Color dividerColor = Color(0xFFE5E7EB); // Light gray for dividers
+
+// Auth-specific colors
+const Color authLabelColor = Color(0xFF374151); // Dark gray for labels in auth forms
+const Color authHintColor = Color(0xFF9CA3AF); // Light gray for hints
 
 final ThemeData appTheme = ThemeData(
   // Base colors
@@ -111,7 +117,7 @@ final ThemeData appTheme = ThemeData(
       backgroundColor: primaryColor,
       foregroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
     ),
   ),
@@ -121,7 +127,7 @@ final ThemeData appTheme = ThemeData(
       foregroundColor: primaryColor,
       side: const BorderSide(color: primaryColor),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
     ),
   ),
@@ -135,46 +141,46 @@ final ThemeData appTheme = ThemeData(
 
   // Chip theme
   chipTheme: ChipThemeData(
-    backgroundColor: Colors.grey[200]!,
+    backgroundColor: AppColors.surfaceMedium,
     selectedColor: primaryColor,
-    disabledColor: Colors.grey[300]!,
+    disabledColor: AppColors.borderMedium,
     labelStyle: const TextStyle(color: textPrimaryColor),
     secondaryLabelStyle: const TextStyle(color: Colors.white),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+    shape: RoundedRectangleBorder(borderRadius: AppRadius.lgRadius),
   ),
 
   // Input decoration
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.mdRadius,
       borderSide: BorderSide.none,
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(color: Colors.grey[300]!),
+      borderRadius: AppRadius.mdRadius,
+      borderSide: BorderSide(color: AppColors.borderMedium),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppRadius.mdRadius,
       borderSide: const BorderSide(color: primaryColor),
     ),
     errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.red),
+      borderRadius: AppRadius.mdRadius,
+      borderSide: BorderSide(color: AppColors.error),
     ),
-    hintStyle: TextStyle(color: Colors.grey[400]),
+    hintStyle: TextStyle(color: AppColors.textTertiary),
   ),
 
   // Card theme
   cardTheme: CardThemeData(
     color: Colors.white,
     elevation: 4,
-    shadowColor: Colors.grey.withValues(alpha: 0.2),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    margin: const EdgeInsets.all(8),
+    shadowColor: AppColors.overlayLight,
+    shape: RoundedRectangleBorder(borderRadius: AppRadius.mdRadius),
+    margin: AppSpacing.paddingSM,
     clipBehavior: Clip.antiAlias,
   ),
 
@@ -223,7 +229,11 @@ final ThemeData appTheme = ThemeData(
   ),
 
   // Divider theme
-  dividerTheme: DividerThemeData(color: dividerColor, thickness: 1, space: 24),
+  dividerTheme: DividerThemeData(
+    color: dividerColor,
+    thickness: 1,
+    space: AppSpacing.lg,
+  ),
 );
 
 // Custom gradient decorations
@@ -250,28 +260,21 @@ class AppGradients {
 
 // Box decorations
 class AppDecorations {
-  static BoxDecoration roundedBox({Color? color, double radius = 12}) {
+  static BoxDecoration roundedBox({Color? color, double? radius}) {
     return BoxDecoration(
       color: color ?? Colors.white,
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.grey.withValues(alpha: 0.1),
-          spreadRadius: 1,
-          blurRadius: 5,
-          offset: const Offset(0, 2),
-        ),
-      ],
+      borderRadius: BorderRadius.circular(radius ?? AppRadius.md),
+      boxShadow: AppShadows.sm,
     );
   }
 
   static BoxDecoration gradientBox({
     LinearGradient? gradient,
-    double radius = 16,
+    double? radius,
   }) {
     return BoxDecoration(
       gradient: gradient ?? AppGradients.primaryGradient,
-      borderRadius: BorderRadius.circular(radius),
+      borderRadius: BorderRadius.circular(radius ?? AppRadius.lg),
     );
   }
 }

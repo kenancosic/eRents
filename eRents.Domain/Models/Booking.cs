@@ -24,11 +24,11 @@ public partial class Booking : BaseEntity
 	// Replaced BookingStatusId foreign key with enum
 	public BookingStatusEnum Status { get; set; } = BookingStatusEnum.Upcoming;
 
-	// Payment Information (Optional - for PayPal tracking)
-	public string PaymentMethod { get; set; } = "PayPal";
+	// Payment Information (Optional - for payment tracking)
+	public string PaymentMethod { get; set; } = "Stripe";
 	public string Currency { get; set; } = "USD";
 	public string? PaymentStatus { get; set; }  // "Pending", "Completed", "Failed"
-	public string? PaymentReference { get; set; }  // PayPal Transaction ID
+	public string? PaymentReference { get; set; }  // Payment Transaction ID
 
 	// For monthly rentals, track if this is a subscription-based booking
 	public bool IsSubscription { get; set; } = false;

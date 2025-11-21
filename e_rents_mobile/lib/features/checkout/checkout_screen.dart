@@ -4,14 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/property_card.dart';
-import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/checkout/providers/checkout_provider.dart';
-import 'package:flutter_svg/svg.dart';
-import 'package:e_rents_mobile/features/checkout/paypal_webview_page.dart';
-// WebView-based PayPal approval handled via PaypalWebViewPage
+// Stripe payment processing - Native Stripe SDK to be integrated
 
 
 class CheckoutScreen extends StatefulWidget {
@@ -113,19 +110,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Property card using the new PropertyCardModel
-                  PropertyCard(
-                    property: PropertyCardModel(
-                      propertyId: widget.property.propertyId,
-                      name: widget.property.name,
-                      price: widget.property.price,
-                      currency: widget.property.currency,
-                      averageRating: widget.property.averageRating,
-                      coverImageId: widget.property.coverImageId,
-                      address: widget.property.address,
-                      rentalType: widget.property.rentalType,
-                    ),
-                  ),
+                  // Compact booking summary instead of full property card
+                  _buildCompactSummary(provider),
                   const SizedBox(height: 24),
                   // Price details section
                   _buildPriceDetails(provider),
@@ -194,6 +180,79 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCompactSummary(CheckoutProvider provider) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Property image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: widget.property.coverImageId != null
+                  ? Image.network(
+                      context.read<ApiService>().makeAbsoluteUrl('/api/Images/${widget.property.coverImageId}/content'),
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    )
+                  : Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    ),
+            ),
+            const SizedBox(width: 16),
+            // Property details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.property.name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
+                    '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${provider.propertyPrice.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: accentColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -305,176 +364,48 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentMethods(CheckoutProvider provider) {
+    // Minimal payment badge - no marketing copy
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.05).round()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          const Text(
-            'Pay with',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Only PayPal payment option
-          _buildPaymentOption(
-            provider,
-            'PayPal',
-            Icons.account_balance_wallet,
-            'Fast and secure payments',
-            icon: SvgPicture.asset(
-              'assets/icons/paypal-icon.svg',
-              width: 24,
-              height: 24,
-            ),
-            isSelected: provider.selectedPaymentMethod == 'PayPal',
-          ),
-
-          const SizedBox(height: 16),
-
-          // PayPal benefits
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.security, color: Colors.blue[600], size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Why PayPal',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[700],
-                      ),
-                    ),
-                  ],
+          const Icon(Icons.payment, color: accentColor, size: 24),
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Stripe',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  '• Secure payment processing\n'
-                  '• Buyer protection\n'
-                  '• No need to share card details',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+              ),
+              Text(
+                'Secure payment',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const Spacer(),
+          Icon(Icons.lock_outline, color: Colors.grey[600], size: 20),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentOption(
-      CheckoutProvider provider, String title, IconData defaultIcon, String subtitle,
-      {Widget? icon, bool isSelected = false}) {
-    return InkWell(
-      onTap: () {
-        provider.selectPaymentMethod(title);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color:
-                isSelected ? accentColor : Colors.grey.withValues(alpha: 0.3),
-            width: isSelected ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          color: isSelected
-              ? accentColor.withValues(alpha: 0.05)
-              : Colors.transparent,
-        ),
-        child: Row(
-          children: [
-            // Payment method icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? accentColor.withValues(alpha: 0.1)
-                    : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: icon ?? Icon(defaultIcon, color: Colors.grey.shade700),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Payment method details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? accentColor : Colors.black,
-                    ),
-                  ),
-                  if (subtitle.isNotEmpty)
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // Selected indicator
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? accentColor : Colors.grey.shade300,
-                  width: 2,
-                ),
-                color: isSelected ? accentColor : Colors.transparent,
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Payment method selection removed - Stripe is the only option
 
   Future<void> _processPayment(CheckoutProvider provider) async {
-    // Step 1: Create order on server
+    // Step 1: Create Stripe payment intent
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -484,50 +415,70 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
             SizedBox(height: 16),
-            Text('Preparing PayPal checkout...'),
+            Text('Preparing secure payment...'),
           ],
         ),
       ),
     );
 
-    Map<String, String> order;
+    Map<String, String> paymentIntent;
     try {
-      order = await provider.createPayPalOrder();
+      paymentIntent = await provider.createStripePaymentIntent();
     } catch (_) {
       if (!mounted) return;
       context.pop();
       _showErrorSnackBar(provider.errorMessage.isNotEmpty
           ? provider.errorMessage
-          : 'Failed to create PayPal order.');
+          : 'Failed to initialize payment.');
       return;
     }
 
     if (!mounted) return;
     context.pop(); // Close preparing dialog
 
-    // Step 2: Open WebView for approval
-    final approved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => PaypalWebViewPage(
-          approvalUrl: order['approvalUrl']!,
-          orderId: order['orderId']!,
+    // TODO: Step 2: Integrate Stripe SDK to present payment sheet
+    // For now, show a placeholder dialog indicating Stripe integration is pending
+    _showStripePlaceholderDialog(paymentIntent['clientSecret']!);
+  }
+
+  void _showStripePlaceholderDialog(String clientSecret) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Stripe Integration Pending'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Payment intent created successfully!'),
+            const SizedBox(height: 12),
+            const Text(
+              'Next steps:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text('• Integrate Stripe Flutter SDK\n'
+                '• Present payment sheet\n'
+                '• Confirm payment'),
+            const SizedBox(height: 12),
+            Text(
+              'Client Secret: ${clientSecret.substring(0, 20)}...',
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+          ],
         ),
+        actions: [
+          CustomButton.compact(
+            label: 'OK',
+            isLoading: false,
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context.go('/home');
+            },
+          ),
+        ],
       ),
     );
-
-    if (approved == true) {
-      // Success
-      if (!provider.isDailyRental) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lease application submitted. You\'ll be notified when the landlord responds.'),
-          ),
-        );
-      }
-      _showSuccessDialog(provider.isDailyRental);
-    } else {
-      _showErrorSnackBar('Payment cancelled or failed.');
-    }
   }
 
   void _showSuccessDialog(bool isDailyRental) {

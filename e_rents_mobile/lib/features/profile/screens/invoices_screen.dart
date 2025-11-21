@@ -1,10 +1,12 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/features/profile/providers/invoices_provider.dart';
-import 'package:e_rents_mobile/features/checkout/paypal_webview_page.dart';
 import 'package:e_rents_mobile/core/models/payment.dart' as model;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+// Stripe payment integration for monthly invoices
+// Note: 'hide Card' prevents conflict with Flutter's Card widget
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -59,63 +61,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   return _InvoiceTile(
                     payment: p,
                     isPaying: provider.isPaying,
-                    onPayNow: () async {
-                      // Step 1: Create server order
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => const AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Preparing PayPal checkout...'),
-                            ],
-                          ),
-                        ),
-                      );
-                      Map<String, String> order;
-                      try {
-                        order = await context.read<InvoicesProvider>().createPaymentOrder(p);
-                      } catch (_) {
-                        if (!mounted) return;
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Failed to start invoice payment'), backgroundColor: Colors.red),
-                        );
-                        return;
-                      }
-
-                      if (!mounted) return;
-                      Navigator.of(context).pop();
-
-                      // Step 2: Open WebView for approval
-                      final approved = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => PaypalWebViewPage(
-                            approvalUrl: order['approvalUrl']!,
-                            orderId: order['orderId']!,
-                          ),
-                        ),
-                      );
-
-                      if (!mounted) return;
-                      if (approved == true) {
-                        // Step 3: Capture and refresh
-                        final ok = await context.read<InvoicesProvider>().captureOrder(order['orderId']!);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(ok ? 'Invoice paid successfully' : 'Failed to capture invoice payment'),
-                            backgroundColor: ok ? Colors.green : Colors.red,
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Payment cancelled or failed'), backgroundColor: Colors.red),
-                        );
-                      }
-                    },
+                    onPayNow: () => _processInvoicePayment(context, provider, p),
                     onShowDetails: () => _showPaymentDetails(context, p),
                     onTap: () => _showPaymentDetails(context, p),
                   );
@@ -232,6 +178,122 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         ],
       ),
     );
+  }
+
+  // Process invoice payment with Stripe
+  Future<void> _processInvoicePayment(
+      BuildContext context, InvoicesProvider provider, model.Payment payment) async {
+    
+    try {
+      // Step 1: Create Stripe payment intent on backend
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Preparing payment...'),
+            ],
+          ),
+        ),
+      );
+
+      final result = await provider.createStripePaymentIntent(payment);
+      final clientSecret = result['clientSecret']!;
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      // Step 2: Initialize payment sheet with client secret
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          merchantDisplayName: 'eRents',
+          paymentIntentClientSecret: clientSecret,
+          customerEphemeralKeySecret: null, // Optional: for saved cards
+          customerId: null, // Optional: for saved cards
+          style: ThemeMode.system,
+          billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
+            email: CollectionMode.always,
+            phone: CollectionMode.always,
+          ),
+        ),
+      );
+      
+      // Step 3: Present payment sheet to user
+      await Stripe.instance.presentPaymentSheet();
+      
+      // Step 4: Payment successful! (if no exception thrown)
+      if (!mounted) return;
+      
+      // Wait for webhook to confirm payment
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Confirming payment...'),
+            ],
+          ),
+        ),
+      );
+      
+      // Give webhook time to process (in production, use polling or WebSocket)
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Refresh invoices list
+      await provider.confirmStripePayment();
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close confirming dialog
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Payment successful! Invoice paid.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+    } on StripeException catch (e) {
+      if (!mounted) return;
+      // Close any open dialogs
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      
+      // Handle specific Stripe errors
+      String errorMessage = 'Payment failed';
+      if (e.error.code == FailureCode.Canceled) {
+        errorMessage = 'Payment cancelled';
+      } else if (e.error.code == FailureCode.Failed) {
+        errorMessage = 'Payment failed: ${e.error.message ?? "Unknown error"}';
+      } else {
+        errorMessage = 'Payment error: ${e.error.localizedMessage ?? e.error.message ?? "Unknown error"}';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // Close any open dialogs
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to process payment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _kv(String k, String v) {

@@ -106,13 +106,22 @@ class UserBookingsProvider extends BaseProvider {
   }
 
   /// Cancel a booking
-  Future<bool> cancelBooking(String bookingId) async {
+  /// Optionally include a cancellationDate (yyyy-MM-dd) for monthly in-stay cancellations
+  Future<bool> cancelBooking(String bookingId, {DateTime? cancellationDate}) async {
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserBookingsProvider: Cancelling booking $bookingId');
 
+      final body = <String, dynamic>{};
+      if (cancellationDate != null) {
+        final y = cancellationDate.year.toString().padLeft(4, '0');
+        final m = cancellationDate.month.toString().padLeft(2, '0');
+        final d = cancellationDate.day.toString().padLeft(2, '0');
+        body['cancellationDate'] = '$y-$m-$d';
+      }
+
       final response = await api.post(
         '/bookings/$bookingId/cancel',
-        {},
+        body,
         authenticated: true,
       );
 

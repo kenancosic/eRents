@@ -17,7 +17,7 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
     }
 
     [HttpPost("{id}/cancel")]
-    public async Task<ActionResult<BookingResponse>> Cancel(int id)
+    public async Task<ActionResult<BookingResponse>> Cancel(int id, [FromBody] CancelBookingRequest request)
     {
         if (_service is not Services.BookingService bookingService)
         {
@@ -26,7 +26,7 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
 
         try
         {
-            var result = await bookingService.CancelBooking(id);
+            var result = await bookingService.CancelBooking(id, request);
             return Ok(result);
         }
         catch (KeyNotFoundException)

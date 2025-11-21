@@ -118,6 +118,23 @@ namespace eRents.Features.PropertyManagement.Services
 				}
 			}
 
+			// Server-side availability filtering for Monthly rentals
+			// Filter out properties with scheduled bookings from the requested start date onward
+			if (search.RentingType.HasValue && search.RentingType.Value == RentalType.Monthly &&
+				search.StartDate.HasValue)
+			{
+				var leaseStartDate = DateOnly.FromDateTime(search.StartDate.Value.Date);
+				
+				// Always require property to be generally available
+				query = query.Where(p => p.Status == PropertyStatusEnum.Available);
+				
+				// Exclude properties that have any non-cancelled bookings from the lease start date onward
+				query = query.Where(p => !p.Bookings.Any(b =>
+					b.Status != BookingStatusEnum.Cancelled &&
+					(b.EndDate.HasValue ? b.EndDate.Value >= leaseStartDate : b.StartDate >= leaseStartDate)
+				));
+			}
+
 			// Auto-scope for Desktop owners/landlords
 			// Note: Seeded  user "desktop" has role "Owner" (UserTypeEnum.Owner)
 			// Support both "Owner" and "Landlord" to be robust across datasets

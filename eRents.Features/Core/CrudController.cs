@@ -116,6 +116,16 @@ namespace eRents.Features.Core
                     new { id = GetIdFromResponse(result) }, 
                     result);
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Business logic error creating {EntityName}: {Message}", _entityName, ex.Message);
+                return BadRequest(new { Error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Resource not found error creating {EntityName}: {Message}", _entityName, ex.Message);
+                return NotFound(new { Error = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating {EntityName}", _entityName);
@@ -147,6 +157,11 @@ namespace eRents.Features.Core
                 var result = await _service.UpdateAsync(id, request);
                 return Ok(result);
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Business logic error updating {EntityName} with ID {Id}: {Message}", _entityName, id, ex.Message);
+                return BadRequest(new { Error = ex.Message });
+            }
             catch (KeyNotFoundException)
             {
                 _logger.LogWarning("Cannot update: {EntityName} with ID {Id} not found", _entityName, id);
@@ -176,6 +191,11 @@ namespace eRents.Features.Core
                 _logger.LogInformation("Deleting {EntityName} with ID {Id}", _entityName, id);
                 await _service.DeleteAsync(id);
                 return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Business logic error deleting {EntityName} with ID {Id}: {Message}", _entityName, id, ex.Message);
+                return BadRequest(new { Error = ex.Message });
             }
             catch (KeyNotFoundException)
             {

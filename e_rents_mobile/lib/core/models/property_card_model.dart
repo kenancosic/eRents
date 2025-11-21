@@ -75,7 +75,8 @@ class PropertyCardModel {
       address: (json['address'] ?? json['Address']) is Map<String, dynamic>
           ? Address.fromJson((json['address'] ?? json['Address']) as Map<String, dynamic>)
           : null,
-      rentalType: parseRentalType(json['rentalType'] ?? json['RentingType']),
+      rentalType: parseRentalType(
+          json['rentalType'] ?? json['rentingType'] ?? json['RentingType']),
     );
   }
 

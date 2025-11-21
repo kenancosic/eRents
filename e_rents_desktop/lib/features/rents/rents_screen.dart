@@ -8,6 +8,7 @@ import 'package:e_rents_desktop/models/tenant.dart';
 import 'package:e_rents_desktop/models/enums/booking_status.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class RentsScreen extends StatefulWidget {
   const RentsScreen({super.key});
@@ -372,91 +373,113 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
         }
         return Padding(
           padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Property')),
-                DataColumn(label: Text('Requested By')),
-                DataColumn(label: Text('Old End')),
-                DataColumn(label: Text('New End / +Months')),
-                DataColumn(label: Text('New Monthly')),
-                DataColumn(label: Text('Requested At')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: items.map((r) {
-                final newEndOrMonths = r.newEndDate != null
-                    ? _fmtDate(r.newEndDate!)
-                    : (r.extendByMonths != null ? '+${r.extendByMonths} mo' : '—');
-                return DataRow(
-                  cells: [
-                    DataCell(Text(r.propertyName)),
-                    DataCell(Text('#${r.requestedByUserId}')),
-                    DataCell(Text(r.oldEndDate != null ? _fmtDate(r.oldEndDate!) : '—')),
-                    DataCell(Text(newEndOrMonths)),
-                    DataCell(Text(r.newMonthlyAmount != null ? r.newMonthlyAmount!.toStringAsFixed(2) : '—')),
-                    DataCell(Text(_fmtDateTime(r.createdAt))),
-                    DataCell(Row(
-                      children: [
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.check),
-                          label: const Text('Approve'),
-                          onPressed: () async {
-                            final ok = await ctx.read<RentsProvider>().approveExtension(r.requestId);
-                            if (ok && mounted) setState(() {});
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.close),
-                          label: const Text('Reject'),
-                          onPressed: () async {
-                            String? reason;
-                            final res = await showDialog<String?>(
-                              context: ctx,
-                              builder: (dctx) {
-                                final ctrl = TextEditingController();
-                                return AlertDialog(
-                                  title: const Text('Reject Extension'),
-                                  content: TextField(
-                                    controller: ctrl,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Reason (optional)'
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
-                                    TextButton(onPressed: () => Navigator.pop(dctx, ctrl.text.trim()), child: const Text('Reject')),
-                                  ],
-                                );
-                              },
-                            );
-                            reason = res;
-                            final ok = await ctx.read<RentsProvider>().rejectExtension(r.requestId, reason: reason);
-                            if (ok && mounted) setState(() {});
-                          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate flexible widths based on available space
+              final w = constraints.maxWidth;
+              final wProperty = w * 0.22; // Property
+              final wRequestedBy = w * 0.12; // Requested By
+              final wOldEnd = w * 0.12; // Old End
+              final wNewEnd = w * 0.18; // New End / +Months
+              final wNewMonthly = w * 0.12; // New Monthly
+              final wRequestedAt = w * 0.16; // Requested At
+              final wActions = w * 0.08; // Actions (wraps if tight)
+
+              Widget header(String text, double width) => SizedBox(
+                    width: width,
+                    child: Text(text, overflow: TextOverflow.ellipsis),
+                  );
+              Widget cell(Widget child, double width) => SizedBox(
+                    width: width,
+                    child: child,
+                  );
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columnSpacing: 24,
+                  columns: [
+                    DataColumn(label: header('Property', wProperty)),
+                    DataColumn(label: header('Requested By', wRequestedBy)),
+                    DataColumn(label: header('Old End', wOldEnd)),
+                    DataColumn(label: header('New End / +Months', wNewEnd)),
+                    DataColumn(label: header('New Monthly', wNewMonthly)),
+                    DataColumn(label: header('Requested At', wRequestedAt)),
+                    DataColumn(label: header('Actions', wActions)),
+                  ],
+                  rows: items.map((r) {
+                    final newEndOrMonths = r.newEndDate != null
+                        ? AppDateUtils.formatShort(r.newEndDate)
+                        : (r.extendByMonths != null ? '+${r.extendByMonths} mo' : '—');
+                    return DataRow(
+                      cells: [
+                        DataCell(cell(Text(r.propertyName), wProperty)),
+                        DataCell(cell(Text('#${r.requestedByUserId}'), wRequestedBy)),
+                        DataCell(cell(Text(AppDateUtils.formatShort(r.oldEndDate)), wOldEnd)),
+                        DataCell(cell(Text(newEndOrMonths), wNewEnd)),
+                        DataCell(cell(Text(r.newMonthlyAmount != null ? r.newMonthlyAmount!.toStringAsFixed(2) : '—'), wNewMonthly)),
+                        DataCell(cell(Text(AppDateUtils.formatShortWithTime(r.createdAt)), wRequestedAt)),
+                        DataCell(
+                          cell(
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.check),
+                                  label: const Text('Approve'),
+                                  onPressed: () async {
+                                    final ok = await ctx.read<RentsProvider>().approveExtension(r.requestId);
+                                    if (ok && mounted) setState(() {});
+                                  },
+                                ),
+                                OutlinedButton.icon(
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Reject'),
+                                  onPressed: () async {
+                                    String? reason;
+                                    final res = await showDialog<String?>(
+                                      context: ctx,
+                                      builder: (dctx) {
+                                        final ctrl = TextEditingController();
+                                        return AlertDialog(
+                                          title: const Text('Reject Extension'),
+                                          content: TextField(
+                                            controller: ctrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Reason (optional)'
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(dctx, ctrl.text.trim()), child: const Text('Reject')),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                    reason = res;
+                                    final ok = await ctx.read<RentsProvider>().rejectExtension(r.requestId, reason: reason);
+                                    if (ok && mounted) setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                            wActions,
+                          ),
                         ),
                       ],
-                    )),
-                  ],
-                );
-              }).toList(),
-            ),
+                    );
+                  }).toList(),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
 
-  String _fmtDate(DateTime d) {
-    return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
-
-  String _fmtDateTime(DateTime d) {
-    final date = _fmtDate(d);
-    final hh = d.hour.toString().padLeft(2, '0');
-    final mm = d.minute.toString().padLeft(2, '0');
-    return '$date $hh:$mm';
-  }
+  // Date formatting is provided by AppDateUtils directly in the table rendering.
 
   Widget _buildBookingFilterPanel(
     BuildContext context,

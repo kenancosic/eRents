@@ -5,11 +5,44 @@ import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 
 enum PropertyCardLayout {
   horizontal, // Original horizontal layout
   compactHorizontal, // Compact horizontal layout
   vertical, // New vertical layout similar to UpcomingStayCard
+}
+
+/// Standardized dimensions for PropertyCard
+class PropertyCardDimensions {
+  // Card heights
+  static const double verticalHeight = 180.0;
+  static const double horizontalHeight = 160.0;
+  static const double horizontalCompactHeight = 120.0;
+  
+  // Card widths
+  static const double verticalWidth = 180.0;
+  
+  // Image heights
+  static const double verticalImageHeight = 104.0;
+  
+  // Spacing
+  static EdgeInsets get cardMargin => EdgeInsets.symmetric(
+    horizontal: AppSpacing.sm,
+    vertical: AppSpacing.xs,
+  );
+  
+  static EdgeInsets get cardPadding => AppSpacing.paddingMD;
+  static EdgeInsets get cardPaddingCompact => AppSpacing.paddingSM;
+  
+  static EdgeInsets get contentPadding => EdgeInsets.symmetric(
+    horizontal: AppSpacing.md,
+    vertical: AppSpacing.xs,
+  );
+  
+  // Border radius
+  static double get borderRadius => AppRadius.lg;
+  static double get borderRadiusSmall => AppRadius.sm;
 }
 
 class PropertyCard extends StatelessWidget {
@@ -53,25 +86,23 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildVerticalCard(BuildContext context) {
     return Card(
-      // Reduced vertical margin so the card fits within 180px tall list items
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: PropertyCardDimensions.cardMargin,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(PropertyCardDimensions.borderRadius),
       ),
       elevation: 4,
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          height: 180, // Match recommended visual height
+          height: PropertyCardDimensions.verticalHeight,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.max,
             children: [
             // Image section
             SizedBox(
-              // Slightly reduced to help avoid overflow in compact lists
-              height: 104,
+              height: PropertyCardDimensions.verticalImageHeight,
               width: double.infinity,
               child: Stack(
                 children: [
@@ -81,14 +112,14 @@ class PropertyCard extends StatelessWidget {
                   ),
                   // Bookmark button positioned on image
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: AppSpacing.sm,
+                    right: AppSpacing.sm,
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
-                      padding: const EdgeInsets.all(4),
+                      padding: EdgeInsets.all(AppSpacing.xs),
                       child: BookmarkButton(
                         property: property,
                         isCompact: true,
@@ -100,8 +131,7 @@ class PropertyCard extends StatelessWidget {
             ),
             // Content section
             Padding(
-              // Slightly reduced vertical padding to save space
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+              padding: PropertyCardDimensions.contentPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -110,12 +140,12 @@ class PropertyCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       PropertyTitle(title: property.name, isCompact: true),
-                      const SizedBox(height: 2),
+                      SizedBox(height: AppSpacing.xs),
                       PropertyLocation(
                           location: _getLocationString(), isCompact: true),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: AppSpacing.xs),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -146,11 +176,20 @@ class PropertyCard extends StatelessWidget {
   }
 
   Widget _buildHorizontalCard(BuildContext context, {required bool isCompact}) {
-    final cardHeight = isCompact ? 120.0 : 160.0;
-    final padding = isCompact ? 8.0 : 12.0;
+    final cardHeight = isCompact 
+        ? PropertyCardDimensions.horizontalCompactHeight 
+        : PropertyCardDimensions.horizontalHeight;
+    final padding = isCompact 
+        ? PropertyCardDimensions.cardPaddingCompact
+        : PropertyCardDimensions.cardPadding;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 16, 16),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.sm,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
       child: InkWell(
         onTap: onTap,
         child: Container(
@@ -158,7 +197,7 @@ class PropertyCard extends StatelessWidget {
           decoration: ShapeDecoration(
             color: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(PropertyCardDimensions.borderRadiusSmall),
             ),
             shadows: const [
               BoxShadow(
@@ -184,7 +223,7 @@ class PropertyCard extends StatelessWidget {
               Expanded(
                 flex: 2,
                 child: Padding(
-                  padding: EdgeInsets.all(padding),
+                  padding: padding,
                   child: isCompact ? _buildCompactLayout() : _buildFullLayout(),
                 ),
               ),
@@ -263,12 +302,12 @@ class PropertyCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: AppSpacing.xs),
         // Title with smaller max lines
         Flexible(
           child: PropertyTitle(title: property.name, isCompact: true),
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: AppSpacing.xs),
         // Location
         PropertyLocation(location: _getLocationString(), isCompact: true),
         const Spacer(),

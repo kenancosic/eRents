@@ -639,18 +639,25 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
             children: [
               Icon(Icons.extension, color: Colors.amber[600], size: 16),
               const SizedBox(width: 8),
-              Text(
-                'After minimum period: ',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  children: [
+                    Text(
+                      'After minimum period: ',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
-              ),
-              Text(
-                'Month-to-month or extend',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[600],
+                    Text(
+                      'Month-to-month or extend',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[600],
+                          ),
                     ),
+                  ],
+                ),
               ),
             ],
           ),

@@ -13,6 +13,11 @@ class User {
   final DateTime? dateOfBirth;
   final bool? isPublic;
 
+  // Stripe payment fields
+  final String? stripeCustomerId;
+  final String? stripeAccountId;
+  final String? stripeAccountStatus;
+
   // PayPal-related properties
   final bool isPaypalLinked;
   final String? paypalUserIdentifier;
@@ -37,6 +42,9 @@ class User {
     this.profileImageId,
     this.dateOfBirth,
     this.isPublic,
+    this.stripeCustomerId,
+    this.stripeAccountId,
+    this.stripeAccountStatus,
     this.isPaypalLinked = false,
     this.paypalUserIdentifier,
     required this.createdAt,
@@ -84,6 +92,9 @@ class User {
       profileImageId: _asInt(json['profileImageId'] ?? json['ProfileImageId']),
       dateOfBirth: _parseDate(json['dateOfBirth'] ?? json['DateOfBirth']),
       isPublic: _asBool(json['isPublic'] ?? json['IsPublic']),
+      stripeCustomerId: _asString(json['stripeCustomerId']),
+      stripeAccountId: _asString(json['stripeAccountId']),
+      stripeAccountStatus: _asString(json['stripeAccountStatus']),
       isPaypalLinked: _asBool(json['isPaypalLinked'] ?? json['IsPaypalLinked']) ?? false,
       paypalUserIdentifier: _asString(json['paypalUserIdentifier'] ?? json['PaypalUserIdentifier']),
       createdAt: created,
@@ -105,6 +116,9 @@ class User {
         'profileImageId': profileImageId,
         'dateOfBirth': dateOfBirth?.toIso8601String(),
         'isPublic': isPublic,
+        'stripeCustomerId': stripeCustomerId,
+        'stripeAccountId': stripeAccountId,
+        'stripeAccountStatus': stripeAccountStatus,
         'isPaypalLinked': isPaypalLinked,
         'paypalUserIdentifier': paypalUserIdentifier,
         'createdAt': createdAt.toIso8601String(),
@@ -127,6 +141,9 @@ class User {
     int? profileImageId,
     DateTime? dateOfBirth,
     bool? isPublic,
+    String? stripeCustomerId,
+    String? stripeAccountId,
+    String? stripeAccountStatus,
     bool? isPaypalLinked,
     String? paypalUserIdentifier,
     DateTime? createdAt,
@@ -146,6 +163,9 @@ class User {
       profileImageId: profileImageId ?? this.profileImageId,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       isPublic: isPublic ?? this.isPublic,
+      stripeCustomerId: stripeCustomerId ?? this.stripeCustomerId,
+      stripeAccountId: stripeAccountId ?? this.stripeAccountId,
+      stripeAccountStatus: stripeAccountStatus ?? this.stripeAccountStatus,
       isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
       paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
       createdAt: createdAt ?? this.createdAt,

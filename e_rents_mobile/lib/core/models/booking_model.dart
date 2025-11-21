@@ -104,15 +104,16 @@ class Booking {
       }
       // Numeric code from backend enum
       if (raw is int) {
+        // Backend enum: 1=Upcoming, 2=Completed, 3=Cancelled, 4=Active
         switch (raw) {
           case 1:
             return BookingStatus.upcoming;
           case 2:
-            return BookingStatus.active;
+            return BookingStatus.completed;
           case 3:
             return BookingStatus.cancelled;
           case 4:
-            return BookingStatus.completed;
+            return BookingStatus.active;
           default:
             return BookingStatus.upcoming;
         }

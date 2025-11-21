@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showAvatar;
@@ -41,46 +43,51 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       row1Content = Row(
         children: [
           avatarWidget!,
-          const SizedBox(width: 8),
+          SizedBox(width: AppSpacing.sm),
           Flexible(child: searchWidget!),
         ],
       );
-    } else if (showAvatar && avatarWidget != null) {
-      row1Content = avatarWidget;
     } else if (showSearch && searchWidget != null) {
       row1Content = searchWidget;
     } else if (title != null) {
       row1Content = Text(title!,
           style: Theme.of(context).appBarTheme.titleTextStyle ??
               const TextStyle(fontSize: 20, color: Colors.white));
+    } else if (userLocationWidget != null) {
+      // Show location widget in title area when no title/search
+      row1Content = userLocationWidget;
     }
 
     PreferredSizeWidget? appBarBottom;
-    double bottomWidgetHeight = 0;
 
-    if (userLocationWidget != null) {
-      bottomWidgetHeight = 50.0;
-      appBarBottom = PreferredSize(
-        preferredSize: Size.fromHeight(bottomWidgetHeight),
-        child: Container(
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(
-              left: NavigationToolbar.kMiddleSpacing,
-              right: NavigationToolbar.kMiddleSpacing,
-              top: 4.0,
-              bottom: 8.0),
-          child: userLocationWidget,
-        ),
-      );
-    } else if (bottom != null) {
+    // Only use bottom if explicitly provided
+    if (bottom != null) {
       appBarBottom = bottom;
-      bottomWidgetHeight = bottom?.preferredSize.height ?? 0;
     }
 
     return AppBar(
       surfaceTintColor: Colors.transparent,
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.1),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.primary.withValues(alpha: 0.1),
+              AppColors.surfaceLight,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.overlayLight,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+      ),
       automaticallyImplyLeading: false,
       leading: showBackButton
           ? IconButton(
@@ -92,21 +99,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     }
                   },
             )
-          : (showAvatar && avatarWidget != null && !showSearch)
-              ? Padding(
-                  padding: const EdgeInsets.only(
-                      left: NavigationToolbar.kMiddleSpacing),
-                  child: Center(child: avatarWidget),
-                )
+          : (showAvatar && avatarWidget != null)
+              ? Center(child: avatarWidget)
               : null,
       title: row1Content,
-      titleSpacing: (showBackButton ||
-              (showAvatar &&
-                  avatarWidget != null &&
-                  !showSearch &&
-                  searchWidget == null))
-          ? 0
-          : NavigationToolbar.kMiddleSpacing,
+      titleSpacing: showBackButton ? 0 : NavigationToolbar.kMiddleSpacing,
       centerTitle: false,
       actions: actions,
       bottom: appBarBottom,
@@ -117,9 +114,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize {
     double totalHeight = kToolbarHeight;
-    if (userLocationWidget != null) {
-      totalHeight += 50.0;
-    } else if (bottom != null) {
+    if (bottom != null) {
       totalHeight += bottom!.preferredSize.height;
     }
     return Size.fromHeight(totalHeight);

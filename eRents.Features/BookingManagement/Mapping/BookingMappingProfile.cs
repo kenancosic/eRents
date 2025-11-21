@@ -44,7 +44,7 @@ public class BookingMappingProfile : Profile
 				// Keep Status default (Upcoming); PaymentStatus/Reference not set from request
 				.AfterMap((src, dest) =>
 				{
-					if (string.IsNullOrWhiteSpace(dest.PaymentMethod)) dest.PaymentMethod = "PayPal";
+					if (string.IsNullOrWhiteSpace(dest.PaymentMethod)) dest.PaymentMethod = "Stripe";
 					if (string.IsNullOrWhiteSpace(dest.Currency)) dest.Currency = "USD";
 				});
 	}

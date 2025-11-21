@@ -8,6 +8,7 @@ import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'core/base/error_provider.dart';
 import 'core/widgets/global_error_dialog.dart';
@@ -16,6 +17,12 @@ import 'config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "lib/.env");
+  
+  // Initialize Stripe with publishable key
+  Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? 'pk_test_YOUR_KEY_HERE';
+  // Enable merchant identifier for Apple Pay (optional)
+  // Stripe.merchantIdentifier = 'merchant.com.eRents';
+  
   // Clear any persisted auth token on app restart per requirement
   // Note: This will log out the user on every fresh app start.
   await SecureStorageService().clearToken();

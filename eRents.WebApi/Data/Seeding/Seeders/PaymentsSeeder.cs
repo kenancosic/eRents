@@ -57,6 +57,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
             if (!hasSubPayment || forceSeed)
             {
+                var paymentIntentId = $"pi_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+                var chargeId = $"ch_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+                
                 completedPayment = new Payment
                 {
                     TenantId = sub.TenantId,
@@ -65,9 +68,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     SubscriptionId = sub.SubscriptionId,
                     Amount = sub.MonthlyAmount,
                     Currency = sub.Currency,
-                    PaymentMethod = "PayPal",
+                    PaymentMethod = "Stripe",
                     PaymentStatus = "Completed",
-                    PaymentReference = $"SUB_{sub.SubscriptionId}_PAY_{Guid.NewGuid().ToString("N").Substring(0,8)}",
+                    PaymentReference = paymentIntentId,
+                    StripePaymentIntentId = paymentIntentId,
+                    StripeChargeId = chargeId,
                     PaymentType = "SubscriptionPayment"
                 };
 
@@ -91,6 +96,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             var refundExists = await context.Payments.AnyAsync(p => p.OriginalPaymentId == completedPayment.PaymentId);
             if (!refundExists || forceSeed)
             {
+                var refundId = $"re_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+                
                 var refund = new Payment
                 {
                     TenantId = completedPayment.TenantId,
@@ -99,9 +106,10 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     SubscriptionId = completedPayment.SubscriptionId,
                     Amount = Math.Round(completedPayment.Amount * 0.25m, 2),
                     Currency = completedPayment.Currency,
-                    PaymentMethod = "PayPal",
+                    PaymentMethod = "Stripe",
                     PaymentStatus = "Completed",
-                    PaymentReference = $"REF_{Guid.NewGuid().ToString("N").Substring(0,8)}",
+                    PaymentReference = refundId,
+                    StripeChargeId = refundId,
                     RefundReason = "Partial refund due to maintenance inconvenience",
                     PaymentType = "Refund",
                     OriginalPaymentId = completedPayment.PaymentId

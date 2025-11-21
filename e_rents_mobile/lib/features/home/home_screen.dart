@@ -4,7 +4,7 @@ import 'package:signalr_core/signalr_core.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
-import 'package:e_rents_mobile/core/widgets/custom_search_bar.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
@@ -12,6 +12,9 @@ import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
+import 'package:e_rents_mobile/core/widgets/empty_state_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,12 +26,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   Timer? _pendingRefreshTimer;
   HubConnection? _notifHub;
-
-  void _handleApplyFilters(BuildContext context, Map<String, dynamic> filters) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Filters applied!')),
-    );
-  }
 
   Widget _buildRecommendedSection(BuildContext context) {
     return Consumer<HomeProvider>(
@@ -49,17 +46,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             // Use vertical cards for recommended section for variety
             SizedBox(
-              height: 240, // Fixed height for vertical cards
+              height: PropertyCardDimensions.verticalHeight + AppSpacing.xl,
               child: ListView.builder(
                 primary: false,
                 shrinkWrap: true,
                 physics: const ClampingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
+                padding: AppSpacing.paddingH_MD,
                 itemCount: provider.recommendedCards.length,
                 itemBuilder: (context, index) {
                   final card = provider.recommendedCards[index];
                   return SizedBox(
-                    width: 180, // Fixed width for vertical cards
+                    width: PropertyCardDimensions.verticalWidth,
                     child: Stack(
                       children: [
                         PropertyCard(
@@ -92,26 +90,27 @@ class _HomeScreenState extends State<HomeScreen> {
               title: 'Currently residing properties',
             ),
             if (items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(
-                  "You're not currently residing in any property.",
-                  style: TextStyle(color: Colors.grey),
+              Padding(
+                padding: AppSpacing.paddingH_MD,
+                child: EmptyStateCompact(
+                  icon: Icons.home_outlined,
+                  message: "You're not currently residing in any property.",
                 ),
               )
             else
               SizedBox(
-                height: 240,
+                height: PropertyCardDimensions.verticalHeight + AppSpacing.xl,
                 child: ListView.builder(
                   primary: false,
                   shrinkWrap: true,
                   physics: const ClampingScrollPhysics(),
                   scrollDirection: Axis.horizontal,
+                  padding: AppSpacing.paddingH_MD,
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final card = items[index];
                     return SizedBox(
-                      width: 180,
+                      width: PropertyCardDimensions.verticalWidth,
                       child: Stack(
                         children: [
                           PropertyCard(
@@ -146,26 +145,27 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             if (provider.upcomingCards.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Text(
-                  'No upcoming bookings found.',
-                  style: TextStyle(color: Colors.grey),
+              Padding(
+                padding: AppSpacing.paddingH_MD,
+                child: EmptyStateCompact(
+                  icon: Icons.calendar_today_outlined,
+                  message: 'No upcoming bookings found.',
                 ),
               )
             else
               SizedBox(
-                height: 190,
+                height: PropertyCardDimensions.verticalHeight + AppSpacing.xl,
                 child: ListView.builder(
                   primary: false,
                   shrinkWrap: true,
                   physics: const ClampingScrollPhysics(),
                   scrollDirection: Axis.horizontal,
+                  padding: AppSpacing.paddingH_MD,
                   itemCount: provider.upcomingCards.length,
                   itemBuilder: (context, index) {
                     final card = provider.upcomingCards[index];
                     return SizedBox(
-                      width: 180,
+                      width: PropertyCardDimensions.verticalWidth,
                       child: PropertyCard.vertical(
                         property: card,
                         onTap: () {
@@ -200,17 +200,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SizedBox(
               // Match the visual design of Current Residences/Recommended
-              height: 190,
+              height: PropertyCardDimensions.verticalHeight + AppSpacing.xl,
               child: ListView.builder(
                 primary: false,
                 shrinkWrap: true,
                 physics: const ClampingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
+                padding: AppSpacing.paddingH_MD,
                 itemCount: provider.pendingCards.length,
                 itemBuilder: (context, index) {
                   final card = provider.pendingCards[index];
                   return SizedBox(
-                    width: 180,
+                    width: PropertyCardDimensions.verticalWidth,
                     child: Stack(
                       children: [
                         PropertyCard(
@@ -221,13 +222,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
                         Positioned(
-                          top: 8,
-                          left: 8,
+                          top: AppSpacing.sm,
+                          left: AppSpacing.sm,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                              vertical: AppSpacing.xs,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.amber.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.warning,
+                              borderRadius: AppRadius.smRadius,
                             ),
                             child: const Text(
                               'Awaiting acceptance',
@@ -258,6 +262,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Initialize dashboard data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Ensure profile is loaded for avatar rendering across the app
+      context.read<UserProfileProvider>().loadCurrentUser();
       _initializeDashboard();
       // Start periodic refresh of pending monthly bookings so user sees acceptance updates
       _pendingRefreshTimer?.cancel();
@@ -277,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load dashboard data: ${error.toString()}'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -353,55 +359,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return _HomeAppBar();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final searchBar = CustomSearchBar(
-      hintText: 'Search properties...',
-      onSearchChanged: (query) {
-        // Handle search query
-      },
-      showFilterIcon: true,
-      onFilterIconPressed: () {
-        context.push('/filter', extra: {
-          'onApplyFilters': (Map<String, dynamic> filters) =>
-              _handleApplyFilters(context, filters),
-        });
-      },
-    );
-
-    final appBar = CustomAppBar(
-      showSearch: true,
-      searchWidget: searchBar,
-      showAvatar: true,
-      avatarWidget: Builder(
-        builder: (avatarContext) => CustomAvatar(
-          imageUrl: 'assets/images/user-image.png',
-          onTap: () {
-            BaseScreenState.of(avatarContext)?.toggleDrawer();
-          },
-        ),
-      ),
-      showBackButton: false,
-      userLocationWidget: Consumer<HomeProvider>(
-        builder: (context, provider, _) => LocationWidget(
-          title: 'Welcome back, ${provider.currentUser?.firstName ?? 'User'}',
-          location: provider.userLocation,
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            context.push('/notifications');
-          },
-        ),
-      ],
-    );
+    // Search functionality belongs in Explore screen only
+    // Removed redundant search bar from Home
 
     return BaseScreen(
       showAppBar: true,
       useSlidingDrawer: true,
-      appBar: appBar,
+      appBar: _buildAppBar(context),
       body: Consumer<HomeProvider>(
         builder: (context, provider, child) {
           return RefreshIndicator(
@@ -414,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Failed to refresh data: ${error.toString()}'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: AppColors.error,
                     ),
                   );
                 }
@@ -425,10 +395,15 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SizedBox(height: AppSpacing.md),
                   _buildCurrentResidencesSection(context),
+                  SizedBox(height: AppSpacing.lg),
                   _buildRecommendedSection(context),
+                  SizedBox(height: AppSpacing.lg),
                   _buildUpcomingBookingsSection(context),
+                  SizedBox(height: AppSpacing.lg),
                   _buildPendingBookingsSection(context),
+                  SizedBox(height: AppSpacing.xxl),
                 ],
               ),
             ),
@@ -437,4 +412,51 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+/// Custom AppBar for Home screen that properly implements PreferredSizeWidget
+class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _HomeAppBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<UserProfileProvider>(
+      builder: (context, profile, _) {
+        return CustomAppBar(
+          showSearch: false,
+          showAvatar: true,
+          avatarWidget: Builder(
+            builder: (avatarContext) {
+              return CustomAvatar(
+                imageUrl: profile.profileImageUrlOrPlaceholder,
+                onTap: () {
+                  // Use findAncestorStateOfType to get BaseScreenState from avatarContext
+                  final baseScreenState = avatarContext.findAncestorStateOfType<BaseScreenState>();
+                  baseScreenState?.toggleDrawer();
+                },
+              );
+            },
+          ),
+          showBackButton: false,
+          userLocationWidget: Consumer<HomeProvider>(
+            builder: (locationContext, provider, _) => LocationWidget(
+              title: 'Welcome back, ${provider.currentUser?.firstName ?? 'User'}',
+              location: provider.userLocation,
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {
+                context.push('/notifications');
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

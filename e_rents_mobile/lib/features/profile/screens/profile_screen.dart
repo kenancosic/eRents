@@ -4,12 +4,14 @@ import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_dialogs.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
-import 'package:e_rents_mobile/features/profile/widgets/paypal_settings_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
+import 'package:e_rents_mobile/core/widgets/section_container.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && mounted) {
-      // On returning to the app (e.g., from PayPal), refresh user profile
+      // Refresh user profile on app resume
       context.read<UserProfileProvider>().loadCurrentUser(forceRefresh: true);
     }
   }
@@ -109,10 +111,19 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
           showAppBar: false,
           body: Stack(
             children: [
+              // Gradient background instead of image
               Positioned.fill(
-                child: Image.asset(
-                  'assets/images/polygon.jpg',
-                  fit: BoxFit.cover,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.1),
+                        AppColors.surfaceLight,
+                      ],
+                    ),
+                  ),
                 ),
               ),
               if (isLoading)
@@ -120,104 +131,109 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
               else
                 Column(
                   children: [
-                    const SizedBox(height: 20),
-                    // User profile section
-                    Center(
-                      child: CustomAvatar(
-                        imageUrl: 'assets/images/user-image.png',
-                        size: 100,
-                        onTap: _updateProfileImage,
-                        showCameraIcon: true,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      user?.name != null && user?.lastName != null
-                          ? '${user!.name} ${user.lastName}'
-                          : 'John Doe',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      user?.email ?? 'johnDoe@gmail.com',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    Expanded(
-                      child: ListView(
+                    // Header Section
+                    Container(
+                      padding: AppSpacing.paddingV_XL,
+                      child: Column(
                         children: [
-                          _buildListTile(
-                            icon: Icons.person_outline,
-                            title: 'Personal details',
-                            onTap: () {
-                              context.push('/profile/details');
-                            },
+                          SizedBox(height: AppSpacing.md),
+                          CustomAvatar(
+                            imageUrl: profileProvider.profileImageUrlOrPlaceholder,
+                            size: 100,
+                            onTap: _updateProfileImage,
+                            showCameraIcon: true,
                           ),
-                          _buildListTile(
-                            icon: Icons.lock_outline,
-                            title: 'Change Password',
-                            onTap: () {
-                              context.push('/profile/change-password');
-                            },
-                          ),
-                          _buildListTile(
-                            icon: Icons.payment_outlined,
-                            title: 'Payment details',
-                            onTap: () {
-                              context.push('/profile/payment');
-                            },
-                          ),
-                          _buildListTile(
-                            icon: Icons.receipt_long_outlined,
-                            title: 'Invoices',
-                            onTap: () {
-                              context.push('/profile/invoices');
-                            },
-                          ),
-                          _buildListTile(
-                            icon: Icons.history,
-                            title: 'Booking History',
-                            onTap: () {
-                              context.push('/profile/booking-history');
-                            },
-                          ),
-                          _buildSwitchListTile(
-                            context: context,
-                            profileProvider: profileProvider,
-                          ),
-                          const SizedBox(height: 20),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 20.0),
-                            child: PaypalSettingsWidget(isEditing: true),
-                          ),
-                          const SizedBox(height: 20),
-                          _buildListTile(
-                            icon: Icons.help_outline,
-                            title: 'FAQ',
-                            onTap: () {
-                              context.push('/faq');
-                            },
-                          ),
-                          const Divider(),
-                          const SizedBox(height: 20),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
-                            child: CustomButton(
-                              label: 'Log out',
-                              icon: Icons.logout,
-                              isLoading: false,
-                              width: ButtonWidth.expanded,
-                              backgroundColor: Theme.of(context).primaryColor,
-                              onPressed: _handleLogout,
+                          SizedBox(height: AppSpacing.sm),
+                          Text(
+                            user?.name != null && user?.lastName != null
+                                ? '${user!.name} ${user.lastName}'
+                                : 'John Doe',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          SizedBox(height: AppSpacing.xs),
+                          Text(
+                            user?.email ?? 'johnDoe@gmail.com',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Content Sections
+                    Expanded(
+                      child: ListView(
+                        padding: AppSpacing.paddingH_MD,
+                        children: [
+                          // Account Settings Section
+                          _buildSectionCard(
+                            title: 'Account Settings',
+                            items: [
+                              _buildListTile(
+                                icon: Icons.person_outline,
+                                title: 'Personal details',
+                                onTap: () => context.push('/profile/details'),
+                              ),
+                              _buildListTile(
+                                icon: Icons.lock_outline,
+                                title: 'Change Password',
+                                onTap: () => context.push('/profile/change-password'),
+                              ),
+                              _buildSwitchListTile(
+                                context: context,
+                                profileProvider: profileProvider,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: AppSpacing.md),
+                          // Payment & Bookings Section
+                          _buildSectionCard(
+                            title: 'Payment & Bookings',
+                            items: [
+                              _buildListTile(
+                                icon: Icons.payment_outlined,
+                                title: 'Payment details',
+                                onTap: () => context.push('/profile/payment'),
+                              ),
+                              _buildListTile(
+                                icon: Icons.receipt_long_outlined,
+                                title: 'Invoices',
+                                onTap: () => context.push('/profile/invoices'),
+                              ),
+                              _buildListTile(
+                                icon: Icons.history,
+                                title: 'Booking History',
+                                onTap: () => context.push('/profile/booking-history'),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: AppSpacing.md),
+                          // Support Section
+                          _buildSectionCard(
+                            title: 'Support',
+                            items: [
+                              _buildListTile(
+                                icon: Icons.help_outline,
+                                title: 'FAQ',
+                                onTap: () => context.push('/faq'),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: AppSpacing.lg),
+                          // Logout Button
+                          CustomButton(
+                            label: 'Log out',
+                            icon: Icons.logout,
+                            isLoading: false,
+                            width: ButtonWidth.expanded,
+                            backgroundColor: AppColors.error,
+                            onPressed: _handleLogout,
+                          ),
+                          SizedBox(height: AppSpacing.xl),
                         ],
                       ),
                     ),
@@ -230,15 +246,43 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     );
   }
 
+  // Helper method to build a section card
+  Widget _buildSectionCard({
+    required String title,
+    required List<Widget> items,
+  }) {
+    return SectionCard(
+      title: title,
+      child: Column(
+        children: items,
+      ),
+    );
+  }
+
   // Helper method to build a list tile
-  ListTile _buildListTile(
-      {required IconData icon,
-      required String title,
-      required VoidCallback onTap}) {
+  ListTile _buildListTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.black),
-      title: Text(title),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      leading: Icon(icon, color: AppColors.textPrimary),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+        ),
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: AppColors.textSecondary,
+      ),
       onTap: onTap,
     );
   }
@@ -252,7 +296,17 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     final bool isPublic = user?.isPublic ?? false;
 
     return SwitchListTile(
-      title: const Text('Make Profile Public'),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      title: Text(
+        'Make Profile Public',
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 16,
+        ),
+      ),
       value: isPublic,
       onChanged: (bool value) async {
         // Show a confirmation dialog before changing the status
@@ -300,9 +354,22 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
           }
         }
       },
-      secondary: Icon(isPublic ? Icons.visibility : Icons.visibility_off,
-          color: Colors.black),
-      activeColor: Theme.of(context).primaryColor,
+      secondary: Icon(
+        isPublic ? Icons.visibility : Icons.visibility_off,
+        color: AppColors.textPrimary,
+      ),
+      thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.primary;
+        }
+        return Colors.grey.shade400;
+      }),
+      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.primary.withValues(alpha: 0.5);
+        }
+        return Colors.grey.shade300;
+      }),
     );
   }
 }

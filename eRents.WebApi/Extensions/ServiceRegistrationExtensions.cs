@@ -29,13 +29,23 @@ public static class ServiceRegistrationExtensions
 		// Host-level concerns like DbContext, AutoMapper, and validation are configured in Program.cs
 
 		services.AddScoped<ICurrentUserService, CurrentUserService>();
-		// Cross-cutting infrastructure for outbound HTTP and caching (used by PayPal integration)
+		// Cross-cutting infrastructure for outbound HTTP and caching (used by Stripe integration)
 		services.AddHttpClient();
 		services.AddMemoryCache();
 
-		// PayPal sandbox/live configuration (Features namespace)
-		services.Configure<PayPalOptions>(configuration.GetSection("PayPal"));
-		services.AddSingleton<PayPalIdentityService>();
+		// Stripe payment configuration
+		services.Configure<eRents.Features.PaymentManagement.Services.StripeOptions>(configuration.GetSection("Stripe"));
+		
+		// Initialize Stripe globally
+		var stripeOptions = configuration.GetSection("Stripe").Get<eRents.Features.PaymentManagement.Services.StripeOptions>();
+		if (stripeOptions != null)
+		{
+			stripeOptions.Validate();
+			Stripe.StripeConfiguration.ApiKey = stripeOptions.SecretKey;
+		}
+		
+		services.AddScoped<eRents.Features.PaymentManagement.Interfaces.IStripePaymentService, eRents.Features.PaymentManagement.Services.StripePaymentService>();
+		services.AddScoped<eRents.Features.PaymentManagement.Interfaces.IStripeConnectService, eRents.Features.PaymentManagement.Services.StripeConnectService>();
 
 		// Feature registration happens below via extension methods block
 
@@ -74,8 +84,6 @@ public static class ServiceRegistrationExtensions
 			services.AddScoped<IDataSeeder, AmenitySeeder>();
 			services.AddScoped<IDataSeeder, UsersSeeder>();
 			services.AddScoped<IDataSeeder, UserProfileImagesSeeder>();
-			// New: ensure PayPal linkage for owners/tenants before properties/bookings
-			services.AddScoped<IDataSeeder, PaypalLinkSeeder>();
 			services.AddScoped<IDataSeeder, PropertiesSeeder>();
 			services.AddScoped<IDataSeeder, ImageSeeder>();
 			services.AddScoped<IDataSeeder, BookingsSeeder>();

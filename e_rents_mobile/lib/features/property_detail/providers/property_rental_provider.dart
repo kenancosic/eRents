@@ -248,14 +248,22 @@ class PropertyRentalProvider extends BaseProvider {
   }
 
   /// Cancel a booking
-  Future<bool> cancelBooking(int bookingId, String reason) async {
+  /// Optionally provide a [cancellationDate] (yyyy-MM-dd will be sent) for monthly in-stay cancellations
+  Future<bool> cancelBooking(int bookingId, {DateTime? cancellationDate}) async {
     if (_isCancellingBooking) return false;
     _isCancellingBooking = true;
     notifyListeners();
 
     final success = await executeWithStateForSuccess(() async {
-      // Backend expects POST /bookings/{id}/cancel; reason is currently not used server-side
-      await api.post('/bookings/$bookingId/cancel', {'reason': reason}, authenticated: true);
+      // Backend expects POST /bookings/{id}/cancel
+      final payload = <String, dynamic>{};
+      if (cancellationDate != null) {
+        final y = cancellationDate.year.toString().padLeft(4, '0');
+        final m = cancellationDate.month.toString().padLeft(2, '0');
+        final d = cancellationDate.day.toString().padLeft(2, '0');
+        payload['cancellationDate'] = '$y-$m-$d';
+      }
+      await api.post('/bookings/$bookingId/cancel', payload, authenticated: true);
       
       final index = _allBookings.indexWhere((booking) => booking.bookingId == bookingId);
       if (index != -1) {

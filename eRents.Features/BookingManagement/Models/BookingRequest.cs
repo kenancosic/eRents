@@ -12,7 +12,7 @@ public class BookingRequest
 
     public decimal TotalPrice { get; set; }
 
-    public string PaymentMethod { get; set; } = "PayPal";
+    public string PaymentMethod { get; set; } = "Stripe";
     public string Currency { get; set; } = "USD";
 
     // Status excluded from request per requirements

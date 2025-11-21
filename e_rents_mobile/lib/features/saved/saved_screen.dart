@@ -4,10 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
-import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
+import 'package:e_rents_mobile/core/utils/app_spacing.dart';
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
+import 'package:e_rents_mobile/core/widgets/empty_state_widget.dart';
+import 'package:e_rents_mobile/core/widgets/error_state_widget.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -17,6 +21,8 @@ class SavedScreen extends StatefulWidget {
 }
 
 class _SavedScreenState extends State<SavedScreen> {
+  String _selectedCategory = 'All';
+  
   @override
   void initState() {
     super.initState();
@@ -24,6 +30,17 @@ class _SavedScreenState extends State<SavedScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SavedProvider>().loadSavedProperties();
     });
+  }
+  
+  List<PropertyCardModel> _getFilteredProperties(SavedProvider provider) {
+    final all = provider.items;
+    if (_selectedCategory == 'All') return all;
+    
+    final rentalType = _selectedCategory == 'Daily' 
+        ? PropertyRentalType.daily 
+        : PropertyRentalType.monthly;
+    
+    return all.where((p) => p.rentalType == rentalType).toList();
   }
 
   Future<void> _removeFromSaved(PropertyCardModel property) async {
@@ -82,119 +99,127 @@ class _SavedScreenState extends State<SavedScreen> {
     }
 
     if (provider.hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              provider.errorMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => provider.refreshSavedProperties(),
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
+      return ErrorStateWidget(
+        message: provider.errorMessage,
+        onRetry: () => provider.refreshSavedProperties(),
       );
     }
 
     if (provider.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bookmark_border,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No saved properties yet',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Properties you save will appear here',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to explore screen
-                context.go('/explore');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7265F0),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-              child: const Text('Explore Properties'),
-            ),
-          ],
-        ),
+      return EmptyStateWidget(
+        icon: Icons.bookmark_border,
+        title: 'No saved properties yet',
+        message: 'Properties you save will appear here',
+        actionText: 'Explore Properties',
+        onAction: () => context.go('/explore'),
       );
     }
 
-    // Use ListView to avoid unbounded height issues
-    final items = provider.items;
-    return ListView.separated(
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: items.length + 2, // header + items + footer spacer
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          // Header with refresh button
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0),
-            child: Center(
-              child: ElevatedTextButton.icon(
-                text: 'Refresh',
-                icon: Icons.refresh,
-                isCompact: true,
-                onPressed: () => provider.refreshSavedProperties(),
-              ),
+    // Filter properties based on selected category
+    final items = _getFilteredProperties(provider);
+    
+    return Column(
+      children: [
+        _buildCategoryTabs(),
+        if (items.isEmpty)
+          Expanded(
+            child: EmptyStateCompact(
+              icon: _selectedCategory == 'Daily' 
+                  ? Icons.wb_sunny_outlined
+                  : Icons.calendar_month_outlined,
+              message: 'No $_selectedCategory properties saved',
             ),
-          );
-        }
-        if (index == items.length + 1) {
-          // Footer spacer
-          return const SizedBox(height: 12);
-        }
+          )
+        else
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () => provider.refreshSavedProperties(),
+              color: AppColors.primary,
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: AppSpacing.paddingV_SM,
+                itemCount: items.length + 1, // items + footer spacer
+                separatorBuilder: (_, __) => SizedBox(height: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  if (index == items.length) {
+                    // Footer spacer
+                    return SizedBox(height: AppSpacing.sm);
+                  }
 
-        final property = items[index - 1];
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 0),
-          child: Dismissible(
-            key: Key('saved_property_${property.propertyId}'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              color: Colors.red,
-              child: const Icon(
-                Icons.delete,
-                color: Colors.white,
-              ),
-            ),
-            onDismissed: (direction) {
-              _removeFromSaved(property);
-            },
-            child: PropertyCard(
-              property: property,
-              onTap: () {
-                context.push('/property/${property.propertyId}');
+                  final property = items[index];
+                return Dismissible(
+                  key: Key('saved_property_${property.propertyId}'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: EdgeInsets.only(right: AppSpacing.lg),
+                    color: AppColors.error,
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onDismissed: (direction) {
+                    _removeFromSaved(property);
+                  },
+                  child: PropertyCard(
+                    property: property,
+                    onTap: () {
+                      context.push('/property/${property.propertyId}');
+                    },
+                  ),
+                );
               },
             ),
           ),
-        );
-      },
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildCategoryTabs() {
+    return Container(
+      padding: AppSpacing.paddingMD,
+      color: Colors.white,
+      child: Row(
+        children: [
+          _buildTabChip('All'),
+          SizedBox(width: AppSpacing.sm),
+          _buildTabChip('Daily'),
+          SizedBox(width: AppSpacing.sm),
+          _buildTabChip('Monthly'),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildTabChip(String label) {
+    final isSelected = _selectedCategory == label;
+    return Expanded(
+      child: FilterChip(
+        label: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() => _selectedCategory = label);
+        },
+        backgroundColor: AppColors.surfaceLight,
+        selectedColor: AppColors.primary.withValues(alpha: 0.1),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.borderLight,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+      ),
     );
   }
 }

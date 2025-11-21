@@ -291,14 +291,18 @@ class HomeProvider extends BaseProvider {
     }
 
     PropertyCardModel mergeCard(PropertyCardModel? base, Booking booking) {
-      final rentalType = forceMonthly
+      final inferredRentalType = forceMonthly
           ? PropertyRentalType.monthly
-          : (base?.rentalType ?? PropertyRentalType.monthly);
-      // Pricing strategy: if monthly section, prefer property's base (monthly) price.
-      // Otherwise prefer booking.dailyRate, falling back to card price when dailyRate is missing.
-      final double effectivePrice = forceMonthly
-          ? (base?.price ?? (booking.dailyRate > 0 ? booking.dailyRate : 0))
-          : ((booking.dailyRate > 0) ? booking.dailyRate : (base?.price ?? 0));
+          : (base?.rentalType ??
+              (booking.dailyRate > 0 ? PropertyRentalType.daily : PropertyRentalType.monthly));
+
+      // Choose price based on inferred rental type:
+      // - Daily: prefer booking.dailyRate, fallback to base price
+      // - Monthly: prefer base price, fallback to booking.dailyRate if present
+      final double effectivePrice = inferredRentalType == PropertyRentalType.daily
+          ? (booking.dailyRate > 0 ? booking.dailyRate : (base?.price ?? 0))
+          : (base?.price ?? (booking.dailyRate > 0 ? booking.dailyRate : 0));
+
       return PropertyCardModel(
         propertyId: booking.propertyId,
         name: base?.name ?? booking.propertyName,
@@ -307,7 +311,7 @@ class HomeProvider extends BaseProvider {
         averageRating: base?.averageRating,
         coverImageId: base?.coverImageId,
         address: base?.address,
-        rentalType: rentalType,
+        rentalType: inferredRentalType,
       );
     }
 

@@ -21,6 +21,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
@@ -42,13 +43,21 @@ class PropertyDetailScreen extends StatefulWidget {
   State<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
 }
 
-class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
+class _PropertyDetailScreenState extends State<PropertyDetailScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     debugPrint(
         "PropertyDetailsScreen initState: ViewContext: ${widget.viewContext}, BookingID: ${widget.bookingId}");
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -58,9 +67,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       provider.fetchPropertyDetails(widget.propertyId);
       provider.fetchReviews(widget.propertyId);
-      if (widget.bookingId != null) {
-        provider.fetchBookings(widget.propertyId);
-      }
+      // Always fetch current user's bookings for this property to enable UI gating (e.g., reviews eligibility)
+      provider.fetchBookings(widget.propertyId);
     });
   }
 
@@ -84,8 +92,19 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final appBar = CustomAppBar(
-      title: "Detail",
+      title: "Property Details",
       showBackButton: true,
+      bottom: TabBar(
+        controller: _tabController,
+        labelColor: const Color(0xFF7265F0),
+        unselectedLabelColor: Colors.grey,
+        indicatorColor: const Color(0xFF7265F0),
+        tabs: const [
+          Tab(icon: Icon(Icons.home_outlined), text: 'Overview'),
+          Tab(icon: Icon(Icons.info_outline), text: 'Details'),
+          Tab(icon: Icon(Icons.star_outline), text: 'Reviews'),
+        ],
+      ),
     );
 
     return MultiProvider(
@@ -175,115 +194,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
               final uiReviews = provider.reviews;
 
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PropertyImageSlider(
-                      property: property,
-                      onPageChanged: (index) {},
+              return Column(
+                children: [
+                  PropertyImageSlider(
+                    property: property,
+                    onPageChanged: (index) {},
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildOverviewTab(property, provider, uiReviews),
+                        _buildDetailsTab(property, provider, api),
+                        _buildReviewsTab(property, provider, uiReviews, isOwner),
+                      ],
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PropertyHeader(property: property),
-                          const SizedBox(height: 16),
-                          PropertyDetails(
-                            // Use computed average from fetched reviews to ensure rating is shown
-                            averageRating: calculateAverageRating(uiReviews),
-                            numberOfReviews: uiReviews.length,
-                            city: property.address?.city ?? 'Unknown City',
-                            address: property.address?.streetLine1,
-                            rooms: property.rooms,
-                            area: (property.area ?? 0) > 0
-                                ? '${(property.area!).toStringAsFixed(0)} m²'
-                                : 'N/A',
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFE0E0E0), height: 16),
-                          const SizedBox(height: 16),
-                          PropertyDescriptionSection(
-                            description: property.description ??
-                                'This beautiful property offers modern amenities and a convenient location. Perfect for families or professionals looking for comfort and style. Features include spacious rooms, updated appliances, and a welcoming atmosphere.',
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFE0E0E0), height: 16),
-                          const SizedBox(height: 16),
-                          Builder(
-                            builder: (context) {
-                              final currentBooking = _findBookingForProperty(provider, property.propertyId);
-                              return PropertyActionFactory.createActionSection(
-                                property: property,
-                                viewContext: widget.viewContext,
-                                booking: currentBooking,
-                              );
-                            }
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFE0E0E0), height: 16),
-                          const SizedBox(height: 16),
-                          PropertyOwnerSection(
-                            ownerId: property.ownerId,
-                            propertyId: property.propertyId,
-                            ownerName: provider.owner?.fullName ?? 'Property Owner',
-                            ownerEmail: provider.owner?.email,
-                            profileImageUrl: (provider.owner?.profileImageId != null)
-                                ? api.makeAbsoluteUrl('/api/Images/${provider.owner!.profileImageId}/content')
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFE0E0E0), height: 16),
-                          const SizedBox(height: 16),
-                          FacilitiesSection(
-                            amenities: provider.getAmenitiesFor(property.amenityIds),
-                          ),
-                          const SizedBox(height: 16),
-                          const Divider(color: Color(0xFFE0E0E0), height: 16),
-                          const SizedBox(height: 16),
-                          PropertyReviewsSection(
-                            reviews: uiReviews,
-                            averageRating: calculateAverageRating(uiReviews),
-                          ),
-                          const SizedBox(height: 16),
-                          if (!isOwner)
-                            CustomButton(
-                              label: 'Leave a Review',
-                              icon: Icons.rate_review,
-                              isLoading: false,
-                              width: ButtonWidth.expanded,
-                              onPressed: () {
-                                _showAddReviewDialog(context, provider);
-                              },
-                            )
-                          else
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Owners cannot leave reviews on their own properties.',
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               );
             },
           ),
@@ -309,6 +236,160 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             },
           ),
         ),
+      ),
+    );
+  }
+
+  // Tab builder methods
+  Widget _buildOverviewTab(dynamic property, PropertyRentalProvider provider, List<Review> reviews) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PropertyHeader(property: property),
+          const SizedBox(height: 16),
+          PropertyDetails(
+            averageRating: calculateAverageRating(reviews),
+            numberOfReviews: reviews.length,
+            city: property.address?.city ?? 'Unknown City',
+            address: property.address?.streetLine1,
+            rooms: property.rooms,
+            area: (property.area ?? 0) > 0
+                ? '${(property.area!).toStringAsFixed(0)} m²'
+                : 'N/A',
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFE0E0E0)),
+          const SizedBox(height: 16),
+          PropertyDescriptionSection(
+            description: property.description ??
+                'This beautiful property offers modern amenities and a convenient location.',
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFE0E0E0)),
+          const SizedBox(height: 16),
+          Builder(
+            builder: (context) {
+              final currentBooking = _findBookingForProperty(provider, property.propertyId);
+              return PropertyActionFactory.createActionSection(
+                property: property,
+                viewContext: widget.viewContext,
+                booking: currentBooking,
+              );
+            },
+          ),
+          const SizedBox(height: 80), // Padding for bottom nav
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsTab(dynamic property, PropertyRentalProvider provider, ApiService api) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PropertyOwnerSection(
+            ownerId: property.ownerId,
+            propertyId: property.propertyId,
+            ownerName: provider.owner?.fullName ?? 'Property Owner',
+            ownerEmail: provider.owner?.email,
+            profileImageUrl: (provider.owner?.profileImageId != null)
+                ? api.makeAbsoluteUrl('/api/Images/${provider.owner!.profileImageId}/content')
+                : null,
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFFE0E0E0)),
+          const SizedBox(height: 16),
+          FacilitiesSection(
+            amenities: provider.getAmenitiesFor(property.amenityIds),
+          ),
+          const SizedBox(height: 80), // Padding for bottom nav
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewsTab(dynamic property, PropertyRentalProvider provider, List<Review> reviews, bool isOwner) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          PropertyReviewsSection(
+            reviews: reviews,
+            averageRating: calculateAverageRating(reviews),
+          ),
+          const SizedBox(height: 16),
+          // Consolidated review eligibility message
+          _buildReviewEligibilitySection(property, provider, isOwner),
+          if (reviews.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(
+                'No reviews yet. Be the first to share your experience after your stay.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          const SizedBox(height: 80), // Padding for bottom nav
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewEligibilitySection(dynamic property, PropertyRentalProvider provider, bool isOwner) {
+    final now = DateTime.now();
+    final hasEligibleStay = provider.bookings.any((b) =>
+        b.propertyId == property.propertyId &&
+        (b.status == BookingStatus.completed ||
+         (b.endDate != null && b.endDate!.isBefore(now)))
+    );
+
+    if (isOwner) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'As the owner, you can view reviews but cannot leave your own.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (hasEligibleStay) {
+      return CustomButton(
+        label: 'Leave a Review',
+        icon: Icons.rate_review,
+        isLoading: false,
+        width: ButtonWidth.expanded,
+        onPressed: () => _showAddReviewDialog(context, provider),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      child: Text(
+        'Complete a stay at this property to leave a review.',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: Colors.grey[700],
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }

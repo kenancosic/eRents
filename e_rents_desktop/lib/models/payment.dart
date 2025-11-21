@@ -45,12 +45,15 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  paypal;
+  paypal, // Legacy - kept for historical payment records only
+  stripe; // Primary payment method
 
   static PaymentMethod fromString(String method) {
     switch (method.toLowerCase()) {
       case 'paypal':
         return PaymentMethod.paypal;
+      case 'stripe':
+        return PaymentMethod.stripe;
       default:
         throw ArgumentError('Unknown payment method: $method');
     }
@@ -59,11 +62,16 @@ enum PaymentMethod {
   String get displayName {
     switch (this) {
       case PaymentMethod.paypal:
-        return 'PayPal';
+        return 'PayPal (Legacy)';
+      case PaymentMethod.stripe:
+        return 'Stripe';
     }
   }
 
   String get methodName => name;
+  
+  /// Returns true if this is an active payment method
+  bool get isActive => this == PaymentMethod.stripe;
 }
 
 enum PaymentType {
@@ -105,6 +113,10 @@ class Payment {
   final PaymentStatus? paymentStatus;
   final String? paymentReference;
 
+  // Stripe payment fields
+  final String? stripePaymentIntentId;
+  final String? stripeChargeId;
+
   // Additional fields for refund support
   final int? originalPaymentId;
   final String? refundReason;
@@ -133,6 +145,8 @@ class Payment {
     this.paymentMethod,
     this.paymentStatus,
     this.paymentReference,
+    this.stripePaymentIntentId,
+    this.stripeChargeId,
     this.originalPaymentId,
     this.refundReason,
     this.paymentType = PaymentType.bookingPayment,
@@ -180,6 +194,8 @@ class Payment {
       paymentMethod: _parseMethod(json['paymentMethod']),
       paymentStatus: _parseStatus(json['paymentStatus']),
       paymentReference: _asString(json['paymentReference']),
+      stripePaymentIntentId: _asString(json['stripePaymentIntentId']),
+      stripeChargeId: _asString(json['stripeChargeId']),
       originalPaymentId: _asInt(json['originalPaymentId']),
       refundReason: _asString(json['refundReason']),
       paymentType: _parseType(json['paymentType']),
@@ -205,6 +221,8 @@ class Payment {
         'paymentMethod': paymentMethod?.methodName,
         'paymentStatus': paymentStatus?.statusName,
         'paymentReference': paymentReference,
+        'stripePaymentIntentId': stripePaymentIntentId,
+        'stripeChargeId': stripeChargeId,
         'originalPaymentId': originalPaymentId,
         'refundReason': refundReason,
         'paymentType': paymentType.typeName,

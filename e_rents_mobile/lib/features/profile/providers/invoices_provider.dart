@@ -10,13 +10,13 @@ class InvoicesProvider extends BaseProvider {
 
   List<model.Payment> _pending = [];
   bool _isPaying = false;
-  String? _orderId;
-  String? _approvalUrl;
+  String? _stripeClientSecret;
+  String? _stripePaymentIntentId;
 
   List<model.Payment> get pending => _pending;
   bool get isPaying => _isPaying;
-  String? get orderId => _orderId;
-  String? get approvalUrl => _approvalUrl;
+  String? get stripeClientSecret => _stripeClientSecret;
+  String? get stripePaymentIntentId => _stripePaymentIntentId;
 
   Future<int?> _getCurrentUserId() async {
     final user = await api.getAndDecode('/profile', User.fromJson, authenticated: true);
@@ -39,27 +39,27 @@ class InvoicesProvider extends BaseProvider {
     });
   }
 
-  /// Create a server order for an invoice payment and expose approvalUrl + orderId
-  Future<Map<String, String>> createPaymentOrder(model.Payment p) async {
+  /// Create Stripe payment intent for an invoice payment
+  Future<Map<String, String>> createStripePaymentIntent(model.Payment p) async {
     if (_isPaying) throw Exception('Another payment is in progress');
     _isPaying = true;
     notifyListeners();
 
     try {
       final resp = await api.postJson(
-        'payments/create-payment-order',
+        'payments/stripe/create-intent-for-invoice',
         {'paymentId': p.paymentId},
         authenticated: true,
       );
-      final oid = (resp['orderId'] ?? '').toString();
-      final url = (resp['approvalUrl'] ?? '').toString();
-      if (oid.isEmpty || url.isEmpty) {
-        throw Exception('Backend did not return orderId/approvalUrl');
+      final clientSecret = (resp['clientSecret'] ?? '').toString();
+      final paymentIntentId = (resp['paymentIntentId'] ?? '').toString();
+      if (clientSecret.isEmpty || paymentIntentId.isEmpty) {
+        throw Exception('Backend did not return valid payment intent');
       }
-      _orderId = oid;
-      _approvalUrl = url;
+      _stripeClientSecret = clientSecret;
+      _stripePaymentIntentId = paymentIntentId;
       notifyListeners();
-      return {'orderId': oid, 'approvalUrl': url};
+      return {'clientSecret': clientSecret, 'paymentIntentId': paymentIntentId};
     } catch (e, st) {
       setError(GenericError(message: 'Failed to start invoice payment: $e', originalError: e, stackTrace: st));
       rethrow;
@@ -69,11 +69,13 @@ class InvoicesProvider extends BaseProvider {
     }
   }
 
-  /// Capture a previously approved PayPal order, then refresh pending invoices
-  Future<bool> captureOrder(String orderId) async {
+  /// Confirm Stripe payment was successful (called after Stripe SDK confirmation)
+  Future<bool> confirmStripePayment() async {
     return await executeWithStateForSuccess(() async {
-      await api.post('payments/capture-order', {'orderId': orderId}, authenticated: true);
+      // Payment is confirmed by webhook, just refresh pending invoices
       await loadPending();
-    }, errorMessage: 'Failed to capture PayPal invoice');
+      _stripeClientSecret = null;
+      _stripePaymentIntentId = null;
+    }, errorMessage: 'Failed to confirm invoice payment');
   }
 }
