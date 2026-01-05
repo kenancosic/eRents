@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 
 class ExtendBookingDialog extends StatefulWidget {
   final Booking booking;
@@ -186,10 +187,5 @@ class _ExtendBookingDialogState extends State<ExtendBookingDialog> {
     );
   }
 
-  String _formatDate(DateTime d) {
-    final y = d.year.toString().padLeft(4, '0');
-    final m = d.month.toString().padLeft(2, '0');
-    final day = d.day.toString().padLeft(2, '0');
-    return '$y-$m-$day';
-  }
+  String _formatDate(DateTime d) => d.toApiDate();
 }

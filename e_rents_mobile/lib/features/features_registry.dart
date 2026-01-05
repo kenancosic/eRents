@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import '../core/services/api_service.dart';
 import '../core/services/secure_storage_service.dart';
 
+// Core providers
+import '../core/providers/current_user_provider.dart';
+
 // Import all feature providers
 import 'auth/auth_provider.dart';
 import 'chat/backend_chat_provider.dart';
@@ -18,6 +21,9 @@ import 'explore/providers/property_search_provider.dart';
 import 'explore/providers/featured_properties_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 import 'users/providers/public_user_provider.dart';
+import 'notifications/providers/notification_provider.dart';
+import 'maintenance/providers/maintenance_provider.dart';
+import 'subscriptions/providers/subscription_provider.dart';
 
 // Core providers
 import '../core/base/navigation_provider.dart';
@@ -44,7 +50,11 @@ class FeaturesRegistry {
   static List<InheritedProvider> createFeatureProviders(ProviderDependencies deps) {
     return [
       // Core providers are expected to be provided in main.dart to avoid duplicates.
-      // Feature Providers (alphabetical order for maintainability)
+      // Core User Provider - must be registered first as other providers depend on it
+      ChangeNotifierProvider<CurrentUserProvider>(
+        create: (_) => CurrentUserProvider(deps.apiService),
+      ),
+      
       // Feature Providers (alphabetical order for maintainability)
       ChangeNotifierProvider<BackendChatProvider>(
         create: (_) => BackendChatProvider(deps.apiService),
@@ -92,6 +102,21 @@ class FeaturesRegistry {
       // Public user profile feature
       ChangeNotifierProvider<PublicUserProvider>(
         create: (_) => PublicUserProvider(deps.apiService),
+      ),
+      
+      // Notification provider
+      ChangeNotifierProvider<NotificationProvider>(
+        create: (_) => NotificationProvider(deps.apiService),
+      ),
+      
+      // Maintenance provider (for tenants)
+      ChangeNotifierProvider<MaintenanceProvider>(
+        create: (_) => MaintenanceProvider(deps.apiService),
+      ),
+      
+      // Subscription provider (monthly rentals)
+      ChangeNotifierProvider<SubscriptionProvider>(
+        create: (_) => SubscriptionProvider(deps.apiService),
       ),
     ];
   }
@@ -173,4 +198,7 @@ extension ProviderAccessExtensions on BuildContext {
   
   /// Quick access to ErrorProvider
   ErrorProvider get errorProvider => read<ErrorProvider>();
+  
+  /// Quick access to CurrentUserProvider
+  CurrentUserProvider get currentUserProvider => read<CurrentUserProvider>();
 }

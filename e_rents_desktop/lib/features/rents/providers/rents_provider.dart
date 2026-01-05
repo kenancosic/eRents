@@ -7,12 +7,9 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/enums/renting_type.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
 import 'package:e_rents_desktop/models/lease_extension_request.dart';
-import 'package:flutter/material.dart';
 
 class RentsProvider extends BaseProvider {
-  RentsProvider(super.api, {required this.context});
-
-  final BuildContext context;
+  RentsProvider(super.api);
 
   // ─── Standardized State (per Playbook) ──────────────────────────────────
   Map<String, dynamic> _filters = {};

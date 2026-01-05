@@ -93,6 +93,7 @@ public class LeaseExtensionsController : ControllerBase
 
         var query = _context.LeaseExtensionRequests
             .Include(r => r.Booking).ThenInclude(b => b.Property)
+            .Include(r => r.Booking).ThenInclude(b => b.User)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -114,6 +115,9 @@ public class LeaseExtensionsController : ControllerBase
                 r.CreatedAt,
                 r.RespondedAt,
                 r.RequestedByUserId,
+                RequestedByUserName = r.Booking.User != null 
+                    ? $"{r.Booking.User.FirstName} {r.Booking.User.LastName}".Trim() 
+                    : null,
                 r.BookingId,
                 PropertyId = r.Booking.PropertyId,
                 PropertyName = r.Booking.Property.Name,

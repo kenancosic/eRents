@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/models/payment.dart' as model;
-import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 
 class InvoicesProvider extends BaseProvider {
   InvoicesProvider(super.api);
@@ -18,14 +18,13 @@ class InvoicesProvider extends BaseProvider {
   String? get stripeClientSecret => _stripeClientSecret;
   String? get stripePaymentIntentId => _stripePaymentIntentId;
 
-  Future<int?> _getCurrentUserId() async {
-    final user = await api.getAndDecode('/profile', User.fromJson, authenticated: true);
-    return user.userId;
-  }
-
-  Future<void> loadPending() async {
+  /// Load pending invoices using CurrentUserProvider
+  /// 
+  /// Uses CurrentUserProvider to avoid duplicate /profile API calls.
+  Future<void> loadPending(CurrentUserProvider currentUserProvider) async {
     await executeWithState(() async {
-      final userId = await _getCurrentUserId();
+      final user = await currentUserProvider.ensureLoaded();
+      final userId = user?.userId;
       if (userId == null) throw Exception('Unable to load current user');
       final qs = api.buildQueryString({
         'TenantId': userId.toString(),
@@ -70,10 +69,12 @@ class InvoicesProvider extends BaseProvider {
   }
 
   /// Confirm Stripe payment was successful (called after Stripe SDK confirmation)
+  /// 
+  /// Note: This method doesn't refresh pending invoices automatically.
+  /// Call loadPending(currentUserProvider) after this if needed.
   Future<bool> confirmStripePayment() async {
     return await executeWithStateForSuccess(() async {
-      // Payment is confirmed by webhook, just refresh pending invoices
-      await loadPending();
+      // Payment is confirmed by webhook, clear local state
       _stripeClientSecret = null;
       _stripePaymentIntentId = null;
     }, errorMessage: 'Failed to confirm invoice payment');

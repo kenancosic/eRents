@@ -6,6 +6,7 @@ import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
+import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 /// Provider for managing checkout flow and Stripe payment processing
 /// Uses Stripe as the primary payment method
 /// Refactored to use new standardized BaseProvider without caching
@@ -14,9 +15,13 @@ class CheckoutProvider extends BaseProvider {
   CheckoutProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
+  
+  /// Flag to toggle Stripe integration - set to true to re-enable Stripe payments
+  /// See docs/STRIPE_INTEGRATION_DISABLED.md for full documentation
+  static const bool enableStripe = false;
 
   // Payment and booking state
-  final String _selectedPaymentMethod = 'Stripe'; // Stripe is now the only payment method
+  final String _selectedPaymentMethod = enableStripe ? 'Stripe' : 'Manual';
 
   // Checkout session data
   PropertyDetail? _currentProperty;
@@ -92,14 +97,10 @@ class CheckoutProvider extends BaseProvider {
       return false;
     }
 
-    final y = _startDate!.year.toString().padLeft(4, '0');
-    final m = _startDate!.month.toString().padLeft(2, '0');
-    final d = _startDate!.day.toString().padLeft(2, '0');
     final payload = <String, dynamic>{
       'propertyId': _currentProperty!.propertyId,
-      'leaseStartDate': '$y-$m-$d',
-      if (_endDate != null)
-        'leaseEndDate': '${_endDate!.year.toString().padLeft(4, '0')}-${_endDate!.month.toString().padLeft(2, '0')}-${_endDate!.day.toString().padLeft(2, '0')}',
+      'leaseStartDate': _startDate!.toApiDate(),
+      if (_endDate != null) 'leaseEndDate': _endDate!.toApiDate(),
       // TenantStatus is ignored by backend for mobile; defaults to Inactive
     };
 
@@ -112,8 +113,35 @@ class CheckoutProvider extends BaseProvider {
 
   // ─── Stripe Payment Flow ────────────────────────────────────────────────
 
+  /// Internal method to create booking without payment processing
+  Future<Booking> _createBooking() async {
+    final bookingData = {
+      'propertyId': _currentProperty!.propertyId,
+      'startDate': _startDate!.toIso8601String().split('T').first,
+      'endDate': _endDate?.toIso8601String().split('T').first,
+      'totalPrice': _totalPrice,
+      'paymentMethod': _selectedPaymentMethod,
+      'currency': currentProperty?.currency ?? 'USD',
+    };
+
+    final booking = await api.postAndDecode(
+      'bookings',
+      bookingData,
+      Booking.fromJson,
+      authenticated: true,
+    );
+
+    debugPrint('CheckoutProvider: Created pending booking ID: ${booking.bookingId}');
+    _pendingBookingId = booking.bookingId;
+    return booking;
+  }
+
   /// Create Stripe payment intent for daily rentals
+  /// Throws exception if Stripe is disabled (enableStripe = false)
   Future<Map<String, String>> createStripePaymentIntent() async {
+    if (!enableStripe) {
+      throw Exception('Stripe is currently disabled. See docs/STRIPE_INTEGRATION_DISABLED.md');
+    }
     if (!_isDailyRental) {
       throw Exception('Stripe flow is only available for daily rentals.');
     }
@@ -127,30 +155,13 @@ class CheckoutProvider extends BaseProvider {
     setLoading();
     try {
       // Step 1: Create booking with 'Pending' status to get a bookingId
-      final bookingData = {
-        'propertyId': _currentProperty!.propertyId,
-        'startDate': _startDate!.toIso8601String().split('T').first,
-        'endDate': _endDate?.toIso8601String().split('T').first,
-        'totalPrice': _totalPrice,
-        'paymentMethod': _selectedPaymentMethod,
-        'currency': currentProperty?.currency ?? 'USD',
-      };
-
-      final booking = await api.postAndDecode(
-        'bookings',
-        bookingData,
-        Booking.fromJson,
-        authenticated: true,
-      );
-
-      debugPrint('CheckoutProvider: Created pending booking ID: \${booking.bookingId}');
-      _pendingBookingId = booking.bookingId;
+      await _createBooking();
 
       // Step 2: Create Stripe payment intent
       final intentResp = await api.postJson(
         'payments/stripe/create-intent',
         {
-          'bookingId': booking.bookingId,
+          'bookingId': _pendingBookingId,
           'amount': _totalPrice,
           'currency': currentProperty?.currency ?? 'USD',
           'metadata': {
@@ -183,7 +194,7 @@ class CheckoutProvider extends BaseProvider {
     }
   }
 
-  /// Map payment errors to user-friendly messages
+  /// Map payment errors to user-friendly messages following Stripe error codes
   String _mapPaymentError(Object e) {
     final raw = e.toString();
     final msg = raw.startsWith('Exception: ')
@@ -191,18 +202,58 @@ class CheckoutProvider extends BaseProvider {
         : raw;
     final m = msg.toLowerCase();
 
+    // Card declined errors
+    if (m.contains('card_declined') || m.contains('declined')) {
+      return 'Your card was declined. Try another card or contact your bank.';
+    }
+
+    // Insufficient funds
+    if (m.contains('insufficient_funds')) {
+      return 'Insufficient funds. Please use a different card.';
+    }
+
+    // Expired card
+    if (m.contains('expired_card') || m.contains('card expired')) {
+      return 'Your card has expired. Please use a different card.';
+    }
+
+    // Incorrect CVC
+    if (m.contains('incorrect_cvc') || m.contains('invalid_cvc')) {
+      return 'Incorrect security code. Please check and try again.';
+    }
+
+    // Network errors
+    if (m.contains('network') || m.contains('connection') || m.contains('timeout')) {
+      return 'Connection lost. Please check your internet and try again.';
+    }
+
+    // Authentication required
+    if (m.contains('authentication_required') || m.contains('authentication failed')) {
+      return 'Additional authentication required by your bank.';
+    }
+
     // Amount validation errors
     if (m.contains('cannot_be_zero_or_negative') || m.contains('greater than zero')) {
       return 'Payment amount must be greater than zero. Please adjust your booking or contact support.';
     }
 
+    // Invalid card number
+    if (m.contains('invalid_number') || m.contains('invalid card')) {
+      return 'Invalid card number. Please check your card details.';
+    }
+
+    // Processing error
+    if (m.contains('processing_error')) {
+      return 'An error occurred while processing your card. Please try again.';
+    }
+
     // Generic Stripe errors
     if (m.contains('stripe') && m.contains('error')) {
-      return 'Payment processing error: $msg';
+      return 'Payment processing error. Please try again or use a different card.';
     }
 
     // Default friendly fallback
-    return 'Failed to process payment: $msg';
+    return 'Failed to process payment. Please try again or contact support.';
   }
 
   /// Confirm Stripe payment completion (called after Stripe SDK confirmation)
@@ -225,6 +276,7 @@ class CheckoutProvider extends BaseProvider {
 
   /// Process payment with Stripe
   /// Uses BaseProvider's executeWithState for proper error handling
+  /// If Stripe is disabled, creates booking directly without payment
   Future<bool> processPayment() async {
     if (!_isDailyRental) {
       throw Exception('Payment is not required for monthly rentals.');
@@ -233,7 +285,16 @@ class CheckoutProvider extends BaseProvider {
       throw Exception('Invalid form data - cannot process payment');
     }
 
-    // Only Stripe is supported now
+    // If Stripe is disabled, just create the booking without payment processing
+    if (!enableStripe) {
+      debugPrint('CheckoutProvider: Stripe disabled - creating booking without payment');
+      final success = await executeWithStateForSuccess(() async {
+        await _createBooking();
+      }, errorMessage: 'Failed to create booking');
+      return success;
+    }
+
+    // Stripe flow: create payment intent (booking is created inside)
     await createStripePaymentIntent();
     return true;
   }

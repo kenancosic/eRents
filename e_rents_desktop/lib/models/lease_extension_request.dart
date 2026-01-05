@@ -4,6 +4,7 @@ class LeaseExtensionRequest {
   final DateTime createdAt;
   final DateTime? respondedAt;
   final int requestedByUserId;
+  final String? requestedByUserName;
   final int bookingId;
   final int propertyId;
   final String propertyName;
@@ -18,6 +19,7 @@ class LeaseExtensionRequest {
     required this.createdAt,
     this.respondedAt,
     required this.requestedByUserId,
+    this.requestedByUserName,
     required this.bookingId,
     required this.propertyId,
     required this.propertyName,
@@ -27,12 +29,17 @@ class LeaseExtensionRequest {
     this.newMonthlyAmount,
   });
 
+  /// Display name for the requester - shows name if available, otherwise user ID
+  String get requesterDisplayName => 
+      requestedByUserName?.isNotEmpty == true ? requestedByUserName! : 'User #$requestedByUserId';
+
   factory LeaseExtensionRequest.fromJson(Map<String, dynamic> json) => LeaseExtensionRequest(
         requestId: json['leaseExtensionRequestId'] as int,
         status: (json['status'] as String?) ?? 'Pending',
         createdAt: DateTime.parse(json['createdAt'] as String),
         respondedAt: json['respondedAt'] != null ? DateTime.parse(json['respondedAt'] as String) : null,
         requestedByUserId: json['requestedByUserId'] as int,
+        requestedByUserName: json['requestedByUserName'] as String?,
         bookingId: json['bookingId'] as int,
         propertyId: json['propertyId'] as int,
         propertyName: json['propertyName'] as String,

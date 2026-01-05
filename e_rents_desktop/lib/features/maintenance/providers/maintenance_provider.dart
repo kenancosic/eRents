@@ -40,9 +40,9 @@ class MaintenanceProvider extends BaseProvider {
   bool _tenantsLoaded = false;
 
   // Config
-  static const String _basePath = 'maintenanceissues';
-  static const String _propertiesPath = 'properties';
-  static const String _usersPath = 'users';
+  static const String _basePath = '/MaintenanceIssues';
+  static const String _propertiesPath = '/Properties';
+  static const String _usersPath = '/Users';
 
   MaintenanceProvider(super.api);
 

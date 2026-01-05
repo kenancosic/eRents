@@ -46,22 +46,40 @@ class _PropertyStatusTenantAwareDropdownState
     final menuItems = availableStatuses
         .map((status) => DropdownMenuItem<PropertyStatus>(
               value: status,
-              child: Text(status.displayName),
+              child: Row(
+                children: [
+                  PropertyStatusPill(status: status),
+                  const SizedBox(width: 8),
+                  Text(status.displayName),
+                ],
+              ),
             ))
         .toList();
 
-    return DropdownButton<PropertyStatus>(
-      value: widget.selected,
-      items: menuItems,
-      onChanged: (value) {
-        if (value != null) {
-          widget.onChanged(value);
-        }
-      },
-      selectedItemBuilder: (context) => availableStatuses
-          .map((status) => PropertyStatusPill(status: status))
-          .toList(),
-      hint: PropertyStatusPill(status: widget.selected),
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Property Status',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<PropertyStatus>(
+          value: widget.selected,
+          items: menuItems,
+          onChanged: (value) {
+            if (value != null) {
+              widget.onChanged(value);
+            }
+          },
+          isExpanded: true,
+          selectedItemBuilder: (context) => availableStatuses
+              .map((status) => Align(
+                    alignment: Alignment.centerLeft,
+                    child: PropertyStatusPill(status: status),
+                  ))
+              .toList(),
+        ),
+      ),
     );
   }
 }

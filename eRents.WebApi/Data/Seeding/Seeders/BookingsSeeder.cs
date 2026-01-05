@@ -38,6 +38,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 			var tenant = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "mobile");
 			var tenantSarajevo = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "tenant_sarajevo");
 			var tenantMostar = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "tenant_mostar");
+			var desktopOwner = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "desktop");
 
 			var properties = await context.Properties.Include(p => p.Address).AsNoTracking().ToListAsync();
 			var property = properties.FirstOrDefault();
@@ -134,6 +135,41 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 					TenantStatus = TenantStatusEnum.Active
 				};
 				tenants.Add(tenancy3);
+			}
+
+			// Create active monthly subscription booking for desktop owner's property
+			// This enables testing of lease extension requests in the desktop app
+			if (desktopOwner != null && tenant != null)
+			{
+				var desktopMonthlyProperty = properties.FirstOrDefault(p => 
+					p.OwnerId == desktopOwner.UserId && p.RentingType == RentalType.Monthly);
+				
+				if (desktopMonthlyProperty != null)
+				{
+					var subscriptionBooking = new Booking
+					{
+						PropertyId = desktopMonthlyProperty.PropertyId,
+						UserId = tenant.UserId,
+						StartDate = today.AddMonths(-2),
+						EndDate = today.AddMonths(4),
+						TotalPrice = Math.Max(1m, desktopMonthlyProperty.Price) * 6,
+						Status = BookingStatusEnum.Active,
+						PaymentStatus = "Paid",
+						Currency = desktopMonthlyProperty.Currency ?? "USD",
+						IsSubscription = true // Required for lease extension requests
+					};
+					bookings.Add(subscriptionBooking);
+
+					var subscriptionTenancy = new Tenant
+					{
+						UserId = tenant.UserId,
+						PropertyId = desktopMonthlyProperty.PropertyId,
+						LeaseStartDate = subscriptionBooking.StartDate,
+						LeaseEndDate = subscriptionBooking.EndDate,
+						TenantStatus = TenantStatusEnum.Active
+					};
+					tenants.Add(subscriptionTenancy);
+				}
 			}
 
 			await context.Bookings.AddRangeAsync(bookings);

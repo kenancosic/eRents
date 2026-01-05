@@ -11,6 +11,8 @@ class Review {
   final int? propertyId; // ✅ Correct (optional for tenant reviews)
   final int revieweeId; // ✅ NEW: Who is being reviewed
   final int reviewerId; // ✅ NEW: Who is writing the review
+  final String? reviewerFirstName; // ✅ NEW: Reviewer's first name
+  final String? reviewerLastName; // ✅ NEW: Reviewer's last name
   final String? description; // ✅ Correct
   final DateTime dateCreated; // ✅ RENAMED: from dateReported
   final double? starRating; // ✅ Correct (1-5 scale)
@@ -29,6 +31,8 @@ class Review {
     this.propertyId,
     required this.revieweeId,
     required this.reviewerId,
+    this.reviewerFirstName,
+    this.reviewerLastName,
     this.description,
     required this.dateCreated,
     this.starRating,
@@ -46,6 +50,8 @@ class Review {
     final propertyId = json['propertyId'] as int? ?? json['PropertyId'] as int?;
     final revieweeId = json['revieweeId'] as int? ?? json['RevieweeId'] as int? ?? 0;
     final reviewerId = json['reviewerId'] as int? ?? json['ReviewerId'] as int? ?? 0;
+    final reviewerFirstName = json['reviewerFirstName'] as String? ?? json['ReviewerFirstName'] as String?;
+    final reviewerLastName = json['reviewerLastName'] as String? ?? json['ReviewerLastName'] as String?;
     final description = json['description'] as String? ?? json['Description'] as String?;
     final bookingId = json['bookingId'] as int? ?? json['BookingId'] as int?;
     final parentReviewId = json['parentReviewId'] as int? ?? json['ParentReviewId'] as int?;
@@ -139,6 +145,8 @@ class Review {
       propertyId: propertyId,
       revieweeId: revieweeId,
       reviewerId: reviewerId,
+      reviewerFirstName: reviewerFirstName,
+      reviewerLastName: reviewerLastName,
       description: description,
       dateCreated: dateCreated,
       starRating: starRating,
@@ -151,6 +159,14 @@ class Review {
     );
   }
 
+  /// Helper to get the reviewer's full name (or fallback)
+  String get reviewerName {
+    if (reviewerFirstName != null || reviewerLastName != null) {
+      return '${reviewerFirstName ?? ''} ${reviewerLastName ?? ''}'.trim();
+    }
+    return 'Anonymous';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'reviewId': reviewId,
@@ -158,6 +174,8 @@ class Review {
       'propertyId': propertyId,
       'revieweeId': revieweeId,
       'reviewerId': reviewerId,
+      'reviewerFirstName': reviewerFirstName,
+      'reviewerLastName': reviewerLastName,
       'description': description,
       'dateCreated': dateCreated.toIso8601String(),
       'starRating': starRating,
@@ -225,6 +243,8 @@ class Review {
     int? propertyId,
     int? revieweeId,
     int? reviewerId,
+    String? reviewerFirstName,
+    String? reviewerLastName,
     String? description,
     DateTime? dateCreated,
     double? starRating,
@@ -241,6 +261,8 @@ class Review {
       propertyId: propertyId ?? this.propertyId,
       revieweeId: revieweeId ?? this.revieweeId,
       reviewerId: reviewerId ?? this.reviewerId,
+      reviewerFirstName: reviewerFirstName ?? this.reviewerFirstName,
+      reviewerLastName: reviewerLastName ?? this.reviewerLastName,
       description: description ?? this.description,
       dateCreated: dateCreated ?? this.dateCreated,
       starRating: starRating ?? this.starRating,

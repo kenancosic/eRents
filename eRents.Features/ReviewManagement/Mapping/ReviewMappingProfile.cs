@@ -10,7 +10,9 @@ public sealed class ReviewMappingProfile : Profile
     {
         // Entity -> Response (RepliesCount left for service to populate)
         CreateMap<Review, ReviewResponse>()
-            .ForMember(d => d.RepliesCount, o => o.Ignore());
+            .ForMember(d => d.RepliesCount, o => o.Ignore())
+            .ForMember(d => d.ReviewerFirstName, o => o.MapFrom(s => s.Reviewer != null ? s.Reviewer.FirstName : null))
+            .ForMember(d => d.ReviewerLastName, o => o.MapFrom(s => s.Reviewer != null ? s.Reviewer.LastName : null));
 
         // Request -> Entity (ignore identity/audit)
         CreateMap<ReviewRequest, Review>()

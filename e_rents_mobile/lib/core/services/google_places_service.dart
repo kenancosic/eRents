@@ -30,10 +30,13 @@ class GooglePlacesService {
       'https://maps.googleapis.com/maps/api/place/details/json';
 
   GooglePlacesService() {
-    // It's good practice to check if the API key is loaded, though for this example it's hardcoded.
-    if (_apiKey == '') {
+    // Debug: Check if the API key is loaded correctly
+    if (_apiKey.isEmpty) {
       debugPrint(
-          'WARNING: Google Places API Key is not set. Please configure it in google_places_service.dart');
+          'WARNING: Google Places API Key is not set. Please configure it in .env file');
+    } else {
+      final maskedKey = '${_apiKey.substring(0, 8)}...${_apiKey.substring(_apiKey.length - 4)}';
+      debugPrint('GooglePlacesService: API Key loaded: $maskedKey');
     }
   }
 
@@ -66,13 +69,19 @@ class GooglePlacesService {
     if (components != null) url += '&components=$components';
 
     try {
+      debugPrint('GooglePlaces: Requesting autocomplete for "$input"');
       final response = await http.get(Uri.parse(url));
+      debugPrint('GooglePlaces: Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint('GooglePlaces: API status: ${data['status']}');
+        
         if (data['status'] == 'OK') {
+          final predictions = data['predictions'] as List<dynamic>;
+          debugPrint('GooglePlaces: Found ${predictions.length} predictions');
           return PlacesAutocompleteResult(
-            predictions: (data['predictions'] as List<dynamic>),
+            predictions: predictions,
             status: 'OK',
           );
         }
@@ -87,14 +96,16 @@ class GooglePlacesService {
       } else {
         // Handle HTTP error
         debugPrint('HTTP Error fetching autocomplete: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
         return PlacesAutocompleteResult(
           predictions: const [],
           status: 'HTTP_${response.statusCode}',
           errorMessage: 'HTTP ${response.statusCode} while fetching autocomplete',
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Exception fetching autocomplete: $e');
+      debugPrint('Stack trace: $stackTrace');
       return PlacesAutocompleteResult(
         predictions: const [],
         status: 'EXCEPTION',
@@ -178,17 +189,28 @@ class GooglePlacesService {
   }
 }
 
-// Example of a simple Place Prediction model (you might want to make this more robust)
+/// Place Prediction model with structured formatting support
 class PlacePrediction {
   final String description;
   final String placeId;
+  final String mainText;
+  final String secondaryText;
 
-  PlacePrediction({required this.description, required this.placeId});
+  PlacePrediction({
+    required this.description,
+    required this.placeId,
+    required this.mainText,
+    required this.secondaryText,
+  });
 
   factory PlacePrediction.fromJson(Map<String, dynamic> json) {
+    final structuredFormatting = json['structured_formatting'] as Map<String, dynamic>?;
+    
     return PlacePrediction(
-      description: json['description'] as String,
-      placeId: json['place_id'] as String,
+      description: json['description'] as String? ?? '',
+      placeId: json['place_id'] as String? ?? '',
+      mainText: structuredFormatting?['main_text'] as String? ?? json['description'] as String? ?? '',
+      secondaryText: structuredFormatting?['secondary_text'] as String? ?? '',
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
+import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
 import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
 import 'package:flutter/material.dart';
@@ -58,9 +59,9 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     _titleController = TextEditingController(text: existing?.title ?? '');
     _descriptionController = TextEditingController(text: existing?.description ?? '');
     
-    // Load properties when form initializes
+    // Load properties when form initializes (using PropertyProvider to avoid duplication)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _provider.loadProperties();
+      context.read<PropertyProvider>().loadProperties();
     });
   }
 
@@ -111,6 +112,16 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
     setState(() {
       _selectedTenant = tenant;
     });
+  }
+
+  /// Get display name for property dropdown
+  String _getPropertyDisplayName(Property property) {
+    final name = property.name;
+    final address = property.address;
+    if (address != null) {
+      return '$name - ${address.city ?? ''}';
+    }
+    return name;
   }
 
   void _updateImages(List<picker.ImageInfo> updatedImages) {
@@ -171,12 +182,12 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
         return ok;
       },
       formBuilder: (context, item, formKey) {
-        return Consumer<MaintenanceProvider>(
-          builder: (context, provider, child) {
+        return Consumer2<MaintenanceProvider, PropertyProvider>(
+          builder: (context, maintenanceProvider, propertyProvider, child) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Property Selection Dropdown
+                // Property Selection Dropdown (using PropertyProvider)
                 DropdownButtonFormField<Property>(
                   value: _selectedProperty,
                   decoration: const InputDecoration(
@@ -184,11 +195,11 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                     border: OutlineInputBorder(),
                     hintText: 'Select a property',
                   ),
-                  items: provider.properties
+                  items: propertyProvider.items
                       .map(
                         (property) => DropdownMenuItem(
                           value: property,
-                          child: Text(provider.getPropertyDisplayName(property)),
+                          child: Text(_getPropertyDisplayName(property)),
                         ),
                       )
                       .toList(),
@@ -294,11 +305,11 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
                       border: OutlineInputBorder(),
                       hintText: 'Select the tenant who reported this issue',
                     ),
-                    items: provider.tenants
+                    items: maintenanceProvider.tenants
                         .map(
                           (tenant) => DropdownMenuItem(
                             value: tenant,
-                            child: Text(provider.getTenantDisplayName(tenant)),
+                            child: Text(maintenanceProvider.getTenantDisplayName(tenant)),
                           ),
                         )
                         .toList(),

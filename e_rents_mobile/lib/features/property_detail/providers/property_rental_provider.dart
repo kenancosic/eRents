@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/base/base_provider.dart';
+import 'package:e_rents_mobile/core/base/booking_actions_mixin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
@@ -8,13 +9,15 @@ import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/models/amenity.dart';
+import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 
 /// Provider for managing property rentals (both daily and monthly)
 /// Product decision:
 /// - Checkout is the only path to create bookings (daily and monthly)
 /// - Monthly rentals are billed via subscription created server-side after monthly booking
-/// Note: Any legacy monthly “tenant request” flow is deprecated.
-class PropertyRentalProvider extends BaseProvider {
+/// Note: Any legacy monthly "tenant request" flow is deprecated.
+/// Uses BookingActionsMixin for shared booking operations.
+class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   PropertyRentalProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
@@ -29,6 +32,7 @@ class PropertyRentalProvider extends BaseProvider {
   DateTime? _endDate;
   bool _isDateRangeValid = true;
   String? _dateRangeError;
+  bool _hasAvailabilityConflict = false; // Set by availability widget when dates overlap existing bookings
 
   // Monthly flow is handled via Checkout + server-side subscription creation
 
@@ -53,6 +57,9 @@ class PropertyRentalProvider extends BaseProvider {
   DateTime? get endDate => _endDate;
   bool get isDateRangeValid => _isDateRangeValid;
   String? get dateRangeError => _dateRangeError;
+  bool get hasAvailabilityConflict => _hasAvailabilityConflict;
+  /// Combined check: dates are valid AND no availability conflict
+  bool get canProceedToCheckout => _isDateRangeValid && !_hasAvailabilityConflict;
 
   // Monthly-specific request state and getters removed (deprecated flow)
 
@@ -102,11 +109,7 @@ class PropertyRentalProvider extends BaseProvider {
 
     final payload = <String, dynamic>{};
     if (newEndDate != null) {
-      // Send as yyyy-MM-dd to match backend DateOnly binder
-      final y = newEndDate.year.toString().padLeft(4, '0');
-      final m = newEndDate.month.toString().padLeft(2, '0');
-      final d = newEndDate.day.toString().padLeft(2, '0');
-      payload['newEndDate'] = '$y-$m-$d';
+      payload['newEndDate'] = newEndDate.toApiDate();
     }
     if (extendByMonths != null) {
       payload['extendByMonths'] = extendByMonths;
@@ -248,29 +251,24 @@ class PropertyRentalProvider extends BaseProvider {
   }
 
   /// Cancel a booking
-  /// Optionally provide a [cancellationDate] (yyyy-MM-dd will be sent) for monthly in-stay cancellations
+  /// 
+  /// Uses shared [BookingActionsMixin.cancelBookingById] with optimistic local state update.
+  /// Optionally provide a [cancellationDate] for monthly in-stay cancellations.
   Future<bool> cancelBooking(int bookingId, {DateTime? cancellationDate}) async {
     if (_isCancellingBooking) return false;
     _isCancellingBooking = true;
     notifyListeners();
 
-    final success = await executeWithStateForSuccess(() async {
-      // Backend expects POST /bookings/{id}/cancel
-      final payload = <String, dynamic>{};
-      if (cancellationDate != null) {
-        final y = cancellationDate.year.toString().padLeft(4, '0');
-        final m = cancellationDate.month.toString().padLeft(2, '0');
-        final d = cancellationDate.day.toString().padLeft(2, '0');
-        payload['cancellationDate'] = '$y-$m-$d';
-      }
-      await api.post('/bookings/$bookingId/cancel', payload, authenticated: true);
-      
+    final success = await cancelBookingById(bookingId, cancellationDate: cancellationDate);
+    
+    if (success) {
+      // Optimistic update: mark booking as cancelled locally
       final index = _allBookings.indexWhere((booking) => booking.bookingId == bookingId);
       if (index != -1) {
         _allBookings[index] = _allBookings[index].copyWith(status: BookingStatus.cancelled);
         _applyBookingSearchAndFilters();
       }
-    }, errorMessage: 'Failed to cancel booking');
+    }
 
     _isCancellingBooking = false;
     notifyListeners();
@@ -307,7 +305,16 @@ class PropertyRentalProvider extends BaseProvider {
     _endDate = null;
     _isDateRangeValid = true;
     _dateRangeError = null;
+    _hasAvailabilityConflict = false;
     notifyListeners();
+  }
+
+  /// Set availability conflict status (called by availability widget)
+  void setAvailabilityConflict(bool hasConflict) {
+    if (_hasAvailabilityConflict != hasConflict) {
+      _hasAvailabilityConflict = hasConflict;
+      notifyListeners();
+    }
   }
 
   void _validateDateRange() {
@@ -397,4 +404,53 @@ class PropertyRentalProvider extends BaseProvider {
 
   // Subscriptions are created automatically by the backend upon creating a
   // monthly booking in Checkout. No client-side subscription creation is needed.
+
+  // ─── User Booking Status ─────────────────────────────────────────────────
+
+  bool _hasActiveBookingForProperty = false;
+  bool get hasActiveBookingForProperty => _hasActiveBookingForProperty;
+
+  /// Check if the current user has an active booking for this property
+  /// This is used to hide the "Book Now" / "Start Lease" button if the user is already residing
+  Future<void> checkUserActiveBooking(int propertyId, int? userId) async {
+    if (userId == null) {
+      _hasActiveBookingForProperty = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final now = DateTime.now();
+      final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      
+      // Query for active bookings for this user and property that are currently in effect
+      final queryString = api.buildQueryString({
+        'UserId': userId.toString(),
+        'PropertyId': propertyId.toString(),
+        'Status': 'Active',
+        'StartDateTo': today,
+        'EndDateFrom': today,
+        'PageSize': '1',
+      });
+      
+      final result = await api.getPagedAndDecode(
+        '/bookings$queryString',
+        Booking.fromJson,
+        authenticated: true,
+      );
+      
+      _hasActiveBookingForProperty = result.items.isNotEmpty;
+      debugPrint('PropertyRentalProvider: User has active booking for property $propertyId: $_hasActiveBookingForProperty');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('PropertyRentalProvider: Error checking active booking: $e');
+      _hasActiveBookingForProperty = false;
+      notifyListeners();
+    }
+  }
+
+  /// Reset the active booking check state (when navigating away)
+  void resetActiveBookingCheck() {
+    _hasActiveBookingForProperty = false;
+  }
 }

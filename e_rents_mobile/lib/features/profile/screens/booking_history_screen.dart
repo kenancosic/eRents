@@ -28,6 +28,10 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
     });
   }
 
+  Future<void> _refreshBookings() async {
+    await context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true);
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -91,6 +95,13 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
       appBar: CustomAppBar(
         title: 'Booking History',
         showBackButton: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _refreshBookings,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -102,40 +113,70 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
       ),
       body: Consumer<UserBookingsProvider>(
         builder: (context, bookingsProvider, child) {
-          if (bookingsProvider.isLoading) {
+          if (bookingsProvider.isLoading && bookingsProvider.bookingHistory == null) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (bookingsProvider.error != null) {
+          if (bookingsProvider.error != null && bookingsProvider.bookingHistory == null) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(bookingsProvider.errorMessage.isNotEmpty
-                      ? bookingsProvider.errorMessage
-                      : 'Failed to load bookings.'),
-                  ElevatedButton(
-                    onPressed: () => bookingsProvider.loadUserBookings(),
-                    child: const Text('Try Again'),
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    bookingsProvider.errorMessage.isNotEmpty
+                        ? bookingsProvider.errorMessage
+                        : 'Failed to load bookings.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _refreshBookings,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
                   )
                 ],
               ),
             );
           }
 
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildBookingList(
-                  bookingsProvider.upcomingBookings.map((b) => Booking.fromJson(b)).toList(), 'No Upcoming Bookings'),
-              _buildBookingList(
-                  bookingsProvider.pastBookings.map((b) => Booking.fromJson(b)).toList(), 'No Completed Bookings'),
-              _buildBookingList(
-                  bookingsProvider.cancelledBookings.map((b) => Booking.fromJson(b)).toList(), 'No Cancelled Bookings'),
-            ],
+          return RefreshIndicator(
+            onRefresh: _refreshBookings,
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildRefreshableList(
+                  bookingsProvider.upcomingBookings.map((b) => Booking.fromJson(b)).toList(),
+                  'No Upcoming Bookings',
+                ),
+                _buildRefreshableList(
+                  bookingsProvider.pastBookings.map((b) => Booking.fromJson(b)).toList(),
+                  'No Completed Bookings',
+                ),
+                _buildRefreshableList(
+                  bookingsProvider.cancelledBookings.map((b) => Booking.fromJson(b)).toList(),
+                  'No Cancelled Bookings',
+                ),
+              ],
+            ),
           );
         },
       ),
     );
+  }
+
+  Widget _buildRefreshableList(List<Booking> bookings, String emptyMessage) {
+    if (bookings.isEmpty) {
+      // Return a scrollable empty state so RefreshIndicator works
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: _buildEmptyState(context, emptyMessage),
+        ),
+      );
+    }
+    return _buildBookingList(bookings, emptyMessage);
   }
 
   Future<void> _confirmCancellation(Booking booking) async {

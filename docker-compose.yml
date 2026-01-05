@@ -8,8 +8,6 @@
 # ✅ Docker Containerization: All services containerized
 # ✅ Externalized Configuration: Environment variables
 
-version: '3.8'
-
 # Essential volumes for data persistence
 volumes:
   db_data:
@@ -38,8 +36,8 @@ services:
   # RabbitMQ Microservice (Helper Service)
   erents-microservice:
     build:
-      context: ./eRents.RabbitMQMicroservice
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: eRents.RabbitMQMicroservice/Dockerfile
     container_name: erents-microservice
     restart: unless-stopped
     environment:

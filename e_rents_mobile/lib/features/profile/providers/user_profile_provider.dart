@@ -131,6 +131,8 @@ class UserProfileProvider extends BaseProvider {
   /// final success = await profileProvider.updateUserProfile(updatedUser);
   /// ```
   Future<bool> updateUserProfile(User updatedUser) async {
+    final emailChanged = _currentUser?.email != updatedUser.email;
+
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Updating user profile');
 
@@ -168,6 +170,10 @@ class UserProfileProvider extends BaseProvider {
       }
     }, errorMessage: 'Failed to update user profile');
 
+    if (success && emailChanged) {
+      await logout();
+    }
+
     return success;
   }
 
@@ -190,6 +196,8 @@ class UserProfileProvider extends BaseProvider {
     String? email,
     String? phoneNumber,
   }) async {
+    bool emailChanged = false;
+    
     final success = await executeWithStateForSuccess(() async {
       debugPrint('UserProfileProvider: Updating user fields');
 
@@ -204,6 +212,8 @@ class UserProfileProvider extends BaseProvider {
         email: email ?? _currentUser!.email,
         phoneNumber: phoneNumber ?? _currentUser!.phoneNumber,
       );
+
+      emailChanged = _currentUser?.email != updatedUser.email;
 
       // Build flattened payload matching backend UserRequest
       final Map<String, dynamic> payload = {
@@ -238,6 +248,10 @@ class UserProfileProvider extends BaseProvider {
         throw Exception('Failed to update user fields');
       }
     }, errorMessage: 'Failed to update user fields');
+
+    if (success && emailChanged) {
+      await logout();
+    }
 
     return success;
   }

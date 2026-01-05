@@ -170,9 +170,24 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
   }
 
   Widget _buildExtensionSection(Booking booking) {
+    // Extension is only available for active subscription-based monthly bookings with an end date
+    final isSubscriptionBooking = booking.isSubscription;
     final canExtend = booking.status == BookingStatus.active && 
                      booking.endDate != null &&
-                     booking.endDate!.isAfter(DateTime.now());
+                     booking.endDate!.isAfter(DateTime.now()) &&
+                     isSubscriptionBooking;
+
+    // Determine the reason if extension is not available
+    String unavailableReason;
+    if (!isSubscriptionBooking) {
+      unavailableReason = 'Only monthly subscription-based bookings can be extended.';
+    } else if (booking.status != BookingStatus.active) {
+      unavailableReason = 'Only active bookings can be extended.';
+    } else if (booking.endDate == null) {
+      unavailableReason = 'Open-ended bookings do not require extension.';
+    } else {
+      unavailableReason = 'Your booking has already ended.';
+    }
 
     return Card(
       elevation: 4,
@@ -183,7 +198,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.calendar_today, color: Colors.green),
+                Icon(Icons.calendar_today, color: canExtend ? Colors.green : Colors.grey),
                 const SizedBox(width: 8),
                 const Text(
                   'Lease Extension',
@@ -197,9 +212,12 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
             const SizedBox(height: 16),
             Text(
               canExtend 
-                ? 'You can request to extend your current lease.'
-                : 'Lease extension is not available for this booking.',
-              style: const TextStyle(fontSize: 14),
+                ? 'You can request to extend your current monthly lease.'
+                : unavailableReason,
+              style: TextStyle(
+                fontSize: 14,
+                color: canExtend ? null : Colors.grey[600],
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(

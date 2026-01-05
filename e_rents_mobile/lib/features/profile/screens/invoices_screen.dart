@@ -2,9 +2,11 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/features/profile/providers/invoices_provider.dart';
 import 'package:e_rents_mobile/core/models/payment.dart' as model;
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 // Stripe payment integration for monthly invoices
 // Note: 'hide Card' prevents conflict with Flutter's Card widget
 
@@ -21,7 +23,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<InvoicesProvider>().loadPending();
+      final currentUserProvider = context.read<CurrentUserProvider>();
+      context.read<InvoicesProvider>().loadPending(currentUserProvider);
     });
   }
 
@@ -51,7 +54,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             content = _buildEmpty(context);
           } else {
             content = RefreshIndicator(
-              onRefresh: () => provider.loadPending(),
+              onRefresh: () => provider.loadPending(context.read<CurrentUserProvider>()),
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: items.length,
@@ -126,7 +129,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => context.read<InvoicesProvider>().loadPending(),
+              onPressed: () => context.read<InvoicesProvider>().loadPending(context.read<CurrentUserProvider>()),
               icon: const Icon(Icons.refresh),
               label: const Text('Check again'),
             ),
@@ -136,21 +139,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     );
   }
 
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '';
-    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime? dt) => dt.toApiDateOrEmpty();
 
   void _showPaymentDetails(BuildContext context, model.Payment p) {
     final property = p.propertyName ?? (p.propertyId != null ? 'Property #${p.propertyId}' : 'Property');
-    String period;
-    if (p.periodStart != null && p.periodEnd != null) {
-      final from = '${p.periodStart!.year.toString().padLeft(4, '0')}-${p.periodStart!.month.toString().padLeft(2, '0')}-${p.periodStart!.day.toString().padLeft(2, '0')}';
-      final to = '${p.periodEnd!.year.toString().padLeft(4, '0')}-${p.periodEnd!.month.toString().padLeft(2, '0')}-${p.periodEnd!.day.toString().padLeft(2, '0')}';
-      period = '$from → $to';
-    } else {
-      period = 'Unavailable';
-    }
+    final period = (p.periodStart != null && p.periodEnd != null)
+        ? '${p.periodStart!.toApiDate()} → ${p.periodEnd!.toApiDate()}'
+        : 'Unavailable';
 
     final amount = '${(p.currency ?? 'USD').toUpperCase()} ${p.amount.toStringAsFixed(2)}';
 
@@ -330,10 +325,7 @@ class _InvoiceTile extends StatelessWidget {
     return '$cur ${p.amount.toStringAsFixed(2)}';
   }
 
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '';
-    return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime? dt) => dt.toApiDateOrEmpty();
 
   @override
   Widget build(BuildContext context) {

@@ -166,49 +166,6 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
           // Action Buttons
           Row(
             children: [
-              // PayPal Link/Unlink Button
-              if (user != null)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(26),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: profileProvider.isUpdatingPaypal
-                      ? const Padding(
-                          padding: EdgeInsets.all(12.0),
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : IconButton(
-                          onPressed: () async {
-                            if (user.isPaypalLinked) {
-                              await profileProvider.unlinkPaypal();
-                            } else {
-                              await profileProvider.startPayPalLinking(context);
-                            }
-                          },
-                          icon: Icon(
-                            user.isPaypalLinked ? Icons.link_off : Icons.link,
-                            color: user.isPaypalLinked
-                                ? Colors.red
-                                : Theme.of(context).colorScheme.primary,
-                          ),
-                          tooltip: user.isPaypalLinked
-                              ? 'Unlink PayPal Account'
-                              : 'Link PayPal Account',
-                        ),
-                ),
-              const SizedBox(width: 16),
               // Edit Toggle Button
               Container(
                 decoration: BoxDecoration(

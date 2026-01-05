@@ -105,13 +105,14 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Overlap protection with active tenancies (reuse logic as in BeforeUpdateAsync)
+        // Overlap protection with active tenancies (exclude the current tenant's own tenancy)
         var bookingStart = entity.StartDate;
         var bookingEnd = targetEnd.Value;
 
         var hasActiveTenantOverlap = await Context.Set<Tenant>()
             .AsNoTracking()
             .Where(t => t.PropertyId == entity.PropertyId)
+            .Where(t => t.UserId != entity.UserId) // Exclude the current booking's tenant
             .Where(t => t.LeaseStartDate.HasValue)
             .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
             .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
@@ -155,8 +156,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         // First create the booking using the base implementation
         var response = await base.CreateAsync(request);
         
-        // Get the created booking entity
-        var booking = await Context.Set<Booking>().FindAsync(response.BookingId);
+        // Get the created booking entity with property info
+        var booking = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .FirstOrDefaultAsync(b => b.BookingId == response.BookingId);
         
         // For monthly rentals, create the actual subscription after booking is created
         if (booking != null && booking.IsSubscription && _subscriptionService != null)
@@ -198,6 +201,43 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             {
                 Logger.LogError(ex, "Failed to create subscription for booking {BookingId}", booking.BookingId);
                 // Don't throw here as we still want to complete the booking
+            }
+        }
+
+        // Send booking creation notifications
+        if (booking != null && _notificationService != null)
+        {
+            try
+            {
+                var propertyName = booking.Property?.Name ?? "property";
+                var startDate = booking.StartDate.ToString("MMM dd, yyyy");
+                var isMonthly = booking.IsSubscription;
+
+                // Notify tenant of booking creation
+                await _notificationService.CreateBookingNotificationAsync(
+                    booking.UserId,
+                    booking.BookingId,
+                    "Booking Confirmed",
+                    isMonthly 
+                        ? $"Your rental application for {propertyName} starting {startDate} has been submitted. Awaiting landlord approval."
+                        : $"Your booking for {propertyName} on {startDate} has been created. Complete payment to confirm.");
+
+                // Notify landlord of new booking
+                if (booking.Property != null)
+                {
+                    await _notificationService.CreateBookingNotificationAsync(
+                        booking.Property.OwnerId,
+                        booking.BookingId,
+                        "New Booking Request",
+                        isMonthly
+                            ? $"New rental application received for {propertyName} starting {startDate}. Review and approve in your dashboard."
+                            : $"New booking for {propertyName} on {startDate}. Payment pending.");
+                }
+            }
+            catch (Exception notifyEx)
+            {
+                Logger.LogError(notifyEx, "Failed to send booking creation notifications for booking {BookingId}", booking.BookingId);
+                // Don't throw - notifications shouldn't break booking creation
             }
         }
         

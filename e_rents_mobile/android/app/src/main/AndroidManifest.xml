@@ -8,9 +8,7 @@
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${GOOGLE_MAPS_API_KEY}"/>
+        <!-- Google Maps API key removed - using OpenStreetMap via flutter_map -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

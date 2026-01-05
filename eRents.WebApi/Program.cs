@@ -7,7 +7,6 @@ using eRents.WebAPI.Filters;
 using eRents.WebApi.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using eRents.RabbitMQMicroservice.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using eRents.WebApi.Hubs;

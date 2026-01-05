@@ -58,7 +58,7 @@ class ERentsApp extends StatelessWidget {
       userPreferences: userPrefs,
     );
 
-    // Use the new comprehensive feature registration system
+    // Use the comprehensive feature registration system
     return MultiProvider(
       providers: [
         // Add the missing AppErrorProvider
@@ -71,30 +71,7 @@ class ERentsApp extends StatelessWidget {
         ),
         ...features.FeaturesRegistry.createFeatureProviders(dependencies),
       ],
-      child: Builder(
-        builder: (context) {
-          // LookupProvider now fetches lookup data on-demand via generic API.
-          // No global initialize is needed here.
-          
-          // Handle special case for RentsProvider that needs BuildContext
-          final contextualDependencies = features.ProviderDependencies(
-            apiService: apiService,
-            secureStorage: secureStorage,
-            userPreferences: userPrefs,
-            context: context,
-          );
-          
-          return MultiProvider(
-            providers: [
-              // Override the RentsProvider with the one that has BuildContext
-              ChangeNotifierProvider<features.RentsProvider>.value(
-                value: features.RentsProvider(contextualDependencies.apiService, context: context),
-              ),
-            ],
-            child: const AppWithRouter(),
-          );
-        },
-      ),
+      child: const AppWithRouter(),
     );
   }
 }

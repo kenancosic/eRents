@@ -4,13 +4,17 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["eRents.RabbitMQMicroservice.csproj", "./"]
-RUN dotnet restore "./eRents.RabbitMQMicroservice.csproj"
+# Copy the solution file and dependencies first
+COPY ["eRents.sln", "./"]
+COPY ["eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj", "eRents.RabbitMQMicroservice/"]
+COPY ["eRents.Domain/eRents.Domain.csproj", "eRents.Domain/"]
+COPY ["eRents.Shared/eRents.Shared.csproj", "eRents.Shared/"]
+RUN dotnet restore "eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj"
 COPY . .
-RUN dotnet build "eRents.RabbitMQMicroservice.csproj" -c Release -o /app/build
+RUN dotnet build "eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "eRents.RabbitMQMicroservice.csproj" -c Release -o /app/publish
+RUN dotnet publish "eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app

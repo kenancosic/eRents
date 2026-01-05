@@ -1,8 +1,10 @@
 // lib/feature/property_detail/widgets/property_price_footer.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 class PropertyPriceFooter extends StatelessWidget {
   final PropertyDetail property;
@@ -20,6 +22,11 @@ class PropertyPriceFooter extends StatelessWidget {
     final priceAmount = isDaily ? (property.dailyRate ?? property.price) : property.price;
     final suffix = isDaily ? '/day' : '/month';
     final currency = property.currency.isNotEmpty ? ' ${property.currency}' : '';
+    
+    // Watch provider to disable button when dates have availability conflicts
+    final rentalProvider = context.watch<PropertyRentalProvider>();
+    final canCheckout = rentalProvider.canProceedToCheckout;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -60,7 +67,7 @@ class PropertyPriceFooter extends StatelessWidget {
                 width: 120,
                 child: CustomButton(
                   isLoading: false,
-                  onPressed: onCheckoutPressed,
+                  onPressed: canCheckout ? onCheckoutPressed : null,
                   label: Text(
                     isDaily ? 'Book Now' : 'Start Lease',
                     style: Theme.of(context)

@@ -10,7 +10,9 @@ export 'auth/providers/auth_provider.dart';
 export 'chat/providers/chat_provider.dart';
 export 'home/providers/home_provider.dart';
 export 'maintenance/providers/maintenance_provider.dart';
+export 'notifications/providers/notification_provider.dart';
 export 'profile/providers/profile_provider.dart';
+export 'profile/providers/stripe_connect_provider.dart';
 export 'properties/providers/property_provider.dart';
 export 'rents/providers/rents_provider.dart';
 export 'reports/providers/reports_provider.dart' hide ReportType;
@@ -28,6 +30,7 @@ export 'home/home_screen.dart';
 export 'maintenance/maintenance_screen.dart';
 export 'maintenance/maintenance_form_screen.dart';
 export 'maintenance/maintenance_issue_details_screen.dart';
+export 'notifications/screens/notifications_screen.dart';
 export 'profile/profile_screen.dart';
 export 'properties/screens/property_list_screen.dart';
 export 'properties/screens/property_detail_screen.dart';
@@ -40,4 +43,6 @@ export 'tenants/screens/tenants_list_screen.dart';
 export 'reports/models/report_type.dart';
 
 // Feature Widgets (commonly used components)
+export 'notifications/widgets/notification_bell_badge.dart';
+export 'notifications/widgets/notification_item.dart';
 export 'properties/widgets/property_images_grid.dart';

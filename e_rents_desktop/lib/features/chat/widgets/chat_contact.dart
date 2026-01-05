@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
+import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 
 class ChatContact extends StatelessWidget {
   final String name;
@@ -10,6 +11,7 @@ class ChatContact extends StatelessWidget {
   final int unreadCount;
   final bool isSelected;
   final VoidCallback onTap;
+  final int? profileImageId;
 
   const ChatContact({
     super.key,
@@ -21,6 +23,7 @@ class ChatContact extends StatelessWidget {
     required this.unreadCount,
     this.isSelected = false,
     required this.onTap,
+    this.profileImageId,
   });
 
   @override
@@ -37,11 +40,12 @@ class ChatContact extends StatelessWidget {
           children: [
             Stack(
               children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundImage: NetworkImage(
-                    'https://i.pravatar.cc/150?img=${name.hashCode}',
-                  ),
+                CustomAvatar(
+                  imageUrl: profileImageId != null 
+                      ? 'Images/$profileImageId' 
+                      : 'assets/images/user-image.png',
+                  size: 48,
+                  borderWidth: 0,
                 ),
                 if (isOnline)
                   Positioned(

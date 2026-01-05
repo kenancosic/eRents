@@ -134,7 +134,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> forgotPassword(String email) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        'Auth/forgot-password',
+        '/Auth/forgot-password',
         {'email': email},
         authenticated: false,
       );
@@ -146,7 +146,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> verifyCode(String email, String code) async {
     final ok = await executeWithStateForSuccess(() async {
       await api.postJson(
-        'Auth/verify',
+        '/Auth/verify',
         {
           'email': email,
           'code': code,
@@ -161,7 +161,7 @@ class AuthProvider extends BaseProvider {
   Future<bool> resetPassword(String email, String code, String newPassword) async {
     final ok = await executeWithRetry<bool>(() async {
       await api.postJson(
-        'Auth/reset-password',
+        '/Auth/reset-password',
         {
           'email': email,
           'resetCode': code,

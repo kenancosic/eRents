@@ -9,6 +9,8 @@ namespace eRents.Domain.Models.Enums
         Upcoming = 1,
         Completed = 2,
         Cancelled = 3,
-        Active = 4
+        Active = 4,
+        Pending = 5,   // Awaiting owner approval (for RequiresApproval properties)
+        Approved = 6   // Owner has approved the booking
     }
 } 

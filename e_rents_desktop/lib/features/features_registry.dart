@@ -12,24 +12,24 @@ import 'chat/providers/chat_provider.dart';
 import 'home/providers/home_provider.dart';
 import 'maintenance/providers/maintenance_provider.dart';
 import 'profile/providers/profile_provider.dart';
+import 'profile/providers/stripe_connect_provider.dart';
 import 'properties/providers/property_provider.dart';
 import 'rents/providers/rents_provider.dart';
 import 'reports/providers/reports_provider.dart';
 import 'tenants/providers/tenants_provider.dart';
 import '../providers/lookup_provider.dart';
+import 'notifications/providers/notification_provider.dart';
 
 /// Helper class to manage provider dependencies
 class ProviderDependencies {
   final ApiService apiService;
   final SecureStorageService secureStorage;
   final UserPreferencesService userPreferences;
-  final BuildContext? context; // For providers that need BuildContext
 
   ProviderDependencies({
     required this.apiService,
     required this.secureStorage,
     required this.userPreferences,
-    this.context,
   });
 }
 
@@ -70,15 +70,16 @@ class FeaturesRegistry {
         create: (_) => ProfileProvider(deps.apiService),
       ),
       
+      ChangeNotifierProvider<StripeConnectProvider>(
+        create: (_) => StripeConnectProvider(deps.apiService),
+      ),
+      
       ChangeNotifierProvider<PropertyProvider>(
         create: (_) => PropertyProvider(deps.apiService),
       ),
       
-      // Special case: RentsProvider needs BuildContext
       ChangeNotifierProvider<RentsProvider>(
-        create: (context) => deps.context != null 
-          ? RentsProvider(deps.apiService, context: deps.context!)
-          : throw Exception('RentsProvider requires BuildContext. Use createContextualProviders instead.'),
+        create: (_) => RentsProvider(deps.apiService),
       ),
       
       ChangeNotifierProvider<ReportsProvider>(
@@ -89,25 +90,10 @@ class FeaturesRegistry {
       ChangeNotifierProvider<TenantsProvider>(
         create: (_) => TenantsProvider(deps.apiService),
       ),
-    ];
-  }
-
-  /// Creates providers that need BuildContext after the widget tree is built
-  /// This handles the special case of RentsProvider and any future providers that need context
-  static List<ChangeNotifierProvider> createContextualProviders(
-    ProviderDependencies deps, 
-    BuildContext context
-  ) {
-    final contextualDeps = ProviderDependencies(
-      apiService: deps.apiService,
-      secureStorage: deps.secureStorage,
-      userPreferences: deps.userPreferences,
-      context: context,
-    );
-
-    return [
-      ChangeNotifierProvider<RentsProvider>.value(
-        value: RentsProvider(contextualDeps.apiService, context: context),
+      
+      // Notifications
+      ChangeNotifierProvider<NotificationProvider>(
+        create: (_) => NotificationProvider(deps.apiService),
       ),
     ];
   }

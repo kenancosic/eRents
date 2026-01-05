@@ -22,10 +22,14 @@ class Booking {
   // New Phase 2 fields - Payment tracking
   final String paymentMethod;
   final String? paymentStatus; // "Pending", "Completed", "Failed"
-  final String? paymentReference; // PayPal Transaction ID
+  final String? paymentReference; // Payment Transaction ID
 
   // Backend alignment
   final int? bookingStatusId; // Backend expects bookingStatusId for filtering
+
+  /// Indicates if this booking is a subscription-based monthly rental.
+  /// Only subscription bookings can request lease extensions.
+  final bool isSubscription;
 
   Booking({
     required this.bookingId,
@@ -45,11 +49,12 @@ class Booking {
     this.reviewContent,
     this.reviewRating,
     // New fields with defaults
-    this.paymentMethod = 'PayPal',
+    this.paymentMethod = 'Manual',
     this.paymentStatus,
     this.paymentReference,
     // Backend alignment
     this.bookingStatusId,
+    this.isSubscription = false,
   });
 
   String get statusDisplay {
@@ -237,7 +242,7 @@ class Booking {
               ? int.tryParse(json['reviewRating'].toString())
               : null),
       // New fields with safe parsing
-      paymentMethod: json['paymentMethod']?.toString() ?? 'PayPal',
+      paymentMethod: json['paymentMethod']?.toString() ?? 'Manual',
       paymentStatus: json['paymentStatus']?.toString(),
       paymentReference: json['paymentReference']?.toString(),
       // Backend alignment
@@ -246,6 +251,8 @@ class Booking {
           : (json['bookingStatusId'] != null
               ? int.tryParse(json['bookingStatusId'].toString())
               : null),
+      // Subscription flag for monthly rentals
+      isSubscription: json['isSubscription'] == true,
     );
   }
 
@@ -272,6 +279,7 @@ class Booking {
         'paymentReference': paymentReference,
         // Backend alignment
         'bookingStatusId': bookingStatusId,
+        'isSubscription': isSubscription,
       };
 
   bool isActive() {
@@ -301,6 +309,7 @@ class Booking {
     String? paymentStatus,
     String? paymentReference,
     int? bookingStatusId,
+    bool? isSubscription,
   }) {
     return Booking(
       bookingId: bookingId ?? this.bookingId,
@@ -323,6 +332,7 @@ class Booking {
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentReference: paymentReference ?? this.paymentReference,
       bookingStatusId: bookingStatusId ?? this.bookingStatusId,
+      isSubscription: isSubscription ?? this.isSubscription,
     );
   }
 }

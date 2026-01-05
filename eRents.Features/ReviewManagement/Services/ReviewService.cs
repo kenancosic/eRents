@@ -24,6 +24,12 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 	{
 	}
 
+	protected override IQueryable<Review> AddIncludes(IQueryable<Review> query)
+	{
+		// Include Reviewer to populate ReviewerFirstName/LastName in response
+		return query.Include(r => r.Reviewer);
+	}
+
 	protected override IQueryable<Review> AddFilter(IQueryable<Review> query, ReviewSearch search)
 	{
 		if (search.PropertyId.HasValue)
@@ -259,6 +265,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
     {
         var entity = await Context.Set<Review>()
             .Include(r => r.Property)
+            .Include(r => r.Reviewer)
             .Include(r => r.Booking).ThenInclude(b => b!.Property)
             .FirstOrDefaultAsync(r => r.ReviewId == id);
 

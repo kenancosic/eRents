@@ -169,9 +169,16 @@ namespace eRents.Features.Shared.Services
 		{
 			try
 			{
-				// Get all users except the current user
+				// Get only users that have message history with the current user
+				// (users who have sent messages to or received messages from the current user)
+				var userIdsWithMessages = await _context.Messages
+						.Where(m => m.SenderId == userId || m.ReceiverId == userId)
+						.Select(m => m.SenderId == userId ? m.ReceiverId : m.SenderId)
+						.Distinct()
+						.ToListAsync();
+
 				var contacts = await _context.Users
-						.Where(u => u.UserId != userId)
+						.Where(u => userIdsWithMessages.Contains(u.UserId))
 						.Select(u => new
 						{
 							Id = u.UserId,

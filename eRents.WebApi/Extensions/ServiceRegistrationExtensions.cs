@@ -14,6 +14,8 @@ using eRents.Features.PaymentManagement.Extensions;
 using eRents.Features.ReviewManagement.Extensions;
 using eRents.Features.TenantManagement.Extensions;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
+using eRents.Features.Core.Services;
 using eRents.WebApi.Services;
 using Microsoft.AspNetCore.SignalR;
 using eRents.WebApi.Hubs;
@@ -51,6 +53,8 @@ public static class ServiceRegistrationExtensions
 
 		// Core/Shared services
 		services.AddScoped<ImageService>();
+		services.AddScoped<IOwnershipService, OwnershipService>();
+
 		services.AddScoped<IMessagingService, MessagingService>();
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
@@ -87,18 +91,22 @@ public static class ServiceRegistrationExtensions
 			services.AddScoped<IDataSeeder, PropertiesSeeder>();
 			services.AddScoped<IDataSeeder, ImageSeeder>();
 			services.AddScoped<IDataSeeder, BookingsSeeder>();
-			// New: diversify booking statuses (Completed/Cancelled)
+			// Diversify booking statuses (Completed/Cancelled)
 			services.AddScoped<IDataSeeder, BookingsVarietySeeder>();
+			// Daily rental bookings with pending/approval scenarios
+			services.AddScoped<IDataSeeder, DailyRentalBookingsSeeder>();
 			services.AddScoped<IDataSeeder, SubscriptionsSeeder>();
-			// Ensure pending lease extension requests exist for demo
+			// Pending lease extension requests for demo
 			services.AddScoped<IDataSeeder, LeaseExtensionRequestsSeeder>();
 			services.AddScoped<IDataSeeder, ReviewsSeeder>();
-			// New: add threaded replies and tenant reviews
+			// Threaded replies and tenant reviews
 			services.AddScoped<IDataSeeder, ReviewRepliesSeeder>();
-			// New: seed historical payments and a refund linkage
+			// Historical payments and refund linkage
 			services.AddScoped<IDataSeeder, PaymentsSeeder>();
+			// Failed payment scenarios for error handling testing
+			services.AddScoped<IDataSeeder, FailedPaymentsSeeder>();
 			services.AddScoped<IDataSeeder, MaintenanceIssuesSeeder>();
-			// New: enhance maintenance issues with assignment/resolution and extra images
+			// Enhanced maintenance issues with assignment/resolution and images
 			services.AddScoped<IDataSeeder, MaintenanceEnhancementsSeeder>();
 			services.AddScoped<IDataSeeder, SavedPropertiesSeeder>();
 			services.AddScoped<IDataSeeder, MessagesSeeder>();

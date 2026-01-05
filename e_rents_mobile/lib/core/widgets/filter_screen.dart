@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/places_autocomplete_field.dart';
+import 'package:e_rents_mobile/core/services/google_places_service.dart';
 
 class FilterScreen extends StatefulWidget {
   final Map<String, dynamic>? initialFilters;
@@ -29,6 +31,8 @@ class _FilterScreenState extends State<FilterScreen> {
   // City and Sort state
   final TextEditingController _cityController = TextEditingController();
   String _city = '';
+  double? _selectedLatitude;
+  double? _selectedLongitude;
   String _priceSort = 'None'; // 'None' | 'LowToHigh' | 'HighToLow'
 
   // Constants
@@ -132,9 +136,11 @@ class _FilterScreenState extends State<FilterScreen> {
       _rentalPeriod = 'Any';
       _selectedFacilities.clear();
       _selectedFacilities.add('Any');
-      // Clear city and sort selections
+      // Clear city, location, and sort selections
       _city = '';
       _cityController.text = '';
+      _selectedLatitude = null;
+      _selectedLongitude = null;
       _priceSort = 'None';
     });
   }
@@ -177,8 +183,10 @@ class _FilterScreenState extends State<FilterScreen> {
       // Renting type maps to backend enum name
       if (mapRentingType(_rentalPeriod) != null)
         'rentingType': mapRentingType(_rentalPeriod),
-      // City override
+      // City and location override
       if (_city.trim().isNotEmpty) 'city': _city.trim(),
+      if (_selectedLatitude != null) 'latitude': _selectedLatitude,
+      if (_selectedLongitude != null) 'longitude': _selectedLongitude,
       // Sort by price
       if (_priceSort != 'None') 'sortBy': 'price',
       if (_priceSort == 'LowToHigh') 'sortDirection': 'asc',
@@ -254,20 +262,31 @@ class _FilterScreenState extends State<FilterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // City Section
+              // City Section with Google Places Autocomplete
               Text(
-                'City',
+                'Location',
                 style: theme.textTheme.headlineSmall,
               ),
               const SizedBox(height: 12),
-              TextField(
+              PlacesAutocompleteField(
                 controller: _cityController,
-                decoration: const InputDecoration(
-                  hintText: 'Enter city (optional)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.location_city),
-                ),
-                onChanged: (val) => _city = val,
+                hintText: 'Search city or address...',
+                searchType: '(cities)',
+                onPlaceSelected: (PlaceDetails? place) {
+                  if (place != null) {
+                    setState(() {
+                      _city = place.bestCityName ?? place.formattedAddress;
+                      _selectedLatitude = place.geometry.location.lat;
+                      _selectedLongitude = place.geometry.location.lng;
+                    });
+                  } else {
+                    setState(() {
+                      _city = '';
+                      _selectedLatitude = null;
+                      _selectedLongitude = null;
+                    });
+                  }
+                },
               ),
 
               const SizedBox(height: 24),

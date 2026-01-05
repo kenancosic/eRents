@@ -5,10 +5,20 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
+import 'package:e_rents_mobile/core/widgets/section_container.dart';
 import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/checkout/providers/checkout_provider.dart';
-// Stripe payment processing - Native Stripe SDK to be integrated
+import 'package:e_rents_mobile/features/checkout/widgets/payment_loading_modal.dart';
+import 'package:e_rents_mobile/features/checkout/widgets/payment_success_modal.dart';
+import 'package:e_rents_mobile/features/checkout/widgets/payment_error_card.dart';
+import 'package:e_rents_mobile/features/checkout/widgets/trust_signals.dart';
+import 'package:e_rents_mobile/features/checkout/models/payment_state.dart';
+import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_bookings_provider.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
+// Stripe payment processing - Flutter Stripe SDK
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 
 
 class CheckoutScreen extends StatefulWidget {
@@ -35,6 +45,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
+  
+  // Payment state tracking
+  PaymentState _paymentState = PaymentState.idle;
+  bool _isProcessingPayment = false;
 
   @override
   void initState() {
@@ -121,6 +135,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(height: 24),
                   // Payment methods section (daily rentals only)
                   if (provider.isDailyRental) _buildPaymentMethods(provider),
+                  const SizedBox(height: 16),
+                  // Trust signals
+                  if (provider.isDailyRental) const TrustSignals(),
                   const SizedBox(height: 32),
                   // Pay button
                   SizedBox(
@@ -185,111 +202,86 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildCompactSummary(CheckoutProvider provider) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Property image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+    return SectionCard(
+      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
+      child: Row(
+        children: [
+          // Property image with hero effect
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha((255 * 0.1).round()),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
               child: widget.property.coverImageId != null
                   ? Image.network(
                       context.read<ApiService>().makeAbsoluteUrl('/api/Images/${widget.property.coverImageId}/content'),
-                      width: 80,
-                      height: 80,
+                      width: 100,
+                      height: 100,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image, color: Colors.grey),
+                        width: 100,
+                        height: 100,
+                        color: Colors.grey[200],
+                        child: Icon(Icons.home_work, size: 40, color: Colors.grey[400]),
                       ),
                     )
                   : Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.image, color: Colors.grey),
+                      width: 100,
+                      height: 100,
+                      color: Colors.grey[200],
+                      child: Icon(Icons.home_work, size: 40, color: Colors.grey[400]),
                     ),
             ),
-            const SizedBox(width: 16),
-            // Property details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.property.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
-                    '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${provider.propertyPrice.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: accentColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriceDetails(CheckoutProvider provider) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.05).round()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Simplified price display - only show total price
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const SizedBox(width: 16),
+          // Property details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Total price',
-                  style: TextStyle(
-                    fontSize: 16,
+                Text(
+                  widget.property.name,
+                  style: const TextStyle(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    height: 1.3,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
+                        '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
                   '\$${provider.propertyPrice.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: accentColor,
                   ),
@@ -297,19 +289,60 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
           ),
-          // Fixed pricing note: per-night or monthly subscription
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              provider.isDailyRental
-                  ? 'Pricing model: billed per night'
-                  : 'Pricing model: billed monthly (subscription)',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontStyle: FontStyle.italic,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceDetails(CheckoutProvider provider) {
+    return SectionCard(
+      title: 'Total price',
+      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          // Large total price display
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: accentColor.withAlpha((255 * 0.08).round()),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                '\$${provider.propertyPrice.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: accentColor,
+                  letterSpacing: -1,
+                ),
               ),
             ),
+          ),
+          const SizedBox(height: 12),
+          // Pricing note with icon
+          Row(
+            children: [
+              Icon(
+                provider.isDailyRental ? Icons.event_repeat : Icons.subscriptions_outlined,
+                size: 16,
+                color: Colors.grey[600],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  provider.isDailyRental
+                      ? 'Pricing model: billed per night'
+                      : 'Pricing model: billed monthly (subscription)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -317,149 +350,358 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildBookingDetails(CheckoutProvider provider) {
-    return Container(
+    final daysDifference = provider.endDate?.difference(provider.startDate ?? DateTime.now()).inDays ?? 0;
+    
+    return SectionCard(
+      title: 'Booking Details',
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((255 * 0.05).round()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      margin: EdgeInsets.zero,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Booking Details',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+          // Dates row with improved styling
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accentColor.withAlpha((255 * 0.1).round()),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month,
+                    color: accentColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Dates',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
+                        '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Dates overview only (guests and special requests removed)
-          Row(
-            children: [
-              Icon(Icons.calendar_today, color: Colors.grey[600]),
-              const SizedBox(width: 8),
-              const Text(
-                'Dates',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-              ),
-              const Spacer(),
-              Text(
-                '${provider.startDate?.day}/${provider.startDate?.month}/${provider.startDate?.year} - '
-                '${provider.endDate?.day}/${provider.endDate?.month}/${provider.endDate?.year}',
-                style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-              ),
-            ],
-          ),
+          if (daysDifference > 0) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.nights_stay_outlined, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Text(
+                  '$daysDifference ${daysDifference == 1 ? "night" : "nights"}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildPaymentMethods(CheckoutProvider provider) {
-    // Minimal payment badge - no marketing copy
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
+    // Show different UI based on whether Stripe is enabled
+    if (!CheckoutProvider.enableStripe) {
+      return SectionCard(
+        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.zero,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withAlpha((255 * 0.15).round()),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.pending_actions, color: Colors.orange, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Manual Payment',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Payment will be collected separately',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Stripe enabled UI
+    return SectionCard(
+      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
       child: Row(
         children: [
-          const Icon(Icons.payment, color: accentColor, size: 24),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Stripe',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+          // Stripe logo styled container
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: accentColor.withAlpha((255 * 0.1).round()),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.payment, color: accentColor, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Stripe',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Text(
-                'Secure payment',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
+                SizedBox(height: 4),
+                Text(
+                  'Secure payment',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const Spacer(),
-          Icon(Icons.lock_outline, color: Colors.grey[600], size: 20),
+          Icon(Icons.lock_outline, color: Colors.grey[400], size: 20),
         ],
       ),
     );
   }
-
   // Payment method selection removed - Stripe is the only option
 
   Future<void> _processPayment(CheckoutProvider provider) async {
-    // Step 1: Create Stripe payment intent
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
-            SizedBox(height: 16),
-            Text('Preparing secure payment...'),
-          ],
-        ),
-      ),
-    );
+    // Prevent duplicate payment processing
+    if (_isProcessingPayment) return;
+    _isProcessingPayment = true;
 
-    Map<String, String> paymentIntent;
     try {
-      paymentIntent = await provider.createStripePaymentIntent();
-    } catch (_) {
+      // Handle manual payment flow when Stripe is disabled
+      if (!CheckoutProvider.enableStripe) {
+        setState(() {
+          _paymentState = PaymentState.creatingIntent;
+        });
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
+                SizedBox(height: 16),
+                Text('Creating booking...'),
+              ],
+            ),
+          ),
+        );
+
+        final success = await provider.processPayment();
+        
+        if (!mounted) return;
+        context.pop(); // Close loading dialog
+
+        if (success) {
+          setState(() {
+            _paymentState = PaymentState.success;
+          });
+          _showPaymentSuccess(provider);
+        } else {
+          setState(() {
+            _paymentState = PaymentState.failed;
+          });
+          _showErrorSnackBar(provider.errorMessage.isNotEmpty
+              ? provider.errorMessage
+              : 'Failed to create booking. Please try again.');
+        }
+        return;
+      }
+
+      // Stripe payment flow
+      // Step 1: Create Stripe payment intent
+      setState(() {
+        _paymentState = PaymentState.creatingIntent;
+      });
+
+      PaymentLoadingModal.showCreatingIntent(context);
+
+      Map<String, String> paymentIntent;
+      try {
+        paymentIntent = await provider.createStripePaymentIntent();
+      } catch (_) {
+        if (!mounted) return;
+        context.pop();
+        setState(() {
+          _paymentState = PaymentState.failed;
+        });
+        return;
+      }
+
       if (!mounted) return;
-      context.pop();
-      _showErrorSnackBar(provider.errorMessage.isNotEmpty
-          ? provider.errorMessage
-          : 'Failed to initialize payment.');
-      return;
+      context.pop(); // Close preparing dialog
+
+      // Step 2: Initialize and present Stripe payment sheet
+      await _initializeAndPresentPaymentSheet(
+        clientSecret: paymentIntent['clientSecret']!,
+        provider: provider,
+      );
+    } finally {
+      _isProcessingPayment = false;
     }
+  }
 
-    if (!mounted) return;
-    context.pop(); // Close preparing dialog
+  /// Initialize and present Stripe payment sheet
+  Future<void> _initializeAndPresentPaymentSheet({
+    required String clientSecret,
+    required CheckoutProvider provider,
+  }) async {
+    try {
+      setState(() {
+        _paymentState = PaymentState.presentingSheet;
+      });
 
-    // TODO: Step 2: Integrate Stripe SDK to present payment sheet
-    // For now, show a placeholder dialog indicating Stripe integration is pending
-    _showStripePlaceholderDialog(paymentIntent['clientSecret']!);
+      // Initialize Stripe payment sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          merchantDisplayName: 'eRents',
+          paymentIntentClientSecret: clientSecret,
+          style: ThemeMode.system,
+          appearance: PaymentSheetAppearance(
+            colors: PaymentSheetAppearanceColors(
+              primary: accentColor,
+            ),
+          ),
+          billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
+            email: CollectionMode.always,
+            phone: CollectionMode.always,
+            name: CollectionMode.always,
+            address: AddressCollectionMode.full,
+          ),
+        ),
+      );
+
+      // Present payment sheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // Payment successful
+      setState(() {
+        _paymentState = PaymentState.success;
+      });
+      _showPaymentSuccess(provider);
+
+    } catch (e) {
+      // Handle Stripe-specific errors
+      if (!mounted) return;
+
+      // Handle StripeException
+      if (e is StripeException) {
+        if (e.error.code == FailureCode.Canceled) {
+          setState(() {
+            _paymentState = PaymentState.cancelled;
+          });
+          _showCancelledMessage();
+          return;
+        }
+      }
+
+      setState(() {
+        _paymentState = PaymentState.failed;
+      });
+      _showPaymentError(e.toString());
+    }
   }
 
   void _showStripePlaceholderDialog(String clientSecret) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Stripe Integration Pending'),
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.blue),
+            const SizedBox(width: 8),
+            const Text('Stripe SDK Integration'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Payment intent created successfully!'),
-            const SizedBox(height: 12),
             const Text(
-              'Next steps:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'Payment intent created successfully!',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
-            const Text('• Integrate Stripe Flutter SDK\n'
-                '• Present payment sheet\n'
-                '• Confirm payment'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'To complete integration:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildIntegrationStep('1', 'Add flutter_stripe package to pubspec.yaml'),
+                  _buildIntegrationStep('2', 'Initialize Stripe with publishable key'),
+                  _buildIntegrationStep('3', 'Uncomment payment sheet code'),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             Text(
               'Client Secret: ${clientSecret.substring(0, 20)}...',
@@ -468,15 +710,98 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Cancel'),
+          ),
           CustomButton.compact(
-            label: 'OK',
+            label: 'Simulate Success',
             isLoading: false,
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              context.go('/home');
+              _simulatePaymentSuccess();
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIntegrationStep(String number, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            number,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _simulatePaymentSuccess() {
+    setState(() {
+      _paymentState = PaymentState.success;
+    });
+    _showPaymentSuccess(context.read<CheckoutProvider>());
+  }
+
+  void _showPaymentSuccess(CheckoutProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PaymentSuccessModal(
+        bookingId: provider.pendingBookingId?.toString(),
+        onViewBooking: () {
+          dialogContext.pop();
+          // Refresh home and bookings data so new booking appears immediately
+          final currentUserProvider = context.read<CurrentUserProvider>();
+          context.read<HomeProvider>().refreshDashboard(currentUserProvider);
+          context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true, currentUserProvider: currentUserProvider);
+          context.go('/');
+        },
+      ),
+    );
+  }
+
+  void _showPaymentError(String error) {
+    // Error is already displayed via provider.hasError in the UI
+    // Show additional snackbar for immediate feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error),
+        backgroundColor: Colors.red,
+        action: SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            _processPayment(context.read<CheckoutProvider>());
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showCancelledMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Payment cancelled. Your booking was not confirmed.'),
+        backgroundColor: Colors.orange,
       ),
     );
   }
@@ -498,7 +823,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             isLoading: false,
             onPressed: () {
               Navigator.of(dialogContext).pop(); // Close dialog
-              context.go('/home'); // Navigate to home or another appropriate screen
+              // Refresh home and bookings data so new booking/request appears immediately
+              final currentUserProvider = context.read<CurrentUserProvider>();
+              context.read<HomeProvider>().refreshDashboard(currentUserProvider);
+              context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true);
+              context.go('/'); // Navigate to home
             },
           ),
         ],

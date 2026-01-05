@@ -10,6 +10,8 @@ public class ReviewResponse
     public int? PropertyId { get; set; }
     public int? RevieweeId { get; set; }
     public int? ReviewerId { get; set; }
+    public string? ReviewerFirstName { get; set; }
+    public string? ReviewerLastName { get; set; }
     public string? Description { get; set; }
     public decimal? StarRating { get; set; }
     public int? BookingId { get; set; }

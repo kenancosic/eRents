@@ -197,6 +197,11 @@ namespace eRents.Features.Shared.Services
 			await CreateNotificationAsync(userId, title, message, "booking", bookingId);
 		}
 
+		public async Task CreatePaymentNotificationAsync(int userId, int paymentId, string title, string message)
+		{
+			await CreateNotificationAsync(userId, title, message, "payment", paymentId);
+		}
+
 		public async Task CreateMaintenanceNotificationAsync(int userId, int maintenanceIssueId, string title, string message)
 		{
 			await CreateNotificationAsync(userId, title, message, "maintenance", maintenanceIssueId);

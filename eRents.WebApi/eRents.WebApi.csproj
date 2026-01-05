@@ -33,7 +33,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\eRents.Domain\eRents.Domain.csproj" />
 		<ProjectReference Include="..\eRents.Features\eRents.Features.csproj" />
-		<ProjectReference Include="..\eRents.RabbitMQMicroservice\eRents.RabbitMQMicroservice.csproj" />
 		<ProjectReference Include="..\eRents.Shared\eRents.Shared.csproj" />
 	</ItemGroup>
 	<ItemGroup>

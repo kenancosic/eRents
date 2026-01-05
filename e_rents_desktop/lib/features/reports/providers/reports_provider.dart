@@ -129,7 +129,7 @@ class ReportsProvider extends BaseProvider {
       final queryString = queryParams.entries
           .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
           .join('&');
-      final endpoint = 'financialreports?$queryString';
+      final endpoint = '/FinancialReports?$queryString';
       
       final result = await api.getAndDecode<FinancialReportSummary>(
         endpoint,
@@ -162,7 +162,7 @@ class ReportsProvider extends BaseProvider {
       final queryString = queryParams.entries
           .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
           .join('&');
-      final endpoint = 'financialreports?$queryString';
+      final endpoint = '/FinancialReports?$queryString';
       
       final allDataSummary = await api.getAndDecode<FinancialReportSummary>(
         endpoint,

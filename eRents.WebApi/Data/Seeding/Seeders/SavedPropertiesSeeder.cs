@@ -1,14 +1,16 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using eRents.Domain.Models;
+using eRents.Domain.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Seeds a minimal set of saved properties for a tenant user.
-    /// Depends on Users and Properties baseline existing.
+    /// Seeds saved properties across multiple tenant users.
+    /// Each tenant saves 2-4 random properties from various owners.
     /// </summary>
     public class SavedPropertiesSeeder : IDataSeeder
     {
@@ -30,40 +32,66 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.UserSavedProperties.IgnoreQueryFilters().ExecuteDeleteAsync();
             }
 
-            var user = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "mobile");
-            if (user == null)
+            // Get all tenants
+            var tenants = await context.Users
+                .AsNoTracking()
+                .Where(u => u.UserType == UserTypeEnum.Tenant)
+                .Take(15)
+                .ToListAsync();
+
+            if (tenants.Count == 0)
             {
-                logger?.LogWarning("[{Seeder}] Prerequisite missing (user 'mobile').", Name);
+                logger?.LogWarning("[{Seeder}] No tenants found.", Name);
                 return;
             }
 
+            // Get all available properties
             var properties = await context.Properties
                 .AsNoTracking()
-                .OrderBy(p => p.PropertyId)
-                .Take(2)
+                .Where(p => p.Status == PropertyStatusEnum.Available)
                 .Select(p => p.PropertyId)
                 .ToListAsync();
+
             if (properties.Count == 0)
             {
                 logger?.LogWarning("[{Seeder}] No properties found.", Name);
                 return;
             }
 
-            foreach (var pid in properties)
+            var savedProperties = new List<UserSavedProperty>();
+            
+            foreach (var tenant in tenants)
             {
-                var exists = await context.UserSavedProperties.AnyAsync(x => x.UserId == user.UserId && x.PropertyId == pid);
-                if (!exists)
+                // Each tenant saves 2-4 random properties
+                int saveCount = Math.Min(Random.Shared.Next(2, 5), properties.Count);
+                var tenantSavedIds = properties
+                    .OrderBy(_ => Random.Shared.Next())
+                    .Take(saveCount)
+                    .ToList();
+
+                foreach (var pid in tenantSavedIds)
                 {
-                    await context.UserSavedProperties.AddAsync(new UserSavedProperty
+                    var exists = await context.UserSavedProperties
+                        .AnyAsync(x => x.UserId == tenant.UserId && x.PropertyId == pid);
+                    
+                    if (!exists && !savedProperties.Any(sp => sp.UserId == tenant.UserId && sp.PropertyId == pid))
                     {
-                        UserId = user.UserId,
-                        PropertyId = pid
-                    });
+                        savedProperties.Add(new UserSavedProperty
+                        {
+                            UserId = tenant.UserId,
+                            PropertyId = pid
+                        });
+                    }
                 }
             }
 
-            await context.SaveChangesAsync();
-            logger?.LogInformation("[{Seeder}] Done. Ensured saved properties for user 'mobile'.", Name);
+            if (savedProperties.Count > 0)
+            {
+                await context.UserSavedProperties.AddRangeAsync(savedProperties);
+                await context.SaveChangesAsync();
+            }
+
+            logger?.LogInformation("[{Seeder}] Done. Saved {Count} properties across {TenantCount} tenants.", Name, savedProperties.Count, tenants.Count);
         }
     }
 }

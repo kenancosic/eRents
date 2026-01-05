@@ -3,6 +3,7 @@ using eRents.Domain.Models.Enums;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.PaymentManagement.Interfaces;
 using eRents.Features.PaymentManagement.Models;
+using eRents.Features.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,17 +20,20 @@ public class StripePaymentService : IStripePaymentService
     private readonly ILogger<StripePaymentService> _logger;
     private readonly StripeOptions _stripeOptions;
     private readonly ICurrentUserService _currentUserService;
+    private readonly INotificationService? _notificationService;
 
     public StripePaymentService(
         ERentsContext context,
         ILogger<StripePaymentService> logger,
         IOptions<StripeOptions> stripeOptions,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        INotificationService? notificationService = null)
     {
         _context = context;
         _logger = logger;
         _stripeOptions = stripeOptions.Value;
         _currentUserService = currentUserService;
+        _notificationService = notificationService;
     }
 
     /// <inheritdoc/>
@@ -56,6 +60,67 @@ public class StripePaymentService : IStripePaymentService
                 {
                     ErrorMessage = "Booking not found"
                 };
+            }
+
+            // IDEMPOTENCY CHECK: Return existing pending payment intent if one exists
+            // This prevents multiple payment records being created on frontend retries
+            var existingPayment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.BookingId == bookingId 
+                    && p.PaymentStatus == "Pending" 
+                    && p.PaymentType == "BookingPayment"
+                    && !string.IsNullOrEmpty(p.StripePaymentIntentId));
+
+            if (existingPayment != null && !string.IsNullOrEmpty(existingPayment.StripePaymentIntentId))
+            {
+                _logger.LogInformation("Found existing pending payment {PaymentId} for booking {BookingId}, returning existing intent",
+                    existingPayment.PaymentId, bookingId);
+
+                try
+                {
+                    // Fetch the existing payment intent from Stripe to get fresh client secret
+                    var stripeService = new PaymentIntentService();
+                    var existingIntent = await stripeService.GetAsync(existingPayment.StripePaymentIntentId);
+
+                    // If the existing intent is still valid (not succeeded/cancelled), return it
+                    if (existingIntent.Status == "requires_payment_method" || 
+                        existingIntent.Status == "requires_confirmation" ||
+                        existingIntent.Status == "requires_action")
+                    {
+                        return new PaymentIntentResponse
+                        {
+                            PaymentIntentId = existingIntent.Id,
+                            ClientSecret = existingIntent.ClientSecret,
+                            Status = existingIntent.Status,
+                            Amount = existingIntent.Amount,
+                            Currency = existingIntent.Currency,
+                            Metadata = existingIntent.Metadata
+                        };
+                    }
+
+                    // If intent already succeeded, mark payment as completed
+                    if (existingIntent.Status == "succeeded")
+                    {
+                        existingPayment.PaymentStatus = "Completed";
+                        existingPayment.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                        
+                        return new PaymentIntentResponse
+                        {
+                            PaymentIntentId = existingIntent.Id,
+                            Status = "succeeded",
+                            ErrorMessage = "Payment already completed"
+                        };
+                    }
+                }
+                catch (StripeException ex)
+                {
+                    _logger.LogWarning(ex, "Could not retrieve existing payment intent {IntentId}, will create new one",
+                        existingPayment.StripePaymentIntentId);
+                    // Mark old payment as failed and continue to create new one
+                    existingPayment.PaymentStatus = "Failed";
+                    existingPayment.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
             }
 
             // Convert amount to cents (Stripe uses smallest currency unit)
@@ -317,6 +382,43 @@ public class StripePaymentService : IStripePaymentService
                     await _context.SaveChangesAsync();
                     
                     _logger.LogInformation("Payment intent {PaymentIntentId} confirmed and records updated", paymentIntentId);
+
+                    // Send payment success notification to tenant
+                    if (_notificationService != null && payment.BookingId.HasValue)
+                    {
+                        try
+                        {
+                            var booking = await _context.Bookings
+                                .Include(b => b.Property)
+                                .FirstOrDefaultAsync(b => b.BookingId == payment.BookingId);
+
+                            if (booking != null)
+                            {
+                                var propertyName = booking.Property?.Name ?? "your property";
+                                
+                                // Notify tenant of successful payment
+                                await _notificationService.CreatePaymentNotificationAsync(
+                                    booking.UserId,
+                                    payment.PaymentId,
+                                    "Payment Successful",
+                                    $"Your payment of {payment.Currency} {payment.Amount:F2} for {propertyName} has been confirmed. Your booking is now active!");
+
+                                // Notify landlord of received payment
+                                if (booking.Property != null)
+                                {
+                                    await _notificationService.CreatePaymentNotificationAsync(
+                                        booking.Property.OwnerId,
+                                        payment.PaymentId,
+                                        "Payment Received",
+                                        $"Payment of {payment.Currency} {payment.Amount:F2} received for {propertyName}.");
+                                }
+                            }
+                        }
+                        catch (Exception notifyEx)
+                        {
+                            _logger.LogError(notifyEx, "Failed to send payment success notifications for payment {PaymentId}", payment.PaymentId);
+                        }
+                    }
                 }
 
                 return true;
@@ -577,7 +679,10 @@ public class StripePaymentService : IStripePaymentService
             payment.PaymentStatus = "Failed";
             payment.UpdatedAt = DateTime.UtcNow;
 
-            var booking = await _context.Bookings.FindAsync(payment.BookingId);
+            var booking = await _context.Bookings
+                .Include(b => b.Property)
+                .FirstOrDefaultAsync(b => b.BookingId == payment.BookingId);
+            
             if (booking != null)
             {
                 booking.Status = BookingStatusEnum.Cancelled;
@@ -587,6 +692,25 @@ public class StripePaymentService : IStripePaymentService
             await _context.SaveChangesAsync();
             
             _logger.LogWarning("Payment failed for intent {PaymentIntentId}", paymentIntent.Id);
+
+            // Send payment failure notification to tenant
+            if (_notificationService != null && booking != null)
+            {
+                try
+                {
+                    var propertyName = booking.Property?.Name ?? "your property";
+                    
+                    await _notificationService.CreatePaymentNotificationAsync(
+                        booking.UserId,
+                        payment.PaymentId,
+                        "Payment Failed",
+                        $"Your payment for {propertyName} could not be processed. Please try again or use a different payment method.");
+                }
+                catch (Exception notifyEx)
+                {
+                    _logger.LogError(notifyEx, "Failed to send payment failure notification for payment {PaymentId}", payment.PaymentId);
+                }
+            }
         }
     }
 

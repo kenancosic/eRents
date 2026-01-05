@@ -19,8 +19,6 @@ class User {
   final int? userTypeId; // Backend expects userTypeId
   final DateTime? createdAt; // Backend tracks creation time
   final DateTime? updatedAt; // Backend tracks updates
-  final bool? isPaypalLinked; // PayPal integration status
-  final String? paypalUserIdentifier; // PayPal user reference
   final List<String>? paymentMethods; // Available payment methods
 
   User({
@@ -41,8 +39,6 @@ class User {
     this.userTypeId,
     this.createdAt,
     this.updatedAt,
-    this.isPaypalLinked,
-    this.paypalUserIdentifier,
     this.paymentMethods,
   });
 
@@ -111,13 +107,6 @@ class User {
           : json['isPublic'].toString().toLowerCase() == 'true';
     }
     
-    bool? isPaypalLinked;
-    if (json['isPaypalLinked'] != null) {
-      isPaypalLinked = json['isPaypalLinked'] is bool 
-          ? json['isPaypalLinked'] 
-          : json['isPaypalLinked'].toString().toLowerCase() == 'true';
-    }
-    
     // Handle list parsing
     List<String>? paymentMethods;
     if (json['paymentMethods'] != null) {
@@ -162,8 +151,6 @@ class User {
       userTypeId: userTypeId,
       createdAt: createdAt,
       updatedAt: updatedAt,
-      isPaypalLinked: isPaypalLinked,
-      paypalUserIdentifier: json['paypalUserIdentifier']?.toString(),
       paymentMethods: paymentMethods,
     );
   }
@@ -187,8 +174,6 @@ class User {
       'userTypeId': userTypeId,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
-      'isPaypalLinked': isPaypalLinked,
-      'paypalUserIdentifier': paypalUserIdentifier,
       'paymentMethods': paymentMethods,
     };
   }
@@ -210,8 +195,6 @@ class User {
     int? userTypeId,
     DateTime? createdAt,
     DateTime? updatedAt,
-    bool? isPaypalLinked,
-    String? paypalUserIdentifier,
     List<String>? paymentMethods,
   }) {
     return User(
@@ -231,8 +214,6 @@ class User {
       userTypeId: userTypeId ?? this.userTypeId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      isPaypalLinked: isPaypalLinked ?? this.isPaypalLinked,
-      paypalUserIdentifier: paypalUserIdentifier ?? this.paypalUserIdentifier,
       paymentMethods: paymentMethods ?? this.paymentMethods,
     );
   }

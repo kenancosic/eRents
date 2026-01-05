@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/services/google_places_service.dart';
-import 'package:uuid/uuid.dart'; // For generating session tokens
-
-// TODO: Import GooglePlacesService and Place model/details class
+import 'package:e_rents_mobile/core/utils/app_colors.dart';
+import 'package:uuid/uuid.dart';
 
 class PlacesAutocompleteField extends StatefulWidget {
   final TextEditingController controller;
@@ -33,9 +32,14 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
   String? _sessionToken;
   final Uuid _uuid = const Uuid();
   bool _isLoading = false;
-  bool _isMounted = false; // To prevent setState calls after dispose
-  bool _isSelecting = false; // Flag to indicate a selection is in progress
-  String? _errorMessage; // Friendly error shown when Places API fails
+  bool _isMounted = false;
+  bool _isSelecting = false;
+  String? _errorMessage;
+
+  // Overlay positioning
+  final LayerLink _layerLink = LayerLink();
+  OverlayEntry? _overlayEntry;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -43,8 +47,21 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
     _isMounted = true;
     _placesService = GooglePlacesService();
     widget.controller.addListener(_onTextChanged);
-    // Generate initial session token when the field is ready or gains focus
-    // For simplicity, we'll generate it when text changes or field is tapped
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (_focusNode.hasFocus) {
+      _showOverlay();
+    } else {
+      // Delay hiding to allow tap on suggestion to be processed first
+      // This prevents the race condition where focus loss hides overlay before tap is handled
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (!_focusNode.hasFocus && _isMounted && !_isSelecting) {
+          _hideOverlay();
+        }
+      });
+    }
   }
 
   void _generateNewSessionToken() {
@@ -55,9 +72,162 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
   @override
   void dispose() {
     _isMounted = false;
+    _hideOverlay();
     widget.controller.removeListener(_onTextChanged);
-    // Consider cancelling any ongoing API calls here
+    _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  void _showOverlay() {
+    if (_overlayEntry != null) return;
+    _overlayEntry = _createOverlayEntry();
+    Overlay.of(context).insert(_overlayEntry!);
+  }
+
+  void _hideOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  void _updateOverlay() {
+    _overlayEntry?.markNeedsBuild();
+  }
+
+  OverlayEntry _createOverlayEntry() {
+    final renderBox = context.findRenderObject() as RenderBox;
+    final size = renderBox.size;
+
+    return OverlayEntry(
+      builder: (context) => Positioned(
+        width: size.width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, size.height + 4),
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            shadowColor: Colors.black26,
+            child: _buildSuggestionsList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsList() {
+    if (_errorMessage != null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.errorLight),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, size: 16, color: Colors.redAccent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 12, color: Colors.redAccent),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_predictions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 240),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: _predictions.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final suggestion = _predictions[index];
+            return _buildSuggestionTile(suggestion);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionTile(PlacePrediction suggestion) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) {
+        // Set selecting flag immediately on tap down to prevent overlay from hiding
+        _isSelecting = true;
+      },
+      onTap: () => _onSuggestionSelected(suggestion),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.location_on_outlined,
+                color: AppColors.primary,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    suggestion.mainText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (suggestion.secondaryText.isNotEmpty)
+                    Text(
+                      suggestion.secondaryText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.north_west,
+              size: 14,
+              color: AppColors.textTertiary,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onTextChanged() async {
@@ -97,49 +267,52 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
           _errorMessage = null;
         } else if (result.status == 'ZERO_RESULTS' || result.predictions.isEmpty) {
           _predictions = [];
-          _errorMessage = null; // Not an error; just no matches
+          _errorMessage = null;
         } else {
           _predictions = [];
-          // Friendly fallback message
           final status = result.status;
           if (status == 'REQUEST_DENIED') {
-            _errorMessage = 'Place suggestions are unavailable. Please check your Google Places API key and billing.';
+            _errorMessage = 'Place suggestions unavailable. Check API key.';
           } else if (status.startsWith('HTTP_')) {
-            _errorMessage = 'Unable to reach Places service (HTTP). Please try again later.';
+            _errorMessage = 'Unable to reach Places service.';
           } else if (status == 'EXCEPTION') {
-            _errorMessage = 'Error contacting Places service. Please try again.';
+            _errorMessage = 'Error contacting Places service.';
           } else {
-            _errorMessage = 'Place suggestions are currently unavailable.';
+            _errorMessage = 'Suggestions unavailable.';
           }
         }
         _isLoading = false;
       });
+      _updateOverlay();
     } else {
       if (_predictions.isNotEmpty || _isLoading) {
-        setState(() {
-          _predictions = [];
-          _isLoading = false;
-          _errorMessage = null;
-        });
+        _predictions = [];
+        _isLoading = false;
+        _errorMessage = null;
+        setState(() {});
+        _updateOverlay();
       }
     }
   }
 
   void _onSuggestionSelected(PlacePrediction suggestion) async {
-    if (!_isMounted || _sessionToken == null) return;
-
-    _isSelecting = true; // Set flag
-
-    FocusScope.of(context).unfocus(); // Dismiss keyboard
-
-    if (_isMounted) {
-      setState(() {
-        _predictions = []; // Clear predictions immediately
-        _isLoading = true; // Show loading for place details fetch
-        _errorMessage = null;
-      });
+    debugPrint('PlacesAutocomplete: Suggestion selected - ${suggestion.description} (placeId: ${suggestion.placeId})');
+    
+    if (!_isMounted || _sessionToken == null) {
+      debugPrint('PlacesAutocomplete: Early return - mounted: $_isMounted, token: $_sessionToken');
+      return;
     }
 
+    _isSelecting = true;
+    _hideOverlay();
+    _focusNode.unfocus();
+
+    _predictions = [];
+    _isLoading = true;
+    _errorMessage = null;
+    setState(() {});
+
+    debugPrint('PlacesAutocomplete: Fetching place details...');
     final placeDetailsMap = await _placesService.getPlaceDetails(
       suggestion.placeId,
       _sessionToken!,
@@ -149,6 +322,7 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
 
     if (!_isMounted) {
       _isSelecting = false; // Reset flag if unmounted during await
+      debugPrint('PlacesAutocomplete: Widget unmounted during fetch');
       return;
     }
 
@@ -158,106 +332,94 @@ class _PlacesAutocompleteFieldState extends State<PlacesAutocompleteField> {
     if (placeDetailsMap != null) {
       placeDetails = PlaceDetails.fromJson(placeDetailsMap);
       textForController = placeDetails.formattedAddress;
+      debugPrint('PlacesAutocomplete: Got place details - city: ${placeDetails.city}, bestCityName: ${placeDetails.bestCityName}, lat: ${placeDetails.geometry.location.lat}, lng: ${placeDetails.geometry.location.lng}');
     } else {
       // Handle error or no details, perhaps keep the suggestion description
       // textForController is already suggestion.description
-      debugPrint("Failed to get place details for ${suggestion.description}");
+      debugPrint("PlacesAutocomplete: Failed to get place details for ${suggestion.description}");
     }
 
     widget.controller.text =
         textForController; // This might trigger _onTextChanged, but _isSelecting will prevent re-fetch
 
+    debugPrint('PlacesAutocomplete: Calling onPlaceSelected callback with placeDetails: ${placeDetails != null}');
     widget.onPlaceSelected(placeDetails);
 
-    if (_isMounted) {
-      setState(() {
-        // _predictions is already empty
-        _isLoading = false; // Done with loading details
-        _errorMessage = null;
-      });
-    }
-    _generateNewSessionToken(); // Generate a new token for the next session
-    _isSelecting = false; // Reset flag
+    _isLoading = false;
+    _errorMessage = null;
+    setState(() {});
+    
+    _generateNewSessionToken();
+    _isSelecting = false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: widget.controller,
-          onTap: () {
-            // Generate a session token if one doesn't exist or if the input is empty
-            // This helps if the user taps into an empty field.
-            if (_sessionToken == null || widget.controller.text.isEmpty) {
-              _generateNewSessionToken();
-            }
-          },
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            suffixIcon: _isLoading
-                ? const SizedBox(
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _focusNode,
+        onTap: () {
+          if (_sessionToken == null || widget.controller.text.isEmpty) {
+            _generateNewSessionToken();
+          }
+        },
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          prefixIcon: Icon(
+            Icons.search,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          suffixIcon: _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.0,
-                    ))
-                : widget.controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          if (!_isMounted) return;
-                          widget.controller
-                              .clear(); // This will trigger _onTextChanged
-                          // Explicitly call onPlaceSelected with null to signal clearing
-                          widget.onPlaceSelected(null);
-                          setState(() {
-                            _predictions = [];
-                            _isLoading = false;
-                            _errorMessage = null;
-                          });
-                          _generateNewSessionToken(); // New session as input is cleared
-                        },
-                      )
-                    : null,
+                    ),
+                  ),
+                )
+              : widget.controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.clear,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        if (!_isMounted) return;
+                        widget.controller.clear();
+                        widget.onPlaceSelected(null);
+                        _predictions = [];
+                        _isLoading = false;
+                        _errorMessage = null;
+                        setState(() {});
+                        _hideOverlay();
+                        _generateNewSessionToken();
+                      },
+                    )
+                  : null,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.borderMedium),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.borderMedium),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
-        if (_errorMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 6.0, left: 4.0),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, size: 14, color: Colors.redAccent),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(fontSize: 12, color: Colors.redAccent),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (_predictions.isNotEmpty)
-          Material(
-            // Wrap with Material for proper theming of ListTiles
-            elevation: 4.0, // Optional: add some shadow
-            child: SizedBox(
-              height: 200, // Adjust height as needed
-              child: ListView.builder(
-                itemCount: _predictions.length,
-                itemBuilder: (context, index) {
-                  final suggestion = _predictions[index];
-                  return ListTile(
-                    title: Text(suggestion.description),
-                    onTap: () => _onSuggestionSelected(suggestion),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

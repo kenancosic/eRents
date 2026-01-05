@@ -137,6 +137,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         widget.propertyId,
         _titleController.text.trim(),
         _descriptionController.text.trim(),
+        priorityId: _selectedPriority.index + 1, // Convert enum to 1-based ID
       );
 
       if (mounted) {

@@ -9,13 +9,32 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Seeds a minimal set of maintenance issues for demo/testing.
-    /// Depends on Properties baseline existing.
+    /// Seeds maintenance issues across multiple properties with varied priorities and statuses.
+    /// Creates issues reported by different tenants.
     /// </summary>
     public class MaintenanceIssuesSeeder : IDataSeeder
     {
         public int Order => 60; // after ReviewsSeeder
         public string Name => nameof(MaintenanceIssuesSeeder);
+
+        private static readonly (string Title, string Description, MaintenanceIssuePriorityEnum Priority)[] IssueTemplates = new[]
+        {
+            ("Propušta slavina u kuhinji", "Primijećeno curenje vode ispod kuhinjske slavine, potrebno zatezanje/brtva.", MaintenanceIssuePriorityEnum.Medium),
+            ("Neispravan radijator", "Radijator u dnevnoj sobi ne greje dovoljno, potrebno pregledati kotlovsku instalaciju.", MaintenanceIssuePriorityEnum.High),
+            ("Oštećen prozor", "Prozor u spavaćoj sobi pušta na jednom dijelu, potrebna zamjena brtvi.", MaintenanceIssuePriorityEnum.Low),
+            ("Potrebno čišćenje dimnjaka", "Prije početka zimskog perioda potrebno očistiti dimnjak.", MaintenanceIssuePriorityEnum.Medium),
+            ("Kvaka ne funkcioniše", "Kvaka na ulaznim vratima se ne zaključava pravilno.", MaintenanceIssuePriorityEnum.High),
+            ("Curenje u kupatilu", "Voda curi iz cijevi ispod umivaonika.", MaintenanceIssuePriorityEnum.High),
+            ("Neispravna svjetla", "Nekoliko sijalica ne radi u dnevnoj sobi.", MaintenanceIssuePriorityEnum.Low),
+            ("Klima uređaj ne hladi", "Klima uređaj ne hladi prostoriju, potreban servis.", MaintenanceIssuePriorityEnum.Medium),
+            ("Šteta na zidu", "Oštećenje na zidu u hodniku, potrebno farbanje.", MaintenanceIssuePriorityEnum.Low),
+            ("Blokiran odvod", "Odvod u kupatilu se ne ispražnjava kako treba.", MaintenanceIssuePriorityEnum.Medium),
+            ("Olabavljeni držač tuša", "Držač tuša u kupatilu je olabavljen.", MaintenanceIssuePriorityEnum.Low),
+            ("Neispravna peć", "Električna peć ne radi u kuhinji.", MaintenanceIssuePriorityEnum.High),
+            ("Vlaga u uglu", "Primijećena vlaga u uglu spavaće sobe.", MaintenanceIssuePriorityEnum.Medium),
+            ("Škripavi pod", "Pod u dnevnoj sobi škripi na nekoliko mjesta.", MaintenanceIssuePriorityEnum.Low),
+            ("Neispravna brava", "Brava na balkonu ne funkcioniše.", MaintenanceIssuePriorityEnum.Medium)
+        };
 
         public async Task SeedAsync(ERentsContext context, ILogger logger, bool forceSeed = false)
         {
@@ -33,80 +52,64 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.MaintenanceIssues.IgnoreQueryFilters().ExecuteDeleteAsync();
             }
 
-            var reporter = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "mobile");
-            var reporter2 = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "tenant_sarajevo");
-            var reporter3 = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "tenant_mostar");
+            var tenants = await context.Users.AsNoTracking()
+                .Where(u => u.UserType == UserTypeEnum.Tenant)
+                .Take(10)
+                .ToListAsync();
             
             var properties = await context.Properties.AsNoTracking().ToListAsync();
-            var property = properties.FirstOrDefault();
 
-            if (property == null || reporter == null)
+            if (properties.Count == 0 || tenants.Count == 0)
             {
-                logger?.LogWarning("[{Seeder}] Prerequisites missing (property or reporter).", Name);
+                logger?.LogWarning("[{Seeder}] Prerequisites missing (properties or tenants).", Name);
                 return;
             }
 
             var issues = new List<MaintenanceIssue>();
-            
-            // Issue from mobile user
-            var issue1 = new MaintenanceIssue
-            {
-                PropertyId = property.PropertyId,
-                Title = "Propušta slavina u kuhinji",
-                Description = "Primijećeno curenje vode ispod kuhinjske slavine, potrebno zatezanje/brtva.",
-                Priority = MaintenanceIssuePriorityEnum.Medium,
-                Status = MaintenanceIssueStatusEnum.Pending,
-                ReportedByUserId = reporter.UserId
-            };
-            issues.Add(issue1);
+            var statuses = new[] { MaintenanceIssueStatusEnum.Pending, MaintenanceIssueStatusEnum.InProgress, MaintenanceIssueStatusEnum.Completed };
+            int templateIndex = 0;
+            int tenantIndex = 0;
 
-            // Issues from BH users for different properties
-            if (properties.Count > 1 && reporter2 != null)
+            // Create 1-2 maintenance issues per property
+            foreach (var property in properties)
             {
-                var property2 = properties[1];
-                var issue2 = new MaintenanceIssue
+                int issueCount = Random.Shared.Next(1, 3);
+                
+                for (int i = 0; i < issueCount && templateIndex < IssueTemplates.Length; i++)
                 {
-                    PropertyId = property2.PropertyId,
-                    Title = "Neispravan radijator",
-                    Description = "Radijator u dnevnoj sobi ne greje dovoljno, potrebno pregledati kotlovsku instalaciju.",
-                    Priority = MaintenanceIssuePriorityEnum.High,
-                    Status = MaintenanceIssueStatusEnum.InProgress,
-                    ReportedByUserId = reporter2.UserId
-                };
-                issues.Add(issue2);
-            }
+                    var template = IssueTemplates[templateIndex % IssueTemplates.Length];
+                    var reporter = tenants[tenantIndex % tenants.Count];
+                    var status = statuses[Random.Shared.Next(statuses.Length)];
+                    
+                    var issue = new MaintenanceIssue
+                    {
+                        PropertyId = property.PropertyId,
+                        Title = template.Title,
+                        Description = template.Description,
+                        Priority = template.Priority,
+                        Status = status,
+                        ReportedByUserId = reporter.UserId,
+                        IsTenantComplaint = Random.Shared.Next(3) == 0 // 33% are tenant complaints
+                    };
 
-            if (properties.Count > 2 && reporter3 != null)
-            {
-                var property3 = properties[2];
-                var issue3 = new MaintenanceIssue
-                {
-                    PropertyId = property3.PropertyId,
-                    Title = "Oštećen prozor",
-                    Description = "Prozor u spavaćoj sobi pušta na jednom dijelu, potrebna zamjena brtvi ili cijelog prozora.",
-                    Priority = MaintenanceIssuePriorityEnum.Low,
-                    Status = MaintenanceIssueStatusEnum.Pending,
-                    ReportedByUserId = reporter3.UserId
-                };
-                issues.Add(issue3);
-            }
+                    // Add resolution data for completed issues
+                    if (status == MaintenanceIssueStatusEnum.Completed)
+                    {
+                        issue.ResolvedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 30));
+                        issue.Cost = Math.Round((decimal)(Random.Shared.Next(20, 200)), 2);
+                        issue.ResolutionNotes = "Problem riješen. Sve funkcioniše ispravno.";
+                    }
 
-            // Add a seasonal issue relevant to BH climate
-            var issue4 = new MaintenanceIssue
-            {
-                PropertyId = property.PropertyId,
-                Title = "Potrebno čišćenje dimnjaka",
-                Description = "Prije početka zimskog perioda potrebno očistiti dimnjak zbog sigurnosti korisnika.",
-                Priority = MaintenanceIssuePriorityEnum.Medium,
-                Status = MaintenanceIssueStatusEnum.Pending,
-                ReportedByUserId = reporter.UserId
-            };
-            issues.Add(issue4);
+                    issues.Add(issue);
+                    templateIndex++;
+                    tenantIndex++;
+                }
+            }
 
             await context.MaintenanceIssues.AddRangeAsync(issues);
             await context.SaveChangesAsync();
 
-            logger?.LogInformation("[{Seeder}] Done. Added {Count} maintenance issues.", Name, issues.Count);
+            logger?.LogInformation("[{Seeder}] Done. Added {Count} maintenance issues across {PropertyCount} properties.", Name, issues.Count, properties.Count);
         }
     }
 }

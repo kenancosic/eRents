@@ -32,6 +32,7 @@ class AppRoutes {
   static const String rents = '/rents';
   static const String propertyImages = '/property-images';
   static const String tenants = '/tenants';
+  static const String notifications = '/notifications';
 }
 
 // Shell layout with navigation
@@ -347,6 +348,16 @@ class AppRouter {
               _buildWrappedContent(context, 'Profile', _createProfileScreen),
         ),
 
+        // Notifications
+        GoRoute(
+          path: AppRoutes.notifications,
+          builder: (context, _) => _buildWrappedContent(
+            context,
+            'Notifications',
+            _createNotificationsScreen,
+          ),
+        ),
+
         // Rents
         GoRoute(
           path: AppRoutes.rents,
@@ -465,5 +476,14 @@ class AppRouter {
 
   Widget _createMaintenanceFormScreen(BuildContext context) {
     return const MaintenanceFormScreen();
+  }
+
+  // Notifications screen factory
+  Widget _createNotificationsScreen(BuildContext context) {
+    // Use the globally registered NotificationProvider and trigger initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NotificationProvider>().refresh();
+    });
+    return const NotificationsScreen();
   }
 }

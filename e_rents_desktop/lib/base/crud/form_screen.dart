@@ -109,10 +109,16 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
       });
 
       try {
-        // Update the item with form data if in edit mode and updateItem is provided
-        T updatedItem = _item;
-        if (widget.initialItem != null && widget.updateItem != null) {
+        // Get the latest form data: for new items call createNewItem(), for edits call updateItem()
+        T updatedItem;
+        if (widget.initialItem == null) {
+          // New item: capture current form state
+          updatedItem = widget.createNewItem();
+        } else if (widget.updateItem != null) {
+          // Edit mode: update existing item with form data
           updatedItem = widget.updateItem!(_item);
+        } else {
+          updatedItem = _item;
         }
 
         // Validate the item if a validator is provided

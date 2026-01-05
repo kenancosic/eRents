@@ -63,6 +63,28 @@ class ChatProvider extends BaseProvider {
     }
   }
 
+  /// Ensures a contact exists in the contacts list.
+  /// If not found, fetches the user by ID and adds them to contacts.
+  /// Returns true if contact is available, false otherwise.
+  Future<bool> ensureContact(int contactId) async {
+    // Check if already in contacts
+    if (_contacts.any((c) => c.id == contactId)) {
+      return true;
+    }
+
+    // Fetch user by ID and add to contacts
+    final user = await executeWithState<User>(
+      () => api.getAndDecode('/users/$contactId', User.fromJson, authenticated: true),
+    );
+
+    if (user != null) {
+      _contacts.insert(0, user); // Add to top of contacts list
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   Future<void> loadMessages(int contactId, {bool forceRefresh = false}) async {
     if (isLoading && !forceRefresh) return;
 

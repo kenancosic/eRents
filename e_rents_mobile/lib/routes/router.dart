@@ -28,6 +28,8 @@ import 'package:e_rents_mobile/features/auth/screens/password_reset_confirmation
 import 'package:e_rents_mobile/features/auth/screens/verification_screen.dart';
 import 'package:e_rents_mobile/features/auth/screens/create_password_screen.dart';
 import 'package:e_rents_mobile/features/faq/screens/faq_screen.dart';
+import 'package:e_rents_mobile/features/maintenance/screens/maintenance_issues_screen.dart';
+import 'package:e_rents_mobile/features/notifications/screens/notifications_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_bottom_navigation_bar.dart';
 
 // Navigator keys
@@ -176,6 +178,10 @@ class AppRouter {
                         name: 'profile_booking_history',
                         builder: (context, state) => const BookingHistoryScreen()),
                     GoRoute(
+                        path: 'maintenance',
+                        name: 'profile_maintenance',
+                        builder: (context, state) => const MaintenanceIssuesScreen()),
+                    GoRoute(
                         path: 'invoices',
                         name: 'profile_invoices',
                         builder: (context, state) => const InvoicesScreen()),
@@ -198,6 +204,13 @@ class AppRouter {
           final displayName = extras?['displayName'] as String?;
           return PublicUserScreen(userId: id, displayName: displayName);
         },
+      ),
+      
+      // Notifications
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
 
       // Top-level routes (not part of the bottom navigation bar)

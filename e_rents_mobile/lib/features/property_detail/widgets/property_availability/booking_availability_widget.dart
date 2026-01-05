@@ -25,7 +25,8 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   DateTime _startDate = DateTime.now().add(const Duration(days: 1));
   DateTime _endDate = DateTime.now().add(const Duration(days: 8));
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _loadError; // API/network errors
+  String? _validationError; // Date selection validation errors
   Map<String, dynamic>? _pricingDetails;
   int _months = 1; // For monthly leases
   // Normalized day -> availability flag (UTC date-only)
@@ -82,7 +83,8 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   Future<void> _loadAvailability() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _loadError = null;
+      _validationError = null;
     });
 
     try {
@@ -111,10 +113,12 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         _isLoading = false;
       });
 
+      // Auto-select the first available date range if current selection has conflicts
+      _autoSelectAvailableDates();
       _validateCurrentSelection();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load availability';
+        _loadError = 'Failed to load availability';
         _isLoading = false;
       });
     }
@@ -163,7 +167,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     // Validate only for daily rentals; monthly flow is request-based and validated server-side
     if (widget.property.rentalType != PropertyRentalType.daily) {
       setState(() {
-        _errorMessage = null;
+        _validationError = null;
       });
       return;
     }
@@ -187,12 +191,17 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
 
     setState(() {
       if (ok) {
-        _errorMessage = null;
+        _validationError = null;
       } else {
         final fb = firstBlocked!;
-        _errorMessage = 'Selected dates include an unavailable day on ${fb.day}/${fb.month}/${fb.year}. Please pick different dates.';
+        _validationError = 'Selected dates include an unavailable day on ${fb.day}/${fb.month}/${fb.year}. Please pick different dates.';
       }
     });
+
+    // Sync validation state with provider so footer can disable checkout button
+    try {
+      context.read<PropertyRentalProvider>().setAvailabilityConflict(!ok);
+    } catch (_) {}
   }
 
   Future<void> _selectDates() async {
@@ -203,12 +212,101 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     }
   }
 
+  /// Check if a specific date is available based on the availability map
+  bool _isDateAvailable(DateTime date) {
+    final normalized = DateTime.utc(date.year, date.month, date.day);
+    // If we have data for this date, use it; otherwise assume available
+    final available = _availabilityMap[normalized];
+    return available ?? true;
+  }
+
+  /// Auto-select the first available dates if current selection has conflicts
+  void _autoSelectAvailableDates() {
+    if (widget.property.rentalType == PropertyRentalType.daily) {
+      // For daily rentals, find first available range
+      final durationDays = _endDate.difference(_startDate).inDays;
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final availableRange = _findFirstAvailableDateRange(tomorrow, durationDays > 0 ? durationDays : 7);
+      
+      if (availableRange.start != _startDate || availableRange.end != _endDate) {
+        setState(() {
+          _startDate = availableRange.start;
+          _endDate = availableRange.end;
+        });
+        _calculatePricing();
+        // Update provider with new dates
+        try {
+          context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+        } catch (_) {}
+      }
+    } else {
+      // For monthly rentals, find first available start date
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final availableStart = _findFirstAvailableDate(tomorrow);
+      
+      if (availableStart != _startDate) {
+        setState(() {
+          _startDate = availableStart;
+          _endDate = availableStart.add(Duration(days: 30 * _months));
+        });
+        _calculatePricing();
+        // Update provider with new dates
+        try {
+          context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Find the first available date starting from a given date
+  DateTime _findFirstAvailableDate(DateTime from) {
+    DateTime current = from;
+    final maxDate = DateTime.now().add(const Duration(days: 365));
+    while (current.isBefore(maxDate)) {
+      if (_isDateAvailable(current)) {
+        return current;
+      }
+      current = current.add(const Duration(days: 1));
+    }
+    return from; // Fallback to original if no available date found
+  }
+
+  /// Find the first available date range of given duration starting from a date
+  DateTimeRange _findFirstAvailableDateRange(DateTime from, int durationDays) {
+    DateTime current = from;
+    final maxDate = DateTime.now().add(Duration(days: 365 - durationDays));
+    
+    while (current.isBefore(maxDate)) {
+      bool rangeAvailable = true;
+      for (int i = 0; i < durationDays; i++) {
+        if (!_isDateAvailable(current.add(Duration(days: i)))) {
+          rangeAvailable = false;
+          // Skip to the day after the unavailable date
+          current = current.add(Duration(days: i + 1));
+          break;
+        }
+      }
+      if (rangeAvailable) {
+        return DateTimeRange(
+          start: current,
+          end: current.add(Duration(days: durationDays)),
+        );
+      }
+    }
+    // Fallback to original range if no available range found
+    return DateTimeRange(start: from, end: from.add(Duration(days: durationDays)));
+  }
+
   Future<void> _selectDailyDateRange() async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      // Disable dates that are not available (already booked)
+      // SelectableDayForRangePredicate signature: (day, start, end) for range picker
+      selectableDayPredicate: (DateTime day, DateTime? start, DateTime? end) => _isDateAvailable(day),
+      helpText: 'Select check-in and check-out dates\nUnavailable dates are grayed out',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -218,6 +316,8 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
               surface: Colors.white,
               onSurface: Colors.black,
             ),
+            // Style for disabled dates (unavailable)
+            disabledColor: Colors.grey.shade300,
           ),
           child: child!,
         );
@@ -247,6 +347,9 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       initialDate: _startDate,
       firstDate: DateTime.now().add(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      // Disable dates that are not available (already occupied)
+      selectableDayPredicate: (DateTime date) => _isDateAvailable(date),
+      helpText: 'Select lease start date\nUnavailable dates are grayed out',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -256,6 +359,8 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
               surface: Colors.white,
               onSurface: Colors.black,
             ),
+            // Style for disabled dates (unavailable)
+            disabledColor: Colors.grey.shade300,
           ),
           child: child!,
         );
@@ -299,12 +404,13 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
       );
     }
 
-    if (_errorMessage != null) {
+    // Show load error with retry option (API/network failure)
+    if (_loadError != null) {
       return Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(_errorMessage!),
+            Text(_loadError!),
             const SizedBox(height: 16),
             CustomButton.compact(
               label: 'Retry',
@@ -470,6 +576,33 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
             ],
           ),
         ),
+
+        // Inline validation error (dates not available)
+        if (_validationError != null)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _validationError!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.red[700],
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
         // Additional info and minimum stay requirements
         const SizedBox(height: 12),

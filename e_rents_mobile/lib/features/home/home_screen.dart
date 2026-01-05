@@ -5,10 +5,13 @@ import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 import 'package:e_rents_mobile/core/widgets/location_widget.dart';
 import 'package:e_rents_mobile/core/widgets/section_header.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
+import 'package:e_rents_mobile/features/saved/saved_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -117,7 +120,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             layout: PropertyCardLayout.vertical,
                             property: card,
                             onTap: () {
-                              context.push('/property/${card.propertyId}');
+                              final booking = context.read<HomeProvider>().getBookingForProperty(card.propertyId);
+                              context.push(
+                                '/property/${card.propertyId}',
+                                extra: {
+                                  'viewContext': ViewContext.activeLease,
+                                  'bookingId': booking?.bookingId,
+                                },
+                              );
                             },
                           ),
                         ],
@@ -169,7 +179,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: PropertyCard.vertical(
                         property: card,
                         onTap: () {
-                          context.push('/property/${card.propertyId}');
+                          final booking = context.read<HomeProvider>().getBookingForProperty(card.propertyId);
+                          context.push(
+                            '/property/${card.propertyId}',
+                            extra: {
+                              'viewContext': ViewContext.upcomingBooking,
+                              'bookingId': booking?.bookingId,
+                            },
+                          );
                         },
                       ),
                     );
@@ -218,7 +235,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           layout: PropertyCardLayout.vertical,
                           property: card,
                           onTap: () {
-                            context.push('/property/${card.propertyId}');
+                            final booking = context.read<HomeProvider>().getBookingForProperty(card.propertyId);
+                            context.push(
+                              '/property/${card.propertyId}',
+                              extra: {
+                                'viewContext': ViewContext.upcomingBooking,
+                                'bookingId': booking?.bookingId,
+                              },
+                            );
                           },
                         ),
                         Positioned(
@@ -264,6 +288,8 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Ensure profile is loaded for avatar rendering across the app
       context.read<UserProfileProvider>().loadCurrentUser();
+      // Load saved property IDs so bookmark icons render correctly on property cards
+      context.read<SavedProvider>().loadSavedProperties();
       _initializeDashboard();
       // Start periodic refresh of pending monthly bookings so user sees acceptance updates
       _pendingRefreshTimer?.cancel();
@@ -277,7 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initializeDashboard() async {
     try {
-      await context.read<HomeProvider>().initializeDashboard();
+      final currentUserProvider = context.read<CurrentUserProvider>();
+      await context.read<HomeProvider>().initializeDashboard(currentUserProvider);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -378,7 +405,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: () async {
               // Refresh all dashboard data
               try {
-                await provider.initializeDashboard();
+                final currentUserProvider = context.read<CurrentUserProvider>();
+                await provider.refreshDashboard(currentUserProvider);
               } catch (error) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

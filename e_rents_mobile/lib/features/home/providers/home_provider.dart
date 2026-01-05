@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
+import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 
 /// Home dashboard provider for managing user data and property listings
 /// Refactored to use new standardized BaseProvider without caching
@@ -19,6 +22,9 @@ class HomeProvider extends BaseProvider {
   List<PropertyCardModel> _currentResidences = [];
   List<PropertyCardModel> _upcomingCards = [];
   List<PropertyCardModel> _pendingCards = [];
+  
+  // Store bookings for navigation context
+  List<Booking> _currentResidenceBookings = [];
 
   // Getters
   User? get currentUser => _currentUser;
@@ -49,10 +55,16 @@ class HomeProvider extends BaseProvider {
 
   // --- Public Methods ---
 
-  Future<void> initializeDashboard() async {
+  /// Initialize dashboard with current user from shared provider
+  /// 
+  /// Uses CurrentUserProvider to avoid duplicate /profile API calls.
+  /// Call this from HomeScreen with context.read<CurrentUserProvider>().
+  Future<void> initializeDashboard(CurrentUserProvider currentUserProvider) async {
     await executeWithState(() async {
-      // Load current user first to enable UserId-based scoping on bookings
-      await _loadCurrentUser();
+      // Get user from shared provider (uses caching)
+      final user = await currentUserProvider.ensureLoaded();
+      _currentUser = user;
+      
       await Future.wait([
         _loadCurrentResidences(),
         _loadUpcomingBookings(),
@@ -62,36 +74,38 @@ class HomeProvider extends BaseProvider {
     });
   }
 
-  Future<void> refreshDashboard() async {
-    // Simply reload all data without caching
-    await initializeDashboard();
+  /// Refresh dashboard data
+  Future<void> refreshDashboard(CurrentUserProvider currentUserProvider) async {
+    // Force refresh user data and reload dashboard
+    await currentUserProvider.refresh();
+    await initializeDashboard(currentUserProvider);
   }
 
-  Future<void> _loadCurrentUser() async {
-    final user = await executeWithState(() async {
-      return await api.getAndDecode('/profile', User.fromJson, authenticated:   true);
-    });
-    
-    if (user != null) {
-      _currentUser = user;
-    }
+  /// Update current user from external source (e.g., when CurrentUserProvider updates)
+  void updateCurrentUser(User? user) {
+    _currentUser = user;
+    notifyListeners();
   }
 
   Future<void> _loadUpcomingBookings() async {
-    // Use BookingSearch: Status=Upcoming & StartDateFrom = tomorrow
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    // Match booking history approach: load user bookings without status filter,
+    // then filter locally for 'Upcoming' or 'Active' status.
+    // This ensures upcoming bookings on Home match those in Booking History.
     final userId = _currentUser?.userId;
+    if (userId == null) {
+      _upcomingBookings = [];
+      _upcomingCards = [];
+      return;
+    }
+    
     final filters = {
-      'UserId': userId?.toString(),
-      'Status': 'Upcoming',
-      'StartDateFrom': _formatDate(today.add(const Duration(days: 1))),
-      'PageSize': '10',
+      'UserId': userId.toString(),
+      'PageSize': '20',
       'SortBy': 'startdate',
       'SortDirection': 'asc',
     };
     final queryString = api.buildQueryString(filters);
-    final upcoming = await executeWithState(() async {
+    final allBookings = await executeWithState(() async {
       return await api.getPagedAndDecode(
         '/bookings$queryString',
         Booking.fromJson,
@@ -99,8 +113,22 @@ class HomeProvider extends BaseProvider {
       );
     });
     
-    if (upcoming != null) {
-      _upcomingBookings = upcoming.items;
+    if (allBookings != null) {
+      // Filter locally for upcoming bookings (status = Upcoming or Active)
+      // This matches the booking history screen's upcomingBookings getter
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      
+      _upcomingBookings = allBookings.items.where((booking) {
+        // Include Upcoming or Active status bookings that haven't ended yet
+        final isUpcoming = booking.status == BookingStatus.upcoming;
+        final isActive = booking.status == BookingStatus.active;
+        final endDate = booking.endDate;
+        final notEnded = endDate == null || endDate.isAfter(today) || endDate.isAtSameMomentAs(today);
+        return (isUpcoming || isActive) && notEnded;
+      }).toList();
+      
+      debugPrint('HomeProvider: Found ${_upcomingBookings.length} upcoming bookings from ${allBookings.items.length} total');
       _upcomingCards = await _enrichBookingsToCards(_upcomingBookings);
     }
   }
@@ -129,6 +157,7 @@ class HomeProvider extends BaseProvider {
     });
 
     if (current != null) {
+      _currentResidenceBookings = current.items;
       _currentResidences = await _enrichBookingsToCards(current.items);
     }
   }
@@ -262,6 +291,25 @@ class HomeProvider extends BaseProvider {
 
     if (pagedResult != null) {
       _featuredCards = pagedResult.items;
+    }
+  }
+
+  /// Get booking for a property from current residences
+  Booking? getBookingForProperty(int propertyId) {
+    try {
+      return _currentResidenceBookings.firstWhere((b) => b.propertyId == propertyId);
+    } catch (_) {
+      // Check upcoming bookings as fallback
+      try {
+        return _upcomingBookings.firstWhere((b) => b.propertyId == propertyId);
+      } catch (_) {
+        // Check pending bookings
+        try {
+          return _pendingBookings.firstWhere((b) => b.propertyId == propertyId);
+        } catch (_) {
+          return null;
+        }
+      }
     }
   }
 

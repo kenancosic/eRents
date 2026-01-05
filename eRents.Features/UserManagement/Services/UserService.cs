@@ -6,21 +6,26 @@ using eRents.Features.UserManagement.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.AuthManagement.Interfaces;
+using eRents.Shared.Services;
+using eRents.Shared.DTOs;
 
 namespace eRents.Features.UserManagement.Services
 {
     public sealed class UserService : BaseCrudService<User, UserRequest, UserResponse, UserSearch>, IUserService
     {
         private readonly IPasswordService _passwordService;
+        private readonly IEmailService _emailService;
         
         public UserService(
             DbContext context,
             IMapper mapper,
             ILogger<UserService> logger,
-            IPasswordService passwordService)
+            IPasswordService passwordService,
+            IEmailService emailService)
             : base(context, mapper, logger)
         {
             _passwordService = passwordService;
+            _emailService = emailService;
         }
         
         public override async Task<UserResponse?> GetByIdAsync(int id)
@@ -39,6 +44,49 @@ namespace eRents.Features.UserManagement.Services
                 .CountAsync(usp => usp.UserId == id);
             
             return response;
+        }
+        
+        public override async Task<UserResponse> UpdateAsync(int id, UserRequest request)
+        {
+            var existingUser = await Context.Set<User>().FindAsync(id);
+            if (existingUser == null)
+            {
+                throw new KeyNotFoundException($"User with id {id} not found");
+            }
+
+            // Check if email is changing
+            bool emailChanged = !string.Equals(existingUser.Email, request.Email, StringComparison.OrdinalIgnoreCase);
+
+            if (emailChanged)
+            {
+                // Check if new email is already taken
+                var emailExists = await Context.Set<User>().AnyAsync(u => u.Email == request.Email && u.UserId != id);
+                if (emailExists)
+                {
+                    throw new InvalidOperationException("Email is already registered by another user.");
+                }
+
+                // Send email notification via RabbitMQ
+                await _emailService.SendEmailNotificationAsync(new EmailMessage
+                {
+                    To = request.Email,
+                    Subject = "Security Alert: Email Address Changed",
+                    Body = $@"
+<h2>Your email address has been changed</h2>
+<p>We received a request to change the email address for your eRents account.</p>
+<p>If you did not request this change, please contact support immediately.</p>
+<br>
+<p>Note: You will need to log in again with your new email address.</p>",
+                    IsHtml = true
+                });
+
+                // Invalidate current session by clearing refresh token
+                // Note: Refresh token logic is not implemented in backend yet, so client-side logout is sufficient
+                // existingUser.RefreshToken = null;
+                // existingUser.RefreshTokenExpiryTime = null;
+            }
+
+            return await base.UpdateAsync(id, request);
         }
         
         public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword)

@@ -41,11 +41,15 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
 
-            // Find a couple of active monthly bookings for properties owned by 'desktop'
+            // Find a couple of active monthly SUBSCRIPTION bookings for properties owned by 'desktop'
+            // Extension requests are only valid for monthly subscription-based bookings
             var bookings = await context.Bookings
                 .Include(b => b.Property)
                 .AsNoTracking()
-                .Where(b => b.Property.OwnerId == owner.UserId && b.Status == BookingStatusEnum.Active)
+                .Where(b => b.Property.OwnerId == owner.UserId 
+                    && b.Status == BookingStatusEnum.Active
+                    && b.IsSubscription == true
+                    && b.Property.RentingType == RentalType.Monthly)
                 .OrderBy(b => b.BookingId)
                 .Take(2)
                 .ToListAsync();

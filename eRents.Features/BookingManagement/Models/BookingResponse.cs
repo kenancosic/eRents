@@ -23,6 +23,12 @@ public class BookingResponse
     public string? PaymentStatus { get; set; }
     public string? PaymentReference { get; set; }
 
+    /// <summary>
+    /// Indicates if this booking is a subscription-based monthly rental.
+    /// Only subscription bookings can be extended.
+    /// </summary>
+    public bool IsSubscription { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }

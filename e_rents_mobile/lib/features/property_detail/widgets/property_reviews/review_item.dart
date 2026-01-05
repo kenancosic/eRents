@@ -16,8 +16,8 @@ class ReviewItem extends StatelessWidget {
     final rating = review.starRating ?? 0.0;
     final comment = review.description ?? 'No comment provided';
     final date = '${review.dateCreated.day}/${review.dateCreated.month}/${review.dateCreated.year}';
-    // Generate a user name from review ID (placeholder)
-    final userName = 'User ${review.reviewId}';
+    // Use actual reviewer name from backend
+    final userName = review.reviewerName;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

@@ -100,28 +100,35 @@ class _ChatScreenState extends State<ChatScreen> {
         .toList();
   }
 
-  void _handleAutoSelection(ChatProvider chatProvider) {
+  Future<void> _handleAutoSelection(ChatProvider chatProvider) async {
     if (widget.contactId != null) {
       log.info("ChatScreen: contactId from widget is not null: ${widget.contactId}");
       try {
         final contactIdInt = int.tryParse(widget.contactId!);
         log.info("ChatScreen: Parsed contactId: $contactIdInt");
         if (contactIdInt != null) {
+          _hasAutoSelected = true; // Mark early to prevent duplicate calls
+          
+          // Check if contact exists, if not fetch and add them
           final contactExists = chatProvider.contacts.any((c) => c.id == contactIdInt);
-          if (contactExists) {
-            log.info("ChatScreen: Contact found, auto-selecting...");
-            chatProvider.selectContact(contactIdInt);
-            _hasAutoSelected = true;
-          } else {
-            log.warning("ChatScreen: Contact with ID $contactIdInt not found in contacts list.");
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Contact not found. Please select a contact from the list."),
-                ),
-              );
+          if (!contactExists) {
+            log.info("ChatScreen: Contact not in list, fetching user $contactIdInt...");
+            final success = await chatProvider.ensureContact(contactIdInt);
+            if (!success) {
+              log.warning("ChatScreen: Failed to fetch contact with ID $contactIdInt");
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Contact not found. Please select a contact from the list."),
+                  ),
+                );
+              }
+              return;
             }
           }
+          
+          log.info("ChatScreen: Contact available, auto-selecting...");
+          chatProvider.selectContact(contactIdInt);
         }
       } catch (e, stackTrace) {
         log.severe("ChatScreen: Error parsing contactId", e, stackTrace);
@@ -133,8 +140,13 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Consumer<ChatProvider>(
       builder: (context, chatProvider, child) {
+        // Schedule auto-selection after build to avoid setState during build
         if (!_hasAutoSelected && chatProvider.contacts.isNotEmpty) {
-          _handleAutoSelection(chatProvider);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !_hasAutoSelected) {
+              _handleAutoSelection(chatProvider);
+            }
+          });
         }
 
         final contacts = _getFilteredContacts(chatProvider);
@@ -185,6 +197,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 unreadCount: unreadCount,
                                 isSelected: contact.id == selectedContact?.id,
                                 onTap: () => _selectContact(context, contact.id),
+                                profileImageId: contact.profileImageId,
                               );
                             },
                           ),

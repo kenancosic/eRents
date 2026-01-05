@@ -34,10 +34,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.Properties.IgnoreQueryFilters().ExecuteDeleteAsync();
             }
 
-            var owner = await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "desktop");
-            if (owner == null)
+            // Get all owners for property distribution
+            var owners = await context.Users.AsNoTracking()
+                .Where(u => u.UserType == UserTypeEnum.Owner)
+                .ToListAsync();
+            
+            if (owners.Count == 0)
             {
-                logger?.LogWarning("[{Seeder}] Owner user 'desktop' not found. Ensure UsersSeeder runs before this seeder.", Name);
+                logger?.LogWarning("[{Seeder}] No owner users found. Ensure UsersSeeder runs before this seeder.", Name);
                 return;
             }
 
@@ -48,17 +52,102 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             }
             // Do not attach amenities or assign them directly to avoid EF trying to insert existing rows
 
-            var baseline = new List<Property>
+            // Create properties distributed across all owners
+            var baseline = new List<Property>();
+            
+            // Desktop owner properties
+            var desktop = owners.FirstOrDefault(o => o.Username == "desktop") ?? owners[0];
+            baseline.AddRange(new[]
             {
-                CreateProperty(owner, amenities, "Stan na Grbavici", "Sarajevo", PropertyStatusEnum.Occupied),
-                CreateProperty(owner, amenities, "Apartman Stari Most", "Mostar", PropertyStatusEnum.Available),
-                CreateProperty(owner, amenities, "Luxuzni stan Centar", "Sarajevo", PropertyStatusEnum.Available),
-                CreateProperty(owner, amenities, "Porodična kuća", "Zenica", PropertyStatusEnum.Occupied),
-                CreateProperty(owner, amenities, "Studentski dom", "Tuzla", PropertyStatusEnum.Available),
-                CreateProperty(owner, amenities, "Apartman u Starom Gradu", "Banja Luka", PropertyStatusEnum.UnderMaintenance),
-                CreateProperty(owner, amenities, "Vikendica na rijeci", "Bihać", PropertyStatusEnum.Available),
-                CreateProperty(owner, amenities, "Vila na rijeci", "Brčko", PropertyStatusEnum.Available)
-            };
+                CreateProperty(desktop, amenities, "Stan na Grbavici", "Sarajevo", PropertyStatusEnum.Occupied, RentalType.Monthly),
+                CreateProperty(desktop, amenities, "Luxuzni stan Centar", "Sarajevo", PropertyStatusEnum.Available, RentalType.Monthly),
+                CreateProperty(desktop, amenities, "Apartman Stari Most", "Mostar", PropertyStatusEnum.Available, RentalType.Daily),
+                CreateProperty(desktop, amenities, "Vila Bašćaršija", "Sarajevo", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa, requiresApproval: true)
+            });
+            
+            // Other owners - distribute properties
+            var ownerMostar = owners.FirstOrDefault(o => o.Username == "owner_mostar");
+            if (ownerMostar != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerMostar, amenities, "Apartman uz Neretvu", "Mostar", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerMostar, amenities, "Stari Grad Studio", "Mostar", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Studio),
+                    CreateProperty(ownerMostar, amenities, "Porodična kuća Blagaj", "Mostar", PropertyStatusEnum.Occupied, RentalType.Monthly, PropertyTypeEnum.House)
+                });
+            }
+            
+            var ownerZenica = owners.FirstOrDefault(o => o.Username == "owner_zenica");
+            if (ownerZenica != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerZenica, amenities, "Porodična kuća Centar", "Zenica", PropertyStatusEnum.Occupied, RentalType.Monthly, PropertyTypeEnum.House),
+                    CreateProperty(ownerZenica, amenities, "Stan uz park", "Zenica", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                });
+            }
+            
+            var ownerTuzla = owners.FirstOrDefault(o => o.Username == "owner_tuzla");
+            if (ownerTuzla != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerTuzla, amenities, "Studentski dom", "Tuzla", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerTuzla, amenities, "Apartman Slana Banja", "Tuzla", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerTuzla, amenities, "Studio u centru", "Tuzla", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Studio)
+                });
+            }
+            
+            var ownerBanjaLuka = owners.FirstOrDefault(o => o.Username == "owner_banjaluka");
+            if (ownerBanjaLuka != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerBanjaLuka, amenities, "Apartman u Starom Gradu", "Banja Luka", PropertyStatusEnum.UnderMaintenance, RentalType.Monthly, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerBanjaLuka, amenities, "Vila na Vrbasu", "Banja Luka", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerBanjaLuka, amenities, "Soba za studente", "Banja Luka", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Room)
+                });
+            }
+            
+            var ownerBihac = owners.FirstOrDefault(o => o.Username == "owner_bihac");
+            if (ownerBihac != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerBihac, amenities, "Vikendica na Uni", "Bihać", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House, requiresApproval: true),
+                    CreateProperty(ownerBihac, amenities, "Apartman Centar", "Bihać", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                });
+            }
+            
+            var ownerBrcko = owners.FirstOrDefault(o => o.Username == "owner_brcko");
+            if (ownerBrcko != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerBrcko, amenities, "Vila na rijeci Sava", "Brčko", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerBrcko, amenities, "Stan u centru", "Brčko", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                });
+            }
+            
+            var ownerTravnik = owners.FirstOrDefault(o => o.Username == "owner_travnik");
+            if (ownerTravnik != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerTravnik, amenities, "Historijska kuća", "Travnik", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House),
+                    CreateProperty(ownerTravnik, amenities, "Studio Stari Grad", "Travnik", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Studio)
+                });
+            }
+            
+            var ownerTrebinje = owners.FirstOrDefault(o => o.Username == "owner_trebinje");
+            if (ownerTrebinje != null)
+            {
+                baseline.AddRange(new[]
+                {
+                    CreateProperty(ownerTrebinje, amenities, "Vila uz Trebišnjicu", "Trebinje", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerTrebinje, amenities, "Apartman Stari Grad", "Trebinje", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                });
+            }
 
             await context.Properties.AddRangeAsync(baseline);
             await context.SaveChangesAsync();
@@ -85,15 +174,27 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             logger?.LogInformation("[{Seeder}] Done. Added {Count} properties.", Name, baseline.Count);
         }
 
-        private static Property CreateProperty(User owner, List<Amenity> allAmenities, string name, string city, PropertyStatusEnum status)
+        private static Property CreateProperty(
+            User owner, 
+            List<Amenity> allAmenities, 
+            string name, 
+            string city, 
+            PropertyStatusEnum status,
+            RentalType? rentingTypeOverride = null,
+            PropertyTypeEnum? propertyTypeOverride = null,
+            bool requiresApproval = false)
         {
-            // Determine property type based on name keywords
-            PropertyTypeEnum propertyType = name.Contains("kuća") || name.Contains("dom") ? PropertyTypeEnum.House : 
-                                          name.Contains("vikendica") ? PropertyTypeEnum.House : 
-                                          PropertyTypeEnum.Apartment;
+            // Determine property type: use override or infer from name
+            PropertyTypeEnum propertyType = propertyTypeOverride ?? (
+                name.Contains("kuća") || name.Contains("dom") ? PropertyTypeEnum.House : 
+                name.Contains("vikendica") || name.Contains("Vikendica") ? PropertyTypeEnum.House : 
+                name.Contains("Vila") || name.Contains("vila") ? PropertyTypeEnum.Villa :
+                name.Contains("Studio") || name.Contains("studio") ? PropertyTypeEnum.Studio :
+                name.Contains("Soba") || name.Contains("soba") ? PropertyTypeEnum.Room :
+                PropertyTypeEnum.Apartment);
                                           
-            // Determine renting type based on property type
-            RentalType rentingType = propertyType == PropertyTypeEnum.House ? RentalType.Daily : RentalType.Monthly;
+            // Determine renting type: use override or infer from property type
+            RentalType rentingType = rentingTypeOverride ?? (propertyType == PropertyTypeEnum.House ? RentalType.Daily : RentalType.Monthly);
             
             // Set rooms and area based on property type
             int rooms = propertyType switch
@@ -154,6 +255,16 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 ("Brčko", PropertyTypeEnum.Studio) => 280m,
                 ("Brčko", PropertyTypeEnum.Villa) => 950m,
                 ("Brčko", PropertyTypeEnum.Room) => 210m,
+                ("Travnik", PropertyTypeEnum.House) => 700m,
+                ("Travnik", PropertyTypeEnum.Apartment) => 420m,
+                ("Travnik", PropertyTypeEnum.Studio) => 260m,
+                ("Travnik", PropertyTypeEnum.Villa) => 850m,
+                ("Travnik", PropertyTypeEnum.Room) => 175m,
+                ("Trebinje", PropertyTypeEnum.House) => 680m,
+                ("Trebinje", PropertyTypeEnum.Apartment) => 400m,
+                ("Trebinje", PropertyTypeEnum.Studio) => 240m,
+                ("Trebinje", PropertyTypeEnum.Villa) => 820m,
+                ("Trebinje", PropertyTypeEnum.Room) => 165m,
                 _ => 650m
             };
             
@@ -199,6 +310,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 Status = status,
                 PropertyType = propertyType,
                 RentingType = rentingType,
+                RequiresApproval = requiresApproval,
                 UnavailableFrom = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today) : null,
                 UnavailableTo = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today.AddDays(30)) : null
             };
@@ -208,9 +320,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
         private static string GetStateForCity(string city) => city switch
         {
-            "Sarajevo" or "Mostar" or "Tuzla" or "Zenica" or "Brčko" => "Federation of Bosnia and Herzegovina",
-            "Banja Luka"  => "Republika Srpska",
-            "Bihać" => "Brčko Distrikt",
+            "Sarajevo" or "Mostar" or "Tuzla" or "Zenica" or "Bihać" or "Travnik" => "Federation of Bosnia and Herzegovina",
+            "Banja Luka" or "Trebinje" => "Republika Srpska",
+            "Brčko" => "Brčko District",
             _ => "Federation of Bosnia and Herzegovina"
         };
 
@@ -223,6 +335,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Zenica" => "72000",
             "Bihać" => "77000",
             "Brčko" => "76000",
+            "Travnik" => "72270",
+            "Trebinje" => "89101",
             _ => "71000"
         };
         
@@ -235,6 +349,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Banja Luka" => "Patriotske lige 25",
             "Bihać" => "Mehmed paše Sokolovića 8",
             "Brčko" => "Trg slobode 12",
+            "Travnik" => "Bosanska 15",
+            "Trebinje" => "Jovana Dučića 20",
             _ => "Zmaja od Bosne 10"
         };
     }

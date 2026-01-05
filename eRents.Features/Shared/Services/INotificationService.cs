@@ -23,6 +23,7 @@ namespace eRents.Features.Shared.Services
         #region Specialized Notification Methods
 
         Task CreateBookingNotificationAsync(int userId, int bookingId, string title, string message);
+        Task CreatePaymentNotificationAsync(int userId, int paymentId, string title, string message);
         Task CreateMaintenanceNotificationAsync(int userId, int maintenanceIssueId, string title, string message);
         Task CreateReviewNotificationAsync(int userId, int reviewId, string title, string message);
         Task CreatePropertyNotificationAsync(int userId, int propertyId, string title, string message);

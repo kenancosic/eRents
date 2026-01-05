@@ -173,6 +173,15 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
                 });
               }
 
+              // Check if user has an active booking for this property (to hide booking button)
+              if (currentUserId != null && widget.viewContext == ViewContext.browsing) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (context.mounted) {
+                    context.read<PropertyRentalProvider>().checkUserActiveBooking(property.propertyId, currentUserId);
+                  }
+                });
+              }
+
               // Ensure amenities are fetched for THIS property (not from a previous screen)
               if (property.amenityIds.isNotEmpty) {
                 final currentIds = provider.amenities.map((a) => a.amenityId).toSet();
@@ -222,8 +231,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
               final userProvider = context.read<UserProfileProvider>();
               final currentUserId = userProvider.currentUser?.userId;
               final bool isOwner = currentUserId != null && currentUserId == property.ownerId;
+              
               if (widget.viewContext == ViewContext.browsing) {
-                if (isOwner) {
+                // Don't show booking button if:
+                // 1. User is the owner of this property
+                // 2. User is already residing in this property (has active booking)
+                if (isOwner || provider.hasActiveBookingForProperty) {
                   return const SizedBox.shrink();
                 }
                 return PropertyPriceFooter(

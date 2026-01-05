@@ -375,101 +375,179 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
           padding: const EdgeInsets.all(16.0),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              // Calculate flexible widths based on available space
-              final w = constraints.maxWidth;
-              final wProperty = w * 0.22; // Property
-              final wRequestedBy = w * 0.12; // Requested By
-              final wOldEnd = w * 0.12; // Old End
-              final wNewEnd = w * 0.18; // New End / +Months
-              final wNewMonthly = w * 0.12; // New Monthly
-              final wRequestedAt = w * 0.16; // Requested At
-              final wActions = w * 0.08; // Actions (wraps if tight)
-
-              Widget header(String text, double width) => SizedBox(
-                    width: width,
-                    child: Text(text, overflow: TextOverflow.ellipsis),
-                  );
-              Widget cell(Widget child, double width) => SizedBox(
-                    width: width,
-                    child: child,
-                  );
-
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 24,
+              // Adjust column widths based on available screen width
+              final isWideScreen = constraints.maxWidth > 1200;
+              final isMediumScreen = constraints.maxWidth > 800;
+              
+              return SizedBox(
+                width: constraints.maxWidth,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: DataTable(
+                  columnSpacing: isWideScreen ? 24 : 16,
+                  horizontalMargin: isWideScreen ? 16 : 8,
+                  headingRowHeight: 56,
+                  dataRowMinHeight: 52,
+                  dataRowMaxHeight: 72,
                   columns: [
-                    DataColumn(label: header('Property', wProperty)),
-                    DataColumn(label: header('Requested By', wRequestedBy)),
-                    DataColumn(label: header('Old End', wOldEnd)),
-                    DataColumn(label: header('New End / +Months', wNewEnd)),
-                    DataColumn(label: header('New Monthly', wNewMonthly)),
-                    DataColumn(label: header('Requested At', wRequestedAt)),
-                    DataColumn(label: header('Actions', wActions)),
+                    DataColumn(
+                      label: const Text('Property'),
+                      tooltip: 'Property name',
+                    ),
+                    DataColumn(
+                      label: const Text('Requested By'),
+                      tooltip: 'Tenant who requested the extension',
+                    ),
+                    DataColumn(
+                      label: const Text('Current End'),
+                      tooltip: 'Current lease end date',
+                    ),
+                    DataColumn(
+                      label: const Text('Extension'),
+                      tooltip: 'New end date or extension period',
+                    ),
+                    if (isWideScreen) 
+                      DataColumn(
+                        label: const Text('New Monthly'),
+                        tooltip: 'Updated monthly rent amount',
+                      ),
+                    DataColumn(
+                      label: const Text('Requested'),
+                      tooltip: 'Date when extension was requested',
+                    ),
+                    DataColumn(
+                      label: const Text('Actions'),
+                      tooltip: 'Approve or reject the extension',
+                    ),
                   ],
                   rows: items.map((r) {
                     final newEndOrMonths = r.newEndDate != null
                         ? AppDateUtils.formatShort(r.newEndDate)
-                        : (r.extendByMonths != null ? '+${r.extendByMonths} mo' : '—');
+                        : (r.extendByMonths != null ? '+${r.extendByMonths} months' : '—');
                     return DataRow(
                       cells: [
-                        DataCell(cell(Text(r.propertyName), wProperty)),
-                        DataCell(cell(Text('#${r.requestedByUserId}'), wRequestedBy)),
-                        DataCell(cell(Text(AppDateUtils.formatShort(r.oldEndDate)), wOldEnd)),
-                        DataCell(cell(Text(newEndOrMonths), wNewEnd)),
-                        DataCell(cell(Text(r.newMonthlyAmount != null ? r.newMonthlyAmount!.toStringAsFixed(2) : '—'), wNewMonthly)),
-                        DataCell(cell(Text(AppDateUtils.formatShortWithTime(r.createdAt)), wRequestedAt)),
                         DataCell(
-                          cell(
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: isWideScreen ? 200 : 150,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.check),
-                                  label: const Text('Approve'),
-                                  onPressed: () async {
-                                    final ok = await ctx.read<RentsProvider>().approveExtension(r.requestId);
-                                    if (ok && mounted) setState(() {});
-                                  },
+                                Text(
+                                  r.propertyName,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
+                                  style: const TextStyle(fontWeight: FontWeight.w500),
                                 ),
-                                OutlinedButton.icon(
-                                  icon: const Icon(Icons.close),
-                                  label: const Text('Reject'),
-                                  onPressed: () async {
-                                    String? reason;
-                                    final res = await showDialog<String?>(
-                                      context: ctx,
-                                      builder: (dctx) {
-                                        final ctrl = TextEditingController();
-                                        return AlertDialog(
-                                          title: const Text('Reject Extension'),
-                                          content: TextField(
-                                            controller: ctrl,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Reason (optional)'
-                                            ),
-                                          ),
-                                          actions: [
-                                            TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
-                                            TextButton(onPressed: () => Navigator.pop(dctx, ctrl.text.trim()), child: const Text('Reject')),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                    reason = res;
-                                    final ok = await ctx.read<RentsProvider>().rejectExtension(r.requestId, reason: reason);
-                                    if (ok && mounted) setState(() {});
-                                  },
-                                ),
+                                if (!isMediumScreen && r.newMonthlyAmount != null)
+                                  Text(
+                                    '\$${r.newMonthlyAmount!.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
                               ],
                             ),
-                            wActions,
                           ),
+                        ),
+                        DataCell(
+                          Tooltip(
+                            message: 'User ID: ${r.requestedByUserId}',
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: isMediumScreen ? 180 : 120,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    r.requesterDisplayName,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  if (!isWideScreen)
+                                    Text(
+                                      AppDateUtils.formatShort(r.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            AppDateUtils.formatShort(r.oldEndDate),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        DataCell(
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              newEndOrMonths,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (isWideScreen)
+                          DataCell(
+                            Text(
+                              r.newMonthlyAmount != null 
+                                  ? '\$${r.newMonthlyAmount!.toStringAsFixed(2)}' 
+                                  : '—',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        if (!isWideScreen)
+                          DataCell(
+                            Tooltip(
+                              message: AppDateUtils.formatShortWithTime(r.createdAt),
+                              child: Text(
+                                AppDateUtils.formatShort(r.createdAt),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          )
+                        else
+                          DataCell(
+                            Tooltip(
+                              message: AppDateUtils.formatShortWithTime(r.createdAt),
+                              child: Text(
+                                AppDateUtils.formatShort(r.createdAt),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        DataCell(
+                          _buildExtensionActions(ctx, r, isMediumScreen),
                         ),
                       ],
                     );
                   }).toList(),
+                    ),
+                  ),
                 ),
               );
             },
@@ -477,6 +555,225 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
         );
       },
     );
+  }
+
+  /// Build action buttons for extension requests with responsive layout
+  Widget _buildExtensionActions(
+    BuildContext context,
+    LeaseExtensionRequest request,
+    bool isMediumScreen,
+  ) {
+    final newEndOrMonths = request.newEndDate != null
+        ? AppDateUtils.formatShort(request.newEndDate)
+        : (request.extendByMonths != null ? '+${request.extendByMonths} months' : '—');
+
+    if (isMediumScreen) {
+      // Full layout for medium and larger screens
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton.icon(
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('Approve'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (dctx) => AlertDialog(
+                  title: const Text('Approve Extension'),
+                  content: Text('Approve lease extension for ${request.requesterDisplayName}?\n\n'
+                      'Property: ${request.propertyName}\n'
+                      'New end date: $newEndOrMonths'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('Cancel')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(dctx, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      child: const Text('Approve'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                final provider = context.read<RentsProvider>();
+                final ok = await provider.approveExtension(request.requestId);
+                if (mounted) {
+                  if (ok) {
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Extension approved successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    // Show the actual error message from the provider
+                    final errorMsg = provider.error ?? 'Failed to approve extension';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(errorMsg),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.close, size: 18),
+            label: const Text('Reject'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: () async {
+              final ctrl = TextEditingController();
+              final reason = await showDialog<String?>(
+                context: context,
+                builder: (dctx) {
+                  return AlertDialog(
+                    title: const Text('Reject Extension'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Reject lease extension for ${request.requesterDisplayName}?'),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: ctrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Reason (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(dctx, ctrl.text.trim()),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        child: const Text('Reject'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (reason != null) {
+                final ok = await context.read<RentsProvider>().rejectExtension(request.requestId, reason: reason.isEmpty ? null : reason);
+                if (ok && mounted) setState(() {});
+              }
+            },
+          ),
+        ],
+      );
+    } else {
+      // Compact layout for small screens
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.check, color: Colors.green, size: 20),
+            tooltip: 'Approve',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (dctx) => AlertDialog(
+                  title: const Text('Approve Extension'),
+                  content: Text('Approve lease extension for ${request.requesterDisplayName}?\n\n'
+                      'Property: ${request.propertyName}\n'
+                      'New end date: $newEndOrMonths'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('Cancel')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(dctx, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      child: const Text('Approve'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                final provider = context.read<RentsProvider>();
+                final ok = await provider.approveExtension(request.requestId);
+                if (mounted) {
+                  if (ok) {
+                    setState(() {});
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Extension approved successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    final errorMsg = provider.error ?? 'Failed to approve extension';
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(errorMsg),
+                        backgroundColor: Colors.red,
+                        duration: const Duration(seconds: 5),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.red, size: 20),
+            tooltip: 'Reject',
+            onPressed: () async {
+              final ctrl = TextEditingController();
+              final reason = await showDialog<String?>(
+                context: context,
+                builder: (dctx) {
+                  return AlertDialog(
+                    title: const Text('Reject Extension'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Reject lease extension for ${request.requesterDisplayName}?'),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: ctrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Reason (optional)',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(dctx, null), child: const Text('Cancel')),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(dctx, ctrl.text.trim()),
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        child: const Text('Reject'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (reason != null) {
+                final ok = await context.read<RentsProvider>().rejectExtension(request.requestId, reason: reason.isEmpty ? null : reason);
+                if (ok && mounted) setState(() {});
+              }
+            },
+          ),
+        ],
+      );
+    }
   }
 
   // Date formatting is provided by AppDateUtils directly in the table rendering.
@@ -558,52 +855,30 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
   }
 
 
+  /// Build action buttons for daily rental bookings.
+  /// Daily rentals can only be cancelled/rejected - approval is not applicable
+  /// since daily bookings are instant (pay-and-book model).
   Widget _buildBookingActions(
     BuildContext context,
     Booking booking,
     RentsProvider provider,
     ListController listController,
   ) {
+    // Daily rentals: only show cancel option for upcoming bookings
+    // No approval needed - daily bookings are instant transactions
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (booking.status != BookingStatus.active && booking.status != BookingStatus.completed)
-          IconButton(
-            icon: const Icon(Icons.check_circle, color: Colors.green),
-            tooltip: 'Approve',
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Approve Booking'),
-                  content: const Text('Are you sure you want to approve this booking?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text('No'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text('Yes'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirmed == true) {
-                await provider.approveBooking(booking.bookingId);
-                listController.refresh();
-              }
-            },
-          ),
         if (booking.status == BookingStatus.upcoming)
           IconButton(
             icon: const Icon(Icons.cancel, color: Colors.red),
+            tooltip: 'Cancel Booking',
             onPressed: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Cancel Booking'),
-                  content: const Text('Are you sure you want to cancel this booking?'),
+                  content: const Text('Are you sure you want to cancel this daily rental booking?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),

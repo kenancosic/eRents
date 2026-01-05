@@ -3,7 +3,7 @@ import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/models/paged_list.dart';
 import 'package:e_rents_mobile/core/models/property_card_model.dart';
-import 'package:e_rents_mobile/core/models/user.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 
 /// Provider for managing property search functionality
 /// Handles property search, filtering, and pagination
@@ -59,6 +59,7 @@ class PropertySearchProvider extends BaseProvider {
 
   /// Apply new filters and reset pagination
   Future<void> applyFilters(Map<String, dynamic> filters) async {
+    debugPrint('PropertySearchProvider.applyFilters called with: $filters');
     // Preserve default City filter unless explicitly overridden
     final merged = {
       ..._currentFilters,
@@ -68,6 +69,7 @@ class PropertySearchProvider extends BaseProvider {
       if (!filters.containsKey('Status') && _currentFilters.containsKey('Status'))
         'Status': _currentFilters['Status'],
     };
+    debugPrint('PropertySearchProvider.applyFilters merged filters: $merged');
     _currentFilters = merged;
     _currentPage = 1;
     await fetchProperties();
@@ -121,17 +123,15 @@ class PropertySearchProvider extends BaseProvider {
   }
 
   /// Initialize search defaults based on current user's city
-  Future<void> initializeWithUserCity() async {
+  /// Uses CurrentUserProvider to avoid duplicate /profile API calls.
+  Future<void> initializeWithUserCity(CurrentUserProvider currentUserProvider) async {
     // If city already set, just fetch
     if (_currentFilters.containsKey('City')) {
       await fetchProperties(page: 1);
       return;
     }
 
-    final user = await executeWithState(() async {
-      return await api.getAndDecode('/profile', User.fromJson, authenticated: true);
-    });
-
+    final user = await currentUserProvider.ensureLoaded();
     final city = user?.address?.city;
     if (city != null && city.isNotEmpty) {
       _currentFilters = {

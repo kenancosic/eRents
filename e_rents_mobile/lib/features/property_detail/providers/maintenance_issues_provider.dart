@@ -39,14 +39,19 @@ class MaintenanceIssuesProvider extends BaseProvider {
   }
 
   /// Report a new maintenance issue
-  Future<bool> reportMaintenanceIssue(int propertyId, String title, String description) async {
+  Future<bool> reportMaintenanceIssue(
+    int propertyId, 
+    String title, 
+    String description, {
+    int priorityId = 2, // Default to medium priority
+  }) async {
     final success = await executeWithStateForSuccess(() async {
       final newIssue = await api.postAndDecode('/maintenanceissues', 
         {
           'propertyId': propertyId,
           'title': title,
           'description': description,
-          // Mark as tenant-originated; backend may still require ReportedByUserId
+          'priorityId': priorityId,
           'isTenantComplaint': true,
         }, 
         MaintenanceIssue.fromJson, authenticated: true);

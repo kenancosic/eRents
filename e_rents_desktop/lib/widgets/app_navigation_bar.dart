@@ -43,6 +43,11 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       icon: Icons.person_rounded,
       path: '/tenants',
     ),
+    NavigationItem(
+      label: 'Notifications',
+      icon: Icons.notifications_rounded,
+      path: '/notifications',
+    ),
   ];
 
 
