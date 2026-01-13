@@ -8,20 +8,16 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 /// Provider for managing checkout flow and Stripe payment processing
-/// Uses Stripe as the primary payment method
+/// Uses Stripe as the payment method for daily rentals
 /// Refactored to use new standardized BaseProvider without caching
 /// Uses proper state management with loading, success, and error states
 class CheckoutProvider extends BaseProvider {
   CheckoutProvider(super.api);
 
   // ─── State ──────────────────────────────────────────────────────────────
-  
-  /// Flag to toggle Stripe integration - set to true to re-enable Stripe payments
-  /// See docs/STRIPE_INTEGRATION_DISABLED.md for full documentation
-  static const bool enableStripe = false;
 
-  // Payment and booking state
-  final String _selectedPaymentMethod = enableStripe ? 'Stripe' : 'Manual';
+  // Payment method is always Stripe for daily rentals
+  final String _selectedPaymentMethod = 'Stripe';
 
   // Checkout session data
   PropertyDetail? _currentProperty;
@@ -137,11 +133,7 @@ class CheckoutProvider extends BaseProvider {
   }
 
   /// Create Stripe payment intent for daily rentals
-  /// Throws exception if Stripe is disabled (enableStripe = false)
   Future<Map<String, String>> createStripePaymentIntent() async {
-    if (!enableStripe) {
-      throw Exception('Stripe is currently disabled. See docs/STRIPE_INTEGRATION_DISABLED.md');
-    }
     if (!_isDailyRental) {
       throw Exception('Stripe flow is only available for daily rentals.');
     }
@@ -276,22 +268,12 @@ class CheckoutProvider extends BaseProvider {
 
   /// Process payment with Stripe
   /// Uses BaseProvider's executeWithState for proper error handling
-  /// If Stripe is disabled, creates booking directly without payment
   Future<bool> processPayment() async {
     if (!_isDailyRental) {
       throw Exception('Payment is not required for monthly rentals.');
     }
     if (!isFormValid) {
       throw Exception('Invalid form data - cannot process payment');
-    }
-
-    // If Stripe is disabled, just create the booking without payment processing
-    if (!enableStripe) {
-      debugPrint('CheckoutProvider: Stripe disabled - creating booking without payment');
-      final success = await executeWithStateForSuccess(() async {
-        await _createBooking();
-      }, errorMessage: 'Failed to create booking');
-      return success;
     }
 
     // Stripe flow: create payment intent (booking is created inside)

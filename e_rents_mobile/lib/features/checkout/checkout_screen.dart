@@ -11,9 +11,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/checkout/providers/checkout_provider.dart';
 import 'package:e_rents_mobile/features/checkout/widgets/payment_loading_modal.dart';
 import 'package:e_rents_mobile/features/checkout/widgets/payment_success_modal.dart';
-import 'package:e_rents_mobile/features/checkout/widgets/payment_error_card.dart';
 import 'package:e_rents_mobile/features/checkout/widgets/trust_signals.dart';
-import 'package:e_rents_mobile/features/checkout/models/payment_state.dart';
 import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_bookings_provider.dart';
 import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
@@ -46,8 +44,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Define the accent color as a constant for consistency
   static const Color accentColor = Color(0xFF7265F0);
   
-  // Payment state tracking
-  PaymentState _paymentState = PaymentState.idle;
+  // Payment processing guard
   bool _isProcessingPayment = false;
 
   @override
@@ -430,50 +427,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPaymentMethods(CheckoutProvider provider) {
-    // Show different UI based on whether Stripe is enabled
-    if (!CheckoutProvider.enableStripe) {
-      return SectionCard(
-        padding: const EdgeInsets.all(16),
-        margin: EdgeInsets.zero,
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withAlpha((255 * 0.15).round()),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.pending_actions, color: Colors.orange, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Manual Payment',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Payment will be collected separately',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Stripe enabled UI
+    // Stripe payment UI
     return SectionCard(
       padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
@@ -525,54 +479,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _isProcessingPayment = true;
 
     try {
-      // Handle manual payment flow when Stripe is disabled
-      if (!CheckoutProvider.enableStripe) {
-        setState(() {
-          _paymentState = PaymentState.creatingIntent;
-        });
-
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(accentColor)),
-                SizedBox(height: 16),
-                Text('Creating booking...'),
-              ],
-            ),
-          ),
-        );
-
-        final success = await provider.processPayment();
-        
-        if (!mounted) return;
-        context.pop(); // Close loading dialog
-
-        if (success) {
-          setState(() {
-            _paymentState = PaymentState.success;
-          });
-          _showPaymentSuccess(provider);
-        } else {
-          setState(() {
-            _paymentState = PaymentState.failed;
-          });
-          _showErrorSnackBar(provider.errorMessage.isNotEmpty
-              ? provider.errorMessage
-              : 'Failed to create booking. Please try again.');
-        }
-        return;
-      }
-
       // Stripe payment flow
       // Step 1: Create Stripe payment intent
-      setState(() {
-        _paymentState = PaymentState.creatingIntent;
-      });
-
       PaymentLoadingModal.showCreatingIntent(context);
 
       Map<String, String> paymentIntent;
@@ -581,9 +489,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } catch (_) {
         if (!mounted) return;
         context.pop();
-        setState(() {
-          _paymentState = PaymentState.failed;
-        });
         return;
       }
 
@@ -606,10 +511,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required CheckoutProvider provider,
   }) async {
     try {
-      setState(() {
-        _paymentState = PaymentState.presentingSheet;
-      });
-
       // Initialize Stripe payment sheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
@@ -634,9 +535,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       await Stripe.instance.presentPaymentSheet();
 
       // Payment successful
-      setState(() {
-        _paymentState = PaymentState.success;
-      });
       _showPaymentSuccess(provider);
 
     } catch (e) {
@@ -646,119 +544,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Handle StripeException
       if (e is StripeException) {
         if (e.error.code == FailureCode.Canceled) {
-          setState(() {
-            _paymentState = PaymentState.cancelled;
-          });
           _showCancelledMessage();
           return;
         }
       }
 
-      setState(() {
-        _paymentState = PaymentState.failed;
-      });
       _showPaymentError(e.toString());
     }
-  }
-
-  void _showStripePlaceholderDialog(String clientSecret) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.blue),
-            const SizedBox(width: 8),
-            const Text('Stripe SDK Integration'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Payment intent created successfully!',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'To complete integration:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildIntegrationStep('1', 'Add flutter_stripe package to pubspec.yaml'),
-                  _buildIntegrationStep('2', 'Initialize Stripe with publishable key'),
-                  _buildIntegrationStep('3', 'Uncomment payment sheet code'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Client Secret: ${clientSecret.substring(0, 20)}...',
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          CustomButton.compact(
-            label: 'Simulate Success',
-            isLoading: false,
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _simulatePaymentSuccess();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegrationStep(String number, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            number,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _simulatePaymentSuccess() {
-    setState(() {
-      _paymentState = PaymentState.success;
-    });
-    _showPaymentSuccess(context.read<CheckoutProvider>());
   }
 
   void _showPaymentSuccess(CheckoutProvider provider) {

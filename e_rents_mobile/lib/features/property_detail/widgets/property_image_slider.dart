@@ -40,11 +40,12 @@ class PropertyImageSlider extends StatelessWidget {
                     errorWidget: Container(
                       width: double.infinity,
                       height: 350,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image,
-                        size: 64,
-                        color: Colors.white,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF5F5F5),
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/placeholder.png'),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ))
