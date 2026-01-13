@@ -130,26 +130,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
       'state': _manualStateController.text.isNotEmpty
           ? _manualStateController.text
           : null,
-      'dateOfBirth': _selectedDateOfBirth?.toIso8601String(),
+      'dateOfBirth': _selectedDateOfBirth != null 
+          ? '${_selectedDateOfBirth!.year.toString().padLeft(4, '0')}-${_selectedDateOfBirth!.month.toString().padLeft(2, '0')}-${_selectedDateOfBirth!.day.toString().padLeft(2, '0')}'
+          : null,
       'phoneNumber': _phoneNumberController.text,
-      'name': _nameController.text,
+      'firstName': _nameController.text,
       'lastName': _lastNameController.text,
       if (_profileImage != null) 'profileImagePath': _profileImage!.path,
     });
 
     if (!mounted) return;
     if (success) {
-      if (_profileImage != null) {
+      // Auto-login after successful registration to get auth token
+      final loginSuccess = await provider.login(
+        _emailController.text,
+        _passwordController.text,
+      );
+      
+      if (!mounted) return;
+      
+      if (loginSuccess && _profileImage != null) {
         try {
+          // Now we have a valid auth token, upload the profile image
           await context
               .read<UserProfileProvider>()
               .uploadProfileImage(File(_profileImage!.path));
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profile image upload failed: $e')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Profile image upload failed: $e')),
+            );
+          }
         }
       }
+      if (!mounted) return;
       context.go('/');
     } else {
       final err = provider.error;

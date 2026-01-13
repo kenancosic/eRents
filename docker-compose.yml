@@ -22,7 +22,7 @@ services:
     container_name: erents-api
     restart: unless-stopped
     ports:
-      - "5000:80"
+      - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Server=erents-db;Database=eRentsDB;User Id=sa;Password=StrongPass123!;TrustServerCertificate=true;
@@ -30,8 +30,10 @@ services:
       - RabbitMQ__UserName=guest
       - RabbitMQ__Password=guest
     depends_on:
-      - erents-db
-      - erents-rabbitmq
+      erents-db:
+        condition: service_healthy
+      erents-rabbitmq:
+        condition: service_started
 
   # RabbitMQ Microservice (Helper Service)
   erents-microservice:
@@ -75,6 +77,12 @@ services:
       - MSSQL_PID=Express
     volumes:
       - db_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "StrongPass123!" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
 # USAGE:
 # Start: docker-compose up -d --build

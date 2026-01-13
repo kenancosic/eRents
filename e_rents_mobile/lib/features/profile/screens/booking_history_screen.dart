@@ -4,6 +4,7 @@ import 'package:e_rents_mobile/features/profile/providers/user_bookings_provider
 import 'package:e_rents_mobile/features/profile/widgets/booking_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
 class BookingHistoryScreen extends StatefulWidget {
   final int initialTabIndex;
@@ -83,7 +84,7 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
         return BookingListItem(
           booking: booking,
           onCancel: () => _confirmCancellation(booking),
-          onViewDetails: null,
+          onViewDetails: () => _navigateToPropertyDetails(booking),
         );
       },
     );
@@ -163,6 +164,11 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
         },
       ),
     );
+  }
+
+  void _navigateToPropertyDetails(Booking booking) {
+    // Navigate to property details screen with the booking's property ID
+    context.push('/property/${booking.propertyId}');
   }
 
   Widget _buildRefreshableList(List<Booking> bookings, String emptyMessage) {

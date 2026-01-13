@@ -409,6 +409,7 @@ class UserProfileProvider extends BaseProvider {
           'contentType': contentType,
           'imageData': b64,
           'isCover': false,
+          'isProfileImage': true,
         },
         authenticated: true,
       );

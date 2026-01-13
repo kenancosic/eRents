@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
@@ -96,9 +95,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
             height: double.infinity,
             child: Column(
               children: [
-                // Header with logo
-                _buildHeader(context),
-
+                const SizedBox(height: 12),
                 // Navigation items
                 Expanded(
                   child: SingleChildScrollView(
@@ -202,26 +199,6 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: GestureDetector(
-        onTap: () => context.go('/'),
-        child: SizedBox(
-          width: double.infinity,
-          height: 30,
-          child: SvgPicture.asset(
-            'assets/images/logo.svg',
-            fit: BoxFit.scaleDown,
-            placeholderBuilder:
-                (BuildContext context) =>
-                    const Center(child: Icon(Icons.home, color: Colors.white)),
-          ),
         ),
       ),
     );

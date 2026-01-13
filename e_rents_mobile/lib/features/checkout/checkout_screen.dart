@@ -773,7 +773,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           final currentUserProvider = context.read<CurrentUserProvider>();
           context.read<HomeProvider>().refreshDashboard(currentUserProvider);
           context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true, currentUserProvider: currentUserProvider);
-          context.go('/');
+          context.go('/bookings?tab=0'); // Navigate to upcoming bookings
         },
       ),
     );
@@ -826,7 +826,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               // Refresh home and bookings data so new booking/request appears immediately
               final currentUserProvider = context.read<CurrentUserProvider>();
               context.read<HomeProvider>().refreshDashboard(currentUserProvider);
-              context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true);
+              context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true, currentUserProvider: currentUserProvider);
               context.go('/'); // Navigate to home
             },
           ),

@@ -86,15 +86,15 @@ class CustomSlidingDrawer extends StatelessWidget {
     final user = userProvider.user;
 
     return Container(
-      margin: EdgeInsets.all(AppSpacing.md),
-      padding: EdgeInsets.all(AppSpacing.lg),
+      margin: EdgeInsets.all(AppSpacing.sm),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -103,12 +103,13 @@ class CustomSlidingDrawer extends StatelessWidget {
         children: [
           CustomAvatar(
             imageUrl: userProvider.profileImageUrlOrPlaceholder,
-            size: 56,
+            size: 44,
           ),
-          SizedBox(width: AppSpacing.md),
+          SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   user?.name != null && user?.lastName != null
@@ -116,18 +117,18 @@ class CustomSlidingDrawer extends StatelessWidget {
                       : "User Name",
                   style: TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     overflow: TextOverflow.ellipsis,
                   ),
                   maxLines: 1,
                 ),
-                SizedBox(height: AppSpacing.xs),
+                SizedBox(height: 2),
                 Text(
                   user?.email ?? "user@example.com",
                   style: TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 14,
+                    fontSize: 11,
                     overflow: TextOverflow.ellipsis,
                   ),
                   maxLines: 1,

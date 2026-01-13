@@ -23,3 +23,34 @@
 **/values.dev.yaml
 LICENSE
 README.md
+
+# Exclude mobile apps (major optimization)
+e_rents_desktop/
+e_rents_mobile/
+
+# Exclude documentation and images
+docs/
+**/*.jpg
+**/*.jpeg
+**/*.png
+**/*.gif
+**/*.svg
+**/*.pdf
+
+# Exclude IDE and OS files
+**/.idea/
+**/.cursor/
+**/.kilocode/
+**/.DS_Store
+**/Thumbs.db
+
+# Exclude build artifacts and logs
+**/logs/
+**/test-results/
+**/coverage/
+
+# Exclude large data files
+**/*.sql
+**/*.bak
+**/*.mdf
+**/*.ldf

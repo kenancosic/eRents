@@ -33,6 +33,23 @@ class SavedProvider extends BaseProvider {
 
   // ─── Public API ─────────────────────────────────────────────────────────
 
+  /// Initialize saved property IDs (lightweight - just loads the IDs, not full data)
+  /// This should be called after user login to enable bookmark state on all screens
+  Future<void> initializeSavedIds() async {
+    if (_savedIds.isNotEmpty) return; // Already initialized
+    
+    await executeWithState(() async {
+      debugPrint('SavedProvider: Initializing saved IDs');
+      final list = await api.getListAndDecode(
+        '/profile/saved-properties',
+        (json) => (json['propertyId'] ?? json['PropertyId']) as int,
+        authenticated: true,
+      );
+      _savedIds.addAll(list);
+      debugPrint('SavedProvider: Initialized ${_savedIds.length} saved IDs');
+    });
+  }
+
   /// Load all saved properties from API and map to PropertyCardModel
   Future<void> loadSavedProperties({bool forceRefresh = false}) async {
     if (!forceRefresh && _items.isNotEmpty) return;

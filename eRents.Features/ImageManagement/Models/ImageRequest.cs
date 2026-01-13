@@ -14,6 +14,11 @@ public class ImageRequest
     public byte[] ImageData { get; set; } = Array.Empty<byte>();
 
     public bool IsCover { get; set; }
+    
+    /// <summary>
+    /// Set to true when uploading a user profile image (bypasses PropertyId/MaintenanceIssueId requirement)
+    /// </summary>
+    public bool IsProfileImage { get; set; }
 
     public int? Width { get; set; }
     public int? Height { get; set; }

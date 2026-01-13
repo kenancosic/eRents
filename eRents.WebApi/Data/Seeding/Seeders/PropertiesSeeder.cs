@@ -301,7 +301,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     city: city,
                     state: GetStateForCity(city),
                     country: "Bosnia and Herzegovina",
-                    postalCode: GetPostalCodeForCity(city)
+                    postalCode: GetPostalCodeForCity(city),
+                    latitude: GetLatitudeForCity(city),
+                    longitude: GetLongitudeForCity(city)
                 ),
                 Price = price,
                 Currency = "USD",
@@ -352,6 +354,40 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Travnik" => "Bosanska 15",
             "Trebinje" => "Jovana Dučića 20",
             _ => "Zmaja od Bosne 10"
+        };
+
+        /// <summary>
+        /// Get latitude coordinate for Bosnian cities
+        /// </summary>
+        private static decimal GetLatitudeForCity(string city) => city switch
+        {
+            "Sarajevo" => 43.8563m,
+            "Mostar" => 43.3438m,
+            "Tuzla" => 44.5384m,
+            "Zenica" => 44.2017m,
+            "Banja Luka" => 44.7722m,
+            "Bihać" => 44.8169m,
+            "Brčko" => 44.8726m,
+            "Travnik" => 44.2264m,
+            "Trebinje" => 42.7117m,
+            _ => 43.8563m // Default to Sarajevo
+        };
+
+        /// <summary>
+        /// Get longitude coordinate for Bosnian cities
+        /// </summary>
+        private static decimal GetLongitudeForCity(string city) => city switch
+        {
+            "Sarajevo" => 18.4131m,
+            "Mostar" => 17.8078m,
+            "Tuzla" => 18.6763m,
+            "Zenica" => 17.9078m,
+            "Banja Luka" => 17.1910m,
+            "Bihać" => 15.8708m,
+            "Brčko" => 18.8100m,
+            "Travnik" => 17.6658m,
+            "Trebinje" => 18.3436m,
+            _ => 18.4131m // Default to Sarajevo
         };
     }
 }

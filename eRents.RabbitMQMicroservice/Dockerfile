@@ -10,7 +10,10 @@ COPY ["eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj", "eRents.
 COPY ["eRents.Domain/eRents.Domain.csproj", "eRents.Domain/"]
 COPY ["eRents.Shared/eRents.Shared.csproj", "eRents.Shared/"]
 RUN dotnet restore "eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj"
-COPY . .
+# Copy only necessary source files, exclude mobile apps, docs, git
+COPY ["eRents.RabbitMQMicroservice/", "eRents.RabbitMQMicroservice/"]
+COPY ["eRents.Domain/", "eRents.Domain/"]
+COPY ["eRents.Shared/", "eRents.Shared/"]
 RUN dotnet build "eRents.RabbitMQMicroservice/eRents.RabbitMQMicroservice.csproj" -c Release -o /app/build
 
 FROM build AS publish

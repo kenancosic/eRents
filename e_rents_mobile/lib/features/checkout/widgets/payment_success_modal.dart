@@ -38,11 +38,11 @@ class _PaymentSuccessModalState extends State<PaymentSuccessModal>
 
     _controller.forward();
 
-    // Auto-dismiss after 2 seconds if user doesn't interact
-    Future.delayed(const Duration(seconds: 2), () {
+    // Auto-dismiss after 3 seconds if user doesn't interact
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         context.pop();
-        context.go('/home');
+        context.go('/bookings?tab=0'); // Navigate to upcoming bookings
       }
     });
   }
@@ -112,7 +112,7 @@ class _PaymentSuccessModalState extends State<PaymentSuccessModal>
                     widget.onViewBooking!();
                   } else {
                     context.pop();
-                    context.go('/home');
+                    context.go('/bookings?tab=0'); // Navigate to upcoming bookings
                   }
                 },
                 style: ElevatedButton.styleFrom(

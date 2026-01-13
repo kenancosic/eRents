@@ -153,9 +153,9 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Email',
                             border: OutlineInputBorder(),
+                            helperText: 'Changing email will require re-login',
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          readOnly: true, // Email shouldn't be editable
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

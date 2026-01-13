@@ -92,26 +92,51 @@ class _SavedScreenState extends State<SavedScreen> {
   }
 
   Widget _buildBody(SavedProvider provider) {
+    // Wrap entire body with RefreshIndicator for pull-to-refresh in all states
+    return RefreshIndicator(
+      onRefresh: () => provider.refreshSavedProperties(),
+      color: AppColors.primary,
+      child: _buildBodyContent(provider),
+    );
+  }
+
+  Widget _buildBodyContent(SavedProvider provider) {
     if (provider.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 200),
+          Center(child: CircularProgressIndicator()),
+        ],
       );
     }
 
     if (provider.hasError) {
-      return ErrorStateWidget(
-        message: provider.errorMessage,
-        onRetry: () => provider.refreshSavedProperties(),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 100),
+          ErrorStateWidget(
+            message: provider.errorMessage,
+            onRetry: () => provider.refreshSavedProperties(),
+          ),
+        ],
       );
     }
 
     if (provider.isEmpty) {
-      return EmptyStateWidget(
-        icon: Icons.bookmark_border,
-        title: 'No saved properties yet',
-        message: 'Properties you save will appear here',
-        actionText: 'Explore Properties',
-        onAction: () => context.go('/explore'),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: 100),
+          EmptyStateWidget(
+            icon: Icons.bookmark_border,
+            title: 'No saved properties yet',
+            message: 'Properties you save will appear here\nPull down to refresh',
+            actionText: 'Explore Properties',
+            onAction: () => context.go('/explore'),
+          ),
+        ],
       );
     }
 
@@ -132,10 +157,7 @@ class _SavedScreenState extends State<SavedScreen> {
           )
         else
           Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => provider.refreshSavedProperties(),
-              color: AppColors.primary,
-              child: ListView.separated(
+            child: ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: AppSpacing.paddingV_SM,
                 itemCount: items.length + 1, // items + footer spacer
@@ -172,7 +194,6 @@ class _SavedScreenState extends State<SavedScreen> {
               },
             ),
           ),
-        ),
       ],
     );
   }

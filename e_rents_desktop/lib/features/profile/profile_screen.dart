@@ -26,12 +26,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // STRIPE DISABLED: See docs/STRIPE_INTEGRATION_DISABLED.md
     // Load Stripe Connect account status when profile screen opens
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   final stripeProvider = context.read<StripeConnectProvider>();
-    //   stripeProvider.loadAccountStatus();
-    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final stripeProvider = context.read<StripeConnectProvider>();
+      stripeProvider.loadAccountStatus();
+    });
   }
 
   @override
@@ -105,9 +104,8 @@ class _ProfileScreenContent extends StatelessWidget {
                       child: ChangePasswordWidget(isEditing: isEditing),
                     ),
                     const SizedBox(height: 24),
-                    // STRIPE DISABLED: See docs/STRIPE_INTEGRATION_DISABLED.md
-                    // _buildStripeConnectSection(context),
-                    // const SizedBox(height: 24),
+                    _buildStripeConnectSection(context),
+                    const SizedBox(height: 24),
                     _buildAccountSummaryCard(context),
                   ],
                 );
@@ -209,7 +207,6 @@ class _ProfileScreenContent extends StatelessWidget {
     );
   }
 
-  // ignore: unused_element - Stripe disabled, kept for re-enabling later
   Widget _buildStripeConnectSection(BuildContext context) {
     return SectionCard(
       title: 'Payment & Payouts',
@@ -460,8 +457,6 @@ class _ProfileScreenContent extends StatelessWidget {
             Icons.calendar_today,
           ),
           const SizedBox(height: 12),
-          // STRIPE DISABLED: Payment integration disabled for academic submission
-          // See docs/stripe/STRIPE_INTEGRATION_DISABLED.md
           _buildSummaryItem(
             context,
             'Profile Status',

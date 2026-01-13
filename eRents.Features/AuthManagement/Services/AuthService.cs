@@ -119,7 +119,7 @@ public sealed class AuthService : IAuthService
 			// Hash password
 			var passwordHash = _passwordService.HashPassword(request.Password, out var salt);
 
-			// Create new user
+			// Create new user with address from registration data
 			var user = new User
 			{
 				Username = request.Username,
@@ -131,7 +131,12 @@ public sealed class AuthService : IAuthService
 				DateOfBirth = request.DateOfBirth,
 				PasswordHash = passwordHash,
 				PasswordSalt = salt,
-				IsPublic = false // Default to private profile
+				IsPublic = false, // Default to private profile
+				Address = Address.Create(
+					city: request.City,
+					country: request.Country,
+					postalCode: request.ZipCode
+				)
 			};
 
 			_context.Set<User>().Add(user);
