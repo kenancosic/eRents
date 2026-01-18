@@ -151,7 +151,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     BookingId = booking.BookingId,
                     Amount = booking.TotalPrice,
                     Currency = booking.Currency,
-                    PaymentMethod = Random.Shared.Next(2) == 0 ? "PayPal" : "CreditCard",
+                    PaymentMethod = "Stripe",
                     PaymentStatus = booking.Status == BookingStatusEnum.Completed ? "Completed" : "Paid",
                     PaymentType = "BookingPayment",
                     PaymentReference = $"DR_{booking.BookingId}_{Guid.NewGuid().ToString("N").Substring(0, 8)}"

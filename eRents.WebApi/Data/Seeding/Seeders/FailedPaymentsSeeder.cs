@@ -92,7 +92,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     BookingId = booking.BookingId,
                     Amount = booking.TotalPrice * 0.5m, // Partial payment attempt
                     Currency = booking.Currency,
-                    PaymentMethod = Random.Shared.Next(2) == 0 ? "PayPal" : "CreditCard",
+                    PaymentMethod = "Stripe",
                     PaymentStatus = "Failed",
                     PaymentReference = paymentIntentId,
                     RefundReason = failureReasons[Random.Shared.Next(failureReasons.Length)],

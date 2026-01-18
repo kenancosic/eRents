@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.PaymentManagement.Models;
 using eRents.Features.Core;
+using eRents.Features.Shared.Services;
+using System.Text;
 
 namespace eRents.Features.PaymentManagement.Services;
 
@@ -16,15 +18,18 @@ public class SubscriptionService : ISubscriptionService
     private readonly ERentsContext _context;
     private readonly ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch> _paymentService;
     private readonly ILogger<SubscriptionService> _logger;
+    private readonly INotificationService? _notificationService;
 
     public SubscriptionService(
         ERentsContext context,
         ICrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch> paymentService,
-        ILogger<SubscriptionService> logger)
+        ILogger<SubscriptionService> logger,
+        INotificationService? notificationService = null)
     {
         _context = context;
         _paymentService = paymentService;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task<Subscription> CreateSubscriptionAsync(
@@ -167,6 +172,132 @@ public class SubscriptionService : ISubscriptionService
         {
             subscription.Status = SubscriptionStatusEnum.Active;
             await _context.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Sends an invoice/payment request notification to the tenant for a subscription.
+    /// Creates a pending payment record and sends both in-app notification and email.
+    /// </summary>
+    public async Task<SendInvoiceResponse> SendInvoiceAsync(int subscriptionId, SendInvoiceRequest request)
+    {
+        var response = new SendInvoiceResponse();
+
+        try
+        {
+            // Load subscription with related entities
+            var subscription = await _context.Subscriptions
+                .Include(s => s.Tenant).ThenInclude(t => t.User)
+                .Include(s => s.Property)
+                .FirstOrDefaultAsync(s => s.SubscriptionId == subscriptionId);
+
+            if (subscription == null)
+            {
+                response.Success = false;
+                response.Message = $"Subscription with ID {subscriptionId} not found.";
+                return response;
+            }
+
+            if (subscription.Status != SubscriptionStatusEnum.Active)
+            {
+                response.Success = false;
+                response.Message = "Cannot send invoice for inactive subscription.";
+                return response;
+            }
+
+            var tenant = subscription.Tenant;
+            var tenantUser = tenant?.User;
+            var property = subscription.Property;
+
+            if (tenantUser == null)
+            {
+                response.Success = false;
+                response.Message = "Tenant user not found.";
+                return response;
+            }
+
+            // Use provided amount or fallback to subscription's monthly amount
+            var amount = request.Amount > 0 ? request.Amount : subscription.MonthlyAmount;
+            var description = request.Description ?? $"Monthly rent for {property?.Name ?? "property"}";
+            var dueDate = request.DueDate ?? DateTime.UtcNow.AddDays(7);
+
+            // Create pending payment record
+            var pendingPaymentRequest = new PaymentRequest
+            {
+                TenantId = subscription.TenantId,
+                PropertyId = subscription.PropertyId,
+                BookingId = subscription.BookingId,
+                SubscriptionId = subscription.SubscriptionId,
+                Amount = amount,
+                Currency = subscription.Currency,
+                PaymentMethod = "Stripe",
+                PaymentStatus = "Pending",
+                PaymentReference = null,
+                PaymentType = "SubscriptionPayment"
+            };
+
+            var paymentResponse = await _paymentService.CreateAsync(pendingPaymentRequest);
+            response.PaymentId = paymentResponse.PaymentId;
+
+            _logger.LogInformation("Created pending payment {PaymentId} for subscription {SubscriptionId} invoice", 
+                paymentResponse.PaymentId, subscriptionId);
+
+            // Send notifications
+            if (_notificationService != null)
+            {
+                try
+                {
+                    var tenantName = $"{tenantUser.FirstName} {tenantUser.LastName}".Trim();
+                    var propertyName = property?.Name ?? "your property";
+                    
+                    // Build notification message
+                    var notificationTitle = "Payment Request";
+                    var notificationMessage = new StringBuilder();
+                    notificationMessage.AppendLine($"Your landlord has requested payment of {subscription.Currency} {amount:F2} for {propertyName}.");
+                    notificationMessage.AppendLine();
+                    notificationMessage.AppendLine($"Description: {description}");
+                    notificationMessage.AppendLine($"Due Date: {dueDate:MMMM dd, yyyy}");
+                    notificationMessage.AppendLine();
+                    notificationMessage.AppendLine("Please complete payment through the app to avoid late fees.");
+
+                    // Create in-app notification and send email
+                    await _notificationService.CreateNotificationWithEmailAsync(
+                        tenantUser.UserId,
+                        notificationTitle,
+                        notificationMessage.ToString(),
+                        "payment",
+                        sendEmail: true,
+                        referenceId: paymentResponse.PaymentId
+                    );
+
+                    response.NotificationSent = true;
+                    response.EmailSent = true;
+
+                    _logger.LogInformation("Sent invoice notification and email to tenant {TenantId} ({Email}) for subscription {SubscriptionId}",
+                        tenantUser.UserId, tenantUser.Email, subscriptionId);
+                }
+                catch (Exception notifyEx)
+                {
+                    _logger.LogError(notifyEx, "Failed to send invoice notifications for subscription {SubscriptionId}", subscriptionId);
+                    response.NotificationSent = false;
+                    response.EmailSent = false;
+                }
+            }
+            else
+            {
+                _logger.LogWarning("NotificationService not available - invoice created but no notifications sent for subscription {SubscriptionId}", subscriptionId);
+            }
+
+            response.Success = true;
+            response.Message = "Invoice sent successfully.";
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending invoice for subscription {SubscriptionId}", subscriptionId);
+            response.Success = false;
+            response.Message = $"Error sending invoice: {ex.Message}";
+            return response;
         }
     }
 }

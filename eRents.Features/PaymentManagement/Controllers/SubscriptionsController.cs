@@ -100,4 +100,29 @@ public class SubscriptionsController : ControllerBase
         await _subscriptions.ResumeSubscriptionAsync(subscriptionId);
         return Ok();
     }
+
+    /// <summary>
+    /// Sends an invoice/payment request to the tenant for a subscription.
+    /// Creates a pending payment and sends both in-app notification and email.
+    /// </summary>
+    [HttpPost("{subscriptionId:int}/send-invoice")]
+    public async Task<IActionResult> SendInvoice([FromRoute] int subscriptionId, [FromBody] SendInvoiceRequest request)
+    {
+        try
+        {
+            var response = await _subscriptions.SendInvoiceAsync(subscriptionId, request);
+            
+            if (!response.Success)
+            {
+                return BadRequest(new { Error = response.Message });
+            }
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send invoice for subscription {SubscriptionId}", subscriptionId);
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
 }

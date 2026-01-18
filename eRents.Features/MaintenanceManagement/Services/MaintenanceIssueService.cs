@@ -107,7 +107,14 @@ namespace eRents.Features.MaintenanceManagement.Services
             {
                 "title" => desc ? query.OrderByDescending(x => x.Title) : query.OrderBy(x => x.Title),
                 "status" => desc ? query.OrderByDescending(x => x.Status) : query.OrderBy(x => x.Status),
-                "createdat" => desc ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt),
+                "createdat" or "createdAt" => desc ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt),
+                "priority" => desc 
+                    ? query.OrderByDescending(x => x.Priority == MaintenanceIssuePriorityEnum.Emergency ? 4
+                                                  : x.Priority == MaintenanceIssuePriorityEnum.High ? 3
+                                                  : x.Priority == MaintenanceIssuePriorityEnum.Medium ? 2 : 1)
+                    : query.OrderBy(x => x.Priority == MaintenanceIssuePriorityEnum.Emergency ? 4
+                                        : x.Priority == MaintenanceIssuePriorityEnum.High ? 3
+                                        : x.Priority == MaintenanceIssuePriorityEnum.Medium ? 2 : 1),
                 _ => desc ? query.OrderByDescending(x => x.MaintenanceIssueId) : query.OrderBy(x => x.MaintenanceIssueId)
             };
         }

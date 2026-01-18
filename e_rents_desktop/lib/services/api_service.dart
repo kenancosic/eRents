@@ -71,6 +71,26 @@ class ApiService {
         _handleResponse(response);
         return response;
       } catch (e, stackTrace) {
+        // Don't retry on business logic errors (4xx) - only retry on network/server errors
+        final errorMsg = e.toString();
+        final isBusinessLogicError = errorMsg.contains('Cannot delete') ||
+            errorMsg.contains('Cannot update') ||
+            errorMsg.contains('Invalid') ||
+            errorMsg.contains('not found') ||
+            errorMsg.contains('unauthorized') ||
+            errorMsg.contains('forbidden') ||
+            errorMsg.contains('400') ||
+            errorMsg.contains('401') ||
+            errorMsg.contains('403') ||
+            errorMsg.contains('404') ||
+            errorMsg.contains('409') ||
+            errorMsg.contains('422');
+        
+        if (isBusinessLogicError) {
+          // Don't retry business logic errors - rethrow immediately
+          rethrow;
+        }
+        
         log.warning(
           'ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries)', e, stackTrace
         );
@@ -213,8 +233,14 @@ class ApiService {
           } else {
             errorMessage = decodedBody['message'] ?? decodedBody['error'] ?? decodedBody['title'] ?? 'Server error occurred.';
           }
+        } else if (decodedBody is String && decodedBody.isNotEmpty) {
+          // Handle string response (e.g., "error message")
+          errorMessage = decodedBody;
+        } else if (decodedBody is List && decodedBody.isNotEmpty) {
+          // Handle array of errors
+          errorMessage = decodedBody.map((e) => e.toString()).join('; ');
         } else {
-          errorMessage = 'Unexpected server response format.';
+          errorMessage = 'HTTP ${response.statusCode}: ${_getStatusMessage(response.statusCode)}';
         }
       } catch (e) {
         // JSON parsing failed - treat as plain text error

@@ -165,6 +165,7 @@ namespace eRents.Features.PropertyManagement.Services
 				"name" => desc ? query.OrderByDescending(x => x.Name) : query.OrderBy(x => x.Name),
 				"createdat" => desc ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt),
 				"updatedat" => desc ? query.OrderByDescending(x => x.UpdatedAt) : query.OrderBy(x => x.UpdatedAt),
+				"status" => desc ? query.OrderByDescending(x => x.Status) : query.OrderBy(x => x.Status),
 				_ => desc ? query.OrderByDescending(x => x.PropertyId) : query.OrderBy(x => x.PropertyId)
 			};
 		}
@@ -312,7 +313,7 @@ namespace eRents.Features.PropertyManagement.Services
 			return Task.CompletedTask;
 		}
 
-		protected override Task BeforeDeleteAsync(Property entity)
+		protected override async Task BeforeDeleteAsync(Property entity)
 		{
 			// Enforce ownership on deletes for desktop owner/landlord
 			if (CurrentUser?.IsDesktop == true &&
@@ -326,7 +327,28 @@ namespace eRents.Features.PropertyManagement.Services
 					throw new KeyNotFoundException($"Property with id {entity.PropertyId} not found");
 				}
 			}
-			return Task.CompletedTask;
+
+			// Check for related records that prevent deletion
+			var hasBookings = await Context.Set<Booking>()
+				.AnyAsync(b => b.PropertyId == entity.PropertyId);
+			if (hasBookings)
+			{
+				throw new InvalidOperationException("Cannot delete property with existing bookings. Please cancel or complete all bookings first.");
+			}
+
+			var hasMaintenanceIssues = await Context.Set<MaintenanceIssue>()
+				.AnyAsync(m => m.PropertyId == entity.PropertyId);
+			if (hasMaintenanceIssues)
+			{
+				throw new InvalidOperationException("Cannot delete property with pending maintenance issues. Please resolve all issues first.");
+			}
+
+			var hasActiveTenants = await Context.Set<Tenant>()
+				.AnyAsync(t => t.PropertyId == entity.PropertyId && t.TenantStatus == TenantStatusEnum.Active);
+			if (hasActiveTenants)
+			{
+				throw new InvalidOperationException("Cannot delete property with active tenants. Please end all tenancies first.");
+			}
 		}
 
 		/// <summary>

@@ -10,7 +10,7 @@ import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
-import 'package:e_rents_mobile/features/property_detail/providers/maintenance_issues_provider.dart';
+import 'package:e_rents_mobile/features/maintenance/providers/maintenance_provider.dart';
 
 class ReportIssueScreen extends StatefulWidget {
   final int propertyId;
@@ -131,14 +131,15 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         return;
       }
 
-      final maintenanceProvider = context.read<MaintenanceIssuesProvider>();
+      final maintenanceProvider = context.read<MaintenanceProvider>();
 
-      final success = await maintenanceProvider.reportMaintenanceIssue(
-        widget.propertyId,
-        _titleController.text.trim(),
-        _descriptionController.text.trim(),
+      final result = await maintenanceProvider.reportIssue(
+        propertyId: widget.propertyId,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
         priorityId: _selectedPriority.index + 1, // Convert enum to 1-based ID
       );
+      final success = result != null;
 
       if (mounted) {
         if (success) {

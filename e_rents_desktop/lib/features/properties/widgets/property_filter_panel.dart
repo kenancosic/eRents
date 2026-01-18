@@ -18,6 +18,8 @@ class PropertyFilterState {
   int? bedrooms;
   int? bathrooms;
   List<int>? amenityIds;
+  String? sortBy;
+  bool ascending = true;
 
   PropertyFilterState({
     this.name,
@@ -29,6 +31,8 @@ class PropertyFilterState {
     this.bedrooms,
     this.bathrooms,
     this.amenityIds,
+    this.sortBy,
+    this.ascending = true,
   });
 
   // Method to convert to a map for the provider
@@ -43,11 +47,21 @@ class PropertyFilterState {
       'bedrooms': bedrooms,
       'bathrooms': bathrooms,
       'amenityIds': amenityIds,
+      'sortBy': sortBy,
+      'ascending': ascending,
     }..removeWhere(
       (key, value) => value == null || (value is String && value.isEmpty),
     );
   }
 }
+
+// Sort options for properties
+const List<Map<String, String>> _propertySortOptions = [
+  {'value': 'name', 'label': 'Name'},
+  {'value': 'price', 'label': 'Price'},
+  {'value': 'createdAt', 'label': 'Date Added'},
+  {'value': 'status', 'label': 'Status'},
+];
 
 class PropertyFilterPanel extends StatefulWidget {
   // Optional: provide initial filters to pre-populate state when reopening panel
@@ -136,6 +150,8 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
           'bedrooms': _filterState.bedrooms,
           'bathrooms': _filterState.bathrooms,
           'amenityIds': _filterState.amenityIds,
+          'sortBy': _filterState.sortBy,
+          'ascending': _filterState.ascending,
         }..removeWhere((k, v) => v == null || (v is String && v.isEmpty));
         return map;
       },
@@ -159,6 +175,8 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
       _priceRange = const RangeValues(0, 5000);
       _filterState.minPrice = null;
       _filterState.maxPrice = null;
+      _filterState.sortBy = null;
+      _filterState.ascending = true;
     });
   }
 
@@ -244,6 +262,10 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
             _buildRoomCounters(),
             const SizedBox(height: 24),
             _buildAmenitySelector(),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            _buildSortingOptions(),
             const SizedBox(height: 24),
           ],
         ),
@@ -373,6 +395,59 @@ class _PropertyFilterPanelState extends State<PropertyFilterPanel> {
           onAmenityIdsChanged: (ids) {
             _filterState.amenityIds = ids.isEmpty ? null : ids;
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSortingOptions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Sort By', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: DropdownButtonFormField<String?>(
+                value: _filterState.sortBy,
+                decoration: const InputDecoration(
+                  labelText: 'Sort Field',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.sort),
+                ),
+                hint: const Text('Default'),
+                isExpanded: true,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Default'),
+                  ),
+                  ..._propertySortOptions.map((opt) => DropdownMenuItem<String?>(
+                    value: opt['value'],
+                    child: Text(opt['label']!),
+                  )),
+                ],
+                onChanged: (value) => setState(() => _filterState.sortBy = value),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<bool>(
+                value: _filterState.ascending,
+                decoration: const InputDecoration(
+                  labelText: 'Order',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: true, child: Text('Ascending')),
+                  DropdownMenuItem(value: false, child: Text('Descending')),
+                ],
+                onChanged: (value) => setState(() => _filterState.ascending = value ?? true),
+              ),
+            ),
+          ],
         ),
       ],
     );

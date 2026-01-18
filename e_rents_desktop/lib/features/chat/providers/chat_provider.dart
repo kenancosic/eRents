@@ -272,7 +272,18 @@ class ChatProvider extends BaseProvider {
   int getUnreadCount(int contactId) {
     final conversation = _conversations[contactId];
     if (conversation == null) return 0;
-    return conversation.where((message) => message.isRead == false && message.senderId != _selectedContactId).length;
+    return conversation.where((message) => message.isRead == false && message.senderId == contactId).length;
+  }
+
+  /// Get total unread message count across all conversations
+  int get totalUnreadCount {
+    int total = 0;
+    for (final entry in _conversations.entries) {
+      final contactId = entry.key;
+      final messages = entry.value;
+      total += messages.where((m) => m.isRead == false && m.senderId == contactId).length;
+    }
+    return total;
   }
 
   /// Get the last message text for a specific contact

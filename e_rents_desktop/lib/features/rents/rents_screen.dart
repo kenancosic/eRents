@@ -1,4 +1,6 @@
 import 'package:e_rents_desktop/base/crud/list_screen.dart';
+import 'package:e_rents_desktop/widgets/sort_options_widget.dart';
+import 'package:e_rents_desktop/features/rents/widgets/monthly_tenant_actions.dart';
 import 'package:e_rents_desktop/features/rents/providers/rents_provider.dart';
 import 'package:e_rents_desktop/presentation/booking_status_ui.dart';
 import 'package:e_rents_desktop/presentation/status_pill.dart';
@@ -208,60 +210,17 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                   backgroundColor: Colors.green,
                 ),
               if (_recentlyApprovedTenants.contains(t.tenantId)) const SizedBox(width: 12),
-              if (t.tenantStatus == TenantStatus.inactive && t.propertyId != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Accept Tenant'),
-                            content: const Text('Accept this tenant request and reject all other pending requests for this property?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
-                              TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Yes')),
-                            ],
-                          ),
-                        );
-                        if (confirmed == true) {
-                          final provider = context.read<RentsProvider>();
-                          await provider.acceptTenantRequest(t.tenantId, t.propertyId!);
-                          _monthlyListController.refresh();
-                          if (mounted) {
-                            setState(() {
-                              _recentlyApprovedTenants.add(t.tenantId);
-                            });
-                          }
-                        }
-                      },
-                      child: const Text('Accept Tenant'),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: () async {
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Reject Tenant'),
-                            content: const Text('Reject this tenant request?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
-                              TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Yes')),
-                            ],
-                          ),
-                        );
-                        if (confirmed == true) {
-                          final provider = context.read<RentsProvider>();
-                          await provider.rejectTenantRequest(t.tenantId);
-                          _monthlyListController.refresh();
-                        }
-                      },
-                      child: const Text('Reject'),
-                    ),
-                  ],
-                ),
+              MonthlyTenantActions(
+                tenant: t,
+                onRefresh: () {
+                  _monthlyListController.refresh();
+                  if (mounted) {
+                    setState(() {
+                      _recentlyApprovedTenants.add(t.tenantId);
+                    });
+                  }
+                },
+              ),
             ],
           ),
         );
@@ -300,56 +259,17 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                           backgroundColor: Colors.green,
                         ),
                       ),
-                    if (t.tenantStatus == TenantStatus.inactive && t.propertyId != null) ...[
-                      ElevatedButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: ctx,
-                            builder: (dctx) => AlertDialog(
-                              title: const Text('Accept Tenant'),
-                              content: const Text('Accept this tenant request and reject all other pending requests for this property?'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('No')),
-                                TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Yes')),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true) {
-                            final provider = ctx.read<RentsProvider>();
-                            await provider.acceptTenantRequest(t.tenantId, t.propertyId!);
-                            _monthlyListController.refresh();
-                            if (mounted) {
-                              setState(() {
-                                _recentlyApprovedTenants.add(t.tenantId);
-                              });
-                            }
-                          }
-                        },
-                        child: const Text('Accept Tenant'),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: ctx,
-                            builder: (dctx) => AlertDialog(
-                              title: const Text('Reject Tenant'),
-                              content: const Text('Reject this tenant request?'),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.of(dctx).pop(false), child: const Text('No')),
-                                TextButton(onPressed: () => Navigator.of(dctx).pop(true), child: const Text('Yes')),
-                              ],
-                            ),
-                          );
-                          if (confirmed == true) {
-                            final provider = ctx.read<RentsProvider>();
-                            await provider.rejectTenantRequest(t.tenantId);
-                            _monthlyListController.refresh();
-                          }
-                        },
-                        child: const Text('Reject'),
-                      ),
-                    ],
+                    MonthlyTenantActions(
+                      tenant: t,
+                      onRefresh: () {
+                        _monthlyListController.refresh();
+                        if (mounted) {
+                          setState(() {
+                            _recentlyApprovedTenants.add(t.tenantId);
+                          });
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -784,11 +704,21 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
     FilterController controller,
   ) {
     String? selectedStatus = currentFilters['status'] as String?;
+    String? sortBy = currentFilters['sortBy'] as String?;
+    bool ascending = (currentFilters['sortDirection'] as String?)?.toLowerCase() != 'desc';
 
     // Bind the state to the controller
     controller.bind(
-      getFilters: () => {'status': selectedStatus},
-      resetFields: () => selectedStatus = null,
+      getFilters: () => {
+        'status': selectedStatus,
+        'sortBy': sortBy,
+        'sortDirection': ascending ? 'asc' : 'desc',
+      },
+      resetFields: () {
+        selectedStatus = null;
+        sortBy = null;
+        ascending = true;
+      },
     );
 
     return StatefulBuilder(builder: (context, setState) {
@@ -803,13 +733,26 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 selectedStatus = value;
               });
             },
-            items: BookingStatus.values.map((status) {
-              return DropdownMenuItem(
-                value: status.name,
-                child: Text(status.displayName),
-              );
-            }).toList(),
+            items: [
+              const DropdownMenuItem<String>(value: null, child: Text('All Statuses')),
+              ...BookingStatus.values.map((status) {
+                return DropdownMenuItem(
+                  value: status.name,
+                  child: Text(status.displayName),
+                );
+              }),
+            ],
             decoration: const InputDecoration(labelText: 'Status'),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          SortOptionsWidget(
+            selectedSortBy: sortBy,
+            ascending: ascending,
+            options: bookingSortOptions,
+            onSortByChanged: (value) => setState(() => sortBy = value),
+            onAscendingChanged: (value) => setState(() => ascending = value),
           ),
         ],
       );
@@ -822,11 +765,21 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
     FilterController controller,
   ) {
     String? selectedStatus = currentFilters['status'] as String?;
+    String? sortBy = currentFilters['sortBy'] as String?;
+    bool ascending = (currentFilters['sortDirection'] as String?)?.toLowerCase() != 'desc';
 
     // Bind the state to the controller
     controller.bind(
-      getFilters: () => {'status': selectedStatus},
-      resetFields: () => selectedStatus = null,
+      getFilters: () => {
+        'status': selectedStatus,
+        'sortBy': sortBy,
+        'sortDirection': ascending ? 'asc' : 'desc',
+      },
+      resetFields: () {
+        selectedStatus = null;
+        sortBy = null;
+        ascending = true;
+      },
     );
 
     return StatefulBuilder(builder: (context, setState) {
@@ -841,13 +794,26 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 selectedStatus = value;
               });
             },
-            items: TenantStatus.values.map((status) {
-              return DropdownMenuItem(
-                value: status.name,
-                child: Text(status.displayName),
-              );
-            }).toList(),
+            items: [
+              const DropdownMenuItem<String>(value: null, child: Text('All Statuses')),
+              ...TenantStatus.values.map((status) {
+                return DropdownMenuItem(
+                  value: status.name,
+                  child: Text(status.displayName),
+                );
+              }),
+            ],
             decoration: const InputDecoration(labelText: 'Status'),
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          SortOptionsWidget(
+            selectedSortBy: sortBy,
+            ascending: ascending,
+            options: tenantSortOptions,
+            onSortByChanged: (value) => setState(() => sortBy = value),
+            onAscendingChanged: (value) => setState(() => ascending = value),
           ),
         ],
       );

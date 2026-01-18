@@ -5,6 +5,7 @@ import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ProfileProvider extends BaseProvider {
   ProfileProvider(super.api);
@@ -144,8 +145,20 @@ class ProfileProvider extends BaseProvider {
       setLoading(true);
       clearError();
       
-      // Create multipart file from path
-      final file = await http.MultipartFile.fromPath('file', filePath);
+      // Determine content type from file extension
+      final extension = filePath.split('.').last.toLowerCase();
+      final contentType = _getImageContentType(extension);
+      if (contentType == null) {
+        setError('Invalid file type. Allowed: JPEG, PNG, GIF, WebP');
+        return false;
+      }
+      
+      // Create multipart file from path with proper content type
+      final file = await http.MultipartFile.fromPath(
+        'file',
+        filePath,
+        contentType: MediaType.parse(contentType),
+      );
       
       final response = await api.multipartRequest(
         '/Profile/upload-image',
@@ -156,7 +169,8 @@ class ProfileProvider extends BaseProvider {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        if (data['success'] == true) {
+        // Backend returns PascalCase 'Success' but ASP.NET Core serializes to camelCase
+        if (data['success'] == true || data['Success'] == true || data['imageId'] != null || data['ImageId'] != null) {
           // Reload user profile to get updated profileImageId
           await loadUserProfile();
           return true;
@@ -170,6 +184,23 @@ class ProfileProvider extends BaseProvider {
       return false;
     } finally {
       setLoading(false);
+    }
+  }
+
+  /// Get MIME content type from file extension
+  String? _getImageContentType(String extension) {
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return null;
     }
   }
 

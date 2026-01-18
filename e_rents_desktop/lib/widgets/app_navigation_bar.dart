@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 
 class AppNavigationBar extends StatefulWidget {
   final String currentPath;
@@ -14,6 +16,23 @@ class AppNavigationBar extends StatefulWidget {
 }
 
 class _AppNavigationBarState extends State<AppNavigationBar> {
+  @override
+  void initState() {
+    super.initState();
+    // Load profile and chat contacts on first display
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profileProvider = context.read<ProfileProvider>();
+      if (profileProvider.currentUser == null && !profileProvider.isLoading) {
+        profileProvider.loadUserProfile();
+      }
+      // Load chat contacts to get unread count
+      final chatProvider = context.read<ChatProvider>();
+      if (chatProvider.contacts.isEmpty && !chatProvider.isLoading) {
+        chatProvider.loadContacts();
+      }
+    });
+  }
+
   static const List<NavigationItem> navigationItems = [
     NavigationItem(label: 'Home', icon: Icons.home_rounded, path: '/'),
     NavigationItem(label: 'Chat', icon: Icons.chat_rounded, path: '/chat'),
@@ -136,6 +155,14 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
     int index,
   ) {
     final bool isSelected = _isItemSelected(item);
+    
+    // Check for unread chat messages
+    int? badgeCount;
+    if (item.path == '/chat') {
+      final chatProvider = context.watch<ChatProvider>();
+      final unread = chatProvider.totalUnreadCount;
+      if (unread > 0) badgeCount = unread;
+    }
 
     return InkWell(
       onTap: () {
@@ -153,10 +180,37 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              item.icon,
-              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
-              size: 20,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  item.icon,
+                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                  size: 20,
+                ),
+                if (badgeCount != null)
+                  Positioned(
+                    right: -8,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        badgeCount > 9 ? '9+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -205,6 +259,15 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
   }
 
   Widget _buildProfile(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
+    final user = profileProvider.currentUser;
+    
+    // Build image URL from profile image ID if available
+    String? imageUrl;
+    if (user?.profileImageId != null) {
+      imageUrl = '/Images/${user!.profileImageId}';
+    }
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: InkWell(
@@ -221,7 +284,7 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
           width: 40,
           child: Center(
             child: CustomAvatar(
-              imageUrl: 'assets/images/user-image.png',
+              imageUrl: imageUrl ?? 'assets/images/user-image.png',
               size: 28,
               borderWidth: widget.currentPath == '/profile' ? 2 : 0,
             ),

@@ -4,11 +4,12 @@ import 'dart:convert';
 import 'package:e_rents_desktop/models/paged_result.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
-import 'package:e_rents_desktop/base/app_error.dart';
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/models/image.dart' as model;
 import 'package:e_rents_desktop/models/property_tenant_summary.dart';
 import 'package:e_rents_desktop/models/property_status_update_request.dart';
+import 'package:e_rents_desktop/models/booking.dart';
+import 'package:e_rents_desktop/models/payment.dart';
 import 'package:http/http.dart' as http;
 
 /// Property provider aligned with BaseProvider pattern and finalized API
@@ -48,7 +49,7 @@ class PropertyProvider extends BaseProvider {
   Future<Property?> loadProperty(int id) => getById(id);
   Future<Property?> createProperty(Property p) => create(p);
   Future<Property?> updateProperty(Property p) => update(p);
-  Future<bool> deleteProperty(int id) => remove(id);
+  Future<(bool, String?)> deleteProperty(int id) => remove(id);
 
   /// Fetch images for a property with a limit (no caching retained here)
   /// Defaults to fetching up to [maxImages] (10) most recently uploaded images.
@@ -362,10 +363,19 @@ class PropertyProvider extends BaseProvider {
     }, isUpdate: true);
   }
 
-  Future<bool> remove(int id) async {
-    return await executeWithStateForSuccess(() async {
+  String? _lastDeleteError;
+  String? get lastDeleteError => _lastDeleteError;
+
+  /// Remove a property by ID
+  /// Returns (success, errorMessage) tuple
+  Future<(bool, String?)> remove(int id) async {
+    _lastDeleteError = null;
+    try {
       final ok = await api.deleteAndConfirm('/properties/$id');
-      if (!ok) throw AppError.server('Delete failed');
+      if (!ok) {
+        _lastDeleteError = 'Delete failed';
+        return (false, _lastDeleteError);
+      }
       _items = _items.where((e) => e.propertyId != id).toList();
       if (_paged != null) {
         final newTotal = (_paged!.totalCount - 1);
@@ -380,7 +390,17 @@ class PropertyProvider extends BaseProvider {
         _selected = null;
       }
       notifyListeners();
-    }, isUpdate: true);
+      return (true, null);
+    } catch (e) {
+      // Extract meaningful error message
+      String errorMsg = e.toString();
+      if (errorMsg.startsWith('Exception: ')) {
+        errorMsg = errorMsg.substring('Exception: '.length);
+      }
+      _lastDeleteError = errorMsg;
+      notifyListeners();
+      return (false, errorMsg);
+    }
   }
 
   Future<void> refresh() async {
@@ -396,6 +416,38 @@ class PropertyProvider extends BaseProvider {
     } else {
       await fetchList(filters: _filters, sortBy: _sortBy, ascending: _ascending);
     }
+  }
+
+  /// Fetch upcoming bookings for a property (for daily rentals)
+  Future<List<Booking>?> fetchPropertyBookings(int propertyId, {bool upcomingOnly = true}) async {
+    return executeWithState(() async {
+      final params = <String, dynamic>{
+        'propertyId': propertyId,
+        'pageSize': 50,
+      };
+      if (upcomingOnly) {
+        params['startDateFrom'] = DateTime.now().toIso8601String();
+        params['statuses'] = 'Confirmed,Pending';
+      }
+      final endpoint = '/bookings${api.buildQueryString(params)}';
+      final result = await api.getPagedAndDecode(endpoint, Booking.fromJson, authenticated: true);
+      return result.items;
+    });
+  }
+
+  /// Fetch payments/invoices for a property (for monthly rentals)
+  Future<List<Payment>?> fetchPropertyPayments(int propertyId) async {
+    return executeWithState(() async {
+      final params = <String, dynamic>{
+        'propertyId': propertyId,
+        'pageSize': 50,
+        'sortBy': 'createdAt',
+        'sortDirection': 'desc',
+      };
+      final endpoint = '/payments${api.buildQueryString(params)}';
+      final result = await api.getPagedAndDecode(endpoint, Payment.fromJson, authenticated: true);
+      return result.items;
+    });
   }
 }
 

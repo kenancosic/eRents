@@ -1,22 +1,17 @@
 import 'package:e_rents_mobile/core/widgets/custom_sliding_drawer.dart';
 import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 import 'package:flutter/material.dart';
-// import 'package:provider/provider.dart'; // REMOVE if NavigationProvider is no longer needed here
-// import 'package:go_router/go_router.dart'; // REMOVE if context.go is no longer needed for _onItemTapped
-// import 'navigation_provider.dart'; // REMOVE if NavigationProvider is no longer needed here
 
 class BaseScreen extends StatefulWidget {
   final Widget body;
   final bool showAppBar;
   final bool useSlidingDrawer;
-  // final bool showBottomNavBar; // REMOVED
   final Color? backgroundColor;
   final bool resizeToAvoidBottomInset;
 
   final PreferredSizeWidget? appBar;
-  // final Widget? bottomNavigationBarWidget; // REMOVED
 
-  // NEW: Design system parameters
+  // Design system parameters
   final EdgeInsets? bodyPadding;
   final bool enableScroll;
   final bool applyScreenPadding;
@@ -26,11 +21,9 @@ class BaseScreen extends StatefulWidget {
     required this.body,
     this.showAppBar = true,
     this.useSlidingDrawer = false,
-    // this.showBottomNavBar = true, // REMOVED
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.appBar,
-    // this.bottomNavigationBarWidget, // REMOVED
     this.bodyPadding,
     this.enableScroll = false,
     this.applyScreenPadding = false,
@@ -64,7 +57,6 @@ class BaseScreenState extends State<BaseScreen>
     super.dispose();
   }
 
-  // Make this method public
   void toggleDrawer() {
     if (_drawerController.isDismissed) {
       _drawerController.forward();
@@ -72,28 +64,6 @@ class BaseScreenState extends State<BaseScreen>
       _drawerController.reverse();
     }
   }
-
-  // void _onItemTapped(BuildContext context, int index) { // REMOVED
-  //   Provider.of<NavigationProvider>(context, listen: false).updateIndex(index);
-  //   // Navigate to the corresponding screen.
-  //   switch (index) {
-  //     case 0:
-  //       context.go('/'); // Navigate to Home.
-  //       break;
-  //     case 1:
-  //       context.go('/explore'); // Navigate to Explore.
-  //       break;
-  //     case 2:
-  //       context.go('/chatRoom'); // Navigate to Chat.
-  //       break;
-  //     case 3:
-  //       context.go('/saved'); // Navigate to Saved.
-  //       break;
-  //     case 4:
-  //       context.go('/profile'); // Navigate to Profile.
-  //       break;
-  //   }
-  // }
 
   // Wraps the child with a gesture detector if sliding drawer is used.
   GestureDetector _buildGestureDetector(BuildContext context, Widget child) {
@@ -119,11 +89,10 @@ class BaseScreenState extends State<BaseScreen>
   Widget _buildSlidingDrawerContent() {
     return CustomSlidingDrawer(
       controller: _drawerController,
-      onDrawerToggle: toggleDrawer, // Use the public method
+      onDrawerToggle: toggleDrawer,
     );
   }
 
-  // NEW: Build body with optional padding and scrolling
   Widget _buildBody() {
     Widget content = widget.body;
 
@@ -157,17 +126,6 @@ class BaseScreenState extends State<BaseScreen>
       resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
       appBar: effectiveAppBar,
       body: _buildBody(),
-      // bottomNavigationBar: widget.bottomNavigationBarWidget ?? // REMOVED
-      //     (widget.showBottomNavBar // REMOVED
-      //         ? Consumer<NavigationProvider>( // REMOVED
-      //             builder: (context, navigationProvider, child) { // REMOVED
-      //               return CustomBottomNavigationBar( // REMOVED
-      //                 currentIndex: navigationProvider.currentIndex, // REMOVED
-      //                 onTap: (index) => _onItemTapped(context, index), // REMOVED
-      //               ); // REMOVED
-      //             }, // REMOVED
-      //           ) // REMOVED
-      //         : null), // REMOVED
     );
 
     if (widget.useSlidingDrawer) {
@@ -201,7 +159,7 @@ class BaseScreenState extends State<BaseScreen>
             ),
             if (_drawerController.value > 0)
               GestureDetector(
-                onTap: toggleDrawer, // Use the public method
+                onTap: toggleDrawer,
                 child: Container(
                   width: MediaQuery.of(context).size.width,
                   height: double.infinity,

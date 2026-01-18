@@ -257,6 +257,7 @@ extension ApiServiceExtensions on ApiService {
   }
 
   /// DELETE request with success confirmation
+  /// Returns true on success (2xx status), throws on failure with detailed error
   ///
   /// Usage:
   /// ```dart
@@ -268,14 +269,20 @@ extension ApiServiceExtensions on ApiService {
     Map<String, String>? customHeaders,
   }) async {
     try {
-      await delete(
+      final response = await delete(
         endpoint,
         authenticated: authenticated,
         customHeaders: customHeaders,
       );
-      return true;
+      // 2xx responses (including 204 No Content) are successful
+      return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
-      return false;
+      // Re-throw with better context if the error message is generic
+      final msg = e.toString();
+      if (msg.contains('Unexpected server response format')) {
+        throw Exception('Delete operation failed. The item may have related records that prevent deletion.');
+      }
+      rethrow;
     }
   }
   

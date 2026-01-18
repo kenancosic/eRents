@@ -74,7 +74,9 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
-                    provider.errorMessage ?? 'An error occurred',
+                    provider.errorMessage.isNotEmpty 
+                        ? provider.errorMessage 
+                        : 'An error occurred',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -118,7 +120,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    property.name ?? 'Property',
+                    property.name.isNotEmpty ? property.name : 'Property',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -139,7 +141,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _getStatusColor(booking.status).withOpacity(0.1),
+                color: _getStatusColor(booking.status).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: _getStatusColor(booking.status),
@@ -360,13 +362,33 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
     );
   }
 
-  void _requestExtension() {
-    // TODO: Implement lease extension request logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Extension request sent successfully!'),
-        backgroundColor: Colors.green,
-      ),
+  void _requestExtension() async {
+    final provider = Provider.of<PropertyRentalProvider>(context, listen: false);
+    
+    // Request 1 month extension by default
+    final success = await provider.extendBooking(
+      bookingId: widget.bookingId,
+      extendByMonths: 1,
     );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Extension request sent successfully! Awaiting landlord approval.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.errorMessage.isNotEmpty 
+              ? provider.errorMessage 
+              : 'Failed to send extension request'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

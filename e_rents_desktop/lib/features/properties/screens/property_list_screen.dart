@@ -82,10 +82,19 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     );
 
     if (confirmed == true) {
-      final ok = await provider.remove(property.propertyId);
+      final (ok, errorMsg) = await provider.remove(property.propertyId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? 'Property deleted' : 'Delete failed')),
+          SnackBar(
+            content: Text(ok ? 'Property deleted' : errorMsg ?? 'Delete failed'),
+            backgroundColor: ok ? Colors.green : Colors.red,
+            duration: Duration(seconds: ok ? 2 : 5),
+            action: ok ? null : SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
         );
         if (ok) {
           await listController.refresh();

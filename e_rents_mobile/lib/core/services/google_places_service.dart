@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// TODO: Consider using flutter_dotenv to load API key from .env file
-// import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Result wrapper for Places Autocomplete to carry both predictions and error context
 class PlacesAutocompleteResult {
@@ -19,9 +17,6 @@ class PlacesAutocompleteResult {
 }
 
 class GooglePlacesService {
-  // TODO: Load API key securely, e.g., from environment variables
-  // final String _apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? 'YOUR_API_KEY_FALLBACK';
-  // For now, using a placeholder. Replace this with your actual key loading mechanism.
   final String _apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
 
   final String _autocompleteBaseUrl =

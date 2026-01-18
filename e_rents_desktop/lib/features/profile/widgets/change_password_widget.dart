@@ -118,8 +118,12 @@ class _ChangePasswordWidgetState extends State<ChangePasswordWidget> {
                       if (value == null || value.isEmpty) {
                         return 'New password is required';
                       }
-                      if (value.length < 8) {
-                        return 'Minimum 8 characters';
+                      if (value.length < 8 || value.length > 100) {
+                        return '8-100 characters required';
+                      }
+                      final pwdRe = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])');
+                      if (!pwdRe.hasMatch(value)) {
+                        return 'Need upper, lower, digit & special (@\$!%*?&)';
                       }
                       return null;
                     },

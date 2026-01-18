@@ -11,7 +11,10 @@ public sealed class ChangePasswordRequest
 	public string OldPassword { get; set; } = null!;
 
 	[Required]
-	[MinLength(6, ErrorMessage = "New password must be at least 6 characters long")]
+	[MinLength(8, ErrorMessage = "Password must be at least 8 characters long")]
+	[MaxLength(100, ErrorMessage = "Password must not exceed 100 characters")]
+	[RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$",
+		ErrorMessage = "Password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character (@$!%*?&)")]
 	public string NewPassword { get; set; } = null!;
 
 	[Required]

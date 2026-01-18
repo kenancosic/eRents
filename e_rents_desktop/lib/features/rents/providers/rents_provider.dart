@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/booking.dart';
@@ -204,6 +205,59 @@ class RentsProvider extends BaseProvider {
     }
   }
 
+  /// Sends an invoice/payment request to the tenant for a subscription.
+  /// Creates a pending payment and sends both in-app notification and email.
+  /// Returns a map with: success, paymentId, notificationSent, emailSent, message
+  Future<Map<String, dynamic>?> sendInvoice({
+    required int subscriptionId,
+    required double amount,
+    String? description,
+    DateTime? dueDate,
+  }) async {
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      final body = {
+        'amount': amount,
+        if (description != null) 'description': description,
+        if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+      };
+      final response = await api.post(
+        '/Subscriptions/$subscriptionId/send-invoice',
+        body,
+        authenticated: true,
+      );
+      
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return json;
+      } else {
+        final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(errorJson['error'] ?? 'Failed to send invoice');
+      }
+    });
+    
+    return result;
+  }
+
+  /// Gets the subscription ID for a tenant if one exists
+  Future<int?> getSubscriptionIdForTenant(int tenantId) async {
+    final result = await executeWithState<int?>(() async {
+      // Query subscriptions endpoint filtered by tenantId
+      final response = await api.get(
+        '/Subscriptions?tenantId=$tenantId&status=Active',
+        authenticated: true,
+      );
+      
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json is List && json.isNotEmpty) {
+          return json.first['subscriptionId'] as int?;
+        }
+      }
+      return null;
+    });
+    
+    return result;
+  }
 
   void clearFilters() {
     _filters = {};

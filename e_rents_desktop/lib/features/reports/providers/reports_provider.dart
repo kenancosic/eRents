@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 enum ReportType { financial } // Only financial reports for desktop
 
@@ -190,11 +191,24 @@ class ReportsProvider extends BaseProvider {
     final pdf = pw.Document();
     final dateFormat = DateFormat('dd/MM/yyyy');
     
+    // Load font with Unicode support for Central European characters (š, ć, etc.)
+    final fontRegularData = await rootBundle.load('assets/fonts/Hind-Regular.ttf');
+    final fontBoldData = await rootBundle.load('assets/fonts/Hind-Bold.ttf');
+    final fontRegular = pw.Font.ttf(fontRegularData);
+    final fontBold = pw.Font.ttf(fontBoldData);
+    
+    // Create theme with Unicode-supporting font
+    final theme = pw.ThemeData.withFont(
+      base: fontRegular,
+      bold: fontBold,
+    );
+    
     // Add pages to PDF
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
+        theme: theme,
         build: (pw.Context context) {
           return [
             // Header

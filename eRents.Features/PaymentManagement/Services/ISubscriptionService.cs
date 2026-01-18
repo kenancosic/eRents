@@ -15,4 +15,10 @@ public interface ISubscriptionService
     Task CancelSubscriptionAsync(int subscriptionId);
     Task PauseSubscriptionAsync(int subscriptionId);
     Task ResumeSubscriptionAsync(int subscriptionId);
+    
+    /// <summary>
+    /// Sends an invoice/payment request notification to the tenant for a subscription.
+    /// Creates a pending payment record and sends both in-app notification and email.
+    /// </summary>
+    Task<SendInvoiceResponse> SendInvoiceAsync(int subscriptionId, SendInvoiceRequest request);
 }

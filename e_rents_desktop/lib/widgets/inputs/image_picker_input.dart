@@ -165,9 +165,18 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
   void _reorderImages(int oldIndex, int newIndex) {
     if (!widget.allowReordering) return;
 
+    // Guard against reordering involving the add button (which is at _images.length)
+    if (oldIndex >= _images.length || newIndex > _images.length) {
+      return;
+    }
+
     setState(() {
       if (newIndex > oldIndex) {
         newIndex -= 1;
+      }
+      // Additional safety check after adjustment
+      if (oldIndex < 0 || oldIndex >= _images.length || newIndex < 0 || newIndex > _images.length) {
+        return;
       }
       final item = _images.removeAt(oldIndex);
       _images.insert(newIndex, item);

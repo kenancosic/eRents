@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/base/crud/detail_screen.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/models/enums/property_status.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,8 @@ import 'package:e_rents_desktop/models/property_status_update_request.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_status_widgets.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_review_tile.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_amenities_display.dart';
+import 'package:e_rents_desktop/features/properties/widgets/payment_history_widget.dart';
+import 'package:e_rents_desktop/features/properties/widgets/daily_rentals_calendar.dart';
 import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class PropertyDetailScreen extends StatelessWidget {
@@ -99,18 +102,61 @@ class PropertyDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Title and Status in one row
+              // Title, Status and Rental Type in one row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                      property.name,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
+                  Expanded(
+                    child: Text(
+                        property.name,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   PropertyStatusPill(status: property.status),
+                  const SizedBox(width: 8),
+                  // Rental Type Badge
+                  if (property.rentingType != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: property.rentingType?.name == 'Daily' 
+                            ? Colors.blue.shade100 
+                            : Colors.purple.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: property.rentingType?.name == 'Daily' 
+                              ? Colors.blue.shade400 
+                              : Colors.purple.shade400,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            property.rentingType?.name == 'Daily' 
+                                ? Icons.calendar_today 
+                                : Icons.calendar_month,
+                            size: 16,
+                            color: property.rentingType?.name == 'Daily' 
+                                ? Colors.blue.shade700 
+                                : Colors.purple.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            property.rentingType?.displayName ?? 'Unknown',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: property.rentingType?.name == 'Daily' 
+                                  ? Colors.blue.shade700 
+                                  : Colors.purple.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -305,7 +351,6 @@ class PropertyDetailScreen extends StatelessWidget {
                                   ],
                                 );
                               } else {
-                                String _fmt(DateTime? d) => d == null ? '-' : '${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
                                 inner = Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -315,7 +360,31 @@ class PropertyDetailScreen extends StatelessWidget {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(tenant.fullName?.isNotEmpty == true ? tenant.fullName! : 'User #${tenant.userId}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(tenant.fullName?.isNotEmpty == true ? tenant.fullName! : 'User #${tenant.userId}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                              ),
+                                              // Chat icon to message tenant
+                                              IconButton(
+                                                icon: const Icon(Icons.chat_bubble_outline, color: Colors.blue),
+                                                tooltip: 'Send message to tenant',
+                                                onPressed: () async {
+                                                  final chatProvider = context.read<ChatProvider>();
+                                                  // Ensure contact exists and select them
+                                                  final success = await chatProvider.ensureContact(tenant.userId);
+                                                  if (success && context.mounted) {
+                                                    chatProvider.selectContact(tenant.userId);
+                                                    context.go(AppRoutes.chat);
+                                                  } else if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Unable to start chat with tenant')),
+                                                    );
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
                                           if ((tenant.email ?? '').isNotEmpty) ...[
                                             const SizedBox(height: 4),
                                             Text(tenant.email!, style: TextStyle(color: Colors.grey[700], fontSize: 12)),
@@ -325,7 +394,7 @@ class PropertyDetailScreen extends StatelessWidget {
                                             children: [
                                               const Icon(Icons.event_available, size: 16, color: Colors.grey),
                                               const SizedBox(width: 6),
-                                              Text('Lease: ${_fmt(tenant.leaseStartDate)} - ${_fmt(tenant.leaseEndDate)}', style: TextStyle(color: Colors.grey[800])),
+                                              Text('Lease: ${AppDateUtils.formatBookingPeriod(tenant.leaseStartDate, tenant.leaseEndDate)}', style: TextStyle(color: Colors.grey[800])),
                                             ],
                                           ),
                                         ],
@@ -353,6 +422,13 @@ class PropertyDetailScreen extends StatelessWidget {
                   ),
                 ],
               ),
+
+              const SizedBox(height: 24),
+              
+              // Rental-specific section: Upcoming Rentals (Daily) or Invoices (Monthly)
+              _RentalDetailsSection(property: property),
+
+              const SizedBox(height: 16),
 
               // Created date
               if (property.dateAdded != null)
@@ -702,4 +778,27 @@ class _ReviewTileState extends State<_ReviewTile> {
       ),
     );
   }
+}
+
+/// Widget that displays rental-specific information:
+/// - For Daily rentals: Calendar with upcoming bookings/reservations
+/// - For Monthly rentals: Invoice/payment history (paid/unpaid)
+class _RentalDetailsSection extends StatelessWidget {
+  final Property property;
+
+  const _RentalDetailsSection({required this.property});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDaily = property.rentingType?.name == 'Daily';
+    
+    // Both DailyRentalsCalendar and PaymentHistoryWidget have their own headers,
+    // so we only render the widget directly without adding another header
+    if (isDaily) {
+      return DailyRentalsCalendar(propertyId: property.propertyId);
+    } else {
+      return PaymentHistoryWidget(propertyId: property.propertyId);
+    }
+  }
+
 }

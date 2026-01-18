@@ -80,13 +80,19 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
                 decoration: const InputDecoration(
                   labelText: 'New Password',
                   prefixIcon: Icon(Icons.lock),
+                  helperText: 'Min 8 chars with upper, lower, digit & special (@\$!%*?&)',
+                  helperMaxLines: 2,
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a password';
                   }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
+                  if (value.length < 8 || value.length > 100) {
+                    return 'Password must be between 8 and 100 characters';
+                  }
+                  final pwdRe = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])');
+                  if (!pwdRe.hasMatch(value)) {
+                    return 'Password must contain lower, upper, digit and special character';
                   }
                   return null;
                 },

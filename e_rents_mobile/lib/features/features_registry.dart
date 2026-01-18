@@ -20,6 +20,7 @@ import 'profile/providers/invoices_provider.dart';
 import 'explore/providers/property_search_provider.dart';
 import 'explore/providers/featured_properties_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_availability_provider.dart';
 import 'users/providers/public_user_provider.dart';
 import 'notifications/providers/notification_provider.dart';
 import 'maintenance/providers/maintenance_provider.dart';
@@ -93,6 +94,10 @@ class FeaturesRegistry {
       // Property Detail Feature Providers
       ChangeNotifierProvider<PropertyRentalProvider>(
         create: (_) => PropertyRentalProvider(deps.apiService),
+      ),
+      
+      ChangeNotifierProvider<PropertyDetailAvailabilityProvider>(
+        create: (_) => PropertyDetailAvailabilityProvider(deps.apiService),
       ),
       
       ChangeNotifierProvider<SavedProvider>(

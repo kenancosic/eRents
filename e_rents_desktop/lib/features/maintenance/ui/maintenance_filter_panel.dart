@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/base/crud/list_screen.dart' show FilterController;
 import 'package:e_rents_desktop/models/enums/maintenance_issue_priority.dart';
 import 'package:e_rents_desktop/models/enums/maintenance_issue_status.dart';
+import 'package:e_rents_desktop/models/property.dart';
+import 'package:e_rents_desktop/features/maintenance/providers/maintenance_provider.dart';
 import 'package:e_rents_desktop/presentation/chips.dart';
 import 'package:e_rents_desktop/presentation/extensions.dart';
 
@@ -28,7 +31,7 @@ class MaintenanceFilterPanel extends StatefulWidget {
 }
 
 class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
-  final _propertyIdController = TextEditingController();
+  Property? _selectedProperty;
   MaintenanceIssuePriority? _priorityMin;
   MaintenanceIssuePriority? _priorityMax;
   final Set<MaintenanceIssueStatus> _statuses = <MaintenanceIssueStatus>{};
@@ -36,14 +39,41 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
   DateTime? _createdTo;
   final _searchController = TextEditingController();
   
+  // Sorting options
+  String? _sortBy;
+  bool _ascending = true;
+  
+  static const List<Map<String, String>> _sortOptions = [
+    {'value': 'createdAt', 'label': 'Date Created'},
+    {'value': 'priority', 'label': 'Priority'},
+    {'value': 'status', 'label': 'Status'},
+    {'value': 'title', 'label': 'Title'},
+  ];
+  
 
   @override
   void initState() {
     super.initState();
+    // Load properties for dropdown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<MaintenanceProvider>();
+      provider.loadProperties().then((_) {
+        // Set initial property selection if provided
+        final init = widget.initialFilters ?? const <String, dynamic>{};
+        final pid = init['propertyId'] as int?;
+        if (pid != null && mounted) {
+          setState(() {
+            _selectedProperty = provider.properties.cast<Property?>().firstWhere(
+              (p) => p?.propertyId == pid,
+              orElse: () => null,
+            );
+          });
+        }
+      });
+    });
+    
     final init = widget.initialFilters ?? const <String, dynamic>{};
     if (init.isNotEmpty) {
-      final pid = init['propertyId'] as int?;
-      if (pid != null) _propertyIdController.text = pid.toString();
       _priorityMin = _parsePriority(init['priorityMin']);
       _priorityMax = _parsePriority(init['priorityMax']);
       final List statuses = (init['statuses'] as List?) ?? const [];
@@ -64,19 +94,20 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
 
   @override
   void dispose() {
-    _propertyIdController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   Map<String, dynamic> _buildFilters() {
     final map = <String, dynamic>{
-      'propertyId': int.tryParse(_propertyIdController.text),
+      'propertyId': _selectedProperty?.propertyId,
       'priorityMin': _priorityMin?.name,
       'priorityMax': _priorityMax?.name,
       'statuses': _statuses.map((e) => e.name).toList(),
       'createdFrom': _createdFrom?.toIso8601String(),
       'createdTo': _createdTo?.toIso8601String(),
+      'sortBy': _sortBy,
+      'ascending': _ascending,
     }..removeWhere((k, v) => v == null || (v is List && v.isEmpty));
 
     return map;
@@ -84,13 +115,15 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
 
   void _reset() {
     setState(() {
-      _propertyIdController.clear();
+      _selectedProperty = null;
       _priorityMin = null;
       _priorityMax = null;
       _statuses.clear();
       _createdFrom = null;
       _createdTo = null;
       _searchController.clear();
+      _sortBy = null;
+      _ascending = true;
     });
   }
 
@@ -103,10 +136,12 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 12,
           children: [
-            _buildPropertyId(),
+            _buildPropertyDropdown(),
             _buildPriorityRange(),
             _buildStatusChips(),
             _buildDateRange(context),
+            const Divider(height: 24),
+            _buildSortingOptions(),
           ],
         ),
       ),
@@ -115,15 +150,32 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
 
   
 
-  Widget _buildPropertyId() {
-    return TextFormField(
-      controller: _propertyIdController,
-      decoration: const InputDecoration(
-        labelText: 'Property ID',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.home_outlined),
-      ),
-      keyboardType: TextInputType.number,
+  Widget _buildPropertyDropdown() {
+    return Consumer<MaintenanceProvider>(
+      builder: (context, provider, _) {
+        final properties = provider.properties;
+        return DropdownButtonFormField<Property?>(
+          value: _selectedProperty,
+          decoration: const InputDecoration(
+            labelText: 'Property',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.home_outlined),
+          ),
+          hint: const Text('All Properties'),
+          isExpanded: true,
+          items: [
+            const DropdownMenuItem<Property?>(
+              value: null,
+              child: Text('All Properties'),
+            ),
+            ...properties.map((p) => DropdownMenuItem<Property?>(
+              value: p,
+              child: Text(p.name, overflow: TextOverflow.ellipsis),
+            )),
+          ],
+          onChanged: (value) => setState(() => _selectedProperty = value),
+        );
+      },
     );
   }
 
@@ -181,6 +233,59 @@ class _MaintenanceFilterPanelState extends State<MaintenanceFilterPanel> {
           onChanged: (next) => setState(() => _statuses
             ..clear()
             ..addAll(next)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSortingOptions() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Sort By', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: DropdownButtonFormField<String?>(
+                value: _sortBy,
+                decoration: const InputDecoration(
+                  labelText: 'Sort Field',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.sort),
+                ),
+                hint: const Text('Default'),
+                isExpanded: true,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('Default'),
+                  ),
+                  ..._sortOptions.map((opt) => DropdownMenuItem<String?>(
+                    value: opt['value'],
+                    child: Text(opt['label']!),
+                  )),
+                ],
+                onChanged: (value) => setState(() => _sortBy = value),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<bool>(
+                value: _ascending,
+                decoration: const InputDecoration(
+                  labelText: 'Order',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: true, child: Text('Ascending')),
+                  DropdownMenuItem(value: false, child: Text('Descending')),
+                ],
+                onChanged: (value) => setState(() => _ascending = value ?? true),
+              ),
+            ),
+          ],
         ),
       ],
     );
