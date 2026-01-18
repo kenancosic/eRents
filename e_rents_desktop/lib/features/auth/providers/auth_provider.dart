@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 /// AuthProvider built on BaseProvider + BaseProviderMixin
 /// - Unifies state: isLoading, isUpdating, hasError, error
@@ -40,57 +41,114 @@ class AuthProvider extends BaseProvider {
 
   /// Login and set auth state. Returns true on success.
   Future<bool> login(String identifier, String password) async {
-    final result = await executeWithRetry<bool>(() async {
+    debugPrint('[AuthProvider] login() called with identifier: $identifier');
+    
+    // Clear any previous error
+    setUpdating(true);
+    
+    try {
       // Determine if identifier is email or username to align with backend LoginRequest
       final body = <String, dynamic>{
         'password': password,
       };
       if (identifier.contains('@')) {
         body['email'] = identifier;
+        debugPrint('[AuthProvider] Using email login');
       } else {
         body['username'] = identifier;
+        debugPrint('[AuthProvider] Using username login');
       }
 
+      debugPrint('[AuthProvider] Sending login request to /Auth/login');
       final httpResp = await api.postJson(
         '/Auth/login',
         body,
         authenticated: false,
       );
+      debugPrint('[AuthProvider] Login response status: ${httpResp.statusCode}');
 
       // Expected response: { accessToken, refreshToken, user: {...} }
       final decoded = jsonDecode(httpResp.body);
+      debugPrint('[AuthProvider] Response decoded, has accessToken: ${decoded is Map && decoded.containsKey('accessToken')}');
+      
       if (decoded is Map<String, dynamic>) {
         _accessToken = (decoded['accessToken'] as String?) ?? _accessToken;
         _refreshToken = (decoded['refreshToken'] as String?) ?? _refreshToken;
+        debugPrint('[AuthProvider] Tokens extracted - accessToken: ${_accessToken != null ? '${_accessToken!.substring(0, 20)}...' : 'null'}');
       }
 
       // Persist access token for ApiService header usage
       if (_accessToken != null && _accessToken!.isNotEmpty) {
         await api.secureStorageService.storeToken(_accessToken!);
+        debugPrint('[AuthProvider] Token stored in secure storage');
       }
 
       final userMap = (decoded is Map<String, dynamic>) ? decoded['user'] : null;
       if (userMap is Map<String, dynamic>) {
         _currentUser = User.fromJson(userMap);
+        debugPrint('[AuthProvider] User parsed: ${_currentUser?.username} (${_currentUser?.email})');
       } else {
-        // If backend returns user separately, you can call me() after login
+        debugPrint('[AuthProvider] No user object in response, will need to fetch separately');
         _currentUser = _currentUser;
       }
 
-      // Optionally persist tokens here via a TokenService/UserPreferences
-      notifyListeners();
+      setUpdating(false);
+      debugPrint('[AuthProvider] Login successful');
       return true;
-    }, isUpdate: true);
-
-    return result ?? false;
+    } catch (e) {
+      // Extract actual error message from exception
+      String errorMessage = _extractErrorMessage(e);
+      debugPrint('[AuthProvider] Login failed: $errorMessage');
+      setError(errorMessage);
+      return false;
+    }
+  }
+  
+  /// Extract a user-friendly error message from an exception
+  String _extractErrorMessage(dynamic e) {
+    String msg = e.toString();
+    
+    // Remove 'Exception: ' prefix if present
+    if (msg.startsWith('Exception: ')) {
+      msg = msg.substring(11);
+    }
+    
+    // Common backend error messages - make them more user-friendly
+    if (msg.contains('Invalid username or password') || 
+        msg.contains('invalid_credentials') ||
+        msg.contains('Invalid credentials')) {
+      return 'Invalid username or password. Please try again.';
+    }
+    if (msg.contains('User not found')) {
+      return 'No account found with this email or username.';
+    }
+    if (msg.contains('401')) {
+      return 'Authentication failed. Please check your credentials.';
+    }
+    if (msg.contains('network') || msg.contains('connection') || msg.contains('SocketException')) {
+      return 'Unable to connect to server. Please check your internet connection.';
+    }
+    if (msg.contains('timeout')) {
+      return 'Request timed out. Please try again.';
+    }
+    
+    // Return the cleaned message if it's reasonably short
+    if (msg.length <= 150) {
+      return msg;
+    }
+    
+    // Truncate very long messages
+    return '${msg.substring(0, 150)}...';
   }
 
   /// Register a new user. Returns true on success.
   Future<bool> register(RegisterRequestModel request) async {
+    debugPrint('[AuthProvider] register() called for username: ${request.username}, email: ${request.email}');
     // Custom flow to capture server-side field errors for UI mapping
     _fieldErrors = <String, String>{};
     setUpdating(true);
     try {
+      debugPrint('[AuthProvider] Sending register request to /Auth/register');
       await api.postJson(
         '/Auth/register',
         request.toJson(),
@@ -98,11 +156,14 @@ class AuthProvider extends BaseProvider {
       );
       // Mark update finished successfully
       setUpdating(false);
+      debugPrint('[AuthProvider] Registration successful');
       return true;
     } catch (e) {
       // ApiService aggregates validation errors like "Field: Message; Field2: Message2"
       final msg = e.toString();
+      debugPrint('[AuthProvider] Registration failed: $msg');
       _fieldErrors = _parseFieldErrors(msg);
+      debugPrint('[AuthProvider] Parsed field errors: $_fieldErrors');
       // Set a concise top-level error for banners
       final summary = _fieldErrors.isNotEmpty
           ? _fieldErrors.values.first
@@ -132,19 +193,32 @@ class AuthProvider extends BaseProvider {
 
   /// Start forgot password flow. Returns true on success.
   Future<bool> forgotPassword(String email) async {
-    final ok = await executeWithStateForSuccess(() async {
+    debugPrint('[AuthProvider] forgotPassword() called for email: $email');
+    setUpdating(true);
+    try {
+      debugPrint('[AuthProvider] Sending forgot-password request');
       await api.postJson(
         '/Auth/forgot-password',
         {'email': email},
         authenticated: false,
       );
-    });
-    return ok;
+      setUpdating(false);
+      debugPrint('[AuthProvider] Forgot password request successful');
+      return true;
+    } catch (e) {
+      String errorMessage = _extractErrorMessage(e);
+      debugPrint('[AuthProvider] Forgot password failed: $errorMessage');
+      setError(errorMessage);
+      return false;
+    }
   }
 
   /// Verify the received code. Returns true on success.
   Future<bool> verifyCode(String email, String code) async {
-    final ok = await executeWithStateForSuccess(() async {
+    debugPrint('[AuthProvider] verifyCode() called for email: $email');
+    setUpdating(true);
+    try {
+      debugPrint('[AuthProvider] Sending verify request');
       await api.postJson(
         '/Auth/verify',
         {
@@ -153,13 +227,23 @@ class AuthProvider extends BaseProvider {
         },
         authenticated: false,
       );
-    });
-    return ok;
+      setUpdating(false);
+      debugPrint('[AuthProvider] Verification successful');
+      return true;
+    } catch (e) {
+      String errorMessage = _extractErrorMessage(e);
+      debugPrint('[AuthProvider] Verification failed: $errorMessage');
+      setError(errorMessage);
+      return false;
+    }
   }
 
   /// Reset or create new password. Returns true on success.
   Future<bool> resetPassword(String email, String code, String newPassword) async {
-    final ok = await executeWithRetry<bool>(() async {
+    debugPrint('[AuthProvider] resetPassword() called for email: $email');
+    setUpdating(true);
+    try {
+      debugPrint('[AuthProvider] Sending reset-password request');
       await api.postJson(
         '/Auth/reset-password',
         {
@@ -170,13 +254,20 @@ class AuthProvider extends BaseProvider {
         },
         authenticated: false,
       );
+      setUpdating(false);
+      debugPrint('[AuthProvider] Password reset successful');
       return true;
-    }, isUpdate: true);
-    return ok ?? false;
+    } catch (e) {
+      String errorMessage = _extractErrorMessage(e);
+      debugPrint('[AuthProvider] Password reset failed: $errorMessage');
+      setError(errorMessage);
+      return false;
+    }
   }
 
   /// Logout current session. Returns true on success.
   Future<bool> logout() async {
+    debugPrint('[AuthProvider] logout() called');
     // No backend logout endpoint currently; just clear local auth state and tokens
     // If a server-side logout is added later (e.g., refresh token revocation), call it here.
     // Clear persisted token so ApiService stops authenticating requests
@@ -186,6 +277,7 @@ class AuthProvider extends BaseProvider {
     _accessToken = null;
     _refreshToken = null;
     notifyListeners();
+    debugPrint('[AuthProvider] Logout complete - tokens cleared');
     return true;
   }
 

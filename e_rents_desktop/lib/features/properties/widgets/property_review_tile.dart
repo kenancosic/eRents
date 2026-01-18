@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:e_rents_desktop/models/review.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 /// A reusable widget for displaying a property review with reply functionality
 class PropertyReviewTile extends StatefulWidget {
@@ -37,12 +38,23 @@ class _PropertyReviewTileState extends State<PropertyReviewTile> {
     );
     if (text != null && text.isNotEmpty) {
       await widget.onReply(text);
+      // Refresh replies after successful reply submission
+      if (mounted) {
+        final prov = context.read<PropertyProvider>();
+        await prov.fetchReplies(widget.review.reviewId);
+        // Ensure tile is expanded to show the new reply
+        if (!_expanded) {
+          setState(() => _expanded = true);
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final prov = context.read<PropertyProvider>();
+    // Watch the provider to get notified when replies are updated
+    final prov = context.watch<PropertyProvider>();
+    // Get the latest version of the review from provider (which includes updated replies)
     final r = widget.review;
     final rating = r.starRating?.toStringAsFixed(1) ?? '';
     return Card(
@@ -83,7 +95,7 @@ class _PropertyReviewTileState extends State<PropertyReviewTile> {
               const SizedBox(width: 12),
             ],
             Text(
-              r.createdAt.toString(),
+              AppDateUtils.formatRelative(r.createdAt),
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
           ],
@@ -123,7 +135,7 @@ class _PropertyReviewTileState extends State<PropertyReviewTile> {
                                 Text(rep.description ?? '(no text)'),
                                 const SizedBox(height: 2),
                                 Text(
-                                  rep.createdAt.toString(),
+                                  AppDateUtils.formatRelative(rep.createdAt),
                                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                 ),
                               ],

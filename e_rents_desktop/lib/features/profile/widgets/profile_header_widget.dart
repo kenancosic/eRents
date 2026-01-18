@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_avatar.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfileHeaderWidget extends StatefulWidget {
@@ -197,39 +196,7 @@ class _ProfileHeaderWidgetState extends State<ProfileHeaderWidget> {
   }
 
   void _showImagePickerDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Change Profile Picture'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.photo_library),
-                  title: const Text('Choose from Gallery'),
-                  onTap: () {
-                    _pickImage(ImageSource.gallery);
-                    context.pop();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.camera),
-                  title: const Text('Take a Photo'),
-                  onTap: () {
-                    _pickImage(ImageSource.camera);
-                    context.pop();
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => context.pop(),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-    );
+    // Desktop app - directly pick from gallery (no camera option)
+    _pickImage(ImageSource.gallery);
   }
 }

@@ -61,8 +61,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 Directory.GetFiles(propertyImagesPath, "*.jpg").Concat(Directory.GetFiles(propertyImagesPath, "*.png")).ToArray() : 
                 Array.Empty<string>();
             var maintenanceImages = Directory.Exists(maintenanceImagesPath) ? 
-                Directory.GetFiles(maintenanceImagesPath, "*.jpg").ToArray() : 
+                Directory.GetFiles(maintenanceImagesPath, "*.jpg")
+                    .Concat(Directory.GetFiles(maintenanceImagesPath, "*.png"))
+                    .ToArray() : 
                 Array.Empty<string>();
+            
+            logger?.LogInformation("[{Seeder}] Found {PropCount} property images, {MaintCount} maintenance images", 
+                Name, propertyImages.Length, maintenanceImages.Length);
 
             // Add property image galleries: up to 3 images for first 4 properties (first image as cover)
             int perProperty = 3;

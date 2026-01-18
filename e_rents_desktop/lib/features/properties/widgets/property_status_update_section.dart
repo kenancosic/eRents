@@ -28,6 +28,18 @@ class _PropertyStatusUpdateSectionState extends State<PropertyStatusUpdateSectio
     _selectedStatus = widget.property.status;
   }
 
+  @override
+  void didUpdateWidget(covariant PropertyStatusUpdateSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local state when the property changes from parent (e.g., after refresh)
+    if (oldWidget.property.propertyId != widget.property.propertyId ||
+        oldWidget.property.status != widget.property.status) {
+      setState(() {
+        _selectedStatus = widget.property.status;
+      });
+    }
+  }
+
   Future<void> _updateStatus() async {
     if (_selectedStatus == null) return;
 
@@ -52,7 +64,19 @@ class _PropertyStatusUpdateSectionState extends State<PropertyStatusUpdateSectio
         unavailableTo: _unavailableTo,
       );
       
-      await provider.updatePropertyStatus(widget.property.propertyId, request);
+      final updatedProperty = await provider.updatePropertyStatus(widget.property.propertyId, request);
+      
+      // Update local state to reflect the persisted status
+      if (mounted && updatedProperty != null) {
+        setState(() {
+          _selectedStatus = updatedProperty.status;
+          // Clear date fields after successful update
+          if (_selectedStatus != PropertyStatus.unavailable) {
+            _unavailableFrom = null;
+            _unavailableTo = null;
+          }
+        });
+      }
       
       // Show refund notification message for daily rentals
       if (mounted && 
@@ -74,6 +98,10 @@ class _PropertyStatusUpdateSectionState extends State<PropertyStatusUpdateSectio
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to update property status: $e')),
         );
+        // Revert to the original status on failure
+        setState(() {
+          _selectedStatus = widget.property.status;
+        });
       }
     } finally {
       if (mounted) {

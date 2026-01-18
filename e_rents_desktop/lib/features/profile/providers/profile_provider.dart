@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/address.dart';
 import 'package:e_rents_desktop/models/user.dart';
+import 'package:http/http.dart' as http;
 
 class ProfileProvider extends BaseProvider {
   ProfileProvider(super.api);
@@ -127,6 +130,47 @@ class ProfileProvider extends BaseProvider {
     }
     notifyListeners();
     return ok;
+  }
+
+  /// Uploads a new profile image for the current user
+  /// Returns true if successful, false otherwise
+  Future<bool> uploadProfileImage(String filePath) async {
+    if (_currentUser == null) {
+      setError('User not loaded');
+      return false;
+    }
+
+    try {
+      setLoading(true);
+      clearError();
+      
+      // Create multipart file from path
+      final file = await http.MultipartFile.fromPath('file', filePath);
+      
+      final response = await api.multipartRequest(
+        '/Profile/upload-image',
+        'POST',
+        files: [file],
+        authenticated: true,
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          // Reload user profile to get updated profileImageId
+          await loadUserProfile();
+          return true;
+        }
+      }
+      
+      setError('Failed to upload image');
+      return false;
+    } catch (e) {
+      setError(e.toString());
+      return false;
+    } finally {
+      setLoading(false);
+    }
   }
 
   void clearUserProfile() {

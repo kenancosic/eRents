@@ -57,15 +57,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _ProfileScreenContent extends StatelessWidget {
+class _ProfileScreenContent extends StatefulWidget {
   const _ProfileScreenContent();
+
+  @override
+  State<_ProfileScreenContent> createState() => _ProfileScreenContentState();
+}
+
+class _ProfileScreenContentState extends State<_ProfileScreenContent> {
+  final _personalInfoFormKey = GlobalKey<FormState>();
+  final _personalInfoWidgetKey = GlobalKey<PersonalInfoFormWidgetState>();
 
   @override
   Widget build(BuildContext context) {
     final profileProvider = context.watch<ProfileProvider>();
     final isEditing = profileProvider.isEditing;
-
-    final personalInfoFormKey = GlobalKey<FormState>();
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -73,14 +79,28 @@ class _ProfileScreenContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Header Section (simplified - no image upload logic tied to provider)
+            // Profile Header Section with image upload
             ProfileHeaderWidget(
               onImageUploaded: (path) async {
-                // Image upload functionality simplified: placeholder or handled externally
-                // The widget itself might provide a pick, but actual upload is not in provider
-                // For academic submission, this can be a dummy function or removed.
-                // Or you can add it to the profile provider if it uses multipart
-                // For now, no action.
+                final provider = context.read<ProfileProvider>();
+                final success = await provider.uploadProfileImage(path);
+                if (context.mounted) {
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile image updated successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(provider.error?.toString() ?? 'Failed to upload image'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
             ),
 
@@ -95,7 +115,6 @@ class _ProfileScreenContent extends StatelessWidget {
                     _buildPersonalInfoCard(
                       context,
                       isEditing,
-                      personalInfoFormKey,
                     ),
                     const SizedBox(height: 24),
                     SectionCard(
@@ -136,7 +155,10 @@ class _ProfileScreenContent extends StatelessWidget {
                           onPressed: provider.isLoading // Using general isLoading
                               ? null
                               : () async {
-                                  if (personalInfoFormKey.currentState?.validate() ?? false) {
+                                  // Sync form controller values to provider before saving
+                                  _personalInfoWidgetKey.currentState?.syncToProvider();
+                                  
+                                  if (_personalInfoFormKey.currentState?.validate() ?? false) {
                                     final success = await provider.saveChanges();
                                     if (context.mounted) {
                                       if (success) {
@@ -274,8 +296,10 @@ class _ProfileScreenContent extends StatelessWidget {
 
   Future<void> _connectStripeAccount(BuildContext context) async {
     final stripeProvider = context.read<StripeConnectProvider>();
-    final refreshUrl = '${Uri.base}?setup=failed';
-    final returnUrl = '${Uri.base}?setup=success';
+    // Use proper URLs for Stripe Connect - these are displayed to user to manually return
+    const baseUrl = 'https://erents.app';
+    const refreshUrl = '$baseUrl/stripe/refresh';
+    const returnUrl = '$baseUrl/stripe/return';
     
     final onboardingUrl = await stripeProvider.createOnboardingLink(
       refreshUrl: refreshUrl,
@@ -419,14 +443,14 @@ class _ProfileScreenContent extends StatelessWidget {
   Widget _buildPersonalInfoCard(
     BuildContext context,
     bool isEditing,
-    GlobalKey<FormState> personalInfoFormKey,
   ) {
     return SectionCard(
       title: 'Personal Information',
       titleIcon: Icons.person,
       child: PersonalInfoFormWidget(
+        key: _personalInfoWidgetKey,
         isEditing: isEditing,
-        formKey: personalInfoFormKey,
+        formKey: _personalInfoFormKey,
       ),
     );
   }

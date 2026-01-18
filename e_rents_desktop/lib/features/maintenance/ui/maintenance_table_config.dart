@@ -10,7 +10,8 @@ class MaintenanceTableConfig {
     DataColumn(label: Text('Priority')),
     DataColumn(label: Text('Title')),
     DataColumn(label: Text('Status')),
-    DataColumn(label: Text('Reported')),
+    DataColumn(label: Text('Reported By')),
+    DataColumn(label: Text('Date')),
     DataColumn(label: Text('Actions')),
   ];
 
@@ -20,15 +21,16 @@ class MaintenanceTableConfig {
     switch (columnIndex) {
       case 0:
         // Sort by severity weight (highest first when ascending=false)
-        // Backend: expose this virtual/computed field
         return 'prioritySeverity';
       case 1:
         return 'title';
       case 2:
         return 'status';
       case 3:
-        return 'createdAt';
+        return null; // reported by - not sortable
       case 4:
+        return 'createdAt';
+      case 5:
         return null; // actions column not sortable
       default:
         return null;

@@ -147,14 +147,33 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			}
 		}
 
-		// Enforce thread/parent existence if reply
+		// Enforce thread/parent existence if reply and inherit propertyId/bookingId
 		if (request.ParentReviewId.HasValue)
 		{
-		    var parentExists = await Context.Set<Review>()
+		    var parentReview = await Context.Set<Review>()
 		            .AsNoTracking()
-		            .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value);
-		    if (!parentExists)
+		            .FirstOrDefaultAsync(r => r.ReviewId == request.ParentReviewId.Value);
+		    if (parentReview == null)
 		        throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
+		    
+		    // Inherit propertyId and bookingId from parent review for replies
+		    if (!request.PropertyId.HasValue && parentReview.PropertyId.HasValue)
+		    {
+		        request.PropertyId = parentReview.PropertyId;
+		        entity.PropertyId = parentReview.PropertyId;
+		    }
+		    if (!request.BookingId.HasValue && parentReview.BookingId.HasValue)
+		    {
+		        request.BookingId = parentReview.BookingId;
+		        entity.BookingId = parentReview.BookingId;
+		    }
+		    
+		    // Set the reviewer to current user for replies
+		    var currentUserId = CurrentUser?.GetUserIdAsInt();
+		    if (currentUserId.HasValue)
+		    {
+		        entity.ReviewerId = currentUserId.Value;
+		    }
 		}
 
 		// Enforce ReviewType semantics for original reviews

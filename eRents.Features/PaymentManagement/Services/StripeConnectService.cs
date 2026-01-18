@@ -265,16 +265,18 @@ public class StripeConnectService : IStripeConnectService
                 return null;
             }
 
-            var service = new AccountLinkService();
-            var linkOptions = new AccountLinkCreateOptions
-            {
-                Account = user.StripeAccountId,
-                Type = "account_onboarding" // Redirect to full dashboard
-            };
-            var accountLink = await service.CreateAsync(linkOptions);
+            // Use AccountService to create a login link to the Express Dashboard
+            var accountService = new AccountService();
+            var loginLink = await accountService.LoginLinks.CreateAsync(user.StripeAccountId);
 
             _logger.LogInformation("Created dashboard link for user {UserId}", userId);
-            return accountLink.Url;
+            return loginLink.Url;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error creating dashboard link for user {UserId}: {Message}", 
+                userId, ex.Message);
+            return null;
         }
         catch (Exception ex)
         {

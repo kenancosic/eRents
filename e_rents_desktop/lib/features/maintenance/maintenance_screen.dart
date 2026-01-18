@@ -46,6 +46,7 @@ class MaintenanceScreen extends StatelessWidget {
                   size: BadgeSize.sm,
                 ),
               ),
+              DataCell(Text(issue.tenantName)),
               DataCell(Text(AppDateUtils.formatShort(issue.createdAt))),
               DataCell(
                 Row(

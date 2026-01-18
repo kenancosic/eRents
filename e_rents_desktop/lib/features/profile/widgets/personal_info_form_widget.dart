@@ -17,10 +17,10 @@ class PersonalInfoFormWidget extends StatefulWidget {
   });
 
   @override
-  State<PersonalInfoFormWidget> createState() => _PersonalInfoFormWidgetState();
+  State<PersonalInfoFormWidget> createState() => PersonalInfoFormWidgetState();
 }
 
-class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
+class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
@@ -68,9 +68,31 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     super.dispose();
   }
 
+  /// Collects current form values and updates the provider.
+  /// Call this before saving to sync controller values to provider state.
+  void syncToProvider() {
+    final profileProvider = context.read<ProfileProvider>();
+    profileProvider.updateLocalUser(
+      firstName: _firstNameController.text,
+      lastName: _lastNameController.text,
+      phone: _phoneController.text,
+      address: Address(
+        streetLine1: _streetNameController.text,
+        streetLine2: _streetNumberController.text,
+        city: _cityController.text,
+        postalCode: _postalCodeController.text,
+        country: _countryController.text,
+        latitude: null,
+        longitude: null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final profileProvider = context.watch<ProfileProvider>();
+    // Use read instead of watch to prevent rebuilds on provider changes
+    // Controllers maintain their own state; we sync to provider only on save
+    final profileProvider = context.read<ProfileProvider>();
     final user = profileProvider.currentUser;
     if (user == null) {
       return const Center(child: Text('User not found.'));
@@ -93,8 +115,6 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   controller: _firstNameController,
                   label: 'First Name',
                   enabled: widget.isEditing,
-                  onChanged: (value) =>
-                      profileProvider.updateLocalUser(firstName: value),
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Required' : null,
                 ),
@@ -106,8 +126,6 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   controller: _lastNameController,
                   label: 'Last Name',
                   enabled: widget.isEditing,
-                  onChanged: (value) =>
-                      profileProvider.updateLocalUser(lastName: value),
                   validator: (value) =>
                       value == null || value.isEmpty ? 'Required' : null,
                 ),
@@ -133,7 +151,6 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
                   controller: _phoneController,
                   label: 'Phone Number',
                   enabled: widget.isEditing,
-                  onChanged: (value) => profileProvider.updateLocalUser(phone: value),
                   validator: (value) {
                     if (value != null &&
                         value.isNotEmpty &&
@@ -158,25 +175,11 @@ class _PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
             postalCodeController: _postalCodeController,
             countryController: _countryController,
             onManualAddressChanged: () {
-              // Update local user property directly from controllers
-              profileProvider.updateLocalUser(
-                address: Address(
-                  streetLine1: _streetNameController.text,
-                  streetLine2: _streetNumberController.text,
-                  city: _cityController.text,
-                  postalCode: _postalCodeController.text,
-                  country: _countryController.text,
-                  latitude: null, // Removed with GoogleMaps
-                  longitude: null, // Removed with GoogleMaps
-                ),
-              );
+              // No-op: values are synced to provider on save via syncToProvider()
             },
-            // This callback is for an external address picker, not strictly needed for manual inputs
-            // but kept for compatibility as it might be useful if the AddressInput widget changes
             onAddressSelected: (Address? selectedAddress) {
               if (selectedAddress != null) {
-                profileProvider.updateLocalUser(address: selectedAddress);
-                // Also update text controllers if AddressInput's internal fields differ
+                // Update text controllers when address is selected from picker
                 _streetNameController.text = selectedAddress.streetLine1 ?? '';
                 _streetNumberController.text = selectedAddress.streetLine2 ?? '';
                 _cityController.text = selectedAddress.city ?? '';

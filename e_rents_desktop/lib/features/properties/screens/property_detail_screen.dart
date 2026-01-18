@@ -14,6 +14,7 @@ import 'package:e_rents_desktop/models/property_status_update_request.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_status_widgets.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_review_tile.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_amenities_display.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 class PropertyDetailScreen extends StatelessWidget {
   final int propertyId;
@@ -645,7 +646,7 @@ class _ReviewTileState extends State<_ReviewTile> {
               const SizedBox(width: 12),
             ],
             Text(
-              r.createdAt.toString(),
+              AppDateUtils.formatRelative(r.createdAt),
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
           ],
@@ -685,7 +686,7 @@ class _ReviewTileState extends State<_ReviewTile> {
                                 Text(rep.description ?? '(no text)'),
                                 const SizedBox(height: 2),
                                 Text(
-                                  rep.createdAt.toString(),
+                                  AppDateUtils.formatRelative(rep.createdAt),
                                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                 ),
                               ],

@@ -412,4 +412,107 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 			return BadRequest(new { Error = ex.Message });
 		}
 	}
+
+	/// <summary>
+	/// Get pending subscription invoices for the current landlord's properties.
+	/// </summary>
+	[HttpGet("subscriptions/pending")]
+	[Authorize]
+	public async Task<IActionResult> GetPendingSubscriptionPayments()
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			var pendingPayments = await _context.Payments
+				.Include(p => p.Property)
+				.Include(p => p.Tenant).ThenInclude(t => t.User)
+				.Include(p => p.Subscription)
+				.Where(p => p.Property.OwnerId == userId)
+				.Where(p => p.PaymentType == "SubscriptionPayment")
+				.Where(p => p.PaymentStatus == "Pending" || p.PaymentStatus == "Failed")
+				.OrderByDescending(p => p.DueDate ?? p.CreatedAt)
+				.Select(p => new
+				{
+					p.PaymentId,
+					PropertyName = p.Property.Name,
+					p.PropertyId,
+					TenantName = p.Tenant != null && p.Tenant.User != null ? $"{p.Tenant.User.FirstName} {p.Tenant.User.LastName}" : "Unknown",
+					TenantEmail = p.Tenant != null && p.Tenant.User != null ? p.Tenant.User.Email : null,
+					p.TenantId,
+					p.Amount,
+					p.Currency,
+					p.DueDate,
+					p.PaymentStatus,
+					BillingPeriod = p.Subscription != null ? $"{p.Subscription.StartDate:MMM yyyy}" : null,
+					p.CreatedAt,
+					IsOverdue = p.DueDate.HasValue && p.DueDate.Value < DateTime.UtcNow && p.PaymentStatus == "Pending"
+				})
+				.ToListAsync();
+
+			return Ok(pendingPayments);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error getting pending subscription payments");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	/// <summary>
+	/// Get subscription payment history for the current landlord's properties.
+	/// </summary>
+	[HttpGet("subscriptions/history")]
+	[Authorize]
+	public async Task<IActionResult> GetSubscriptionPaymentHistory([FromQuery] int? propertyId = null, [FromQuery] int? tenantId = null)
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			var query = _context.Payments
+				.Include(p => p.Property)
+				.Include(p => p.Tenant).ThenInclude(t => t.User)
+				.Include(p => p.Subscription)
+				.Where(p => p.Property.OwnerId == userId)
+				.Where(p => p.PaymentType == "SubscriptionPayment");
+
+			if (propertyId.HasValue)
+				query = query.Where(p => p.PropertyId == propertyId.Value);
+			if (tenantId.HasValue)
+				query = query.Where(p => p.TenantId == tenantId.Value);
+
+			var payments = await query
+				.OrderByDescending(p => p.DueDate ?? p.CreatedAt)
+				.Select(p => new
+				{
+					p.PaymentId,
+					PropertyName = p.Property.Name,
+					p.PropertyId,
+					TenantName = p.Tenant != null && p.Tenant.User != null ? $"{p.Tenant.User.FirstName} {p.Tenant.User.LastName}" : "Unknown",
+					TenantEmail = p.Tenant != null && p.Tenant.User != null ? p.Tenant.User.Email : null,
+					p.TenantId,
+					p.Amount,
+					p.Currency,
+					p.DueDate,
+					p.PaymentStatus,
+					p.PaymentMethod,
+					p.PaymentReference,
+					BillingPeriod = p.Subscription != null ? $"{p.Subscription.StartDate:MMM yyyy}" : null,
+					p.CreatedAt,
+					p.UpdatedAt,
+					PaidAt = p.PaymentStatus == "Completed" ? p.UpdatedAt : (DateTime?)null
+				})
+				.ToListAsync();
+
+			return Ok(payments);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error getting subscription payment history");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
 }

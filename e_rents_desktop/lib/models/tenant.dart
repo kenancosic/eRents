@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/models/payment.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
+import 'package:e_rents_desktop/utils/date_utils.dart';
 
 enum TenantStatus {
   active,
@@ -9,15 +10,20 @@ enum TenantStatus {
   leaseEnded;
 
   static TenantStatus fromString(String status) {
+    // Handle integer enum values from backend
     switch (status.toLowerCase()) {
       case 'active':
+      case '0':
         return TenantStatus.active;
       case 'inactive':
+      case '1':
         return TenantStatus.inactive;
       case 'evicted':
+      case '2':
         return TenantStatus.evicted;
       case 'leaseended':
       case 'lease_ended':
+      case '3':
         return TenantStatus.leaseEnded;
       default:
         throw ArgumentError('Unknown tenant status: $status');
@@ -177,7 +183,7 @@ class Tenant {
   String get email => user?.email ?? 'N/A';
   String get leasePeriod =>
       leaseStartDate != null && leaseEndDate != null
-          ? '${leaseStartDate!.year}-${leaseStartDate!.month.toString().padLeft(2, '0')} to ${leaseEndDate!.year}-${leaseEndDate!.month.toString().padLeft(2, '0')}'
+          ? AppDateUtils.formatBookingPeriod(leaseStartDate, leaseEndDate)
           : 'N/A';
   String get fullName => '$firstName $lastName'.trim();
 }

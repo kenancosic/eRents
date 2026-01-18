@@ -54,9 +54,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             }
 
             // Ensure baseline accounts for subsequent seeders
-            await EnsureUserAsync(context, "desktop", "test123", UserTypeEnum.Owner, "Desktop", "Owner", "desktop.owner@erent.com", "Sarajevo");
-            await EnsureUserAsync(context, "mobile", "test123", UserTypeEnum.Tenant, "Mobile", "Tenant", "mobile.tenant@erent.com", "Tuzla");
-            await EnsureUserAsync(context, "guestuser", "test123", UserTypeEnum.Guest, "Regular", "User", "guest.user@erent.com", "Mostar", isPublic: true);
+            // Primary test accounts use "desktop" and "mobile" usernames to match what other seeders expect
+            // Also create aliases "landlord" and "tenant" for README compatibility
+            await EnsureUserAsync(context, "desktop", "Password123!", UserTypeEnum.Owner, "Desktop", "Landlord", "erentsbusiness@gmail.com", "Sarajevo");
+            await EnsureUserAsync(context, "landlord", "Password123!", UserTypeEnum.Owner, "Desktop", "Landlord", "landlord@erent.com", "Sarajevo");
+            await EnsureUserAsync(context, "mobile", "Password123!", UserTypeEnum.Tenant, "Mobile", "Tenant", "erentsbusinesstenant@gmail.com", "Tuzla");
+            await EnsureUserAsync(context, "tenant", "Password123!", UserTypeEnum.Tenant, "Mobile", "Tenant", "tenant@erent.com", "Tuzla");
+            await EnsureUserAsync(context, "guestuser", "Password123!", UserTypeEnum.Guest, "Regular", "User", "erentsbusiness+guest@gmail.com", "Mostar", isPublic: true);
             
             // Additional landlords/owners (10 total including desktop)
             await EnsureUserAsync(context, "owner_zenica", "test123", UserTypeEnum.Owner, "Adnan", "Hadžić", "owner.zenica@erent.com", "Zenica");

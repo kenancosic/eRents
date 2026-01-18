@@ -36,7 +36,10 @@ public partial class Payment : BaseEntity
     
     public string? RefundReason { get; set; }
     
-    public string? PaymentType { get; set; } = "BookingPayment"; // BookingPayment, Refund
+    public string? PaymentType { get; set; } = "BookingPayment"; // BookingPayment, Refund, SubscriptionPayment
+
+    // Due date for subscription payments
+    public DateTime? DueDate { get; set; }
 
     // Navigation Properties
     public virtual Booking? Booking { get; set; }

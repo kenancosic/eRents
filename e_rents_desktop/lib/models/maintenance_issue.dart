@@ -13,6 +13,7 @@ class MaintenanceIssue {
   final double? cost;
   final int? assignedToUserId;
   final int reportedByUserId;
+  final String? reporterName;
   final String? resolutionNotes;
   final bool isTenantComplaint;
   final List<int> imageIds;
@@ -32,6 +33,7 @@ class MaintenanceIssue {
     this.cost,
     this.assignedToUserId,
     required this.reportedByUserId,
+    this.reporterName,
     this.resolutionNotes,
     this.isTenantComplaint = false,
     this.imageIds = const [],
@@ -55,6 +57,7 @@ class MaintenanceIssue {
       cost: (json['cost'] as num?)?.toDouble(),
       assignedToUserId: (json['assignedToUserId'] as num?)?.toInt(),
       reportedByUserId: (json['reportedByUserId'] as num).toInt(),
+      reporterName: json['reporterName'] as String?,
       resolutionNotes: json['resolutionNotes'] as String?,
       isTenantComplaint: json['isTenantComplaint'] as bool? ?? false,
       imageIds: (json['imageIds'] as List?)
@@ -116,6 +119,7 @@ class MaintenanceIssue {
         'cost': cost,
         'assignedToUserId': assignedToUserId,
         'reportedByUserId': reportedByUserId,
+        'reporterName': reporterName,
         'resolutionNotes': resolutionNotes,
         'isTenantComplaint': isTenantComplaint,
         'imageIds': imageIds,
@@ -148,6 +152,7 @@ class MaintenanceIssue {
     double? cost,
     int? assignedToUserId,
     int? reportedByUserId,
+    String? reporterName,
     String? resolutionNotes,
     bool? isTenantComplaint,
     List<int>? imageIds,
@@ -168,6 +173,7 @@ class MaintenanceIssue {
       cost: cost ?? this.cost,
       assignedToUserId: assignedToUserId ?? this.assignedToUserId,
       reportedByUserId: reportedByUserId ?? this.reportedByUserId,
+      reporterName: reporterName ?? this.reporterName,
       resolutionNotes: resolutionNotes ?? this.resolutionNotes,
       isTenantComplaint: isTenantComplaint ?? this.isTenantComplaint,
       imageIds: imageIds ?? this.imageIds,
@@ -185,5 +191,5 @@ class MaintenanceIssue {
   // Tenant-related getters for UI convenience
   int get tenantId => reportedByUserId;
   
-  String get tenantName => 'Tenant'; // Placeholder - would need user lookup in real implementation
+  String get tenantName => reporterName ?? 'User #$reportedByUserId';
 }

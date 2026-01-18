@@ -141,7 +141,9 @@ class _ChatScreenState extends State<ChatScreen> {
     return Consumer<ChatProvider>(
       builder: (context, chatProvider, child) {
         // Schedule auto-selection after build to avoid setState during build
-        if (!_hasAutoSelected && chatProvider.contacts.isNotEmpty) {
+        // Always try to auto-select if contactId is provided, even if contacts list is empty
+        // This handles the case of navigating to chat with a new contact (prospective tenant)
+        if (!_hasAutoSelected && widget.contactId != null && !chatProvider.isLoading) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && !_hasAutoSelected) {
               _handleAutoSelection(chatProvider);

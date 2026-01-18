@@ -201,12 +201,9 @@ class _CurrentTenantsTabState extends State<_CurrentTenantsTab> {
         if (map.containsKey('search')) map.remove('search');
         // City filter: forward to backend
         _cityFilter = (map['CityContains'] as String?) ?? _cityFilter;
-        // Default to "current as of tomorrow": leases that include tomorrow
-        // Backend expects DateOnly (yyyy-MM-dd) values
-        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        // Filter by active tenant status only
+        // Removed restrictive date filters - let backend handle all active tenants
         map.putIfAbsent('TenantStatus', () => 'Active');
-        map.putIfAbsent('LeaseStartTo', () => AppDateUtils.formatISO(tomorrow));
-        map.putIfAbsent('LeaseEndFrom', () => AppDateUtils.formatISO(tomorrow));
         // Forward lease date filters from dialog (override defaults if provided)
         if (_leaseStartFrom != null) map['LeaseStartFrom'] = AppDateUtils.formatISO(_leaseStartFrom);
         if (_leaseStartTo != null) map['LeaseStartTo'] = AppDateUtils.formatISO(_leaseStartTo);

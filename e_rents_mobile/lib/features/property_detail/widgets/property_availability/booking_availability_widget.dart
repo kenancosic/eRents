@@ -1,4 +1,5 @@
 import 'package:e_rents_mobile/core/models/property_detail.dart';
+import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
@@ -641,7 +642,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
               Icon(icon, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 8),
               Text(
-                '${date.day}/${date.month}/${date.year}',
+                date.toDisplayDate(),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],

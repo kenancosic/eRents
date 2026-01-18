@@ -274,10 +274,13 @@ class ApiService {
     int retryCount = 0;
     while (retryCount < maxRetries) {
       try {
-        final url = Uri.parse('$baseUrl$endpoint');
+        final url = Uri.parse('${baseUrl.endsWith('/') ? baseUrl : '$baseUrl/'}${endpoint.startsWith('/') ? endpoint.substring(1) : endpoint}');
         final request = http.MultipartRequest(method, url);
+        
+        // Get headers but exclude Content-Type (http library sets it with boundary for multipart)
         final headers = await getHeaders(customHeaders: customHeaders);
-
+        headers.remove('Content-Type'); // Let http library set multipart/form-data with boundary
+        
         request.headers.addAll(headers);
 
         if (fields != null) {

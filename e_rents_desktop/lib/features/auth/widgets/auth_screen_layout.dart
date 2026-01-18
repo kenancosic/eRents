@@ -60,9 +60,11 @@ class AuthScreenLayout extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(32.0),
             child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 450),
-                child: formWidget,
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 450),
+                  child: formWidget,
+                ),
               ),
             ),
           ),

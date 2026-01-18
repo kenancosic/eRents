@@ -40,12 +40,12 @@ class _AddressInputState extends State<AddressInput> {
   @override
   void initState() {
     super.initState();
-    // Add listeners to manual controllers to signal changes
-    widget.streetNameController.addListener(widget.onManualAddressChanged);
-    widget.streetNumberController.addListener(widget.onManualAddressChanged);
-    widget.cityController.addListener(widget.onManualAddressChanged);
-    widget.postalCodeController.addListener(widget.onManualAddressChanged);
-    widget.countryController.addListener(widget.onManualAddressChanged);
+    // Add listeners to manual controllers to signal changes and sync search field
+    widget.streetNameController.addListener(_onManualFieldChanged);
+    widget.streetNumberController.addListener(_onManualFieldChanged);
+    widget.cityController.addListener(_onManualFieldChanged);
+    widget.postalCodeController.addListener(_onManualFieldChanged);
+    widget.countryController.addListener(_onManualFieldChanged);
 
     // Initialize with initial address if provided
     if (widget.initialAddress != null) {
@@ -54,14 +54,34 @@ class _AddressInputState extends State<AddressInput> {
       _searchController.text = widget.initialAddressString!;
     }
   }
+  
+  void _onManualFieldChanged() {
+    // Sync the search field to show combined manual fields
+    final combinedAddress = _formatAddressFromControllers();
+    if (_searchController.text != combinedAddress) {
+      _searchController.text = combinedAddress;
+    }
+    widget.onManualAddressChanged();
+  }
+  
+  String _formatAddressFromControllers() {
+    final parts = [
+      widget.streetNameController.text,
+      widget.streetNumberController.text,
+      widget.cityController.text,
+      widget.postalCodeController.text,
+      widget.countryController.text,
+    ].where((part) => part.isNotEmpty).toList();
+    return parts.join(', ');
+  }
 
   @override
   void dispose() {
-    widget.streetNameController.removeListener(widget.onManualAddressChanged);
-    widget.streetNumberController.removeListener(widget.onManualAddressChanged);
-    widget.cityController.removeListener(widget.onManualAddressChanged);
-    widget.postalCodeController.removeListener(widget.onManualAddressChanged);
-    widget.countryController.removeListener(widget.onManualAddressChanged);
+    widget.streetNameController.removeListener(_onManualFieldChanged);
+    widget.streetNumberController.removeListener(_onManualFieldChanged);
+    widget.cityController.removeListener(_onManualFieldChanged);
+    widget.postalCodeController.removeListener(_onManualFieldChanged);
+    widget.countryController.removeListener(_onManualFieldChanged);
     _searchController.dispose();
     super.dispose();
   }

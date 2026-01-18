@@ -42,15 +42,28 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             var seedImagesPath = Path.Combine(Directory.GetCurrentDirectory(), "SeedImages");
             var userImagesPath = Path.Combine(seedImagesPath, "Users");
             var profileImages = Directory.Exists(userImagesPath) ? 
-                Directory.GetFiles(userImagesPath, "*.png").ToArray() : 
-                new string[0];
+                Directory.GetFiles(userImagesPath, "*.png")
+                    .Concat(Directory.GetFiles(userImagesPath, "*.jpg"))
+                    .Concat(Directory.GetFiles(userImagesPath, "*.jpeg"))
+                    .ToArray() : 
+                Array.Empty<string>();
+            
+            if (profileImages.Length == 0)
+            {
+                logger?.LogWarning("[{Seeder}] No profile images found in {Path}", Name, userImagesPath);
+                return;
+            }
+            
+            logger?.LogInformation("[{Seeder}] Found {Count} profile images to seed", Name, profileImages.Length);
             
             for (int i = 0; i < Math.Min(users.Count, profileImages.Length); i++)
             {
                 var user = users[i];
                 var imagePath = profileImages[i];
                 var imageData = await File.ReadAllBytesAsync(imagePath);
-                var contentType = "image/png"; // All user images are png
+                var contentType = imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) 
+                    ? "image/png" 
+                    : "image/jpeg";
                 
                 var img = new Image
                 {

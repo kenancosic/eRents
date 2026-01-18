@@ -3,6 +3,7 @@ import 'package:e_rents_desktop/features/auth/widgets/auth_screen_layout.dart';
 import 'package:e_rents_desktop/models/auth/register_request_model.dart';
 import 'package:e_rents_desktop/models/enums/user_type.dart';
 import 'package:e_rents_desktop/widgets/custom_button.dart';
+import 'package:e_rents_desktop/widgets/inputs/city_autocomplete_field.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -27,6 +28,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _cityController = TextEditingController();
   final _zipCodeController = TextEditingController();
   final _countryController = TextEditingController();
+  bool _citySelectedFromPlaces = false;
 
   @override
   void dispose() {
@@ -93,37 +95,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('firstName');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'First name is required';
-                  if (v.length > 100) return 'First name must not exceed 100 characters';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('lastName');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'Last name is required';
-                  if (v.length > 100) return 'Last name must not exceed 100 characters';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
+
+              // Account Information Section (Required)
+              _buildSectionHeader(context, 'Account Information'),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _usernameController,
-                decoration: const InputDecoration(labelText: 'Username'),
+                decoration: const InputDecoration(labelText: 'Username *'),
                 validator: (value) {
                   final server = authProvider.getFieldError('username');
                   if (server != null) return server;
@@ -140,10 +118,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
                 enabled: !authProvider.isLoading,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: const InputDecoration(labelText: 'Email *'),
+                keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   final server = authProvider.getFieldError('email');
                   if (server != null) return server;
@@ -156,69 +135,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
                 enabled: !authProvider.isLoading,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('phoneNumber');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'Phone number is required';
-                  if (v.length > 20) return 'Phone number must not exceed 20 characters';
-                  final phoneRe = RegExp(r'^\+?[1-9]\d{1,14}');
-                  if (!phoneRe.hasMatch(v)) return 'Invalid phone number format';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _cityController,
-                decoration: const InputDecoration(labelText: 'City'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('city');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'City is required';
-                  if (v.length > 100) return 'City must not exceed 100 characters';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _zipCodeController,
-                decoration: const InputDecoration(labelText: 'Zip Code'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('zipCode');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'Zip code is required';
-                  if (v.length > 20) return 'Zip code must not exceed 20 characters';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _countryController,
-                decoration: const InputDecoration(labelText: 'Country'),
-                validator: (value) {
-                  final server = authProvider.getFieldError('country');
-                  if (server != null) return server;
-                  final v = value?.trim() ?? '';
-                  if (v.isEmpty) return 'Country is required';
-                  if (v.length > 100) return 'Country must not exceed 100 characters';
-                  return null;
-                },
-                enabled: !authProvider.isLoading,
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Password *',
+                  helperText: 'Min 8 chars with upper, lower, digit & special (@\$!%*?&)',
+                  helperMaxLines: 2,
+                ),
                 validator: (value) {
                   final server = authProvider.getFieldError('password');
                   if (server != null) return server;
@@ -235,21 +160,158 @@ class _SignupScreenState extends State<SignupScreen> {
                 },
                 enabled: !authProvider.isLoading,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _confirmPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm Password'),
+                decoration: const InputDecoration(labelText: 'Confirm Password *'),
                 validator: (value) {
                   final server = authProvider.getFieldError('confirmPassword');
                   if (server != null) return server;
-                  if (value!.isEmpty) return 'Please confirm your password';
+                  if (value == null || value.isEmpty) return 'Please confirm your password';
                   if (value != _passwordController.text) return 'Passwords do not match';
                   return null;
                 },
                 enabled: !authProvider.isLoading,
               ),
+              const SizedBox(height: 20),
+
+              // Personal Information Section (Optional)
+              _buildSectionHeader(context, 'Personal Information', isOptional: true),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _firstNameController,
+                      decoration: const InputDecoration(labelText: 'First Name'),
+                      validator: (value) {
+                        final server = authProvider.getFieldError('firstName');
+                        if (server != null) return server;
+                        final v = value?.trim() ?? '';
+                        if (v.isNotEmpty && v.length > 100) {
+                          return 'Max 100 characters';
+                        }
+                        return null;
+                      },
+                      enabled: !authProvider.isLoading,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _lastNameController,
+                      decoration: const InputDecoration(labelText: 'Last Name'),
+                      validator: (value) {
+                        final server = authProvider.getFieldError('lastName');
+                        if (server != null) return server;
+                        final v = value?.trim() ?? '';
+                        if (v.isNotEmpty && v.length > 100) {
+                          return 'Max 100 characters';
+                        }
+                        return null;
+                      },
+                      enabled: !authProvider.isLoading,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  final server = authProvider.getFieldError('phoneNumber');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return null; // Optional field
+                  if (v.length > 20) return 'Phone number must not exceed 20 characters';
+                  final phoneRe = RegExp(r'^\+?[1-9]\d{1,14}$');
+                  if (!phoneRe.hasMatch(v)) return 'Invalid phone number format';
+                  return null;
+                },
+                enabled: !authProvider.isLoading,
+              ),
+              const SizedBox(height: 20),
+
+              // Address Information Section (Required)
+              _buildSectionHeader(context, 'Address Information'),
+              const SizedBox(height: 12),
+              CityAutocompleteField(
+                controller: _cityController,
+                labelText: 'City *',
+                hintText: 'Search for a city...',
+                enabled: !authProvider.isLoading,
+                onPlaceSelected: (details) {
+                  setState(() {
+                    _citySelectedFromPlaces = details != null;
+                    if (details != null) {
+                      // Auto-populate zip code and country from Places
+                      if (details.zipCode != null && details.zipCode!.isNotEmpty) {
+                        _zipCodeController.text = details.zipCode!;
+                      }
+                      if (details.country != null && details.country!.isNotEmpty) {
+                        _countryController.text = details.country!;
+                      }
+                    }
+                  });
+                },
+                validator: (value) {
+                  final server = authProvider.getFieldError('city');
+                  if (server != null) return server;
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'City is required';
+                  if (v.length > 100) return 'City must not exceed 100 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _zipCodeController,
+                      decoration: InputDecoration(
+                        labelText: 'Zip Code *',
+                        helperText: _citySelectedFromPlaces ? 'Auto-filled' : null,
+                        helperStyle: const TextStyle(color: Colors.green, fontSize: 11),
+                      ),
+                      validator: (value) {
+                        final server = authProvider.getFieldError('zipCode');
+                        if (server != null) return server;
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return 'Zip code is required';
+                        if (v.length > 20) return 'Max 20 characters';
+                        return null;
+                      },
+                      enabled: !authProvider.isLoading,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _countryController,
+                      decoration: InputDecoration(
+                        labelText: 'Country *',
+                        helperText: _citySelectedFromPlaces ? 'Auto-filled' : null,
+                        helperStyle: const TextStyle(color: Colors.green, fontSize: 11),
+                      ),
+                      validator: (value) {
+                        final server = authProvider.getFieldError('country');
+                        if (server != null) return server;
+                        final v = value?.trim() ?? '';
+                        if (v.isEmpty) return 'Country is required';
+                        if (v.length > 100) return 'Max 100 characters';
+                        return null;
+                      },
+                      enabled: !authProvider.isLoading,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
+
               CustomButton(
                 onPressed: authProvider.isLoading
                     ? null
@@ -264,11 +326,11 @@ class _SignupScreenState extends State<SignupScreen> {
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Text(
                     authProvider.error!,
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.go('/login'),
                 child: const Text('Already have an account? Log in'),
@@ -277,6 +339,26 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, {bool isOptional = false}) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        if (isOptional)
+          Text(
+            ' (Optional)',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey,
+                ),
+          ),
+      ],
     );
   }
 }

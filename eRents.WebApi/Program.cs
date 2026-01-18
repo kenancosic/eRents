@@ -40,6 +40,8 @@ builder.Services.AddControllers(x =>
 	options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 	// Allow named floating point literals to handle infinity values
 	options.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals;
+	// Allow string enum values (e.g., "ResponseReview" instead of 2)
+	options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 });
 
 builder.Services.AddLogging(loggingBuilder =>
