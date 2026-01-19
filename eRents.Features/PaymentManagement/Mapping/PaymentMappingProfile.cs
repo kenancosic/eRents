@@ -24,7 +24,15 @@ public class PaymentMappingProfile : Profile
             .ForMember(d => d.RefundReason, opt => opt.MapFrom(s => s.RefundReason))
             .ForMember(d => d.CreatedAt, opt => opt.MapFrom(s => s.CreatedAt))
             .ForMember(d => d.CreatedBy, opt => opt.MapFrom(s => s.CreatedBy))
-            .ForMember(d => d.UpdatedAt, opt => opt.MapFrom(s => s.UpdatedAt));
+            .ForMember(d => d.UpdatedAt, opt => opt.MapFrom(s => s.UpdatedAt))
+            .ForMember(d => d.Tenant, opt => opt.MapFrom(s => s.Tenant != null ? new TenantInfo
+            {
+                TenantId = s.Tenant.TenantId,
+                UserId = s.Tenant.UserId,
+                FirstName = s.Tenant.User != null ? s.Tenant.User.FirstName : null,
+                LastName = s.Tenant.User != null ? s.Tenant.User.LastName : null,
+                Email = s.Tenant.User != null ? s.Tenant.User.Email : null
+            } : null));
 
         // Request -> Entity mapping used by BaseCrudService.CreateAsync and UpdateAsync
         CreateMap<PaymentRequest, Payment>()

@@ -804,13 +804,47 @@ class _PaymentRowActions extends StatelessWidget {
     );
   }
 
-  void _sendReminder(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment reminder sent to ${payment.tenant?.fullName ?? 'tenant'}'),
-        backgroundColor: Colors.orange,
-      ),
-    );
+  Future<void> _sendReminder(BuildContext context) async {
+    try {
+      final provider = context.read<PropertyProvider>();
+      final result = await provider.sendPaymentReminder(payment.paymentId);
+      
+      if (result != null && result['success'] == true) {
+        final emailSent = result['emailSent'] == true;
+        final notificationSent = result['notificationSent'] == true;
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Payment reminder sent to ${payment.tenant?.fullName ?? 'tenant'}' +
+                (emailSent ? ' (email sent)' : '') +
+                (notificationSent ? ' (notification sent)' : ''),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result?['message'] ?? 'Failed to send reminder'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _retryPayment(BuildContext context) {

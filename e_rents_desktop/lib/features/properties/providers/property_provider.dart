@@ -449,6 +449,26 @@ class PropertyProvider extends BaseProvider {
       return result.items;
     });
   }
+
+  /// Send a payment reminder for a pending payment
+  /// Returns a map with: success, emailSent, notificationSent, message
+  Future<Map<String, dynamic>?> sendPaymentReminder(int paymentId) async {
+    return executeWithState(() async {
+      final response = await api.post(
+        '/Payments/$paymentId/send-reminder',
+        {},
+        authenticated: true,
+      );
+      
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return json;
+      } else {
+        final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(errorJson['error'] ?? 'Failed to send payment reminder');
+      }
+    });
+  }
 }
 
 /// Property form provider kept minimal, reusing main provider behavior if desired

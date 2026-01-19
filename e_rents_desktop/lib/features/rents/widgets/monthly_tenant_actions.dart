@@ -514,41 +514,10 @@ class MonthlyTenantActions extends StatelessWidget {
     );
   }
 
-  void _showPaymentHistory(BuildContext context) {
+  Future<void> _showPaymentHistory(BuildContext context) async {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.history, color: Colors.blue),
-            const SizedBox(width: 8),
-            Text('Payment History - ${tenant.fullName}'),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          height: 300,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.receipt_long, size: 48, color: Colors.grey[400]),
-                const SizedBox(height: 16),
-                Text(
-                  'Payment history will be loaded here',
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+      builder: (ctx) => _PaymentHistoryDialog(tenant: tenant),
     );
   }
 
@@ -567,57 +536,133 @@ class MonthlyTenantActions extends StatelessWidget {
 
   void _showExtendLeaseDialog(BuildContext context) {
     int extensionMonths = 6;
+    final messageController = TextEditingController();
+    bool isLoading = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (dialogContext, setState) => AlertDialog(
           title: const Row(
             children: [
               Icon(Icons.update, color: Colors.blue),
               SizedBox(width: 8),
-              Text('Request Lease Extension'),
+              Text('Offer Lease Extension'),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Extend lease for ${tenant.fullName}'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                value: extensionMonths,
-                decoration: const InputDecoration(
-                  labelText: 'Extension Period',
-                  border: OutlineInputBorder(),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Offer lease extension to ${tenant.fullName}'),
+                const SizedBox(height: 8),
+                Text(
+                  'An email notification will be sent to the tenant.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
-                items: [3, 6, 12, 24].map((months) {
-                  return DropdownMenuItem(
-                    value: months,
-                    child: Text('$months months'),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => extensionMonths = value ?? 6),
-              ),
-            ],
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  value: extensionMonths,
+                  decoration: const InputDecoration(
+                    labelText: 'Extension Period',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [3, 6, 12, 24].map((months) {
+                    return DropdownMenuItem(
+                      value: months,
+                      child: Text('$months months'),
+                    );
+                  }).toList(),
+                  onChanged: isLoading ? null : (value) => setState(() => extensionMonths = value ?? 6),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Message to Tenant (optional)',
+                    hintText: 'Add a personal message...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                  enabled: !isLoading,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton.icon(
-              icon: const Icon(Icons.send),
-              label: const Text('Send Request'),
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Lease extension request sent to ${tenant.fullName}'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
-              },
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.send),
+              label: Text(isLoading ? 'Sending...' : 'Send Offer'),
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      // Need to get bookingId from tenant
+                      final provider = context.read<RentsProvider>();
+                      final bookingId = await provider.getLatestBookingIdForTenantProperty(
+                        tenant.userId,
+                        tenant.propertyId ?? 0,
+                      );
+
+                      if (bookingId == null) {
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No active booking found for this tenant'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      setState(() => isLoading = true);
+
+                      try {
+                        final result = await provider.offerLeaseExtension(
+                          bookingId: bookingId,
+                          extendByMonths: extensionMonths,
+                          message: messageController.text.isNotEmpty ? messageController.text : null,
+                        );
+
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+
+                        if (result != null && context.mounted) {
+                          final emailSent = result['emailSent'] == true;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Lease extension offer sent to ${tenant.fullName}${emailSent ? ' (email sent)' : ''}',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          onRefresh();
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
             ),
           ],
         ),
@@ -627,69 +672,128 @@ class MonthlyTenantActions extends StatelessWidget {
 
   void _showTerminateDialog(BuildContext context) {
     final reasonController = TextEditingController();
+    bool isLoading = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.cancel, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Terminate Lease'),
-          ],
-        ),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          title: const Row(
             children: [
-              Text(
-                'Are you sure you want to terminate the lease for ${tenant.fullName}?',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'This action cannot be undone. The tenant will be notified.',
-                style: TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: reasonController,
-                decoration: const InputDecoration(
-                  labelText: 'Termination Reason',
-                  hintText: 'Provide a reason for termination...',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
+              Icon(Icons.cancel, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Terminate Lease'),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.cancel),
-            label: const Text('Terminate Lease'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              onRefresh();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Lease terminated for ${tenant.fullName}'),
-                  backgroundColor: Colors.red,
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to terminate the lease for ${tenant.fullName}?',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-              );
-            },
+                const SizedBox(height: 8),
+                const Text(
+                  'This action cannot be undone. The tenant will be notified via email.',
+                  style: TextStyle(color: Colors.red),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Note: Per the lease agreement, the tenant will be charged for one additional month.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: 'Termination Reason',
+                    hintText: 'Provide a reason for termination...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                  enabled: !isLoading,
+                ),
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              icon: isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.cancel),
+              label: Text(isLoading ? 'Terminating...' : 'Terminate Lease'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      // Need to get bookingId from tenant
+                      final provider = context.read<RentsProvider>();
+                      final bookingId = await provider.getLatestBookingIdForTenantProperty(
+                        tenant.userId,
+                        tenant.propertyId ?? 0,
+                      );
+
+                      if (bookingId == null) {
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No active booking found for this tenant'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                        return;
+                      }
+
+                      setState(() => isLoading = true);
+
+                      try {
+                        await provider.terminateLease(
+                          bookingId: bookingId,
+                          reason: reasonController.text.isNotEmpty ? reasonController.text : null,
+                        );
+
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Lease terminated for ${tenant.fullName}. Email notification sent.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          onRefresh();
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: ${e.toString()}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -794,6 +898,213 @@ class MonthlyTenantActions extends StatelessWidget {
           Expanded(child: Text(value)),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog widget to display payment history for a tenant
+class _PaymentHistoryDialog extends StatefulWidget {
+  final Tenant tenant;
+
+  const _PaymentHistoryDialog({required this.tenant});
+
+  @override
+  State<_PaymentHistoryDialog> createState() => _PaymentHistoryDialogState();
+}
+
+class _PaymentHistoryDialogState extends State<_PaymentHistoryDialog> {
+  List<Map<String, dynamic>> _payments = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentHistory();
+  }
+
+  Future<void> _loadPaymentHistory() async {
+    try {
+      final provider = context.read<RentsProvider>();
+      final payments = await provider.getTenantPaymentHistory(widget.tenant.tenantId);
+      if (mounted) {
+        setState(() {
+          _payments = payments;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.history, color: Colors.blue),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Payment History - ${widget.tenant.fullName}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 600,
+        height: 400,
+        child: _buildContent(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text('Error loading payment history', style: TextStyle(color: Colors.red[600])),
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+          ],
+        ),
+      );
+    }
+
+    if (_payments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.receipt_long, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No payment history found',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: _payments.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final payment = _payments[index];
+        return _PaymentHistoryItem(payment: payment);
+      },
+    );
+  }
+}
+
+class _PaymentHistoryItem extends StatelessWidget {
+  final Map<String, dynamic> payment;
+
+  const _PaymentHistoryItem({required this.payment});
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = (payment['amount'] as num?)?.toDouble() ?? 0.0;
+    final currency = payment['currency'] as String? ?? 'USD';
+    final status = payment['paymentStatus'] as String? ?? 'Unknown';
+    final type = payment['paymentType'] as String? ?? 'Payment';
+    final createdAt = payment['createdAt'] as String?;
+    final method = payment['paymentMethod'] as String? ?? 'N/A';
+
+    DateTime? date;
+    if (createdAt != null) {
+      date = DateTime.tryParse(createdAt);
+    }
+
+    Color statusColor;
+    switch (status.toLowerCase()) {
+      case 'completed':
+      case 'paid':
+        statusColor = Colors.green;
+        break;
+      case 'pending':
+        statusColor = Colors.orange;
+        break;
+      case 'failed':
+      case 'cancelled':
+        statusColor = Colors.red;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: statusColor.withValues(alpha: 0.1),
+        child: Icon(
+          type.toLowerCase() == 'refund' ? Icons.keyboard_return : Icons.payment,
+          color: statusColor,
+          size: 20,
+        ),
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$currency ${amount.toStringAsFixed(2)}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            '$type • $method',
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
+          if (date != null)
+            Text(
+              '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
+              style: TextStyle(color: Colors.grey[500], fontSize: 11),
+            ),
+        ],
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 }

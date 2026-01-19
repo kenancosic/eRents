@@ -80,6 +80,36 @@ public class SubscriptionsController : ControllerBase
         return Ok(due.Select(s => new { s.SubscriptionId, s.NextPaymentDate, s.Status }));
     }
 
+    /// <summary>
+    /// Get subscriptions filtered by tenantId and/or status.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetSubscriptions([FromQuery] int? tenantId, [FromQuery] string? status)
+    {
+        try
+        {
+            var subscriptions = await _subscriptions.GetSubscriptionsAsync(tenantId, status);
+            return Ok(subscriptions.Select(s => new 
+            { 
+                s.SubscriptionId, 
+                s.TenantId,
+                s.PropertyId,
+                s.BookingId,
+                s.MonthlyAmount,
+                s.Currency,
+                s.NextPaymentDate, 
+                Status = s.Status.ToString(),
+                s.StartDate,
+                s.EndDate
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get subscriptions");
+            return BadRequest(new { Error = ex.Message });
+        }
+    }
+
     [HttpPost("{subscriptionId:int}/cancel")]
     public async Task<IActionResult> Cancel([FromRoute] int subscriptionId)
     {

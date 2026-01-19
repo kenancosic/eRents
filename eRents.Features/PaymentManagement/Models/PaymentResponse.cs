@@ -22,9 +22,25 @@ public class PaymentResponse
     public int? OriginalPaymentId { get; set; }
     public string? RefundReason { get; set; }
 
+    // Tenant info (for display purposes)
+    public TenantInfo? Tenant { get; set; }
+
     // Audit from BaseEntity
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
+}
+
+/// <summary>
+/// Lightweight tenant info for payment responses
+/// </summary>
+public class TenantInfo
+{
+    public int TenantId { get; set; }
+    public int? UserId { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string FullName => $"{FirstName} {LastName}".Trim();
 }

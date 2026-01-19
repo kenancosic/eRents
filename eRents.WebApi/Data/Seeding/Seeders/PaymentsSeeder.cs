@@ -36,93 +36,125 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
 
-            // Pick an active subscription if available
-            var sub = await context.Subscriptions
+            // Get all active subscriptions to create payment history for each
+            var subscriptions = await context.Subscriptions
                 .Include(s => s.Tenant).ThenInclude(t => t.User)
                 .Include(s => s.Property).ThenInclude(p => p.Owner)
                 .Include(s => s.Booking)
                 .AsNoTracking()
-                .OrderBy(s => s.SubscriptionId)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
 
-            if (sub == null)
+            if (!subscriptions.Any())
             {
                 logger?.LogInformation("[{Seeder}] No subscriptions found; skipping payments seeding.", Name);
                 return;
             }
 
-            // Create a completed subscription payment if not present
-            var hasSubPayment = await context.Payments.AnyAsync(p => p.SubscriptionId == sub.SubscriptionId);
-            Payment? completedPayment = null;
+            var paymentsAdded = 0;
+            var now = DateTime.UtcNow;
 
-            if (!hasSubPayment || forceSeed)
+            foreach (var sub in subscriptions)
             {
-                var paymentIntentId = $"pi_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
-                var chargeId = $"ch_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
-                
-                completedPayment = new Payment
+                // Check if payments already exist for this subscription
+                var existingPaymentCount = await context.Payments.CountAsync(p => p.SubscriptionId == sub.SubscriptionId);
+                if (existingPaymentCount >= 3 && !forceSeed)
                 {
-                    TenantId = sub.TenantId,
-                    PropertyId = sub.PropertyId,
-                    BookingId = sub.BookingId,
-                    SubscriptionId = sub.SubscriptionId,
-                    Amount = sub.MonthlyAmount,
-                    Currency = sub.Currency,
-                    PaymentMethod = "Stripe",
-                    PaymentStatus = "Completed",
-                    PaymentReference = paymentIntentId,
-                    StripePaymentIntentId = paymentIntentId,
-                    StripeChargeId = chargeId,
-                    PaymentType = "SubscriptionPayment"
-                };
+                    continue; // Already has enough payment history
+                }
 
-                await context.Payments.AddAsync(completedPayment);
+                var payments = new List<Payment>();
+
+                // Create 3-4 months of payment history for each subscription
+                for (int monthsAgo = 3; monthsAgo >= 0; monthsAgo--)
+                {
+                    var paymentDate = now.AddMonths(-monthsAgo);
+                    var paymentIntentId = $"pi_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+                    var chargeId = $"ch_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+
+                    // Vary payment statuses for realism
+                    string status;
+                    if (monthsAgo == 0)
+                    {
+                        status = "Pending"; // Current month is pending
+                    }
+                    else if (monthsAgo == 2 && sub.SubscriptionId % 2 == 0)
+                    {
+                        status = "Failed"; // Some subscriptions have a failed payment
+                    }
+                    else
+                    {
+                        status = "Completed";
+                    }
+
+                    var payment = new Payment
+                    {
+                        TenantId = sub.TenantId,
+                        PropertyId = sub.PropertyId,
+                        BookingId = sub.BookingId,
+                        SubscriptionId = sub.SubscriptionId,
+                        Amount = sub.MonthlyAmount,
+                        Currency = sub.Currency,
+                        PaymentMethod = monthsAgo % 2 == 0 ? "Stripe" : "CreditCard",
+                        PaymentStatus = status,
+                        PaymentReference = status == "Completed" ? paymentIntentId : null,
+                        StripePaymentIntentId = status == "Completed" ? paymentIntentId : null,
+                        StripeChargeId = status == "Completed" ? chargeId : null,
+                        PaymentType = "SubscriptionPayment",
+                        CreatedAt = paymentDate,
+                        UpdatedAt = paymentDate
+                    };
+
+                    payments.Add(payment);
+                }
+
+                if (payments.Any())
+                {
+                    await context.Payments.AddRangeAsync(payments);
+                    paymentsAdded += payments.Count;
+                }
+            }
+
+            if (paymentsAdded > 0)
+            {
                 await context.SaveChangesAsync();
             }
-            else
-            {
-                completedPayment = await context.Payments
-                    .OrderByDescending(p => p.PaymentId)
-                    .FirstOrDefaultAsync(p => p.SubscriptionId == sub.SubscriptionId);
-            }
 
-            if (completedPayment == null)
-            {
-                logger?.LogInformation("[{Seeder}] Could not determine a completed subscription payment to refund; aborting.", Name);
-                return;
-            }
+            // Create refund for the first completed payment if not exists
+            var firstCompletedPayment = await context.Payments
+                .OrderBy(p => p.PaymentId)
+                .FirstOrDefaultAsync(p => p.PaymentStatus == "Completed" && p.PaymentType == "SubscriptionPayment");
 
-            // Create a refund for the completed payment (partial refund to be realistic)
-            var refundExists = await context.Payments.AnyAsync(p => p.OriginalPaymentId == completedPayment.PaymentId);
-            if (!refundExists || forceSeed)
+            if (firstCompletedPayment != null)
             {
-                var refundId = $"re_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
-                
-                var refund = new Payment
+                var refundExists = await context.Payments.AnyAsync(p => p.OriginalPaymentId == firstCompletedPayment.PaymentId);
+                if (!refundExists || forceSeed)
                 {
-                    TenantId = completedPayment.TenantId,
-                    PropertyId = completedPayment.PropertyId,
-                    BookingId = completedPayment.BookingId,
-                    SubscriptionId = completedPayment.SubscriptionId,
-                    Amount = Math.Round(completedPayment.Amount * 0.25m, 2),
-                    Currency = completedPayment.Currency,
-                    PaymentMethod = "Stripe",
-                    PaymentStatus = "Completed",
-                    PaymentReference = refundId,
-                    StripeChargeId = refundId,
-                    RefundReason = "Partial refund due to maintenance inconvenience",
-                    PaymentType = "Refund",
-                    OriginalPaymentId = completedPayment.PaymentId
-                };
+                    var refundId = $"re_{Guid.NewGuid().ToString("N").Substring(0, 24)}";
+                    
+                    var refund = new Payment
+                    {
+                        TenantId = firstCompletedPayment.TenantId,
+                        PropertyId = firstCompletedPayment.PropertyId,
+                        BookingId = firstCompletedPayment.BookingId,
+                        SubscriptionId = firstCompletedPayment.SubscriptionId,
+                        Amount = Math.Round(firstCompletedPayment.Amount * 0.25m, 2),
+                        Currency = firstCompletedPayment.Currency,
+                        PaymentMethod = "Stripe",
+                        PaymentStatus = "Completed",
+                        PaymentReference = refundId,
+                        StripeChargeId = refundId,
+                        RefundReason = "Partial refund due to maintenance inconvenience",
+                        PaymentType = "Refund",
+                        OriginalPaymentId = firstCompletedPayment.PaymentId
+                    };
 
-                await context.Payments.AddAsync(refund);
-                await context.SaveChangesAsync();
-                logger?.LogInformation("[{Seeder}] Done. Added subscription payment and refund for subscription {SubscriptionId}.", Name, sub.SubscriptionId);
+                    await context.Payments.AddAsync(refund);
+                    await context.SaveChangesAsync();
+                    paymentsAdded++;
+                }
             }
-            else
-            {
-                logger?.LogInformation("[{Seeder}] Refund already exists for the identified payment; nothing to add.", Name);
-            }
+
+            logger?.LogInformation("[{Seeder}] Done. Added {Count} payment records.", Name, paymentsAdded);
         }
     }
 }

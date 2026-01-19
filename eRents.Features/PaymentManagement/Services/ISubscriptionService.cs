@@ -21,4 +21,14 @@ public interface ISubscriptionService
     /// Creates a pending payment record and sends both in-app notification and email.
     /// </summary>
     Task<SendInvoiceResponse> SendInvoiceAsync(int subscriptionId, SendInvoiceRequest request);
+    
+    /// <summary>
+    /// Get subscriptions filtered by tenantId and/or status.
+    /// </summary>
+    Task<IEnumerable<Subscription>> GetSubscriptionsAsync(int? tenantId, string? status);
+    
+    /// <summary>
+    /// Sends a payment reminder for an existing pending payment.
+    /// </summary>
+    Task<SendInvoiceResponse> SendPaymentReminderAsync(int paymentId);
 }

@@ -1,6 +1,7 @@
 import 'package:e_rents_desktop/models/booking.dart';
 import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
+import 'package:e_rents_desktop/models/user.dart';
 
 enum PaymentStatus {
   pending,
@@ -184,6 +185,33 @@ class Payment {
       final s = v.toString();
       try { return PaymentType.fromString(s); } catch (_) { return PaymentType.bookingPayment; }
     }
+    
+    // Parse tenant info from backend response
+    Tenant? parsedTenant;
+    final tenantJson = json['tenant'];
+    if (tenantJson != null && tenantJson is Map<String, dynamic>) {
+      final now = DateTime.now();
+      parsedTenant = Tenant(
+        tenantId: _asInt(tenantJson['tenantId']) ?? 0,
+        userId: _asInt(tenantJson['userId']) ?? 0,
+        propertyId: null,
+        leaseStartDate: null,
+        leaseEndDate: null,
+        tenantStatus: TenantStatus.active,
+        createdAt: now,
+        updatedAt: now,
+        user: User(
+          userId: _asInt(tenantJson['userId']) ?? 0,
+          firstName: _asString(tenantJson['firstName']),
+          lastName: _asString(tenantJson['lastName']),
+          email: _asString(tenantJson['email']) ?? '',
+          username: '',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
+    
     return Payment(
       paymentId: (json['paymentId'] as num).toInt(),
       tenantId: _asInt(json['tenantId']),
@@ -205,7 +233,7 @@ class Payment {
       modifiedBy: _asInt(json['modifiedBy']),
       booking: null,
       property: null,
-      tenant: null,
+      tenant: parsedTenant,
       originalPayment: null,
       refunds: null,
     );

@@ -22,6 +22,7 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 	private readonly ICurrentUserService _currentUser;
 	private readonly ILogger<PaymentsController> _logger;
 	private readonly ERentsContext _context;
+	private readonly ISubscriptionService _subscriptionService;
 
 	public PaymentsController(
 			ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
@@ -29,7 +30,8 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 			Interfaces.IStripePaymentService stripe,
 			Interfaces.IStripeConnectService stripeConnect,
 			ICurrentUserService currentUser,
-			ERentsContext context)
+			ERentsContext context,
+			ISubscriptionService subscriptionService)
 			: base(service, logger)
 	{
 		_stripe = stripe;
@@ -37,6 +39,7 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 		_currentUser = currentUser;
 		_logger = logger;
 		_context = context;
+		_subscriptionService = subscriptionService;
 	}
 
 	// ═══════════════════════════════════════════════════════════════
@@ -512,6 +515,50 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error getting subscription payment history");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	// ═══════════════════════════════════════════════════════════════
+	// Payment Reminder Endpoints
+	// ═══════════════════════════════════════════════════════════════
+
+	/// <summary>
+	/// Send a payment reminder for a pending payment.
+	/// Sends both in-app notification and email to the tenant.
+	/// </summary>
+	[HttpPost("{paymentId:int}/send-reminder")]
+	[Authorize]
+	public async Task<IActionResult> SendPaymentReminder([FromRoute] int paymentId)
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			// Verify the payment belongs to a property owned by the current user
+			var payment = await _context.Payments
+				.Include(p => p.Property)
+				.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+			if (payment == null)
+				return NotFound(new { Error = "Payment not found" });
+
+			if (payment.Property?.OwnerId != userId)
+				return Forbid();
+
+			var response = await _subscriptionService.SendPaymentReminderAsync(paymentId);
+
+			if (!response.Success)
+			{
+				return BadRequest(new { Error = response.Message });
+			}
+
+			return Ok(response);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error sending payment reminder for payment {PaymentId}", paymentId);
 			return BadRequest(new { Error = ex.Message });
 		}
 	}

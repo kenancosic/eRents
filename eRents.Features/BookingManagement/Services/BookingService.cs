@@ -468,6 +468,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         var entity = await Context.Set<Booking>()
             .Include(b => b.Property)
             .Include(b => b.Subscription)
+            .Include(b => b.User)
             .FirstOrDefaultAsync(x => x.BookingId == bookingId);
 
         if (entity == null)
@@ -515,6 +516,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
             entity.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
+
+            // Send cancellation notification
+            await SendCancellationNotificationAsync(entity, eligibleForRefund, request?.Reason);
+
             return Mapper.Map<BookingResponse>(entity);
         }
 
@@ -531,6 +536,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
             entity.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
+
+            // Send cancellation notification (eligible for refund since before start)
+            await SendCancellationNotificationAsync(entity, eligibleForRefund: true, request?.Reason);
+
             return Mapper.Map<BookingResponse>(entity);
         }
         else
@@ -564,7 +573,69 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
 
             await Context.SaveChangesAsync();
+
+            // Send lease termination notification (no refund for in-stay termination, charges extra month)
+            await SendCancellationNotificationAsync(entity, eligibleForRefund: false, request?.Reason, isEarlyTermination: true, newEndDate: cancelDate);
+
             return Mapper.Map<BookingResponse>(entity);
+        }
+    }
+
+    private async Task SendCancellationNotificationAsync(Booking booking, bool eligibleForRefund, string? reason, bool isEarlyTermination = false, DateOnly? newEndDate = null)
+    {
+        if (_notificationService == null || booking.User == null) return;
+
+        try
+        {
+            var propertyName = booking.Property?.Name ?? "your property";
+            var tenantName = $"{booking.User.FirstName} {booking.User.LastName}".Trim();
+
+            var messageBuilder = new System.Text.StringBuilder();
+            
+            if (isEarlyTermination)
+            {
+                messageBuilder.AppendLine($"Your lease for {propertyName} has been terminated early by the landlord.");
+                if (newEndDate.HasValue)
+                {
+                    messageBuilder.AppendLine($"New lease end date: {newEndDate.Value:MMMM dd, yyyy}");
+                }
+                messageBuilder.AppendLine();
+                messageBuilder.AppendLine("As per the lease agreement, you will be charged for one additional month.");
+            }
+            else
+            {
+                messageBuilder.AppendLine($"Your booking for {propertyName} has been cancelled.");
+                if (eligibleForRefund)
+                {
+                    messageBuilder.AppendLine();
+                    messageBuilder.AppendLine("You are eligible for a refund. The refund will be processed within 5-7 business days.");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(reason))
+            {
+                messageBuilder.AppendLine();
+                messageBuilder.AppendLine($"Reason: {reason}");
+            }
+
+            messageBuilder.AppendLine();
+            messageBuilder.AppendLine("If you have any questions, please contact your landlord or our support team.");
+
+            await _notificationService.CreateNotificationWithEmailAsync(
+                booking.UserId,
+                isEarlyTermination ? "Lease Termination Notice" : "Booking Cancellation",
+                messageBuilder.ToString(),
+                "booking_cancellation",
+                sendEmail: true,
+                referenceId: booking.BookingId
+            );
+
+            Logger.LogInformation("Sent cancellation notification to tenant {UserId} for booking {BookingId}", 
+                booking.UserId, booking.BookingId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send cancellation notification for booking {BookingId}", booking.BookingId);
         }
     }
 

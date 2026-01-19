@@ -182,6 +182,93 @@ class RentsProvider extends BaseProvider {
     return false;
   }
 
+  /// Offer a lease extension to a tenant (owner-initiated).
+  /// Sends email notification to the tenant.
+  Future<Map<String, dynamic>?> offerLeaseExtension({
+    required int bookingId,
+    int? extendByMonths,
+    DateTime? newEndDate,
+    double? newMonthlyAmount,
+    String? message,
+  }) async {
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      final body = <String, dynamic>{};
+      if (extendByMonths != null) body['extendByMonths'] = extendByMonths;
+      if (newEndDate != null) body['newEndDate'] = newEndDate.toIso8601String().split('T').first;
+      if (newMonthlyAmount != null) body['newMonthlyAmount'] = newMonthlyAmount;
+      if (message != null && message.isNotEmpty) body['message'] = message;
+
+      final response = await api.post(
+        '/LeaseExtensions/offer/$bookingId',
+        body,
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(errorJson['error'] ?? 'Failed to send extension offer');
+      }
+    });
+    return result;
+  }
+
+  /// Terminate a lease (cancel booking with reason).
+  /// Sends email notification to the tenant.
+  Future<Map<String, dynamic>?> terminateLease({
+    required int bookingId,
+    String? reason,
+    DateTime? cancellationDate,
+  }) async {
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      final body = <String, dynamic>{};
+      if (reason != null && reason.isNotEmpty) body['reason'] = reason;
+      if (cancellationDate != null) body['cancellationDate'] = cancellationDate.toIso8601String().split('T').first;
+
+      final response = await api.post(
+        '/Bookings/$bookingId/cancel',
+        body,
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(errorJson['error'] ?? 'Failed to terminate lease');
+      }
+    });
+    
+    if (result != null) {
+      await refresh();
+    }
+    return result;
+  }
+
+  /// Fetch payment history for a specific tenant.
+  Future<List<Map<String, dynamic>>> getTenantPaymentHistory(int tenantId) async {
+    final result = await executeWithState<List<Map<String, dynamic>>>(() async {
+      final response = await api.get(
+        '/Payments?TenantId=$tenantId&SortBy=createdat&SortDirection=desc',
+        authenticated: true,
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json is Map && json.containsKey('items')) {
+          return (json['items'] as List).cast<Map<String, dynamic>>();
+        } else if (json is List) {
+          return json.cast<Map<String, dynamic>>();
+        }
+        return <Map<String, dynamic>>[];
+      } else {
+        throw Exception('Failed to fetch payment history');
+      }
+    });
+    return result ?? <Map<String, dynamic>>[];
+  }
+
   Future<void> acceptTenantRequest(int tenantId, int propertyId) async {
     final success = await executeWithState<bool>(() async {
       // Use the new atomic endpoint to accept tenant and reject others

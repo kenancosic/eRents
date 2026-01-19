@@ -283,9 +283,17 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
         }
     }
 
+    protected override IQueryable<Payment> AddIncludes(IQueryable<Payment> query)
+    {
+        return query
+            .Include(p => p.Tenant).ThenInclude(t => t!.User)
+            .Include(p => p.Property);
+    }
+
     public override async Task<PaymentResponse> GetByIdAsync(int id)
     {
         var entity = await Context.Set<Payment>()
+            .Include(p => p.Tenant).ThenInclude(t => t!.User)
             .Include(p => p.Property)
             .Include(p => p.Booking).ThenInclude(b => b!.Property)
             .FirstOrDefaultAsync(p => p.PaymentId == id);

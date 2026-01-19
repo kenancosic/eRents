@@ -177,18 +177,21 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 			await context.SaveChangesAsync();
 
 			// Now that BookingIds exist, create payments safely
+			// Link tenant record for payments
+			var tenant1Record = tenants.FirstOrDefault(t => t.UserId == tenant.UserId && t.PropertyId == property.PropertyId);
 			var payments = new List<Payment>();
 			var monthly = Math.Max(1m, property.Price);
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Paid", PaymentType = "BookingPayment" });
+			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, TenantId = tenant1Record?.TenantId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
+			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, TenantId = tenant1Record?.TenantId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Pending", PaymentType = "BookingPayment" });
 
 			if (properties.Count > 1 && tenantSarajevo != null)
 			{
 				var property2 = properties[1]; // same as above
 				var booking2 = bookings.Skip(1).FirstOrDefault();
+				var tenant2Record = tenants.FirstOrDefault(t => t.UserId == tenantSarajevo.UserId && t.PropertyId == property2.PropertyId);
 				if (booking2 != null)
 				{
-					payments.Add(new Payment { PropertyId = property2.PropertyId, BookingId = booking2.BookingId, Amount = Math.Max(1m, property2.Price), Currency = booking2.Currency, PaymentMethod = "CreditCard", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
+					payments.Add(new Payment { PropertyId = property2.PropertyId, BookingId = booking2.BookingId, TenantId = tenant2Record?.TenantId, Amount = Math.Max(1m, property2.Price), Currency = booking2.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
 				}
 			}
 
