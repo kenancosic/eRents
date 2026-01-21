@@ -318,6 +318,24 @@ class HomeProvider extends BaseProvider {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  /// Clear all cached data on logout
+  /// 
+  /// Should be called when the user logs out to ensure
+  /// stale data isn't used on next login.
+  void clearOnLogout() {
+    _currentUser = null;
+    _upcomingBookings = [];
+    _pendingBookings = [];
+    _recommendedCards = [];
+    _featuredCards = [];
+    _currentResidences = [];
+    _upcomingCards = [];
+    _pendingCards = [];
+    _currentResidenceBookings = [];
+    debugPrint('HomeProvider: All data cleared on logout');
+    notifyListeners();
+  }
+
   Future<List<PropertyCardModel>> _enrichBookingsToCards(List<Booking> bookings, {bool forceMonthly = false}) async {
     if (bookings.isEmpty) return [];
 

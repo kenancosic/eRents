@@ -33,7 +33,16 @@ class _FilterScreenState extends State<FilterScreen> {
   String _city = '';
   double? _selectedLatitude;
   double? _selectedLongitude;
-  String _priceSort = 'None'; // 'None' | 'LowToHigh' | 'HighToLow'
+  String _sortOption = 'newest'; // Default sort option
+
+  // Sort options
+  static const List<Map<String, String>> _sortOptions = [
+    {'value': 'newest', 'label': 'Newest First'},
+    {'value': 'oldest', 'label': 'Oldest First'},
+    {'value': 'price_low', 'label': 'Price: Low to High'},
+    {'value': 'price_high', 'label': 'Price: High to Low'},
+    {'value': 'rating', 'label': 'Highest Rated'},
+  ];
 
   // Constants
   final List<String> _propertyTypes = [
@@ -78,7 +87,7 @@ class _FilterScreenState extends State<FilterScreen> {
       _city = (widget.initialFilters!['city'] ?? widget.initialFilters!['City'] ?? '').toString();
       _cityController.text = _city;
 
-      // Sort by price
+      // Sort options
       final sortBy = (widget.initialFilters!['sortBy'] ?? widget.initialFilters!['SortBy'])
           ?.toString()
           .toLowerCase();
@@ -86,11 +95,11 @@ class _FilterScreenState extends State<FilterScreen> {
           ?.toString()
           .toLowerCase();
       if (sortBy == 'price') {
-        if (sortDir == 'asc') {
-          _priceSort = 'LowToHigh';
-        } else if (sortDir == 'desc') {
-          _priceSort = 'HighToLow';
-        }
+        _sortOption = sortDir == 'asc' ? 'price_low' : 'price_high';
+      } else if (sortBy == 'createdat') {
+        _sortOption = sortDir == 'desc' ? 'newest' : 'oldest';
+      } else if (sortBy == 'averagerating') {
+        _sortOption = 'rating';
       }
 
       // Include partial availability (daily only)
@@ -141,8 +150,26 @@ class _FilterScreenState extends State<FilterScreen> {
       _cityController.text = '';
       _selectedLatitude = null;
       _selectedLongitude = null;
-      _priceSort = 'None';
+      _sortOption = 'newest';
     });
+  }
+
+  /// Map sort option to API parameters
+  Map<String, String> _mapSortOption(String option) {
+    switch (option) {
+      case 'newest':
+        return {'sortBy': 'createdat', 'sortDirection': 'desc'};
+      case 'oldest':
+        return {'sortBy': 'createdat', 'sortDirection': 'asc'};
+      case 'price_low':
+        return {'sortBy': 'price', 'sortDirection': 'asc'};
+      case 'price_high':
+        return {'sortBy': 'price', 'sortDirection': 'desc'};
+      case 'rating':
+        return {'sortBy': 'averagerating', 'sortDirection': 'desc'};
+      default:
+        return {};
+    }
   }
 
   void _applyFilters() {
@@ -187,10 +214,8 @@ class _FilterScreenState extends State<FilterScreen> {
       if (_city.trim().isNotEmpty) 'city': _city.trim(),
       if (_selectedLatitude != null) 'latitude': _selectedLatitude,
       if (_selectedLongitude != null) 'longitude': _selectedLongitude,
-      // Sort by price
-      if (_priceSort != 'None') 'sortBy': 'price',
-      if (_priceSort == 'LowToHigh') 'sortDirection': 'asc',
-      if (_priceSort == 'HighToLow') 'sortDirection': 'desc',
+      // Sort options
+      ..._mapSortOption(_sortOption),
       // Dates are optional and currently not supported server-side for search; include for future use
       if (_isDateFilterEnabled) 'startDate': _startDate.toIso8601String(),
       if (_isDateFilterEnabled && (_useEndDate || _rentalPeriod == 'Per day'))
@@ -386,6 +411,34 @@ class _FilterScreenState extends State<FilterScreen> {
                     });
                   },
                 ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Sort Options Section
+              Text(
+                'Sort by',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _sortOptions.map((option) {
+                  final isSelected = _sortOption == option['value'];
+                  return ChoiceChip(
+                    label: Text(option['label']!),
+                    selected: isSelected,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _sortOption = option['value']!);
+                      }
+                    },
+                  );
+                }).toList(),
               ),
 
               const SizedBox(height: 24),

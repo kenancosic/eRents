@@ -44,7 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
             SectionHeader(
               title: 'Recommended for you',
               onSeeAll: () {
-                context.push('/explore');
+                // Use go() instead of push() to switch tabs properly
+                // push() adds to the current tab's stack, go() navigates to the destination tab
+                context.go('/explore');
               },
             ),
             // Use vertical cards for recommended section for variety
@@ -151,6 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
             SectionHeader(
               title: 'Upcoming Bookings',
               onSeeAll: () {
+                // Use push() for bookings since it's a detail screen, not a tab
                 context.push('/bookings');
               },
             ),
@@ -212,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
             SectionHeader(
               title: 'Pending Monthly Bookings',
               onSeeAll: () {
+                // Use push() for bookings since it's a detail screen, not a tab
                 context.push('/bookings');
               },
             ),

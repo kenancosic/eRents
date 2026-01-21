@@ -5,9 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_availability_provider.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
-import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_availability/availability_calendar_widget.dart';
 
 class BookingAvailabilityWidget extends StatefulWidget {
   final PropertyDetail property;
@@ -30,6 +30,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   String? _validationError; // Date selection validation errors
   Map<String, dynamic>? _pricingDetails;
   int _months = 1; // For monthly leases
+  bool _showCalendar = true; // Toggle for calendar visibility
   // Normalized day -> availability flag (UTC date-only)
   final Map<DateTime, bool> _availabilityMap = <DateTime, bool>{};
 
@@ -205,14 +206,6 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     } catch (_) {}
   }
 
-  Future<void> _selectDates() async {
-    if (widget.property.rentalType == PropertyRentalType.daily) {
-      await _selectDailyDateRange();
-    } else {
-      await _selectMonthlyDateRange();
-    }
-  }
-
   /// Check if a specific date is available based on the availability map
   bool _isDateAvailable(DateTime date) {
     final normalized = DateTime.utc(date.year, date.month, date.day);
@@ -297,98 +290,6 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     // Fallback to original range if no available range found
     return DateTimeRange(start: from, end: from.add(Duration(days: durationDays)));
   }
-
-  Future<void> _selectDailyDateRange() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      // Disable dates that are not available (already booked)
-      // SelectableDayForRangePredicate signature: (day, start, end) for range picker
-      selectableDayPredicate: (DateTime day, DateTime? start, DateTime? end) => _isDateAvailable(day),
-      helpText: 'Select check-in and check-out dates\nUnavailable dates are grayed out',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-            // Style for disabled dates (unavailable)
-            disabledColor: Colors.grey.shade300,
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null && mounted) {
-      // For now, we'll assume the dates are available and let the backend validate
-      // A more robust implementation would check the availability data we fetched
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-      });
-      // Persist selection in shared provider so footer checkout uses it
-      try {
-        // ignore: use_build_context_synchronously
-        context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
-      } catch (_) {}
-      _calculatePricing();
-      _validateCurrentSelection();
-    }
-  }
-
-  Future<void> _selectMonthlyDateRange() async {
-    final DateTime? pickedStart = await showDatePicker(
-      context: context,
-      initialDate: _startDate,
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      // Disable dates that are not available (already occupied)
-      selectableDayPredicate: (DateTime date) => _isDateAvailable(date),
-      helpText: 'Select lease start date\nUnavailable dates are grayed out',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-            // Style for disabled dates (unavailable)
-            disabledColor: Colors.grey.shade300,
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (pickedStart != null) {
-      // For monthly rentals, compute end date based on selected months (respect minimum stay)
-      final minimumStayDays = widget.property.minimumStayDays ?? 30;
-      final minMonths = (minimumStayDays / 30).ceil();
-      if (_months < minMonths) {
-        _months = minMonths;
-      }
-      setState(() {
-        _startDate = pickedStart;
-        _endDate = pickedStart.add(Duration(days: 30 * _months));
-      });
-      // Persist selection in shared provider so footer checkout uses it
-      try {
-        // ignore: use_build_context_synchronously
-        context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
-      } catch (_) {}
-      _calculatePricing();
-    }
-  }
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -484,7 +385,83 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         ),
         const SizedBox(height: 16),
 
-        // Date selection
+        // Calendar toggle button
+        InkWell(
+          onTap: () {
+            setState(() {
+              _showCalendar = !_showCalendar;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _showCalendar ? Icons.calendar_month : Icons.calendar_today,
+                  size: 18,
+                  color: Theme.of(context).primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _showCalendar ? 'Hide Availability Calendar' : 'View Availability Calendar',
+                  style: TextStyle(
+                    color: Theme.of(context).primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  _showCalendar ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Availability Calendar (expandable)
+        if (_showCalendar) ...[
+          const SizedBox(height: 16),
+          Consumer<PropertyDetailAvailabilityProvider>(
+            builder: (context, availabilityProvider, child) {
+              return AvailabilityCalendarWidget(
+                availabilityData: availabilityProvider.availabilityData,
+                rentalType: widget.property.rentalType,
+                selectedStartDate: _startDate,
+                selectedEndDate: _endDate,
+                minimumStayDays: widget.property.minimumStayDays,
+                isSelectable: !isOwner,
+                onDateRangeSelected: (start, end) {
+                  setState(() {
+                    _startDate = start;
+                    _endDate = end;
+                    if (widget.property.rentalType == PropertyRentalType.monthly) {
+                      _months = (end.difference(start).inDays / 30).ceil();
+                    }
+                  });
+                  try {
+                    context.read<PropertyRentalProvider>().setBookingDateRange(start, end);
+                  } catch (_) {}
+                  _calculatePricing();
+                  _validateCurrentSelection();
+                },
+              );
+            },
+          ),
+        ],
+
+        const SizedBox(height: 16),
+
+        // Date selection summary
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -554,26 +531,7 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                   ),
                 ),
 
-              const SizedBox(height: 16),
-
-              // Action controls (primary checkout button moved to sticky footer)
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  CustomOutlinedButton(
-                    label: widget.property.rentalType == PropertyRentalType.daily
-                        ? 'Change Dates'
-                        : 'Change Start Date',
-                    icon: Icons.edit_calendar,
-                    onPressed: isOwner ? () {} : () => _selectDates(),
-                    isLoading: false,
-                    width: OutlinedButtonWidth.flexible,
-                    size: OutlinedButtonSize.compact,
-                  ),
-                ],
-              ),
+              // Note: Date selection is handled via the calendar above
             ],
           ),
         ),

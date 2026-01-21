@@ -238,6 +238,93 @@ namespace eRents.Features.Shared.Controllers
 		}
 
 		/// <summary>
+		/// Get unread message counts per contact for the current user
+		/// </summary>
+		[HttpGet("UnreadCounts")]
+		public async Task<IActionResult> GetUnreadCounts()
+		{
+			try
+			{
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
+				_logger.LogInformation("Get unread counts request from user {UserId}", userIdStr);
+
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
+				{
+					return Unauthorized(new StandardErrorResponse
+					{
+						Type = "Authorization",
+						Message = "User not authenticated",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				var counts = await _messagingService.GetUnreadCountsAsync(userIdInt.Value);
+
+				_logger.LogInformation("Retrieved unread counts for user {UserId}: {Count} contacts",
+					userIdInt.Value, counts.Count);
+
+				return Ok(counts);
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, "Get unread counts");
+			}
+		}
+
+		/// <summary>
+		/// Mark all messages from a contact as read
+		/// </summary>
+		[HttpPut("{contactId}/ReadAll")]
+		public async Task<IActionResult> MarkAllAsRead(int contactId)
+		{
+			try
+			{
+				var userIdInt = _currentUserService.GetUserIdAsInt();
+				var userIdStr = userIdInt?.ToString() ?? "unknown";
+				_logger.LogInformation("Mark all as read request for contact {ContactId} by user {UserId}",
+					contactId, userIdStr);
+
+				if (!userIdInt.HasValue || userIdInt.Value <= 0)
+				{
+					return Unauthorized(new StandardErrorResponse
+					{
+						Type = "Authorization",
+						Message = "User not authenticated",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				if (contactId <= 0)
+				{
+					return BadRequest(new StandardErrorResponse
+					{
+						Type = "Validation",
+						Message = "Valid contact ID is required",
+						Timestamp = DateTime.UtcNow,
+						TraceId = HttpContext.TraceIdentifier,
+						Path = Request.Path.Value
+					});
+				}
+
+				await _messagingService.MarkConversationAsReadAsync(userIdInt.Value, contactId);
+
+				_logger.LogInformation("Marked all messages from contact {ContactId} as read for user {UserId}",
+					contactId, userIdInt.Value);
+
+				return Ok(new { success = true });
+			}
+			catch (Exception ex)
+			{
+				return HandleStandardError(ex, $"Mark all as read for contact {contactId}");
+			}
+		}
+
+		/// <summary>
 		/// Send a property offer message
 		/// </summary>
 		[HttpPost("SendPropertyOffer")]

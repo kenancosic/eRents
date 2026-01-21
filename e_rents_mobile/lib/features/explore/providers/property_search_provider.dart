@@ -17,6 +17,11 @@ class PropertySearchProvider extends BaseProvider {
   int _currentPage = 1;
   int _pageSize = 10;
   bool _hasMorePages = true;
+  
+  // User's city coordinates for map centering
+  double? _userLatitude;
+  double? _userLongitude;
+  String? _userCity;
 
   // ─── Getters ────────────────────────────────────────────────────────────
   PagedList<PropertyCardModel>? get properties => _properties;
@@ -26,6 +31,12 @@ class PropertySearchProvider extends BaseProvider {
   int get pageSize => _pageSize;
   bool get hasMorePages => _hasMorePages;
   bool get isEmpty => _properties?.items.isEmpty ?? true;
+  
+  /// User's city coordinates for map centering
+  double? get userLatitude => _userLatitude;
+  double? get userLongitude => _userLongitude;
+  String? get userCity => _userCity;
+  bool get hasUserCoordinates => _userLatitude != null && _userLongitude != null;
 
   // ─── Public API ─────────────────────────────────────────────────────────
   
@@ -58,19 +69,37 @@ class PropertySearchProvider extends BaseProvider {
   }
 
   /// Apply new filters and reset pagination
+  /// 
+  /// Replaces current filters with new ones, only preserving essential defaults
+  /// (City and Status) if not explicitly provided in the new filters.
   Future<void> applyFilters(Map<String, dynamic> filters) async {
     debugPrint('PropertySearchProvider.applyFilters called with: $filters');
-    // Preserve default City filter unless explicitly overridden
-    final merged = {
-      ..._currentFilters,
+    
+    // Only preserve essential defaults that shouldn't be cleared
+    final preserved = <String, dynamic>{};
+    
+    // Preserve City only if not explicitly cleared or changed
+    if (!filters.containsKey('City') && !filters.containsKey('city')) {
+      if (_currentFilters.containsKey('City')) {
+        preserved['City'] = _currentFilters['City'];
+      }
+    }
+    
+    // Preserve Status (we always want to filter by status)
+    if (!filters.containsKey('Status') && !filters.containsKey('status')) {
+      if (_currentFilters.containsKey('Status')) {
+        preserved['Status'] = _currentFilters['Status'];
+      }
+    }
+    
+    // REPLACE current filters entirely with new + preserved essentials
+    // This ensures old filter values don't persist incorrectly
+    _currentFilters = {
+      ...preserved,
       ...filters,
-      if (!filters.containsKey('City') && _currentFilters.containsKey('City'))
-        'City': _currentFilters['City'],
-      if (!filters.containsKey('Status') && _currentFilters.containsKey('Status'))
-        'Status': _currentFilters['Status'],
     };
-    debugPrint('PropertySearchProvider.applyFilters merged filters: $merged');
-    _currentFilters = merged;
+    
+    debugPrint('PropertySearchProvider.applyFilters final filters: $_currentFilters');
     _currentPage = 1;
     await fetchProperties();
   }
@@ -124,6 +153,7 @@ class PropertySearchProvider extends BaseProvider {
 
   /// Initialize search defaults based on current user's city
   /// Uses CurrentUserProvider to avoid duplicate /profile API calls.
+  /// Also stores user's coordinates for map centering.
   Future<void> initializeWithUserCity(CurrentUserProvider currentUserProvider) async {
     // If city already set, just fetch
     if (_currentFilters.containsKey('City')) {
@@ -133,6 +163,13 @@ class PropertySearchProvider extends BaseProvider {
 
     final user = await currentUserProvider.ensureLoaded();
     final city = user?.address?.city;
+    
+    // Store user's coordinates for map centering
+    _userCity = city;
+    _userLatitude = user?.address?.latitude;
+    _userLongitude = user?.address?.longitude;
+    debugPrint('PropertySearchProvider: User coordinates - lat: $_userLatitude, lng: $_userLongitude, city: $_userCity');
+    
     if (city != null && city.isNotEmpty) {
       _currentFilters = {
         ..._currentFilters,
@@ -147,6 +184,23 @@ class PropertySearchProvider extends BaseProvider {
 
     _currentPage = 1;
     await fetchProperties();
+  }
+
+  /// Clear all cached data on logout
+  /// 
+  /// Should be called when the user logs out to ensure
+  /// stale data isn't used on next login.
+  void clearOnLogout() {
+    _properties = null;
+    _selectedProperty = null;
+    _currentFilters = {};
+    _currentPage = 1;
+    _hasMorePages = true;
+    _userLatitude = null;
+    _userLongitude = null;
+    _userCity = null;
+    debugPrint('PropertySearchProvider: All data cleared on logout');
+    notifyListeners();
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────

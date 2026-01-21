@@ -6,6 +6,7 @@ class Booking {
   final int propertyId;
   final int userId;
   final String propertyName;
+  final String? userName;
   final String? propertyImageUrl;
   final String? propertyThumbnailUrl;
   final DateTime startDate;
@@ -36,6 +37,7 @@ class Booking {
     required this.propertyId,
     required this.userId,
     required this.propertyName,
+    this.userName,
     this.propertyImageUrl,
     this.propertyThumbnailUrl,
     required this.startDate,
@@ -225,6 +227,7 @@ class Booking {
       propertyId: propertyId,
       userId: userId,
       propertyName: json['propertyName']?.toString() ?? 'N/A',
+      userName: json['userName']?.toString(),
       propertyImageUrl: json['propertyImageUrl']?.toString(),
       propertyThumbnailUrl: (json['propertyThumbnailUrl'] ?? json['propertyImageUrl'])?.toString(),
       startDate: startDate ?? DateTime.now(),
@@ -261,6 +264,7 @@ class Booking {
         'propertyId': propertyId,
         'userId': userId,
         'propertyName': propertyName,
+        'userName': userName,
         'propertyImageUrl': propertyImageUrl,
         'propertyThumbnailUrl': propertyThumbnailUrl,
         'startDate': startDate.toIso8601String(),
@@ -293,6 +297,7 @@ class Booking {
     int? propertyId,
     int? userId,
     String? propertyName,
+    String? userName,
     String? propertyImageUrl,
     String? propertyThumbnailUrl,
     DateTime? startDate,
@@ -316,6 +321,7 @@ class Booking {
       propertyId: propertyId ?? this.propertyId,
       userId: userId ?? this.userId,
       propertyName: propertyName ?? this.propertyName,
+      userName: userName ?? this.userName,
       propertyImageUrl: propertyImageUrl ?? this.propertyImageUrl,
       propertyThumbnailUrl: propertyThumbnailUrl ?? this.propertyThumbnailUrl,
       startDate: startDate ?? this.startDate,

@@ -17,6 +17,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
         public int Order => 30;
         public string Name => nameof(PropertiesSeeder);
 
+        // Counter for generating unique coordinate offsets per city
+        private static readonly Dictionary<string, int> _cityPropertyCount = new();
+
         public async Task SeedAsync(ERentsContext context, ILogger logger, bool forceSeed = false)
         {
             logger?.LogInformation("[{Seeder}] Starting...", Name);
@@ -297,13 +300,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 Name = name,
                 Description = description,
                 Address = Address.Create(
-                    streetLine1: GetStreetForCity(city),
+                    streetLine1: GetStreetForCity(city, name),
                     city: city,
                     state: GetStateForCity(city),
                     country: "Bosnia and Herzegovina",
                     postalCode: GetPostalCodeForCity(city),
-                    latitude: GetLatitudeForCity(city),
-                    longitude: GetLongitudeForCity(city)
+                    latitude: GetVariedLatitude(city),
+                    longitude: GetVariedLongitude(city)
                 ),
                 Price = price,
                 Currency = "USD",
@@ -342,24 +345,34 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             _ => "71000"
         };
         
-        private static string GetStreetForCity(string city) => city switch
+        private static string GetStreetForCity(string city, string propertyName) => (city, propertyName) switch
         {
-            "Sarajevo" => "Ferhadija 15",
-            "Mostar" => "Bulevar M. Stojanovića 10",
-            "Tuzla" => "Klosterska 5",
-            "Zenica" => "Trg oslobođenja 3",
-            "Banja Luka" => "Patriotske lige 25",
-            "Bihać" => "Mehmed paše Sokolovića 8",
-            "Brčko" => "Trg slobode 12",
-            "Travnik" => "Bosanska 15",
-            "Trebinje" => "Jovana Dučića 20",
+            // Sarajevo - varied street addresses
+            ("Sarajevo", var n) when n.Contains("Grbavici") => "Grbavička 25",
+            ("Sarajevo", var n) when n.Contains("Centar") => "Ferhadija 15",
+            ("Sarajevo", var n) when n.Contains("Bašćaršija") => "Baščaršija 8",
+            ("Sarajevo", _) => "Maršala Tita 50",
+            // Mostar - varied addresses
+            ("Mostar", var n) when n.Contains("Stari Most") => "Stari Most 3",
+            ("Mostar", var n) when n.Contains("Neretvu") => "Bulevar M. Stojanovića 10",
+            ("Mostar", var n) when n.Contains("Stari Grad") => "Stari Grad 15",
+            ("Mostar", var n) when n.Contains("Blagaj") => "Blagaj bb",
+            ("Mostar", _) => "Španjolski trg 5",
+            // Other cities
+            ("Tuzla", _) => "Klosterska 5",
+            ("Zenica", _) => "Trg oslobođenja 3",
+            ("Banja Luka", _) => "Patriotske lige 25",
+            ("Bihać", _) => "Mehmed paše Sokolovića 8",
+            ("Brčko", _) => "Trg slobode 12",
+            ("Travnik", _) => "Bosanska 15",
+            ("Trebinje", _) => "Jovana Dučića 20",
             _ => "Zmaja od Bosne 10"
         };
 
         /// <summary>
-        /// Get latitude coordinate for Bosnian cities
+        /// Get base latitude coordinate for Bosnian cities
         /// </summary>
-        private static decimal GetLatitudeForCity(string city) => city switch
+        private static decimal GetBaseLatitudeForCity(string city) => city switch
         {
             "Sarajevo" => 43.8563m,
             "Mostar" => 43.3438m,
@@ -374,9 +387,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
         };
 
         /// <summary>
-        /// Get longitude coordinate for Bosnian cities
+        /// Get base longitude coordinate for Bosnian cities
         /// </summary>
-        private static decimal GetLongitudeForCity(string city) => city switch
+        private static decimal GetBaseLongitudeForCity(string city) => city switch
         {
             "Sarajevo" => 18.4131m,
             "Mostar" => 17.8078m,
@@ -389,5 +402,48 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Trebinje" => 18.3436m,
             _ => 18.4131m // Default to Sarajevo
         };
+
+        /// <summary>
+        /// Get varied latitude with unique offset per property in the same city.
+        /// Offsets are spread in a grid pattern to prevent marker overlap.
+        /// </summary>
+        private static decimal GetVariedLatitude(string city)
+        {
+            if (!_cityPropertyCount.ContainsKey(city))
+                _cityPropertyCount[city] = 0;
+            
+            var index = _cityPropertyCount[city];
+            var baseLat = GetBaseLatitudeForCity(city);
+            
+            // Create grid offsets: ~200-500m apart (0.002-0.005 degrees)
+            // Arrange in a spiral pattern around center
+            var offsets = new decimal[] { 0m, 0.003m, -0.003m, 0.006m, -0.006m, 0.009m, -0.009m, 0.012m };
+            var latOffset = offsets[index % offsets.Length];
+            
+            // Add small random variation to prevent perfect alignment
+            var variation = (decimal)(Random.Shared.NextDouble() * 0.001 - 0.0005);
+            
+            return baseLat + latOffset + variation;
+        }
+
+        /// <summary>
+        /// Get varied longitude with unique offset per property in the same city.
+        /// </summary>
+        private static decimal GetVariedLongitude(string city)
+        {
+            var index = _cityPropertyCount[city];
+            _cityPropertyCount[city]++; // Increment after getting both lat/lng
+            
+            var baseLng = GetBaseLongitudeForCity(city);
+            
+            // Offset pattern that creates a spread around the city center
+            var offsets = new decimal[] { 0m, 0.004m, -0.004m, 0.002m, -0.002m, 0.008m, -0.008m, 0.006m };
+            var lngOffset = offsets[index % offsets.Length];
+            
+            // Add small random variation
+            var variation = (decimal)(Random.Shared.NextDouble() * 0.001 - 0.0005);
+            
+            return baseLng + lngOffset + variation;
+        }
     }
 }

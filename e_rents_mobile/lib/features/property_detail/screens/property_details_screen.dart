@@ -45,6 +45,15 @@ class PropertyDetailScreen extends StatefulWidget {
 
 class _PropertyDetailScreenState extends State<PropertyDetailScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // Guard flags to prevent infinite rebuild loops
+  bool _hasInitializedData = false;
+  int? _lastFetchedOwnerId;
+  Set<int>? _lastFetchedAmenityIds;
+  
+  // Booking context - determined from navigation or fetched booking
+  ViewContext _effectiveViewContext = ViewContext.browsing;
+  Booking? _navigationBooking;
 
   @override
   void initState() {
@@ -60,16 +69,52 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
     super.dispose();
   }
 
+  /// Helper to compare two sets for equality
+  bool _setEquals<T>(Set<T> a, Set<T> b) {
+    if (a.length != b.length) return false;
+    for (final item in a) {
+      if (!b.contains(item)) return false;
+    }
+    return true;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = context.read<PropertyRentalProvider>();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      provider.fetchPropertyDetails(widget.propertyId);
-      provider.fetchReviews(widget.propertyId);
-      // Always fetch current user's bookings for this property to enable UI gating (e.g., reviews eligibility)
-      provider.fetchBookings(widget.propertyId);
-    });
+    // Only initialize data once to prevent infinite loops
+    if (!_hasInitializedData) {
+      _hasInitializedData = true;
+      final provider = context.read<PropertyRentalProvider>();
+      final userProvider = context.read<UserProfileProvider>();
+      final currentUserId = userProvider.currentUser?.userId;
+      
+      // Initialize effective view context from widget
+      _effectiveViewContext = widget.viewContext;
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        provider.fetchPropertyDetails(widget.propertyId);
+        provider.fetchReviews(widget.propertyId);
+        // Always fetch current user's bookings for this property to enable UI gating (e.g., reviews eligibility)
+        provider.fetchBookings(widget.propertyId);
+        
+        // If a bookingId was passed, fetch the booking and determine view context
+        if (widget.bookingId != null) {
+          final booking = await provider.getBookingDetails(widget.bookingId!);
+          if (booking != null && mounted) {
+            setState(() {
+              _navigationBooking = booking;
+              _effectiveViewContext = PropertyViewContextHelper.determineContext(booking);
+            });
+            provider.selectBooking(booking);
+            debugPrint('PropertyDetailsScreen: Loaded booking ${booking.bookingId}, context: $_effectiveViewContext');
+          }
+        } else if (currentUserId != null && widget.viewContext == ViewContext.browsing) {
+          // Check active booking once during initialization (only when not navigating with booking)
+          provider.checkUserActiveBooking(widget.propertyId, currentUserId);
+        }
+      });
+    }
   }
 
   Booking? _findBookingForProperty(PropertyRentalProvider bookingProvider, int propertyId) {
@@ -122,7 +167,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
       child: BaseScreen(
         appBar: appBar,
         body: Scaffold(
-          body: Consumer<PropertyRentalProvider>(
+          body: Column(
+            children: [
+              Expanded(
+                child: Consumer<PropertyRentalProvider>(
             builder: (context, provider, child) {
               if (provider.isLoading && provider.property == null) {
                 return const Center(child: CircularProgressIndicator());
@@ -164,35 +212,23 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
               final currentUserId = userProvider.currentUser?.userId;
               final bool isOwner = currentUserId != null && currentUserId == property.ownerId;
 
-              // Ensure owner details are fetched once property is loaded
-              if (provider.owner == null || provider.owner?.userId != property.ownerId) {
+              // Ensure owner details are fetched once (guarded to prevent infinite loops)
+              if (_lastFetchedOwnerId != property.ownerId) {
+                _lastFetchedOwnerId = property.ownerId;
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (context.mounted) {
+                  if (mounted) {
                     context.read<PropertyRentalProvider>().fetchOwner(property.ownerId);
                   }
                 });
               }
 
-              // Check if user has an active booking for this property (to hide booking button)
-              if (currentUserId != null && widget.viewContext == ViewContext.browsing) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (context.mounted) {
-                    context.read<PropertyRentalProvider>().checkUserActiveBooking(property.propertyId, currentUserId);
-                  }
-                });
-              }
-
-              // Ensure amenities are fetched for THIS property (not from a previous screen)
+              // Ensure amenities are fetched for THIS property (guarded to prevent infinite loops)
               if (property.amenityIds.isNotEmpty) {
-                final currentIds = provider.amenities.map((a) => a.amenityId).toSet();
                 final requiredIds = property.amenityIds.where((e) => e > 0).toSet();
-                final bool needsFetch = currentIds.length != requiredIds.length ||
-                    currentIds.difference(requiredIds).isNotEmpty ||
-                    requiredIds.difference(currentIds).isNotEmpty;
-
-                if (needsFetch) {
+                if (_lastFetchedAmenityIds == null || !_setEquals(_lastFetchedAmenityIds!, requiredIds)) {
+                  _lastFetchedAmenityIds = requiredIds;
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) {
+                    if (mounted) {
                       context.read<PropertyRentalProvider>().fetchAmenitiesByIds(property.amenityIds);
                     }
                   });
@@ -203,25 +239,18 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
 
               final uiReviews = provider.reviews;
 
-              return Column(
+              return TabBarView(
+                controller: _tabController,
                 children: [
-                  PropertyImageSlider(
-                    property: property,
-                    onPageChanged: (index) {},
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildOverviewTab(property, provider, uiReviews),
-                        _buildDetailsTab(property, provider, api),
-                        _buildReviewsTab(property, provider, uiReviews, isOwner),
-                      ],
-                    ),
-                  ),
+                  _buildOverviewTab(property, provider, uiReviews),
+                  _buildDetailsTab(property, provider, api),
+                  _buildReviewsTab(property, provider, uiReviews, isOwner),
                 ],
               );
             },
+                ),
+              ),
+            ],
           ),
           bottomNavigationBar: Consumer<PropertyRentalProvider>(
             builder: (context, provider, child) {
@@ -255,44 +284,60 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
 
   // Tab builder methods
   Widget _buildOverviewTab(dynamic property, PropertyRentalProvider provider, List<Review> reviews) {
+    // Use navigation booking if available, otherwise find from provider
+    final effectiveBooking = _navigationBooking ?? _findBookingForProperty(provider, property.propertyId);
+    
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PropertyHeader(property: property),
-          const SizedBox(height: 16),
-          PropertyDetails(
-            averageRating: calculateAverageRating(reviews),
-            numberOfReviews: reviews.length,
-            city: property.address?.city ?? 'Unknown City',
-            address: property.address?.streetLine1,
-            rooms: property.rooms,
-            area: (property.area ?? 0) > 0
-                ? '${(property.area!).toStringAsFixed(0)} m²'
-                : 'N/A',
+          // Image slider scrolls with content
+          PropertyImageSlider(
+            property: property,
+            onPageChanged: (index) {},
           ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFFE0E0E0)),
-          const SizedBox(height: 16),
-          PropertyDescriptionSection(
-            description: property.description ??
-                'This beautiful property offers modern amenities and a convenient location.',
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Show booking info banner when navigating from Booking History
+                if (_navigationBooking != null) ...[
+                  _buildBookingInfoBanner(_navigationBooking!),
+                  const SizedBox(height: 16),
+                ],
+                PropertyHeader(property: property),
+                const SizedBox(height: 16),
+                PropertyDetails(
+                  averageRating: calculateAverageRating(reviews),
+                  numberOfReviews: reviews.length,
+                  city: property.address?.city ?? 'Unknown City',
+                  address: property.address?.streetLine1,
+                  rooms: property.rooms,
+                  area: (property.area ?? 0) > 0
+                      ? '${(property.area!).toStringAsFixed(0)} m²'
+                      : 'N/A',
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 16),
+                PropertyDescriptionSection(
+                  description: property.description ??
+                      'This beautiful property offers modern amenities and a convenient location.',
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 16),
+                // Use effective view context and booking for action section
+                PropertyActionFactory.createActionSection(
+                  property: property,
+                  viewContext: _effectiveViewContext,
+                  booking: effectiveBooking,
+                ),
+                const SizedBox(height: 80), // Padding for bottom nav
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFFE0E0E0)),
-          const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              final currentBooking = _findBookingForProperty(provider, property.propertyId);
-              return PropertyActionFactory.createActionSection(
-                property: property,
-                viewContext: widget.viewContext,
-                booking: currentBooking,
-              );
-            },
-          ),
-          const SizedBox(height: 80), // Padding for bottom nav
         ],
       ),
     );
@@ -300,26 +345,37 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
 
   Widget _buildDetailsTab(dynamic property, PropertyRentalProvider provider, ApiService api) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PropertyOwnerSection(
-            ownerId: property.ownerId,
-            propertyId: property.propertyId,
-            ownerName: provider.owner?.fullName ?? 'Property Owner',
-            ownerEmail: provider.owner?.email,
-            profileImageUrl: (provider.owner?.profileImageId != null)
-                ? api.makeAbsoluteUrl('/api/Images/${provider.owner!.profileImageId}/content')
-                : null,
+          PropertyImageSlider(
+            property: property,
+            onPageChanged: (index) {},
           ),
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFFE0E0E0)),
-          const SizedBox(height: 16),
-          FacilitiesSection(
-            amenities: provider.getAmenitiesFor(property.amenityIds),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PropertyOwnerSection(
+                  ownerId: property.ownerId,
+                  propertyId: property.propertyId,
+                  ownerName: provider.owner?.fullName ?? 'Property Owner',
+                  ownerEmail: provider.owner?.email,
+                  profileImageUrl: (provider.owner?.profileImageId != null)
+                      ? api.makeAbsoluteUrl('/api/Images/${provider.owner!.profileImageId}/content')
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 16),
+                FacilitiesSection(
+                  amenities: provider.getAmenitiesFor(property.amenityIds),
+                ),
+                const SizedBox(height: 80), // Padding for bottom nav
+              ],
+            ),
           ),
-          const SizedBox(height: 80), // Padding for bottom nav
         ],
       ),
     );
@@ -327,26 +383,37 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
 
   Widget _buildReviewsTab(dynamic property, PropertyRentalProvider provider, List<Review> reviews, bool isOwner) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          PropertyReviewsSection(
-            reviews: reviews,
-            averageRating: calculateAverageRating(reviews),
+          PropertyImageSlider(
+            property: property,
+            onPageChanged: (index) {},
           ),
-          const SizedBox(height: 16),
-          // Consolidated review eligibility message
-          _buildReviewEligibilitySection(property, provider, isOwner),
-          if (reviews.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'No reviews yet. Be the first to share your experience after your stay.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PropertyReviewsSection(
+                  reviews: reviews,
+                  averageRating: calculateAverageRating(reviews),
+                ),
+                const SizedBox(height: 16),
+                // Consolidated review eligibility message
+                _buildReviewEligibilitySection(property, provider, isOwner),
+                if (reviews.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'No reviews yet. Be the first to share your experience after your stay.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 80), // Padding for bottom nav
+              ],
             ),
-          const SizedBox(height: 80), // Padding for bottom nav
+          ),
         ],
       ),
     );
@@ -414,6 +481,136 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
     final avg = sum / reviews.length;
     // Round to 2 decimal places
     return double.parse(avg.toStringAsFixed(2));
+  }
+
+  Widget _buildBookingInfoBanner(Booking booking) {
+    final statusColor = _getStatusColor(booking.status);
+    final statusLabel = _getStatusLabel(booking.status);
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bookmark, color: statusColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Your Booking',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: statusColor,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBookingDateInfo(
+                  'Check-in',
+                  booking.startDate,
+                  Icons.login,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildBookingDateInfo(
+                  'Check-out',
+                  booking.endDate ?? booking.startDate.add(const Duration(days: 30)),
+                  Icons.logout,
+                ),
+              ),
+            ],
+          ),
+          if (booking.endDate != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${booking.endDate!.difference(booking.startDate).inDays} nights',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingDateInfo(String label, DateTime date, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.grey[600]),
+            const SizedBox(width: 4),
+            Text(
+              '${date.day}/${date.month}/${date.year}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Color _getStatusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.upcoming:
+        return Colors.blue;
+      case BookingStatus.active:
+        return Colors.green;
+      case BookingStatus.completed:
+        return Colors.grey;
+      case BookingStatus.cancelled:
+        return Colors.red;
+    }
+  }
+
+  String _getStatusLabel(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.upcoming:
+        return 'Upcoming';
+      case BookingStatus.active:
+        return 'Active';
+      case BookingStatus.completed:
+        return 'Completed';
+      case BookingStatus.cancelled:
+        return 'Cancelled';
+    }
   }
 
   void checkoutPressed(PropertyRentalProvider provider) {

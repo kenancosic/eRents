@@ -309,10 +309,8 @@ class ActiveLeaseSection extends StatelessWidget {
   }
 
   void _contactLandlord(BuildContext context) {
-    context.push('/chat', extra: {
-      'name': 'Property Owner',
-      'imageUrl': 'assets/images/user-image.png',
-    });
+    // Use go() to switch to Chat tab properly instead of pushing onto current stack
+    context.go('/chat');
   }
 
   void _viewRentDetails(BuildContext context) {

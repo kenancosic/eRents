@@ -92,7 +92,10 @@ class SavedProvider extends BaseProvider {
   bool isPropertySaved(int propertyId) => _savedIds.contains(propertyId);
 
   /// Toggle saved status of a property
-  Future<bool> toggleSavedStatus(int propertyId) async {
+  /// 
+  /// When saving, fetches the property card for immediate UI update.
+  /// Optionally pass [propertyData] for optimistic update without extra API call.
+  Future<bool> toggleSavedStatus(int propertyId, {PropertyCardModel? propertyData}) async {
     bool newStatus = false;
 
     final success = await executeWithStateForSuccess(() async {
@@ -109,7 +112,18 @@ class SavedProvider extends BaseProvider {
       } else {
         await _saveProperty(propertyId);
         _savedIds.add(propertyId);
-        // Do not add to _items here unless we have full data; rely on next refresh
+        
+        // Optimistic UI update: add property to items immediately
+        if (propertyData != null) {
+          // Use provided data for instant update
+          if (!_items.any((e) => e.propertyId == propertyId)) {
+            _items.add(propertyData);
+            _applySearchAndFilters();
+          }
+        } else {
+          // Fetch property card for UI update
+          await _fetchAndAddPropertyCard(propertyId);
+        }
         newStatus = true;
       }
 
@@ -119,6 +133,26 @@ class SavedProvider extends BaseProvider {
     }, errorMessage: 'Failed to toggle property saved status');
 
     return success && newStatus;
+  }
+  
+  /// Fetch property card by ID and add to items list
+  Future<void> _fetchAndAddPropertyCard(int propertyId) async {
+    try {
+      final cards = await api.postListAndDecode(
+        '/properties/cards/batch',
+        {'ids': [propertyId]},
+        (json) => PropertyCardModel.fromJson(json),
+        authenticated: true,
+      );
+      if (cards.isNotEmpty && !_items.any((e) => e.propertyId == propertyId)) {
+        _items.add(cards.first);
+        _applySearchAndFilters();
+        debugPrint('SavedProvider: Added property $propertyId to items via fetch');
+      }
+    } catch (e) {
+      debugPrint('SavedProvider: Failed to fetch card for $propertyId: $e');
+      // Silent fail - will sync on next full refresh
+    }
   }
 
   /// Save a property to favorites

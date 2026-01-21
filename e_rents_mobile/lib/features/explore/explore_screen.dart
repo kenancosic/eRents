@@ -2,6 +2,7 @@ import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/places_autocomplete_field.dart';
 import 'package:e_rents_mobile/core/services/google_places_service.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/enums/property_enums.dart';
@@ -33,15 +34,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isMapExpanded = false;
 
-  LatLng _center = const LatLng(44.5328, 18.6704); // Default center (Tuzla, BiH)
+  // Default center (Bosnia central area), will be updated with user's city coordinates
+  LatLng _center = const LatLng(43.9159, 17.6791); // Central Bosnia as fallback
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Initialize with current user's city and sensible defaults
       final currentUserProvider = context.read<CurrentUserProvider>();
-      context.read<PropertySearchProvider>().initializeWithUserCity(currentUserProvider);
+      final searchProvider = context.read<PropertySearchProvider>();
+      await searchProvider.initializeWithUserCity(currentUserProvider);
+      
+      // Update map center to user's city coordinates if available
+      if (mounted && searchProvider.hasUserCoordinates) {
+        final userLat = searchProvider.userLatitude!;
+        final userLng = searchProvider.userLongitude!;
+        debugPrint('ExploreScreen: Centering map on user city - lat: $userLat, lng: $userLng');
+        setState(() {
+          _center = LatLng(userLat, userLng);
+        });
+        // Also move the map if it's currently displayed
+        try {
+          _mapController.move(_center, 12.0);
+        } catch (e) {
+          debugPrint('ExploreScreen: Could not move map controller: $e');
+        }
+      }
     });
   }
 
@@ -141,13 +160,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _showPropertyInfo(PropertyCardModel property) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(property.name),
-        action: SnackBarAction(
-          label: 'View',
-          onPressed: () => context.push('/property/${property.propertyId}'),
-        ),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _PropertyPreviewSheet(
+        property: property,
+        onViewDetails: () {
+          Navigator.pop(context);
+          context.push('/property/${property.propertyId}');
+        },
       ),
     );
   }
@@ -344,7 +366,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         bottom: 8,
                         right: 8,
                         child: FloatingActionButton.small(
-                          heroTag: 'map_toggle',
+                          heroTag: null, // Disable Hero animation to prevent conflicts during navigation
                           backgroundColor: AppColors.primary,
                           child: Icon(_isMapExpanded ? Icons.expand_less : Icons.map, color: Colors.white),
                           onPressed: () => setState(() => _isMapExpanded = !_isMapExpanded),
@@ -467,5 +489,222 @@ class _MarkerTrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MarkerTrianglePainter oldDelegate) {
     return oldDelegate.color != color;
+  }
+}
+
+/// Bottom sheet widget for property preview when tapping map markers
+class _PropertyPreviewSheet extends StatelessWidget {
+  final PropertyCardModel property;
+  final VoidCallback onViewDetails;
+
+  const _PropertyPreviewSheet({
+    required this.property,
+    required this.onViewDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDaily = property.rentalType == PropertyRentalType.daily;
+    final typeColor = isDaily ? AppColors.info : AppColors.success;
+    final typeLabel = isDaily ? 'Daily' : 'Monthly';
+    
+    // Get image URL from ApiService
+    final api = context.read<ApiService>();
+    final imageUrl = property.coverImageId != null 
+        ? api.makeAbsoluteUrl('/Images/${property.coverImageId}')
+        : null;
+    
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Property image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
+                          )
+                        : _buildPlaceholderImage(),
+                  ),
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Property details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Rental type badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: typeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          typeLabel,
+                          style: TextStyle(
+                            color: typeColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      // Property name
+                      Text(
+                        property.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      
+                      const SizedBox(height: 4),
+                      
+                      // Location
+                      if (property.address?.city != null)
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                property.address!.city!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      // Price and rating row
+                      Row(
+                        children: [
+                          // Price
+                          Text(
+                            '\$${property.price.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          Text(
+                            isDaily ? '/night' : '/month',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          
+                          const Spacer(),
+                          
+                          // Rating
+                          if (property.averageRating != null) ...[
+                            const Icon(Icons.star, size: 16, color: Colors.amber),
+                            const SizedBox(width: 4),
+                            Text(
+                              property.averageRating!.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // View details button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onViewDetails,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'View Details',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPlaceholderImage() {
+    return Container(
+      color: Colors.grey[200],
+      child: Icon(
+        Icons.home_outlined,
+        size: 40,
+        color: Colors.grey[400],
+      ),
+    );
   }
 }

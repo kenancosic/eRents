@@ -2,6 +2,7 @@ import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/booking_actions_mixin.dart';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
+import 'package:e_rents_mobile/core/enums/property_enums.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
@@ -330,17 +331,39 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
       return;
     }
 
-    if (_startDate!.isBefore(DateTime.now())) {
+    // Allow same-day start for flexibility, but not past dates
+    final today = DateTime.now();
+    final startOfToday = DateTime(today.year, today.month, today.day);
+    if (_startDate!.isBefore(startOfToday)) {
       _isDateRangeValid = false;
       _dateRangeError = 'Start date cannot be in the past';
       return;
     }
 
     final difference = _endDate!.difference(_startDate!).inDays;
-    if (difference > 30) {
-      _isDateRangeValid = false;
-      _dateRangeError = 'Booking duration cannot exceed 30 days';
-      return;
+    
+    // Differentiate validation based on rental type
+    final isMonthly = _property?.rentalType == PropertyRentalType.monthly;
+    
+    if (isMonthly) {
+      // Monthly rentals: minimum ~1 month (28 days), maximum 1 year
+      if (difference < 28) {
+        _isDateRangeValid = false;
+        _dateRangeError = 'Monthly lease must be at least 1 month (28 days)';
+        return;
+      }
+      if (difference > 365) {
+        _isDateRangeValid = false;
+        _dateRangeError = 'Lease duration cannot exceed 1 year';
+        return;
+      }
+    } else {
+      // Daily rentals: maximum 30 days
+      if (difference > 30) {
+        _isDateRangeValid = false;
+        _dateRangeError = 'Daily booking cannot exceed 30 days';
+        return;
+      }
     }
 
     _isDateRangeValid = true;

@@ -71,14 +71,14 @@ class PropertyOwnerSection extends StatelessWidget {
 
   void _contactPropertyOwner(BuildContext context) {
     if (ownerId != null && ownerId! > 0) {
-      context.push('/chat/${ownerId!.toString()}', extra: {
+      // Use go() to navigate to Chat tab with conversation open
+      // This properly switches to the Chat tab instead of pushing onto current stack
+      context.go('/chat/${ownerId!.toString()}', extra: {
         'name': ownerName ?? 'Property Owner',
       });
     } else {
-      context.push('/chat', extra: {
-        'name': ownerName ?? 'Property Owner',
-        'imageUrl': profileImageUrl ?? 'assets/images/user-image.png',
-      });
+      // Use go() to switch to Chat tab (contacts list)
+      context.go('/chat');
     }
   }
 }

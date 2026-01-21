@@ -14,6 +14,8 @@ namespace eRents.Features.Shared.Services
         Task<IEnumerable<MessageResponse>> GetConversationAsync(int userId, int contactId);
         Task<IEnumerable<object>> GetContactsAsync(int userId);
         Task MarkMessageAsReadAsync(int messageId);
+        Task<Dictionary<int, int>> GetUnreadCountsAsync(int userId);
+        Task MarkConversationAsReadAsync(int userId, int contactId);
         Task<bool> SendPropertyOfferMessageAsync(int senderId, int receiverId, int propertyId, string offerMessage);
         Task<MessageResponse> SendPropertyOfferMessageAsync(int senderId, int receiverId, int propertyId);
 

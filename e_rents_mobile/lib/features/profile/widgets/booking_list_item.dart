@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
-import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 
 /// Widget for displaying a booking item in a list
 /// Used in booking history screen and other booking-related screens
@@ -28,144 +27,146 @@ class BookingListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: onTap ?? onViewDetails,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+          padding: const EdgeInsets.all(12),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Booking header with status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Booking #${booking.bookingId}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(booking.status).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _getStatusText(booking.status),
-                      style: TextStyle(
-                        color: _getStatusColor(booking.status),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Property name and dates
-              Text(
-                booking.propertyName ?? 'Property Name',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              // Property thumbnail
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  color: Colors.grey[200],
+                  child: booking.propertyThumbnailUrl != null
+                      ? Image.network(
+                          booking.propertyThumbnailUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.home_outlined,
+                            size: 32,
+                            color: Colors.grey[400],
+                          ),
+                        )
+                      : Icon(
+                          Icons.home_outlined,
+                          size: 32,
+                          color: Colors.grey[400],
+                        ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${_formatDate(booking.startDate)} - ${_formatDate(booking.endDate)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    Icons.group,
-                    size: 14,
-                    color: Colors.grey[600],
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'N/A',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Total price
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Total',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  Text(
-                    '\$${booking.totalPrice.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF7265F0),
-                    ),
-                  ),
-                ],
-              ),
-
-              // Actions
-              if (onViewDetails != null || onCancel != null) ...[
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+              const SizedBox(width: 12),
+              // Booking details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (onViewDetails != null)
-                      CustomButton.compact(
-                        label: 'View Details',
-                        isLoading: false,
-                        onPressed: onViewDetails!,
-                      ),
-                    if (onCancel != null && _canCancel(booking.status)) ...[
-                      const SizedBox(width: 8),
-                      CustomButton(
-                        label: 'Cancel',
-                        isLoading: false,
-                        backgroundColor: Colors.red,
-                        size: ButtonSize.compact,
-                        width: ButtonWidth.content,
-                        useGradient: false,
-                        useShadow: false,
-                        onPressed: onCancel!,
-                      ),
-                    ],
+                    // Header with status badge
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            booking.propertyName,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(booking.status).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _getStatusText(booking.status),
+                            style: TextStyle(
+                              color: _getStatusColor(booking.status),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // Date range
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 12, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_formatDate(booking.startDate)} - ${_formatDate(booking.endDate)}',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Guest name
+                    Row(
+                      children: [
+                        Icon(Icons.person_outline, size: 12, color: Colors.grey[500]),
+                        const SizedBox(width: 4),
+                        Text(
+                          booking.userName ?? 'Guest',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        if (booking.isSubscription) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: const Text(
+                              'Monthly',
+                              style: TextStyle(fontSize: 9, color: Colors.purple, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Price and actions row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${booking.currency ?? 'USD'} ${booking.totalPrice.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF7265F0),
+                          ),
+                        ),
+                        if (onCancel != null && _canCancel(booking.status))
+                          TextButton(
+                            onPressed: onCancel,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ],
           ),
         ),

@@ -265,8 +265,28 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
         cancellationDate: selectedDate,
       );
       if (ok && mounted) {
+        // Switch to Cancelled tab for immediate visual feedback
+        _tabController.animateTo(2);
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Booking cancelled')), 
+          SnackBar(
+            content: const Text('Booking cancelled successfully'),
+            backgroundColor: Colors.green[600],
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                // Already on Cancelled tab
+              },
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to cancel: ${provider.errorMessage}'),
+            backgroundColor: Colors.red[600],
+          ),
         );
       }
     }

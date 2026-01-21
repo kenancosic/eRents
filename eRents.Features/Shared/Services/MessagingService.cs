@@ -222,6 +222,62 @@ namespace eRents.Features.Shared.Services
 			}
 		}
 
+		/// <summary>
+		/// Get unread message counts per contact for a user
+		/// </summary>
+		public async Task<Dictionary<int, int>> GetUnreadCountsAsync(int userId)
+		{
+			try
+			{
+				var counts = await _context.Messages
+					.Where(m => m.ReceiverId == userId && (m.IsRead == null || m.IsRead == false) && !m.IsDeleted)
+					.GroupBy(m => m.SenderId)
+					.Select(g => new { SenderId = g.Key, Count = g.Count() })
+					.ToDictionaryAsync(x => x.SenderId, x => x.Count);
+
+				_logger.LogInformation("Retrieved unread counts for User {UserId}: {Count} contacts with unread messages",
+					userId, counts.Count);
+
+				return counts;
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error getting unread counts for User {UserId}", userId);
+				throw;
+			}
+		}
+
+		/// <summary>
+		/// Mark all messages from a contact as read
+		/// </summary>
+		public async Task MarkConversationAsReadAsync(int userId, int contactId)
+		{
+			try
+			{
+				var unreadMessages = await _context.Messages
+					.Where(m => m.ReceiverId == userId && m.SenderId == contactId && (m.IsRead == null || m.IsRead == false))
+					.ToListAsync();
+
+				if (unreadMessages.Any())
+				{
+					foreach (var message in unreadMessages)
+					{
+						message.IsRead = true;
+					}
+					await _context.SaveChangesAsync();
+
+					_logger.LogInformation("Marked {Count} messages as read from contact {ContactId} for User {UserId}",
+						unreadMessages.Count, contactId, userId);
+				}
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error marking conversation as read for User {UserId} with Contact {ContactId}",
+					userId, contactId);
+				throw;
+			}
+		}
+
 		public async Task<bool> SendPropertyOfferMessageAsync(int senderId, int receiverId, int propertyId, string offerMessage)
 		{
 			try

@@ -293,10 +293,8 @@ class ActiveBookingSection extends StatelessWidget {
   }
 
   void _contactHost(BuildContext context) {
-    context.push('/chat', extra: {
-      'name': 'Property Host',
-      'imageUrl': 'assets/images/user-image.png',
-    });
+    // Use go() to switch to Chat tab properly instead of pushing onto current stack
+    context.go('/chat');
   }
 
   void _reportIssue(BuildContext context) {

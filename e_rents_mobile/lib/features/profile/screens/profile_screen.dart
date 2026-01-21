@@ -4,6 +4,9 @@ import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_dialogs.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
+import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
+import 'package:e_rents_mobile/features/explore/providers/property_search_provider.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -90,9 +93,16 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
     );
 
     if (shouldLogout == true && mounted) {
-      // Clear tokens and user state via both providers
+      // Clear tokens and user state via auth providers
       await context.read<AuthProvider>().logout();
       await context.read<UserProfileProvider>().logout();
+      
+      // Clear all cached user-specific data from other providers
+      // This ensures a fresh state when a different user logs in
+      context.read<CurrentUserProvider>().clearOnLogout();
+      context.read<HomeProvider>().clearOnLogout();
+      context.read<PropertySearchProvider>().clearOnLogout();
+      
       // Navigate to login screen
       if (mounted) {
         context.go('/login');
