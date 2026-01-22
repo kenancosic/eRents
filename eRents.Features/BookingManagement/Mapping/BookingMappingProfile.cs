@@ -26,7 +26,12 @@ public class BookingMappingProfile : Profile
 				.ForMember(d => d.CreatedBy, opt => opt.MapFrom(s => s.CreatedBy))
 				.ForMember(d => d.UpdatedAt, opt => opt.MapFrom(s => s.UpdatedAt))
 				.ForMember(d => d.PropertyName, opt => opt.MapFrom(s => s.Property != null ? s.Property.Name : null))
-				.ForMember(d => d.UserName, opt => opt.MapFrom(s => s.User != null ? s.User.Username : null));
+				.ForMember(d => d.UserName, opt => opt.MapFrom(s => s.User != null ? s.User.Username : null))
+				.ForMember(d => d.PropertyCoverImageId, opt => opt.MapFrom(s => 
+					s.Property != null && s.Property.Images != null 
+						? s.Property.Images.Where(i => i.IsCover).Select(i => (int?)i.ImageId).FirstOrDefault() 
+							?? s.Property.Images.Select(i => (int?)i.ImageId).FirstOrDefault()
+						: null));
 
 		// Request -> Entity
 		CreateMap<BookingRequest, Booking>()

@@ -205,11 +205,6 @@ class _ProfileScreenState extends State<ProfileScreen> with WidgetsBindingObserv
                             title: 'Payment & Bookings',
                             items: [
                               _buildListTile(
-                                icon: Icons.payment_outlined,
-                                title: 'Payment details',
-                                onTap: () => context.push('/profile/payment'),
-                              ),
-                              _buildListTile(
                                 icon: Icons.receipt_long_outlined,
                                 title: 'Invoices',
                                 onTap: () => context.push('/profile/invoices'),

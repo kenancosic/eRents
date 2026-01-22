@@ -271,7 +271,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
     protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearch search)
     {
-        query = query.Include(b => b.User).Include(b => b.Property);
+        query = query.Include(b => b.User).Include(b => b.Property).ThenInclude(p => p.Images);
         if (search.UserId.HasValue)
         {
             query = query.Where(x => x.UserId == search.UserId.Value);

@@ -77,6 +77,18 @@ class Booking {
   bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
   bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
 
+  /// Build image URL from propertyCoverImageId or fallback to existing fields
+  static String? _buildImageUrl(Map<String, dynamic> json) {
+    // First try to use propertyCoverImageId from backend
+    final coverImageId = json['propertyCoverImageId'];
+    if (coverImageId != null) {
+      // Construct the image URL - will be made absolute by the widget
+      return '/api/Images/$coverImageId/content';
+    }
+    // Fallback to existing fields
+    return (json['propertyThumbnailUrl'] ?? json['propertyImageUrl'])?.toString();
+  }
+
   factory Booking.fromJson(Map<String, dynamic> json) {
     // Handle status parsing for multiple backend shapes: object, string, or int code
     BookingStatus parseStatus(dynamic raw) {
@@ -228,8 +240,8 @@ class Booking {
       userId: userId,
       propertyName: json['propertyName']?.toString() ?? 'N/A',
       userName: json['userName']?.toString(),
-      propertyImageUrl: json['propertyImageUrl']?.toString(),
-      propertyThumbnailUrl: (json['propertyThumbnailUrl'] ?? json['propertyImageUrl'])?.toString(),
+      propertyImageUrl: _buildImageUrl(json),
+      propertyThumbnailUrl: _buildImageUrl(json),
       startDate: startDate ?? DateTime.now(),
       endDate: endDate,
       minimumStayEndDate: minimumStayEndDate,

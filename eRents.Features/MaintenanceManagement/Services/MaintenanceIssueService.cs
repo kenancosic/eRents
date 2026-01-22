@@ -7,6 +7,7 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.Core;
+using eRents.Features.Shared.Services;
 using eRents.Domain.Shared.Interfaces;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -15,13 +16,17 @@ namespace eRents.Features.MaintenanceManagement.Services
 {
     public class MaintenanceIssueService : BaseCrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>
     {
+        private readonly INotificationService? _notificationService;
+
         public MaintenanceIssueService(
             ERentsContext context,
             IMapper mapper,
             ILogger<MaintenanceIssueService> logger,
-            ICurrentUserService? currentUserService = null)
+            ICurrentUserService? currentUserService = null,
+            INotificationService? notificationService = null)
             : base(context, mapper, logger, currentUserService)
         {
+            _notificationService = notificationService;
         }
 
         protected override IQueryable<MaintenanceIssue> AddIncludes(IQueryable<MaintenanceIssue> query)
@@ -167,6 +172,10 @@ namespace eRents.Features.MaintenanceManagement.Services
                 .FirstAsync(x => x.MaintenanceIssueId == entity.MaintenanceIssueId);
 
             Logger.LogInformation("Successfully created {EntityType} with ID {Id}", nameof(MaintenanceIssue), entity.MaintenanceIssueId);
+
+            // Send notification to property owner
+            await NotifyPropertyOwnerAsync(entity, reloaded);
+
             return Mapper.Map<MaintenanceIssueResponse>(reloaded);
         }
 
@@ -341,6 +350,54 @@ namespace eRents.Features.MaintenanceManagement.Services
                 {
                     throw new KeyNotFoundException($"MaintenanceIssue with id {entity.MaintenanceIssueId} not found");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Notify the property owner about a new maintenance issue
+        /// </summary>
+        private async Task NotifyPropertyOwnerAsync(MaintenanceIssue entity, MaintenanceIssue reloaded)
+        {
+            if (_notificationService == null)
+            {
+                Logger.LogWarning("NotificationService not available - skipping owner notification for issue {IssueId}", entity.MaintenanceIssueId);
+                return;
+            }
+
+            try
+            {
+                // Get property to find owner
+                var property = reloaded.Property ?? await Context.Set<Property>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.PropertyId == entity.PropertyId);
+
+                if (property == null)
+                {
+                    Logger.LogWarning("Property {PropertyId} not found - cannot notify owner", entity.PropertyId);
+                    return;
+                }
+
+                // Get reporter name for notification
+                var reporterName = reloaded.ReportedByUser?.FirstName ?? "A tenant";
+                var priorityText = entity.Priority.ToString();
+
+                var title = $"New Maintenance Issue: {entity.Title}";
+                var message = $"{reporterName} reported a {priorityText} priority issue at {property.Name}: {entity.Title}";
+
+                await _notificationService.CreateMaintenanceNotificationAsync(
+                    property.OwnerId,
+                    entity.MaintenanceIssueId,
+                    title,
+                    message
+                );
+
+                Logger.LogInformation("Sent maintenance notification to owner {OwnerId} for issue {IssueId}",
+                    property.OwnerId, entity.MaintenanceIssueId);
+            }
+            catch (Exception ex)
+            {
+                // Don't fail the creation if notification fails
+                Logger.LogError(ex, "Failed to send notification for maintenance issue {IssueId}", entity.MaintenanceIssueId);
             }
         }
     }

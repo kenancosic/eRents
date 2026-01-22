@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
@@ -107,6 +109,7 @@ class MaintenanceProvider extends BaseProvider {
   /// Report a new maintenance issue
   /// 
   /// Requires [reportedByUserId] to identify the user reporting the issue.
+  /// Optionally accepts [images] to upload and attach to the issue.
   Future<MaintenanceIssue?> reportIssue({
     required int propertyId,
     required int reportedByUserId,
@@ -114,9 +117,18 @@ class MaintenanceProvider extends BaseProvider {
     required String description,
     required int priorityId,
     bool isTenantComplaint = true,
+    List<File>? images,
   }) async {
     final newIssue = await executeWithState<MaintenanceIssue?>(() async {
       debugPrint('MaintenanceProvider: Reporting new issue for property $propertyId');
+      
+      // Upload images first if provided
+      List<int> imageIds = [];
+      if (images != null && images.isNotEmpty) {
+        debugPrint('MaintenanceProvider: Uploading ${images.length} images');
+        imageIds = await _uploadImages(images, propertyId);
+        debugPrint('MaintenanceProvider: Uploaded images with IDs: $imageIds');
+      }
       
       final request = {
         'propertyId': propertyId,
@@ -125,6 +137,7 @@ class MaintenanceProvider extends BaseProvider {
         'description': description,
         'priority': priorityId, // Backend expects 'priority' enum value
         'isTenantComplaint': isTenantComplaint,
+        if (imageIds.isNotEmpty) 'imageIds': imageIds,
       };
       
       return await api.postAndDecode(
@@ -184,5 +197,48 @@ class MaintenanceProvider extends BaseProvider {
     _issues = [];
     _selectedIssue = null;
     notifyListeners();
+  }
+
+  /// Upload images to the backend and return their IDs
+  Future<List<int>> _uploadImages(List<File> images, int propertyId) async {
+    final List<int> imageIds = [];
+    
+    for (final imageFile in images) {
+      try {
+        final bytes = await imageFile.readAsBytes();
+        final base64Data = base64Encode(bytes);
+        final fileName = imageFile.path.split('/').last;
+        
+        // Determine content type from extension
+        String contentType = 'image/jpeg';
+        if (fileName.toLowerCase().endsWith('.png')) {
+          contentType = 'image/png';
+        } else if (fileName.toLowerCase().endsWith('.gif')) {
+          contentType = 'image/gif';
+        }
+        
+        final request = {
+          'propertyId': propertyId,
+          'fileName': fileName,
+          'contentType': contentType,
+          'imageData': base64Data,
+          'isCover': false,
+        };
+        
+        final response = await api.post('/images', request, authenticated: true);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final json = jsonDecode(response.body);
+          final imageId = json['imageId'] as int?;
+          if (imageId != null) {
+            imageIds.add(imageId);
+          }
+        }
+      } catch (e) {
+        debugPrint('MaintenanceProvider: Failed to upload image: $e');
+        // Continue with other images even if one fails
+      }
+    }
+    
+    return imageIds;
   }
 }

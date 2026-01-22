@@ -37,4 +37,9 @@ public class BookingResponse
     // Included from navigation properties
     public string? PropertyName { get; set; }
     public string? UserName { get; set; }
+    
+    /// <summary>
+    /// Cover image ID for the property (use to construct image URL)
+    /// </summary>
+    public int? PropertyCoverImageId { get; set; }
 }

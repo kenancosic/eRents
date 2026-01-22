@@ -27,7 +27,7 @@ class InvoicesProvider extends BaseProvider {
       final userId = user?.userId;
       if (userId == null) throw Exception('Unable to load current user');
       final qs = api.buildQueryString({
-        'TenantId': userId.toString(),
+        'TenantUserId': userId.toString(),
         'PaymentStatus': 'Pending',
         'PaymentType': 'SubscriptionPayment',
         'SortBy': 'createdat',

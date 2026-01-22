@@ -22,6 +22,10 @@ public class PaymentResponse
     public int? OriginalPaymentId { get; set; }
     public string? RefundReason { get; set; }
 
+    public string? PropertyName { get; set; }
+    public DateTime? PeriodStart { get; set; }
+    public DateTime? PeriodEnd { get; set; }
+
     // Tenant info (for display purposes)
     public TenantInfo? Tenant { get; set; }
 

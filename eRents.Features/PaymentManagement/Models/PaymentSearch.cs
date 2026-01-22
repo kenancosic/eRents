@@ -6,6 +6,7 @@ namespace eRents.Features.PaymentManagement.Models;
 public class PaymentSearch : BaseSearchObject
 {
     public int? TenantId { get; set; }
+    public int? TenantUserId { get; set; }
     public int? PropertyId { get; set; }
     public int? BookingId { get; set; }
 

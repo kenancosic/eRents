@@ -215,7 +215,7 @@ class ActiveLeaseSection extends StatelessWidget {
 
   void _requestLeaseExtension(BuildContext context) {
     context.push(
-      '/property/${property.propertyId}/manage-lease',
+      '/property/${property.propertyId}/manage-booking',
       extra: {
         'propertyId': property.propertyId,
         'bookingId': booking.bookingId,

@@ -139,6 +139,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priorityId: _selectedPriority.index + 1, // Convert enum to 1-based ID
+        images: _selectedImages.isNotEmpty ? _selectedImages : null,
       );
       final success = result != null;
 

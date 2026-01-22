@@ -29,7 +29,9 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   Booking? _findBookingById(PropertyRentalProvider provider, int bookingId) {
@@ -40,7 +42,7 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
     }
   }
 
-  void _loadData() async {
+  Future<void> _loadData() async {
     final provider = Provider.of<PropertyRentalProvider>(context, listen: false);
     await provider.fetchBookings(widget.propertyId);
     await provider.fetchPropertyDetails(widget.propertyId);

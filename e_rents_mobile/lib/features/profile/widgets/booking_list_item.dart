@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
+import 'package:e_rents_mobile/core/services/api_service.dart';
 
 /// Widget for displaying a booking item in a list
 /// Used in booking history screen and other booking-related screens
@@ -41,21 +43,7 @@ class BookingListItem extends StatelessWidget {
                   width: 80,
                   height: 80,
                   color: Colors.grey[200],
-                  child: booking.propertyThumbnailUrl != null
-                      ? Image.network(
-                          booking.propertyThumbnailUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.home_outlined,
-                            size: 32,
-                            color: Colors.grey[400],
-                          ),
-                        )
-                      : Icon(
-                          Icons.home_outlined,
-                          size: 32,
-                          color: Colors.grey[400],
-                        ),
+                  child: _buildPropertyImage(context),
                 ),
               ),
               const SizedBox(width: 12),
@@ -211,5 +199,33 @@ class BookingListItem extends StatelessWidget {
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildPropertyImage(BuildContext context) {
+    final thumbnailUrl = booking.propertyThumbnailUrl;
+    if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
+      return Icon(
+        Icons.home_outlined,
+        size: 32,
+        color: Colors.grey[400],
+      );
+    }
+
+    // Make relative URLs absolute using ApiService
+    String imageUrl = thumbnailUrl;
+    if (thumbnailUrl.startsWith('/')) {
+      final api = context.read<ApiService>();
+      imageUrl = api.makeAbsoluteUrl(thumbnailUrl);
+    }
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Icon(
+        Icons.home_outlined,
+        size: 32,
+        color: Colors.grey[400],
+      ),
+    );
   }
 }

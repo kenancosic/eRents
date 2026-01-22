@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
 import 'package:e_rents_desktop/features/chat/providers/chat_provider.dart';
+import 'package:e_rents_desktop/features/notifications/providers/notification_provider.dart';
 
 class AppNavigationBar extends StatefulWidget {
   final String currentPath;
@@ -30,6 +31,8 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       if (chatProvider.contacts.isEmpty && !chatProvider.isLoading) {
         chatProvider.loadContacts();
       }
+      // Load notification count
+      context.read<NotificationProvider>().loadUnreadCount();
     });
   }
 
@@ -156,11 +159,15 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
   ) {
     final bool isSelected = _isItemSelected(item);
     
-    // Check for unread chat messages
+    // Check for unread chat messages or notifications
     int? badgeCount;
     if (item.path == '/chat') {
       final chatProvider = context.watch<ChatProvider>();
       final unread = chatProvider.totalUnreadCount;
+      if (unread > 0) badgeCount = unread;
+    } else if (item.path == '/notifications') {
+      final notificationProvider = context.watch<NotificationProvider>();
+      final unread = notificationProvider.unreadCount;
       if (unread > 0) badgeCount = unread;
     }
 

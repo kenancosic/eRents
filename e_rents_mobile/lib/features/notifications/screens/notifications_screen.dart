@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:e_rents_mobile/features/notifications/providers/notification_provider.dart';
 import 'package:e_rents_mobile/features/notifications/widgets/notification_item.dart';
+import 'package:e_rents_mobile/features/profile/providers/user_bookings_provider.dart';
+import 'package:e_rents_mobile/features/profile/providers/invoices_provider.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
 import 'package:e_rents_mobile/core/utils/app_colors.dart';
 import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 import 'package:e_rents_mobile/core/models/notification.dart';
@@ -280,7 +283,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     
     switch (type) {
       case 'booking':
-        // Navigate to booking history
+        // Refresh bookings data before navigating
+        context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true);
         context.push('/bookings');
         break;
       case 'message':
@@ -289,15 +293,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         break;
       case 'property':
         // Navigate to property if referenceId exists
-        // Note: actionUrl could contain the property ID
+        final propertyId = _extractPropertyId(notification);
+        if (propertyId != null) {
+          context.push('/property/$propertyId');
+        }
         break;
       case 'payment':
-        // Navigate to payment history or invoices
+        // Refresh invoices data before navigating
+        final currentUserProvider = context.read<CurrentUserProvider>();
+        context.read<InvoicesProvider>().loadPending(currentUserProvider);
         context.push('/profile/invoices');
         break;
       case 'maintenance':
-        // Show details in a dialog or navigate to maintenance
-        _showNotificationDetailDialog(context, notification);
+        // Navigate to maintenance screen
+        context.push('/profile/maintenance');
         break;
       case 'review':
       case 'system':
@@ -306,6 +315,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _showNotificationDetailDialog(context, notification);
         break;
     }
+  }
+
+  /// Extract property ID from notification actionUrl
+  int? _extractPropertyId(AppNotification notification) {
+    final actionUrl = notification.actionUrl;
+    if (actionUrl == null) return null;
+    
+    // Try to extract property ID from URL (e.g., "/property/123")
+    if (actionUrl.contains('/property/')) {
+      final match = RegExp(r'/property/(\d+)').firstMatch(actionUrl);
+      if (match != null) {
+        return int.tryParse(match.group(1) ?? '');
+      }
+    }
+    // Try to parse the entire actionUrl as a number (might just be the ID)
+    return int.tryParse(actionUrl);
   }
 
   void _showNotificationDetailDialog(BuildContext context, AppNotification notification) {

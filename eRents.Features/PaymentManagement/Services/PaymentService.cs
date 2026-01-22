@@ -31,6 +31,12 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
             query = query.Where(x => x.TenantId == id);
         }
 
+        if (search.TenantUserId.HasValue)
+        {
+            var uid = search.TenantUserId.Value;
+            query = query.Where(x => x.Tenant != null && x.Tenant.UserId == uid);
+        }
+
         if (search.PropertyId.HasValue)
         {
             var id = search.PropertyId.Value;
@@ -287,7 +293,9 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
     {
         return query
             .Include(p => p.Tenant).ThenInclude(t => t!.User)
-            .Include(p => p.Property);
+            .Include(p => p.Property)
+            .Include(p => p.Booking).ThenInclude(b => b!.Property)
+            .Include(p => p.Subscription);
     }
 
     public override async Task<PaymentResponse> GetByIdAsync(int id)
@@ -296,6 +304,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
             .Include(p => p.Tenant).ThenInclude(t => t!.User)
             .Include(p => p.Property)
             .Include(p => p.Booking).ThenInclude(b => b!.Property)
+            .Include(p => p.Subscription).ThenInclude(s => s!.Property)
             .FirstOrDefaultAsync(p => p.PaymentId == id);
 
         if (entity == null)

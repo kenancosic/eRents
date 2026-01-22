@@ -129,7 +129,10 @@ class HomeProvider extends BaseProvider {
       }).toList();
       
       debugPrint('HomeProvider: Found ${_upcomingBookings.length} upcoming bookings from ${allBookings.items.length} total');
-      _upcomingCards = await _enrichBookingsToCards(_upcomingBookings);
+      final cards = await _enrichBookingsToCards(_upcomingBookings);
+      // Deduplicate by propertyId - show only one card per property
+      final seen = <int>{};
+      _upcomingCards = cards.where((c) => seen.add(c.propertyId)).toList();
     }
   }
 
@@ -158,7 +161,10 @@ class HomeProvider extends BaseProvider {
 
     if (current != null) {
       _currentResidenceBookings = current.items;
-      _currentResidences = await _enrichBookingsToCards(current.items);
+      final cards = await _enrichBookingsToCards(current.items);
+      // Deduplicate by propertyId - user can only reside at one property at a time
+      final seen = <int>{};
+      _currentResidences = cards.where((c) => seen.add(c.propertyId)).toList();
     }
   }
 

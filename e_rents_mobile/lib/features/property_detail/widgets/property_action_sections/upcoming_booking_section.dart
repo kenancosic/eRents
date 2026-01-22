@@ -165,16 +165,20 @@ class UpcomingBookingSection extends StatelessWidget {
   }
 
   void _showCancelDialog(BuildContext context) {
+    // Capture the router before showing dialog to avoid context issues
+    final router = GoRouter.of(context);
+    final provider = context.read<PropertyRentalProvider>();
+    
     showDialog(
       context: context,
-      builder: (context) => CancelStayDialog(
+      builder: (dialogContext) => CancelStayDialog(
         booking: booking,
         onCancellationConfirmed: () {
           // Refresh the bookings to get updated data
-          context.read<PropertyRentalProvider>().getBookingDetails(booking.bookingId);
+          provider.getBookingDetails(booking.bookingId);
 
-          // Navigate back to home or bookings screen
-          context.go('/home');
+          // Navigate back to home screen (route is '/' not '/home')
+          router.go('/');
         },
       ),
     );

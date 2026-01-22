@@ -8,7 +8,6 @@ import 'package:e_rents_mobile/features/chat/screens/conversation_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/personal_details_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/booking_history_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/profile_screen.dart';
-import 'package:e_rents_mobile/features/profile/screens/payment_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/invoices_screen.dart';
 import 'package:e_rents_mobile/features/profile/screens/change_password_screen.dart';
 import 'package:e_rents_mobile/features/property_detail/screens/property_details_screen.dart';
@@ -169,10 +168,6 @@ class AppRouter {
                         path: 'change-password',
                         name: 'change_password',
                         builder: (context, state) => const ChangePasswordScreen()),
-                    GoRoute(
-                        path: 'payment',
-                        name: 'profile_payment',
-                        builder: (context, state) => const PaymentScreen()),
                     GoRoute(
                         path: 'booking-history',
                         name: 'profile_booking_history',
