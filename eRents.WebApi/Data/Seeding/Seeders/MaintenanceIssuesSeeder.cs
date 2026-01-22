@@ -92,6 +92,12 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                         IsTenantComplaint = Random.Shared.Next(3) == 0 // 33% are tenant complaints
                     };
 
+                    // Set AssignedToUserId for InProgress and Completed issues (assign to property owner)
+                    if (status == MaintenanceIssueStatusEnum.InProgress || status == MaintenanceIssueStatusEnum.Completed)
+                    {
+                        issue.AssignedToUserId = property.OwnerId;
+                    }
+
                     // Add resolution data for completed issues
                     if (status == MaintenanceIssueStatusEnum.Completed)
                     {

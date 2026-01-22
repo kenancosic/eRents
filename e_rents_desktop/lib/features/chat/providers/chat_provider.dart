@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:e_rents_desktop/base/base_provider.dart';
 import 'package:e_rents_desktop/base/api_service_extensions.dart';
 import 'package:e_rents_desktop/models/message.dart';
@@ -24,6 +26,9 @@ class ChatProvider extends BaseProvider {
   final Map<int, bool> _online = {};
   bool isOnline(int userId) => _online[userId] ?? false;
 
+  // Server-side unread counts (fetched from backend)
+  final Map<int, int> _unreadCounts = {};
+
   // Real-time (SignalR)
   HubConnection? _hub;
   bool _isRealtimeConnected = false;
@@ -46,8 +51,12 @@ class ChatProvider extends BaseProvider {
     if (_selectedContactId == contactId) return;
     _selectedContactId = contactId;
 
-    if (contactId != null && (_conversations[contactId] == null || _conversations[contactId]!.isEmpty)) {
-      loadMessages(contactId);
+    if (contactId != null) {
+      if (_conversations[contactId] == null || _conversations[contactId]!.isEmpty) {
+        loadMessages(contactId);
+      }
+      // Mark messages as read when selecting contact
+      markConversationAsRead(contactId);
     }
     notifyListeners();
   }
@@ -59,7 +68,31 @@ class ChatProvider extends BaseProvider {
     
     if (result != null) {
       _contacts = result;
+      // Also load unread counts when loading contacts
+      await initializeUnreadCounts();
       notifyListeners();
+    }
+  }
+
+  /// Initialize unread counts from server - call after login
+  Future<void> initializeUnreadCounts() async {
+    try {
+      final response = await api.get('/Messages/UnreadCounts', authenticated: true);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map) {
+          _unreadCounts.clear();
+          data.forEach((key, value) {
+            final contactId = int.tryParse(key.toString());
+            if (contactId != null && value is int) {
+              _unreadCounts[contactId] = value;
+            }
+          });
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      // Silent fail - unread counts are not critical
     }
   }
 
@@ -212,6 +245,12 @@ class ChatProvider extends BaseProvider {
             isRead: false,
           );
           (_conversations[senderId] ??= []).add(msg);
+
+          // Update unread count if not viewing this conversation
+          if (senderId != _selectedContactId) {
+            _unreadCounts[senderId] = (_unreadCounts[senderId] ?? 0) + 1;
+          }
+
           notifyListeners();
         }
       }
@@ -263,6 +302,7 @@ class ChatProvider extends BaseProvider {
     _conversations.clear();
     _currentPage.clear();
     _hasMoreMessages.clear();
+    _unreadCounts.clear();
     _selectedContactId = null;
     clearError();
     notifyListeners();
@@ -270,6 +310,11 @@ class ChatProvider extends BaseProvider {
 
   /// Get unread message count for a specific contact
   int getUnreadCount(int contactId) {
+    // Prefer server-side count if available
+    if (_unreadCounts.containsKey(contactId)) {
+      return _unreadCounts[contactId]!;
+    }
+    // Fallback to local calculation
     final conversation = _conversations[contactId];
     if (conversation == null) return 0;
     return conversation.where((message) => message.isRead == false && message.senderId == contactId).length;
@@ -277,6 +322,11 @@ class ChatProvider extends BaseProvider {
 
   /// Get total unread message count across all conversations
   int get totalUnreadCount {
+    // Sum server-side counts if available
+    if (_unreadCounts.isNotEmpty) {
+      return _unreadCounts.values.fold(0, (sum, count) => sum + count);
+    }
+    // Fallback to local calculation
     int total = 0;
     for (final entry in _conversations.entries) {
       final contactId = entry.key;
@@ -284,6 +334,32 @@ class ChatProvider extends BaseProvider {
       total += messages.where((m) => m.isRead == false && m.senderId == contactId).length;
     }
     return total;
+  }
+
+  /// Mark all messages from a contact as read
+  Future<void> markConversationAsRead(int contactId) async {
+    if (getUnreadCount(contactId) == 0) return;
+
+    try {
+      await api.put('/Messages/$contactId/ReadAll', {}, authenticated: true);
+
+      // Update local state
+      _unreadCounts[contactId] = 0;
+
+      // Update loaded messages
+      final conversation = _conversations[contactId];
+      if (conversation != null) {
+        for (var i = 0; i < conversation.length; i++) {
+          if (conversation[i].senderId == contactId && conversation[i].isRead == false) {
+            conversation[i] = conversation[i].copyWith(isRead: true);
+          }
+        }
+      }
+
+      notifyListeners();
+    } catch (e) {
+      // Silent fail - will sync on next refresh
+    }
   }
 
   /// Get the last message text for a specific contact

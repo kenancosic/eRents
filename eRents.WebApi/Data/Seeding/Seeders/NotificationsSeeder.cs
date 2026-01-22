@@ -51,14 +51,20 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 // Booking confirmation notification
                 if (booking != null)
                 {
+                    var property = await context.Properties.AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.PropertyId == booking.PropertyId);
+                    var propertyName = property?.Name ?? "your property";
+                    
                     notifications.Add(new Notification
                     {
                         UserId = tenant.UserId,
                         Title = "Booking Confirmed",
-                        Message = $"Your booking #{booking.BookingId} has been confirmed. Check-in starts on {booking.StartDate:d}.",
+                        Message = $"Your booking at {propertyName} has been confirmed. Check-in starts on {booking.StartDate:d}.",
                         Type = "booking",
                         ReferenceId = booking.BookingId,
-                        IsRead = Random.Shared.Next(3) == 0 // 33% read
+                        IsRead = Random.Shared.Next(3) == 0, // 33% read
+                        CreatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 14)),
+                        UpdatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 14))
                     });
                 }
 
@@ -69,7 +75,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     Title = "New Message",
                     Message = "You have a new message from a property owner.",
                     Type = "message",
-                    IsRead = false
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow.AddHours(-Random.Shared.Next(1, 48)),
+                    UpdatedAt = DateTime.UtcNow.AddHours(-Random.Shared.Next(1, 48))
                 });
 
                 // Payment reminder for some users
@@ -81,7 +89,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                         Title = "Payment Reminder",
                         Message = "Your next rent payment is due in 3 days.",
                         Type = "payment",
-                        IsRead = false
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow.AddDays(-1),
+                        UpdatedAt = DateTime.UtcNow.AddDays(-1)
                     });
                 }
             }
@@ -108,25 +118,40 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
                 if (pendingBooking != null)
                 {
+                    var pendingProperty = await context.Properties.AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.PropertyId == pendingBooking.PropertyId);
+                    
                     notifications.Add(new Notification
                     {
                         UserId = owner.UserId,
                         Title = "New Booking Request",
-                        Message = "A tenant has requested to book your property. Review and approve.",
+                        Message = $"A tenant has requested to book {pendingProperty?.Name ?? "your property"}. Review and approve.",
                         Type = "booking",
                         ReferenceId = pendingBooking.BookingId,
-                        IsRead = false
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow.AddHours(-Random.Shared.Next(2, 72)),
+                        UpdatedAt = DateTime.UtcNow.AddHours(-Random.Shared.Next(2, 72))
                     });
                 }
 
                 // Payment received notification
+                var recentPayment = await context.Payments.AsNoTracking()
+                    .Where(p => ownerProperties.Contains(p.PropertyId ?? 0) && p.PaymentStatus == "Completed")
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync();
+                    
                 notifications.Add(new Notification
                 {
                     UserId = owner.UserId,
                     Title = "Payment Received",
-                    Message = "You have received a new rent payment.",
+                    Message = recentPayment != null 
+                        ? $"You received a payment of {recentPayment.Amount:C} {recentPayment.Currency}."
+                        : "You have received a new rent payment.",
                     Type = "payment",
-                    IsRead = Random.Shared.Next(2) == 0
+                    ReferenceId = recentPayment?.PaymentId,
+                    IsRead = Random.Shared.Next(2) == 0,
+                    CreatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 7)),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 7))
                 });
 
                 // Maintenance issue notification
@@ -143,18 +168,33 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                         Message = $"A tenant has reported a maintenance issue: {maintenanceIssue.Title}",
                         Type = "maintenance",
                         ReferenceId = maintenanceIssue.MaintenanceIssueId,
-                        IsRead = false
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 10)),
+                        UpdatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(1, 10))
                     });
                 }
 
-                // New review notification
+                // New review notification with property reference
+                var recentReview = await context.Reviews.AsNoTracking()
+                    .Where(r => ownerProperties.Contains(r.PropertyId ?? 0))
+                    .OrderByDescending(r => r.CreatedAt)
+                    .FirstOrDefaultAsync();
+                var reviewProperty = recentReview != null 
+                    ? await context.Properties.AsNoTracking().FirstOrDefaultAsync(p => p.PropertyId == recentReview.PropertyId)
+                    : null;
+                    
                 notifications.Add(new Notification
                 {
                     UserId = owner.UserId,
                     Title = "New Property Review",
-                    Message = "A tenant has left a review for your property.",
+                    Message = reviewProperty != null 
+                        ? $"A tenant has left a {recentReview?.StarRating:F1}-star review for {reviewProperty.Name}."
+                        : "A tenant has left a review for your property.",
                     Type = "review",
-                    IsRead = true
+                    ReferenceId = recentReview?.ReviewId,
+                    IsRead = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(3, 21)),
+                    UpdatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(3, 21))
                 });
             }
 

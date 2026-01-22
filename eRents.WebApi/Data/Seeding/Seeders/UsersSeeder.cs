@@ -53,14 +53,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.Users.IgnoreQueryFilters().ExecuteDeleteAsync();
             }
 
-            // Ensure baseline accounts for subsequent seeders
-            // Primary test accounts use "desktop" and "mobile" usernames to match what other seeders expect
-            // Also create aliases "landlord" and "tenant" for README compatibility
-            await EnsureUserAsync(context, "desktop", "Password123!", UserTypeEnum.Owner, "Desktop", "Landlord", "erentsbusiness@gmail.com", "Sarajevo");
-            await EnsureUserAsync(context, "landlord", "Password123!", UserTypeEnum.Owner, "Desktop", "Landlord", "landlord@erent.com", "Sarajevo");
-            await EnsureUserAsync(context, "mobile", "Password123!", UserTypeEnum.Tenant, "Mobile", "Tenant", "erentsbusinesstenant@gmail.com", "Tuzla");
-            await EnsureUserAsync(context, "tenant", "Password123!", UserTypeEnum.Tenant, "Mobile", "Tenant", "tenant@erent.com", "Tuzla");
-            await EnsureUserAsync(context, "guestuser", "Password123!", UserTypeEnum.Guest, "Regular", "User", "erentsbusiness+guest@gmail.com", "Mostar", isPublic: true);
+            // Primary test accounts - "desktop" for owner/landlord, "mobile" for tenant
+            // These usernames are referenced by other seeders (BookingsSeeder, MessagesSeeder, etc.)
+            await EnsureUserAsync(context, "desktop", "Password123!", UserTypeEnum.Owner, "Marko", "Kovačević", "erentsbusiness@gmail.com", "Sarajevo");
+            await EnsureUserAsync(context, "mobile", "Password123!", UserTypeEnum.Tenant, "Lejla", "Hadžić", "erentsbusinesstenant@gmail.com", "Tuzla");
+            await EnsureUserAsync(context, "guestuser", "Password123!", UserTypeEnum.Guest, "Tarik", "Begović", "erentsbusiness+guest@gmail.com", "Mostar", isPublic: true);
             
             // Additional landlords/owners (10 total including desktop)
             await EnsureUserAsync(context, "owner_zenica", "test123", UserTypeEnum.Owner, "Adnan", "Hadžić", "owner.zenica@erent.com", "Zenica");
@@ -118,7 +115,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 FirstName = first,
                 LastName = last,
                 UserType = type,
-                Address = Address.Create(streetLine1: "Zmaja od Bosne 10", city: city, state: GetStateForCity(city), country: "Bosnia and Herzegovina", postalCode: GetPostalCodeForCity(city)),
+                Address = Address.Create(
+                    streetLine1: GetStreetForUser(username, city), 
+                    city: city, 
+                    state: GetStateForCity(city), 
+                    country: "Bosnia and Herzegovina", 
+                    postalCode: GetPostalCodeForCity(city)),
+                PhoneNumber = GeneratePhoneNumber(username),
+                DateOfBirth = GenerateDateOfBirth(username, type),
                 IsPublic = isPublic
             };
             await ctx.Users.AddAsync(user);
@@ -165,5 +169,47 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Konjic" => "88400",
             _ => "71000"
         };
+
+        private static string GetStreetForUser(string username, string city) => (username, city) switch
+        {
+            ("desktop", _) => "Titova 15",
+            ("landlord", _) => "Maršala Tita 28",
+            ("mobile", _) => "Turalibegova 42",
+            ("tenant", _) => "Rudarska 18",
+            ("guestuser", _) => "Španjolski trg 5",
+            (_, "Sarajevo") => "Ferhadija " + (username.GetHashCode() % 50 + 1),
+            (_, "Mostar") => "Bulevar " + (username.GetHashCode() % 30 + 1),
+            (_, "Tuzla") => "Turalibegova " + (username.GetHashCode() % 40 + 1),
+            (_, "Zenica") => "Masarykova " + (username.GetHashCode() % 25 + 1),
+            (_, "Banja Luka") => "Veselina Masleše " + (username.GetHashCode() % 35 + 1),
+            (_, "Bihać") => "Bosanska " + (username.GetHashCode() % 20 + 1),
+            (_, "Brčko") => "Bulevar mira " + (username.GetHashCode() % 30 + 1),
+            _ => "Zmaja od Bosne " + (username.GetHashCode() % 50 + 1)
+        };
+
+        private static string GeneratePhoneNumber(string username)
+        {
+            // Generate realistic Bosnian phone numbers (format: +387 6X XXX XXX)
+            var hash = Math.Abs(username.GetHashCode());
+            var prefix = (hash % 3) switch { 0 => "61", 1 => "62", _ => "63" };
+            var number = (hash % 1000000).ToString("D6");
+            return $"+387 {prefix} {number.Substring(0, 3)} {number.Substring(3)}";
+        }
+
+        private static DateOnly? GenerateDateOfBirth(string username, UserTypeEnum type)
+        {
+            // Owners tend to be older (35-60), tenants younger (22-45), guests varied
+            var hash = Math.Abs(username.GetHashCode());
+            var baseYear = type switch
+            {
+                UserTypeEnum.Owner => 1965 + (hash % 25),    // 35-60 years old
+                UserTypeEnum.Tenant => 1980 + (hash % 23),   // 22-45 years old
+                UserTypeEnum.Guest => 1975 + (hash % 30),    // 25-50 years old
+                _ => 1985 + (hash % 20)
+            };
+            var month = (hash % 12) + 1;
+            var day = (hash % 28) + 1;
+            return new DateOnly(baseYear, month, day);
+        }
     }
 }

@@ -44,9 +44,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             // Only seed basic conversation if it doesn't exist and we're not force seeding
             if (!basicConversationExists || forceSeed)
             {
+                var baseTime = DateTime.UtcNow.AddDays(-5);
                 await context.Messages.AddRangeAsync(
-                    new Message { SenderId = mobile.UserId, ReceiverId = desktop.UserId, MessageText = "Hi, is the apartment available next month?", IsRead = true },
-                    new Message { SenderId = desktop.UserId, ReceiverId = mobile.UserId, MessageText = "Hi! Yes, it's available. Do you want to schedule a visit?", IsRead = false }
+                    new Message { SenderId = mobile.UserId, ReceiverId = desktop.UserId, MessageText = "Hi, is the apartment available next month?", IsRead = true, CreatedAt = baseTime, UpdatedAt = baseTime },
+                    new Message { SenderId = desktop.UserId, ReceiverId = mobile.UserId, MessageText = "Hi! Yes, it's available. Do you want to schedule a visit?", IsRead = true, CreatedAt = baseTime.AddHours(2), UpdatedAt = baseTime.AddHours(2) },
+                    new Message { SenderId = mobile.UserId, ReceiverId = desktop.UserId, MessageText = "That would be great! When are you free?", IsRead = true, CreatedAt = baseTime.AddHours(3), UpdatedAt = baseTime.AddHours(3) },
+                    new Message { SenderId = desktop.UserId, ReceiverId = mobile.UserId, MessageText = "I can meet you this Saturday at 10am. Does that work?", IsRead = true, CreatedAt = baseTime.AddDays(1), UpdatedAt = baseTime.AddDays(1) },
+                    new Message { SenderId = mobile.UserId, ReceiverId = desktop.UserId, MessageText = "Perfect! See you then.", IsRead = true, CreatedAt = baseTime.AddDays(1).AddHours(1), UpdatedAt = baseTime.AddDays(1).AddHours(1) },
+                    new Message { SenderId = desktop.UserId, ReceiverId = mobile.UserId, MessageText = "Great! I'll send you the exact address.", IsRead = false, CreatedAt = baseTime.AddDays(1).AddHours(2), UpdatedAt = baseTime.AddDays(1).AddHours(2) }
                 );
             }
 
@@ -61,11 +66,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     
                 if (!sarajevoZenicaConversationExists || forceSeed)
                 {
+                    var szBaseTime = DateTime.UtcNow.AddDays(-3);
                     messagesToAdd.AddRange(new[]
                     {
-                        new Message { SenderId = tenantSarajevo.UserId, ReceiverId = ownerZenica.UserId, MessageText = "Dobar dan, zainteresovan sam za stan u Zenici. Da li je dostupan za sljedeći mjesec?", IsRead = true },
-                        new Message { SenderId = ownerZenica.UserId, ReceiverId = tenantSarajevo.UserId, MessageText = "Dobar dan! Da, stan je dostupan. Da li želite da dogovorimo posjetu?", IsRead = false },
-                        new Message { SenderId = tenantSarajevo.UserId, ReceiverId = ownerZenica.UserId, MessageText = "Da, to bi bilo odlično. Mogu doći sljedeći vikend.", IsRead = true }
+                        new Message { SenderId = tenantSarajevo.UserId, ReceiverId = ownerZenica.UserId, MessageText = "Dobar dan, zainteresovan sam za stan u Zenici. Da li je dostupan za sljedeći mjesec?", IsRead = true, CreatedAt = szBaseTime, UpdatedAt = szBaseTime },
+                        new Message { SenderId = ownerZenica.UserId, ReceiverId = tenantSarajevo.UserId, MessageText = "Dobar dan! Da, stan je dostupan. Da li želite da dogovorimo posjetu?", IsRead = true, CreatedAt = szBaseTime.AddHours(4), UpdatedAt = szBaseTime.AddHours(4) },
+                        new Message { SenderId = tenantSarajevo.UserId, ReceiverId = ownerZenica.UserId, MessageText = "Da, to bi bilo odlično. Mogu doći sljedeći vikend.", IsRead = true, CreatedAt = szBaseTime.AddHours(5), UpdatedAt = szBaseTime.AddHours(5) },
+                        new Message { SenderId = ownerZenica.UserId, ReceiverId = tenantSarajevo.UserId, MessageText = "Odlično! Javite mi kada budete kretali.", IsRead = false, CreatedAt = szBaseTime.AddDays(1), UpdatedAt = szBaseTime.AddDays(1) }
                     });
                 }
             }
@@ -78,10 +85,12 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     
                 if (!mostarDesktopConversationExists || forceSeed)
                 {
+                    var mdBaseTime = DateTime.UtcNow.AddDays(-2);
                     messagesToAdd.AddRange(new[]
                     {
-                        new Message { SenderId = tenantMostar.UserId, ReceiverId = desktop.UserId, MessageText = "Zainteresovan sam za apartman blizu Stari Most mosta. Da li ima parking?", IsRead = true },
-                        new Message { SenderId = desktop.UserId, ReceiverId = tenantMostar.UserId, MessageText = "Ima privatni parking u garaži. Takođe, vrlo je blizu svim atrakcijama u Mostaru.", IsRead = false }
+                        new Message { SenderId = tenantMostar.UserId, ReceiverId = desktop.UserId, MessageText = "Zainteresovan sam za apartman blizu Stari Most mosta. Da li ima parking?", IsRead = true, CreatedAt = mdBaseTime, UpdatedAt = mdBaseTime },
+                        new Message { SenderId = desktop.UserId, ReceiverId = tenantMostar.UserId, MessageText = "Ima privatni parking u garaži. Takođe, vrlo je blizu svim atrakcijama u Mostaru.", IsRead = true, CreatedAt = mdBaseTime.AddHours(3), UpdatedAt = mdBaseTime.AddHours(3) },
+                        new Message { SenderId = tenantMostar.UserId, ReceiverId = desktop.UserId, MessageText = "Super! Koliko je cijena po noći?", IsRead = false, CreatedAt = mdBaseTime.AddHours(4), UpdatedAt = mdBaseTime.AddHours(4) }
                     });
                 }
             }

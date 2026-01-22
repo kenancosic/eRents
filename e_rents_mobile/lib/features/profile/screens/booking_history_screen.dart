@@ -3,6 +3,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_bookings_provider.dart';
 import 'package:e_rents_mobile/features/profile/widgets/booking_list_item.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/property_action_factory.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -168,8 +169,17 @@ class _BookingHistoryScreenState extends State<BookingHistoryScreen>
   }
 
   void _navigateToPropertyDetails(Booking booking) {
-    // Navigate to property details screen with the booking's property ID
-    context.push('/property/${booking.propertyId}');
+    // Determine the appropriate view context based on booking status
+    final viewContext = PropertyViewContextHelper.determineContext(booking);
+    
+    // Navigate to property details screen with proper context and booking ID
+    context.push(
+      '/property/${booking.propertyId}',
+      extra: {
+        'viewContext': viewContext,
+        'bookingId': booking.bookingId,
+      },
+    );
   }
 
   Widget _buildRefreshableList(List<Booking> bookings, String emptyMessage) {

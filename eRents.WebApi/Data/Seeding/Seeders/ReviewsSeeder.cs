@@ -40,6 +40,17 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             "Slike ne prikazuju realno stanje nekretnine."
         };
 
+        private static readonly string[] TenantReviews = new[]
+        {
+            "Odličan stanar, sve je ostavio u savršenom stanju.",
+            "Plaćanje uvijek na vrijeme, preporučujem kao stanara.",
+            "Vrlo odgovoran i komunikativan stanar.",
+            "Stan je bio u odličnom stanju nakon iseljenja.",
+            "Pouzdan stanar, bez ikakvih problema tokom cijelog boravka.",
+            "Savršen stanar, rado bih ga ponovno primio.",
+            "Komunikacija je bila odlična, sve dogovore je poštovao."
+        };
+
         public async Task SeedAsync(ERentsContext context, ILogger logger, bool forceSeed = false)
         {
             logger?.LogInformation("[{Seeder}] Starting...", Name);
@@ -59,6 +70,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             var tenants = await context.Users.AsNoTracking()
                 .Where(u => u.UserType == UserTypeEnum.Tenant)
                 .Take(15)
+                .ToListAsync();
+            
+            // Get completed bookings for verified reviews
+            var completedBookings = await context.Bookings.AsNoTracking()
+                .Where(b => b.Status == BookingStatusEnum.Completed || b.Status == BookingStatusEnum.Active)
                 .ToListAsync();
 
             if (properties.Count == 0 || tenants.Count == 0)
@@ -90,15 +106,50 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                         ? NegativeReviews[Random.Shared.Next(NegativeReviews.Length)]
                         : PositiveReviews[Random.Shared.Next(PositiveReviews.Length)];
 
+                    // Link to booking if reviewer has a completed booking at this property
+                    var matchingBooking = completedBookings.FirstOrDefault(b => 
+                        b.UserId == reviewer.UserId && b.PropertyId == property.PropertyId);
+
                     reviews.Add(new Review
                     {
                         ReviewType = ReviewType.PropertyReview,
                         PropertyId = property.PropertyId,
                         ReviewerId = reviewer.UserId,
+                        BookingId = matchingBooking?.BookingId, // Verified stay if booking exists
                         StarRating = rating,
                         Description = description
                     });
                 }
+            }
+
+            // Add tenant reviews (landlords reviewing tenants)
+            var owners = await context.Users.AsNoTracking()
+                .Where(u => u.UserType == UserTypeEnum.Owner)
+                .Take(5)
+                .ToListAsync();
+            
+            foreach (var booking in completedBookings.Take(5))
+            {
+                var property = properties.FirstOrDefault(p => p.PropertyId == booking.PropertyId);
+                if (property == null) continue;
+                
+                var owner = owners.FirstOrDefault(o => o.UserId == property.OwnerId);
+                if (owner == null) continue;
+                
+                var tenant = tenants.FirstOrDefault(t => t.UserId == booking.UserId);
+                if (tenant == null) continue;
+
+                // Owner reviews tenant
+                reviews.Add(new Review
+                {
+                    ReviewType = ReviewType.TenantReview,
+                    PropertyId = property.PropertyId,
+                    ReviewerId = owner.UserId,
+                    RevieweeId = tenant.UserId,
+                    BookingId = booking.BookingId,
+                    StarRating = (decimal)(Random.Shared.Next(38, 51) / 10.0), // 3.8 - 5.0
+                    Description = TenantReviews[Random.Shared.Next(TenantReviews.Length)]
+                });
             }
 
             await context.Reviews.AddRangeAsync(reviews);

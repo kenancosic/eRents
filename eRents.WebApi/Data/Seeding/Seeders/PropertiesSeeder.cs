@@ -316,12 +316,24 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 PropertyType = propertyType,
                 RentingType = rentingType,
                 RequiresApproval = requiresApproval,
+                // Daily rentals have minimum stay requirements (2-7 days based on property type)
+                MinimumStayDays = rentingType == RentalType.Daily ? GetMinimumStayDays(propertyType) : null,
                 UnavailableFrom = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today) : null,
                 UnavailableTo = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today.AddDays(30)) : null
             };
             // Do NOT assign amenities here. We link amenities via PropertyAmenity after properties are saved.
             return property;
         }
+
+        private static int GetMinimumStayDays(PropertyTypeEnum? propertyType) => propertyType switch
+        {
+            PropertyTypeEnum.Villa => 3,      // Villas require 3+ nights
+            PropertyTypeEnum.House => 2,      // Houses require 2+ nights
+            PropertyTypeEnum.Apartment => 2,  // Apartments require 2+ nights
+            PropertyTypeEnum.Studio => 1,     // Studios allow 1 night
+            PropertyTypeEnum.Room => 1,       // Rooms allow 1 night
+            _ => 2
+        };
 
         private static string GetStateForCity(string city) => city switch
         {

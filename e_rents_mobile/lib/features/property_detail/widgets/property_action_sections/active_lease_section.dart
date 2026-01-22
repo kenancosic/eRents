@@ -160,9 +160,6 @@ class ActiveLeaseSection extends StatelessWidget {
           ],
         ),
 
-        // Quick actions
-        const SizedBox(height: 16),
-        _buildQuickActions(context),
       ],
     );
   }
@@ -192,87 +189,6 @@ class ActiveLeaseSection extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Actions',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildQuickActionButton(
-                context,
-                'Check Rent',
-                Icons.receipt_long,
-                () => _viewRentDetails(context),
-              ),
-              const SizedBox(width: 12),
-              _buildQuickActionButton(
-                context,
-                'House Rules',
-                Icons.rule,
-                () => _viewHouseRules(context),
-              ),
-              const SizedBox(width: 12),
-              _buildQuickActionButton(
-                context,
-                'Neighbors',
-                Icons.people,
-                () => _viewNeighbors(context),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    VoidCallback onPressed,
-  ) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: Colors.grey[600], size: 20),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -311,26 +227,5 @@ class ActiveLeaseSection extends StatelessWidget {
   void _contactLandlord(BuildContext context) {
     // Use go() to switch to Chat tab properly instead of pushing onto current stack
     context.go('/chat');
-  }
-
-  void _viewRentDetails(BuildContext context) {
-    // Navigate to rent payment history or details
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Rent details feature coming soon')),
-    );
-  }
-
-  void _viewHouseRules(BuildContext context) {
-    // Navigate to house rules or property guidelines
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('House rules feature coming soon')),
-    );
-  }
-
-  void _viewNeighbors(BuildContext context) {
-    // Navigate to neighbor contact info or community features
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Neighbors feature coming soon')),
-    );
   }
 }

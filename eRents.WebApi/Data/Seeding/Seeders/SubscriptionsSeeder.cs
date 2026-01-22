@@ -50,6 +50,23 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 var property = await context.Properties.AsNoTracking().FirstOrDefaultAsync(p => p.PropertyId == booking.PropertyId);
                 if (property == null) continue;
 
+                // Vary payment day based on property to simulate real contracts (1st, 5th, 10th, 15th)
+                var paymentDay = ((property.PropertyId % 4) + 1) * 5; // 5, 10, 15, or 20
+                if (paymentDay > 28) paymentDay = 1; // Safety for short months
+                
+                // Calculate next payment date relative to today
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var thisMonthPayment = new DateOnly(today.Year, today.Month, Math.Min(paymentDay, DateTime.DaysInMonth(today.Year, today.Month)));
+                var nextPayment = today.Day >= paymentDay 
+                    ? thisMonthPayment.AddMonths(1) 
+                    : thisMonthPayment;
+                
+                // Ensure next payment is within subscription period
+                if (booking.EndDate.HasValue && nextPayment > booking.EndDate.Value)
+                {
+                    nextPayment = booking.EndDate.Value;
+                }
+
                 var sub = new Subscription
                 {
                     TenantId = tenant.TenantId,
@@ -59,9 +76,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     Currency = property.Currency,
                     StartDate = booking.StartDate,
                     EndDate = booking.EndDate,
-                    PaymentDayOfMonth = 1,
+                    PaymentDayOfMonth = paymentDay,
                     Status = SubscriptionStatusEnum.Active,
-                    NextPaymentDate = booking.StartDate.AddMonths(1)
+                    NextPaymentDate = nextPayment
                 };
 
                 await context.Subscriptions.AddAsync(sub);

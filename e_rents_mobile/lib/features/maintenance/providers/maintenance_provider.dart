@@ -105,8 +105,11 @@ class MaintenanceProvider extends BaseProvider {
   }
 
   /// Report a new maintenance issue
+  /// 
+  /// Requires [reportedByUserId] to identify the user reporting the issue.
   Future<MaintenanceIssue?> reportIssue({
     required int propertyId,
+    required int reportedByUserId,
     required String title,
     required String description,
     required int priorityId,
@@ -117,9 +120,10 @@ class MaintenanceProvider extends BaseProvider {
       
       final request = {
         'propertyId': propertyId,
+        'reportedByUserId': reportedByUserId,
         'title': title,
         'description': description,
-        'priorityId': priorityId,
+        'priority': priorityId, // Backend expects 'priority' enum value
         'isTenantComplaint': isTenantComplaint,
       };
       

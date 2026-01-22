@@ -135,6 +135,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
       final result = await maintenanceProvider.reportIssue(
         propertyId: widget.propertyId,
+        reportedByUserId: currentUser.userId!,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priorityId: _selectedPriority.index + 1, // Convert enum to 1-based ID

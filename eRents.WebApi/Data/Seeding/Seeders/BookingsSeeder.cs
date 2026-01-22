@@ -63,7 +63,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 				TotalPrice = Math.Max(1m, property.Price) * 6,
 				Status = BookingStatusEnum.Active,
 				PaymentStatus = "Paid",
-				Currency = property.Currency ?? "USD"
+				PaymentMethod = "Stripe",
+				Currency = property.Currency ?? "USD",
+				IsSubscription = true // Monthly rental
 			};
 			bookings.Add(booking1);
 
@@ -93,7 +95,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 					TotalPrice = Math.Max(1m, property2.Price) * 3,
 					Status = BookingStatusEnum.Active,
 					PaymentStatus = "Paid",
-					Currency = property2.Currency ?? "USD"
+					PaymentMethod = "Stripe",
+					Currency = property2.Currency ?? "USD",
+					IsSubscription = true
 				};
 				bookings.Add(booking2);
 
@@ -122,10 +126,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 					TotalPrice = Math.Max(1m, property3.Price) * 3,
 					Status = BookingStatusEnum.Upcoming,
 					PaymentStatus = "Pending",
-					Currency = property3.Currency ?? "USD"
+					PaymentMethod = "Stripe",
+					Currency = property3.Currency ?? "USD",
+					IsSubscription = true
 				};
 				bookings.Add(booking3);
 
+				// Upcoming booking - tenant status is Active for confirmed bookings
 				var tenancy3 = new Tenant
 				{
 					UserId = tenantMostar.UserId,

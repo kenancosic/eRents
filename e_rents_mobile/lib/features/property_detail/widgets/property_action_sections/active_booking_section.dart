@@ -152,9 +152,6 @@ class ActiveBookingSection extends StatelessWidget {
           ],
         ),
 
-        // Stay information
-        const SizedBox(height: 16),
-        _buildStayInformation(context),
       ],
     );
   }
@@ -188,99 +185,6 @@ class ActiveBookingSection extends StatelessWidget {
     );
   }
 
-  Widget _buildStayInformation(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Stay Information',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildInfoButton(
-                context,
-                'Check-out Time',
-                Icons.schedule,
-                '11:00 AM',
-                () => _showCheckoutInfo(context),
-              ),
-              const SizedBox(width: 12),
-              _buildInfoButton(
-                context,
-                'House Rules',
-                Icons.rule,
-                'View Rules',
-                () => _viewHouseRules(context),
-              ),
-              const SizedBox(width: 12),
-              _buildInfoButton(
-                context,
-                'WiFi & Amenities',
-                Icons.wifi,
-                'Details',
-                () => _viewAmenities(context),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoButton(
-    BuildContext context,
-    String title,
-    IconData icon,
-    String subtitle,
-    VoidCallback onPressed,
-  ) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: Colors.grey[600], size: 20),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _extendStay(BuildContext context) {
     context.push(
       '/property/${property.propertyId}/manage-booking',
@@ -304,38 +208,6 @@ class ActiveBookingSection extends StatelessWidget {
         'propertyId': property.propertyId,
         'bookingId': booking.bookingId,
       },
-    );
-  }
-
-  void _showCheckoutInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Check-out Information'),
-        content: const Text(
-          'Standard check-out time is 11:00 AM.\n\n'
-          'Please ensure all personal belongings are removed and the property is left in good condition.\n\n'
-          'Late check-out may incur additional fees.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _viewHouseRules(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('House rules feature coming soon')),
-    );
-  }
-
-  void _viewAmenities(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Amenities details feature coming soon')),
     );
   }
 }
