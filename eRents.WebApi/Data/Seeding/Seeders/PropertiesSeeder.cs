@@ -65,7 +65,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 CreateProperty(desktop, amenities, "Stan na Grbavici", "Sarajevo", PropertyStatusEnum.Occupied, RentalType.Monthly),
                 CreateProperty(desktop, amenities, "Luxuzni stan Centar", "Sarajevo", PropertyStatusEnum.Available, RentalType.Monthly),
                 CreateProperty(desktop, amenities, "Apartman Stari Most", "Mostar", PropertyStatusEnum.Available, RentalType.Daily),
-                CreateProperty(desktop, amenities, "Vila Bašćaršija", "Sarajevo", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa, requiresApproval: true)
+                CreateProperty(desktop, amenities, "Vila Bašćaršija", "Sarajevo", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
+                // Test property for April availability testing - no bookings will be seeded for this property
+                CreateProperty(desktop, amenities, "Novi Stan April Test", "Sarajevo", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
             });
             
             // Other owners - distribute properties
@@ -117,7 +119,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerBihac, amenities, "Vikendica na Uni", "Bihać", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House, requiresApproval: true),
+                    CreateProperty(ownerBihac, amenities, "Vikendica na Uni", "Bihać", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House),
                     CreateProperty(ownerBihac, amenities, "Apartman Centar", "Bihać", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
                 });
             }

@@ -7,19 +7,34 @@ import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 class ExtendBookingDialog extends StatefulWidget {
   final Booking booking;
   final VoidCallback? onExtended;
+  /// If true, this is a monthly rental and only months selection is allowed
+  final bool isMonthlyRental;
 
-  const ExtendBookingDialog({super.key, required this.booking, this.onExtended});
+  const ExtendBookingDialog({
+    super.key,
+    required this.booking,
+    this.onExtended,
+    this.isMonthlyRental = true, // Monthly rentals use month-based extension by default
+  });
 
   @override
   State<ExtendBookingDialog> createState() => _ExtendBookingDialogState();
 }
 
 class _ExtendBookingDialogState extends State<ExtendBookingDialog> {
-  bool _useExactDate = true;
+  // For monthly rentals, default to months selection (not exact date)
+  late bool _useExactDate;
   DateTime? _newEndDate;
   final TextEditingController _monthsCtrl = TextEditingController(text: '1');
   final TextEditingController _amountCtrl = TextEditingController();
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Monthly rentals should default to month selection, not exact date
+    _useExactDate = !widget.isMonthlyRental;
+  }
 
   @override
   void dispose() {
@@ -31,61 +46,75 @@ class _ExtendBookingDialogState extends State<ExtendBookingDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Extend Booking'),
+      title: Text(widget.isMonthlyRental ? 'Request Lease Extension' : 'Extend Booking'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              _useExactDate ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: _useExactDate ? Theme.of(context).colorScheme.primary : Colors.grey,
+          // For monthly rentals, only show months selection (no exact date option)
+          if (!widget.isMonthlyRental) ...[
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                _useExactDate ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: _useExactDate ? Theme.of(context).colorScheme.primary : Colors.grey,
+              ),
+              title: const Text('Pick exact end date'),
+              onTap: () => setState(() => _useExactDate = true),
             ),
-            title: const Text('Pick exact end date'),
-            onTap: () => setState(() => _useExactDate = true),
-          ),
-          if (_useExactDate)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(
-                      _newEndDate != null
-                          ? _formatDate(_newEndDate!)
-                          : 'Select date',
+            if (_useExactDate)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.calendar_today, size: 18),
+                      label: Text(
+                        _newEndDate != null
+                            ? _formatDate(_newEndDate!)
+                            : 'Select date',
+                      ),
+                      onPressed: () async {
+                        final now = DateTime.now();
+                        final initial = _newEndDate ?? (widget.booking.endDate ?? now);
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: initial.isBefore(now) ? now : initial,
+                          firstDate: now,
+                          lastDate: DateTime(now.year + 5),
+                        );
+                        if (!mounted) return;
+                        if (picked != null) {
+                          setState(() => _newEndDate = picked);
+                        }
+                      },
                     ),
-                    onPressed: () async {
-                      final now = DateTime.now();
-                      final initial = _newEndDate ?? (widget.booking.endDate ?? now);
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: initial.isBefore(now) ? now : initial,
-                        firstDate: now,
-                        lastDate: DateTime(now.year + 5),
-                      );
-                      if (!mounted) return;
-                      if (picked != null) {
-                        setState(() => _newEndDate = picked);
-                      }
-                    },
+                  ),
+                ],
+              ),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                !_useExactDate ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: !_useExactDate ? Theme.of(context).colorScheme.primary : Colors.grey,
+              ),
+              title: const Text('Extend by months'),
+              onTap: () => setState(() => _useExactDate = false),
+            ),
+          ],
+          // For monthly rentals OR when months option selected
+          if (widget.isMonthlyRental || !_useExactDate) ...[
+            if (widget.isMonthlyRental)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  'Select how many months to extend your lease:',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey[600],
                   ),
                 ),
-              ],
-            ),
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              !_useExactDate ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: !_useExactDate ? Theme.of(context).colorScheme.primary : Colors.grey,
-            ),
-            title: const Text('Extend by months'),
-            onTap: () => setState(() => _useExactDate = false),
-          ),
-          if (!_useExactDate)
+              ),
             Row(
               children: [
                 Expanded(
@@ -93,13 +122,14 @@ class _ExtendBookingDialogState extends State<ExtendBookingDialog> {
                     controller: _monthsCtrl,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Months',
+                      labelText: 'Number of months',
                       hintText: 'e.g. 3',
                     ),
                   ),
                 ),
               ],
             ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: _amountCtrl,
@@ -177,7 +207,12 @@ class _ExtendBookingDialogState extends State<ExtendBookingDialog> {
       widget.onExtended?.call();
       if (!mounted) return;
       Navigator.of(context).pop();
-      _showSnack('Booking extended successfully');
+      // Show appropriate message based on rental type
+      if (widget.isMonthlyRental) {
+        _showSnack('Extension request submitted! Awaiting landlord approval.');
+      } else {
+        _showSnack('Booking extended successfully');
+      }
     }
   }
 

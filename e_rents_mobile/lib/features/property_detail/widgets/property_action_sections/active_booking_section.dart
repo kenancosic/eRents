@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/extend_booking_dialog.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 /// Section shown when user has an active short-term booking
 /// Shows current stay details and extension options
@@ -111,19 +114,19 @@ class ActiveBookingSection extends StatelessWidget {
         // Primary actions for active booking
         Column(
           children: [
-            // Extend stay button
-            if (booking.endDate != null)
+            // Extension button - only for subscription-based monthly bookings
+            if (_canRequestExtension())
               SizedBox(
                 width: double.infinity,
                 child: CustomButton(
-                  label: 'Extend Your Stay',
+                  label: 'Request Lease Extension',
                   icon: Icons.add_box,
                   onPressed: () => _extendStay(context),
                   isLoading: false,
                   width: ButtonWidth.expanded,
                 ),
               ),
-            if (booking.endDate != null) const SizedBox(height: 12),
+            if (_canRequestExtension()) const SizedBox(height: 12),
 
             // Secondary actions row
             Row(
@@ -185,14 +188,30 @@ class ActiveBookingSection extends StatelessWidget {
     );
   }
 
+  /// Check if the booking is eligible for extension requests.
+  /// Only monthly subscription-based bookings can request extensions.
+  bool _canRequestExtension() {
+    // Must be a subscription-based monthly booking
+    if (!booking.isSubscription) {
+      return false;
+    }
+    // Must have an end date to extend
+    if (booking.endDate == null) {
+      return false;
+    }
+    return true;
+  }
+
   void _extendStay(BuildContext context) {
-    context.push(
-      '/property/${property.propertyId}/manage-booking',
-      extra: {
-        'propertyId': property.propertyId,
-        'bookingId': booking.bookingId,
-        'booking': booking,
-      },
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ExtendBookingDialog(
+        booking: booking,
+        onExtended: () {
+          // Refresh booking details after extension request
+          context.read<PropertyRentalProvider>().getBookingDetails(booking.bookingId);
+        },
+      ),
     );
   }
 

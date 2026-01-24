@@ -100,14 +100,16 @@ class UpcomingBookingSection extends StatelessWidget {
               width: OutlinedButtonWidth.flexible,
               size: OutlinedButtonSize.compact,
             ),
-            CustomOutlinedButton(
-              label: 'Extend Booking',
-              icon: Icons.update,
-              onPressed: () => _showExtendDialog(context),
-              isLoading: false,
-              width: OutlinedButtonWidth.flexible,
-              size: OutlinedButtonSize.compact,
-            ),
+            // Only show extension button for monthly subscription-based bookings
+            if (_canRequestExtension())
+              CustomOutlinedButton(
+                label: 'Request Lease Extension',
+                icon: Icons.update,
+                onPressed: () => _showExtendDialog(context),
+                isLoading: false,
+                width: OutlinedButtonWidth.flexible,
+                size: OutlinedButtonSize.compact,
+              ),
             CustomOutlinedButton(
               label: 'Cancel Stay',
               icon: Icons.cancel_outlined,
@@ -151,6 +153,20 @@ class UpcomingBookingSection extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Check if the booking is eligible for extension requests.
+  /// Only monthly subscription-based bookings can request extensions.
+  bool _canRequestExtension() {
+    // Must be a subscription-based monthly booking
+    if (!booking.isSubscription) {
+      return false;
+    }
+    // Must have an end date to extend (open-ended leases handled differently)
+    if (booking.endDate == null) {
+      return false;
+    }
+    return true;
   }
 
   void _navigateToManageBooking(BuildContext context) {

@@ -4,6 +4,7 @@ enum BookingStatus {
   active,
   completed,
   cancelled,
+  pending,
 }
 
 extension BookingStatusX on BookingStatus {
@@ -17,6 +18,8 @@ extension BookingStatusX on BookingStatus {
         return 'Completed';
       case BookingStatus.cancelled:
         return 'Cancelled';
+      case BookingStatus.pending:
+        return 'Pending Approval';
     }
   }
 
@@ -39,6 +42,10 @@ extension BookingStatusX on BookingStatus {
           return BookingStatus.cancelled;
         case 4:
           return BookingStatus.active;
+        case 5:
+          return BookingStatus.pending;
+        case 6:
+          return BookingStatus.upcoming; // Approved maps to upcoming
       }
       return fallback;
     }
@@ -53,6 +60,8 @@ extension BookingStatusX on BookingStatus {
         return BookingStatus.completed;
       case 'cancelled':
         return BookingStatus.cancelled;
+      case 'pending':
+        return BookingStatus.pending;
       default:
         return fallback;
     }

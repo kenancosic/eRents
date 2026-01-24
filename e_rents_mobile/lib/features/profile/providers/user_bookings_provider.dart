@@ -57,6 +57,19 @@ class UserBookingsProvider extends BaseProvider with BookingActionsMixin {
     }).toList();
   }
 
+  /// Get pending approval bookings (monthly rentals awaiting landlord approval)
+  List<dynamic> get pendingBookings {
+    if (_bookingHistory == null) return [];
+    return _bookingHistory!.where((booking) {
+      try {
+        final parsed = Booking.fromJson(booking as Map<String, dynamic>);
+        return parsed.status == BookingStatus.pending;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+  }
+
   // ─── Public API ─────────────────────────────────────────────────────────
 
   /// Load user bookings using CurrentUserProvider

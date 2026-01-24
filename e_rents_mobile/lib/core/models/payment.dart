@@ -11,8 +11,10 @@ class Payment {
   final DateTime? createdAt;
   // Optional extras (shown in invoice details if provided by backend)
   final String? propertyName;
+  final String? propertyImageUrl;
   final DateTime? periodStart;
   final DateTime? periodEnd;
+  final String? paymentType;
 
   Payment({
     required this.paymentId,
@@ -26,8 +28,10 @@ class Payment {
     this.currency,
     this.createdAt,
     this.propertyName,
+    this.propertyImageUrl,
     this.periodStart,
     this.periodEnd,
+    this.paymentType,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -53,8 +57,10 @@ class Payment {
       currency: json['currency'],
       createdAt: _parseDate(json['createdAt']),
       propertyName: json['propertyName']?.toString(),
+      propertyImageUrl: json['propertyImageUrl']?.toString(),
       periodStart: _parseDate(json['subscriptionStartDate'] ?? json['periodStart'] ?? json['startDate']),
       periodEnd: _parseDate(json['subscriptionEndDate'] ?? json['periodEnd'] ?? json['endDate']),
+      paymentType: json['paymentType']?.toString(),
     );
   }
 
@@ -71,8 +77,10 @@ class Payment {
       'currency': currency,
       'createdAt': createdAt?.toIso8601String(),
       'propertyName': propertyName,
+      'propertyImageUrl': propertyImageUrl,
       'periodStart': periodStart?.toIso8601String(),
       'periodEnd': periodEnd?.toIso8601String(),
+      'paymentType': paymentType,
     };
   }
 }

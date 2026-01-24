@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/features/property_detail/widgets/property_action_
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/active_booking_section.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/active_lease_section.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/upcoming_booking_section.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/pending_approval_section.dart';
 
 class PropertyActionFactory {
   static Widget createActionSection({
@@ -54,6 +55,16 @@ class PropertyActionFactory {
       case ViewContext.maintenance:
         // If viewing in maintenance context, show relevant options
         return const SizedBox.shrink();
+
+      case ViewContext.pendingApproval:
+        // For pending approval, show waiting status with actions
+        if (booking == null) {
+          return const SizedBox.shrink();
+        }
+        return PendingApprovalSection(
+          property: property,
+          booking: booking,
+        );
     }
   }
 }
@@ -95,6 +106,9 @@ class PropertyViewContextHelper {
 
       case BookingStatus.cancelled:
         return ViewContext.pastBooking;
+
+      case BookingStatus.pending:
+        return ViewContext.pendingApproval;
     }
   }
 }

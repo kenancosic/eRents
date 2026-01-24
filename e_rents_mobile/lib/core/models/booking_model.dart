@@ -69,6 +69,8 @@ class Booking {
         return 'Cancelled';
       case BookingStatus.active:
         return 'Active';
+      case BookingStatus.pending:
+        return 'Pending Approval';
     }
   }
 
@@ -117,13 +119,15 @@ class Booking {
           case 'completed':
           case 'done':
             return BookingStatus.completed;
+          case 'pending':
+            return BookingStatus.pending;
           default:
             return BookingStatus.upcoming;
         }
       }
       // Numeric code from backend enum
       if (raw is int) {
-        // Backend enum: 1=Upcoming, 2=Completed, 3=Cancelled, 4=Active
+        // Backend enum: 1=Upcoming, 2=Completed, 3=Cancelled, 4=Active, 5=Pending, 6=Approved
         switch (raw) {
           case 1:
             return BookingStatus.upcoming;
@@ -133,6 +137,10 @@ class Booking {
             return BookingStatus.cancelled;
           case 4:
             return BookingStatus.active;
+          case 5:
+            return BookingStatus.pending;
+          case 6:
+            return BookingStatus.upcoming; // Approved maps to upcoming
           default:
             return BookingStatus.upcoming;
         }

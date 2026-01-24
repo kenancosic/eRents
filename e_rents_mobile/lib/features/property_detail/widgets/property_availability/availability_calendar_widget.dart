@@ -11,6 +11,8 @@ class AvailabilityCalendarWidget extends StatefulWidget {
   final DateTime? selectedStartDate;
   final DateTime? selectedEndDate;
   final Function(DateTime start, DateTime end)? onDateRangeSelected;
+  /// For monthly rentals: callback when only start date is selected
+  final Function(DateTime startDate)? onStartDateSelected;
   final bool isSelectable;
   final int? minimumStayDays;
 
@@ -21,6 +23,7 @@ class AvailabilityCalendarWidget extends StatefulWidget {
     this.selectedStartDate,
     this.selectedEndDate,
     this.onDateRangeSelected,
+    this.onStartDateSelected,
     this.isSelectable = true,
     this.minimumStayDays,
   });
@@ -141,6 +144,19 @@ class _AvailabilityCalendarWidgetState
     final status = _getStatusForDay(selectedDay);
     if (status != AvailabilityStatus.available) return;
 
+    // For monthly rentals: single date selection only
+    if (widget.rentalType == PropertyRentalType.monthly) {
+      setState(() {
+        _rangeStart = selectedDay;
+        _rangeEnd = null; // Monthly doesn't use range end from calendar
+        _focusedDay = focusedDay;
+      });
+      // Callback with just the start date
+      widget.onStartDateSelected?.call(selectedDay);
+      return;
+    }
+
+    // For daily rentals: range selection
     setState(() {
       if (_rangeStart == null || _rangeEnd != null) {
         // Start new selection
@@ -216,8 +232,8 @@ class _AvailabilityCalendarWidgetState
             focusedDay: _focusedDay,
             calendarFormat: _calendarFormat,
             rangeStartDay: _rangeStart,
-            rangeEndDay: _rangeEnd,
-            rangeSelectionMode: widget.isSelectable
+            rangeEndDay: widget.rentalType == PropertyRentalType.monthly ? null : _rangeEnd,
+            rangeSelectionMode: widget.isSelectable && widget.rentalType == PropertyRentalType.daily
                 ? RangeSelectionMode.toggledOn
                 : RangeSelectionMode.disabled,
             enabledDayPredicate: _isDaySelectable,

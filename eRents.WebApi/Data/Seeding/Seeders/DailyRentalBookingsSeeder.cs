@@ -9,7 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Seeds daily rental bookings with various statuses including Pending for approval flow testing.
+    /// Seeds daily rental bookings with various statuses (Upcoming, Active, Completed).
+    /// Daily rentals are auto-approved after payment and never require landlord approval.
     /// Creates bookings across multiple tenants and daily rental properties.
     /// </summary>
     public class DailyRentalBookingsSeeder : IDataSeeder
@@ -21,10 +22,10 @@ namespace eRents.WebApi.Data.Seeding.Seeders
         {
             logger?.LogInformation("[{Seeder}] Starting...", Name);
 
-            // Check if daily rental bookings already exist
+            // Check if daily rental bookings already exist (check for Upcoming status as our marker)
             var hasDailyBookings = await context.Bookings
                 .Include(b => b.Property)
-                .AnyAsync(b => b.Property.RentingType == RentalType.Daily && b.Status == BookingStatusEnum.Pending);
+                .AnyAsync(b => b.Property.RentingType == RentalType.Daily && b.Status == BookingStatusEnum.Upcoming);
 
             if (!forceSeed && hasDailyBookings)
             {
@@ -34,17 +35,17 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
             if (forceSeed)
             {
-                // Delete only daily rental bookings that are Pending
-                var dailyPendingBookingIds = await context.Bookings
+                // Delete daily rental bookings created by this seeder
+                var dailyBookingIds = await context.Bookings
                     .Include(b => b.Property)
-                    .Where(b => b.Property.RentingType == RentalType.Daily && b.Status == BookingStatusEnum.Pending)
+                    .Where(b => b.Property.RentingType == RentalType.Daily)
                     .Select(b => b.BookingId)
                     .ToListAsync();
 
-                if (dailyPendingBookingIds.Count > 0)
+                if (dailyBookingIds.Count > 0)
                 {
-                    await context.Payments.Where(p => dailyPendingBookingIds.Contains(p.BookingId ?? 0)).ExecuteDeleteAsync();
-                    await context.Bookings.Where(b => dailyPendingBookingIds.Contains(b.BookingId)).ExecuteDeleteAsync();
+                    await context.Payments.Where(p => dailyBookingIds.Contains(p.BookingId ?? 0)).ExecuteDeleteAsync();
+                    await context.Bookings.Where(b => dailyBookingIds.Contains(b.BookingId)).ExecuteDeleteAsync();
                 }
             }
 
@@ -82,20 +83,21 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 var tenant = tenants[tenantIndex % tenants.Count];
                 tenantIndex++;
 
-                // Create a pending booking (future, needs approval)
-                var pendingBooking = new Booking
+                // Create an upcoming booking (future, auto-approved - daily rentals never require approval)
+                var upcomingBooking = new Booking
                 {
                     PropertyId = property.PropertyId,
                     UserId = tenant.UserId,
                     StartDate = today.AddDays(14 + Random.Shared.Next(1, 30)),
                     EndDate = today.AddDays(14 + Random.Shared.Next(35, 45)),
                     TotalPrice = Math.Max(1m, property.Price) * Random.Shared.Next(3, 10),
-                    Status = property.RequiresApproval ? BookingStatusEnum.Pending : BookingStatusEnum.Approved,
-                    PaymentStatus = property.RequiresApproval ? "Pending" : "Paid",
+                    // Daily rentals are auto-approved after payment - never Pending
+                    Status = BookingStatusEnum.Upcoming,
+                    PaymentStatus = "Paid",
                     Currency = property.Currency ?? "USD",
                     IsSubscription = false
                 };
-                bookings.Add(pendingBooking);
+                bookings.Add(upcomingBooking);
 
                 // Create an active daily booking (started)
                 if (tenantIndex < tenants.Count)
@@ -141,9 +143,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             await context.Bookings.AddRangeAsync(bookings);
             await context.SaveChangesAsync();
 
-            // Create payments for non-pending bookings
+            // Create payments for all daily bookings (they are auto-approved after payment)
             var payments = new List<Payment>();
-            foreach (var booking in bookings.Where(b => b.Status != BookingStatusEnum.Pending))
+            foreach (var booking in bookings)
             {
                 payments.Add(new Payment
                 {

@@ -172,6 +172,8 @@ class BookingListItem extends StatelessWidget {
         return Colors.red;
       case BookingStatus.completed:
         return Colors.blue;
+      case BookingStatus.pending:
+        return Colors.amber;
       default:
         return Colors.grey;
     }
@@ -187,13 +189,15 @@ class BookingListItem extends StatelessWidget {
         return 'Cancelled';
       case BookingStatus.completed:
         return 'Completed';
+      case BookingStatus.pending:
+        return 'Pending';
       default:
         return 'Unknown';
     }
   }
 
   bool _canCancel(BookingStatus? status) {
-    return status == BookingStatus.upcoming || status == BookingStatus.active;
+    return status == BookingStatus.upcoming || status == BookingStatus.active || status == BookingStatus.pending;
   }
 
   String _formatDate(DateTime? date) {

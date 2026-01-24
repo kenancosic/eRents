@@ -60,6 +60,7 @@ class RentsProvider extends BaseProvider {
         BookingStatus.active: 'Active',
         BookingStatus.completed: 'Completed',
         BookingStatus.cancelled: 'Cancelled',
+        BookingStatus.pending: 'Pending',
       };
       _filters['Status'] = map[status];
     }
@@ -134,6 +135,21 @@ class RentsProvider extends BaseProvider {
   Future<void> approveBooking(int bookingId) async {
     final success = await executeWithState<bool>(() async {
       await api.post('/Bookings/$bookingId/approve', {}, authenticated: true);
+      return true;
+    });
+
+    if (success == true) {
+      await refresh();
+    }
+  }
+
+  Future<void> rejectBooking(int bookingId, {String? reason}) async {
+    final success = await executeWithState<bool>(() async {
+      final body = <String, dynamic>{};
+      if (reason != null && reason.isNotEmpty) {
+        body['reason'] = reason;
+      }
+      await api.post('/Bookings/$bookingId/reject', body, authenticated: true);
       return true;
     });
 

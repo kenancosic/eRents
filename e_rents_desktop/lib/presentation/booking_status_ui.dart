@@ -14,6 +14,8 @@ extension BookingStatusUiX on BookingStatus {
         return Colors.green;
       case BookingStatus.cancelled:
         return Colors.red;
+      case BookingStatus.pending:
+        return Colors.amber;
     }
   }
 
@@ -27,6 +29,8 @@ extension BookingStatusUiX on BookingStatus {
         return Icons.check_circle;
       case BookingStatus.cancelled:
         return Icons.cancel;
+      case BookingStatus.pending:
+        return Icons.hourglass_empty;
     }
   }
 }

@@ -163,7 +163,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 ),
               ),
               DataCell(Text(b.formattedTotalPrice)),
-              DataCell(_buildBookingActions(ctx, b, provider, _dailyListController)),
+              DataCell(_buildBookingActions(ctx, b, provider, _dailyListController, showApprovalActions: false)),
             ],
           );
         }).toList();
@@ -821,20 +821,95 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
   }
 
 
-  /// Build action buttons for daily rental bookings.
-  /// Daily rentals can only be cancelled/rejected - approval is not applicable
-  /// since daily bookings are instant (pay-and-book model).
+  /// Build action buttons for rental bookings.
+  /// - Pending bookings can be approved or rejected (only for monthly rentals)
+  /// - Upcoming bookings can be cancelled
+  /// [showApprovalActions] controls whether approve/reject buttons appear for pending bookings.
+  /// Daily rentals should not show approval actions as they don't require landlord approval.
   Widget _buildBookingActions(
     BuildContext context,
     Booking booking,
     RentsProvider provider,
-    ListController listController,
-  ) {
-    // Daily rentals: only show cancel option for upcoming bookings
-    // No approval needed - daily bookings are instant transactions
+    ListController listController, {
+    bool showApprovalActions = true,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Pending bookings: show approve/reject actions (only if enabled, i.e., for monthly rentals)
+        if (showApprovalActions && booking.status == BookingStatus.pending) ...[
+          IconButton(
+            icon: const Icon(Icons.check_circle, color: Colors.green),
+            tooltip: 'Approve Booking',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Approve Booking'),
+                  content: Text('Approve rental application from ${booking.userName ?? 'tenant'} for ${booking.propertyName}?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Approve'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                await provider.approveBooking(booking.bookingId);
+                listController.refresh();
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.cancel, color: Colors.red),
+            tooltip: 'Reject Booking',
+            onPressed: () async {
+              final reasonController = TextEditingController();
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Reject Booking'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Reject rental application from ${booking.userName ?? 'tenant'} for ${booking.propertyName}?'),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: reasonController,
+                        decoration: const InputDecoration(
+                          labelText: 'Reason (optional)',
+                          hintText: 'Provide a reason for rejection',
+                        ),
+                        maxLines: 2,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Reject'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                await provider.rejectBooking(booking.bookingId, reason: reasonController.text);
+                listController.refresh();
+              }
+            },
+          ),
+        ],
+        // Upcoming bookings: show cancel option
         if (booking.status == BookingStatus.upcoming)
           IconButton(
             icon: const Icon(Icons.cancel, color: Colors.red),
@@ -844,7 +919,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 context: context,
                 builder: (ctx) => AlertDialog(
                   title: const Text('Cancel Booking'),
-                  content: const Text('Are you sure you want to cancel this daily rental booking?'),
+                  content: const Text('Are you sure you want to cancel this booking?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(ctx).pop(false),
@@ -876,9 +951,13 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
       case 'requested':
         return Colors.orange;
       case 'canceled':
+      case 'cancelled':
         return Colors.red;
       case 'upcoming':
         return Colors.purple;
+      case 'pending':
+      case 'pending approval':
+        return Colors.amber;
       default:
         return Colors.grey;
     }
@@ -893,9 +972,13 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
       case 'requested':
         return Icons.pending;
       case 'canceled':
+      case 'cancelled':
         return Icons.cancel;
       case 'upcoming':
         return Icons.schedule;
+      case 'pending':
+      case 'pending approval':
+        return Icons.hourglass_empty;
       default:
         return Icons.help_outline;
     }

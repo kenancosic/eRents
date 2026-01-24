@@ -186,20 +186,24 @@ namespace eRents.Features.TenantManagement.Services
                 entity.LeaseStartDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
             }
 
-            // Prevent creating a tenancy if there are non-cancelled bookings scheduled from LeaseStartDate onward
-            if (entity.PropertyId.HasValue)
+            // Prevent creating a tenancy if there are overlapping bookings within the lease period
+            if (entity.PropertyId.HasValue && entity.LeaseEndDate.HasValue)
             {
                 var leaseStart = entity.LeaseStartDate!.Value;
-                var hasFutureBookings = await Context.Set<Booking>()
+                var leaseEnd = entity.LeaseEndDate!.Value;
+                
+                // Check for overlapping bookings: overlap when existingStart < leaseEnd AND existingEnd > leaseStart
+                var hasOverlappingBookings = await Context.Set<Booking>()
                     .AsNoTracking()
                     .Where(b => b.PropertyId == entity.PropertyId!.Value)
                     .Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Cancelled)
-                    .Where(b => (b.EndDate.HasValue ? b.EndDate.Value >= leaseStart : b.StartDate >= leaseStart))
+                    .Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Completed)
+                    .Where(b => b.StartDate < leaseEnd && (b.EndDate ?? DateOnly.MaxValue) > leaseStart)
                     .AnyAsync();
 
-                if (hasFutureBookings)
+                if (hasOverlappingBookings)
                 {
-                    throw new InvalidOperationException("Cannot start monthly tenancy: property has scheduled bookings from the selected start date.");
+                    throw new InvalidOperationException("Cannot create monthly tenancy: the selected period overlaps with existing bookings.");
                 }
             }
         }

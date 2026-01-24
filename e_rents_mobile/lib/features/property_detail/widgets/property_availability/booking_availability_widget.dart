@@ -51,22 +51,6 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     });
   }
 
-  void _setMonths(int months) {
-    final minimumStayDays = widget.property.minimumStayDays ?? 30;
-    final minMonths = (minimumStayDays / 30).ceil();
-    final clamped = months < minMonths ? minMonths : months;
-    setState(() {
-      _months = clamped;
-      _endDate = _startDate.add(Duration(days: 30 * _months));
-    });
-    // Persist selection in shared provider so footer checkout uses it
-    try {
-      // ignore: use_build_context_synchronously
-      context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
-    } catch (_) {}
-    _calculatePricing();
-    _validateCurrentSelection();
-  }
 
   void _initializeDates() {
     // Set appropriate default dates based on property type
@@ -166,14 +150,15 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
   }
 
   void _validateCurrentSelection() {
-    // Validate only for daily rentals; monthly flow is request-based and validated server-side
-    if (widget.property.rentalType != PropertyRentalType.daily) {
-      setState(() {
-        _validationError = null;
-      });
-      return;
+    if (widget.property.rentalType == PropertyRentalType.daily) {
+      _validateDailySelection();
+    } else {
+      _validateMonthlySelection();
     }
+  }
 
+  /// Validate daily rental selection using local availability map
+  void _validateDailySelection() {
     // Normalize selected range to date-only and check each day is available
     final DateTime start = DateTime(_startDate.year, _startDate.month, _startDate.day);
     final DateTime end = DateTime(_endDate.year, _endDate.month, _endDate.day);
@@ -204,6 +189,45 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
     try {
       context.read<PropertyRentalProvider>().setAvailabilityConflict(!ok);
     } catch (_) {}
+  }
+
+  /// Validate monthly rental selection by calling backend availability check
+  void _validateMonthlySelection() {
+    // For monthly rentals, call the backend check-availability endpoint
+    // to ensure consistency between calendar display and actual booking validation
+    _checkMonthlyAvailabilityAsync();
+  }
+
+  Future<void> _checkMonthlyAvailabilityAsync() async {
+    try {
+      final availabilityProvider = context.read<PropertyDetailAvailabilityProvider>();
+      final isAvailable = await availabilityProvider.checkDateRangeAvailability(
+        widget.property.propertyId,
+        _startDate,
+        _endDate,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (isAvailable) {
+          _validationError = null;
+        } else {
+          _validationError = 'This property has existing bookings that conflict with your selected dates. Please choose different dates.';
+        }
+      });
+
+      // Sync validation state with provider
+      try {
+        context.read<PropertyRentalProvider>().setAvailabilityConflict(!isAvailable);
+      } catch (_) {}
+    } catch (e) {
+      debugPrint('Error checking monthly availability: $e');
+      // On error, allow checkout but server will validate
+      setState(() {
+        _validationError = null;
+      });
+    }
   }
 
   /// Check if a specific date is available based on the availability map
@@ -428,6 +452,30 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           ),
         ),
 
+        // Monthly rental info
+        if (widget.property.rentalType == PropertyRentalType.monthly) ...[          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue[700], size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Select a start date from the calendar, then choose lease duration below.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.blue[700]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // Availability Calendar (expandable)
         if (_showCalendar) ...[
           const SizedBox(height: 16),
@@ -437,19 +485,36 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
                 availabilityData: availabilityProvider.availabilityData,
                 rentalType: widget.property.rentalType,
                 selectedStartDate: _startDate,
-                selectedEndDate: _endDate,
+                selectedEndDate: widget.property.rentalType == PropertyRentalType.daily ? _endDate : null,
                 minimumStayDays: widget.property.minimumStayDays,
                 isSelectable: !isOwner,
+                // For daily rentals: range selection
                 onDateRangeSelected: (start, end) {
+                  if (widget.property.rentalType != PropertyRentalType.daily) return;
                   setState(() {
                     _startDate = start;
                     _endDate = end;
-                    if (widget.property.rentalType == PropertyRentalType.monthly) {
-                      _months = (end.difference(start).inDays / 30).ceil();
-                    }
                   });
                   try {
                     context.read<PropertyRentalProvider>().setBookingDateRange(start, end);
+                  } catch (_) {}
+                  _calculatePricing();
+                  _validateCurrentSelection();
+                },
+                // For monthly rentals: single start date selection
+                onStartDateSelected: (startDate) {
+                  if (widget.property.rentalType != PropertyRentalType.monthly) return;
+                  setState(() {
+                    _startDate = startDate;
+                    // Calculate end date based on selected months
+                    _endDate = DateTime(
+                      startDate.year,
+                      startDate.month + _months,
+                      startDate.day,
+                    );
+                  });
+                  try {
+                    context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
                   } catch (_) {}
                   _calculatePricing();
                   _validateCurrentSelection();
@@ -470,68 +535,58 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
           ),
           child: Column(
             children: [
-              // Date display
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDateDisplay(
-                      widget.property.rentalType == PropertyRentalType.daily
-                          ? 'Check-in'
-                          : 'Lease Start',
-                      _startDate,
-                      Icons.calendar_today,
+              // Date display - different layout for daily vs monthly
+              if (widget.property.rentalType == PropertyRentalType.daily)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDateDisplay('Check-in', _startDate, Icons.calendar_today),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildDateDisplay(
-                      widget.property.rentalType == PropertyRentalType.daily
-                          ? 'Check-out'
-                          : 'Initial Period End',
-                      _endDate,
-                      Icons.event,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDateDisplay('Check-out', _endDate, Icons.event),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                // Monthly: show start date prominently, end date is calculated
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDateDisplay('Lease Start Date', _startDate, Icons.calendar_today),
+                    const SizedBox(height: 12),
+                    // Lease duration selector (prominent for monthly)
+                    _buildMonthDurationSelector(),
+                    const SizedBox(height: 12),
+                    // Calculated end date (read-only)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.event, size: 16, color: Colors.grey[600]),
+                          const SizedBox(width: 8),
+                          Text('Lease ends: ', style: TextStyle(color: Colors.grey[600])),
+                          Text(
+                            _endDate.toDisplayDate(),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               // Pricing summary
               if (_pricingDetails != null) _buildPricingSummary(),
 
               const SizedBox(height: 16),
 
-              // Months selector for monthly leases
-              if (widget.property.rentalType == PropertyRentalType.monthly)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Lease Length',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            onPressed: () {
-                              if (_months > 1) _setMonths(_months - 1);
-                            },
-                            tooltip: 'Decrease months',
-                          ),
-                          Text('$_months month${_months == 1 ? '' : 's'}'),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline),
-                            onPressed: () => _setMonths(_months + 1),
-                            tooltip: 'Increase months',
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-              // Note: Date selection is handled via the calendar above
+              // Note: For daily rentals, date selection is handled via the calendar above
+              // For monthly rentals, month selector is integrated in the date display section above
             ],
           ),
         ),
@@ -608,6 +663,101 @@ class _BookingAvailabilityWidgetState extends State<BookingAvailabilityWidget> {
         ),
       ],
     );
+  }
+
+  /// Month duration selector for monthly rentals
+  Widget _buildMonthDurationSelector() {
+    final minimumStayDays = widget.property.minimumStayDays ?? 30;
+    final minMonths = (minimumStayDays / 30).ceil();
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).primaryColor.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lease Duration',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Quick select buttons for common durations
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [1, 3, 6, 12].where((m) => m >= minMonths).map((months) {
+              final isSelected = _months == months;
+              return ChoiceChip(
+                label: Text('$months ${months == 1 ? 'month' : 'months'}'),
+                selected: isSelected,
+                onSelected: (_) => _updateMonths(months),
+                selectedColor: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                labelStyle: TextStyle(
+                  color: isSelected ? Theme.of(context).primaryColor : null,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          // Fine-tune with +/- buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: _months > minMonths ? () => _updateMonths(_months - 1) : null,
+                tooltip: 'Decrease months',
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  '$_months ${_months == 1 ? 'month' : 'months'}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () => _updateMonths(_months + 1),
+                tooltip: 'Increase months',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Update months and recalculate end date
+  void _updateMonths(int months) {
+    final minimumStayDays = widget.property.minimumStayDays ?? 30;
+    final minMonths = (minimumStayDays / 30).ceil();
+    final clamped = months < minMonths ? minMonths : months;
+    
+    setState(() {
+      _months = clamped;
+      // Calculate proper end date using DateTime's month arithmetic
+      _endDate = DateTime(_startDate.year, _startDate.month + _months, _startDate.day);
+    });
+    
+    // Persist selection in shared provider
+    try {
+      context.read<PropertyRentalProvider>().setBookingDateRange(_startDate, _endDate);
+    } catch (_) {}
+    
+    _calculatePricing();
+    _validateCurrentSelection();
   }
 
   Widget _buildPricingSummary() {

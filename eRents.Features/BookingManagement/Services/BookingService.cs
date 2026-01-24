@@ -161,46 +161,37 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             .Include(b => b.Property)
             .FirstOrDefaultAsync(b => b.BookingId == response.BookingId);
         
-        // For monthly rentals, create the actual subscription after booking is created
-        if (booking != null && booking.IsSubscription && _subscriptionService != null)
+        // Business rule: Daily rentals are auto-approved after payment, never require landlord approval
+        // Only monthly (subscription) rentals require landlord approval and get Pending status
+        if (booking != null)
         {
-            try
+            if (booking.IsSubscription)
             {
-                // Ensure a Tenant exists for this user/property pair
-                var tenant = await Context.Set<Tenant>()
-                    .FirstOrDefaultAsync(t => t.UserId == booking.UserId && t.PropertyId == booking.PropertyId);
-
-                if (tenant == null)
-                {
-                    tenant = new Tenant
-                    {
-                        UserId = booking.UserId,
-                        PropertyId = booking.PropertyId,
-                        LeaseStartDate = booking.StartDate,
-                        LeaseEndDate = booking.EndDate,
-                        TenantStatus = eRents.Domain.Models.Enums.TenantStatusEnum.Active
-                    };
-                    Context.Set<Tenant>().Add(tenant);
-                    await Context.SaveChangesAsync(); // obtain TenantId
-                }
-
-                // Create subscription for monthly rental using the TenantId
-                var subscription = await _subscriptionService.CreateSubscriptionAsync(
-                    tenant.TenantId,
-                    booking.PropertyId,
-                    booking.BookingId,
-                    booking.TotalPrice, // monthly amount
-                    booking.StartDate,
-                    booking.EndDate);
-
-                // Update booking with subscription reference
-                booking.SubscriptionId = subscription.SubscriptionId;
+                // Monthly rental: set status to Pending (requires landlord approval)
+                // Tenant and Subscription will be created upon approval
+                booking.Status = Domain.Models.Enums.BookingStatusEnum.Pending;
                 await Context.SaveChangesAsync();
+                
+                // Update response to reflect the Pending status
+                response = Mapper.Map<BookingResponse>(booking);
             }
-            catch (Exception ex)
+            else if (booking.Property?.RentingType == Domain.Models.Enums.RentalType.Daily)
             {
-                Logger.LogError(ex, "Failed to create subscription for booking {BookingId}", booking.BookingId);
-                // Don't throw here as we still want to complete the booking
+                // Daily rental: ensure status is Upcoming (auto-approved), never Pending
+                // This is a safeguard to enforce the business rule
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var correctStatus = today >= booking.StartDate 
+                    ? Domain.Models.Enums.BookingStatusEnum.Active 
+                    : Domain.Models.Enums.BookingStatusEnum.Upcoming;
+                
+                if (booking.Status == Domain.Models.Enums.BookingStatusEnum.Pending)
+                {
+                    booking.Status = correctStatus;
+                    await Context.SaveChangesAsync();
+                    response = Mapper.Map<BookingResponse>(booking);
+                    Logger.LogInformation("Daily rental booking {BookingId} auto-corrected from Pending to {Status}", 
+                        booking.BookingId, correctStatus);
+                }
             }
         }
 
@@ -217,9 +208,9 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 await _notificationService.CreateBookingNotificationAsync(
                     booking.UserId,
                     booking.BookingId,
-                    "Booking Confirmed",
+                    isMonthly ? "Application Submitted" : "Booking Confirmed",
                     isMonthly 
-                        ? $"Your rental application for {propertyName} starting {startDate} has been submitted. Awaiting landlord approval."
+                        ? $"Your rental application for {propertyName} starting {startDate} has been submitted. You will be notified once the landlord reviews your application."
                         : $"Your booking for {propertyName} on {startDate} has been created. Complete payment to confirm.");
 
                 // Notify landlord of new booking
@@ -228,7 +219,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                     await _notificationService.CreateBookingNotificationAsync(
                         booking.Property.OwnerId,
                         booking.BookingId,
-                        "New Booking Request",
+                        isMonthly ? "New Rental Application" : "New Booking Request",
                         isMonthly
                             ? $"New rental application received for {propertyName} starting {startDate}. Review and approve in your dashboard."
                             : $"New booking for {propertyName} on {startDate}. Payment pending.");
@@ -744,8 +735,12 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
     public async Task<BookingResponse> ApproveBookingAsync(int bookingId)
     {
         // Only landlords/owners from desktop can approve
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+        if (CurrentUser?.IsDesktop != true)
+        {
+            throw new InvalidOperationException("Only landlords can approve bookings.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
             !(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
               string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
         {
@@ -754,42 +749,177 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         var entity = await Context.Set<Booking>()
             .Include(b => b.Property)
+            .Include(b => b.User)
             .FirstOrDefaultAsync(x => x.BookingId == bookingId);
 
         if (entity == null)
             throw new KeyNotFoundException($"Booking with id {bookingId} not found");
 
-        // If desktop landlord, ensure ownership
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        // Ensure ownership
+        var ownerId = CurrentUser.GetUserIdAsInt();
+        if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+        }
+
+        // Only pending bookings can be approved
+        if (entity.Status != Domain.Models.Enums.BookingStatusEnum.Pending)
+        {
+            throw new InvalidOperationException($"Only pending bookings can be approved. Current status: {entity.Status}");
+        }
+
+        // For monthly rentals, create Tenant and Subscription now
+        if (entity.IsSubscription && _subscriptionService != null)
+        {
+            // Ensure a Tenant exists for this user/property pair
+            var tenant = await Context.Set<Tenant>()
+                .FirstOrDefaultAsync(t => t.UserId == entity.UserId && t.PropertyId == entity.PropertyId);
+
+            if (tenant == null)
             {
-                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+                tenant = new Tenant
+                {
+                    UserId = entity.UserId,
+                    PropertyId = entity.PropertyId,
+                    LeaseStartDate = entity.StartDate,
+                    LeaseEndDate = entity.EndDate,
+                    TenantStatus = Domain.Models.Enums.TenantStatusEnum.Active
+                };
+                Context.Set<Tenant>().Add(tenant);
+                await Context.SaveChangesAsync(); // obtain TenantId
+            }
+            else if (tenant.TenantStatus != Domain.Models.Enums.TenantStatusEnum.Active)
+            {
+                // Reactivate existing tenant
+                tenant.TenantStatus = Domain.Models.Enums.TenantStatusEnum.Active;
+                tenant.LeaseStartDate = entity.StartDate;
+                tenant.LeaseEndDate = entity.EndDate;
+            }
+
+            // Create subscription for monthly rental
+            var subscription = await _subscriptionService.CreateSubscriptionAsync(
+                tenant.TenantId,
+                entity.PropertyId,
+                entity.BookingId,
+                entity.TotalPrice, // monthly amount
+                entity.StartDate,
+                entity.EndDate);
+
+            // Update booking with subscription reference
+            entity.SubscriptionId = subscription.SubscriptionId;
+
+            // Update property status to Occupied
+            if (entity.Property != null)
+            {
+                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Occupied;
             }
         }
 
-        // Set status to Upcoming on approval (frontend treats Upcoming monthly bookings as accepted/pending start)
-        entity.Status = Domain.Models.Enums.BookingStatusEnum.Upcoming;
+        // Set status based on current date vs start date
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        entity.Status = today >= entity.StartDate 
+            ? Domain.Models.Enums.BookingStatusEnum.Active 
+            : Domain.Models.Enums.BookingStatusEnum.Upcoming;
+        
+        entity.UpdatedAt = DateTime.UtcNow;
         await Context.SaveChangesAsync();
 
-        // Notify tenant if service is available
+        // Notify tenant of approval
         if (_notificationService != null)
         {
             try
             {
-                await _notificationService.CreateBookingNotificationAsync(
+                var propertyName = entity.Property?.Name ?? "the property";
+                var startDate = entity.StartDate.ToString("MMM dd, yyyy");
+                
+                await _notificationService.CreateNotificationWithEmailAsync(
                     entity.UserId,
-                    entity.BookingId,
-                    "Lease Accepted",
-                    "Your lease application was accepted by the landlord.");
+                    "Rental Application Approved",
+                    $"Great news! Your rental application for {propertyName} has been approved by the landlord. " +
+                    $"Your lease begins on {startDate}. You will receive payment instructions shortly.",
+                    "booking_approved",
+                    sendEmail: true,
+                    referenceId: entity.BookingId);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Failed to send approval notification for booking {BookingId}", bookingId);
+            }
+        }
+
+        return Mapper.Map<BookingResponse>(entity);
+    }
+
+    public async Task<BookingResponse> RejectBookingAsync(int bookingId, string? reason = null)
+    {
+        // Only landlords/owners from desktop can reject
+        if (CurrentUser?.IsDesktop != true)
+        {
+            throw new InvalidOperationException("Only landlords can reject bookings.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
+            !(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+              string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("Only landlords can reject bookings.");
+        }
+
+        var entity = await Context.Set<Booking>()
+            .Include(b => b.Property)
+            .Include(b => b.User)
+            .FirstOrDefaultAsync(x => x.BookingId == bookingId);
+
+        if (entity == null)
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+
+        // Ensure ownership
+        var ownerId = CurrentUser.GetUserIdAsInt();
+        if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+        {
+            throw new KeyNotFoundException($"Booking with id {bookingId} not found");
+        }
+
+        // Only pending bookings can be rejected
+        if (entity.Status != Domain.Models.Enums.BookingStatusEnum.Pending)
+        {
+            throw new InvalidOperationException($"Only pending bookings can be rejected. Current status: {entity.Status}");
+        }
+
+        // Set status to Cancelled
+        entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await Context.SaveChangesAsync();
+
+        // Notify tenant of rejection
+        if (_notificationService != null)
+        {
+            try
+            {
+                var propertyName = entity.Property?.Name ?? "the property";
+                var messageBuilder = new System.Text.StringBuilder();
+                messageBuilder.AppendLine($"We're sorry, your rental application for {propertyName} was not approved by the landlord.");
+                
+                if (!string.IsNullOrWhiteSpace(reason))
+                {
+                    messageBuilder.AppendLine();
+                    messageBuilder.AppendLine($"Reason: {reason}");
+                }
+                
+                messageBuilder.AppendLine();
+                messageBuilder.AppendLine("You can browse other available properties on our platform.");
+                
+                await _notificationService.CreateNotificationWithEmailAsync(
+                    entity.UserId,
+                    "Rental Application Not Approved",
+                    messageBuilder.ToString(),
+                    "booking_rejected",
+                    sendEmail: true,
+                    referenceId: entity.BookingId);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to send rejection notification for booking {BookingId}", bookingId);
             }
         }
 

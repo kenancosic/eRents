@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/extend_booking_dialog.dart';
+import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 /// Section shown when user has an active lease (currently residing)
 /// Shows lease management options for long-term tenants
@@ -129,20 +132,18 @@ class ActiveLeaseSection extends StatelessWidget {
             // Secondary actions row
             Row(
               children: [
-                // Extension request (if applicable)
-                if (isMinimumStayApproaching || booking.endDate != null)
+                // Extension request - only for subscription-based bookings with end date
+                if (_canRequestExtension())
                   Expanded(
                     child: CustomOutlinedButton(
-                      label: booking.endDate == null
-                          ? 'Request Extension'
-                          : 'Extend Lease',
+                      label: 'Request Lease Extension',
                       icon: Icons.add_alarm,
                       onPressed: () => _requestLeaseExtension(context),
                       isLoading: false,
                       width: OutlinedButtonWidth.expanded,
                     ),
                   ),
-                if (isMinimumStayApproaching || booking.endDate != null)
+                if (_canRequestExtension())
                   const SizedBox(width: 12),
 
                 // Contact landlord
@@ -193,6 +194,20 @@ class ActiveLeaseSection extends StatelessWidget {
     );
   }
 
+  /// Check if the booking is eligible for extension requests.
+  /// Only subscription-based bookings with an end date can request extensions.
+  bool _canRequestExtension() {
+    // Must be a subscription-based monthly booking
+    if (!booking.isSubscription) {
+      return false;
+    }
+    // Must have an end date to extend (open-ended leases don't need extension)
+    if (booking.endDate == null) {
+      return false;
+    }
+    return true;
+  }
+
   bool _isMinimumStayApproaching() {
     if (booking.minimumStayEndDate == null) return false;
 
@@ -214,13 +229,15 @@ class ActiveLeaseSection extends StatelessWidget {
   }
 
   void _requestLeaseExtension(BuildContext context) {
-    context.push(
-      '/property/${property.propertyId}/manage-booking',
-      extra: {
-        'propertyId': property.propertyId,
-        'bookingId': booking.bookingId,
-        'booking': booking,
-      },
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ExtendBookingDialog(
+        booking: booking,
+        onExtended: () {
+          // Refresh booking details after extension request
+          context.read<PropertyRentalProvider>().getBookingDetails(booking.bookingId);
+        },
+      ),
     );
   }
 

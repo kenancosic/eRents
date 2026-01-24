@@ -293,8 +293,8 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
     {
         return query
             .Include(p => p.Tenant).ThenInclude(t => t!.User)
-            .Include(p => p.Property)
-            .Include(p => p.Booking).ThenInclude(b => b!.Property)
+            .Include(p => p.Property).ThenInclude(pr => pr!.Images)
+            .Include(p => p.Booking).ThenInclude(b => b!.Property).ThenInclude(pr => pr!.Images)
             .Include(p => p.Subscription);
     }
 
@@ -302,8 +302,8 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
     {
         var entity = await Context.Set<Payment>()
             .Include(p => p.Tenant).ThenInclude(t => t!.User)
-            .Include(p => p.Property)
-            .Include(p => p.Booking).ThenInclude(b => b!.Property)
+            .Include(p => p.Property).ThenInclude(pr => pr!.Images)
+            .Include(p => p.Booking).ThenInclude(b => b!.Property).ThenInclude(pr => pr!.Images)
             .Include(p => p.Subscription).ThenInclude(s => s!.Property)
             .FirstOrDefaultAsync(p => p.PaymentId == id);
 

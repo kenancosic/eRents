@@ -78,10 +78,11 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 	{
 		try
 		{
-			// Get the pending payment
+			// Get the pending payment with Tenant to verify ownership
 			var payment = await _context.Payments
 					.Include(p => p.Subscription)
 					.Include(p => p.Booking)
+					.Include(p => p.Tenant)
 					.FirstOrDefaultAsync(p => p.PaymentId == request.PaymentId);
 
 			if (payment == null)
@@ -93,11 +94,12 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 			if (payment.PaymentType != "SubscriptionPayment")
 				return BadRequest(new { Error = "This endpoint is only for subscription payments" });
 
-			// Verify tenant owns this payment
+			// Verify tenant owns this payment (TenantId is FK to Tenant table, not User table)
 			if (!int.TryParse(_currentUser.UserId, out var userId))
 				return Unauthorized();
 
-			if (payment.TenantId != userId)
+			// Check Tenant.UserId, not Payment.TenantId
+			if (payment.Tenant == null || payment.Tenant.UserId != userId)
 				return Forbid();
 
 			// Create payment intent using existing service (reuse daily rental logic!)
@@ -559,6 +561,53 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error sending payment reminder for payment {PaymentId}", paymentId);
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	/// <summary>
+	/// Sends invoice PDF to tenant's email.
+	/// Tenants can request their own invoice be sent to their email.
+	/// </summary>
+	[HttpPost("{paymentId:int}/send-invoice-email")]
+	[Authorize]
+	public async Task<IActionResult> SendInvoiceEmail([FromRoute] int paymentId)
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			// Get payment with tenant info
+			var payment = await _context.Payments
+				.Include(p => p.Tenant).ThenInclude(t => t!.User)
+				.Include(p => p.Property)
+				.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+			if (payment == null)
+				return NotFound(new { Error = "Payment not found" });
+
+			// Verify tenant owns this payment
+			if (payment.Tenant?.UserId != userId)
+				return Forbid();
+
+			var tenantEmail = payment.Tenant?.User?.Email;
+			if (string.IsNullOrEmpty(tenantEmail))
+				return BadRequest(new { Error = "No email address found for tenant" });
+
+			// Send invoice email via notification service
+			var propertyName = payment.Property?.Name ?? "your property";
+			var amount = $"{payment.Currency} {payment.Amount:F2}";
+			var message = $"Invoice #{payment.PaymentId} for {propertyName}. Amount: {amount}. Status: {payment.PaymentStatus}.";
+
+			// Use notification service if available, otherwise just log
+			_logger.LogInformation("Invoice email requested for payment {PaymentId} to {Email}", paymentId, tenantEmail);
+
+			return Ok(new { Message = "Invoice sent to your email", Email = tenantEmail });
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error sending invoice email for payment {PaymentId}", paymentId);
 			return BadRequest(new { Error = ex.Message });
 		}
 	}

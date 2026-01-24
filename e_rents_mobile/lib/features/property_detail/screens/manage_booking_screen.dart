@@ -5,6 +5,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/extend_booking_dialog.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
@@ -295,6 +296,8 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         return 'Cancelled';
       case BookingStatus.completed:
         return 'Completed';
+      case BookingStatus.pending:
+        return 'Pending Approval';
     }
   }
 
@@ -308,6 +311,8 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         return Colors.red;
       case BookingStatus.completed:
         return Colors.blue;
+      case BookingStatus.pending:
+        return Colors.amber;
     }
   }
 
@@ -321,6 +326,8 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         return Icons.cancel;
       case BookingStatus.completed:
         return Icons.done_all;
+      case BookingStatus.pending:
+        return Icons.hourglass_empty;
     }
   }
 
@@ -334,63 +341,43 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
         return 'This booking has been cancelled';
       case BookingStatus.completed:
         return 'This booking has been completed';
+      case BookingStatus.pending:
+        return 'Your application is awaiting landlord approval';
     }
   }
 
   void _showExtensionDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Request Lease Extension'),
-        content: const Text(
-          'Would you like to request an extension for your current lease? '
-          'This will send a request to the property owner.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          CustomButton(
-            label: 'Send Request',
-            isLoading: false,
-            onPressed: () {
-              Navigator.of(context).pop();
-              _requestExtension();
-            },
-          ),
-        ],
-      ),
-    );
-  }
+    final booking = _findBookingById(
+      Provider.of<PropertyRentalProvider>(context, listen: false),
+      widget.bookingId,
+    ) ?? widget.booking;
 
-  void _requestExtension() async {
-    final provider = Provider.of<PropertyRentalProvider>(context, listen: false);
-    
-    // Request 1 month extension by default
-    final success = await provider.extendBooking(
-      bookingId: widget.bookingId,
-      extendByMonths: 1,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
+    if (booking == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Extension request sent successfully! Awaiting landlord approval.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.errorMessage.isNotEmpty 
-              ? provider.errorMessage 
-              : 'Failed to send extension request'),
+          content: Text('Booking not found'),
           backgroundColor: Colors.red,
         ),
       );
+      return;
     }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => ExtendBookingDialog(
+        booking: booking,
+        onExtended: () {
+          // Refresh booking details after extension request
+          Provider.of<PropertyRentalProvider>(context, listen: false)
+              .getBookingDetails(widget.bookingId);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Extension request sent successfully! Awaiting landlord approval.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        },
+      ),
+    );
   }
 }

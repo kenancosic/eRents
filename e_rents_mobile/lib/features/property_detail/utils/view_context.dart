@@ -4,5 +4,6 @@ enum ViewContext {
   activeBooking, // Viewing details for an active short-term booking
   activeLease, // Viewing details for a property currently being resided in (long-term lease)
   pastBooking, // Viewing details for a completed/cancelled booking
-  maintenance // Viewing details in context of a maintenance issue
+  maintenance, // Viewing details in context of a maintenance issue
+  pendingApproval // Viewing details for a booking pending landlord approval
 }

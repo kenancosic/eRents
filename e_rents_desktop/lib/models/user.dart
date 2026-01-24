@@ -97,25 +97,33 @@ class User {
     );
   }
 
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'userId': userId,
-        'email': email,
-        'username': username,
-        'firstName': firstName,
-        'lastName': lastName,
-        'phoneNumber': phoneNumber,
-        'userType': userType.name,
-        'profileImageId': profileImageId,
-        'dateOfBirth': dateOfBirth?.toIso8601String(),
-        'isPublic': isPublic,
-        'stripeCustomerId': stripeCustomerId,
-        'stripeAccountId': stripeAccountId,
-        'stripeAccountStatus': stripeAccountStatus,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-        'createdBy': createdBy,
-        'modifiedBy': modifiedBy,
-      };
+  Map<String, dynamic> toJson() {
+    // Format DateOnly fields as yyyy-MM-dd for .NET DateOnly compatibility
+    String? formatDateOnly(DateTime? dt) {
+      if (dt == null) return null;
+      return '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    }
+
+    return <String, dynamic>{
+      'userId': userId,
+      'email': email,
+      'username': username,
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phoneNumber,
+      'userType': userType.name,
+      'profileImageId': profileImageId,
+      'dateOfBirth': formatDateOnly(dateOfBirth),
+      'isPublic': isPublic,
+      'stripeCustomerId': stripeCustomerId,
+      'stripeAccountId': stripeAccountId,
+      'stripeAccountStatus': stripeAccountStatus,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'createdBy': createdBy,
+      'modifiedBy': modifiedBy,
+    };
+  }
 
   String get fullName => '${firstName ?? ''} ${lastName ?? ''}'.trim();
 

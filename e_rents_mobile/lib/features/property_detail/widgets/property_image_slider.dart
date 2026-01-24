@@ -44,6 +44,34 @@ class _PropertyImageSliderState extends State<PropertyImageSlider> {
   Widget build(BuildContext context) {
     final apiService = context.read<ApiService>();
     
+    // Show placeholder if no images available
+    if (widget.property.imageIds.isEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 200,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF5F5F5),
+          image: DecorationImage(
+            image: AssetImage('assets/images/placeholder.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.image_not_supported_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text(
+                'No images available',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     return Stack(
       children: [
         CustomSlider(

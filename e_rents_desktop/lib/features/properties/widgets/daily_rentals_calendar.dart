@@ -339,6 +339,8 @@ class _DailyRentalsCalendarState extends State<DailyRentalsCalendar> {
         return Colors.blue;
       case BookingStatus.cancelled:
         return Colors.grey;
+      case BookingStatus.pending:
+        return Colors.amber;
     }
   }
 
@@ -623,6 +625,8 @@ class _BookingTenantCard extends StatelessWidget {
         return Colors.blue;
       case BookingStatus.cancelled:
         return Colors.grey;
+      case BookingStatus.pending:
+        return Colors.amber;
     }
   }
 

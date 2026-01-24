@@ -57,6 +57,10 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
         {
             return NotFound();
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error approving booking with ID {Id}", id);
@@ -84,6 +88,34 @@ public class BookingsController : CrudController<eRents.Domain.Models.Booking, B
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error extending booking with ID {Id}", id);
+            return StatusCode(500, "An error occurred while processing your request.");
+        }
+    }
+
+    [HttpPost("{id}/reject")]
+    public async Task<ActionResult<BookingResponse>> Reject(int id, [FromBody] RejectBookingRequest? request)
+    {
+        if (_service is not Services.BookingService bookingService)
+        {
+            return StatusCode(500, "Service is not of expected type.");
+        }
+
+        try
+        {
+            var result = await bookingService.RejectBookingAsync(id, request?.Reason);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting booking with ID {Id}", id);
             return StatusCode(500, "An error occurred while processing your request.");
         }
     }

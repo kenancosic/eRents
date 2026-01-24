@@ -597,6 +597,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
         return Colors.grey;
       case BookingStatus.cancelled:
         return Colors.red;
+      case BookingStatus.pending:
+        return Colors.amber;
     }
   }
 
@@ -610,6 +612,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
         return 'Completed';
       case BookingStatus.cancelled:
         return 'Cancelled';
+      case BookingStatus.pending:
+        return 'Pending Approval';
     }
   }
 
@@ -617,7 +621,16 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
     final property = provider.property;
     if (property == null) return;
 
-    final payload = buildCheckoutPayload(property);
+    // Read dates from provider (set by BookingAvailabilityWidget)
+    final startDate = provider.startDate;
+    final endDate = provider.endDate;
+
+    // Build payload with the selected dates
+    final payload = buildCheckoutPayload(
+      property,
+      startDate: startDate,
+      endDate: endDate,
+    );
 
     context.push('/checkout', extra: payload);
   }

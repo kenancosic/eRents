@@ -35,7 +35,7 @@ public partial class Property : BaseEntity
     public decimal? Area { get; set; }
     public int? MinimumStayDays { get; set; }
 
-    public bool RequiresApproval { get; set; } = false; // For annual rentals requiring landlord approval
+    public bool RequiresApproval { get; set; } = false; // DEPRECATED: Not used. Monthly rentals now use Pending status workflow.
 
     // For tracking unavailable date ranges
     public DateOnly? UnavailableFrom { get; set; }

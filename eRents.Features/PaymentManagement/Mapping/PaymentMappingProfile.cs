@@ -23,6 +23,7 @@ public class PaymentMappingProfile : Profile
             .ForMember(d => d.OriginalPaymentId, opt => opt.MapFrom(s => s.OriginalPaymentId))
             .ForMember(d => d.RefundReason, opt => opt.MapFrom(s => s.RefundReason))
             .ForMember(d => d.PropertyName, opt => opt.MapFrom(s => s.Property != null ? s.Property.Name : (s.Booking != null && s.Booking.Property != null ? s.Booking.Property.Name : null)))
+            .ForMember(d => d.PropertyImageUrl, opt => opt.MapFrom(s => GetPropertyImageUrl(s)))
             .ForMember(d => d.PeriodEnd, opt => opt.MapFrom(s => s.DueDate))
             .ForMember(d => d.PeriodStart, opt => opt.MapFrom(s => s.DueDate.HasValue ? s.DueDate.Value.AddMonths(-1) : (DateTime?)null))
             .ForMember(d => d.CreatedAt, opt => opt.MapFrom(s => s.CreatedAt))
@@ -37,6 +38,27 @@ public class PaymentMappingProfile : Profile
                 Email = s.Tenant.User != null ? s.Tenant.User.Email : null
             } : null));
 
+    }
+
+    private static string? GetPropertyImageUrl(Payment s)
+    {
+        // Try to get image from Property or from Booking.Property
+        var property = s.Property ?? s.Booking?.Property;
+        if (property == null) return null;
+        
+        // Get the first image from the property's images collection
+        var firstImage = property.Images?.FirstOrDefault();
+        if (firstImage == null) return null;
+        
+        // Return relative URL that frontend can use (frontend adds base URL)
+        return $"/api/Images/{firstImage.ImageId}/content";
+    }
+}
+
+public class PaymentRequestMappingProfile : Profile
+{
+    public PaymentRequestMappingProfile()
+    {
         // Request -> Entity mapping used by BaseCrudService.CreateAsync and UpdateAsync
         CreateMap<PaymentRequest, Payment>()
             .ForMember(d => d.TenantId, opt => opt.MapFrom(s => s.TenantId))

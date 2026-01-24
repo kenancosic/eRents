@@ -23,6 +23,7 @@ public class PaymentResponse
     public string? RefundReason { get; set; }
 
     public string? PropertyName { get; set; }
+    public string? PropertyImageUrl { get; set; }
     public DateTime? PeriodStart { get; set; }
     public DateTime? PeriodEnd { get; set; }
 

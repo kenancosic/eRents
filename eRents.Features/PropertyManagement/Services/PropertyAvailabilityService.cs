@@ -64,11 +64,18 @@ public class PropertyAvailabilityService
             
             if (isMonthly)
             {
-                // Monthly: Any non-cancelled booking from the lease start date onward is a conflict
-                // Matches TenantService validation logic
+                // Monthly rentals: Check if the requested period overlaps with ANY existing booking
+                // For monthly, endDate is required and represents startDate + N full months
+                if (!endDateOnly.HasValue)
+                    return false; // Monthly rentals require end date to validate
+
+                // Standard overlap check: conflict if booking overlaps with requested range
+                // Overlap occurs when: existingStart < requestedEnd AND existingEnd > requestedStart
                 hasConflict = property.Bookings.Any(b =>
                     b.Status != BookingStatusEnum.Cancelled &&
-                    (b.EndDate.HasValue ? b.EndDate.Value >= startDateOnly : b.StartDate >= startDateOnly));
+                    b.Status != BookingStatusEnum.Completed &&
+                    b.StartDate < endDateOnly.Value &&
+                    (b.EndDate ?? DateOnly.MaxValue) > startDateOnly);
             }
             else
             {
@@ -106,21 +113,43 @@ public class PropertyAvailabilityService
         
         try
         {
-            // Get property details
+            // Get property details with bookings for calendar display
             var property = await _context.Set<Property>()
+                .Include(p => p.Bookings)
                 .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
 
             if (property == null)
                 return response;
 
+            bool isMonthly = property.RentingType == RentalType.Monthly;
+
             // Generate availability for each day in the range
             for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
             {
+                var dateOnly = DateOnly.FromDateTime(date);
+                bool isAvailable;
+
+                if (isMonthly)
+                {
+                    // For monthly properties: show if this specific day is OCCUPIED by an existing booking
+                    // Calendar shows per-day occupation, validation checks full period overlap
+                    // A day is unavailable if it falls within any active booking's date range
+                    isAvailable = !property.Bookings.Any(b =>
+                        b.Status != BookingStatusEnum.Cancelled &&
+                        b.Status != BookingStatusEnum.Completed &&
+                        b.StartDate <= dateOnly &&
+                        (b.EndDate ?? DateOnly.MaxValue) >= dateOnly);
+                }
+                else
+                {
+                    // For daily properties: use standard availability check
+                    isAvailable = await CheckAvailabilityAsync(propertyId, date, date.AddDays(1));
+                }
+
                 var availability = new AvailabilityResponse
                 {
                     Date = date,
-                    // For daily availability check, always pass both start and end date
-                    IsAvailable = await CheckAvailabilityAsync(propertyId, date, date.AddDays(1)),
+                    IsAvailable = isAvailable,
                     Price = property.Price,
                     Status = GetDateStatus(property, date)
                 };
