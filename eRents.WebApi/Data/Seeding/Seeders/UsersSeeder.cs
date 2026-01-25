@@ -123,7 +123,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                     postalCode: GetPostalCodeForCity(city)),
                 PhoneNumber = GeneratePhoneNumber(username),
                 DateOfBirth = GenerateDateOfBirth(username, type),
-                IsPublic = isPublic
+                IsPublic = isPublic,
+                IsEmailVerified = true // Seeded users are pre-verified for testing
             };
             await ctx.Users.AddAsync(user);
         }

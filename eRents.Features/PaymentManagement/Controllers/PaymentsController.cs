@@ -3,13 +3,16 @@ using Microsoft.Extensions.Logging;
 using eRents.Features.PaymentManagement.Models;
 using eRents.Features.Core;
 using eRents.Features.PaymentManagement.Services;
+using eRents.Features.Shared.Services;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Domain.Models;
+using eRents.Shared.DTOs;
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using ISharedEmailService = eRents.Shared.Services.IEmailService;
 
 namespace eRents.Features.PaymentManagement.Controllers;
 
@@ -17,34 +20,40 @@ namespace eRents.Features.PaymentManagement.Controllers;
 [ApiController]
 public class PaymentsController : CrudController<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch>
 {
-	private readonly Interfaces.IStripePaymentService _stripe;
-	private readonly Interfaces.IStripeConnectService _stripeConnect;
-	private readonly ICurrentUserService _currentUser;
-	private readonly ILogger<PaymentsController> _logger;
-	private readonly ERentsContext _context;
-	private readonly ISubscriptionService _subscriptionService;
+    private readonly Interfaces.IStripePaymentService _stripe;
+    private readonly Interfaces.IStripeConnectService _stripeConnect;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<PaymentsController> _logger;
+    private readonly ERentsContext _context;
+    private readonly ISubscriptionService _subscriptionService;
+    private readonly IInvoicePdfService _invoicePdfService;
+    private readonly ISharedEmailService? _emailService;
 
-	public PaymentsController(
-			ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
-			ILogger<PaymentsController> logger,
-			Interfaces.IStripePaymentService stripe,
-			Interfaces.IStripeConnectService stripeConnect,
-			ICurrentUserService currentUser,
-			ERentsContext context,
-			ISubscriptionService subscriptionService)
-			: base(service, logger)
-	{
-		_stripe = stripe;
-		_stripeConnect = stripeConnect;
-		_currentUser = currentUser;
-		_logger = logger;
-		_context = context;
-		_subscriptionService = subscriptionService;
-	}
+    public PaymentsController(
+            ICrudService<eRents.Domain.Models.Payment, PaymentRequest, PaymentResponse, PaymentSearch> service,
+            ILogger<PaymentsController> logger,
+            Interfaces.IStripePaymentService stripe,
+            Interfaces.IStripeConnectService stripeConnect,
+            ICurrentUserService currentUser,
+            ERentsContext context,
+            ISubscriptionService subscriptionService,
+            IInvoicePdfService invoicePdfService,
+            ISharedEmailService? emailService = null)
+            : base(service, logger)
+    {
+        _stripe = stripe;
+        _stripeConnect = stripeConnect;
+        _currentUser = currentUser;
+        _logger = logger;
+        _context = context;
+        _subscriptionService = subscriptionService;
+        _invoicePdfService = invoicePdfService;
+        _emailService = emailService;
+    }
 
-	// ═══════════════════════════════════════════════════════════════
-	// Stripe Payment Endpoints
-	// ═══════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════
+    // Stripe Payment Endpoints
+    // ═══════════════════════════════════════════════════════════════
 
 	[HttpPost("stripe/create-intent")]
 	[Authorize]
@@ -168,6 +177,83 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error handling Stripe webhook");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	/// <summary>
+	/// Verify and confirm invoice payment status after Stripe SDK completes.
+	/// Call this after presentPaymentSheet() returns to ensure payment is actually confirmed.
+	/// </summary>
+	[HttpPost("stripe/confirm-invoice-payment")]
+	[Authorize]
+	public async Task<IActionResult> ConfirmInvoicePayment([FromBody] ConfirmInvoicePaymentRequest request)
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			// Get the payment record
+			var payment = await _context.Payments
+				.Include(p => p.Tenant)
+				.Include(p => p.Subscription)
+				.FirstOrDefaultAsync(p => p.PaymentId == request.PaymentId);
+
+			if (payment == null)
+				return NotFound(new { Error = "Payment not found" });
+
+			// Verify tenant owns this payment
+			if (payment.Tenant?.UserId != userId)
+				return Forbid();
+
+			// If already completed, return success
+			if (payment.PaymentStatus == "Completed" || payment.PaymentStatus == "Paid")
+			{
+				return Ok(new { 
+					Success = true, 
+					Status = payment.PaymentStatus,
+					Message = "Payment already confirmed"
+				});
+			}
+
+			// Must have a Stripe payment intent ID to verify
+			if (string.IsNullOrEmpty(payment.StripePaymentIntentId))
+			{
+				return BadRequest(new { Error = "No Stripe payment intent found for this payment" });
+			}
+
+			// Verify with Stripe and update if succeeded
+			var confirmed = await _stripe.ConfirmPaymentIntentAsync(payment.StripePaymentIntentId);
+
+			if (confirmed)
+			{
+				return Ok(new { 
+					Success = true, 
+					Status = "Completed",
+					Message = "Payment confirmed successfully"
+				});
+			}
+
+			// Payment not yet succeeded - check the actual status from Stripe
+			var intentStatus = await _stripe.GetPaymentIntentAsync(payment.StripePaymentIntentId);
+			
+			return Ok(new { 
+				Success = false, 
+				Status = intentStatus.Status,
+				Message = intentStatus.Status switch
+				{
+					"processing" => "Payment is still processing. Please wait a moment and try again.",
+					"requires_action" => "Payment requires additional authentication.",
+					"requires_payment_method" => "Payment method failed. Please try again.",
+					"canceled" => "Payment was canceled.",
+					_ => $"Payment status: {intentStatus.Status}"
+				}
+			});
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error confirming invoice payment {PaymentId}", request.PaymentId);
 			return BadRequest(new { Error = ex.Message });
 		}
 	}
@@ -595,19 +681,99 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 			if (string.IsNullOrEmpty(tenantEmail))
 				return BadRequest(new { Error = "No email address found for tenant" });
 
-			// Send invoice email via notification service
+			// Generate PDF invoice
+			var pdfBytes = await _invoicePdfService.GenerateInvoicePdfAsync(paymentId);
+			
+			// Send email with PDF attachment
 			var propertyName = payment.Property?.Name ?? "your property";
 			var amount = $"{payment.Currency} {payment.Amount:F2}";
-			var message = $"Invoice #{payment.PaymentId} for {propertyName}. Amount: {amount}. Status: {payment.PaymentStatus}.";
+			
+			if (_emailService != null)
+			{
+				var emailMessage = new EmailMessage
+				{
+					Email = tenantEmail,
+					To = tenantEmail,
+					Subject = $"Invoice #{paymentId} - {propertyName}",
+					Body = $@"Dear Tenant,
 
-			// Use notification service if available, otherwise just log
-			_logger.LogInformation("Invoice email requested for payment {PaymentId} to {Email}", paymentId, tenantEmail);
+Please find attached your invoice for {propertyName}.
 
-			return Ok(new { Message = "Invoice sent to your email", Email = tenantEmail });
+Invoice Details:
+- Invoice Number: #{paymentId}
+- Property: {propertyName}
+- Amount: {amount}
+- Status: {payment.PaymentStatus}
+- Period: {(payment.Subscription != null ? $"{payment.Subscription.StartDate:MMM dd, yyyy} - {payment.Subscription.EndDate:MMM dd, yyyy}" : (payment.Booking != null ? $"{payment.Booking.StartDate:MMM dd, yyyy} - {payment.Booking.EndDate:MMM dd, yyyy}" : "N/A"))}
+
+Thank you for using eRents!
+
+Best regards,
+eRents Team",
+					IsHtml = false,
+					Attachments = new List<EmailAttachment>
+					{
+						new EmailAttachment
+						{
+							FileName = $"Invoice_{paymentId}.pdf",
+							ContentBase64 = Convert.ToBase64String(pdfBytes),
+							ContentType = "application/pdf"
+						}
+					}
+				};
+
+				await _emailService.SendEmailNotificationAsync(emailMessage);
+				_logger.LogInformation("Invoice PDF email sent for payment {PaymentId} to {Email}", paymentId, tenantEmail);
+				
+				return Ok(new { Message = "Invoice sent to your email", Email = tenantEmail, PdfGenerated = true });
+			}
+			else
+			{
+				// Email service not available - log and return PDF generation success
+				_logger.LogWarning("Email service not available - Invoice PDF generated but not sent for payment {PaymentId}", paymentId);
+				return Ok(new { Message = "Invoice PDF generated but email service is unavailable", Email = tenantEmail, PdfGenerated = true, EmailSent = false });
+			}
 		}
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error sending invoice email for payment {PaymentId}", paymentId);
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	/// <summary>
+	/// Downloads invoice PDF directly.
+	/// Tenants can download their own invoice as PDF.
+	/// </summary>
+	[HttpGet("{paymentId:int}/invoice-pdf")]
+	[Authorize]
+	public async Task<IActionResult> DownloadInvoicePdf([FromRoute] int paymentId)
+	{
+		try
+		{
+			if (!int.TryParse(_currentUser.UserId, out var userId))
+				return Unauthorized();
+
+			// Get payment with tenant info
+			var payment = await _context.Payments
+				.Include(p => p.Tenant)
+				.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+			if (payment == null)
+				return NotFound(new { Error = "Payment not found" });
+
+			// Verify tenant owns this payment
+			if (payment.Tenant?.UserId != userId)
+				return Forbid();
+
+			// Generate PDF invoice
+			var pdfBytes = await _invoicePdfService.GenerateInvoicePdfAsync(paymentId);
+			
+			return File(pdfBytes, "application/pdf", $"Invoice_{paymentId}.pdf");
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error downloading invoice PDF for payment {PaymentId}", paymentId);
 			return BadRequest(new { Error = ex.Message });
 		}
 	}

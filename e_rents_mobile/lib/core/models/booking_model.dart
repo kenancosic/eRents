@@ -32,6 +32,10 @@ class Booking {
   /// Only subscription bookings can request lease extensions.
   final bool isSubscription;
 
+  /// Monthly amount for subscription-based bookings.
+  /// Only populated when isSubscription is true.
+  final double? monthlyAmount;
+
   Booking({
     required this.bookingId,
     required this.propertyId,
@@ -57,6 +61,7 @@ class Booking {
     // Backend alignment
     this.bookingStatusId,
     this.isSubscription = false,
+    this.monthlyAmount,
   });
 
   String get statusDisplay {
@@ -276,6 +281,12 @@ class Booking {
               : null),
       // Subscription flag for monthly rentals
       isSubscription: json['isSubscription'] == true,
+      // Monthly amount for subscription bookings
+      monthlyAmount: json['monthlyAmount'] != null
+          ? (json['monthlyAmount'] is num
+              ? (json['monthlyAmount'] as num).toDouble()
+              : double.tryParse(json['monthlyAmount'].toString()))
+          : null,
     );
   }
 
@@ -304,6 +315,7 @@ class Booking {
         // Backend alignment
         'bookingStatusId': bookingStatusId,
         'isSubscription': isSubscription,
+        'monthlyAmount': monthlyAmount,
       };
 
   bool isActive() {
@@ -335,6 +347,7 @@ class Booking {
     String? paymentReference,
     int? bookingStatusId,
     bool? isSubscription,
+    double? monthlyAmount,
   }) {
     return Booking(
       bookingId: bookingId ?? this.bookingId,
@@ -359,6 +372,7 @@ class Booking {
       paymentReference: paymentReference ?? this.paymentReference,
       bookingStatusId: bookingStatusId ?? this.bookingStatusId,
       isSubscription: isSubscription ?? this.isSubscription,
+      monthlyAmount: monthlyAmount ?? this.monthlyAmount,
     );
   }
 }

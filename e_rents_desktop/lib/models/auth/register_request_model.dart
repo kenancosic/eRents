@@ -60,7 +60,7 @@ class RegisterRequestModel {
         'phoneNumber': phoneNumber,
         'password': password,
         'confirmPassword': confirmPassword,
-        'dateOfBirth': dateOfBirth.toIso8601String(),
+        'dateOfBirth': '${dateOfBirth.year.toString().padLeft(4, '0')}-${dateOfBirth.month.toString().padLeft(2, '0')}-${dateOfBirth.day.toString().padLeft(2, '0')}',
         'userType': userType.name,
         'city': city,
         'zipCode': zipCode,

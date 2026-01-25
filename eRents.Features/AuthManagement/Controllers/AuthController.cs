@@ -24,7 +24,8 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Verifies the reset code for a given email without changing the password
+    /// Verifies the reset code for a given email without changing the password.
+    /// Used for password reset flow only.
     /// </summary>
     [HttpPost("verify")]
     [AllowAnonymous]
@@ -51,6 +52,40 @@ public sealed class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error verifying reset code for email: {Email}", request.Email);
             return StatusCode(500, new { message = "An error occurred while verifying the code" });
+        }
+    }
+
+    /// <summary>
+    /// Verifies email address after signup and returns auth tokens for automatic login.
+    /// This endpoint should be called after registration to verify the user's email.
+    /// </summary>
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    [ProducesResponseType(200, Type = typeof(AuthResponse))]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyResetCodeRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request?.Email) || string.IsNullOrWhiteSpace(request?.Code))
+        {
+            return BadRequest(new { message = "Email and code are required" });
+        }
+
+        try
+        {
+            var result = await _authService.VerifyEmailAsync(request.Email, request.Code);
+            if (result == null)
+            {
+                return BadRequest(new { message = "Invalid or expired verification code" });
+            }
+            
+            _logger.LogInformation("Email verified successfully for: {Email}", request.Email);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying email for: {Email}", request.Email);
+            return StatusCode(500, new { message = "An error occurred while verifying the email" });
         }
     }
 
@@ -83,6 +118,12 @@ public sealed class AuthController : ControllerBase
 
             _logger.LogInformation("Login successful for username: {Username}", request.Username);
             return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Handle specific cases like unverified email
+            _logger.LogWarning(ex, "Login blocked for username: {Username} - {Message}", request.Username, ex.Message);
+            return BadRequest(new { message = ex.Message, requiresVerification = ex.Message.Contains("verify", StringComparison.OrdinalIgnoreCase) });
         }
         catch (Exception ex)
         {

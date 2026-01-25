@@ -107,6 +107,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
               _effectiveViewContext = PropertyViewContextHelper.determineContext(booking);
             });
             provider.selectBooking(booking);
+            // Fetch extension requests for subscription bookings
+            if (booking.isSubscription) {
+              provider.fetchExtensionRequests(booking.bookingId);
+            }
             debugPrint('PropertyDetailsScreen: Loaded booking ${booking.bookingId}, context: $_effectiveViewContext');
           }
         } else if (currentUserId != null && widget.viewContext == ViewContext.browsing) {
@@ -555,8 +559,96 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
               ),
             ),
           ],
+          // Show pending extension request status for subscription bookings
+          if (booking.isSubscription) ...[
+            const SizedBox(height: 12),
+            _buildExtensionRequestStatus(context),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildExtensionRequestStatus(BuildContext context) {
+    return Consumer<PropertyRentalProvider>(
+      builder: (context, provider, _) {
+        final extensionRequests = provider.extensionRequests;
+        
+        // If still loading, show nothing
+        if (provider.isFetchingExtensions) {
+          return const SizedBox.shrink();
+        }
+        
+        // If no extension requests at all, show nothing
+        if (extensionRequests.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        // Show the most recent request status
+        final latestRequest = extensionRequests.first;
+        
+        Color statusColor;
+        IconData statusIcon;
+        String statusText;
+        
+        if (latestRequest.isPending) {
+          statusColor = Colors.orange;
+          statusIcon = Icons.hourglass_top;
+          statusText = 'Extension request pending approval';
+        } else if (latestRequest.isApproved) {
+          statusColor = Colors.green;
+          statusIcon = Icons.check_circle;
+          statusText = 'Extension approved';
+        } else {
+          statusColor = Colors.red;
+          statusIcon = Icons.cancel;
+          statusText = 'Extension request declined';
+        }
+        
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(statusIcon, color: statusColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (latestRequest.extendByMonths != null)
+                      Text(
+                        'Requested: ${latestRequest.extendByMonths} month(s) extension',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    if (latestRequest.isRejected && latestRequest.reason != null)
+                      Text(
+                        'Reason: ${latestRequest.reason}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

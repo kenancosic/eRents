@@ -59,6 +59,7 @@ public static class ServiceRegistrationExtensions
 		services.AddScoped<INotificationService, NotificationService>();
 		services.AddScoped<eRents.Shared.Services.IEmailService, RabbitMqEmailPublisher>();
 		services.AddScoped<ISubscriptionService, SubscriptionService>();
+		services.AddScoped<IInvoicePdfService, InvoicePdfService>();
 
 		// Bridge hub context so Features-layer MessagingService (expects IHubContext<Hub>)
 		// can publish via the concrete ChatHub without referencing WebApi types.

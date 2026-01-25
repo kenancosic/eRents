@@ -43,6 +43,12 @@ public partial class User : BaseEntity
 
 	public DateTime? ResetTokenExpiration { get; set; }
 
+	/// <summary>
+	/// Indicates whether the user's email has been verified.
+	/// Users cannot log in until their email is verified.
+	/// </summary>
+	public bool IsEmailVerified { get; set; } = false;
+
 	public bool? IsPublic { get; set; }
 
 	public DateOnly? DateOfBirth { get; set; }

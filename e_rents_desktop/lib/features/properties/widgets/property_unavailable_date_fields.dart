@@ -43,6 +43,17 @@ class _PropertyUnavailableDateFieldsState extends State<PropertyUnavailableDateF
     }
   }
 
+  void _clearDate(bool isFrom) {
+    setState(() {
+      if (isFrom) {
+        _unavailableFrom = null;
+      } else {
+        _unavailableTo = null;
+      }
+      widget.onDateChanged(_unavailableFrom, _unavailableTo);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -62,9 +73,16 @@ class _PropertyUnavailableDateFieldsState extends State<PropertyUnavailableDateF
               child: InkWell(
                 onTap: () => _selectDate(true),
                 child: InputDecorator(
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Unavailable From',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _unavailableFrom != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () => _clearDate(true),
+                            tooltip: 'Clear date',
+                          )
+                        : null,
                   ),
                   child: Text(_unavailableFrom == null
                       ? 'Select date'
@@ -77,9 +95,16 @@ class _PropertyUnavailableDateFieldsState extends State<PropertyUnavailableDateF
               child: InkWell(
                 onTap: () => _selectDate(false),
                 child: InputDecorator(
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Unavailable To',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _unavailableTo != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () => _clearDate(false),
+                            tooltip: 'Clear date',
+                          )
+                        : null,
                   ),
                   child: Text(_unavailableTo == null
                       ? 'Select date'

@@ -5,6 +5,7 @@ using eRents.Domain.Shared.Interfaces;
 using eRents.Shared.DTOs;
 using eRents.Shared.Services;
 using ISharedEmailService = eRents.Shared.Services.IEmailService;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -20,17 +21,20 @@ namespace eRents.Features.Shared.Services
         private readonly ICurrentUserService _currentUserService;
         private readonly ILogger<NotificationService> _logger;
         private readonly ISharedEmailService? _emailService;
+        private readonly IHubContext<Hub>? _hubContext;
 
         public NotificationService(
                 ERentsContext context,
                 ICurrentUserService currentUserService,
                 ILogger<NotificationService> logger,
-                ISharedEmailService? emailService = null)
+                ISharedEmailService? emailService = null,
+                IHubContext<Hub>? hubContext = null)
         {
             _context = context;
             _currentUserService = currentUserService;
             _logger = logger;
             _emailService = emailService;
+            _hubContext = hubContext;
         }
 
         #region Core Notification Operations
@@ -63,6 +67,30 @@ namespace eRents.Features.Shared.Services
 
                 _logger.LogInformation("Created {Type} notification for User {UserId}: {Title}",
                         type, userId, title);
+
+                // Broadcast via SignalR for real-time updates
+                if (_hubContext != null)
+                {
+                    try
+                    {
+                        await _hubContext.Clients.Group($"user-{userId}")
+                            .SendAsync("ReceiveNotification", new
+                            {
+                                notificationId = notification.NotificationId,
+                                type = type,
+                                title = title,
+                                message = message,
+                                referenceId = referenceId,
+                                createdAt = notification.CreatedAt,
+                                isRead = false
+                            });
+                        _logger.LogInformation("Broadcasted {Type} notification to User {UserId} via SignalR", type, userId);
+                    }
+                    catch (Exception hubEx)
+                    {
+                        _logger.LogWarning(hubEx, "Failed to broadcast notification via SignalR for User {UserId}", userId);
+                    }
+                }
             }
             catch (Exception ex)
             {

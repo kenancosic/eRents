@@ -135,18 +135,30 @@ namespace eRents.Features.PropertyManagement.Services
 				));
 			}
 
-			// Auto-scope for Desktop owners/landlords
-			// Note: Seeded  user "desktop" has role "Owner" (UserTypeEnum.Owner)
-			// Support both "Owner" and "Landlord" to be robust across datasets
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			// Auto-scope for Desktop clients
+			// Desktop app is for landlords/owners only - enforce ownership filtering
+			if (CurrentUser?.IsDesktop == true)
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (ownerId.HasValue)
+				var userRole = CurrentUser.UserRole ?? string.Empty;
+				var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+				                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
+				
+				if (isOwnerOrLandlord)
 				{
-					query = query.Where(x => x.OwnerId == ownerId.Value);
+					// Owners/Landlords see only their own properties
+					var ownerId = CurrentUser.GetUserIdAsInt();
+					if (ownerId.HasValue)
+					{
+						query = query.Where(x => x.OwnerId == ownerId.Value);
+					}
+				}
+				else
+				{
+					// Non-owner desktop users (e.g., Tenant) should not access property management
+					// Return empty result set - they have no properties to manage
+					query = query.Where(x => false);
+					Logger.LogWarning("Non-owner user {UserId} attempted to access property management from desktop", 
+						CurrentUser.GetUserIdAsInt());
 				}
 			}
 
@@ -244,16 +256,27 @@ namespace eRents.Features.PropertyManagement.Services
 
 		protected override Task BeforeCreateAsync(Property entity, PropertyRequest request)
 		{
-			// Ensure desktop owner/landlord creates only their own properties
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			// Desktop clients: only Owner/Landlord can create properties
+			if (CurrentUser?.IsDesktop == true)
 			{
+				var userRole = CurrentUser.UserRole ?? string.Empty;
+				var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+				                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
+				
+				if (!isOwnerOrLandlord)
+				{
+					throw new InvalidOperationException("Only property owners can create properties. Please register as an Owner to list properties.");
+				}
+				
+				// Set OwnerId from current user
 				var ownerId = CurrentUser.GetUserIdAsInt();
 				if (ownerId.HasValue)
 				{
 					entity.OwnerId = ownerId.Value;
+				}
+				else
+				{
+					throw new InvalidOperationException("Unable to determine owner. Please log in again.");
 				}
 			}
 			return Task.CompletedTask;

@@ -27,7 +27,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final success = await authProvider.forgotPassword(_emailController.text);
       if (success && mounted) {
         // Navigate to the verification screen
-        context.push('/verification?email=${_emailController.text}');
+        context.push('/verification?email=${_emailController.text}&isSignup=false');
       }
     }
   }

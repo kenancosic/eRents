@@ -283,18 +283,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     
     switch (type) {
       case 'booking':
+      case 'lease_extension':
         // Refresh bookings data before navigating
         context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true);
+        // /bookings is a top-level route, use push
         context.push('/bookings');
         break;
       case 'message':
-        // Navigate to chat
+        // /chat is inside StatefulShellRoute - must use go() to switch branch
         context.go('/chat');
         break;
       case 'property':
         // Navigate to property if referenceId exists
         final propertyId = _extractPropertyId(notification);
         if (propertyId != null) {
+          // /property/:id is a top-level route, use push
           context.push('/property/$propertyId');
         }
         break;
@@ -302,11 +305,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         // Refresh invoices data before navigating
         final currentUserProvider = context.read<CurrentUserProvider>();
         context.read<InvoicesProvider>().loadPending(currentUserProvider);
-        context.push('/profile/invoices');
+        // /profile/invoices is inside StatefulShellRoute - must use go() to switch branch
+        context.go('/profile/invoices');
         break;
       case 'maintenance':
-        // Navigate to maintenance screen
-        context.push('/profile/maintenance');
+        // /profile/maintenance is inside StatefulShellRoute - must use go() to switch branch
+        context.go('/profile/maintenance');
         break;
       case 'review':
       case 'system':

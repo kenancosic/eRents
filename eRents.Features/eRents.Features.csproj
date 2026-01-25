@@ -31,6 +31,8 @@
 		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.13.1" />
 		<!-- Image processing -->
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+		<!-- PDF generation -->
+		<PackageReference Include="QuestPDF" Version="2024.12.2" />
 	</ItemGroup>
 
 	<!-- Generate ServiceRegistration.cs to wire feature services into DI (consumed by WebApi host) -->

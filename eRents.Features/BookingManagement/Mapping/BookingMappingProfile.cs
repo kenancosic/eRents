@@ -31,7 +31,9 @@ public class BookingMappingProfile : Profile
 					s.Property != null && s.Property.Images != null 
 						? s.Property.Images.Where(i => i.IsCover).Select(i => (int?)i.ImageId).FirstOrDefault() 
 							?? s.Property.Images.Select(i => (int?)i.ImageId).FirstOrDefault()
-						: null));
+						: null))
+				.ForMember(d => d.MonthlyAmount, opt => opt.MapFrom(s => 
+					s.Subscription != null ? s.Subscription.MonthlyAmount : (decimal?)null));
 
 		// Request -> Entity
 		CreateMap<BookingRequest, Booking>()

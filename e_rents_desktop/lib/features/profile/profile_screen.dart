@@ -235,6 +235,45 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
       titleIcon: Icons.account_balance_wallet_outlined,
       child: Consumer<StripeConnectProvider>(
         builder: (context, stripeProvider, child) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Testing mode notice
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.amber.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Testing Mode: Stripe Connect is configured for development. '
+                        'Payouts are routed to the platform account during testing.',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Main content
+              _buildStripeConnectContent(context, stripeProvider),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStripeConnectContent(BuildContext context, StripeConnectProvider stripeProvider) {
           if (stripeProvider.isLoading && stripeProvider.accountStatus == null) {
             return const Padding(
               padding: EdgeInsets.all(20.0),
@@ -289,9 +328,6 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
                 isLoading: stripeProvider.isLoading,
               );
           }
-        },
-      ),
-    );
   }
 
   Future<void> _connectStripeAccount(BuildContext context) async {

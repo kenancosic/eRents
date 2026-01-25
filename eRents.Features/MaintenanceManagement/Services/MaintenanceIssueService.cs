@@ -72,17 +72,29 @@ namespace eRents.Features.MaintenanceManagement.Services
                 query = query.Where(x => x.CreatedAt <= to);
             }
 
-            // Auto-scope for Desktop owners/landlords
-            // Support both "Owner" and "Landlord" roles for robustness across datasets
-            if (CurrentUser?.IsDesktop == true &&
-                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            // Auto-scope for Desktop clients
+            // Desktop app is for landlords/owners only - enforce ownership filtering
+            if (CurrentUser?.IsDesktop == true)
             {
-                var ownerId = CurrentUser.GetUserIdAsInt();
-                if (ownerId.HasValue)
+                var userRole = CurrentUser.UserRole ?? string.Empty;
+                var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
+                
+                if (isOwnerOrLandlord)
                 {
-                    query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+                    // Owners/Landlords see only maintenance issues for their properties
+                    var ownerId = CurrentUser.GetUserIdAsInt();
+                    if (ownerId.HasValue)
+                    {
+                        query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+                    }
+                }
+                else
+                {
+                    // Non-owner desktop users should not access maintenance management
+                    query = query.Where(x => false);
+                    Logger.LogWarning("Non-owner user {UserId} attempted to access maintenance management from desktop", 
+                        CurrentUser.GetUserIdAsInt());
                 }
             }
 

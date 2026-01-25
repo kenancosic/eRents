@@ -10,6 +10,7 @@ import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/models/amenity.dart';
+import 'package:e_rents_mobile/core/models/lease_extension_request.dart';
 import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 
 /// Provider for managing property rentals (both daily and monthly)
@@ -46,6 +47,10 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   bool _isFetchingOwner = false;
   final Map<int, Amenity> _amenityCache = {};
 
+  // Lease extension requests for the current booking
+  List<LeaseExtensionRequestResponse> _extensionRequests = [];
+  bool _isFetchingExtensions = false;
+
   // ─── Getters ────────────────────────────────────────────────────────────
   
   // Daily rental getters
@@ -69,6 +74,22 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   List<Review> get reviews => _reviews;
   User? get owner => _owner;
   List<Amenity> get amenities => _amenities;
+
+  // Lease extension getters
+  List<LeaseExtensionRequestResponse> get extensionRequests => _extensionRequests;
+  bool get isFetchingExtensions => _isFetchingExtensions;
+  
+  /// Get the most recent pending extension request for display
+  LeaseExtensionRequestResponse? get pendingExtensionRequest {
+    try {
+      return _extensionRequests.firstWhere((r) => r.isPending);
+    } catch (_) {
+      return null;
+    }
+  }
+  
+  /// Check if there's any pending extension request
+  bool get hasPendingExtensionRequest => pendingExtensionRequest != null;
 
   /// Return amenities for the provided IDs using the in-memory cache when possible
   List<Amenity> getAmenitiesFor(List<int> amenityIds) {
@@ -475,5 +496,34 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   /// Reset the active booking check state (when navigating away)
   void resetActiveBookingCheck() {
     _hasActiveBookingForProperty = false;
+  }
+
+  // ─── Lease Extension Requests API ────────────────────────────────────────
+
+  /// Fetch lease extension requests for a booking
+  Future<void> fetchExtensionRequests(int bookingId) async {
+    if (_isFetchingExtensions) return;
+    _isFetchingExtensions = true;
+
+    try {
+      final requests = await api.getListAndDecode(
+        '/leaseextensions/booking/$bookingId',
+        LeaseExtensionRequestResponse.fromJson,
+        authenticated: true,
+      );
+      _extensionRequests = requests;
+      debugPrint('PropertyRentalProvider: Loaded ${requests.length} extension requests for booking $bookingId');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('PropertyRentalProvider: Error fetching extension requests: $e');
+      _extensionRequests = [];
+    } finally {
+      _isFetchingExtensions = false;
+    }
+  }
+
+  /// Clear extension requests state (when navigating away)
+  void clearExtensionRequests() {
+    _extensionRequests = [];
   }
 }

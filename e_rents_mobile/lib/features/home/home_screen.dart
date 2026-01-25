@@ -12,6 +12,7 @@ import 'package:e_rents_mobile/core/widgets/property_card.dart';
 import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:e_rents_mobile/features/property_detail/utils/view_context.dart';
+import 'package:e_rents_mobile/features/notifications/providers/notification_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -294,6 +295,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<UserProfileProvider>().loadCurrentUser();
       // Load saved property IDs so bookmark icons render correctly on property cards
       context.read<SavedProvider>().loadSavedProperties();
+      // Load unread notification count for badge display on home screen
+      context.read<NotificationProvider>().loadUnreadCount();
       _initializeDashboard();
       // Start periodic refresh of pending monthly bookings so user sees acceptance updates
       _pendingRefreshTimer?.cancel();
@@ -477,10 +480,44 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {
-                context.push('/notifications');
+            Consumer<NotificationProvider>(
+              builder: (context, notifProvider, _) {
+                final unreadCount = notifProvider.unreadCount;
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        context.push('/notifications');
+                      },
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.error,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
               },
             ),
           ],

@@ -15,4 +15,30 @@ public class EmailMessage
     public string? Bcc { get; set; }
     public bool IsHtml { get; set; } = false;
     public DateTime? ScheduledAt { get; set; }
-} 
+    
+    /// <summary>
+    /// Optional file attachments for the email
+    /// </summary>
+    public List<EmailAttachment>? Attachments { get; set; }
+}
+
+/// <summary>
+/// Email attachment DTO
+/// </summary>
+public class EmailAttachment
+{
+    /// <summary>
+    /// File name with extension (e.g., "invoice.pdf")
+    /// </summary>
+    public string FileName { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// File content as base64 encoded string
+    /// </summary>
+    public string ContentBase64 { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// MIME type of the attachment (e.g., "application/pdf")
+    /// </summary>
+    public string ContentType { get; set; } = "application/octet-stream";
+}

@@ -249,45 +249,66 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   Future<void> _processInvoicePayment(
       BuildContext context, InvoicesProvider provider, model.Payment payment) async {
     
-    try {
-      // Step 1: Create Stripe payment intent on backend
-      final navigator = Navigator.of(context);
-      
+    // Capture references before async gaps to avoid "deactivated widget" errors
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final messenger = ScaffoldMessenger.of(context);
+    final currentUserProvider = context.read<CurrentUserProvider>();
+    
+    // Track if we have a dialog open to prevent double-pops
+    bool dialogOpen = false;
+    
+    // Helper to safely close dialog using captured navigator
+    void closeDialog() {
+      if (dialogOpen) {
+        navigator.pop();
+        dialogOpen = false;
+      }
+    }
+    
+    // Helper to show loading dialog
+    void showLoadingDialog(String message) {
+      if (!mounted) return;
+      dialogOpen = true;
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const AlertDialog(
+        useRootNavigator: true,
+        builder: (_) => AlertDialog(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Preparing payment...'),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(message),
             ],
           ),
         ),
       );
+    }
+    
+    try {
+      // Step 1: Create Stripe payment intent on backend
+      showLoadingDialog('Preparing payment...');
 
       Map<String, String> result;
       try {
         result = await provider.createStripePaymentIntent(payment);
       } catch (e) {
-        // Close loading dialog on error
-        if (mounted) navigator.pop();
+        closeDialog();
         rethrow;
       }
       final clientSecret = result['clientSecret']!;
       
       if (!mounted) return;
-      navigator.pop(); // Close loading dialog
+      closeDialog();
       
       // Step 2: Initialize payment sheet with client secret
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           merchantDisplayName: 'eRents',
           paymentIntentClientSecret: clientSecret,
-          customerEphemeralKeySecret: null, // Optional: for saved cards
-          customerId: null, // Optional: for saved cards
+          customerEphemeralKeySecret: null,
+          customerId: null,
           style: ThemeMode.system,
           billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
             email: CollectionMode.always,
@@ -297,47 +318,51 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       );
       
       // Step 3: Present payment sheet to user
+      // This will throw StripeException if cancelled or failed
       await Stripe.instance.presentPaymentSheet();
       
-      // Step 4: Payment successful! (if no exception thrown)
+      // Step 4: Stripe SDK completed - now verify with backend
+      // The backend fetches PaymentIntent status directly from Stripe API (not waiting for webhook)
       if (!mounted) return;
       
-      // Wait for webhook to confirm payment
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Confirming payment...'),
-            ],
+      // Show confirming dialog
+      showLoadingDialog('Verifying payment...');
+      
+      // Verify payment with backend - this calls Stripe API directly and updates our database
+      final confirmResult = await provider.confirmStripePayment(payment.paymentId);
+      
+      // Reload invoices to show updated status
+      if (mounted) {
+        await provider.loadInvoices(currentUserProvider);
+      }
+      
+      closeDialog();
+      
+      if (confirmResult['success'] == true) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('✓ Payment successful! Invoice paid.'),
+            backgroundColor: Colors.green,
           ),
-        ),
-      );
-      
-      // Give webhook time to process (in production, use polling or WebSocket)
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Refresh invoices list
-      await provider.confirmStripePayment();
-      
-      if (!mounted) return;
-      navigator.pop(); // Close confirming dialog
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✓ Payment successful! Invoice paid.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      } else {
+        // Payment not yet confirmed - show status message
+        final status = confirmResult['status'] ?? 'unknown';
+        final message = confirmResult['message'] ?? 'Payment verification failed';
+        
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(status == 'processing' 
+                ? 'Payment is processing. It may take a few minutes to confirm.'
+                : message),
+            backgroundColor: status == 'processing' ? Colors.orange : Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
       
     } on StripeException catch (e) {
-      if (!mounted) return;
-      // Close any open dialogs
-      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      closeDialog();
       
       // Handle specific Stripe errors
       String errorMessage = 'Payment failed';
@@ -349,7 +374,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         errorMessage = 'Payment error: ${e.error.localizedMessage ?? e.error.message ?? "Unknown error"}';
       }
       
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(errorMessage),
           backgroundColor: Colors.orange,
@@ -357,11 +382,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      // Close any open dialogs
-      Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
+      closeDialog();
       
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Failed to process payment: $e'),
           backgroundColor: Colors.red,

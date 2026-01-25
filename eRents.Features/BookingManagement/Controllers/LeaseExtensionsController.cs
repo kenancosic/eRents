@@ -83,6 +83,42 @@ public class LeaseExtensionsController : ControllerBase
         return Ok(new { ler.LeaseExtensionRequestId, ler.Status });
     }
 
+    /// <summary>
+    /// Tenant retrieves their extension requests for a specific booking
+    /// </summary>
+    [HttpGet("booking/{bookingId:int}")]
+    public async Task<IActionResult> GetByBooking(int bookingId)
+    {
+        var uid = _currentUser.GetUserIdAsInt();
+        if (!uid.HasValue) return Unauthorized();
+
+        var booking = await _context.Bookings.FindAsync(bookingId);
+        if (booking == null) return NotFound();
+
+        // Tenant must own the booking
+        if (booking.UserId != uid.Value)
+            return Forbid();
+
+        var requests = await _context.LeaseExtensionRequests
+            .Where(r => r.BookingId == bookingId)
+            .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new
+            {
+                r.LeaseExtensionRequestId,
+                Status = r.Status.ToString(),
+                r.CreatedAt,
+                r.RespondedAt,
+                r.OldEndDate,
+                r.NewEndDate,
+                r.ExtendByMonths,
+                r.NewMonthlyAmount,
+                r.Reason
+            })
+            .ToListAsync();
+
+        return Ok(requests);
+    }
+
     // Landlord lists pending requests for their properties
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string? status = "Pending")

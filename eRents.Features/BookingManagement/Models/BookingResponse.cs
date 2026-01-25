@@ -29,6 +29,12 @@ public class BookingResponse
     /// </summary>
     public bool IsSubscription { get; set; }
 
+    /// <summary>
+    /// Monthly amount for subscription-based bookings.
+    /// Only populated when IsSubscription is true.
+    /// </summary>
+    public decimal? MonthlyAmount { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
     public DateTime UpdatedAt { get; set; }

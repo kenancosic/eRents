@@ -2,6 +2,7 @@ using AutoMapper;
 using eRents.Domain.Models;
 using eRents.Features.Core;
 using eRents.Features.TenantManagement.Models;
+using eRents.Features.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Domain.Shared.Interfaces;
@@ -12,21 +13,27 @@ namespace eRents.Features.TenantManagement.Services
 {
     public class TenantService : BaseCrudService<Tenant, TenantRequest, TenantResponse, TenantSearch>
     {
+        private readonly INotificationService? _notificationService;
+
         public TenantService(
             DbContext context,
             IMapper mapper,
             ILogger<TenantService> logger,
-            ICurrentUserService? currentUserService = null)
+            ICurrentUserService? currentUserService = null,
+            INotificationService? notificationService = null)
             : base(context, mapper, logger, currentUserService)
         {
+            _notificationService = notificationService;
         }
 
         protected override IQueryable<Tenant> AddIncludes(IQueryable<Tenant> query)
         {
             // Eager-load relations commonly needed for DTOs/maps
+            // Include Address for City mapping in TenantResponse
             return query
                 .Include(t => t.User)
-                .Include(t => t.Property);
+                .Include(t => t.Property)
+                    .ThenInclude(p => p!.Address);
         }
 
         protected override IQueryable<Tenant> AddFilter(IQueryable<Tenant> query, TenantSearch search)
@@ -76,16 +83,29 @@ namespace eRents.Features.TenantManagement.Services
                                          EF.Functions.Like(x.Property.Address.City ?? string.Empty, pattern));
             }
 
-            // Auto-scope for Desktop owners/landlords: only tenants tied to properties owned by current user
-            if (CurrentUser?.IsDesktop == true &&
-                !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-                (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+            // Auto-scope for Desktop clients
+            // Desktop app is for landlords/owners only - enforce ownership filtering
+            if (CurrentUser?.IsDesktop == true)
             {
-                var ownerId = CurrentUser.GetUserIdAsInt();
-                if (ownerId.HasValue)
+                var userRole = CurrentUser.UserRole ?? string.Empty;
+                var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
+                
+                if (isOwnerOrLandlord)
                 {
-                    query = query.Where(x => x.Property != null && x.Property.OwnerId == ownerId.Value);
+                    // Owners/Landlords see only tenants for their properties
+                    var ownerId = CurrentUser.GetUserIdAsInt();
+                    if (ownerId.HasValue)
+                    {
+                        query = query.Where(x => x.Property != null && x.Property.OwnerId == ownerId.Value);
+                    }
+                }
+                else
+                {
+                    // Non-owner desktop users should not access tenant management
+                    query = query.Where(x => false);
+                    Logger.LogWarning("Non-owner user {UserId} attempted to access tenant management from desktop", 
+                        CurrentUser.GetUserIdAsInt());
                 }
             }
 
@@ -239,6 +259,17 @@ namespace eRents.Features.TenantManagement.Services
             entity.UpdatedAt = DateTime.UtcNow;
             await Context.SaveChangesAsync();
 
+            // Notify tenant that their request was rejected
+            if (_notificationService != null && entity.UserId > 0)
+            {
+                var propertyName = entity.Property?.Name ?? "the property";
+                await _notificationService.CreateNotificationAsync(
+                    entity.UserId,
+                    "Rental Request Rejected",
+                    $"Your request to rent {propertyName} has been rejected by the landlord.",
+                    "tenant_request");
+            }
+
             return Mapper.Map<TenantResponse>(entity);
         }
 
@@ -365,8 +396,9 @@ namespace eRents.Features.TenantManagement.Services
             using var transaction = await Context.Database.BeginTransactionAsync();
             try
             {
-                // Get the tenant to accept
+                // Get the tenant to accept with User and Property for mapping
                 var tenantToAccept = await Context.Set<Tenant>()
+                    .Include(t => t.User)
                     .Include(t => t.Property)
                     .FirstOrDefaultAsync(t => t.TenantId == tenantId);
 
@@ -414,6 +446,38 @@ namespace eRents.Features.TenantManagement.Services
                 await Context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                // Notify accepted tenant
+                if (_notificationService != null && tenantToAccept.UserId > 0)
+                {
+                    var propertyName = tenantToAccept.Property?.Name ?? "the property";
+                    await _notificationService.CreateNotificationAsync(
+                        tenantToAccept.UserId,
+                        "Rental Request Accepted! 🎉",
+                        $"Congratulations! Your request to rent {propertyName} has been approved. You can now move in according to your lease agreement.",
+                        "tenant_request");
+                }
+
+                // Notify rejected tenants
+                if (_notificationService != null && tenantToAccept.PropertyId.HasValue)
+                {
+                    var rejectedTenants = await Context.Set<Tenant>()
+                        .Where(t => t.PropertyId == tenantToAccept.PropertyId.Value)
+                        .Where(t => t.TenantId != tenantId)
+                        .Where(t => t.TenantStatus == eRents.Domain.Models.Enums.TenantStatusEnum.Evicted)
+                        .Select(t => t.UserId)
+                        .ToListAsync();
+
+                    var propertyName = tenantToAccept.Property?.Name ?? "the property";
+                    foreach (var rejectedUserId in rejectedTenants)
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            rejectedUserId,
+                            "Rental Request Update",
+                            $"Unfortunately, another tenant has been selected for {propertyName}. We encourage you to explore other available properties.",
+                            "tenant_request");
+                    }
+                }
+
                 return Mapper.Map<TenantResponse>(tenantToAccept);
             }
             catch
@@ -421,6 +485,50 @@ namespace eRents.Features.TenantManagement.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Override CreateAsync to notify landlord when a tenant submits a rental request
+        /// </summary>
+        public override async Task<TenantResponse> CreateAsync(TenantRequest request)
+        {
+            var response = await base.CreateAsync(request);
+
+            // Notify landlord about new tenant request
+            if (_notificationService != null && request.PropertyId.HasValue)
+            {
+                try
+                {
+                    var property = await Context.Set<Property>()
+                        .Include(p => p.Owner)
+                        .FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
+
+                    if (property?.OwnerId > 0)
+                    {
+                        var tenantUser = await Context.Set<User>()
+                            .FirstOrDefaultAsync(u => u.UserId == request.UserId);
+
+                        var tenantName = tenantUser != null
+                            ? $"{tenantUser.FirstName} {tenantUser.LastName}".Trim()
+                            : "A user";
+
+                        if (string.IsNullOrWhiteSpace(tenantName)) tenantName = tenantUser?.Username ?? "A user";
+
+                        await _notificationService.CreateNotificationAsync(
+                            property.OwnerId,
+                            "New Rental Request 📬",
+                            $"{tenantName} has submitted a request to rent {property.Name}. Please review and respond to the request.",
+                            "tenant_request");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't fail the create operation if notification fails
+                    Logger.LogWarning(ex, "Failed to send notification for new tenant request");
+                }
+            }
+
+            return response;
         }
     }
 }

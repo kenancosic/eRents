@@ -31,8 +31,10 @@ class _AppNavigationBarState extends State<AppNavigationBar> {
       if (chatProvider.contacts.isEmpty && !chatProvider.isLoading) {
         chatProvider.loadContacts();
       }
-      // Load notification count
-      context.read<NotificationProvider>().loadUnreadCount();
+      // Load notification count and connect to SignalR for real-time updates
+      final notificationProvider = context.read<NotificationProvider>();
+      notificationProvider.loadUnreadCount();
+      notificationProvider.connectRealtime();
     });
   }
 

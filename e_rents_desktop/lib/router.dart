@@ -160,7 +160,9 @@ class AppRouter {
       path: AppRoutes.verification,
       builder: (context, state) {
         final email = state.uri.queryParameters['email'] ?? '';
-        return VerificationScreen(email: email);
+        // Default to signup verification; password reset flow passes isSignup=false
+        final isSignup = state.uri.queryParameters['isSignup'] != 'false';
+        return VerificationScreen(email: email, isSignupVerification: isSignup);
       },
     ),
     GoRoute(

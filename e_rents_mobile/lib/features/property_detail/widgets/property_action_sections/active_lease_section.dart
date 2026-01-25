@@ -75,7 +75,8 @@ class ActiveLeaseSection extends StatelessWidget {
               else
                 _buildInfoRow('Lease Type', 'Open-ended (no fixed end date)'),
               _buildInfoRow(
-                  'Monthly Rent', '\$${booking.totalPrice.toStringAsFixed(0)}'),
+                  'Monthly Rent', 
+                  '\$${(booking.monthlyAmount ?? booking.dailyRate).toStringAsFixed(0)}'),
               if (booking.minimumStayEndDate != null) ...[
                 _buildInfoRow('Minimum Stay Until',
                     DateFormat.yMMMd().format(booking.minimumStayEndDate!)),

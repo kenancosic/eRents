@@ -37,6 +37,12 @@ class AuthProvider extends BaseProvider {
     }
   }
 
+  /// Clear all errors (field errors and general error)
+  void clearAllErrors() {
+    _fieldErrors.clear();
+    clearError();
+  }
+
   // region: Core auth workflows
 
   /// Login and set auth state. Returns true on success.
@@ -213,7 +219,7 @@ class AuthProvider extends BaseProvider {
     }
   }
 
-  /// Verify the received code. Returns true on success.
+  /// Verify reset code for password reset flow. Returns true if code is valid.
   Future<bool> verifyCode(String email, String code) async {
     debugPrint('[AuthProvider] verifyCode() called for email: $email');
     setUpdating(true);
@@ -233,6 +239,56 @@ class AuthProvider extends BaseProvider {
     } catch (e) {
       String errorMessage = _extractErrorMessage(e);
       debugPrint('[AuthProvider] Verification failed: $errorMessage');
+      setError(errorMessage);
+      return false;
+    }
+  }
+
+  /// Verify email after signup and auto-login. Returns true on success.
+  /// This marks the user's email as verified and returns auth tokens.
+  Future<bool> verifyEmailAndLogin(String email, String code) async {
+    debugPrint('[AuthProvider] verifyEmailAndLogin() called for email: $email');
+    setUpdating(true);
+    try {
+      debugPrint('[AuthProvider] Sending verify-email request');
+      final httpResp = await api.postJson(
+        '/Auth/verify-email',
+        {
+          'email': email,
+          'code': code,
+        },
+        authenticated: false,
+      );
+      
+      // Parse auth response and set tokens
+      final decoded = jsonDecode(httpResp.body);
+      debugPrint('[AuthProvider] verify-email response decoded');
+      
+      if (decoded is Map<String, dynamic>) {
+        _accessToken = (decoded['accessToken'] as String?) ?? _accessToken;
+        _refreshToken = (decoded['refreshToken'] as String?) ?? _refreshToken;
+        debugPrint('[AuthProvider] Tokens extracted from verify-email response');
+      }
+
+      // Persist access token
+      if (_accessToken != null && _accessToken!.isNotEmpty) {
+        await api.secureStorageService.storeToken(_accessToken!);
+        debugPrint('[AuthProvider] Token stored in secure storage');
+      }
+
+      // Parse user from response
+      final userMap = (decoded is Map<String, dynamic>) ? decoded['user'] : null;
+      if (userMap is Map<String, dynamic>) {
+        _currentUser = User.fromJson(userMap);
+        debugPrint('[AuthProvider] User parsed: ${_currentUser?.username}');
+      }
+
+      setUpdating(false);
+      debugPrint('[AuthProvider] Email verification and auto-login successful');
+      return true;
+    } catch (e) {
+      String errorMessage = _extractErrorMessage(e);
+      debugPrint('[AuthProvider] Email verification failed: $errorMessage');
       setError(errorMessage);
       return false;
     }

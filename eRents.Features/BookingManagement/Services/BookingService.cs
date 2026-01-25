@@ -237,9 +237,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
     public override async Task<BookingResponse> GetByIdAsync(int id)
     {
-        // Fetch with property for ownership validation
+        // Fetch with property for ownership validation and subscription for monthly amount
         var entity = await Context.Set<Booking>()
             .Include(b => b.Property)
+            .Include(b => b.Subscription)
             .FirstOrDefaultAsync(x => x.BookingId == id);
 
         if (entity == null)
@@ -262,7 +263,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
     protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearch search)
     {
-        query = query.Include(b => b.User).Include(b => b.Property).ThenInclude(p => p.Images);
+        query = query.Include(b => b.User).Include(b => b.Property).ThenInclude(p => p.Images).Include(b => b.Subscription);
         if (search.UserId.HasValue)
         {
             query = query.Where(x => x.UserId == search.UserId.Value);
@@ -340,16 +341,29 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Auto-scope for Desktop owners/landlords: only bookings for properties owned by current user
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        // Auto-scope for Desktop clients
+        // Desktop app is for landlords/owners only - enforce ownership filtering
+        if (CurrentUser?.IsDesktop == true)
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            if (ownerId.HasValue)
+            var userRole = CurrentUser.UserRole ?? string.Empty;
+            var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
+            
+            if (isOwnerOrLandlord)
             {
-                query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+                // Owners/Landlords see only bookings for their properties
+                var ownerId = CurrentUser.GetUserIdAsInt();
+                if (ownerId.HasValue)
+                {
+                    query = query.Where(x => x.Property.OwnerId == ownerId.Value);
+                }
+            }
+            else
+            {
+                // Non-owner desktop users should not access booking management
+                query = query.Where(x => false);
+                Logger.LogWarning("Non-owner user {UserId} attempted to access booking management from desktop", 
+                    CurrentUser.GetUserIdAsInt());
             }
         }
 

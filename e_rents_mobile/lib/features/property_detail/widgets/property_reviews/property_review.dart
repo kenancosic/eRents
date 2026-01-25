@@ -6,11 +6,13 @@ import 'package:e_rents_mobile/core/widgets/elevated_text_button.dart';
 class PropertyReviewsSection extends StatelessWidget {
   final List<Review> reviews;
   final double averageRating;
+  final int? propertyId;
 
   const PropertyReviewsSection({
     super.key,
     required this.reviews,
     required this.averageRating,
+    this.propertyId,
   });
 
   @override
@@ -28,9 +30,7 @@ class PropertyReviewsSection extends StatelessWidget {
             ElevatedTextButton(
               text: 'See All (${reviews.length})',
               isCompact: true,
-              onPressed: () {
-                // Navigate to all reviews page
-              },
+              onPressed: () => _showAllReviews(context),
             ),
           ],
         ),
@@ -97,12 +97,90 @@ class PropertyReviewsSection extends StatelessWidget {
           Center(
             child: ElevatedTextButton(
               text: 'View All ${reviews.length} Reviews',
-              onPressed: () {
-                // Navigate to all reviews
-              },
+              onPressed: () => _showAllReviews(context),
             ),
           ),
       ],
+    );
+  }
+
+  void _showAllReviews(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'All Reviews (${reviews.length})',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amber, size: 20),
+                        const SizedBox(width: 4),
+                        Text(
+                          averageRating.toStringAsFixed(1),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              // Reviews list
+              Expanded(
+                child: reviews.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No reviews yet',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: reviews.length,
+                        separatorBuilder: (context, index) => const Divider(height: 24),
+                        itemBuilder: (context, index) => ReviewItem(review: reviews[index]),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

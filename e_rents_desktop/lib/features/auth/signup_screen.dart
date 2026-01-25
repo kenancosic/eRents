@@ -24,11 +24,21 @@ class _SignupScreenState extends State<SignupScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  DateTime? _dateOfBirth;
   // Address fields required by backend
   final _cityController = TextEditingController();
   final _zipCodeController = TextEditingController();
   final _countryController = TextEditingController();
   bool _citySelectedFromPlaces = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Clear any previous auth errors when entering signup screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().clearAllErrors();
+    });
+  }
 
   @override
   void dispose() {
@@ -46,6 +56,12 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _signup(AuthProvider authProvider) async {
+    // Validate date of birth manually since it's not a TextFormField
+    if (_dateOfBirth == null) {
+      setState(() {}); // Trigger rebuild to show validation error
+      return;
+    }
+    
     if (_formKey.currentState?.validate() ?? false) {
       final request = RegisterRequestModel(
         firstName: _firstNameController.text,
@@ -55,8 +71,8 @@ class _SignupScreenState extends State<SignupScreen> {
         phoneNumber: _phoneController.text,
         password: _passwordController.text,
         confirmPassword: _confirmPasswordController.text,
-        dateOfBirth: DateTime.now(), // Default to today, should add date picker in future
-        userType: UserType.tenant,
+        dateOfBirth: _dateOfBirth ?? DateTime.now(),
+        userType: UserType.landlord, // Desktop app is for landlords/owners
         city: _cityController.text,
         zipCode: _zipCodeController.text,
         country: _countryController.text,
@@ -217,6 +233,46 @@ class _SignupScreenState extends State<SignupScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              InkWell(
+                onTap: () async {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().subtract(const Duration(days: 18 * 365)), // Default to 18 years ago
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now().subtract(const Duration(days: 13 * 365)), // At least 13 years old
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _dateOfBirth = picked;
+                    });
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date of Birth *',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
+                  ),
+                  child: Text(
+                    _dateOfBirth == null
+                        ? 'Select date of birth'
+                        : '${_dateOfBirth!.year}-${_dateOfBirth!.month.toString().padLeft(2, '0')}-${_dateOfBirth!.day.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      color: _dateOfBirth == null ? Colors.grey : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Date of Birth validation
+              if (_dateOfBirth == null)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Date of birth is required',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ),
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(labelText: 'Phone Number'),

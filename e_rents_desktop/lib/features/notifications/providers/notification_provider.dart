@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:e_rents_desktop/base/base_provider.dart';
+import 'package:signalr_core/signalr_core.dart';
 
 /// Notification model for desktop app
 class AppNotification {
@@ -91,6 +92,7 @@ class AppNotification {
 /// - Get unread count for badge display
 /// - Mark notifications as read (single or all)
 /// - Delete notifications
+/// - Real-time notifications via SignalR
 class NotificationProvider extends BaseProvider {
   NotificationProvider(super.api);
 
@@ -100,6 +102,11 @@ class NotificationProvider extends BaseProvider {
   bool _hasMore = true;
   int _currentSkip = 0;
   static const int _pageSize = 20;
+
+  // ─── SignalR ───────────────────────────────────────────────────────────────
+  HubConnection? _hub;
+  bool _isRealtimeConnected = false;
+  bool get isRealtimeConnected => _isRealtimeConnected;
 
   // ─── Getters ───────────────────────────────────────────────────────────────
   
@@ -224,7 +231,116 @@ class NotificationProvider extends BaseProvider {
     _unreadCount = 0;
     _hasMore = true;
     _currentSkip = 0;
+    disconnectRealtime();
     notifyListeners();
+  }
+
+  // ─── SignalR Real-time ─────────────────────────────────────────────────────
+
+  /// Connect to SignalR hub for real-time notifications
+  Future<void> connectRealtime() async {
+    if (_hub != null && _isRealtimeConnected) return;
+
+    String buildHubUrl() {
+      final uri = Uri.parse(api.baseUrl);
+      var path = uri.path;
+      if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+      if (path.endsWith('/api')) path = path.substring(0, path.length - 4);
+      final cleanPath = path.isEmpty ? '/' : path;
+      final hub = uri.replace(path: '${cleanPath == '/' ? '' : cleanPath}/chatHub');
+      return hub.toString();
+    }
+
+    try {
+      final token = await api.secureStorageService.getToken();
+      if (token == null) {
+        debugPrint('NotificationProvider: No token available for SignalR connection');
+        return;
+      }
+
+      _hub = HubConnectionBuilder()
+          .withUrl(
+            buildHubUrl(),
+            HttpConnectionOptions(
+              accessTokenFactory: () async => token,
+              transport: HttpTransportType.webSockets,
+            ),
+          )
+          .withAutomaticReconnect()
+          .build();
+
+      _hub!.onclose((error) {
+        debugPrint('NotificationProvider: SignalR connection closed: $error');
+        _isRealtimeConnected = false;
+        notifyListeners();
+      });
+
+      _hub!.onreconnecting((error) {
+        debugPrint('NotificationProvider: SignalR reconnecting: $error');
+        _isRealtimeConnected = false;
+        notifyListeners();
+      });
+
+      _hub!.onreconnected((connectionId) {
+        debugPrint('NotificationProvider: SignalR reconnected: $connectionId');
+        _isRealtimeConnected = true;
+        notifyListeners();
+      });
+
+      await _hub!.start();
+      _isRealtimeConnected = true;
+      debugPrint('NotificationProvider: SignalR connected');
+
+      _setupNotificationListener();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('NotificationProvider: SignalR connection error: $e');
+      _isRealtimeConnected = false;
+    }
+  }
+
+  /// Disconnect from SignalR hub
+  Future<void> disconnectRealtime() async {
+    if (_hub != null) {
+      try {
+        await _hub!.stop();
+      } catch (e) {
+        debugPrint('NotificationProvider: Error disconnecting SignalR: $e');
+      }
+      _hub = null;
+      _isRealtimeConnected = false;
+    }
+  }
+
+  /// Setup listener for real-time notifications
+  void _setupNotificationListener() {
+    final hub = _hub;
+    if (hub == null) return;
+
+    hub.on('ReceiveNotification', (args) {
+      if (args == null || args.isEmpty) return;
+      final data = args.first;
+      if (data is Map) {
+        debugPrint('NotificationProvider: Received real-time notification: $data');
+        
+        final notification = AppNotification(
+          notificationId: data['notificationId'] ?? 0,
+          title: data['title']?.toString(),
+          message: data['message']?.toString(),
+          type: data['type']?.toString(),
+          userId: data['userId'] ?? 0,
+          isRead: data['isRead'] ?? false,
+          createdAt: data['createdAt'] != null 
+              ? DateTime.tryParse(data['createdAt'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+        );
+
+        // Add to the beginning of the list
+        _notifications.insert(0, notification);
+        _unreadCount++;
+        notifyListeners();
+      }
+    });
   }
 
   // ─── Private Methods ───────────────────────────────────────────────────────

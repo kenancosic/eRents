@@ -107,13 +107,41 @@ class InvoicesProvider extends BaseProvider {
 
   /// Confirm Stripe payment was successful (called after Stripe SDK confirmation)
   /// 
+  /// This method calls the backend to verify the payment status with Stripe.
+  /// Returns a map with 'success', 'status', and 'message' keys.
   /// Note: This method doesn't refresh pending invoices automatically.
   /// Call loadPending(currentUserProvider) after this if needed.
-  Future<bool> confirmStripePayment() async {
-    return await executeWithStateForSuccess(() async {
-      // Payment is confirmed by webhook, clear local state
+  Future<Map<String, dynamic>> confirmStripePayment(int paymentId) async {
+    try {
+      final resp = await api.postJson(
+        'payments/stripe/confirm-invoice-payment',
+        {'paymentId': paymentId},
+        authenticated: true,
+      );
+      
+      // Clear local state regardless of result
       _stripeClientSecret = null;
       _stripePaymentIntentId = null;
-    }, errorMessage: 'Failed to confirm invoice payment');
+      notifyListeners();
+      
+      return {
+        'success': resp['success'] == true,
+        'status': resp['status']?.toString() ?? 'unknown',
+        'message': resp['message']?.toString() ?? 'Payment verification completed',
+      };
+    } catch (e, st) {
+      setError(GenericError(message: 'Failed to confirm invoice payment: $e', originalError: e, stackTrace: st));
+      
+      // Clear local state on error too
+      _stripeClientSecret = null;
+      _stripePaymentIntentId = null;
+      notifyListeners();
+      
+      return {
+        'success': false,
+        'status': 'error',
+        'message': 'Failed to verify payment: $e',
+      };
+    }
   }
 }

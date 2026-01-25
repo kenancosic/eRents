@@ -7,6 +7,7 @@ import 'package:e_rents_desktop/presentation/status_pill.dart';
 import 'package:e_rents_desktop/models/booking.dart';
 import 'package:e_rents_desktop/models/lease_extension_request.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
+import 'package:e_rents_desktop/models/payment.dart';
 import 'package:e_rents_desktop/models/enums/booking_status.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -23,12 +24,13 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
   late TabController _tabController;
   final ListController _dailyListController = ListController();
   final ListController _monthlyListController = ListController();
+  final ListController _paymentsListController = ListController();
   final Set<int> _recentlyApprovedTenants = <int>{};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -82,6 +84,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
             Tab(text: 'Daily Rentals'),
             Tab(text: 'Monthly Rentals'),
             Tab(text: 'Extension Requests'),
+            Tab(text: 'Payments'),
           ],
         ),
       ),
@@ -91,6 +94,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
           _buildDailyRentalsTab(context),
           _buildMonthlyRentalsTab(context),
           _buildExtensionRequestsTab(context),
+          _buildPaymentsTab(context),
         ],
       ),
     );
@@ -204,23 +208,42 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 iconData: _getBookingStatusIcon(context.read<RentsProvider>().getTenantBookingStatus(t)),
               ),
               const SizedBox(width: 12),
+              // Show approval confirmation OR action buttons, not both
               if (_recentlyApprovedTenants.contains(t.tenantId))
-                const Chip(
-                  label: Text('Approval sent', style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.green,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.green.shade400),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green.shade700, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Approved',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                MonthlyTenantActions(
+                  tenant: t,
+                  onRefresh: () {
+                    _monthlyListController.refresh();
+                    if (mounted) {
+                      setState(() {
+                        _recentlyApprovedTenants.add(t.tenantId);
+                      });
+                    }
+                  },
                 ),
-              if (_recentlyApprovedTenants.contains(t.tenantId)) const SizedBox(width: 12),
-              MonthlyTenantActions(
-                tenant: t,
-                onRefresh: () {
-                  _monthlyListController.refresh();
-                  if (mounted) {
-                    setState(() {
-                      _recentlyApprovedTenants.add(t.tenantId);
-                    });
-                  }
-                },
-              ),
             ],
           ),
         );
@@ -248,30 +271,41 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                 ),
               ),
               DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_recentlyApprovedTenants.contains(t.tenantId))
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8.0),
-                        child: Chip(
-                          label: Text('Approval sent', style: TextStyle(color: Colors.white)),
-                          backgroundColor: Colors.green,
+                // Show approval confirmation OR action buttons, not both
+                _recentlyApprovedTenants.contains(t.tenantId)
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.green.shade400),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green.shade700, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Approved',
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : MonthlyTenantActions(
+                        tenant: t,
+                        onRefresh: () {
+                          _monthlyListController.refresh();
+                          if (mounted) {
+                            setState(() {
+                              _recentlyApprovedTenants.add(t.tenantId);
+                            });
+                          }
+                        },
                       ),
-                    MonthlyTenantActions(
-                      tenant: t,
-                      onRefresh: () {
-                        _monthlyListController.refresh();
-                        if (mounted) {
-                          setState(() {
-                            _recentlyApprovedTenants.add(t.tenantId);
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
               ),
             ],
           );
@@ -984,4 +1018,245 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Payments Tab - Monthly rent payment status overview
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildPaymentsTab(BuildContext context) {
+    return ListScreen<Payment>(
+      title: '',
+      enablePagination: true,
+      pageSize: 20,
+      inlineSearchBar: false,
+      showFilters: true,
+      filterBuilder: (context, currentFilters, controller) {
+        return _buildPaymentFilterPanel(context, currentFilters, controller);
+      },
+      fetchItems: ({int page = 1, int pageSize = 20, Map<String, dynamic>? filters}) async {
+        final p = context.read<RentsProvider>();
+        await p.getSubscriptionPayments(params: {
+          'page': page,
+          'pageSize': pageSize,
+          ...?filters,
+        });
+        return p.pagedPayments.items;
+      },
+      controller: _paymentsListController,
+      itemBuilder: (context, payment) {
+        final isPaid = payment.paymentStatus == PaymentStatus.completed;
+        final tenantName = payment.tenant?.fullName ?? 'Unknown Tenant';
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: isPaid ? Colors.green.shade100 : Colors.orange.shade100,
+            child: Icon(
+              isPaid ? Icons.check_circle : Icons.pending,
+              color: isPaid ? Colors.green : Colors.orange,
+            ),
+          ),
+          title: Text(tenantName),
+          subtitle: Text(
+            '${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)} • ${AppDateUtils.formatShort(payment.createdAt)}',
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StatusPill(
+                label: payment.paymentStatus?.displayName ?? 'Unknown',
+                backgroundColor: _getPaymentStatusColor(payment.paymentStatus),
+                iconData: _getPaymentStatusIcon(payment.paymentStatus),
+              ),
+              if (!isPaid) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.notifications_active, color: Colors.orange),
+                  tooltip: 'Send Payment Reminder',
+                  onPressed: () => _sendPaymentReminder(context, payment),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+      onItemTap: (Payment p) {},
+      tableColumns: const [
+        DataColumn(label: Text('Tenant')),
+        DataColumn(label: Text('Amount')),
+        DataColumn(label: Text('Invoice Date')),
+        DataColumn(label: Text('Status')),
+        DataColumn(label: Text('Actions')),
+      ],
+      tableRowsBuilder: (ctx, items) {
+        return items.map((payment) {
+          final isPaid = payment.paymentStatus == PaymentStatus.completed;
+          final tenantName = payment.tenant?.fullName ?? 'Unknown Tenant';
+          return DataRow(
+            cells: [
+              DataCell(Text(tenantName)),
+              DataCell(Text('${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)}')),
+              DataCell(Text(AppDateUtils.formatShort(payment.createdAt))),
+              DataCell(
+                StatusPill(
+                  label: payment.paymentStatus?.displayName ?? 'Unknown',
+                  backgroundColor: _getPaymentStatusColor(payment.paymentStatus),
+                  iconData: _getPaymentStatusIcon(payment.paymentStatus),
+                ),
+              ),
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!isPaid)
+                      IconButton(
+                        icon: const Icon(Icons.notifications_active, color: Colors.orange),
+                        tooltip: 'Send Payment Reminder',
+                        onPressed: () => _sendPaymentReminder(context, payment),
+                      ),
+                    if (isPaid)
+                      const Icon(Icons.check_circle, color: Colors.green),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }).toList();
+      },
+    );
+  }
+
+  Widget _buildPaymentFilterPanel(
+    BuildContext context,
+    Map<String, dynamic> currentFilters,
+    FilterController controller,
+  ) {
+    String? selectedStatus = currentFilters['PaymentStatus'] as String?;
+
+    // Bind the state to the controller
+    controller.bind(
+      getFilters: () => {
+        'PaymentStatus': selectedStatus,
+      },
+      resetFields: () {
+        selectedStatus = null;
+      },
+    );
+
+    return StatefulBuilder(builder: (context, setState) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Filter by Status', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('All'),
+                  selected: selectedStatus == null,
+                  onSelected: (_) {
+                    setState(() => selectedStatus = null);
+                  },
+                ),
+                ChoiceChip(
+                  label: const Text('Pending'),
+                  selected: selectedStatus == 'Pending',
+                  onSelected: (_) {
+                    setState(() => selectedStatus = 'Pending');
+                  },
+                ),
+                ChoiceChip(
+                  label: const Text('Completed'),
+                  selected: selectedStatus == 'Completed',
+                  onSelected: (_) {
+                    setState(() => selectedStatus = 'Completed');
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Future<void> _sendPaymentReminder(BuildContext context, Payment payment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Send Payment Reminder'),
+        content: Text(
+          'Send a payment reminder to ${payment.tenant?.fullName ?? 'the tenant'} '
+          'for ${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Send Reminder'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final provider = context.read<RentsProvider>();
+    final result = await provider.sendPaymentReminder(payment.paymentId);
+
+    if (context.mounted) {
+      if (result != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']?.toString() ?? 'Reminder sent successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error ?? 'Failed to send reminder'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Color _getPaymentStatusColor(PaymentStatus? status) {
+    switch (status) {
+      case PaymentStatus.completed:
+        return Colors.green;
+      case PaymentStatus.pending:
+        return Colors.orange;
+      case PaymentStatus.failed:
+        return Colors.red;
+      case PaymentStatus.cancelled:
+        return Colors.grey;
+      case PaymentStatus.refunded:
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getPaymentStatusIcon(PaymentStatus? status) {
+    switch (status) {
+      case PaymentStatus.completed:
+        return Icons.check_circle;
+      case PaymentStatus.pending:
+        return Icons.pending;
+      case PaymentStatus.failed:
+        return Icons.error;
+      case PaymentStatus.cancelled:
+        return Icons.cancel;
+      case PaymentStatus.refunded:
+        return Icons.refresh;
+      default:
+        return Icons.help_outline;
+    }
+  }
 }

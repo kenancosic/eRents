@@ -70,6 +70,13 @@ public sealed class AuthService : IAuthService
 				return null;
 			}
 
+			// Check if email is verified
+			if (!user.IsEmailVerified)
+			{
+				_logger.LogWarning("Login failed: Email not verified for user {UserId}", user.UserId);
+				throw new InvalidOperationException("Please verify your email address before logging in. Check your inbox for the verification code.");
+			}
+
 			_logger.LogInformation("Login successful for user {UserId}", user.UserId);
 
 			// Determine client source from header and generate tokens
@@ -143,6 +150,29 @@ public sealed class AuthService : IAuthService
 			await _context.SaveChangesAsync();
 
 			_logger.LogInformation("User registered successfully with ID: {UserId}", user.UserId);
+
+			// Generate verification code for email verification
+			var verificationCode = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+			user.ResetToken = verificationCode; // reuse ResetToken field to store the code
+			user.ResetTokenExpiration = DateTime.UtcNow.AddHours(24); // Code valid for 24 hours
+			await _context.SaveChangesAsync();
+
+			// Send verification email with the code
+			var emailSubject = "Your eRents verification code";
+			var emailBody =
+				$"Welcome to eRents!\n\n" +
+				$"Your verification code is: {verificationCode}\n\n" +
+				"This code will expire in 24 hours. Please enter this code to verify your email address and complete your registration.";
+
+			await _emailService.SendEmailNotificationAsync(new EmailMessage
+			{
+				Email = request.Email,
+				Subject = emailSubject,
+				Body = emailBody,
+				IsHtml = false
+			});
+
+			_logger.LogInformation("Verification email sent for user {UserId}", user.UserId);
 
 			// Send welcome notification
 			await _notificationService.CreateSystemNotificationAsync(
@@ -241,6 +271,53 @@ public sealed class AuthService : IAuthService
 		catch (Exception ex)
 		{
 			_logger.LogError(ex, "Error verifying reset code for {Email}", email);
+			throw;
+		}
+	}
+
+	public async Task<AuthResponse?> VerifyEmailAsync(string email, string code)
+	{
+		try
+		{
+			_logger.LogInformation("Verifying email for: {Email}", email);
+
+			var user = await _context.Set<User>()
+				.FirstOrDefaultAsync(u => u.Email == email && u.ResetToken == code);
+
+			if (user == null || user.ResetTokenExpiration == null || user.ResetTokenExpiration < DateTime.UtcNow)
+			{
+				_logger.LogWarning("Invalid or expired verification code for email: {Email}", email);
+				return null;
+			}
+
+			// Mark email as verified and clear verification token
+			user.IsEmailVerified = true;
+			user.ResetToken = null;
+			user.ResetTokenExpiration = null;
+
+			await _context.SaveChangesAsync();
+
+			_logger.LogInformation("Email verified successfully for user {UserId}", user.UserId);
+
+			// Generate tokens for automatic login after email verification
+			var clientSource = _httpContextAccessor.HttpContext?.Request?.Headers["Client-Type"].ToString();
+			if (string.IsNullOrWhiteSpace(clientSource)) clientSource = "desktop";
+
+			var accessToken = _jwtService.GenerateAccessToken(user, clientSource);
+			var refreshToken = _jwtService.GenerateRefreshToken();
+			var expiration = _jwtService.GetTokenExpiration();
+
+			return new AuthResponse
+			{
+				AccessToken = accessToken,
+				RefreshToken = refreshToken,
+				ExpiresAt = expiration,
+				User = _mapper.Map<UserInfo>(user)
+			};
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error verifying email for {Email}", email);
 			throw;
 		}
 	}

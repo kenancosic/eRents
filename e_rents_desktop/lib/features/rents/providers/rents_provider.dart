@@ -8,6 +8,7 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/enums/renting_type.dart';
 import 'package:e_rents_desktop/models/tenant.dart';
 import 'package:e_rents_desktop/models/lease_extension_request.dart';
+import 'package:e_rents_desktop/models/payment.dart';
 
 class RentsProvider extends BaseProvider {
   RentsProvider(super.api);
@@ -47,6 +48,11 @@ class RentsProvider extends BaseProvider {
   final Map<int, RentingType> _propertyRentingType = {};
   RentingType? rentingTypeFor(int? propertyId) => propertyId == null ? null : _propertyRentingType[propertyId];
 
+  // Monthly subscription payments for landlord overview
+  PagedResult<Payment> _pagedPayments = PagedResult.empty();
+  PagedResult<Payment> get pagedPayments => _pagedPayments;
+  List<Payment> get payments => _pagedPayments.items;
+
   // ─── Public API ─────────────────────────────────────────────────────────
 
   // Backend expects BookingSearch.Status as enum name (case-insensitive). Map our UI enum to backend casing.
@@ -85,6 +91,11 @@ class RentsProvider extends BaseProvider {
 
   Future<void> getPagedTenants({Map<String, dynamic>? params}) async {
     await _fetchPagedTenants(params: params);
+  }
+
+  /// Fetch subscription payments for landlord's properties (monthly rent invoices)
+  Future<void> getSubscriptionPayments({Map<String, dynamic>? params}) async {
+    await _fetchSubscriptionPayments(params: params);
   }
 
   Future<void> refresh() async {
@@ -505,5 +516,54 @@ class RentsProvider extends BaseProvider {
         // ignore; leave missing
       }
     }
+  }
+
+  Future<PagedResult<Payment>> _fetchSubscriptionPayments({Map<String, dynamic>? params}) async {
+    final qp = {...?params};
+    _page = (qp['page'] as int?) ?? _page;
+    _pageSize = (qp['pageSize'] as int?) ?? _pageSize;
+
+    PagedResult<Payment>? result;
+    final fetchResult = await executeWithState<PagedResult<Payment>>(() async {
+      final query = {
+        'PaymentType': 'SubscriptionPayment',
+        'SortBy': 'createdat',
+        'SortDirection': 'desc',
+        'page': _page,
+        'pageSize': _pageSize,
+        ...qp,
+      };
+      // Backend auto-scopes to landlord's owned properties via PaymentService
+      _pagedPayments = await api.getPagedAndDecode<Payment>(
+        '/Payments${api.buildQueryString(query)}',
+        Payment.fromJson,
+        authenticated: true,
+      );
+      return _pagedPayments;
+    });
+    if (fetchResult != null) {
+      result = fetchResult;
+      notifyListeners();
+    }
+    return result ?? PagedResult.empty();
+  }
+
+  /// Send a payment reminder to a tenant for a pending invoice
+  Future<Map<String, dynamic>?> sendPaymentReminder(int paymentId) async {
+    final result = await executeWithState<Map<String, dynamic>>(() async {
+      final response = await api.post(
+        '/Payments/$paymentId/send-reminder',
+        {},
+        authenticated: true,
+      );
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+        throw Exception(errorJson['error'] ?? 'Failed to send reminder');
+      }
+    });
+    return result;
   }
 }
