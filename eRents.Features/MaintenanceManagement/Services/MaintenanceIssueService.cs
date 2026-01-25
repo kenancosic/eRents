@@ -273,6 +273,10 @@ namespace eRents.Features.MaintenanceManagement.Services
                 // Force tenant-originated flags regardless of client payload
                 request.IsTenantComplaint = true;
                 request.ReportedByUserId = currentUserId.Value;
+                
+                // Also set on entity since it's already mapped from request
+                entity.IsTenantComplaint = true;
+                entity.ReportedByUserId = currentUserId.Value;
 
                 // Only allow creation if the current user is a tenant of this property (active booking/lease)
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -311,6 +315,10 @@ namespace eRents.Features.MaintenanceManagement.Services
                 {
                     throw new KeyNotFoundException("Property not found");
                 }
+
+                // Set ReportedByUserId from current user for desktop clients
+                entity.ReportedByUserId = ownerId.Value;
+                entity.IsTenantComplaint = false; // Owner-reported issue
             }
         }
 

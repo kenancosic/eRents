@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:e_rents_desktop/widgets/error_handling/error_banner.dart';
 
 /// A generic form screen template that provides common functionality for creating
 /// and editing items with comprehensive validation and submission lifecycle management.
@@ -221,15 +222,12 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
       child: Column(
         children: [
           if (_errorMessage.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).colorScheme.errorContainer,
-              child: Text(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: ErrorBanner.fromString(
                 _errorMessage,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer,
-                ),
+                onRetry: _isSubmitting ? null : _onSubmit,
+                onDismiss: () => setState(() => _errorMessage = ''),
               ),
             ),
           Expanded(

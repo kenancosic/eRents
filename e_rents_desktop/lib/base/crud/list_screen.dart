@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/custom_search_bar.dart';
+import 'package:e_rents_desktop/widgets/error_handling/error_banner.dart';
 
 // Internal notifier to isolate table-only rebuilds
 class FilterController {
@@ -543,19 +544,18 @@ class _TableContentState<T> extends State<_TableContent<T>> {
 
     if (widget.errorMessage.isNotEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              widget.errorMessage,
-              style: const TextStyle(color: Colors.red),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: ErrorBanner.fromString(
+                widget.errorMessage,
+                onRetry: widget.onRefresh,
+                onDismiss: null, // No dismiss in full-screen error state
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: widget.onRefresh,
-              child: const Text('Retry'),
-            ),
-          ],
+          ),
         ),
       );
     }

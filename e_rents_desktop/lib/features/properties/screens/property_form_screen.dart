@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_status_chip.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_renting_type_dropdown.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_unavailable_date_fields.dart';
+import 'package:e_rents_desktop/widgets/error_handling/error_handling.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   final int? propertyId;
@@ -85,7 +86,10 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
     final propertyProvider = Provider.of<PropertyProvider>(context, listen: false);
     
-    return FormScreen<Property>(
+    // Wrap with error consumer to show provider-level errors (e.g., FK violations, server errors)
+    return ProviderErrorConsumer<PropertyProvider>(
+      onRetry: () => propertyProvider.clearError(),
+      child: FormScreen<Property>(
       title: widget.propertyId == null ? 'Add Property' : 'Edit Property',
       initialItem: _initialProperty,
       createNewItem: () => Property(
@@ -190,6 +194,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           SnackBar(content: Text(error)),
         );
       },
+      ),
     );
   }
 }

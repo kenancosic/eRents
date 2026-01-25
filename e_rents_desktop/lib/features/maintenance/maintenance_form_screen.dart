@@ -11,6 +11,7 @@ import 'package:e_rents_desktop/models/property.dart';
 import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as picker;
 import 'package:e_rents_desktop/base/crud/form_screen.dart';
+import 'package:e_rents_desktop/widgets/error_handling/error_handling.dart';
 
 class MaintenanceFormScreen extends StatefulWidget {
   final int? propertyId;
@@ -133,7 +134,10 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
   @override
   Widget build(BuildContext context) {
     final initial = widget.issue;
-    return FormScreen<MaintenanceIssue>(
+    // Wrap with error consumer to show provider-level errors (e.g., FK violations)
+    return ProviderErrorConsumer<MaintenanceProvider>(
+      onRetry: () => _provider.clearError(),
+      child: FormScreen<MaintenanceIssue>(
       title: initial == null ? 'New Maintenance Issue' : 'Edit Maintenance Issue',
       initialItem: initial,
       autovalidate: false,
@@ -339,6 +343,7 @@ class _MaintenanceFormScreenState extends State<MaintenanceFormScreen> {
           },
         );
       },
+      ),
     );
   }
 }
