@@ -254,7 +254,7 @@ namespace eRents.Features.PropertyManagement.Services
 			};
 		}
 
-		protected override Task BeforeCreateAsync(Property entity, PropertyRequest request)
+		protected override async Task BeforeCreateAsync(Property entity, PropertyRequest request)
 		{
 			// Desktop clients: only Owner/Landlord can create properties
 			if (CurrentUser?.IsDesktop == true)
@@ -279,7 +279,15 @@ namespace eRents.Features.PropertyManagement.Services
 					throw new InvalidOperationException("Unable to determine owner. Please log in again.");
 				}
 			}
-			return Task.CompletedTask;
+
+			// Handle amenity assignments
+			if (request.AmenityIds != null && request.AmenityIds.Count > 0)
+			{
+				var amenities = await Context.Set<Amenity>()
+					.Where(a => request.AmenityIds.Contains(a.AmenityId))
+					.ToListAsync();
+				entity.Amenities = amenities;
+			}
 		}
 
 		/// <summary>
@@ -319,7 +327,7 @@ namespace eRents.Features.PropertyManagement.Services
 
 			return cards;
 		}
-		protected override Task BeforeUpdateAsync(Property entity, PropertyRequest request)
+		protected override async Task BeforeUpdateAsync(Property entity, PropertyRequest request)
 		{
 			// Enforce ownership on updates for desktop owner/landlord
 			if (CurrentUser?.IsDesktop == true &&
@@ -333,7 +341,25 @@ namespace eRents.Features.PropertyManagement.Services
 					throw new KeyNotFoundException($"Property with id {entity.PropertyId} not found");
 				}
 			}
-			return Task.CompletedTask;
+
+			// Handle amenity assignments - clear and reassign
+			if (request.AmenityIds != null)
+			{
+				// Load existing amenities to ensure change tracking works
+				await Context.Entry(entity).Collection(p => p.Amenities).LoadAsync();
+				entity.Amenities.Clear();
+
+				if (request.AmenityIds.Count > 0)
+				{
+					var amenities = await Context.Set<Amenity>()
+						.Where(a => request.AmenityIds.Contains(a.AmenityId))
+						.ToListAsync();
+					foreach (var amenity in amenities)
+					{
+						entity.Amenities.Add(amenity);
+					}
+				}
+			}
 		}
 
 		protected override async Task BeforeDeleteAsync(Property entity)
@@ -371,6 +397,34 @@ namespace eRents.Features.PropertyManagement.Services
 			if (hasActiveTenants)
 			{
 				throw new InvalidOperationException("Cannot delete property with active tenants. Please end all tenancies first.");
+			}
+
+			// Delete related records that can be safely cascade-deleted
+			// Delete images associated with the property
+			var images = await Context.Set<Image>()
+				.Where(i => i.PropertyId == entity.PropertyId)
+				.ToListAsync();
+			if (images.Any())
+			{
+				Context.Set<Image>().RemoveRange(images);
+			}
+
+			// Delete saved property records
+			var savedProperties = await Context.Set<UserSavedProperty>()
+				.Where(sp => sp.PropertyId == entity.PropertyId)
+				.ToListAsync();
+			if (savedProperties.Any())
+			{
+				Context.Set<UserSavedProperty>().RemoveRange(savedProperties);
+			}
+
+			// Delete reviews for the property
+			var reviews = await Context.Set<Review>()
+				.Where(r => r.PropertyId == entity.PropertyId)
+				.ToListAsync();
+			if (reviews.Any())
+			{
+				Context.Set<Review>().RemoveRange(reviews);
 			}
 		}
 

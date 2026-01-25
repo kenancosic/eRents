@@ -29,4 +29,7 @@ public sealed class PropertyRequest
     public string? PostalCode { get; set; }
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+
+    // Amenity IDs for property features
+    public List<int>? AmenityIds { get; set; }
 }

@@ -386,4 +386,10 @@ public sealed class AuthService : IAuthService
 				.AnyAsync(u => u.Email == email);
 		return !exists;
 	}
+
+	public async Task<Domain.Models.User?> GetUserByEmailAsync(string email)
+	{
+		return await _context.Set<User>()
+			.FirstOrDefaultAsync(u => u.Email == email);
+	}
 }

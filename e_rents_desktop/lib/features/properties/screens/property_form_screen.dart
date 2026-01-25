@@ -7,6 +7,7 @@ import 'package:e_rents_desktop/base/crud/form_screen.dart';
 import 'package:e_rents_desktop/features/properties/providers/property_provider.dart';
 import 'package:e_rents_desktop/widgets/inputs/image_picker_input.dart' as img_input;
 import 'package:e_rents_desktop/widgets/inputs/address_input.dart';
+import 'package:e_rents_desktop/widgets/amenity_manager.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_status_chip.dart';
@@ -217,6 +218,9 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
   late TextEditingController _cityController;
   late TextEditingController _postalCodeController;
   late TextEditingController _countryController;
+  
+  // Amenities
+  List<int> _selectedAmenityIds = [];
 
   @override
   void initState() {
@@ -235,6 +239,9 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
     _cityController = TextEditingController(text: widget.property?.address?.city ?? '');
     _postalCodeController = TextEditingController(text: widget.property?.address?.postalCode ?? '');
     _countryController = TextEditingController(text: widget.property?.address?.country ?? '');
+    
+    // Initialize amenity IDs
+    _selectedAmenityIds = List.from(widget.property?.amenityIds ?? []);
   }
 
   @override
@@ -348,6 +355,14 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
               });
             },
           ),
+          const SizedBox(height: 16),
+          AmenityManager(
+            mode: AmenityManagerMode.edit,
+            initialAmenityIds: _selectedAmenityIds,
+            onAmenityIdsChanged: (ids) {
+              _selectedAmenityIds = ids;
+            },
+          ),
         ],
       ),
     );
@@ -355,7 +370,8 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
 
   // Check if property has an active tenant
   Future<bool> _hasTenant(Property? property) async {
-    if (property == null) return false;
+    // For new properties (id=0) or null, there's no tenant
+    if (property == null || property.propertyId == 0) return false;
     
     try {
       final provider = Provider.of<PropertyProvider>(context, listen: false);
@@ -395,7 +411,7 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
       dateAdded: base?.dateAdded,
       averageRating: base?.averageRating,
       imageIds: base?.imageIds ?? const [],
-      amenityIds: base?.amenityIds ?? const [],
+      amenityIds: _selectedAmenityIds,
       address: address,
       propertyType: base?.propertyType,
       rentingType: _selectedRentingType,

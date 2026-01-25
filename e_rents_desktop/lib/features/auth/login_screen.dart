@@ -63,6 +63,13 @@ class _LoginViewState extends State<LoginView> {
       lookup.getRentingTypes();
       lookup.getPropertyStatuses();
       lookup.getBookingStatuses();
+    } else if (!ok) {
+      // Check if login failed due to unverified email
+      final error = authProvider.error;
+      if (error != null && error.contains('verify your email')) {
+        // Redirect to verification screen with the email
+        context.push('/verification?email=${_emailController.text.trim()}');
+      }
     }
     // Navigation is handled by the root router based on auth state
   }

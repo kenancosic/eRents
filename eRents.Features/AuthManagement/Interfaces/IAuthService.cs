@@ -53,4 +53,9 @@ public interface IAuthService
     /// Validates if email is available for registration
     /// </summary>
     Task<bool> IsEmailAvailableAsync(string email);
+
+    /// <summary>
+    /// Gets user by email address (for testing purposes)
+    /// </summary>
+    Task<Domain.Models.User?> GetUserByEmailAsync(string email);
 }

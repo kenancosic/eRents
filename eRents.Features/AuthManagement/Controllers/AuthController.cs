@@ -235,6 +235,46 @@ public sealed class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Gets verification code for testing (TEMPORARY - REMOVE IN PRODUCTION)
+    /// </summary>
+    [HttpGet("verification-code/{email}")]
+    [AllowAnonymous]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetVerificationCode(string email)
+    {
+        try
+        {
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
+
+            if (user.IsEmailVerified)
+            {
+                return BadRequest(new { message = "Email already verified" });
+            }
+
+            if (string.IsNullOrEmpty(user.ResetToken) || user.ResetTokenExpiration < DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "No valid verification code found" });
+            }
+
+            return Ok(new { 
+                email = email,
+                verificationCode = user.ResetToken,
+                expiresAt = user.ResetTokenExpiration
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving verification code for email: {Email}", email);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Refreshes JWT access token using refresh token
     /// </summary>
     [HttpPost("refresh-token")]

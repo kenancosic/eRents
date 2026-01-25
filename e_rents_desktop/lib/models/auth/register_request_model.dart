@@ -61,7 +61,7 @@ class RegisterRequestModel {
         'password': password,
         'confirmPassword': confirmPassword,
         'dateOfBirth': '${dateOfBirth.year.toString().padLeft(4, '0')}-${dateOfBirth.month.toString().padLeft(2, '0')}-${dateOfBirth.day.toString().padLeft(2, '0')}',
-        'userType': userType.name,
+        'userType': userType.value,
         'city': city,
         'zipCode': zipCode,
         'country': country,

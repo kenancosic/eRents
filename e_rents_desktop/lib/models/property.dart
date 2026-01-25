@@ -137,6 +137,8 @@ class Property {
         'postalCode': address?.postalCode,
         'latitude': address?.latitude,
         'longitude': address?.longitude,
+        // Amenity IDs for property features
+        'amenityIds': amenityIds.isNotEmpty ? amenityIds : null,
       }..removeWhere((k, v) => v == null);
 
   // Legacy compatibility getters
