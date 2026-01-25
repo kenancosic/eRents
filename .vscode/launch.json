@@ -63,6 +63,26 @@
                 "ASPNETCORE_ENVIRONMENT": "Production",
                 "ASPNETCORE_URLS": "https://localhost:5001;http://localhost:5000"
             }
+        },
+        {
+            "name": "eRents.RabbitMQMicroservice",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/eRents.RabbitMQMicroservice/bin/Debug/net8.0/eRents.RabbitMQMicroservice.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/eRents.RabbitMQMicroservice",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Backend + Microservice",
+            "configurations": ["eRents.WebApi", "eRents.RabbitMQMicroservice"]
         }
     ]
 }
