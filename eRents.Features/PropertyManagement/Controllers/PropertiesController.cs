@@ -125,6 +125,46 @@ public class PropertiesController : CrudController<Property, PropertyRequest, Pr
     
 
     /// <summary>
+    /// Get similar properties for a specific property based on ML predictions
+    /// </summary>
+    /// <param name="id">The property ID to find similar properties for</param>
+    /// <param name="count">The number of similar properties to return (default: 4)</param>
+    /// <returns>A list of similar properties</returns>
+    [HttpGet("{id}/similar")]
+    public async Task<ActionResult<List<PropertyCardResponse>>> GetSimilarProperties(int id, [FromQuery] int count = 4)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var recommendations = await _recommendationService.GetSimilarPropertiesAsync(userId.Value, id, count);
+            var ids = recommendations.Select(r => r.PropertyId).Distinct().ToList();
+
+            if (ids.Count == 0)
+            {
+                return Ok(new List<PropertyCardResponse>());
+            }
+
+            // Project to card DTOs
+            var cards = await _propertyService.GetPropertyCardsByIdsAsync(ids);
+
+            // Preserve original recommendation order
+            var order = ids.Select((propId, idx) => new { propId, idx }).ToDictionary(x => x.propId, x => x.idx);
+            var sorted = cards
+                .OrderBy(c => order[(int)c.GetType().GetProperty("PropertyId")!.GetValue(c)!])
+                .ToList();
+
+            return Ok(sorted);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting similar properties for property {PropertyId}", id);
+            return StatusCode(500, new { Message = "An error occurred while getting similar properties", Error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Checks if a property is available for the specified date range
     /// </summary>
     [HttpGet("{id}/check-availability")]

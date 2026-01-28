@@ -81,6 +81,67 @@ namespace eRents.Features.PropertyManagement.Services
 			return recommendations;
 		}
 
+		public async Task<List<PropertyRecommendation>> GetSimilarPropertiesAsync(int userId, int propertyId, int count = 4)
+		{
+			// Ensure model is trained
+			if (_model == null)
+			{
+				await TrainModelAsync();
+			}
+
+			// Get the current property to find similar ones
+			var currentProperty = await _context.Properties.FindAsync(propertyId);
+			if (currentProperty == null)
+			{
+				return new List<PropertyRecommendation>();
+			}
+
+			var predictions = new List<(int PropertyId, float Score)>();
+
+			// Get available properties excluding the current one
+			var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+			var properties = await _context.Properties
+				.Include(p => p.Bookings)
+				.Where(p => p.PropertyId != propertyId) // Exclude current property
+				.Where(p => p.Status == PropertyStatusEnum.Available)
+				.Where(p =>
+					p.RentingType != RentalType.Monthly ||
+					!p.Bookings.Any(b =>
+						b.Status != BookingStatusEnum.Cancelled &&
+						(b.EndDate.HasValue ? b.EndDate.Value >= today : b.StartDate >= today)))
+				.ToListAsync();
+
+			foreach (var property in properties)
+			{
+				var prediction = await GetPredictionAsync(userId, property.PropertyId);
+				predictions.Add((property.PropertyId, prediction));
+			}
+
+			// Sort by predicted rating and take top count
+			var topPredictions = predictions
+				.OrderByDescending(p => p.Score)
+				.Take(count)
+				.ToList();
+
+			// Convert to PropertyRecommendation objects
+			var recommendations = new List<PropertyRecommendation>();
+			foreach (var (propId, score) in topPredictions)
+			{
+				var property = properties.First(p => p.PropertyId == propId);
+				recommendations.Add(new PropertyRecommendation
+				{
+					PropertyId = property.PropertyId,
+					PropertyName = property.Name,
+					PropertyDescription = property.Description ?? "",
+					Price = property.Price,
+					Currency = property.Currency,
+					PredictedRating = score
+				});
+			}
+
+			return recommendations;
+		}
+
 		public async Task<float> GetPredictionAsync(int userId, int propertyId)
 		{
 			if (_model == null)

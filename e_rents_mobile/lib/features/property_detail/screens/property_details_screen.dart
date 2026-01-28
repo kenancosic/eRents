@@ -26,6 +26,7 @@ import 'package:e_rents_mobile/core/enums/booking_enums.dart';
 import 'package:e_rents_mobile/features/saved/saved_provider.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/checkout/checkout_utils.dart';
+import 'package:e_rents_mobile/core/widgets/property_card.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -97,6 +98,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
         provider.fetchReviews(widget.propertyId);
         // Always fetch current user's bookings for this property to enable UI gating (e.g., reviews eligibility)
         provider.fetchBookings(widget.propertyId);
+        // Fetch ML-based similar properties recommendations
+        provider.fetchSimilarProperties(widget.propertyId);
         
         // If a bookingId was passed, fetch the booking and determine view context
         if (widget.bookingId != null) {
@@ -338,6 +341,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
                   viewContext: _effectiveViewContext,
                   booking: effectiveBooking,
                 ),
+                const SizedBox(height: 16),
+                const Divider(color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 16),
+                // Similar properties section (ML-based recommendations)
+                _buildSimilarPropertiesSection(provider),
                 const SizedBox(height: 80), // Padding for bottom nav
               ],
             ),
@@ -793,6 +801,75 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> with Single
           ],
         ),
       ),
+    );
+  }
+
+  /// Build the similar properties section using ML-based recommendations
+  Widget _buildSimilarPropertiesSection(PropertyRentalProvider provider) {
+    // Don't show section if loading or empty
+    if (provider.isFetchingSimilar) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Similar Properties',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Center(child: CircularProgressIndicator()),
+        ],
+      );
+    }
+
+    if (provider.similarProperties.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Similar Properties',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Based on your preferences',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 220,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: provider.similarProperties.length,
+            itemBuilder: (context, index) {
+              final card = provider.similarProperties[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  right: index < provider.similarProperties.length - 1 ? 12 : 0,
+                ),
+                child: SizedBox(
+                  width: 180,
+                  child: PropertyCard(
+                    layout: PropertyCardLayout.vertical,
+                    property: card,
+                    onTap: () {
+                      context.push('/property/${card.propertyId}');
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

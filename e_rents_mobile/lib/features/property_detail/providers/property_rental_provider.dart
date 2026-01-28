@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
+import 'package:e_rents_mobile/core/models/property_card_model.dart';
 import 'package:e_rents_mobile/core/models/review.dart';
 import 'package:e_rents_mobile/core/models/user.dart';
 import 'package:e_rents_mobile/core/models/amenity.dart';
@@ -51,6 +52,10 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   List<LeaseExtensionRequestResponse> _extensionRequests = [];
   bool _isFetchingExtensions = false;
 
+  // Similar properties (ML-based recommendations)
+  List<PropertyCardModel> _similarProperties = [];
+  bool _isFetchingSimilar = false;
+
   // ─── Getters ────────────────────────────────────────────────────────────
   
   // Daily rental getters
@@ -78,6 +83,10 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
   // Lease extension getters
   List<LeaseExtensionRequestResponse> get extensionRequests => _extensionRequests;
   bool get isFetchingExtensions => _isFetchingExtensions;
+
+  // Similar properties getters
+  List<PropertyCardModel> get similarProperties => _similarProperties;
+  bool get isFetchingSimilar => _isFetchingSimilar;
   
   /// Get the most recent pending extension request for display
   LeaseExtensionRequestResponse? get pendingExtensionRequest {
@@ -269,6 +278,28 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
     if (bookings != null) {
       _allBookings = bookings;
       _bookings = List.from(_allBookings);
+    }
+  }
+
+  /// Fetch similar properties based on ML recommendations
+  Future<void> fetchSimilarProperties(int propertyId, {int count = 4}) async {
+    if (_isFetchingSimilar) return;
+    _isFetchingSimilar = true;
+    notifyListeners();
+
+    try {
+      final similar = await api.getListAndDecode(
+        '/properties/$propertyId/similar?count=$count',
+        PropertyCardModel.fromJson,
+        authenticated: true,
+      );
+      _similarProperties = similar;
+    } catch (e) {
+      debugPrint('Failed to fetch similar properties: $e');
+      _similarProperties = [];
+    } finally {
+      _isFetchingSimilar = false;
+      notifyListeners();
     }
   }
 
