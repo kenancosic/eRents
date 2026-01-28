@@ -167,9 +167,9 @@ namespace eRents.Features.PropertyManagement.Services
 
 			if (ratings.Count == 0)
 			{
-				// No data to train on, create a dummy model
-				CreateDummyModel();
-				return;
+				// No review data available - cannot train model
+				// Ensure database has review data before using recommendations
+				throw new InvalidOperationException("No review data available for training recommendation model. Please populate the Reviews table with user ratings.");
 			}
 
 			// Load data into IDataView
@@ -214,33 +214,6 @@ namespace eRents.Features.PropertyManagement.Services
 			}
 
 			return ratings;
-		}
-
-		private void CreateDummyModel()
-		{
-			// Create a simple dummy model for cases where we have no training data
-			// This is a placeholder - in a real implementation, you might want to use
-			// a different approach like popularity-based recommendations
-			var dummyData = new List<UserPropertyRating>
-			{
-				new UserPropertyRating { UserId = 1, PropertyId = 1, Rating = 3.0f }
-			};
-
-			var data = _mlContext.Data.LoadFromEnumerable(dummyData);
-			var pipeline = _mlContext.Transforms.Conversion.MapValueToKey(nameof(UserPropertyRating.UserId), nameof(UserPropertyRating.UserId))
-				.Append(_mlContext.Transforms.Conversion.MapValueToKey(nameof(UserPropertyRating.PropertyId), nameof(UserPropertyRating.PropertyId)))
-				.Append(_mlContext.Recommendation().Trainers.MatrixFactorization(new MatrixFactorizationTrainer.Options
-				{
-					MatrixColumnIndexColumnName = nameof(UserPropertyRating.UserId),
-					MatrixRowIndexColumnName = nameof(UserPropertyRating.PropertyId),
-					LabelColumnName = nameof(UserPropertyRating.Rating),
-					NumberOfIterations = 1
-				}));
-
-			lock (_lock)
-			{
-				_model = pipeline.Fit(data);
-			}
 		}
 	}
 
