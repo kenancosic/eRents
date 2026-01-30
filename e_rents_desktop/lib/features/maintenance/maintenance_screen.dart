@@ -13,13 +13,21 @@ import 'package:e_rents_desktop/presentation/badges.dart';
 import 'package:e_rents_desktop/base/crud/list_screen.dart';
 import 'package:e_rents_desktop/presentation/status_pill.dart';
 
-class MaintenanceScreen extends StatelessWidget {
+class MaintenanceScreen extends StatefulWidget {
   const MaintenanceScreen({super.key});
+
+  @override
+  State<MaintenanceScreen> createState() => _MaintenanceScreenState();
+}
+
+class _MaintenanceScreenState extends State<MaintenanceScreen> {
+  // ListController must be preserved across rebuilds to maintain refresh binding
+  final ListController _listController = ListController();
 
   @override
   Widget build(BuildContext context) {
     final provider = context.read<MaintenanceProvider>();
-    final listController = ListController();
+    final listController = _listController;
 
     return ListScreen<MaintenanceIssue>(
       title: 'Maintenance Issues',
@@ -55,7 +63,11 @@ class MaintenanceScreen extends StatelessWidget {
                     IconButton(
                       tooltip: 'Details',
                       icon: const Icon(Icons.visibility),
-                      onPressed: () => ctx.push('/maintenance/${issue.maintenanceIssueId}'),
+                      onPressed: () async {
+                        // Wait for details screen to close, then refresh list
+                        await ctx.push('/maintenance/${issue.maintenanceIssueId}');
+                        await listController.refresh();
+                      },
                     ),
                     PopupMenuButton<MaintenanceIssueStatus>(
                       tooltip: 'Change status',

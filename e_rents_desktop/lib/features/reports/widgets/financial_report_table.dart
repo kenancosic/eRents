@@ -50,36 +50,76 @@ class FinancialReportTable extends StatelessWidget {
   Widget _buildSummaryCards(BuildContext context) {
     final currencyFormat = NumberFormat.currency(locale: 'en_US', symbol: '', decimalDigits: 2);
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            'Total Revenue',
-            '${currencyFormat.format(reportSummary.totalRevenue)} USD',
-            Icons.monetization_on_outlined,
-            Colors.green,
-          ),
+        // First row - Revenue stats
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Total Revenue',
+                '${currencyFormat.format(reportSummary.totalRevenue)} USD',
+                Icons.monetization_on_outlined,
+                Colors.green,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Total Bookings',
+                reportSummary.totalBookings.toString(),
+                Icons.book_online_outlined,
+                Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Average Booking Value',
+                '${currencyFormat.format(reportSummary.averageBookingValue)} USD',
+                Icons.trending_up,
+                Colors.orange,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            'Total Bookings',
-            reportSummary.totalBookings.toString(),
-            Icons.book_online_outlined,
-            Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
-            context,
-            'Average Booking Value',
-            '${currencyFormat.format(reportSummary.averageBookingValue)} USD',
-            Icons.trending_up,
-            Colors.orange,
-          ),
+        const SizedBox(height: 16),
+        // Second row - Cancellation/Refund stats
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Cancellations',
+                reportSummary.totalCancellations.toString(),
+                Icons.cancel_outlined,
+                Colors.red,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Total Refunds',
+                '${currencyFormat.format(reportSummary.totalRefunds)} USD',
+                Icons.money_off_outlined,
+                Colors.red[700]!,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildSummaryCard(
+                context,
+                'Net Revenue',
+                '${currencyFormat.format(reportSummary.netRevenue)} USD',
+                Icons.account_balance_wallet_outlined,
+                Colors.teal,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -99,7 +139,7 @@ class FinancialReportTable extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1),
             child: Icon(icon, color: color),
           ),
           title: Text(
@@ -185,7 +225,10 @@ class FinancialReportTable extends StatelessWidget {
         DataColumn(label: Text('Start Date')),
         DataColumn(label: Text('End Date')),
         DataColumn(label: Text('Rental Type')),
+        DataColumn(label: Text('Status')),
         DataColumn(label: Text('Total Price'), numeric: true),
+        DataColumn(label: Text('Refund'), numeric: true),
+        DataColumn(label: Text('Net'), numeric: true),
       ],
       rows: _buildDataRows(groupedReports, dateFormat, currencyFormat),
     );
@@ -208,7 +251,7 @@ class FinancialReportTable extends StatelessWidget {
         if (firstReport.groupLabel != null) {
           rows.add(DataRow(
             color: WidgetStateProperty.resolveWith(
-              (states) => Colors.blue.withOpacity(0.05),
+              (states) => Colors.blue.withValues(alpha: 0.05),
             ),
             cells: [
               DataCell(
@@ -230,8 +273,9 @@ class FinancialReportTable extends StatelessWidget {
                 ),
               ),
               const DataCell(Text('')), // Empty cells for alignment
-              const DataCell(Text('')), // Empty cells for alignment
-              const DataCell(Text('')), // Empty cells for alignment
+              const DataCell(Text('')),
+              const DataCell(Text('')),
+              const DataCell(Text('')),
               DataCell(
                 Text(
                   '${currencyFormat.format(firstReport.groupTotal ?? 0)} USD',
@@ -241,6 +285,8 @@ class FinancialReportTable extends StatelessWidget {
                   ),
                 ),
               ),
+              const DataCell(Text('')),
+              const DataCell(Text('')),
             ],
           ));
         }
@@ -248,7 +294,13 @@ class FinancialReportTable extends StatelessWidget {
 
       // Add individual report rows
       for (final report in reports) {
+        final isCancelled = report.isCancelled;
+        final statusColor = _getStatusColor(report.status);
+        
         rows.add(DataRow(
+          color: isCancelled 
+              ? WidgetStateProperty.resolveWith((states) => Colors.red.withValues(alpha: 0.05))
+              : null,
           cells: [
             DataCell(Text(report.propertyName)),
             DataCell(Text(report.tenantName)),
@@ -260,9 +312,46 @@ class FinancialReportTable extends StatelessWidget {
             ),
             DataCell(Text(report.rentalType.displayName)),
             DataCell(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  report.status.displayName,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
               Text(
                 '${currencyFormat.format(report.totalPrice)} ${report.currency}',
                 style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+            DataCell(
+              Text(
+                report.wasRefunded 
+                    ? '-${currencyFormat.format(report.refundAmount)}'
+                    : '-',
+                style: TextStyle(
+                  color: report.wasRefunded ? Colors.red : Colors.grey,
+                  fontWeight: report.wasRefunded ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
+            ),
+            DataCell(
+              Text(
+                currencyFormat.format(report.netRevenue),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: report.netRevenue < 0 ? Colors.red : Colors.teal,
+                ),
               ),
             ),
           ],
@@ -349,5 +438,22 @@ class FinancialReportTable extends StatelessWidget {
               child: Text(pageNumber.toString()),
             ),
     );
+  }
+
+  Color _getStatusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.completed:
+        return Colors.green;
+      case BookingStatus.cancelled:
+        return Colors.red;
+      case BookingStatus.active:
+        return Colors.blue;
+      case BookingStatus.upcoming:
+        return Colors.orange;
+      case BookingStatus.pending:
+        return Colors.amber;
+      case BookingStatus.approved:
+        return Colors.teal;
+    }
   }
 }

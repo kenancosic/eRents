@@ -352,40 +352,19 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
 
             const SizedBox(height: 24),
 
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: CustomOutlinedButton(
-                    label: 'Save Draft',
-                    icon: Icons.save_outlined,
-                    isLoading: false,
-                    width: OutlinedButtonWidth.expanded,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Draft saved successfully'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                  ),
+            // Submit button
+            SizedBox(
+              width: double.infinity,
+              child: CustomButton(
+                icon: Icons.send,
+                isLoading: _isSubmitting,
+                onPressed: _isSubmitting ? () {} : _submitReport,
+                label: Text(
+                  _isSubmitting ? 'Submitting...' : 'Submit Report',
+                  style: const TextStyle(color: Colors.white),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: CustomButton(
-                    icon: Icons.send,
-                    isLoading: _isSubmitting,
-                    onPressed: _isSubmitting ? () {} : _submitReport,
-                    label: Text(
-                      _isSubmitting ? 'Submitting...' : 'Submit Report',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    width: ButtonWidth.expanded,
-                  ),
-                ),
-              ],
+                width: ButtonWidth.expanded,
+              ),
             ),
           ],
         ),

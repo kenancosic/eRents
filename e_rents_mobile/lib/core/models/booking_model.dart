@@ -84,6 +84,10 @@ class Booking {
   bool get isPaymentPending => paymentStatus?.toLowerCase() == 'pending';
   bool get isPaymentFailed => paymentStatus?.toLowerCase() == 'failed';
 
+  /// Returns true if this booking can request a lease extension.
+  /// Only subscription-based (monthly) bookings with a defined end date can request extensions.
+  bool get canRequestExtension => isSubscription && endDate != null;
+
   /// Build image URL from propertyCoverImageId or fallback to existing fields
   static String? _buildImageUrl(Map<String, dynamic> json) {
     // First try to use propertyCoverImageId from backend

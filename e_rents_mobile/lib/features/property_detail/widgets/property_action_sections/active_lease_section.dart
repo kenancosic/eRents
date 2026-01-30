@@ -7,6 +7,7 @@ import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_outlined_button.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/extend_booking_dialog.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/cancel_stay_dialog.dart';
 import 'package:e_rents_mobile/features/property_detail/providers/property_rental_provider.dart';
 
 /// Section shown when user has an active lease (currently residing)
@@ -134,7 +135,7 @@ class ActiveLeaseSection extends StatelessWidget {
             Row(
               children: [
                 // Extension request - only for subscription-based bookings with end date
-                if (_canRequestExtension())
+                if (booking.canRequestExtension)
                   Expanded(
                     child: CustomOutlinedButton(
                       label: 'Request Lease Extension',
@@ -144,7 +145,7 @@ class ActiveLeaseSection extends StatelessWidget {
                       width: OutlinedButtonWidth.expanded,
                     ),
                   ),
-                if (_canRequestExtension())
+                if (booking.canRequestExtension)
                   const SizedBox(width: 12),
 
                 // Contact landlord
@@ -158,6 +159,20 @@ class ActiveLeaseSection extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            // Terminate lease button for monthly rentals
+            SizedBox(
+              width: double.infinity,
+              child: CustomOutlinedButton(
+                label: 'Terminate Lease',
+                icon: Icons.cancel_outlined,
+                onPressed: () => _showTerminateLeaseDialog(context),
+                isLoading: false,
+                width: OutlinedButtonWidth.expanded,
+                textColor: Colors.red[600] ?? Colors.red,
+                borderColor: Colors.red[300] ?? Colors.red,
+              ),
             ),
           ],
         ),
@@ -193,20 +208,6 @@ class ActiveLeaseSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Check if the booking is eligible for extension requests.
-  /// Only subscription-based bookings with an end date can request extensions.
-  bool _canRequestExtension() {
-    // Must be a subscription-based monthly booking
-    if (!booking.isSubscription) {
-      return false;
-    }
-    // Must have an end date to extend (open-ended leases don't need extension)
-    if (booking.endDate == null) {
-      return false;
-    }
-    return true;
   }
 
   bool _isMinimumStayApproaching() {
@@ -245,5 +246,25 @@ class ActiveLeaseSection extends StatelessWidget {
   void _contactLandlord(BuildContext context) {
     // Use go() to switch to Chat tab properly instead of pushing onto current stack
     context.go('/chat');
+  }
+
+  void _showTerminateLeaseDialog(BuildContext context) {
+    // Capture the router before showing dialog to avoid context issues
+    final router = GoRouter.of(context);
+    final provider = context.read<PropertyRentalProvider>();
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => CancelStayDialog(
+        booking: booking,
+        onCancellationConfirmed: () {
+          // Refresh the bookings to get updated data
+          provider.getBookingDetails(booking.bookingId);
+
+          // Navigate back to home screen
+          router.go('/');
+        },
+      ),
+    );
   }
 }

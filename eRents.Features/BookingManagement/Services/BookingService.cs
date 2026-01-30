@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.Core;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Features.PaymentManagement.Interfaces;
 using eRents.Features.PaymentManagement.Services;
 using eRents.Features.Shared.Services;
 
@@ -18,6 +19,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 {
     private readonly ISubscriptionService? _subscriptionService;
     private readonly INotificationService? _notificationService;
+    private readonly IStripePaymentService? _stripePaymentService;
 
     public BookingService(
         ERentsContext context,
@@ -25,11 +27,13 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         ILogger<BookingService> logger,
         ICurrentUserService? currentUserService = null,
         ISubscriptionService? subscriptionService = null,
-        INotificationService? notificationService = null)
+        INotificationService? notificationService = null,
+        IStripePaymentService? stripePaymentService = null)
         : base(context, mapper, logger, currentUserService)
     {
         _subscriptionService = subscriptionService;
         _notificationService = notificationService;
+        _stripePaymentService = stripePaymentService;
     }
 
     public async Task<BookingResponse> ExtendBookingAsync(int bookingId, BookingExtensionRequest request)
@@ -455,6 +459,24 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             throw new InvalidOperationException("Cannot create booking: property has an active tenancy overlapping the requested dates.");
         }
 
+        // Prevent same user from having multiple non-cancelled bookings on the same property
+        // This catches cases where Tenant record doesn't exist yet (pending approval) or for daily rentals
+        var hasExistingActiveBooking = await Context.Set<Booking>()
+            .AsNoTracking()
+            .Where(b => b.PropertyId == request.PropertyId)
+            .Where(b => b.UserId == entity.UserId)
+            .Where(b => b.Status != Domain.Models.Enums.BookingStatusEnum.Cancelled)
+            .Where(b => b.Status != Domain.Models.Enums.BookingStatusEnum.Completed)
+            // Check for date overlap
+            .Where(b => b.StartDate <= bookingEnd)
+            .Where(b => !b.EndDate.HasValue || b.EndDate.Value >= bookingStart)
+            .AnyAsync();
+
+        if (hasExistingActiveBooking)
+        {
+            throw new InvalidOperationException("You already have an active or upcoming booking for this property during this period.");
+        }
+
         // For monthly rentals, create a subscription if the property is set to monthly renting type
         var bookingProperty = await Context.Set<Property>()
             .AsNoTracking()
@@ -515,13 +537,55 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         {
             var eligibleForRefund = today <= entity.StartDate.AddDays(-3);
             
-            // TODO: Implement Stripe refund processing through Stripe API
-            // For now, manual refund processing is required
-            if (eligibleForRefund)
+            // Process Stripe refund if eligible and payment exists
+            if (eligibleForRefund && _stripePaymentService != null)
+            {
+                // Find the completed payment for this booking
+                var payment = await Context.Set<Domain.Models.Payment>()
+                    .AsNoTracking()
+                    .Where(p => p.BookingId == bookingId && p.PaymentStatus == "Completed" && p.PaymentType != "Refund")
+                    .FirstOrDefaultAsync();
+
+                if (payment != null)
+                {
+                    try
+                    {
+                        var refundResult = await _stripePaymentService.ProcessRefundAsync(
+                            payment.PaymentId, 
+                            amount: null, // Full refund
+                            reason: "requested_by_customer");
+                        
+                        if (!string.IsNullOrEmpty(refundResult.ErrorMessage))
+                        {
+                            Logger.LogWarning(
+                                "Refund processing failed for booking {BookingId}: {Error}. Manual refund may be required.",
+                                bookingId, refundResult.ErrorMessage);
+                        }
+                        else
+                        {
+                            Logger.LogInformation(
+                                "Refund {RefundId} processed for booking {BookingId}, amount: {Amount}",
+                                refundResult.RefundId, bookingId, refundResult.Amount);
+                        }
+                    }
+                    catch (Exception refundEx)
+                    {
+                        Logger.LogError(refundEx, 
+                            "Failed to process refund for booking {BookingId}. Manual refund required.", bookingId);
+                    }
+                }
+                else
+                {
+                    Logger.LogInformation(
+                        "Booking {BookingId} is eligible for refund but no completed payment found.",
+                        bookingId);
+                }
+            }
+            else if (eligibleForRefund)
             {
                 Logger.LogInformation(
-                    "Booking {BookingId} is eligible for refund. Manual Stripe refund processing required for payment {PaymentRef}",
-                    bookingId, entity.PaymentReference);
+                    "Booking {BookingId} is eligible for refund but Stripe service unavailable. Manual processing required.",
+                    bookingId);
             }
 
             entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
@@ -547,6 +611,21 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
             entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
             entity.UpdatedAt = DateTime.UtcNow;
+
+            // Update the Tenant entity for before-stay cancellation
+            var tenantBeforeStart = await Context.Set<Tenant>()
+                .FirstOrDefaultAsync(t => t.UserId == entity.UserId && t.PropertyId == entity.PropertyId);
+            if (tenantBeforeStart != null)
+            {
+                tenantBeforeStart.TenantStatus = Domain.Models.Enums.TenantStatusEnum.LeaseEnded;
+            }
+
+            // Update property status back to Available
+            if (entity.Property != null)
+            {
+                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Available;
+            }
+
             await Context.SaveChangesAsync();
 
             // Send cancellation notification (eligible for refund since before start)
@@ -565,8 +644,9 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
             if (cancelDate < today) cancelDate = today;
 
-            // Update booking end date (contract)
+            // Update booking end date (contract) and set status to Cancelled
             entity.EndDate = cancelDate;
+            entity.Status = Domain.Models.Enums.BookingStatusEnum.Cancelled;
             entity.UpdatedAt = DateTime.UtcNow;
 
             // Ensure one additional month charge by extending subscription end date minimally by one month
@@ -583,6 +663,34 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                 {
                     entity.Subscription.EndDate = extraEnd;
                 }
+                
+                // Cancel the subscription as well
+                entity.Subscription.Status = Domain.Models.Enums.SubscriptionStatusEnum.Cancelled;
+            }
+
+            // Auto-cancel any pending lease extension requests for this booking
+            var pendingExtensions = await Context.Set<Domain.Models.LeaseExtensionRequest>()
+                .Where(e => e.BookingId == bookingId && e.Status == Domain.Models.Enums.LeaseExtensionStatusEnum.Pending)
+                .ToListAsync();
+            foreach (var ext in pendingExtensions)
+            {
+                ext.Status = Domain.Models.Enums.LeaseExtensionStatusEnum.Cancelled;
+                ext.RespondedAt = DateTime.UtcNow;
+            }
+
+            // Update the Tenant entity to reflect lease termination
+            var tenant = await Context.Set<Tenant>()
+                .FirstOrDefaultAsync(t => t.UserId == entity.UserId && t.PropertyId == entity.PropertyId);
+            if (tenant != null)
+            {
+                tenant.TenantStatus = Domain.Models.Enums.TenantStatusEnum.LeaseEnded;
+                tenant.LeaseEndDate = cancelDate;
+            }
+
+            // Update property status back to Available
+            if (entity.Property != null)
+            {
+                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Available;
             }
 
             await Context.SaveChangesAsync();

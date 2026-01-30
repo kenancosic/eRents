@@ -15,6 +15,11 @@ public class FinancialReportResponse
     public string Currency { get; set; } = "USD";
     public BookingStatusEnum Status { get; set; }
     
+    // Cancellation/Refund fields
+    public decimal RefundAmount { get; set; }
+    public bool WasRefunded => RefundAmount > 0;
+    public decimal NetRevenue => TotalPrice - RefundAmount;
+    
     // Grouping fields (populated when grouped)
     public string? GroupKey { get; set; }
     public string? GroupLabel { get; set; }
@@ -32,4 +37,9 @@ public class FinancialReportSummary
     public int TotalPages { get; set; }
     public int CurrentPage { get; set; }
     public int PageSize { get; set; }
+    
+    // Cancellation/Refund summary
+    public int TotalCancellations { get; set; }
+    public decimal TotalRefunds { get; set; }
+    public decimal NetRevenue { get; set; }
 }

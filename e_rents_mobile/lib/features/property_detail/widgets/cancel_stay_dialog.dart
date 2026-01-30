@@ -28,6 +28,14 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
   bool _includeDate = false;
   DateTime? _selectedDate;
 
+  /// Returns true if this is a monthly subscription booking AND the stay has already started (in-stay).
+  /// Only in-stay monthly bookings need a cancellation date picker.
+  bool get _isMonthlyInStay {
+    final now = DateTime.now();
+    final hasStarted = widget.booking.startDate.isBefore(now);
+    return widget.booking.isSubscription && hasStarted;
+  }
+
   @override
   void dispose() {
     _confirmationController.dispose();
@@ -229,59 +237,66 @@ class _CancelStayDialogState extends State<CancelStayDialog> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      '• Daily: Full refund if cancelled at least 3 days before check-in.\n'
-                      '• Monthly: Before start – free; In-stay – contract end is adjusted and the following month remains due.\n'
-                      '• This action cannot be undone.',
-                      style: TextStyle(fontSize: 14),
+                    Text(
+                      widget.booking.isSubscription
+                          ? '• Before start – free cancellation.\n'
+                            '• In-stay – contract end is adjusted and the following month remains due.\n'
+                            '• This action cannot be undone.'
+                          : '• Full refund if cancelled at least 3 days before check-in.\n'
+                            '• No refund for cancellations within 3 days of check-in.\n'
+                            '• This action cannot be undone.',
+                      style: const TextStyle(fontSize: 14),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Optional cancellation date (for in-stay monthly)
-              Row(
-                children: [
-                  Checkbox(
-                    value: _includeDate,
-                    onChanged: (v) => setState(() => _includeDate = v ?? false),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Specify cancellation date (for in-stay monthly leases).',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-              if (_includeDate)
+              // Optional cancellation date (only for in-stay monthly leases)
+              // Show only if: booking is subscription AND stay has started (in-stay)
+              if (_isMonthlyInStay) ...[
                 Row(
                   children: [
-                    Text(
-                      _selectedDate == null
-                          ? 'No date selected'
-                          : DateFormat('yyyy-MM-dd').format(_selectedDate!),
+                    Checkbox(
+                      value: _includeDate,
+                      onChanged: (v) => setState(() => _includeDate = v ?? false),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () async {
-                        final now = DateTime.now();
-                        final first = now;
-                        final last = widget.booking.endDate ?? now.add(const Duration(days: 365));
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: now,
-                          firstDate: first,
-                          lastDate: last,
-                        );
-                        if (picked != null) setState(() => _selectedDate = picked);
-                      },
-                      child: const Text('Pick date'),
+                    const Expanded(
+                      child: Text(
+                        'Specify lease termination date',
+                        style: TextStyle(fontSize: 14),
+                      ),
                     ),
                   ],
                 ),
-              const SizedBox(height: 8),
+                if (_includeDate)
+                  Row(
+                    children: [
+                      Text(
+                        _selectedDate == null
+                            ? 'No date selected'
+                            : DateFormat('yyyy-MM-dd').format(_selectedDate!),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () async {
+                          final now = DateTime.now();
+                          final first = now;
+                          final last = widget.booking.endDate ?? now.add(const Duration(days: 365));
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: now,
+                            firstDate: first,
+                            lastDate: last,
+                          );
+                          if (picked != null) setState(() => _selectedDate = picked);
+                        },
+                        child: const Text('Pick date'),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 8),
+              ],
 
               // Confirmation field
               const Text(

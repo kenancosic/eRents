@@ -42,14 +42,16 @@ public class FinancialReportService : BaseReadService<Booking, FinancialReportRe
             return new FinancialReportSummary();
         }
 
-        // Build base query using Core BaseReadService functionality
+        // Build base query - include Cancelled bookings in addition to Completed/Active
         var query = Context.Set<Booking>().AsNoTracking()
             .Include(b => b.Property)
             .Include(b => b.User)
             .Where(b => userProperties.Contains(b.PropertyId))
             .Where(b => b.StartDate >= DateOnly.FromDateTime(request.StartDate))
             .Where(b => b.StartDate <= DateOnly.FromDateTime(request.EndDate))
-            .Where(b => b.Status == BookingStatusEnum.Completed || b.Status == BookingStatusEnum.Active);
+            .Where(b => b.Status == BookingStatusEnum.Completed || 
+                       b.Status == BookingStatusEnum.Active ||
+                       b.Status == BookingStatusEnum.Cancelled);
 
         // Apply additional filters
         query = AddFilter(query, request);
@@ -66,10 +68,26 @@ public class FinancialReportService : BaseReadService<Booking, FinancialReportRe
         // Get total count for pagination
         var totalCount = await query.CountAsync();
         
-        // Apply pagination
-        var bookings = await query
+        // Apply pagination and get booking IDs first
+        var paginatedBookingIds = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .Select(b => b.BookingId)
+            .ToListAsync();
+
+        // Fetch refund amounts for these bookings from Payment table
+        // Note: Refund amounts are stored as negative values, so we use Math.Abs() for display
+        var refundsByBooking = await Context.Set<Payment>()
+            .AsNoTracking()
+            .Where(p => paginatedBookingIds.Contains(p.BookingId ?? 0))
+            .Where(p => p.PaymentType == "Refund" && p.PaymentStatus == "Completed")
+            .GroupBy(p => p.BookingId)
+            .Select(g => new { BookingId = g.Key, RefundAmount = Math.Abs(g.Sum(p => p.Amount)) })
+            .ToDictionaryAsync(x => x.BookingId ?? 0, x => x.RefundAmount);
+
+        // Fetch booking details with refund info
+        var bookings = await query
+            .Where(b => paginatedBookingIds.Contains(b.BookingId))
             .Select(b => new FinancialReportResponse
             {
                 BookingId = b.BookingId,
@@ -80,26 +98,48 @@ public class FinancialReportService : BaseReadService<Booking, FinancialReportRe
                 RentalType = b.Property.RentingType,
                 TotalPrice = b.TotalPrice,
                 Currency = "USD",
-                Status = b.Status
+                Status = b.Status,
+                RefundAmount = 0 // Will be populated below
             })
             .ToListAsync();
+
+        // Apply refund amounts to bookings
+        // For cancelled bookings without a Refund payment record, use TotalPrice as refund
+        // This handles cases where Stripe was disabled or manual refunds were processed
+        foreach (var booking in bookings)
+        {
+            if (refundsByBooking.TryGetValue(booking.BookingId, out var refundAmount))
+            {
+                booking.RefundAmount = refundAmount;
+            }
+            else if (booking.Status == BookingStatusEnum.Cancelled)
+            {
+                // Cancelled bookings without a Refund payment record are assumed to be fully refunded
+                // This ensures cancelled revenue is properly deducted from reports
+                booking.RefundAmount = booking.TotalPrice;
+            }
+        }
 
         // Apply grouping if requested
         var groupedReports = ApplyGrouping(bookings, request.GroupBy);
 
         // Calculate summary statistics
         var totalRevenue = bookings.Sum(b => b.TotalPrice);
+        var totalRefunds = bookings.Sum(b => b.RefundAmount);
+        var netRevenue = totalRevenue - totalRefunds;
         var totalBookings = bookings.Count;
-        var averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+        var totalCancellations = bookings.Count(b => b.Status == BookingStatusEnum.Cancelled);
+        var activeBookings = bookings.Where(b => b.Status != BookingStatusEnum.Cancelled).ToList();
+        var averageBookingValue = activeBookings.Any() ? activeBookings.Sum(b => b.NetRevenue) / activeBookings.Count : 0;
 
-        // Calculate group totals
+        // Calculate group totals (using net revenue)
         var groupTotals = new Dictionary<string, decimal>();
         if (request.GroupBy.HasValue && request.GroupBy != FinancialReportGroupBy.None)
         {
             groupTotals = groupedReports
                 .Where(r => !string.IsNullOrEmpty(r.GroupKey))
                 .GroupBy(r => r.GroupKey!)
-                .ToDictionary(g => g.Key, g => g.Sum(r => r.TotalPrice));
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.NetRevenue));
         }
 
         return new FinancialReportSummary
@@ -111,7 +151,10 @@ public class FinancialReportService : BaseReadService<Booking, FinancialReportRe
             GroupTotals = groupTotals,
             TotalPages = (int)Math.Ceiling((double)totalCount / request.PageSize),
             CurrentPage = request.Page,
-            PageSize = request.PageSize
+            PageSize = request.PageSize,
+            TotalCancellations = totalCancellations,
+            TotalRefunds = totalRefunds,
+            NetRevenue = netRevenue
         };
     }
 

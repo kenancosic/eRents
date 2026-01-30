@@ -53,37 +53,64 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 			var bookings = new List<Booking>();
 			var tenants = new List<Tenant>();
 
-			// Create booking for mobile tenant
-			var booking1 = new Booking
-			{
-				PropertyId = property.PropertyId,
-				UserId = tenant.UserId,
-				StartDate = today.AddMonths(-1),
-				EndDate = today.AddMonths(5),
-				TotalPrice = Math.Max(1m, property.Price) * 6,
-				Status = BookingStatusEnum.Active,
-				PaymentStatus = "Paid",
-				PaymentMethod = "Stripe",
-				Currency = property.Currency ?? "USD",
-				IsSubscription = true // Monthly rental
-			};
-			bookings.Add(booking1);
+			// Track user+property combinations we're adding in this batch to prevent duplicates
+			var addedBookings = new HashSet<(int UserId, int PropertyId)>();
 
-			// Link tenant record for the first booking
-			var tenancy1 = new Tenant
+			// Helper to check if an active/upcoming booking already exists for user+property
+			// Checks BOTH the database AND the in-memory batch being built
+			async Task<bool> HasActiveBooking(int userId, int propertyId)
 			{
-				UserId = tenant.UserId,
-				PropertyId = property.PropertyId,
-				LeaseStartDate = booking1.StartDate,
-				LeaseEndDate = booking1.EndDate,
-				TenantStatus = TenantStatusEnum.Active
-			};
-			tenants.Add(tenancy1);
+				// Check in-memory batch first
+				if (addedBookings.Contains((userId, propertyId)))
+					return true;
+
+				// Then check database
+				return await context.Bookings.AnyAsync(b =>
+					b.UserId == userId &&
+					b.PropertyId == propertyId &&
+					b.Status != BookingStatusEnum.Cancelled &&
+					b.Status != BookingStatusEnum.Completed);
+			}
+
+			// Create booking for mobile tenant (only if none exists)
+			if (!await HasActiveBooking(tenant.UserId, property.PropertyId))
+			{
+				var booking1 = new Booking
+				{
+					PropertyId = property.PropertyId,
+					UserId = tenant.UserId,
+					StartDate = today.AddMonths(-1),
+					EndDate = today.AddMonths(5),
+					TotalPrice = Math.Max(1m, property.Price) * 6,
+					Status = BookingStatusEnum.Active,
+					PaymentStatus = "Paid",
+					PaymentMethod = "Stripe",
+					Currency = property.Currency ?? "USD",
+					IsSubscription = true // Monthly rental
+				};
+				bookings.Add(booking1);
+				addedBookings.Add((tenant.UserId, property.PropertyId));
+
+				// Link tenant record for the first booking
+				var existingTenancy1 = await context.Tenants.FirstOrDefaultAsync(t => t.UserId == tenant.UserId && t.PropertyId == property.PropertyId);
+				if (existingTenancy1 == null)
+				{
+					var tenancy1 = new Tenant
+					{
+						UserId = tenant.UserId,
+						PropertyId = property.PropertyId,
+						LeaseStartDate = booking1.StartDate,
+						LeaseEndDate = booking1.EndDate,
+						TenantStatus = TenantStatusEnum.Active
+					};
+					tenants.Add(tenancy1);
+				}
+			}
 
 			// Payments will be created AFTER bookings are saved (to get generated BookingIds)
 
 			// Create additional bookings for BH users if we have enough properties
-			if (properties.Count > 1 && tenantSarajevo != null)
+			if (properties.Count > 1 && tenantSarajevo != null && !await HasActiveBooking(tenantSarajevo.UserId, properties[1].PropertyId))
 			{
 				var property2 = properties[1];
 				var booking2 = new Booking
@@ -100,21 +127,26 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 					IsSubscription = true
 				};
 				bookings.Add(booking2);
+				addedBookings.Add((tenantSarajevo.UserId, property2.PropertyId));
 
-				var tenancy2 = new Tenant
+				var existingTenancy2 = await context.Tenants.FirstOrDefaultAsync(t => t.UserId == tenantSarajevo.UserId && t.PropertyId == property2.PropertyId);
+				if (existingTenancy2 == null)
 				{
-					UserId = tenantSarajevo.UserId,
-					PropertyId = property2.PropertyId,
-					LeaseStartDate = booking2.StartDate,
-					LeaseEndDate = booking2.EndDate,
-					TenantStatus = TenantStatusEnum.Active
-				};
-				tenants.Add(tenancy2);
+					var tenancy2 = new Tenant
+					{
+						UserId = tenantSarajevo.UserId,
+						PropertyId = property2.PropertyId,
+						LeaseStartDate = booking2.StartDate,
+						LeaseEndDate = booking2.EndDate,
+						TenantStatus = TenantStatusEnum.Active
+					};
+					tenants.Add(tenancy2);
+				}
 
 				// Payment for booking2 will be created AFTER bookings are saved
 			}
 
-			if (properties.Count > 2 && tenantMostar != null)
+			if (properties.Count > 2 && tenantMostar != null && !await HasActiveBooking(tenantMostar.UserId, properties[2].PropertyId))
 			{
 				var property3 = properties[2];
 				var booking3 = new Booking
@@ -131,17 +163,22 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 					IsSubscription = true
 				};
 				bookings.Add(booking3);
+				addedBookings.Add((tenantMostar.UserId, property3.PropertyId));
 
 				// Upcoming booking - tenant status is Active for confirmed bookings
-				var tenancy3 = new Tenant
+				var existingTenancy3 = await context.Tenants.FirstOrDefaultAsync(t => t.UserId == tenantMostar.UserId && t.PropertyId == property3.PropertyId);
+				if (existingTenancy3 == null)
 				{
-					UserId = tenantMostar.UserId,
-					PropertyId = property3.PropertyId,
-					LeaseStartDate = booking3.StartDate,
-					LeaseEndDate = booking3.EndDate,
-					TenantStatus = TenantStatusEnum.Active
-				};
-				tenants.Add(tenancy3);
+					var tenancy3 = new Tenant
+					{
+						UserId = tenantMostar.UserId,
+						PropertyId = property3.PropertyId,
+						LeaseStartDate = booking3.StartDate,
+						LeaseEndDate = booking3.EndDate,
+						TenantStatus = TenantStatusEnum.Active
+					};
+					tenants.Add(tenancy3);
+				}
 			}
 
 			// Create active monthly subscription booking for desktop owner's property
@@ -151,7 +188,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 				var desktopMonthlyProperty = properties.FirstOrDefault(p => 
 					p.OwnerId == desktopOwner.UserId && p.RentingType == RentalType.Monthly);
 				
-				if (desktopMonthlyProperty != null)
+				if (desktopMonthlyProperty != null && !await HasActiveBooking(tenant.UserId, desktopMonthlyProperty.PropertyId))
 				{
 					var subscriptionBooking = new Booking
 					{
@@ -166,17 +203,28 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 						IsSubscription = true // Required for lease extension requests
 					};
 					bookings.Add(subscriptionBooking);
+					addedBookings.Add((tenant.UserId, desktopMonthlyProperty.PropertyId));
 
-					var subscriptionTenancy = new Tenant
+					var existingSubscriptionTenancy = await context.Tenants.FirstOrDefaultAsync(t => t.UserId == tenant.UserId && t.PropertyId == desktopMonthlyProperty.PropertyId);
+					if (existingSubscriptionTenancy == null)
 					{
-						UserId = tenant.UserId,
-						PropertyId = desktopMonthlyProperty.PropertyId,
-						LeaseStartDate = subscriptionBooking.StartDate,
-						LeaseEndDate = subscriptionBooking.EndDate,
-						TenantStatus = TenantStatusEnum.Active
-					};
-					tenants.Add(subscriptionTenancy);
+						var subscriptionTenancy = new Tenant
+						{
+							UserId = tenant.UserId,
+							PropertyId = desktopMonthlyProperty.PropertyId,
+							LeaseStartDate = subscriptionBooking.StartDate,
+							LeaseEndDate = subscriptionBooking.EndDate,
+							TenantStatus = TenantStatusEnum.Active
+						};
+						tenants.Add(subscriptionTenancy);
+					}
 				}
+			}
+
+			if (bookings.Count == 0)
+			{
+				logger?.LogInformation("[{Seeder}] No new bookings to add (all already exist).", Name);
+				return;
 			}
 
 			await context.Bookings.AddRangeAsync(bookings);
@@ -184,22 +232,26 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 			await context.SaveChangesAsync();
 
 			// Now that BookingIds exist, create payments safely
-			// Link tenant record for payments
-			var tenant1Record = tenants.FirstOrDefault(t => t.UserId == tenant.UserId && t.PropertyId == property.PropertyId);
 			var payments = new List<Payment>();
-			var monthly = Math.Max(1m, property.Price);
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, TenantId = tenant1Record?.TenantId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
-			payments.Add(new Payment { PropertyId = property.PropertyId, BookingId = booking1.BookingId, TenantId = tenant1Record?.TenantId, Amount = monthly, Currency = booking1.Currency, PaymentMethod = "Stripe", PaymentStatus = "Pending", PaymentType = "BookingPayment" });
 
-			if (properties.Count > 1 && tenantSarajevo != null)
+			// Create payments for each booking added
+			foreach (var booking in bookings)
 			{
-				var property2 = properties[1]; // same as above
-				var booking2 = bookings.Skip(1).FirstOrDefault();
-				var tenant2Record = tenants.FirstOrDefault(t => t.UserId == tenantSarajevo.UserId && t.PropertyId == property2.PropertyId);
-				if (booking2 != null)
-				{
-					payments.Add(new Payment { PropertyId = property2.PropertyId, BookingId = booking2.BookingId, TenantId = tenant2Record?.TenantId, Amount = Math.Max(1m, property2.Price), Currency = booking2.Currency, PaymentMethod = "Stripe", PaymentStatus = "Completed", PaymentType = "BookingPayment" });
-				}
+				var tenantRecord = tenants.FirstOrDefault(t => t.UserId == booking.UserId && t.PropertyId == booking.PropertyId);
+				var bookingProperty = properties.FirstOrDefault(p => p.PropertyId == booking.PropertyId);
+				var monthly = Math.Max(1m, bookingProperty?.Price ?? 1m);
+
+				payments.Add(new Payment 
+				{ 
+					PropertyId = booking.PropertyId, 
+					BookingId = booking.BookingId, 
+					TenantId = tenantRecord?.TenantId, 
+					Amount = monthly, 
+					Currency = booking.Currency, 
+					PaymentMethod = "Stripe", 
+					PaymentStatus = "Completed", 
+					PaymentType = "BookingPayment" 
+				});
 			}
 
 			if (payments.Count > 0)

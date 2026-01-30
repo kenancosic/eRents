@@ -8,6 +8,7 @@ import 'package:e_rents_mobile/features/property_detail/widgets/property_action_
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/active_lease_section.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/upcoming_booking_section.dart';
 import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/pending_approval_section.dart';
+import 'package:e_rents_mobile/features/property_detail/widgets/property_action_sections/past_booking_section.dart';
 
 class PropertyActionFactory {
   static Widget createActionSection({
@@ -49,8 +50,14 @@ class PropertyActionFactory {
         );
 
       case ViewContext.pastBooking:
-        // For past bookings, maybe just show a summary or nothing
-        return const SizedBox.shrink();
+        // For past bookings (completed/cancelled), show summary and allow rebooking
+        if (booking == null) {
+          return BrowsePropertySection(property: property);
+        }
+        return PastBookingSection(
+          property: property,
+          booking: booking,
+        );
 
       case ViewContext.maintenance:
         // If viewing in maintenance context, show relevant options

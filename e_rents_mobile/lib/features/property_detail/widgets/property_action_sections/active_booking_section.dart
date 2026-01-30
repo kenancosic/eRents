@@ -115,7 +115,7 @@ class ActiveBookingSection extends StatelessWidget {
         Column(
           children: [
             // Extension button - only for subscription-based monthly bookings
-            if (_canRequestExtension())
+            if (booking.canRequestExtension)
               SizedBox(
                 width: double.infinity,
                 child: CustomButton(
@@ -126,7 +126,7 @@ class ActiveBookingSection extends StatelessWidget {
                   width: ButtonWidth.expanded,
                 ),
               ),
-            if (_canRequestExtension()) const SizedBox(height: 12),
+            if (booking.canRequestExtension) const SizedBox(height: 12),
 
             // Secondary actions row
             Row(
@@ -186,20 +186,6 @@ class ActiveBookingSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Check if the booking is eligible for extension requests.
-  /// Only monthly subscription-based bookings can request extensions.
-  bool _canRequestExtension() {
-    // Must be a subscription-based monthly booking
-    if (!booking.isSubscription) {
-      return false;
-    }
-    // Must have an end date to extend
-    if (booking.endDate == null) {
-      return false;
-    }
-    return true;
   }
 
   void _extendStay(BuildContext context) {

@@ -59,6 +59,9 @@ WORKDIR /app
 # Copy published application
 COPY --from=publish /app/publish .
 
+# Copy SeedImages folder for database seeding
+COPY --from=build /src/eRents.WebApi/SeedImages ./SeedImages
+
 # Set ownership and permissions
 RUN chown -R appuser:appuser /app
 USER appuser

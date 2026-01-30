@@ -99,8 +99,11 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildBookingInfoCard(booking, property),
-                const SizedBox(height: 24),
-                _buildExtensionSection(booking),
+                // Only show extension section for monthly/subscription bookings
+                if (booking.isSubscription) ...[
+                  const SizedBox(height: 24),
+                  _buildExtensionSection(booking),
+                ],
               ],
             ),
           );
@@ -176,20 +179,19 @@ class _ManageBookingScreenState extends State<ManageBookingScreen> {
 
   Widget _buildExtensionSection(Booking booking) {
     // Extension is only available for active subscription-based monthly bookings with an end date
-    final isSubscriptionBooking = booking.isSubscription;
-    final canExtend = booking.status == BookingStatus.active && 
-                     booking.endDate != null &&
-                     booking.endDate!.isAfter(DateTime.now()) &&
-                     isSubscriptionBooking;
+    // Use Booking.canRequestExtension for base eligibility, plus additional active status check
+    final canExtend = booking.canRequestExtension && 
+                     booking.status == BookingStatus.active && 
+                     booking.endDate!.isAfter(DateTime.now());
 
     // Determine the reason if extension is not available
     String unavailableReason;
-    if (!isSubscriptionBooking) {
+    if (!booking.isSubscription) {
       unavailableReason = 'Only monthly subscription-based bookings can be extended.';
-    } else if (booking.status != BookingStatus.active) {
-      unavailableReason = 'Only active bookings can be extended.';
     } else if (booking.endDate == null) {
       unavailableReason = 'Open-ended bookings do not require extension.';
+    } else if (booking.status != BookingStatus.active) {
+      unavailableReason = 'Only active bookings can be extended.';
     } else {
       unavailableReason = 'Your booking has already ended.';
     }

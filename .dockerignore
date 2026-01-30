@@ -28,14 +28,25 @@ README.md
 e_rents_desktop/
 e_rents_mobile/
 
-# Exclude documentation and images
+# Exclude documentation (but NOT SeedImages)
 docs/
+
+# Include SeedImages folder and all its contents (needed for seeding)
+!eRents.WebApi/SeedImages/
+!eRents.WebApi/SeedImages/**/*
+
+# Exclude image types globally, but NOT in SeedImages folder
 **/*.jpg
 **/*.jpeg
 **/*.png
 **/*.gif
 **/*.svg
 **/*.pdf
+
+# Ensure SeedImages contents are not excluded by the above patterns
+!eRents.WebApi/SeedImages/**/*.jpg
+!eRents.WebApi/SeedImages/**/*.jpeg
+!eRents.WebApi/SeedImages/**/*.png
 
 # Exclude IDE and OS files
 **/.idea/

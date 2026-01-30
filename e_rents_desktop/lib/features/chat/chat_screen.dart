@@ -28,7 +28,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       setState(() {
         _currentUserId = authProvider.currentUser?.id;
@@ -45,6 +45,11 @@ class _ChatScreenState extends State<ChatScreen> {
         }
         return;
       }
+      
+      // Connect to SignalR for real-time messaging
+      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      await chatProvider.connectRealtime();
+      log.info("ChatScreen: SignalR connected: ${chatProvider.isRealtimeConnected}");
     });
   }
 

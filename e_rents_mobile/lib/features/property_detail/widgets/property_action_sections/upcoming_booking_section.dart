@@ -85,23 +85,26 @@ class UpcomingBookingSection extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // Action buttons
+        // Action buttons - different options for daily vs monthly bookings
         Wrap(
           alignment: WrapAlignment.center,
           runAlignment: WrapAlignment.center,
           spacing: 12,
           runSpacing: 12,
           children: [
-            CustomOutlinedButton(
-              label: 'Manage Booking',
-              icon: Icons.edit_calendar,
-              onPressed: () => _navigateToManageBooking(context),
-              isLoading: false,
-              width: OutlinedButtonWidth.flexible,
-              size: OutlinedButtonSize.compact,
-            ),
+            // Manage Booking only makes sense for monthly/subscription bookings
+            // Daily bookings show all info in this section already
+            if (booking.isSubscription)
+              CustomOutlinedButton(
+                label: 'Manage Booking',
+                icon: Icons.edit_calendar,
+                onPressed: () => _navigateToManageBooking(context),
+                isLoading: false,
+                width: OutlinedButtonWidth.flexible,
+                size: OutlinedButtonSize.compact,
+              ),
             // Only show extension button for monthly subscription-based bookings
-            if (_canRequestExtension())
+            if (booking.canRequestExtension)
               CustomOutlinedButton(
                 label: 'Request Lease Extension',
                 icon: Icons.update,
@@ -153,20 +156,6 @@ class UpcomingBookingSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Check if the booking is eligible for extension requests.
-  /// Only monthly subscription-based bookings can request extensions.
-  bool _canRequestExtension() {
-    // Must be a subscription-based monthly booking
-    if (!booking.isSubscription) {
-      return false;
-    }
-    // Must have an end date to extend (open-ended leases handled differently)
-    if (booking.endDate == null) {
-      return false;
-    }
-    return true;
   }
 
   void _navigateToManageBooking(BuildContext context) {

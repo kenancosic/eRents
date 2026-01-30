@@ -10,8 +10,10 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Seeds minimal property images. Adds a single cover image for first few properties
-    /// that don't already have images. Uses small in-memory placeholder bytes.
+    /// Seeds property and maintenance images by iterating through all available images in SeedImages folders.
+    /// Distributes property images across all properties (up to 3 per property) and maintenance images across all maintenance issues.
+    /// Cycles through images using modulo to ensure all images get used even if there are more entities than images.
+    /// Falls back to generated placeholder PNGs when no actual images are available.
     /// </summary>
     public class ImageSeeder : IDataSeeder
     {
@@ -69,22 +71,43 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             logger?.LogInformation("[{Seeder}] Found {PropCount} property images, {MaintCount} maintenance images", 
                 Name, propertyImages.Length, maintenanceImages.Length);
 
-            // Add property image galleries: up to 3 images for first 4 properties (first image as cover)
-            int perProperty = 3;
-            int propertyCount = Math.Min(properties.Count, 4);
-            for (int i = 0; i < propertyCount; i++)
+            // Add property image galleries: iterate through all available property images
+            // Distribute images across all properties, cycling through images as needed
+            var allProperties = await context.Properties
+                .AsNoTracking()
+                .OrderBy(p => p.PropertyId)
+                .Select(p => new { p.PropertyId, p.Name })
+                .ToListAsync();
+
+            if (allProperties.Count == 0)
             {
-                var p = properties[i];
+                logger?.LogWarning("[{Seeder}] No properties found. Ensure PropertiesSeeder ran.", Name);
+                return;
+            }
+
+            // Calculate how many images per property to use all available images
+            int totalPropertySlots = allProperties.Count * 3; // Up to 3 images per property
+            int imagesPerProperty = propertyImages.Length > 0 ? 
+                Math.Max(1, propertyImages.Length / allProperties.Count) : 3;
+            imagesPerProperty = Math.Min(imagesPerProperty, 3); // Cap at 3 per property
+
+            logger?.LogInformation("[{Seeder}] Distributing {PropImgCount} images across {PropCount} properties ({PerProp} per property)", 
+                Name, propertyImages.Length, allProperties.Count, imagesPerProperty);
+
+            for (int i = 0; i < allProperties.Count; i++)
+            {
+                var p = allProperties[i];
                 var existingCount = await context.Images.CountAsync(img => img.PropertyId == p.PropertyId);
                 if (existingCount > 0) continue; // idempotent: skip if images already exist for this property
 
                 // Use actual images if available, otherwise generate placeholders
                 if (propertyImages.Length > 0)
                 {
-                    int startIndex = i * perProperty;
-                    for (int k = 0; k < perProperty && (startIndex + k) < propertyImages.Length; k++)
+                    // Cycle through images using modulo to ensure all images get used
+                    for (int k = 0; k < imagesPerProperty; k++)
                     {
-                        var imagePath = propertyImages[startIndex + k];
+                        var imageIndex = (i * imagesPerProperty + k) % propertyImages.Length;
+                        var imagePath = propertyImages[imageIndex];
                         var imageData = await File.ReadAllBytesAsync(imagePath);
                         var contentType = imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
 
@@ -95,14 +118,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                             ContentType = contentType,
                             FileName = Path.GetFileName(imagePath),
                             DateUploaded = DateTime.UtcNow,
-                            IsCover = (k == 0)
+                            IsCover = (k == 0) // First image for each property is the cover
                         });
                     }
                 }
                 else
                 {
                     // Generate placeholder PNG images when no actual images exist
-                    for (int k = 0; k < perProperty; k++)
+                    for (int k = 0; k < imagesPerProperty; k++)
                     {
                         var placeholderPng = GeneratePlaceholderPng(p.Name, k + 1);
                         imagesToAdd.Add(new Image
@@ -118,30 +141,39 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 }
             }
 
-            // Add maintenance issue images
-            var maintenanceIssues = await context.MaintenanceIssues
+            // Add maintenance issue images - iterate through all available maintenance images
+            var allMaintenanceIssues = await context.MaintenanceIssues
                 .AsNoTracking()
                 .OrderBy(mi => mi.MaintenanceIssueId)
-                .Take(2)
                 .ToListAsync();
-            for (int i = 0; i < Math.Min(maintenanceIssues.Count, maintenanceImages.Length); i++)
+
+            if (allMaintenanceIssues.Count > 0 && maintenanceImages.Length > 0)
             {
-                var issue = maintenanceIssues[i];
-                var hasImages = await context.Images.AnyAsync(img => img.MaintenanceIssueId == issue.MaintenanceIssueId);
-                if (hasImages) continue;
+                logger?.LogInformation("[{Seeder}] Distributing {MaintImgCount} maintenance images across {IssueCount} issues", 
+                    Name, maintenanceImages.Length, allMaintenanceIssues.Count);
 
-                var imagePath = maintenanceImages[i];
-                var imageData = await File.ReadAllBytesAsync(imagePath);
-                var contentType = "image/jpeg"; // All maintenance images are jpg
-
-                imagesToAdd.Add(new Image
+                // Cycle through maintenance images, assigning them to issues
+                for (int i = 0; i < allMaintenanceIssues.Count; i++)
                 {
-                    MaintenanceIssueId = issue.MaintenanceIssueId,
-                    ImageData = imageData,
-                    ContentType = contentType,
-                    FileName = Path.GetFileName(imagePath),
-                    DateUploaded = DateTime.UtcNow
-                });
+                    var issue = allMaintenanceIssues[i];
+                    var hasImages = await context.Images.AnyAsync(img => img.MaintenanceIssueId == issue.MaintenanceIssueId);
+                    if (hasImages) continue;
+
+                    // Use modulo to cycle through images if we have more issues than images
+                    var imageIndex = i % maintenanceImages.Length;
+                    var imagePath = maintenanceImages[imageIndex];
+                    var imageData = await File.ReadAllBytesAsync(imagePath);
+                    var contentType = "image/jpeg"; // All maintenance images are jpg
+
+                    imagesToAdd.Add(new Image
+                    {
+                        MaintenanceIssueId = issue.MaintenanceIssueId,
+                        ImageData = imageData,
+                        ContentType = contentType,
+                        FileName = Path.GetFileName(imagePath),
+                        DateUploaded = DateTime.UtcNow
+                    });
+                }
             }
 
             if (imagesToAdd.Count > 0)

@@ -119,6 +119,43 @@ class FinancialReportRequest {
   }
 }
 
+enum BookingStatus {
+  upcoming(1, 'Upcoming'),
+  completed(2, 'Completed'),
+  cancelled(3, 'Cancelled'),
+  active(4, 'Active'),
+  pending(5, 'Pending'),
+  approved(6, 'Approved');
+
+  const BookingStatus(this.value, this.displayName);
+  final int value;
+  final String displayName;
+
+  /// Parse from JSON - handles both string names and integer values
+  static BookingStatus fromJson(dynamic json) {
+    if (json == null) return BookingStatus.completed;
+    
+    // Handle string value (e.g., "Cancelled", "Completed")
+    if (json is String) {
+      return BookingStatus.values.firstWhere(
+        (e) => e.name.toLowerCase() == json.toLowerCase() || 
+               e.displayName.toLowerCase() == json.toLowerCase(),
+        orElse: () => BookingStatus.completed,
+      );
+    }
+    
+    // Handle integer value
+    if (json is int) {
+      return BookingStatus.values.firstWhere(
+        (e) => e.value == json,
+        orElse: () => BookingStatus.completed,
+      );
+    }
+    
+    return BookingStatus.completed;
+  }
+}
+
 class FinancialReportResponse {
   final int bookingId;
   final String propertyName;
@@ -128,6 +165,8 @@ class FinancialReportResponse {
   final RentalType rentalType;
   final double totalPrice;
   final String currency;
+  final BookingStatus status;
+  final double refundAmount;
   final String? groupKey;
   final String? groupLabel;
   final double? groupTotal;
@@ -142,11 +181,17 @@ class FinancialReportResponse {
     required this.rentalType,
     required this.totalPrice,
     required this.currency,
+    this.status = BookingStatus.completed,
+    this.refundAmount = 0,
     this.groupKey,
     this.groupLabel,
     this.groupTotal,
     this.groupCount,
   });
+
+  bool get wasRefunded => refundAmount > 0;
+  double get netRevenue => totalPrice - refundAmount;
+  bool get isCancelled => status == BookingStatus.cancelled;
 
   factory FinancialReportResponse.fromJson(Map<String, dynamic> json) {
     return FinancialReportResponse(
@@ -161,6 +206,8 @@ class FinancialReportResponse {
       ),
       totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
       currency: json['currency'] ?? 'USD',
+      status: BookingStatus.fromJson(json['status']),
+      refundAmount: (json['refundAmount'] ?? 0.0).toDouble(),
       groupKey: json['groupKey'],
       groupLabel: json['groupLabel'],
       groupTotal: json['groupTotal']?.toDouble(),
@@ -178,6 +225,9 @@ class FinancialReportSummary {
   final int totalPages;
   final int currentPage;
   final int pageSize;
+  final int totalCancellations;
+  final double totalRefunds;
+  final double netRevenue;
 
   FinancialReportSummary({
     required this.reports,
@@ -188,6 +238,9 @@ class FinancialReportSummary {
     required this.totalPages,
     required this.currentPage,
     required this.pageSize,
+    this.totalCancellations = 0,
+    this.totalRefunds = 0,
+    this.netRevenue = 0,
   });
 
   factory FinancialReportSummary.fromJson(Map<String, dynamic> json) {
@@ -206,6 +259,9 @@ class FinancialReportSummary {
       totalPages: json['totalPages'] ?? 1,
       currentPage: json['currentPage'] ?? 1,
       pageSize: json['pageSize'] ?? 50,
+      totalCancellations: json['totalCancellations'] ?? 0,
+      totalRefunds: (json['totalRefunds'] ?? 0.0).toDouble(),
+      netRevenue: (json['netRevenue'] ?? 0.0).toDouble(),
     );
   }
 }

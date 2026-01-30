@@ -266,7 +266,31 @@ class ReportsProvider extends BaseProvider {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text('Average Booking Value:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                      pw.Text('${reportData.averageBookingValue.toStringAsFixed(2)} USD'),
+                      pw.Text('${reportData.totalBookings > 0 ? (reportData.totalRevenue / reportData.totalBookings).toStringAsFixed(2) : "0.00"} USD'),
+                    ],
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Cancellations:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text('${reportData.totalCancellations}'),
+                    ],
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Total Refunds:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text('${reportData.totalRefunds.toStringAsFixed(2)} USD'),
+                    ],
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Text('Net Revenue:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                      pw.Text('${reportData.netRevenue.toStringAsFixed(2)} USD'),
                     ],
                   ),
                 ],
@@ -284,12 +308,15 @@ class ReportsProvider extends BaseProvider {
               pw.Table(
                 border: pw.TableBorder.all(color: PdfColors.grey400),
                 columnWidths: {
-                  0: const pw.FlexColumnWidth(2), // Property
-                  1: const pw.FlexColumnWidth(2), // Tenant
-                  2: const pw.FlexColumnWidth(1.5), // Start Date
-                  3: const pw.FlexColumnWidth(1.5), // End Date
-                  4: const pw.FlexColumnWidth(1.5), // Rental Type
-                  5: const pw.FlexColumnWidth(1.5), // Price
+                  0: const pw.FlexColumnWidth(1.8), // Property
+                  1: const pw.FlexColumnWidth(1.8), // Tenant
+                  2: const pw.FlexColumnWidth(1.2), // Start Date
+                  3: const pw.FlexColumnWidth(1.2), // End Date
+                  4: const pw.FlexColumnWidth(1.2), // Rental Type
+                  5: const pw.FlexColumnWidth(1.2), // Status
+                  6: const pw.FlexColumnWidth(1.2), // Total Price
+                  7: const pw.FlexColumnWidth(1.2), // Refund
+                  8: const pw.FlexColumnWidth(1.2), // Net
                 },
                 children: [
                   // Header row
@@ -300,8 +327,11 @@ class ReportsProvider extends BaseProvider {
                       _buildTableCell('Tenant', isHeader: true),
                       _buildTableCell('Start Date', isHeader: true),
                       _buildTableCell('End Date', isHeader: true),
-                      _buildTableCell('Type', isHeader: true),
-                      _buildTableCell('Price (USD)', isHeader: true),
+                      _buildTableCell('Rental Type', isHeader: true),
+                      _buildTableCell('Status', isHeader: true),
+                      _buildTableCell('Total Price', isHeader: true),
+                      _buildTableCell('Refund', isHeader: true),
+                      _buildTableCell('Net', isHeader: true),
                     ],
                   ),
                   // Data rows
@@ -314,7 +344,12 @@ class ReportsProvider extends BaseProvider {
                           ? dateFormat.format(report.endDate!) 
                           : 'Ongoing'),
                       _buildTableCell(report.rentalType.displayName),
-                      _buildTableCell('${report.totalPrice.toStringAsFixed(2)}'),
+                      _buildTableCell(report.status.displayName),
+                      _buildTableCell('${report.totalPrice.toStringAsFixed(2)} ${report.currency}'),
+                      _buildTableCell(report.wasRefunded 
+                          ? '-${report.refundAmount.toStringAsFixed(2)}'
+                          : '-'),
+                      _buildTableCell('${report.netRevenue.toStringAsFixed(2)}'),
                     ],
                   )),
                 ],

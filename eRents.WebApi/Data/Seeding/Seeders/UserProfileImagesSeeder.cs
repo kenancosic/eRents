@@ -9,7 +9,9 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Ensures each baseline user has a small placeholder profile image.
+    /// Seeds user profile images by iterating through all available images in SeedImages/Users folder.
+    /// Assigns profile images to all users without images, cycling through images using modulo to ensure
+    /// all images get used even if there are more users than images.
     /// </summary>
     public class UserProfileImagesSeeder : IDataSeeder
     {
@@ -54,12 +56,16 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
             
-            logger?.LogInformation("[{Seeder}] Found {Count} profile images to seed", Name, profileImages.Length);
+            logger?.LogInformation("[{Seeder}] Found {ImgCount} profile images for {UserCount} users", 
+                Name, profileImages.Length, users.Count);
             
-            for (int i = 0; i < Math.Min(users.Count, profileImages.Length); i++)
+            // Iterate through all users and cycle through images as needed
+            for (int i = 0; i < users.Count; i++)
             {
                 var user = users[i];
-                var imagePath = profileImages[i];
+                // Use modulo to cycle through images if we have more users than images
+                var imageIndex = i % profileImages.Length;
+                var imagePath = profileImages[imageIndex];
                 var imageData = await File.ReadAllBytesAsync(imagePath);
                 var contentType = imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) 
                     ? "image/png" 
@@ -76,10 +82,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 await context.Images.AddAsync(img);
                 await context.SaveChangesAsync();
                 user.ProfileImageId = img.ImageId;
+                
+                logger?.LogInformation("[{Seeder}] Assigned profile image {ImgIdx} to user {UserId}", 
+                    Name, imageIndex + 1, user.UserId);
             }
 
             await context.SaveChangesAsync();
-            logger?.LogInformation("[{Seeder}] Done. Ensured {Count} user profile images.", Name, users.Count);
+            logger?.LogInformation("[{Seeder}] Done. Assigned profile images to {Count} users.", Name, users.Count);
         }
     }
 }
