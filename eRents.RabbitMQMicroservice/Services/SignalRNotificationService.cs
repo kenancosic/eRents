@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -13,6 +14,7 @@ namespace eRents.RabbitMQMicroservice.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<SignalRNotificationService> _logger;
         private readonly string _webApiBaseUrl;
+        private readonly string? _internalApiKey;
 
         public SignalRNotificationService(
             HttpClient httpClient,
@@ -23,6 +25,7 @@ namespace eRents.RabbitMQMicroservice.Services
             _configuration = configuration;
             _logger = logger;
             _webApiBaseUrl = _configuration["WebApi:BaseUrl"] ?? "http://localhost:5000";
+            _internalApiKey = _configuration["InternalApi:Key"];
         }
 
         public async Task SendMessageNotificationAsync(int senderId, int receiverId, string message)
@@ -113,7 +116,17 @@ namespace eRents.RabbitMQMicroservice.Services
             var json = JsonSerializer.Serialize(data);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(endpoint, content);
+            using var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+            {
+                Content = content
+            };
+
+            if (!string.IsNullOrWhiteSpace(_internalApiKey))
+            {
+                request.Headers.Add("X-Internal-Api-Key", _internalApiKey);
+            }
+
+            var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();

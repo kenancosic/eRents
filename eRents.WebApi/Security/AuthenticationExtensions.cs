@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using eRents.WebApi.Security;
 
@@ -29,6 +32,10 @@ public static class AuthenticationExtensions
 			{
 				options.ForwardDefaultSelector = context =>
 				{
+					var requestPath = context.Request.Path;
+					if (requestPath.StartsWithSegments(new PathString("/chatHub")) && context.Request.Query.ContainsKey("access_token"))
+						return JwtBearerDefaults.AuthenticationScheme;
+
 					var authHeader = context.Request.Headers["Authorization"].ToString();
 					if (!string.IsNullOrEmpty(authHeader))
 					{
@@ -45,6 +52,19 @@ public static class AuthenticationExtensions
 			.AddJwtBearer(options =>
 			{
 				options.TokenValidationParameters = BuildTokenValidationParameters(key, issuer, audience);
+				options.Events = new JwtBearerEvents
+				{
+					OnMessageReceived = context =>
+					{
+						var accessToken = context.Request.Query["access_token"].ToString();
+						var path = context.HttpContext.Request.Path;
+						if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments(new PathString("/chatHub")))
+						{
+							context.Token = accessToken;
+						}
+						return Task.CompletedTask;
+					}
+				};
 			});
 
 		return services;
