@@ -74,8 +74,20 @@ class ApiService {
         // Simple logging for mobile
         debugPrint('ApiService: Request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
         
+        // Only retry on network/transient errors, NOT on business logic errors (4xx)
+        final errorStr = e.toString().toLowerCase();
+        final isNetworkError = errorStr.contains('socketexception') ||
+            errorStr.contains('timeout') ||
+            errorStr.contains('connection') ||
+            errorStr.contains('network');
+        
+        // Don't retry on client errors (4xx) - these are business logic errors
+        if (!isNetworkError) {
+          rethrow; // Immediately throw without retrying
+        }
+        
         // Check if this is a network connectivity issue
-        if (e.toString().contains('SocketException') && e.toString().contains('semaphore timeout period has expired')) {
+        if (errorStr.contains('socketexception') && errorStr.contains('semaphore timeout period has expired')) {
           if (retryCount + 1 == maxRetries) {
             throw Exception('Unable to connect to the server. Please check your internet connection and ensure the server is running.');
           }
@@ -239,8 +251,20 @@ class ApiService {
         debugPrint(
           'ApiService: Multipart request failed (attempt ${retryCount + 1}/$maxRetries), Error: $e');
         
+        // Only retry on network/transient errors, NOT on business logic errors (4xx)
+        final errorStr = e.toString().toLowerCase();
+        final isNetworkError = errorStr.contains('socketexception') ||
+            errorStr.contains('timeout') ||
+            errorStr.contains('connection') ||
+            errorStr.contains('network');
+        
+        // Don't retry on client errors (4xx) - these are business logic errors
+        if (!isNetworkError) {
+          rethrow; // Immediately throw without retrying
+        }
+        
         // Check if this is a network connectivity issue
-        if (e.toString().contains('SocketException') && e.toString().contains('semaphore timeout period has expired')) {
+        if (errorStr.contains('socketexception') && errorStr.contains('semaphore timeout period has expired')) {
           if (retryCount + 1 == maxRetries) {
             throw Exception('Unable to connect to the server. Please check your internet connection and ensure the server is running.');
           }

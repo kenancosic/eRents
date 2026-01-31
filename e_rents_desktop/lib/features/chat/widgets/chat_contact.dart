@@ -42,7 +42,7 @@ class ChatContact extends StatelessWidget {
               children: [
                 CustomAvatar(
                   imageUrl: profileImageId != null 
-                      ? 'Images/$profileImageId' 
+                      ? '/Images/$profileImageId' 
                       : 'assets/images/user-image.png',
                   size: 48,
                   borderWidth: 0,

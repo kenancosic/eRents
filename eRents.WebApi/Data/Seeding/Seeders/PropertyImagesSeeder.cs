@@ -10,15 +10,15 @@ using Microsoft.Extensions.Logging;
 namespace eRents.WebApi.Data.Seeding.Seeders
 {
     /// <summary>
-    /// Seeds property and maintenance images by iterating through all available images in SeedImages folders.
-    /// Distributes property images across all properties (up to 3 per property) and maintenance images across all maintenance issues.
-    /// Cycles through images using modulo to ensure all images get used even if there are more entities than images.
-    /// Falls back to generated placeholder PNGs when no actual images are available.
+    /// Seeds property images by distributing available images across all properties.
+    /// Assigns 2-3 random images per property from SeedImages/Properties folder.
+    /// Generates placeholder PNGs when no actual images are available.
+    /// Runs at Order 35, after PropertiesSeeder (30) and before Bookings/Reviews.
     /// </summary>
-    public class ImageSeeder : IDataSeeder
+    public class PropertyImagesSeeder : IDataSeeder
     {
-        public int Order => 35; // after PropertiesSeeder (30), before Bookings/Reviews
-        public string Name => nameof(ImageSeeder);
+        public int Order => 35;
+        public string Name => nameof(PropertyImagesSeeder);
 
         public async Task SeedAsync(ERentsContext context, ILogger logger, bool forceSeed = false)
         {
@@ -26,7 +26,7 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
             if (!forceSeed)
             {
-                // If at least some images exist, skip to remain minimal
+                // If at least some property images exist, skip to remain minimal
                 var anyImages = await context.Images.AnyAsync(i => i.PropertyId != null);
                 if (anyImages)
                 {
@@ -37,42 +37,26 @@ namespace eRents.WebApi.Data.Seeding.Seeders
 
             if (forceSeed)
             {
-                await context.Images.IgnoreQueryFilters().ExecuteDeleteAsync();
-            }
-
-            // Take first 3-5 properties and ensure 1 cover image each
-            var properties = await context.Properties
-                .AsNoTracking()
-                .OrderBy(p => p.PropertyId)
-                .Select(p => new { p.PropertyId, p.Name })
-                .Take(5)
-                .ToListAsync();
-
-            if (properties.Count == 0)
-            {
-                logger?.LogWarning("[{Seeder}] No properties found. Ensure PropertiesSeeder ran.", Name);
-                return;
+                await context.Images.IgnoreQueryFilters()
+                    .Where(i => i.PropertyId != null)
+                    .ExecuteDeleteAsync();
             }
 
             var imagesToAdd = new List<Image>();
             var seedImagesPath = Path.Combine(Directory.GetCurrentDirectory(), "SeedImages");
             var propertyImagesPath = Path.Combine(seedImagesPath, "Properties");
-            var maintenanceImagesPath = Path.Combine(seedImagesPath, "Maintenance");
             
             var propertyImages = Directory.Exists(propertyImagesPath) ? 
-                Directory.GetFiles(propertyImagesPath, "*.jpg").Concat(Directory.GetFiles(propertyImagesPath, "*.png")).ToArray() : 
-                Array.Empty<string>();
-            var maintenanceImages = Directory.Exists(maintenanceImagesPath) ? 
-                Directory.GetFiles(maintenanceImagesPath, "*.jpg")
-                    .Concat(Directory.GetFiles(maintenanceImagesPath, "*.png"))
+                Directory.GetFiles(propertyImagesPath, "*.jpg")
+                    .Concat(Directory.GetFiles(propertyImagesPath, "*.jpeg"))
+                    .Concat(Directory.GetFiles(propertyImagesPath, "*.png"))
                     .ToArray() : 
                 Array.Empty<string>();
             
-            logger?.LogInformation("[{Seeder}] Found {PropCount} property images, {MaintCount} maintenance images", 
-                Name, propertyImages.Length, maintenanceImages.Length);
+            logger?.LogInformation("[{Seeder}] Found {PropCount} property images", 
+                Name, propertyImages.Length);
 
-            // Add property image galleries: iterate through all available property images
-            // Distribute images across all properties, cycling through images as needed
+            // Get all properties to distribute images across
             var allProperties = await context.Properties
                 .AsNoTracking()
                 .OrderBy(p => p.PropertyId)
@@ -85,14 +69,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
 
-            // Calculate how many images per property to use all available images
-            int totalPropertySlots = allProperties.Count * 3; // Up to 3 images per property
+            // Calculate how many images per property (2-3 random images)
             int imagesPerProperty = propertyImages.Length > 0 ? 
                 Math.Max(1, propertyImages.Length / allProperties.Count) : 3;
             imagesPerProperty = Math.Min(imagesPerProperty, 3); // Cap at 3 per property
+            imagesPerProperty = Math.Max(imagesPerProperty, 2); // Minimum 2 per property
 
-            logger?.LogInformation("[{Seeder}] Distributing {PropImgCount} images across {PropCount} properties ({PerProp} per property)", 
-                Name, propertyImages.Length, allProperties.Count, imagesPerProperty);
+            logger?.LogInformation("[{Seeder}] Distributing images across {PropCount} properties ({PerProp} per property)", 
+                Name, allProperties.Count, imagesPerProperty);
 
             for (int i = 0; i < allProperties.Count; i++)
             {
@@ -103,10 +87,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 // Use actual images if available, otherwise generate placeholders
                 if (propertyImages.Length > 0)
                 {
-                    // Cycle through images using modulo to ensure all images get used
+                    // Randomly select images for this property (with replacement allowed)
+                    var random = new Random(p.PropertyId); // Seed with property ID for consistency
                     for (int k = 0; k < imagesPerProperty; k++)
                     {
-                        var imageIndex = (i * imagesPerProperty + k) % propertyImages.Length;
+                        var imageIndex = random.Next(propertyImages.Length);
                         var imagePath = propertyImages[imageIndex];
                         var imageData = await File.ReadAllBytesAsync(imagePath);
                         var contentType = imagePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
@@ -141,48 +126,13 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 }
             }
 
-            // Add maintenance issue images - iterate through all available maintenance images
-            var allMaintenanceIssues = await context.MaintenanceIssues
-                .AsNoTracking()
-                .OrderBy(mi => mi.MaintenanceIssueId)
-                .ToListAsync();
-
-            if (allMaintenanceIssues.Count > 0 && maintenanceImages.Length > 0)
-            {
-                logger?.LogInformation("[{Seeder}] Distributing {MaintImgCount} maintenance images across {IssueCount} issues", 
-                    Name, maintenanceImages.Length, allMaintenanceIssues.Count);
-
-                // Cycle through maintenance images, assigning them to issues
-                for (int i = 0; i < allMaintenanceIssues.Count; i++)
-                {
-                    var issue = allMaintenanceIssues[i];
-                    var hasImages = await context.Images.AnyAsync(img => img.MaintenanceIssueId == issue.MaintenanceIssueId);
-                    if (hasImages) continue;
-
-                    // Use modulo to cycle through images if we have more issues than images
-                    var imageIndex = i % maintenanceImages.Length;
-                    var imagePath = maintenanceImages[imageIndex];
-                    var imageData = await File.ReadAllBytesAsync(imagePath);
-                    var contentType = "image/jpeg"; // All maintenance images are jpg
-
-                    imagesToAdd.Add(new Image
-                    {
-                        MaintenanceIssueId = issue.MaintenanceIssueId,
-                        ImageData = imageData,
-                        ContentType = contentType,
-                        FileName = Path.GetFileName(imagePath),
-                        DateUploaded = DateTime.UtcNow
-                    });
-                }
-            }
-
             if (imagesToAdd.Count > 0)
             {
                 await context.Images.AddRangeAsync(imagesToAdd);
                 await context.SaveChangesAsync();
             }
 
-            logger?.LogInformation("[{Seeder}] Done. Added {Count} cover images.", Name, imagesToAdd.Count);
+            logger?.LogInformation("[{Seeder}] Done. Added {Count} property images.", Name, imagesToAdd.Count);
         }
 
         /// <summary>

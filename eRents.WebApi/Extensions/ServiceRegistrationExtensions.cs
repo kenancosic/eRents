@@ -90,7 +90,8 @@ public static class ServiceRegistrationExtensions
 			services.AddScoped<IDataSeeder, UsersSeeder>();
 			services.AddScoped<IDataSeeder, UserProfileImagesSeeder>();
 			services.AddScoped<IDataSeeder, PropertiesSeeder>();
-			services.AddScoped<IDataSeeder, ImageSeeder>();
+			services.AddScoped<IDataSeeder, PropertyImagesSeeder>();
+		services.AddScoped<IDataSeeder, MaintenanceImagesSeeder>();
 			services.AddScoped<IDataSeeder, BookingsSeeder>();
 			// Diversify booking statuses (Completed/Cancelled)
 			services.AddScoped<IDataSeeder, BookingsVarietySeeder>();

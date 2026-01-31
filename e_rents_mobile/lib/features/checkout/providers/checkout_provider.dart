@@ -1,10 +1,9 @@
-import 'dart:async';
+  import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:e_rents_mobile/core/base/base_provider.dart';
 import 'package:e_rents_mobile/core/base/api_service_extensions.dart';
 import 'package:e_rents_mobile/core/base/app_error.dart';
-import 'package:e_rents_mobile/core/models/booking_model.dart';
 import 'package:e_rents_mobile/core/models/property_detail.dart';
 import 'package:e_rents_mobile/core/utils/date_extensions.dart';
 /// Provider for managing checkout flow and Stripe payment processing
@@ -30,6 +29,7 @@ class CheckoutProvider extends BaseProvider {
   // Stripe payment flow state
   String? _stripeClientSecret;
   String? _stripePaymentIntentId;
+  bool _isCreatingPaymentIntent = false; // Prevent duplicate API calls
 
   // ─── Getters ────────────────────────────────────────────────────────────
   String get selectedPaymentMethod => _selectedPaymentMethod;
@@ -107,33 +107,26 @@ class CheckoutProvider extends BaseProvider {
     return ok;
   }
 
-  // ─── Stripe Payment Flow ────────────────────────────────────────────────
+  // ─── Stripe Payment Flow (Payment-First) ────────────────────────────────
 
-  /// Internal method to create booking without payment processing
-  Future<Booking> _createBooking() async {
-    final bookingData = {
-      'propertyId': _currentProperty!.propertyId,
-      'startDate': _startDate!.toIso8601String().split('T').first,
-      'endDate': _endDate?.toIso8601String().split('T').first,
-      'totalPrice': _totalPrice,
-      'paymentMethod': _selectedPaymentMethod,
-      'currency': currentProperty?.currency ?? 'USD',
-    };
-
-    final booking = await api.postAndDecode(
-      'bookings',
-      bookingData,
-      Booking.fromJson,
-      authenticated: true,
-    );
-
-    debugPrint('CheckoutProvider: Created pending booking ID: ${booking.bookingId}');
-    _pendingBookingId = booking.bookingId;
-    return booking;
-  }
-
-  /// Create Stripe payment intent for daily rentals
+  /// Create Stripe payment intent with availability check.
+  /// Does NOT create booking - booking is created after successful payment.
   Future<Map<String, String>> createStripePaymentIntent() async {
+    // Idempotency: Return existing intent if one was already created
+    if (_stripeClientSecret != null && _stripePaymentIntentId != null) {
+      debugPrint('CheckoutProvider: Returning existing payment intent $_stripePaymentIntentId');
+      return {
+        'clientSecret': _stripeClientSecret!,
+        'paymentIntentId': _stripePaymentIntentId!,
+      };
+    }
+
+    // Prevent duplicate API calls while one is in progress
+    if (_isCreatingPaymentIntent) {
+      debugPrint('CheckoutProvider: Payment intent creation already in progress');
+      throw Exception('Payment intent creation in progress. Please wait.');
+    }
+
     if (!_isDailyRental) {
       throw Exception('Stripe flow is only available for daily rentals.');
     }
@@ -144,16 +137,16 @@ class CheckoutProvider extends BaseProvider {
       throw Exception('Total price must be greater than zero.');
     }
 
+    _isCreatingPaymentIntent = true;
     setLoading();
     try {
-      // Step 1: Create booking with 'Pending' status to get a bookingId
-      await _createBooking();
-
-      // Step 2: Create Stripe payment intent
+      // Create payment intent with availability check (NO booking created yet)
       final intentResp = await api.postJson(
-        'payments/stripe/create-intent',
+        'payments/stripe/create-intent-with-check',
         {
-          'bookingId': _pendingBookingId,
+          'propertyId': _currentProperty!.propertyId,
+          'startDate': _startDate!.toIso8601String().split('T').first,
+          'endDate': _endDate?.toIso8601String().split('T').first,
           'amount': _totalPrice,
           'currency': currentProperty?.currency ?? 'USD',
           'metadata': {
@@ -175,6 +168,7 @@ class CheckoutProvider extends BaseProvider {
       _stripePaymentIntentId = paymentIntentId;
 
       setSuccess();
+      debugPrint('CheckoutProvider: Created payment intent $paymentIntentId (booking pending)');
       return {
         'clientSecret': clientSecret,
         'paymentIntentId': paymentIntentId,
@@ -183,6 +177,95 @@ class CheckoutProvider extends BaseProvider {
       final friendly = _mapPaymentError(e);
       setError(GenericError(message: friendly, originalError: e, stackTrace: st));
       rethrow;
+    } finally {
+      _isCreatingPaymentIntent = false;
+    }
+  }
+
+  /// Confirm booking after successful Stripe payment.
+  /// Creates the booking record and links it to the payment.
+  /// Idempotent - safe to call multiple times.
+  Future<BookingConfirmationResult> confirmBookingAfterPayment() async {
+    if (_stripePaymentIntentId == null) {
+      setError(GenericError(message: 'No payment intent to confirm'));
+      return BookingConfirmationResult.failure('No payment intent to confirm');
+    }
+
+    setLoading();
+    try {
+      final response = await api.postJson(
+        'payments/stripe/confirm-booking',
+        {
+          'paymentIntentId': _stripePaymentIntentId,
+          'propertyId': _currentProperty!.propertyId,
+          'startDate': _startDate!.toIso8601String().split('T').first,
+          'endDate': _endDate?.toIso8601String().split('T').first,
+          'amount': _totalPrice,
+          'currency': currentProperty?.currency ?? 'USD',
+        },
+        authenticated: true,
+      );
+
+      final success = response['success'] as bool? ?? false;
+      final bookingId = response['bookingId'] as int?;
+      final wasAlreadyCreated = response['wasAlreadyCreated'] as bool? ?? false;
+
+      if (!success || bookingId == null) {
+        final errorMsg = response['errorMessage']?.toString() ?? 'Failed to confirm booking';
+        setError(GenericError(message: errorMsg));
+        return BookingConfirmationResult.failure(errorMsg);
+      }
+
+      _pendingBookingId = bookingId;
+      
+      if (wasAlreadyCreated) {
+        debugPrint('CheckoutProvider: Booking $bookingId already existed (created by webhook)');
+      } else {
+        debugPrint('CheckoutProvider: Created booking $bookingId after payment');
+      }
+
+      setSuccess();
+      return BookingConfirmationResult.success(
+        bookingId: bookingId,
+        wasAlreadyCreated: wasAlreadyCreated,
+      );
+    } catch (e, st) {
+      final friendly = _mapPaymentError(e);
+      setError(GenericError(message: friendly, originalError: e, stackTrace: st));
+      return BookingConfirmationResult.failure(friendly);
+    }
+  }
+
+  /// Cancel payment intent when user cancels checkout.
+  /// Called when user closes payment sheet without completing payment.
+  Future<bool> cancelPaymentIntent() async {
+    if (_stripePaymentIntentId == null) {
+      clearError(); // Clear any previous errors
+      return true; // Nothing to cancel
+    }
+
+    try {
+      await api.postJson(
+        'payments/stripe/cancel-intent',
+        {
+          'paymentIntentId': _stripePaymentIntentId,
+        },
+        authenticated: true,
+      );
+
+      debugPrint('CheckoutProvider: Cancelled payment intent $_stripePaymentIntentId');
+      _stripePaymentIntentId = null;
+      _stripeClientSecret = null;
+      clearError(); // Clear any previous errors so user can retry
+      return true;
+    } catch (e) {
+      debugPrint('CheckoutProvider: Failed to cancel payment intent: $e');
+      // Still clear the local state even if backend cancel fails
+      _stripePaymentIntentId = null;
+      _stripeClientSecret = null;
+      clearError();
+      // Don't throw - cancellation is best-effort
+      return false;
     }
   }
 
@@ -317,7 +400,12 @@ class CheckoutProvider extends BaseProvider {
   }
 
   /// Cancel checkout and clear session
-  void cancelCheckout() {
+  /// Also attempts to cancel any pending payment intent
+  Future<void> cancelCheckout() async {
+    // Try to cancel payment intent if one exists
+    if (_stripePaymentIntentId != null) {
+      await cancelPaymentIntent();
+    }
     _clearCheckoutSession();
     debugPrint('CheckoutProvider: Checkout cancelled by user');
   }
@@ -326,5 +414,40 @@ class CheckoutProvider extends BaseProvider {
   void dispose() {
     _clearCheckoutSession();
     super.dispose();
+  }
+}
+
+/// Result of booking confirmation after payment
+class BookingConfirmationResult {
+  final bool success;
+  final int? bookingId;
+  final bool wasAlreadyCreated;
+  final String? errorMessage;
+
+  const BookingConfirmationResult._({
+    required this.success,
+    this.bookingId,
+    this.wasAlreadyCreated = false,
+    this.errorMessage,
+  });
+
+  /// Successful booking confirmation
+  factory BookingConfirmationResult.success({
+    required int bookingId,
+    bool wasAlreadyCreated = false,
+  }) {
+    return BookingConfirmationResult._(
+      success: true,
+      bookingId: bookingId,
+      wasAlreadyCreated: wasAlreadyCreated,
+    );
+  }
+
+  /// Failed booking confirmation
+  factory BookingConfirmationResult.failure(String errorMessage) {
+    return BookingConfirmationResult._(
+      success: false,
+      errorMessage: errorMessage,
+    );
   }
 }

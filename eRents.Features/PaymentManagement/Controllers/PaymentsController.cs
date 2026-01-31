@@ -81,6 +81,84 @@ public class PaymentsController : CrudController<eRents.Domain.Models.Payment, P
 		}
 	}
 
+	[HttpPost("stripe/create-intent-with-check")]
+	[Authorize]
+	public async Task<IActionResult> CreatePaymentIntentWithCheck([FromBody] CreatePaymentIntentWithCheckRequest request)
+	{
+		try
+		{
+			var response = await _stripe.CreatePaymentIntentWithAvailabilityCheckAsync(
+				request.PropertyId,
+				request.StartDate,
+				request.EndDate,
+				request.Amount,
+				request.Currency ?? "USD",
+				request.Metadata);
+
+			if (!string.IsNullOrEmpty(response.ErrorMessage))
+			{
+				return BadRequest(new { Error = response.ErrorMessage });
+			}
+
+			return Ok(response);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error creating Stripe payment intent with check");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	[HttpPost("stripe/confirm-booking")]
+	[Authorize]
+	public async Task<IActionResult> ConfirmBookingAfterPayment([FromBody] ConfirmBookingAfterPaymentRequest request)
+	{
+		try
+		{
+			var response = await _stripe.ConfirmBookingAfterPaymentAsync(
+				request.PaymentIntentId,
+				request.PropertyId,
+				request.StartDate,
+				request.EndDate,
+				request.Amount,
+				request.Currency ?? "USD");
+
+			if (!response.Success)
+			{
+				return BadRequest(new { Error = response.ErrorMessage });
+			}
+
+			return Ok(response);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error confirming booking after payment");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
+	[HttpPost("stripe/cancel-intent")]
+	[Authorize]
+	public async Task<IActionResult> CancelPaymentIntent([FromBody] CancelPaymentIntentRequest request)
+	{
+		try
+		{
+			var success = await _stripe.CancelPaymentIntentAsync(request.PaymentIntentId);
+
+			if (!success)
+			{
+				return BadRequest(new { Error = "Failed to cancel payment intent" });
+			}
+
+			return Ok(new { Message = "Payment intent cancelled successfully" });
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Error cancelling payment intent");
+			return BadRequest(new { Error = ex.Message });
+		}
+	}
+
 	[HttpPost("stripe/create-intent-for-invoice")]
 	[Authorize]
 	public async Task<IActionResult> CreatePaymentIntentForInvoice([FromBody] CreateInvoiceIntentRequest request)

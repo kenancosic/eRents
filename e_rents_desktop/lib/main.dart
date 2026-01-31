@@ -15,7 +15,7 @@ import 'theme/theme.dart';
 // Widgets
 import 'widgets/global_error_dialog.dart';
 
-// Base providers
+import 'core/managers/notification_lifecycle_manager.dart';
 import 'base/app_state_providers.dart';
 
 // Comprehensive feature registration system
@@ -87,13 +87,15 @@ class _AppWithRouterState extends State<AppWithRouter> {
   AppRouter? _appRouter;
   bool? _lastAuthState;
   bool _chatLifecycleInitialized = false;
+  bool _notificationLifecycleInitialized = false;
+  NotificationLifecycleManager? _notificationLifecycleManager;
 
   @override
   void initState() {
     super.initState();
-    // Wire up chat lifecycle after first frame to ensure providers are ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupChatLifecycle();
+      _setupNotificationLifecycle();
     });
   }
 
@@ -119,6 +121,38 @@ class _AppWithRouterState extends State<AppWithRouter> {
     if (authProvider.isAuthenticated) {
       debugPrint('ChatLifecycle: Already authenticated, connecting SignalR...');
       chatProvider.connectRealtime();
+    }
+  }
+
+  void _setupNotificationLifecycle() {
+    if (_notificationLifecycleInitialized) return;
+    _notificationLifecycleInitialized = true;
+
+    final authProvider = context.read<features.AuthProvider>();
+    final notificationProvider = context.read<features.NotificationProvider>();
+
+    _notificationLifecycleManager = NotificationLifecycleManager(notificationProvider);
+    _notificationLifecycleManager!.initialize();
+
+    // Chain with existing callbacks (don't overwrite chat lifecycle)
+    final existingOnLoginSuccess = authProvider.onLoginSuccess;
+    final existingOnLogoutComplete = authProvider.onLogoutComplete;
+
+    authProvider.onLoginSuccess = () {
+      existingOnLoginSuccess?.call();
+      debugPrint('NotificationLifecycle: Login detected, connecting SignalR...');
+      _notificationLifecycleManager?.onAuthenticated();
+    };
+
+    authProvider.onLogoutComplete = () {
+      existingOnLogoutComplete?.call();
+      debugPrint('NotificationLifecycle: Logout detected, disconnecting SignalR...');
+      _notificationLifecycleManager?.onLoggedOut();
+    };
+
+    if (authProvider.isAuthenticated) {
+      debugPrint('NotificationLifecycle: Already authenticated, connecting SignalR...');
+      _notificationLifecycleManager?.onAuthenticated();
     }
   }
 

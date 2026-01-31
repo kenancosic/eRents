@@ -5,9 +5,11 @@ using eRents.Features.PaymentManagement.Interfaces;
 using eRents.Features.PaymentManagement.Models;
 using eRents.Features.Shared.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
+using System.Collections.Concurrent;
 
 namespace eRents.Features.PaymentManagement.Services;
 
@@ -21,18 +23,24 @@ public class StripePaymentService : IStripePaymentService
     private readonly StripeOptions _stripeOptions;
     private readonly ICurrentUserService _currentUserService;
     private readonly INotificationService? _notificationService;
+    private readonly IMemoryCache _memoryCache;
+
+    // Thread-safe dictionary to track in-flight payment intent requests per user
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _userLocks = new();
 
     public StripePaymentService(
         ERentsContext context,
         ILogger<StripePaymentService> logger,
         IOptions<StripeOptions> stripeOptions,
         ICurrentUserService currentUserService,
+        IMemoryCache memoryCache,
         INotificationService? notificationService = null)
     {
         _context = context;
         _logger = logger;
         _stripeOptions = stripeOptions.Value;
         _currentUserService = currentUserService;
+        _memoryCache = memoryCache;
         _notificationService = notificationService;
     }
 
@@ -159,11 +167,14 @@ public class StripePaymentService : IStripePaymentService
                 }
             };
 
-            var service = new PaymentIntentService();
-            var paymentIntent = await service.CreateAsync(options);
+            // Create idempotency key based on booking details to prevent duplicate intents
+            var idempotencyKey = $"booking_intent_{bookingId}_{amountInCents}_{currency.ToLower()}";
 
-            _logger.LogInformation("Created Stripe payment intent {PaymentIntentId} for booking {BookingId}",
-                paymentIntent.Id, bookingId);
+            var service = new PaymentIntentService();
+            var paymentIntent = await service.CreateAsync(options, new RequestOptions
+            {
+                IdempotencyKey = idempotencyKey
+            });
 
             // Create pending payment record
             var payment = new Domain.Models.Payment
@@ -581,6 +592,524 @@ public class StripePaymentService : IStripePaymentService
     }
 
     /// <inheritdoc/>
+    public async Task<PaymentIntentResponse> CreatePaymentIntentWithAvailabilityCheckAsync(
+        int propertyId,
+        DateOnly startDate,
+        DateOnly? endDate,
+        decimal amount,
+        string currency = "USD",
+        Dictionary<string, string>? metadata = null)
+    {
+        var currentUserId = _currentUserService?.GetUserIdAsInt();
+        if (!currentUserId.HasValue)
+            return new PaymentIntentResponse { ErrorMessage = "User not authenticated" };
+
+        var userId = currentUserId.Value;
+        var endDateForKey = endDate ?? startDate;
+        var cacheKey = $"pi_{userId}_{propertyId}_{startDate:yyyyMMdd}_{endDateForKey:yyyyMMdd}";
+
+        // NOTE: We skip the fast path cache check here because we need to validate
+        // the intent status before returning. The locked path handles this properly.
+        PaymentIntentResponse? cachedResponse = null;
+
+        var lockKey = $"{userId}:{propertyId}:{startDate:yyyyMMdd}:{endDateForKey:yyyyMMdd}";
+        
+        // Get or create semaphore for this specific request - use a static lock to prevent race on GetOrAdd itself
+        SemaphoreSlim userLock;
+        lock (_userLocks)
+        {
+            if (!_userLocks.TryGetValue(lockKey, out userLock))
+            {
+                userLock = new SemaphoreSlim(1, 1);
+                _userLocks[lockKey] = userLock;
+            }
+        }
+
+        await userLock.WaitAsync();
+        try
+        {
+            // DOUBLE-CHECK: Another thread may have completed while we were waiting
+            if (_memoryCache.TryGetValue(cacheKey, out cachedResponse) && cachedResponse != null)
+            {
+                // Validate the cached intent is still usable (not cancelled)
+                try
+                {
+                    var stripeService = new PaymentIntentService();
+                    var cachedIntent = await stripeService.GetAsync(cachedResponse.PaymentIntentId);
+                    if (cachedIntent.Status == "canceled" || cachedIntent.Status == "succeeded")
+                    {
+                        _logger.LogInformation("Cached intent {PaymentIntentId} is {Status}, removing from cache",
+                            cachedResponse.PaymentIntentId, cachedIntent.Status);
+                        _memoryCache.Remove(cacheKey);
+                        // Fall through to create new intent
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Returning cached payment intent {PaymentIntentId} after lock for property {PropertyId}",
+                            cachedResponse.PaymentIntentId, propertyId);
+                        return cachedResponse;
+                    }
+                }
+                catch
+                {
+                    // Intent not found or error - remove from cache and create new
+                    _memoryCache.Remove(cacheKey);
+                }
+            }
+
+            return await CreatePaymentIntentWithAvailabilityCheckCore(propertyId, startDate, endDate, amount, currency, metadata, userId, cacheKey);
+        }
+        finally
+        {
+            userLock.Release();
+            // Clean up the lock entry after a delay to allow queued requests to complete
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(5000); // Keep lock for 5 seconds to catch stragglers
+                lock (_userLocks)
+                {
+                    if (_userLocks.TryGetValue(lockKey, out var existingLock) && existingLock == userLock)
+                    {
+                        _userLocks.TryRemove(lockKey, out _);
+                    }
+                }
+            });
+        }
+    }
+
+    private async Task<PaymentIntentResponse> CreatePaymentIntentWithAvailabilityCheckCore(
+        int propertyId, DateOnly startDate, DateOnly? endDate, decimal amount, string currency,
+        Dictionary<string, string>? metadata, int userId, string cacheKey)
+    {
+        try
+        {
+            _logger.LogInformation("Creating payment intent with availability check for property {PropertyId}, dates {StartDate} to {EndDate}",
+                propertyId, startDate, endDate?.ToString() ?? "N/A");
+
+            // Check database for recent pending payment (within last 10 minutes) - in case cache was cleared
+            var tenMinutesAgo = DateTime.UtcNow.AddMinutes(-10);
+            var existingPayment = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.PropertyId == propertyId)
+                .Where(p => p.PaymentStatus == "Pending")
+                .Where(p => p.CreatedAt >= tenMinutesAgo)
+                .Where(p => p.CreatedBy == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (existingPayment?.StripePaymentIntentId != null)
+            {
+                _logger.LogInformation("Found existing pending payment {PaymentId} with intent {PaymentIntentId} for property {PropertyId}",
+                    existingPayment.PaymentId, existingPayment.StripePaymentIntentId, propertyId);
+
+                // Retrieve the existing Stripe intent to get client secret
+                try
+                {
+                    var stripeService = new PaymentIntentService();
+                    var existingIntent = await stripeService.GetAsync(existingPayment.StripePaymentIntentId);
+
+                    if (existingIntent.Status == "requires_payment_method" || existingIntent.Status == "requires_confirmation")
+                    {
+                        var existingResponse = new PaymentIntentResponse
+                        {
+                            PaymentIntentId = existingIntent.Id,
+                            ClientSecret = existingIntent.ClientSecret,
+                            Status = existingIntent.Status,
+                            Amount = existingIntent.Amount,
+                            Currency = existingIntent.Currency,
+                            Metadata = existingIntent.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, string>()
+                        };
+
+                        // Cache it for future requests
+                        _memoryCache.Set(cacheKey, existingResponse, TimeSpan.FromMinutes(10));
+                        return existingResponse;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to retrieve existing Stripe intent {PaymentIntentId}, will create new one",
+                        existingPayment.StripePaymentIntentId);
+                }
+            }
+
+            // Validate property exists and get owner info
+            var property = await _context.Properties
+                .Include(p => p.Owner)
+                .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+            if (property == null)
+            {
+                return new PaymentIntentResponse
+                {
+                    ErrorMessage = "Property not found"
+                };
+            }
+
+            // Check availability - validate dates don't overlap with existing bookings or active tenancies
+            var bookingEnd = endDate ?? startDate;
+
+            // Check for overlapping bookings (Confirmed or Upcoming only - NOT Pending or Cancelled)
+            // Use strict inequality to allow adjacent bookings (e.g., booking ends Apr 2, new starts Apr 3)
+            var overlappingBookings = await _context.Bookings
+                .AsNoTracking()
+                .Where(b => b.PropertyId == propertyId)
+                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.StartDate < bookingEnd)
+                .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
+                .Select(b => new { b.BookingId, b.StartDate, b.EndDate, b.Status })
+                .ToListAsync();
+
+            if (overlappingBookings.Any())
+            {
+                _logger.LogWarning("Availability check failed for property {PropertyId}. Requested: {StartDate} to {EndDate}. Overlapping bookings: {@Bookings}",
+                    propertyId, startDate, bookingEnd, overlappingBookings);
+                return new PaymentIntentResponse
+                {
+                    ErrorMessage = "The selected dates are no longer available. Please choose different dates."
+                };
+            }
+
+            // Check for active tenancy overlap (use strict inequality like booking check)
+            var hasTenantOverlap = await _context.Tenants
+                .AsNoTracking()
+                .Where(t => t.PropertyId == propertyId)
+                .Where(t => t.LeaseStartDate.HasValue)
+                .Where(t => t.LeaseStartDate!.Value < bookingEnd)
+                .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > startDate)
+                .AnyAsync();
+
+            if (hasTenantOverlap)
+            {
+                return new PaymentIntentResponse
+                {
+                    ErrorMessage = "The property is not available for the selected dates due to an active tenancy."
+                };
+            }
+
+            // Mobile-only restriction: owners cannot book their own properties
+            if (_currentUserService?.IsDesktop != true && property.OwnerId == userId)
+            {
+                return new PaymentIntentResponse
+                {
+                    ErrorMessage = "Owners cannot book their own properties."
+                };
+            }
+
+            // Convert amount to cents
+            var amountInCents = (long)(amount * 100);
+
+            // Prepare metadata with booking details for later use
+            var intentMetadata = metadata ?? new Dictionary<string, string>();
+            intentMetadata["property_id"] = propertyId.ToString();
+            intentMetadata["user_id"] = userId.ToString();
+            intentMetadata["start_date"] = startDate.ToString("yyyy-MM-dd");
+            intentMetadata["end_date"] = endDate?.ToString("yyyy-MM-dd") ?? startDate.ToString("yyyy-MM-dd");
+            intentMetadata["amount"] = amount.ToString("F2");
+            intentMetadata["currency"] = currency;
+            intentMetadata["booking_pending"] = "true";
+
+            // Calculate platform fee
+            var platformFee = (long)(amountInCents * (_stripeOptions.PlatformFeePercentage / 100));
+
+            // Count cancelled attempts to allow retries after user cancels payment
+            // This ensures idempotency key is unique after cancellation but same for rapid duplicate clicks
+            var cancelledCount = await _context.Payments
+                .AsNoTracking()
+                .CountAsync(p => p.PropertyId == propertyId 
+                    && p.CreatedBy == userId 
+                    && p.PaymentStatus == "Cancelled"
+                    && p.CreatedAt >= DateTime.UtcNow.AddHours(-24));
+
+            // Create idempotency key based on booking details to prevent duplicate intents
+            var endDateForKey = endDate ?? startDate;
+            var idempotencyKey = $"booking_intent_{propertyId}_{userId}_{startDate:yyyyMMdd}_{endDateForKey:yyyyMMdd}_v{cancelledCount}";
+
+            // Create payment intent options
+            var options = new PaymentIntentCreateOptions
+            {
+                Amount = amountInCents,
+                Currency = currency.ToLower(),
+                Metadata = intentMetadata,
+                Description = $"Payment for property #{propertyId} - {startDate:yyyy-MM-dd}",
+                
+                // If property owner has connected account, use transfers
+                TransferData = property.Owner?.StripeAccountId != null
+                    ? new PaymentIntentTransferDataOptions
+                    {
+                        Destination = property.Owner.StripeAccountId,
+                        Amount = amountInCents - platformFee
+                    }
+                    : null,
+                
+                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                {
+                    Enabled = true
+                }
+            };
+
+            var service = new PaymentIntentService();
+            var paymentIntent = await service.CreateAsync(options, new RequestOptions
+            {
+                IdempotencyKey = idempotencyKey
+            });
+
+            _logger.LogInformation("Created Stripe payment intent {PaymentIntentId} for property {PropertyId} (booking pending)",
+                paymentIntent.Id, propertyId);
+
+            // Create a temporary payment record (without booking yet)
+            var payment = new Payment
+            {
+                PropertyId = propertyId,
+                Amount = amount,
+                Currency = currency,
+                PaymentMethod = "Stripe",
+                PaymentStatus = "Pending",
+                StripePaymentIntentId = paymentIntent.Id,
+                PaymentReference = paymentIntent.Id,
+                PaymentType = "BookingPayment",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CreatedBy = userId,
+                ModifiedBy = userId
+            };
+
+            _context.Payments.Add(payment);
+            await _context.SaveChangesAsync();
+
+            var response = new PaymentIntentResponse
+            {
+                PaymentIntentId = paymentIntent.Id,
+                ClientSecret = paymentIntent.ClientSecret,
+                Status = paymentIntent.Status,
+                Amount = paymentIntent.Amount,
+                Currency = paymentIntent.Currency,
+                Metadata = intentMetadata
+            };
+
+            // Cache the response for 10 minutes to prevent duplicate intent creation
+            _memoryCache.Set(cacheKey, response, TimeSpan.FromMinutes(10));
+
+            return response;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error creating payment intent with check for property {PropertyId}: {Message}",
+                propertyId, ex.Message);
+            
+            return new PaymentIntentResponse
+            {
+                ErrorMessage = $"Payment processing error: {ex.StripeError?.Message ?? ex.Message}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating payment intent with check for property {PropertyId}", propertyId);
+            
+            return new PaymentIntentResponse
+            {
+                ErrorMessage = "An unexpected error occurred while processing payment"
+            };
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<BookingAfterPaymentResponse> ConfirmBookingAfterPaymentAsync(
+        string paymentIntentId,
+        int propertyId,
+        DateOnly startDate,
+        DateOnly? endDate,
+        decimal amount,
+        string currency = "USD")
+    {
+        try
+        {
+            _logger.LogInformation("Confirming booking after payment for intent {PaymentIntentId}", paymentIntentId);
+
+            // Get current user ID
+            var currentUserId = _currentUserService?.GetUserIdAsInt();
+            if (!currentUserId.HasValue)
+            {
+                return new BookingAfterPaymentResponse
+                {
+                    Success = false,
+                    ErrorMessage = "User not authenticated"
+                };
+            }
+
+            // Find the payment record
+            var payment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntentId);
+
+            if (payment == null)
+            {
+                return new BookingAfterPaymentResponse
+                {
+                    Success = false,
+                    ErrorMessage = "Payment record not found"
+                };
+            }
+
+            // Idempotency: Check if booking already created for this payment
+            if (payment.BookingId.HasValue)
+            {
+                var existingBooking = await _context.Bookings
+                    .FirstOrDefaultAsync(b => b.BookingId == payment.BookingId.Value);
+
+                if (existingBooking != null)
+                {
+                    _logger.LogInformation("Booking {BookingId} already exists for payment intent {PaymentIntentId} - returning existing",
+                        existingBooking.BookingId, paymentIntentId);
+
+                    return new BookingAfterPaymentResponse
+                    {
+                        Success = true,
+                        BookingId = existingBooking.BookingId,
+                        PaymentId = payment.PaymentId,
+                        Status = existingBooking.Status.ToString(),
+                        WasAlreadyCreated = true
+                    };
+                }
+            }
+
+            // Verify payment is completed
+            if (payment.PaymentStatus != "Completed")
+            {
+                // Check with Stripe if payment actually succeeded
+                var service = new PaymentIntentService();
+                var intent = await service.GetAsync(paymentIntentId);
+
+                if (intent.Status != "succeeded")
+                {
+                    return new BookingAfterPaymentResponse
+                    {
+                        Success = false,
+                        ErrorMessage = $"Payment not completed. Status: {intent.Status}"
+                    };
+                }
+
+                // Update payment status
+                payment.PaymentStatus = "Completed";
+                payment.StripeChargeId = intent.LatestChargeId;
+                payment.UpdatedAt = DateTime.UtcNow;
+            }
+
+            // Final availability check before creating booking
+            var bookingEnd = endDate ?? startDate;
+
+            var hasBookingOverlap = await _context.Bookings
+                .AsNoTracking()
+                .Where(b => b.PropertyId == propertyId)
+                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.StartDate < bookingEnd)
+                .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
+                .AnyAsync();
+
+            if (hasBookingOverlap)
+            {
+                // Refund the payment since dates became unavailable
+                _logger.LogWarning("Dates became unavailable after payment for intent {PaymentIntentId} - initiating refund",
+                    paymentIntentId);
+
+                try
+                {
+                    await ProcessRefundAsync(payment.PaymentId, amount, "Dates became unavailable after payment");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogError(refundEx, "Failed to refund payment {PaymentId} for unavailable dates", payment.PaymentId);
+                }
+
+                return new BookingAfterPaymentResponse
+                {
+                    Success = false,
+                    ErrorMessage = "The selected dates are no longer available. Your payment has been refunded."
+                };
+            }
+
+            // Create the booking
+            var booking = new Booking
+            {
+                PropertyId = propertyId,
+                UserId = currentUserId.Value,
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalPrice = amount,
+                Status = BookingStatusEnum.Upcoming,
+                PaymentMethod = "Stripe",
+                PaymentStatus = "Completed",
+                Currency = currency,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CreatedBy = currentUserId.Value,
+                ModifiedBy = currentUserId.Value
+            };
+
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            // Link payment to booking
+            payment.BookingId = booking.BookingId;
+            payment.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created booking {BookingId} for payment intent {PaymentIntentId}",
+                booking.BookingId, paymentIntentId);
+
+            // Send notifications
+            if (_notificationService != null)
+            {
+                try
+                {
+                    var property = await _context.Properties
+                        .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+                    var propertyName = property?.Name ?? "your property";
+
+                    // Notify tenant
+                    await _notificationService.CreatePaymentNotificationAsync(
+                        currentUserId.Value,
+                        payment.PaymentId,
+                        "Booking Confirmed",
+                        $"Your booking for {propertyName} on {startDate:MMM dd, yyyy} has been confirmed and paid.");
+
+                    // Notify landlord
+                    if (property != null)
+                    {
+                        await _notificationService.CreatePaymentNotificationAsync(
+                            property.OwnerId,
+                            payment.PaymentId,
+                            "New Booking Received",
+                            $"New paid booking for {propertyName} starting {startDate:MMM dd, yyyy}.");
+                    }
+                }
+                catch (Exception notifyEx)
+                {
+                    _logger.LogError(notifyEx, "Failed to send notifications for booking {BookingId}", booking.BookingId);
+                }
+            }
+
+            return new BookingAfterPaymentResponse
+            {
+                Success = true,
+                BookingId = booking.BookingId,
+                PaymentId = payment.PaymentId,
+                Status = booking.Status.ToString(),
+                WasAlreadyCreated = false
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error confirming booking after payment for intent {PaymentIntentId}", paymentIntentId);
+            
+            return new BookingAfterPaymentResponse
+            {
+                Success = false,
+                ErrorMessage = "Failed to create booking after payment. Please contact support."
+            };
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> CancelPaymentIntentAsync(string paymentIntentId)
     {
         try
@@ -599,6 +1128,12 @@ public class StripePaymentService : IStripePaymentService
                 payment.PaymentStatus = "Cancelled";
                 payment.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                // Invalidate the memory cache for this property/user combination
+                // This ensures the next request creates a fresh payment intent
+                var cacheKey = $"payment_intent_{payment.PropertyId}_{payment.CreatedBy}";
+                _memoryCache.Remove(cacheKey);
+                _logger.LogInformation("Invalidated cache for key {CacheKey} after cancellation", cacheKey);
             }
 
             _logger.LogInformation("Payment intent {PaymentIntentId} cancelled", paymentIntentId);
@@ -630,7 +1165,20 @@ public class StripePaymentService : IStripePaymentService
                     var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
                     if (paymentIntent != null)
                     {
-                        await ConfirmPaymentIntentAsync(paymentIntent.Id);
+                        // Check if this is a payment-first flow (no bookingId in metadata)
+                        var isBookingPending = paymentIntent.Metadata?.ContainsKey("booking_pending") == true &&
+                                               paymentIntent.Metadata["booking_pending"] == "true";
+                        
+                        if (isBookingPending && !string.IsNullOrEmpty(paymentIntent.Metadata?["property_id"]))
+                        {
+                            // Payment-first flow: create booking after payment
+                            await HandlePaymentSuccessAndCreateBookingAsync(paymentIntent);
+                        }
+                        else
+                        {
+                            // Original flow: booking already exists
+                            await ConfirmPaymentIntentAsync(paymentIntent.Id);
+                        }
                     }
                     break;
 
@@ -726,6 +1274,160 @@ public class StripePaymentService : IStripePaymentService
             await _context.SaveChangesAsync();
             
             _logger.LogInformation("Charge {ChargeId} marked as refunded", charge.Id);
+        }
+    }
+
+    /// <summary>
+    /// Handles payment success for payment-first flow by creating the booking.
+    /// Called from webhook when payment_intent.succeeds for pending bookings.
+    /// </summary>
+    private async Task HandlePaymentSuccessAndCreateBookingAsync(PaymentIntent paymentIntent)
+    {
+        try
+        {
+            _logger.LogInformation("Handling payment success and creating booking for intent {PaymentIntentId}", paymentIntent.Id);
+
+            // Extract metadata
+            var metadata = paymentIntent.Metadata;
+            if (metadata == null || 
+                !metadata.TryGetValue("property_id", out var propertyIdStr) ||
+                !metadata.TryGetValue("start_date", out var startDateStr) ||
+                !metadata.TryGetValue("user_id", out var userIdStr))
+            {
+                _logger.LogError("Missing required metadata in payment intent {PaymentIntentId}", paymentIntent.Id);
+                return;
+            }
+
+            if (!int.TryParse(propertyIdStr, out var propertyId) ||
+                !int.TryParse(userIdStr, out var userId) ||
+                !DateOnly.TryParseExact(startDateStr, "yyyy-MM-dd", out var startDate))
+            {
+                _logger.LogError("Invalid metadata format in payment intent {PaymentIntentId}", paymentIntent.Id);
+                return;
+            }
+
+            DateOnly? endDate = null;
+            if (metadata.TryGetValue("end_date", out var endDateStr) && 
+                DateOnly.TryParseExact(endDateStr, "yyyy-MM-dd", out var parsedEndDate))
+            {
+                endDate = parsedEndDate;
+            }
+
+            var amount = decimal.TryParse(metadata["amount"], out var parsedAmount) ? parsedAmount : 0;
+            var currency = metadata.TryGetValue("currency", out var curr) ? curr : "USD";
+
+            // Find the payment record
+            var payment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.StripePaymentIntentId == paymentIntent.Id);
+
+            if (payment == null)
+            {
+                _logger.LogError("Payment record not found for intent {PaymentIntentId}", paymentIntent.Id);
+                return;
+            }
+
+            // Idempotency: Check if booking already created
+            if (payment.BookingId.HasValue)
+            {
+                _logger.LogInformation("Booking {BookingId} already exists for intent {PaymentIntentId} - skipping webhook creation",
+                    payment.BookingId.Value, paymentIntent.Id);
+                return;
+            }
+
+            // Update payment status
+            payment.PaymentStatus = "Completed";
+            payment.StripeChargeId = paymentIntent.LatestChargeId;
+            payment.UpdatedAt = DateTime.UtcNow;
+
+            // Final availability check
+            var bookingEnd = endDate ?? startDate;
+            var hasBookingOverlap = await _context.Bookings
+                .AsNoTracking()
+                .Where(b => b.PropertyId == propertyId)
+                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.StartDate < bookingEnd)
+                .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
+                .AnyAsync();
+
+            if (hasBookingOverlap)
+            {
+                _logger.LogWarning("Dates became unavailable after payment for intent {PaymentIntentId} - initiating refund", paymentIntent.Id);
+                
+                try
+                {
+                    await ProcessRefundAsync(payment.PaymentId, amount, "Dates became unavailable after payment");
+                }
+                catch (Exception refundEx)
+                {
+                    _logger.LogError(refundEx, "Failed to refund payment {PaymentId} for unavailable dates", payment.PaymentId);
+                }
+                return;
+            }
+
+            // Create the booking
+            var booking = new Booking
+            {
+                PropertyId = propertyId,
+                UserId = userId,
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalPrice = amount,
+                Status = BookingStatusEnum.Upcoming,
+                PaymentMethod = "Stripe",
+                PaymentStatus = "Completed",
+                Currency = currency,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                CreatedBy = userId,
+                ModifiedBy = userId
+            };
+
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            // Link payment to booking
+            payment.BookingId = booking.BookingId;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created booking {BookingId} via webhook for intent {PaymentIntentId}",
+                booking.BookingId, paymentIntent.Id);
+
+            // Send notifications
+            if (_notificationService != null)
+            {
+                try
+                {
+                    var property = await _context.Properties
+                        .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+                    var propertyName = property?.Name ?? "your property";
+
+                    // Notify tenant
+                    await _notificationService.CreatePaymentNotificationAsync(
+                        userId,
+                        payment.PaymentId,
+                        "Booking Confirmed",
+                        $"Your booking for {propertyName} on {startDate:MMM dd, yyyy} has been confirmed and paid.");
+
+                    // Notify landlord
+                    if (property != null)
+                    {
+                        await _notificationService.CreatePaymentNotificationAsync(
+                            property.OwnerId,
+                            payment.PaymentId,
+                            "New Booking Received",
+                            $"New paid booking for {propertyName} starting {startDate:MMM dd, yyyy}.");
+                    }
+                }
+                catch (Exception notifyEx)
+                {
+                    _logger.LogError(notifyEx, "Failed to send notifications for webhook booking {BookingId}", booking.BookingId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling payment success and creating booking for intent {PaymentIntentId}", paymentIntent.Id);
         }
     }
 }

@@ -229,7 +229,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             height: 40,
                             child: (selectedContact.profileImageId != null)
                                 ? CustomAvatar(
-                                    imageUrl: 'Images/${selectedContact.profileImageId}',
+                                    imageUrl: '/Images/${selectedContact.profileImageId}',
                                     size: 40,
                                     borderWidth: 0,
                                   )

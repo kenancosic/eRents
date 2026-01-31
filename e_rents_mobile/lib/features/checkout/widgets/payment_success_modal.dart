@@ -42,7 +42,7 @@ class _PaymentSuccessModalState extends State<PaymentSuccessModal>
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         context.pop();
-        context.go('/bookings?tab=0'); // Navigate to upcoming bookings
+        context.go('/profile/booking-history'); // Navigate to booking history within profile shell
       }
     });
   }
@@ -112,7 +112,7 @@ class _PaymentSuccessModalState extends State<PaymentSuccessModal>
                     widget.onViewBooking!();
                   } else {
                     context.pop();
-                    context.go('/bookings?tab=0'); // Navigate to upcoming bookings
+                    context.go('/profile/booking-history'); // Navigate to booking history within profile shell
                   }
                 },
                 style: ElevatedButton.styleFrom(

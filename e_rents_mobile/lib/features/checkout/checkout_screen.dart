@@ -140,8 +140,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: CustomButton(
-                      isLoading: provider.isLoading,
-                      onPressed: provider.isLoading
+                      isLoading: provider.isLoading || _isProcessingPayment,
+                      onPressed: (provider.isLoading || _isProcessingPayment)
                           ? null
                           : () {
                               if (provider.isDailyRental) {
@@ -151,7 +151,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               }
                             },
                       label: Text(
-                        provider.isLoading
+                        (provider.isLoading || _isProcessingPayment)
                             ? 'Processing...'
                             : (provider.isDailyRental ? 'Pay and Book' : 'Send Request'),
                         style: const TextStyle(
@@ -475,8 +475,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Future<void> _processPayment(CheckoutProvider provider) async {
     // Prevent duplicate payment processing
-    if (_isProcessingPayment) return;
+    if (_isProcessingPayment || provider.isLoading) return;
     _isProcessingPayment = true;
+    setState(() {}); // Immediately update UI to disable button
 
     try {
       // Stripe payment flow
@@ -502,6 +503,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
     } finally {
       _isProcessingPayment = false;
+      if (mounted) setState(() {}); // Update UI to re-enable button
     }
   }
 
@@ -534,8 +536,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Present payment sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // Payment successful
-      _showPaymentSuccess(provider);
+      // Payment successful - now create the booking
+      if (!mounted) return;
+      
+      // Show loading while creating booking
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Finalizing your booking...'),
+            ],
+          ),
+        ),
+      );
+
+      // Create booking after successful payment
+      final result = await provider.confirmBookingAfterPayment();
+      
+      if (!mounted) return;
+      context.pop(); // Close loading dialog
+
+      if (result.success && result.bookingId != null) {
+        _showPaymentSuccess(provider, result.bookingId!);
+      } else {
+        _showPaymentError(result.errorMessage ?? 'Failed to create booking. Please contact support.');
+      }
 
     } catch (e) {
       // Handle Stripe-specific errors
@@ -544,6 +574,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Handle StripeException
       if (e is StripeException) {
         if (e.error.code == FailureCode.Canceled) {
+          // User cancelled - cancel the payment intent
+          await provider.cancelPaymentIntent();
           _showCancelledMessage();
           return;
         }
@@ -553,19 +585,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showPaymentSuccess(CheckoutProvider provider) {
+  void _showPaymentSuccess(CheckoutProvider provider, int bookingId) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => PaymentSuccessModal(
-        bookingId: provider.pendingBookingId?.toString(),
+        bookingId: bookingId.toString(),
         onViewBooking: () {
           dialogContext.pop();
           // Refresh home and bookings data so new booking appears immediately
           final currentUserProvider = context.read<CurrentUserProvider>();
           context.read<HomeProvider>().refreshDashboard(currentUserProvider);
           context.read<UserBookingsProvider>().loadUserBookings(forceRefresh: true, currentUserProvider: currentUserProvider);
-          context.go('/bookings?tab=0'); // Navigate to upcoming bookings
+          context.go('/profile/booking-history'); // Navigate to booking history within profile shell
         },
       ),
     );

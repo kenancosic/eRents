@@ -42,6 +42,42 @@ public class PaymentIntentResponse
 }
 
 /// <summary>
+/// Response model for booking created after successful payment
+/// </summary>
+public class BookingAfterPaymentResponse
+{
+    /// <summary>
+    /// Whether the operation was successful
+    /// </summary>
+    public bool Success { get; set; }
+    
+    /// <summary>
+    /// The created booking ID (null if creation failed)
+    /// </summary>
+    public int? BookingId { get; set; }
+    
+    /// <summary>
+    /// The payment ID linked to the booking
+    /// </summary>
+    public int? PaymentId { get; set; }
+    
+    /// <summary>
+    /// Status of the booking
+    /// </summary>
+    public string? Status { get; set; }
+    
+    /// <summary>
+    /// Optional error message if creation failed
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+    
+    /// <summary>
+    /// Whether this was an existing booking (idempotency - already created by webhook)
+    /// </summary>
+    public bool WasAlreadyCreated { get; set; }
+}
+
+/// <summary>
 /// Response model for refund operations
 /// </summary>
 public class RefundResponse

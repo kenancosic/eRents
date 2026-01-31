@@ -6,6 +6,8 @@ import 'package:e_rents_mobile/features/features_registry.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
 import 'package:e_rents_mobile/features/chat/backend_chat_provider.dart';
 import 'package:e_rents_mobile/core/managers/chat_lifecycle_manager.dart';
+import 'package:e_rents_mobile/features/notifications/providers/notification_provider.dart';
+import 'package:e_rents_mobile/core/managers/notification_lifecycle_manager.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
@@ -18,16 +20,35 @@ import 'config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: "lib/.env");
   
-  // Initialize Stripe with publishable key
-  Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? 'pk_test_YOUR_KEY_HERE';
-  // Enable merchant identifier for Apple Pay (optional)
-  // Stripe.merchantIdentifier = 'merchant.com.eRents';
+  // Load environment variables with error handling
+  try {
+    await dotenv.load(fileName: "lib/.env");
+    debugPrint('dotenv loaded successfully');
+  } catch (e) {
+    debugPrint('Failed to load .env file: $e');
+  }
+  
+  // Initialize Stripe with publishable key (with validation)
+  final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
+  if (stripeKey != null && stripeKey.isNotEmpty && stripeKey.startsWith('pk_')) {
+    try {
+      Stripe.publishableKey = stripeKey;
+      debugPrint('Stripe initialized with key: ${stripeKey.substring(0, 20)}...');
+    } catch (e) {
+      debugPrint('Failed to initialize Stripe: $e');
+    }
+  } else {
+    debugPrint('Warning: Invalid or missing STRIPE_PUBLISHABLE_KEY, Stripe features disabled');
+  }
   
   // Clear any persisted auth token on app restart per requirement
   // Note: This will log out the user on every fresh app start.
-  await SecureStorageService().clearToken();
+  try {
+    await SecureStorageService().clearToken();
+  } catch (e) {
+    debugPrint('Failed to clear token: $e');
+  }
 
   runApp(MyApp());
 }
@@ -115,6 +136,7 @@ class _ChatLifecycleWrapper extends StatefulWidget {
 
 class _ChatLifecycleWrapperState extends State<_ChatLifecycleWrapper> {
   ChatLifecycleManager? _chatLifecycleManager;
+  NotificationLifecycleManager? _notificationLifecycleManager;
 
   @override
   void initState() {
@@ -134,11 +156,13 @@ class _ChatLifecycleWrapperState extends State<_ChatLifecycleWrapper> {
     widget.authProvider.onLoginSuccess = () {
       debugPrint('ChatLifecycle: Login detected, connecting SignalR...');
       _chatLifecycleManager?.onAuthenticated();
+      _notificationLifecycleManager?.onAuthenticated();
     };
 
     widget.authProvider.onLogoutComplete = () {
       debugPrint('ChatLifecycle: Logout detected, disconnecting SignalR...');
       _chatLifecycleManager?.onLoggedOut();
+      _notificationLifecycleManager?.onLoggedOut();
     };
 
     // If already authenticated (token exists), connect immediately
@@ -146,11 +170,26 @@ class _ChatLifecycleWrapperState extends State<_ChatLifecycleWrapper> {
       debugPrint('ChatLifecycle: Already authenticated, connecting SignalR...');
       _chatLifecycleManager?.onAuthenticated();
     }
+
+    // Setup notification lifecycle
+    _setupNotificationLifecycle();
+  }
+
+  void _setupNotificationLifecycle() {
+    final notificationProvider = context.read<NotificationProvider>();
+    _notificationLifecycleManager = NotificationLifecycleManager(notificationProvider);
+    _notificationLifecycleManager!.initialize();
+
+    if (widget.authProvider.isAuthenticated) {
+      debugPrint('NotificationLifecycle: Already authenticated, connecting SignalR...');
+      _notificationLifecycleManager?.onAuthenticated();
+    }
   }
 
   @override
   void dispose() {
     _chatLifecycleManager?.dispose();
+    _notificationLifecycleManager?.dispose();
     super.dispose();
   }
 
