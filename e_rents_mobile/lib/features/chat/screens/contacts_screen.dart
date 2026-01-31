@@ -19,8 +19,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
     Future.microtask(() async {
       final provider = context.read<BackendChatProvider>();
       await provider.loadContacts();
-      // Ensure SignalR presence updates begin
-      await provider.connectRealtime();
+      // Note: SignalR connection is now managed globally by ChatLifecycleManager
+      // which connects immediately after login, so no need to call connectRealtime() here
     });
   }
 

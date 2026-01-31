@@ -7,6 +7,10 @@ class AuthProvider extends BaseProvider {
   final SecureStorageService _secureStorageService;
   String? _accessToken;
 
+  // Callbacks for chat lifecycle integration
+  VoidCallback? onLoginSuccess;
+  VoidCallback? onLogoutComplete;
+
   AuthProvider(super.api, this._secureStorageService) {
     // Initialize the access token from secure storage
     _initializeToken();
@@ -54,6 +58,10 @@ class AuthProvider extends BaseProvider {
         }
         
         debugPrint('AuthProvider: Login successful for $identifier');
+        
+        // Trigger chat lifecycle connection
+        onLoginSuccess?.call();
+        
         return true;
       }
       
@@ -84,6 +92,9 @@ class AuthProvider extends BaseProvider {
 
   Future<void> logout() async {
     await executeWithStateAndMessage(() async {
+      // Trigger chat lifecycle disconnection before clearing token
+      onLogoutComplete?.call();
+      
       await _secureStorageService.clearToken();
       _accessToken = null;
       debugPrint('AuthProvider: User logged out successfully');

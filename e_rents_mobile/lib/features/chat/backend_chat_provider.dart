@@ -23,6 +23,10 @@ class BackendChatProvider extends BaseProvider {
   HubConnection? _hub;
   bool _isRealtimeConnected = false;
 
+  // Message deduplication tracking to prevent duplicate messages
+  final Set<String> _processedMessageIds = {};
+  static const int _maxTrackedMessageIds = 1000;
+
   // Getters
   List<User> get contacts => _contacts;
   List<core.Message> messagesFor(int contactId) => _conversations[contactId] ?? [];
@@ -30,6 +34,46 @@ class BackendChatProvider extends BaseProvider {
   bool isOnline(int contactId) => _online[contactId] ?? false;
 
   bool get isRealtimeConnected => _isRealtimeConnected;
+
+  // ─── Message Deduplication ─────────────────────────────────────────────────
+  
+  /// Generate a unique ID for deduplication based on message properties
+  String _generateMessageUniqueId(int senderId, DateTime? dateSent, String messageText) {
+    final timestamp = dateSent?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
+    return '${senderId}_${timestamp}_${messageText.hashCode}';
+  }
+
+  /// Add message with deduplication - returns true if message was added
+  bool _addMessageDeduped(int contactId, core.Message message) {
+    final uniqueId = _generateMessageUniqueId(
+      message.senderId,
+      message.dateSent,
+      message.messageText,
+    );
+    
+    // Skip if we've already processed this message
+    if (_processedMessageIds.contains(uniqueId)) {
+      print('BackendChatProvider: Skipping duplicate message: $uniqueId');
+      return false;
+    }
+    
+    // Add to tracking set
+    _processedMessageIds.add(uniqueId);
+    
+    // Limit cache size using simple eviction (remove oldest)
+    if (_processedMessageIds.length > _maxTrackedMessageIds) {
+      _processedMessageIds.remove(_processedMessageIds.first);
+    }
+    
+    // Add message to conversation
+    (_conversations[contactId] ??= []).add(message);
+    
+    // Sort messages by dateSent to ensure correct order
+    _conversations[contactId]?.sort((a, b) => 
+      (a.dateSent ?? DateTime.now()).compareTo(b.dateSent ?? DateTime.now()));
+    
+    return true;
+  }
 
   // Load contacts
   Future<void> loadContacts() async {
@@ -196,10 +240,10 @@ class BackendChatProvider extends BaseProvider {
     });
 
     if (result != null) {
-      (_conversations[receiverId] ??= []).add(result);
-      // Sort messages by dateSent to ensure correct order
-      _conversations[receiverId]?.sort((a, b) => (a.dateSent ?? DateTime.now()).compareTo(b.dateSent ?? DateTime.now()));
-      notifyListeners();
+      // Use deduplication to prevent double-adding from REST + SignalR
+      if (_addMessageDeduped(receiverId, result)) {
+        notifyListeners();
+      }
       return true;
     }
     return false;
@@ -279,10 +323,7 @@ class BackendChatProvider extends BaseProvider {
       print('BackendChatProvider: SignalR connection failed: $e');
       
       // Log additional details for debugging
-      print('BackendChatProvider: Token available: ${token != null}');
-      if (token != null) {
-        print('BackendChatProvider: Token length: ${token.length}');
-      }
+      print('BackendChatProvider: Token length: ${token.length}');
     } finally {
       notifyListeners();
     }
@@ -351,10 +392,10 @@ class BackendChatProvider extends BaseProvider {
             dateSent: dateSent,
             isRead: isRead,
           );
-          (_conversations[senderId.toInt()] ??= []).add(msg);
-          // Sort messages by dateSent to ensure correct order
-          _conversations[senderId.toInt()]?.sort((a, b) => (a.dateSent ?? DateTime.now()).compareTo(b.dateSent ?? DateTime.now()));
-          notifyListeners();
+          // Use deduplication - message goes to sender's conversation
+          if (_addMessageDeduped(senderId.toInt(), msg)) {
+            notifyListeners();
+          }
         }
       }
     });
@@ -400,10 +441,10 @@ class BackendChatProvider extends BaseProvider {
             dateSent: dateSent,
             isRead: false,
           );
-          (_conversations[receiverId.toInt()] ??= []).add(msg);
-          // Sort messages by dateSent to ensure correct order
-          _conversations[receiverId.toInt()]?.sort((a, b) => (a.dateSent ?? DateTime.now()).compareTo(b.dateSent ?? DateTime.now()));
-          notifyListeners();
+          // Use deduplication - message goes to receiver's conversation
+          if (_addMessageDeduped(receiverId.toInt(), msg)) {
+            notifyListeners();
+          }
         }
       }
     });

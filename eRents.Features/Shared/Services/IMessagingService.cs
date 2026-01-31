@@ -23,7 +23,7 @@ namespace eRents.Features.Shared.Services
 
         #region Real-Time Operations
 
-        Task SendRealTimeMessageAsync(int senderId, int receiverId, string messageText, DateTime createdAt);
+        Task SendRealTimeMessageAsync(int messageId, int senderId, int receiverId, string messageText, DateTime createdAt);
         Task SendSystemNotificationAsync(int userId, string notification);
         Task BroadcastUserStatusAsync(int userId, bool isOnline);
         Task SendMessageToUserAsync(int receiverId, string eventName, object data);

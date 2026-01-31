@@ -34,6 +34,45 @@ class ChatProvider extends BaseProvider {
   bool _isRealtimeConnected = false;
   bool get isRealtimeConnected => _isRealtimeConnected;
 
+  // Message deduplication tracking to prevent duplicate messages
+  final Set<String> _processedMessageIds = {};
+  static const int _maxTrackedMessageIds = 1000;
+
+  // ─── Message Deduplication ─────────────────────────────────────────────────
+  
+  /// Generate a unique ID for deduplication based on message properties
+  String _generateMessageUniqueId(int senderId, DateTime? dateSent, String messageText) {
+    final timestamp = dateSent?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
+    return '${senderId}_${timestamp}_${messageText.hashCode}';
+  }
+
+  /// Add message with deduplication - returns true if message was added
+  bool _addMessageDeduped(int contactId, Message message) {
+    final uniqueId = _generateMessageUniqueId(
+      message.senderId,
+      message.createdAt,
+      message.messageText,
+    );
+    
+    // Skip if we've already processed this message
+    if (_processedMessageIds.contains(uniqueId)) {
+      return false;
+    }
+    
+    // Add to tracking set
+    _processedMessageIds.add(uniqueId);
+    
+    // Limit cache size using simple eviction (remove oldest)
+    if (_processedMessageIds.length > _maxTrackedMessageIds) {
+      _processedMessageIds.remove(_processedMessageIds.first);
+    }
+    
+    // Add message to conversation
+    (_conversations[contactId] ??= []).add(message);
+    
+    return true;
+  }
+
   // ─── Getters ────────────────────────────────────────────────────────────
   bool get isLoadingContacts => isLoading;
   bool get isLoadingMessages => isLoading;
@@ -167,9 +206,11 @@ class ChatProvider extends BaseProvider {
     });
     
     if (result != null) {
-      _conversations[receiverId]?.add(result);
-      _updateContactActivity(receiverId);
-      notifyListeners();
+      // Use deduplication to prevent double-adding from REST + SignalR
+      if (_addMessageDeduped(receiverId, result)) {
+        _updateContactActivity(receiverId);
+        notifyListeners();
+      }
       return true;
     }
     return false;
@@ -244,14 +285,15 @@ class ChatProvider extends BaseProvider {
             updatedAt: sentAt,
             isRead: false,
           );
-          (_conversations[senderId] ??= []).add(msg);
-
-          // Update unread count if not viewing this conversation
-          if (senderId != _selectedContactId) {
-            _unreadCounts[senderId] = (_unreadCounts[senderId] ?? 0) + 1;
+          
+          // Use deduplication to prevent duplicate messages
+          if (_addMessageDeduped(senderId, msg)) {
+            // Update unread count if not viewing this conversation
+            if (senderId != _selectedContactId) {
+              _unreadCounts[senderId] = (_unreadCounts[senderId] ?? 0) + 1;
+            }
+            notifyListeners();
           }
-
-          notifyListeners();
         }
       }
     });

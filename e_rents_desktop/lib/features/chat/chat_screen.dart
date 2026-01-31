@@ -46,9 +46,9 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       
-      // Connect to SignalR for real-time messaging
+      // Note: SignalR connection is now managed globally by main.dart
+      // which connects immediately after login, so no need to call connectRealtime() here
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      await chatProvider.connectRealtime();
       log.info("ChatScreen: SignalR connected: ${chatProvider.isRealtimeConnected}");
     });
   }

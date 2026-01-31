@@ -4,6 +4,8 @@ import 'package:e_rents_mobile/core/base/navigation_provider.dart';
 import 'package:e_rents_mobile/core/utils/theme.dart';
 import 'package:e_rents_mobile/features/features_registry.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
+import 'package:e_rents_mobile/features/chat/backend_chat_provider.dart';
+import 'package:e_rents_mobile/core/managers/chat_lifecycle_manager.dart';
 import 'package:e_rents_mobile/routes/router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
@@ -73,23 +75,87 @@ class MyApp extends StatelessWidget {
         // Register all feature providers via centralized registry
         ...FeaturesRegistry.createFeatureProviders(dependencies),
       ],
-      child: Stack(
-        textDirection: TextDirection.ltr,
-        children: [
-          MaterialApp.router(
-            title: 'eRents',
-            theme: appTheme,
-            routerConfig: appRouter.router,
-            debugShowCheckedModeBanner: false,
-            builder: (context, child) => Stack(
-              children: [
-                child!,
-                const GlobalErrorDialog(),
-              ],
+      child: _ChatLifecycleWrapper(
+        authProvider: authProvider,
+        child: Stack(
+          textDirection: TextDirection.ltr,
+          children: [
+            MaterialApp.router(
+              title: 'eRents',
+              theme: appTheme,
+              routerConfig: appRouter.router,
+              debugShowCheckedModeBanner: false,
+              builder: (context, child) => Stack(
+                children: [
+                  child!,
+                  const GlobalErrorDialog(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+}
+
+/// Wrapper widget that wires up chat lifecycle to auth events
+class _ChatLifecycleWrapper extends StatefulWidget {
+  final AuthProvider authProvider;
+  final Widget child;
+
+  const _ChatLifecycleWrapper({
+    required this.authProvider,
+    required this.child,
+  });
+
+  @override
+  State<_ChatLifecycleWrapper> createState() => _ChatLifecycleWrapperState();
+}
+
+class _ChatLifecycleWrapperState extends State<_ChatLifecycleWrapper> {
+  ChatLifecycleManager? _chatLifecycleManager;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wire up auth callbacks after first frame to ensure providers are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupChatLifecycle();
+    });
+  }
+
+  void _setupChatLifecycle() {
+    final chatProvider = context.read<BackendChatProvider>();
+    _chatLifecycleManager = ChatLifecycleManager(chatProvider);
+    _chatLifecycleManager!.initialize();
+
+    // Wire auth callbacks to chat lifecycle
+    widget.authProvider.onLoginSuccess = () {
+      debugPrint('ChatLifecycle: Login detected, connecting SignalR...');
+      _chatLifecycleManager?.onAuthenticated();
+    };
+
+    widget.authProvider.onLogoutComplete = () {
+      debugPrint('ChatLifecycle: Logout detected, disconnecting SignalR...');
+      _chatLifecycleManager?.onLoggedOut();
+    };
+
+    // If already authenticated (token exists), connect immediately
+    if (widget.authProvider.isAuthenticated) {
+      debugPrint('ChatLifecycle: Already authenticated, connecting SignalR...');
+      _chatLifecycleManager?.onAuthenticated();
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatLifecycleManager?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

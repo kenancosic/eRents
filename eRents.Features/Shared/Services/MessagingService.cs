@@ -94,7 +94,7 @@ namespace eRents.Features.Shared.Services
 				// Send via SignalR for real-time notification
 				if (_hubContext != null)
 				{
-					await SendRealTimeMessageAsync(senderId, request.ReceiverId, request.MessageText, messageEntity.CreatedAt);
+					await SendRealTimeMessageAsync(messageEntity.MessageId, senderId, request.ReceiverId, request.MessageText, messageEntity.CreatedAt);
 				}
 
 				_logger.LogInformation("Message sent from User {SenderId} to User {ReceiverId}",
@@ -357,7 +357,7 @@ namespace eRents.Features.Shared.Services
 
 		#region Real-Time Operations
 
-		public async Task SendRealTimeMessageAsync(int senderId, int receiverId, string messageText, DateTime createdAt)
+		public async Task SendRealTimeMessageAsync(int messageId, int senderId, int receiverId, string messageText, DateTime createdAt)
 		{
 			try
 			{
@@ -370,8 +370,10 @@ namespace eRents.Features.Shared.Services
 				// Get sender details
 				var senderName = await GetUsernameByUserIdAsync(senderId);
 
+				// Include messageId for client-side deduplication
 				var messageData = new
 				{
+					messageId,
 					senderId,
 					senderName,
 					receiverId,

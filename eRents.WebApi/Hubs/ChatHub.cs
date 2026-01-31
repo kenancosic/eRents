@@ -132,22 +132,24 @@ namespace eRents.WebApi.Hubs
 					MessageText = messageText,
 				};
 
-				// Save message via service
-				await _messageHandlerService.SendMessageAsync(senderId, sendMessageRequest);
+				// Save message via service and get the message ID for deduplication
+				var savedMessage = await _messageHandlerService.SendMessageAsync(senderId, sendMessageRequest);
 
-				// Prepare message data for SignalR
+				// Prepare message data for SignalR - include messageId for client-side deduplication
 				var messageData = new
 				{
+					messageId = savedMessage.Id,
 					senderId,
 					senderName,
 					receiverId,
 					messageText,
-					dateSent = DateTime.UtcNow,
+					dateSent = savedMessage.CreatedAt,
 					isRead = false
 				};
 
-				// Send to the receiver if online
-				await Clients.Group($"user-{receiverId}").SendAsync("ReceiveMessage", messageData);
+				// NOTE: MessagingService.SendMessageAsync already sends ReceiveMessage to the receiver
+				// via SendRealTimeMessageAsync, so we don't send it again here to avoid duplicates.
+				// We only send MessageSent confirmation back to the sender.
 
 				// Send confirmation back to sender
 				await Clients.Caller.SendAsync("MessageSent", messageData);

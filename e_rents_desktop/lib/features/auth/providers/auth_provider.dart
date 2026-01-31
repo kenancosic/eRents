@@ -4,6 +4,7 @@ import 'package:e_rents_desktop/models/user.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show VoidCallback;
 
 /// AuthProvider built on BaseProvider + BaseProviderMixin
 /// - Unifies state: isLoading, isUpdating, hasError, error
@@ -17,6 +18,10 @@ class AuthProvider extends BaseProvider {
 
   // Optional dependency for token persistence; kept generic so existing tests can pass it
   final dynamic storage;
+
+  // Callbacks for chat lifecycle integration
+  VoidCallback? onLoginSuccess;
+  VoidCallback? onLogoutComplete;
 
   // Back-compat: allow named parameters as used in tests and providers_config.dart
   AuthProvider({required ApiService apiService, this.storage}) : super(apiService);
@@ -100,6 +105,10 @@ class AuthProvider extends BaseProvider {
 
       setUpdating(false);
       debugPrint('[AuthProvider] Login successful');
+      
+      // Trigger chat lifecycle connection
+      onLoginSuccess?.call();
+      
       return true;
     } catch (e) {
       // Extract actual error message from exception
@@ -324,6 +333,10 @@ class AuthProvider extends BaseProvider {
   /// Logout current session. Returns true on success.
   Future<bool> logout() async {
     debugPrint('[AuthProvider] logout() called');
+    
+    // Trigger chat lifecycle disconnection before clearing token
+    onLogoutComplete?.call();
+    
     // No backend logout endpoint currently; just clear local auth state and tokens
     // If a server-side logout is added later (e.g., refresh token revocation), call it here.
     // Clear persisted token so ApiService stops authenticating requests

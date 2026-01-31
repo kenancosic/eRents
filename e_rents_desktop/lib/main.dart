@@ -86,6 +86,41 @@ class AppWithRouter extends StatefulWidget {
 class _AppWithRouterState extends State<AppWithRouter> {
   AppRouter? _appRouter;
   bool? _lastAuthState;
+  bool _chatLifecycleInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Wire up chat lifecycle after first frame to ensure providers are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupChatLifecycle();
+    });
+  }
+
+  void _setupChatLifecycle() {
+    if (_chatLifecycleInitialized) return;
+    _chatLifecycleInitialized = true;
+
+    final authProvider = context.read<features.AuthProvider>();
+    final chatProvider = context.read<features.ChatProvider>();
+
+    // Wire auth callbacks to chat lifecycle
+    authProvider.onLoginSuccess = () {
+      debugPrint('ChatLifecycle: Login detected, connecting SignalR...');
+      chatProvider.connectRealtime();
+    };
+
+    authProvider.onLogoutComplete = () {
+      debugPrint('ChatLifecycle: Logout detected, disconnecting SignalR...');
+      chatProvider.disconnectRealtime();
+    };
+
+    // If already authenticated (token exists), connect immediately
+    if (authProvider.isAuthenticated) {
+      debugPrint('ChatLifecycle: Already authenticated, connecting SignalR...');
+      chatProvider.connectRealtime();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

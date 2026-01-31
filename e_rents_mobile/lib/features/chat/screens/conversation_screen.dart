@@ -40,8 +40,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
     Future.microtask(() async {
       final provider = context.read<BackendChatProvider>();
       await provider.loadMessages(widget.contactId, refresh: true);
-      await provider.connectRealtime();
-      // scroll to bottom after first load
+      // Note: SignalR connection is now managed globally by ChatLifecycleManager
+      // which connects immediately after login, so no need to call connectRealtime() here
       _scrollToBottom();
     });
     _scrollController.addListener(_onScroll);
