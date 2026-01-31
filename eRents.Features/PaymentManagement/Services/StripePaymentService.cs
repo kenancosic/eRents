@@ -753,7 +753,7 @@ public class StripePaymentService : IStripePaymentService
             var overlappingBookings = await _context.Bookings
                 .AsNoTracking()
                 .Where(b => b.PropertyId == propertyId)
-                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming)
                 .Where(b => b.StartDate < bookingEnd)
                 .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
                 .Select(b => new { b.BookingId, b.StartDate, b.EndDate, b.Status })
@@ -999,7 +999,7 @@ public class StripePaymentService : IStripePaymentService
             var hasBookingOverlap = await _context.Bookings
                 .AsNoTracking()
                 .Where(b => b.PropertyId == propertyId)
-                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming)
                 .Where(b => b.StartDate < bookingEnd)
                 .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
                 .AnyAsync();
@@ -1344,7 +1344,7 @@ public class StripePaymentService : IStripePaymentService
             var hasBookingOverlap = await _context.Bookings
                 .AsNoTracking()
                 .Where(b => b.PropertyId == propertyId)
-                .Where(b => b.Status == BookingStatusEnum.Confirmed || b.Status == BookingStatusEnum.Upcoming)
+                .Where(b => b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming)
                 .Where(b => b.StartDate < bookingEnd)
                 .Where(b => !b.EndDate.HasValue || b.EndDate.Value > startDate)
                 .AnyAsync();

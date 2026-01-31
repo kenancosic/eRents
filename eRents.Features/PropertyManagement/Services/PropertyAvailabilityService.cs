@@ -71,9 +71,9 @@ public class PropertyAvailabilityService
 
                 // Standard overlap check: conflict if booking overlaps with requested range
                 // Overlap occurs when: existingStart < requestedEnd AND existingEnd > requestedStart
+                // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
                 hasConflict = property.Bookings.Any(b =>
-                    b.Status != BookingStatusEnum.Cancelled &&
-                    b.Status != BookingStatusEnum.Completed &&
+                    (b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming) &&
                     b.StartDate < endDateOnly.Value &&
                     (b.EndDate ?? DateOnly.MaxValue) > startDateOnly);
             }
@@ -81,12 +81,9 @@ public class PropertyAvailabilityService
             {
                 // Daily: Standard overlap check - booking conflicts if ranges overlap
                 // Simplified logic: overlap occurs when b.Start < requestEnd AND b.End > requestStart
-                if (!endDateOnly.HasValue)
-                    return false; // Daily rentals require end date
-
+                // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
                 hasConflict = property.Bookings.Any(b =>
-                    b.Status != BookingStatusEnum.Cancelled &&
-                    b.Status != BookingStatusEnum.Completed &&
+                    (b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming) &&
                     b.StartDate < endDateOnly.Value &&
                     (b.EndDate ?? DateOnly.MaxValue) > startDateOnly);
             }
@@ -133,10 +130,9 @@ public class PropertyAvailabilityService
                 {
                     // For monthly properties: show if this specific day is OCCUPIED by an existing booking
                     // Calendar shows per-day occupation, validation checks full period overlap
-                    // A day is unavailable if it falls within any active booking's date range
+                    // A day is unavailable if it falls within any Confirmed/Upcoming booking's date range
                     isAvailable = !property.Bookings.Any(b =>
-                        b.Status != BookingStatusEnum.Cancelled &&
-                        b.Status != BookingStatusEnum.Completed &&
+                        (b.Status == BookingStatusEnum.Approved || b.Status == BookingStatusEnum.Upcoming) &&
                         b.StartDate <= dateOnly &&
                         (b.EndDate ?? DateOnly.MaxValue) >= dateOnly);
                 }

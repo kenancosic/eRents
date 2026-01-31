@@ -118,8 +118,8 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             .Where(t => t.PropertyId == entity.PropertyId)
             .Where(t => t.UserId != entity.UserId) // Exclude the current booking's tenant
             .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
             .AnyAsync();
 
         if (hasActiveTenantOverlap)
@@ -444,14 +444,14 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         // Prevent creating a booking that overlaps an active tenancy for the same property
         var bookingStart = request.StartDate;
-        var bookingEnd = request.EndDate ?? request.StartDate; // treat 1-day stay when EndDate is null
+        var bookingEnd = request.EndDate ?? request.StartDate;
 
         var hasActiveTenantOverlap = await Context.Set<Tenant>()
             .AsNoTracking()
             .Where(t => t.PropertyId == request.PropertyId)
             .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
             .AnyAsync();
 
         if (hasActiveTenantOverlap)
@@ -461,15 +461,15 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         // Prevent same user from having multiple non-cancelled bookings on the same property
         // This catches cases where Tenant record doesn't exist yet (pending approval) or for daily rentals
+        // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
         var hasExistingActiveBooking = await Context.Set<Booking>()
             .AsNoTracking()
             .Where(b => b.PropertyId == request.PropertyId)
             .Where(b => b.UserId == entity.UserId)
-            .Where(b => b.Status != Domain.Models.Enums.BookingStatusEnum.Cancelled)
-            .Where(b => b.Status != Domain.Models.Enums.BookingStatusEnum.Completed)
-            // Check for date overlap
-            .Where(b => b.StartDate <= bookingEnd)
-            .Where(b => !b.EndDate.HasValue || b.EndDate.Value >= bookingStart)
+            .Where(b => b.Status == Domain.Models.Enums.BookingStatusEnum.Approved || b.Status == Domain.Models.Enums.BookingStatusEnum.Upcoming)
+            // Check for date overlap using strict inequality to allow adjacent bookings
+            .Where(b => b.StartDate < bookingEnd)
+            .Where(b => !b.EndDate.HasValue || b.EndDate.Value > bookingStart)
             .AnyAsync();
 
         if (hasExistingActiveBooking)
@@ -1076,13 +1076,31 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             .AsNoTracking()
             .Where(t => t.PropertyId == request.PropertyId)
             .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value <= bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value >= bookingStart)
+            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
+            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
             .AnyAsync();
 
         if (hasActiveTenantOverlap)
         {
             throw new InvalidOperationException("Cannot update booking: property has an active tenancy overlapping the requested dates.");
+        }
+
+        // Prevent same user from having multiple non-cancelled bookings on the same property
+        // This catches cases where Tenant record doesn't exist yet (pending approval) or for daily rentals
+        // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
+        var hasExistingActiveBooking = await Context.Set<Booking>()
+            .AsNoTracking()
+            .Where(b => b.PropertyId == request.PropertyId)
+            .Where(b => b.UserId == entity.UserId)
+            .Where(b => b.Status == Domain.Models.Enums.BookingStatusEnum.Approved || b.Status == Domain.Models.Enums.BookingStatusEnum.Upcoming)
+            // Check for date overlap using strict inequality to allow adjacent bookings
+            .Where(b => b.StartDate < bookingEnd)
+            .Where(b => !b.EndDate.HasValue || b.EndDate.Value > bookingStart)
+            .AnyAsync();
+
+        if (hasExistingActiveBooking)
+        {
+            throw new InvalidOperationException("You already have an active or upcoming booking for this property during this period.");
         }
     }
 
