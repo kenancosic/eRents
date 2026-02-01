@@ -51,6 +51,10 @@ android {
             // Enable ProGuard/R8 for release builds
             isMinifyEnabled = true
             isShrinkResources = true
+            
+            // Disable debugging in release for production
+            isDebuggable = false
+            
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
