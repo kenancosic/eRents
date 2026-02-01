@@ -346,28 +346,18 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         }
 
         // Auto-scope for Desktop clients
-        // Desktop app is for landlords/owners only - enforce ownership filtering
         if (CurrentUser?.IsDesktop == true)
         {
-            var userRole = CurrentUser.UserRole ?? string.Empty;
-            var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
-            
-            if (isOwnerOrLandlord)
+            var ownerId = CurrentUser.GetUserIdAsInt();
+            if (ownerId.HasValue)
             {
-                // Owners/Landlords see only bookings for their properties
-                var ownerId = CurrentUser.GetUserIdAsInt();
-                if (ownerId.HasValue)
-                {
-                    query = query.Where(x => x.Property.OwnerId == ownerId.Value);
-                }
+                Logger.LogInformation("Applying booking ownership filter for user {UserId}", ownerId.Value);
+                query = query.Where(x => x.Property.OwnerId == ownerId.Value);
             }
             else
             {
-                // Non-owner desktop users should not access booking management
+                Logger.LogWarning("Desktop user has no parseable user ID - returning empty booking results");
                 query = query.Where(x => false);
-                Logger.LogWarning("Non-owner user {UserId} attempted to access booking management from desktop", 
-                    CurrentUser.GetUserIdAsInt());
             }
         }
 

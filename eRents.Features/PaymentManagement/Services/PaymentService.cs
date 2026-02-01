@@ -86,17 +86,24 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
         }
         
         // Auto-scope for Desktop owners/landlords: only payments tied to owned properties/bookings
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        // NOTE: Apply ownership filtering for ALL desktop authenticated users, not just specific roles
+        if (CurrentUser?.IsDesktop == true)
         {
             var ownerId = CurrentUser.GetUserIdAsInt();
             if (ownerId.HasValue)
             {
+                // Log for debugging
+                Logger.LogInformation("Applying payment ownership filter for user {UserId} with role {UserRole}", 
+                    ownerId.Value, CurrentUser.UserRole ?? "null");
+                
                 query = query.Where(x =>
                     (x.Property != null && x.Property.OwnerId == ownerId.Value)
                     || (x.Booking != null && x.Booking.Property != null && x.Booking.Property.OwnerId == ownerId.Value));
+            }
+            else
+            {
+                Logger.LogWarning("Desktop user has no parseable user ID - returning empty payment results");
+                query = query.Where(x => false); // Return nothing if we can't identify the user
             }
         }
 

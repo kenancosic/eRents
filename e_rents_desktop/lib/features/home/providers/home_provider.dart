@@ -98,4 +98,14 @@ class HomeProvider extends BaseProvider {
       notifyListeners();
     });
   }
+
+  /// Reset all statistics - call on logout to clear sensitive data
+  void reset() {
+    _activeBookingsToday = 0;
+    _upcomingCheckins7d = 0;
+    _monthlyRevenue = 0.0;
+    _emergencyMaintenanceIssues = 0;
+    _emergencyIssues = const [];
+    notifyListeners();
+  }
 }

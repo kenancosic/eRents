@@ -105,8 +105,17 @@ class _AppWithRouterState extends State<AppWithRouter> {
 
     final authProvider = context.read<features.AuthProvider>();
     final chatProvider = context.read<features.ChatProvider>();
+    final profileProvider = context.read<features.ProfileProvider>();
+    final homeProvider = context.read<features.HomeProvider>();
 
-    // Wire auth callbacks to chat lifecycle
+    // Wire auth callbacks to chat lifecycle and provider cleanup
+    authProvider.onBeforeLogout = () {
+      debugPrint('ProviderCleanup: Logout detected, clearing provider states...');
+      profileProvider.clearUserProfile();
+      homeProvider.reset();
+      context.read<features.PropertyProvider>().reset();
+    };
+
     authProvider.onLoginSuccess = () {
       debugPrint('ChatLifecycle: Login detected, connecting SignalR...');
       chatProvider.connectRealtime();

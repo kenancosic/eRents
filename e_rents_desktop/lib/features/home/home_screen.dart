@@ -7,6 +7,7 @@ import 'package:e_rents_desktop/utils/constants.dart';
 import 'package:e_rents_desktop/widgets/loading_or_error_widget.dart';
 import 'package:e_rents_desktop/utils/formatters.dart'; // Keep for kCurrencyFormat
 import 'package:e_rents_desktop/features/auth/providers/auth_provider.dart';
+import 'package:e_rents_desktop/models/user.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = context.read<AuthProvider>();
+      // Fetch statistics for all authenticated users (they may have properties)
       if (authProvider.isAuthenticated) {
         context.read<HomeProvider>().fetchDashboardStatistics();
       }
@@ -29,8 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-        return Consumer2<HomeProvider, AuthProvider>(
-            builder: (context, homeProvider, authProvider, _) {
+    return Consumer2<HomeProvider, AuthProvider>(
+      builder: (context, homeProvider, authProvider, _) {
         final user = authProvider.currentUser;
         final theme = Theme.of(context);
 
@@ -46,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: kDefaultPadding),
                 Text(
-                  'Please log in to view your landlord dashboard',
+                  'Please log in to view your dashboard',
                   style: theme.textTheme.headlineSmall,
                 ),
                 SizedBox(height: kDefaultPadding),
@@ -59,49 +61,52 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final Widget mainContent = RefreshIndicator(
-          onRefresh: () async {
-            if (authProvider.isAuthenticated) {
-              await homeProvider.fetchDashboardStatistics(forceRefresh: true);
-            }
-          },
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(kDefaultPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (user != null)
-                  Padding(
-                    padding: EdgeInsets.only(bottom: kDefaultPadding),
-                    child: Text(
-                      'Welcome back, ${user.firstName}!', // Simplified message
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ),
-
-                _buildKPISection(context, homeProvider),
-
-                SizedBox(height: kDefaultPadding * 1.5),
-
-                _buildDashboardContent(context, homeProvider),
-              ],
-            ),
-          ),
-        );
-
-        return LoadingOrErrorWidget(
-          isLoading: homeProvider.isLoading,
-          error: homeProvider.error,
-          onRetry: () {
-            if (authProvider.isAuthenticated) {
-              homeProvider.fetchDashboardStatistics(forceRefresh: true);
-            }
-          },
-          child: mainContent,
-        );
+        // Default landlord dashboard (all users are landlords)
+        return _buildLandlordDashboard(context, homeProvider, user, theme);
       },
+    );
+  }
+
+  Widget _buildLandlordDashboard(
+    BuildContext context,
+    HomeProvider homeProvider,
+    User? user,
+    ThemeData theme,
+  ) {
+    final Widget mainContent = RefreshIndicator(
+      onRefresh: () async {
+        await homeProvider.fetchDashboardStatistics(forceRefresh: true);
+      },
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(kDefaultPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (user != null)
+              Padding(
+                padding: EdgeInsets.only(bottom: kDefaultPadding),
+                child: Text(
+                  'Welcome back, ${user.firstName}!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            _buildKPISection(context, homeProvider),
+            SizedBox(height: kDefaultPadding * 1.5),
+            _buildDashboardContent(context, homeProvider),
+          ],
+        ),
+      ),
+    );
+
+    return LoadingOrErrorWidget(
+      isLoading: homeProvider.isLoading,
+      error: homeProvider.error,
+      onRetry: () {
+        homeProvider.fetchDashboardStatistics(forceRefresh: true);
+      },
+      child: mainContent,
     );
   }
 

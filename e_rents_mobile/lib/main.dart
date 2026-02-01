@@ -21,6 +21,12 @@ import 'config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Run app immediately to avoid black screen, initialize services in background
+  runApp(const MyApp());
+}
+
+/// Initialize services after app is running to prevent blocking the UI
+Future<void> _initializeServices() async {
   // Load environment variables with error handling
   try {
     await dotenv.load(fileName: "lib/.env");
@@ -29,7 +35,7 @@ Future<void> main() async {
     debugPrint('Failed to load .env file: $e');
   }
   
-  // Initialize Stripe with publishable key (with validation)
+  // Initialize Stripe
   final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
   if (stripeKey != null && stripeKey.isNotEmpty && stripeKey.startsWith('pk_')) {
     try {
@@ -41,16 +47,6 @@ Future<void> main() async {
   } else {
     debugPrint('Warning: Invalid or missing STRIPE_PUBLISHABLE_KEY, Stripe features disabled');
   }
-  
-  // Clear any persisted auth token on app restart per requirement
-  // Note: This will log out the user on every fresh app start.
-  try {
-    await SecureStorageService().clearToken();
-  } catch (e) {
-    debugPrint('Failed to clear token: $e');
-  }
-
-  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -141,8 +137,9 @@ class _ChatLifecycleWrapperState extends State<_ChatLifecycleWrapper> {
   @override
   void initState() {
     super.initState();
-    // Wire up auth callbacks after first frame to ensure providers are ready
+    // Initialize services in background after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeServices();
       _setupChatLifecycle();
     });
   }

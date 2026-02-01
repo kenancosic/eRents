@@ -19,9 +19,10 @@ class AuthProvider extends BaseProvider {
   // Optional dependency for token persistence; kept generic so existing tests can pass it
   final dynamic storage;
 
-  // Callbacks for chat lifecycle integration
+  // Callbacks for chat lifecycle integration and provider cleanup
   VoidCallback? onLoginSuccess;
   VoidCallback? onLogoutComplete;
+  VoidCallback? onBeforeLogout;
 
   // Back-compat: allow named parameters as used in tests and providers_config.dart
   AuthProvider({required ApiService apiService, this.storage}) : super(apiService);
@@ -333,6 +334,10 @@ class AuthProvider extends BaseProvider {
   /// Logout current session. Returns true on success.
   Future<bool> logout() async {
     debugPrint('[AuthProvider] logout() called');
+    
+    // Trigger provider cleanup before clearing auth state
+    // This ensures other providers clear their data before auth state changes
+    onBeforeLogout?.call();
     
     // Trigger chat lifecycle disconnection before clearing token
     onLogoutComplete?.call();

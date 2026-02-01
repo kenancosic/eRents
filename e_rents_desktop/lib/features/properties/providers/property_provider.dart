@@ -469,6 +469,17 @@ class PropertyProvider extends BaseProvider {
       }
     });
   }
+
+  /// Reset all property data - call on logout to clear sensitive data
+  void reset() {
+    _items = [];
+    _paged = null;
+    _selected = null;
+    _filters = {};
+    _propertyReviews.clear();
+    _isLoadingReviews.clear();
+    notifyListeners();
+  }
 }
 
 /// Property form provider kept minimal, reusing main provider behavior if desired
