@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_status_chip.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_renting_type_dropdown.dart';
 import 'package:e_rents_desktop/features/properties/widgets/property_unavailable_date_fields.dart';
+import 'package:e_rents_desktop/models/property_status_update_request.dart';
 import 'package:e_rents_desktop/widgets/error_handling/error_handling.dart';
 
 class PropertyFormScreen extends StatefulWidget {
@@ -122,7 +123,7 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _PropertyFormFields(key: _fieldsKey, property: property),
+                _PropertyFormFields(key: _fieldsKey, property: property, hasTenant: _initialProperty?.status == PropertyStatus.occupied),
                 const SizedBox(height: 16),
                 Text('Images', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
@@ -146,6 +147,8 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           // Build DTO from current form field values (works for both create/edit)
           final dto = _fieldsKey.currentState?.buildUpdatedProperty(base: _initialProperty ?? property) ?? property;
           Property? saved;
+          PropertyStatus? originalStatus = _initialProperty?.status;
+          
           if ((dto.propertyId) == 0) {
             saved = await propertyProvider.createProperty(dto);
           } else {
@@ -153,6 +156,27 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
           }
 
           if (saved == null) return false;
+
+          // Handle status change separately using dedicated endpoint
+          if (dto.propertyId != 0 && 
+              originalStatus != null && 
+              originalStatus != dto.status) {
+            try {
+              final statusRequest = PropertyStatusUpdateRequest(
+                status: dto.status,
+                unavailableFrom: dto.unavailableFrom,
+                unavailableTo: dto.unavailableTo,
+              );
+              await propertyProvider.updatePropertyStatus(dto.propertyId, statusRequest);
+            } catch (e) {
+              // Show warning but don't fail the entire operation
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Property saved but status update failed: $e')),
+                );
+              }
+            }
+          }
 
           // After save, upload newly picked images (client-side compressed)
           final newImages = _pickedImages.where((i) => i.isNew && i.data != null).toList();
@@ -201,8 +225,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
 
 class _PropertyFormFields extends StatefulWidget {
   final Property? property;
+  final bool hasTenant;
   
-  const _PropertyFormFields({Key? key, required this.property}) : super(key: key);
+  const _PropertyFormFields({Key? key, required this.property, required this.hasTenant}) : super(key: key);
 
   @override
   State<_PropertyFormFields> createState() => _PropertyFormFieldsState();
@@ -334,20 +359,11 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
             },
           ),
           const SizedBox(height: 16),
-          FutureBuilder<bool>(
-            future: _hasTenant(widget.property),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircularProgressIndicator();
-              }
-              final hasTenant = snapshot.data ?? false;
-              return PropertyStatusTenantAwareDropdown(
-                selected: _selectedStatus,
-                hasTenant: hasTenant,
-                onChanged: (status) {
-                  setState(() => _selectedStatus = status);
-                },
-              );
+          PropertyStatusTenantAwareDropdown(
+            selected: _selectedStatus,
+            hasTenant: widget.hasTenant,
+            onChanged: (status) {
+              setState(() => _selectedStatus = status);
             },
           ),
           const SizedBox(height: 16),
@@ -371,21 +387,6 @@ class _PropertyFormFieldsState extends State<_PropertyFormFields> {
         ],
       ),
     );
-  }
-
-  // Check if property has an active tenant
-  Future<bool> _hasTenant(Property? property) async {
-    // For new properties (id=0) or null, there's no tenant
-    if (property == null || property.propertyId == 0) return false;
-    
-    try {
-      final provider = Provider.of<PropertyProvider>(context, listen: false);
-      final tenantSummary = await provider.fetchCurrentTenantSummary(property.propertyId);
-      return tenantSummary != null;
-    } catch (e) {
-      // If we can't determine tenant status, default to false for safety
-      return false;
-    }
   }
 
   // Build a new Property using current field values, preserving unspecified fields from base

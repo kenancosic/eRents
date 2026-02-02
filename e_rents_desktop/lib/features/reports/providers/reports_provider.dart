@@ -5,8 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 enum ReportType { financial } // Only financial reports for desktop
@@ -177,13 +177,30 @@ class ReportsProvider extends BaseProvider {
       // Save PDF to file and open it
       final bytes = await pdf.save();
       
-      // Get directory based on platform
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/financial_report_${DateTime.now().millisecondsSinceEpoch}.pdf');
-      await file.writeAsBytes(bytes);
+      // Use file selector for desktop-compatible save dialog
+      final fileName = 'financial_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final result = await getSaveLocation(
+        acceptedTypeGroups: [
+          const XTypeGroup(
+            label: 'PDF files',
+            extensions: ['pdf'],
+          ),
+        ],
+        suggestedName: fileName,
+      );
       
-      // Open the PDF file
-      await OpenFilex.open(file.path);
+      if (result != null) {
+        final file = File(result.path);
+        await file.writeAsBytes(bytes);
+        
+        // Open the PDF file using URL launcher
+        final uri = Uri.file(file.path);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          throw Exception('Could not open PDF file: ${file.path}');
+        }
+      }
     });
   }
 

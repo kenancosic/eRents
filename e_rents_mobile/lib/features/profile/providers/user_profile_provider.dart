@@ -284,10 +284,16 @@ class UserProfileProvider extends BaseProvider {
         'phoneNumber': _currentUser!.phoneNumber,
         'profileImageId': _currentUser!.profileImageId,
         'isPublic': isPublic,
+        // Always include current address data to prevent validation failures
+        'streetLine1': _currentUser!.address?.streetLine1,
+        'streetLine2': _currentUser!.address?.streetLine2,
+        'city': city?.trim() ?? _currentUser!.address?.city,
+        'state': _currentUser!.address?.state,
+        'country': _currentUser!.address?.country,
+        'postalCode': _currentUser!.address?.postalCode,
+        'latitude': _currentUser!.address?.latitude,
+        'longitude': _currentUser!.address?.longitude,
       };
-      if (isPublic && city != null && city.trim().isNotEmpty) {
-        payload['city'] = city.trim();
-      }
 
       final response = await api.put('/profile', payload, authenticated: true);
 
@@ -330,9 +336,16 @@ class UserProfileProvider extends BaseProvider {
           'lastName': _currentUser!.lastName,
           'phoneNumber': _currentUser!.phoneNumber,
           'profileImageId': _currentUser!.profileImageId,
-          'city': trimmed,
-          // keep current public status if any
           'isPublic': _currentUser!.isPublic,
+          // Include all address fields to prevent validation failures
+          'streetLine1': _currentUser!.address?.streetLine1,
+          'streetLine2': _currentUser!.address?.streetLine2,
+          'city': trimmed,
+          'state': _currentUser!.address?.state,
+          'country': _currentUser!.address?.country,
+          'postalCode': _currentUser!.address?.postalCode,
+          'latitude': _currentUser!.address?.latitude,
+          'longitude': _currentUser!.address?.longitude,
         },
         authenticated: true,
       );

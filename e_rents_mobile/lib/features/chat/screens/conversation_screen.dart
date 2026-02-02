@@ -71,9 +71,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
     if (text.isEmpty) return;
     _controller.clear();
     
-    // Unfocus to dismiss keyboard
-    FocusScope.of(context).unfocus();
-    
     // Add a minimal delay to ensure UI updates
     await Future.delayed(const Duration(milliseconds: 10));
     

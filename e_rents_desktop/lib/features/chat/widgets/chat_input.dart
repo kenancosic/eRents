@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class ChatInput extends StatelessWidget {
+class ChatInput extends StatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
   final bool isEnabled;
@@ -11,6 +11,19 @@ class ChatInput extends StatelessWidget {
     required this.onSend,
     this.isEnabled = true,
   });
+
+  @override
+  State<ChatInput> createState() => _ChatInputState();
+}
+
+class _ChatInputState extends State<ChatInput> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,9 +43,18 @@ class ChatInput extends StatelessWidget {
         children: [
           Expanded(
             child: TextField(
-              controller: controller,
-              enabled: isEnabled,
-              onSubmitted: (_) => onSend(),
+              controller: widget.controller,
+              focusNode: _focusNode,
+              enabled: widget.isEnabled,
+              onSubmitted: (_) {
+                widget.onSend();
+                // Re-request focus after sending to maintain input focus
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _focusNode.requestFocus();
+                  }
+                });
+              },
               decoration: InputDecoration(
                 hintText: 'Type a message...',
                 border: OutlineInputBorder(
@@ -50,7 +72,7 @@ class ChatInput extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           IconButton(
-            onPressed: isEnabled ? onSend : null,
+            onPressed: widget.isEnabled ? widget.onSend : null,
             icon: const Icon(Icons.send),
             style: IconButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,

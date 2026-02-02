@@ -514,8 +514,48 @@ class _StatusUpdateSectionState extends State<_StatusUpdateSection> {
       }
     } catch (e) {
       if (mounted) {
+        String userMessage = 'Failed to update property status';
+        String errorDetails = e.toString();
+        
+        // Provide specific guidance for common errors
+        if (errorDetails.contains('active tenant')) {
+          userMessage = 'Cannot change property status while it has active tenants. Please end current leases first.';
+        } else if (errorDetails.contains('Unauthorized') || errorDetails.contains('403')) {
+          userMessage = 'You do not have permission to change this property status.';
+        } else if (errorDetails.contains('NotFound') || errorDetails.contains('404')) {
+          userMessage = 'Property not found or has been deleted.';
+        } else if (errorDetails.contains('network') || errorDetails.contains('connection')) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update property status: $e')),
+          SnackBar(
+            content: Text(userMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Details',
+              textColor: Colors.white,
+              onPressed: () {
+                // Show detailed error in a dialog for debugging
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Error Details'),
+                    content: SingleChildScrollView(
+                      child: Text(errorDetails),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         );
       }
     } finally {

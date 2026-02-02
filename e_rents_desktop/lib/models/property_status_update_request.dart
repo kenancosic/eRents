@@ -13,9 +13,13 @@ class PropertyStatusUpdateRequest {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      'status': status.value,
-      'unavailableFrom': unavailableFrom?.toIso8601String(),
-      'unavailableTo': unavailableTo?.toIso8601String(),
+      'status': status.name,
+      'unavailableFrom': unavailableFrom != null 
+          ? '${unavailableFrom!.year.toString().padLeft(4, '0')}-${unavailableFrom!.month.toString().padLeft(2, '0')}-${unavailableFrom!.day.toString().padLeft(2, '0')}'
+          : null,
+      'unavailableTo': unavailableTo != null 
+          ? '${unavailableTo!.year.toString().padLeft(4, '0')}-${unavailableTo!.month.toString().padLeft(2, '0')}-${unavailableTo!.day.toString().padLeft(2, '0')}'
+          : null,
     };
   }
 }

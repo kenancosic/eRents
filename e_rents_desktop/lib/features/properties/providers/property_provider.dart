@@ -336,7 +336,7 @@ class PropertyProvider extends BaseProvider {
 
   Future<Property?> updatePropertyStatus(int propertyId, PropertyStatusUpdateRequest request) async {
     return executeWithRetry<Property>(() async {
-      final updated = await api.putAndDecode('/properties/$propertyId/status', request.toJson(), Property.fromJson);
+      final updated = await api.putAndDecode('/properties/$propertyId/status', request.toJson(), Property.fromJson, authenticated: true);
       _items = _items.map((e) => e.propertyId == propertyId ? updated : e).toList();
       if (_paged != null) {
         _paged = PagedResult<Property>(

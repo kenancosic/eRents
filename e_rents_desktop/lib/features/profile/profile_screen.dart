@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-import 'package:e_rents_desktop/features/profile/providers/stripe_connect_provider.dart';
 import 'package:e_rents_desktop/features/profile/models/connect_account_status.dart';
 import 'package:e_rents_desktop/features/profile/widgets/profile_header_widget.dart';
 import 'package:e_rents_desktop/features/profile/widgets/personal_info_form_widget.dart';
@@ -28,8 +27,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     // Load Stripe Connect account status when profile screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final stripeProvider = context.read<StripeConnectProvider>();
-      stripeProvider.loadAccountStatus();
+      final profileProvider = context.read<ProfileProvider>();
+      profileProvider.loadStripeAccountStatus();
     });
   }
 
@@ -233,8 +232,8 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
     return SectionCard(
       title: 'Payment & Payouts',
       titleIcon: Icons.account_balance_wallet_outlined,
-      child: Consumer<StripeConnectProvider>(
-        builder: (context, stripeProvider, child) {
+      child: Consumer<ProfileProvider>(
+        builder: (context, profileProvider, child) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -265,7 +264,7 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
                 ),
               ),
               // Main content
-              _buildStripeConnectContent(context, stripeProvider),
+              _buildStripeConnectContent(context, profileProvider),
             ],
           );
         },
@@ -273,15 +272,15 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
     );
   }
 
-  Widget _buildStripeConnectContent(BuildContext context, StripeConnectProvider stripeProvider) {
-          if (stripeProvider.isLoading && stripeProvider.accountStatus == null) {
+  Widget _buildStripeConnectContent(BuildContext context, ProfileProvider profileProvider) {
+          if (profileProvider.isLoadingStripe && profileProvider.stripeAccountStatus == null) {
             return const Padding(
               padding: EdgeInsets.all(20.0),
               child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          if (stripeProvider.hasError && stripeProvider.accountStatus == null) {
+          if (profileProvider.hasError && profileProvider.stripeAccountStatus == null) {
             return Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
@@ -291,10 +290,10 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
                     style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Text(stripeProvider.error ?? 'Unknown error'),
+                  Text(profileProvider.error ?? 'Unknown error'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => stripeProvider.loadAccountStatus(),
+                    onPressed: () => profileProvider.loadStripeAccountStatus(),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -302,12 +301,12 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
             );
           }
 
-          final accountStatus = stripeProvider.accountStatus;
+          final accountStatus = profileProvider.stripeAccountStatus;
 
-          if (accountStatus == null || !stripeProvider.hasAccount) {
+          if (accountStatus == null || !profileProvider.hasStripeAccount) {
             return StripeConnectNotLinked(
               onConnect: () => _connectStripeAccount(context),
-              isLoading: stripeProvider.isLoading,
+              isLoading: profileProvider.isLoadingStripe,
             );
           }
 
@@ -317,7 +316,7 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
                 status: accountStatus,
                 onViewDashboard: () => _openStripeDashboard(context),
                 onDisconnect: () => _disconnectStripeAccount(context),
-                isLoading: stripeProvider.isLoading,
+                isLoading: profileProvider.isLoadingStripe,
               );
             case ConnectAccountState.pending:
             case ConnectAccountState.inactive:
@@ -325,19 +324,19 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
               return StripeConnectPending(
                 status: accountStatus,
                 onCompleteSetup: () => _resumeOnboarding(context),
-                isLoading: stripeProvider.isLoading,
+                isLoading: profileProvider.isLoadingStripe,
               );
           }
   }
 
   Future<void> _connectStripeAccount(BuildContext context) async {
-    final stripeProvider = context.read<StripeConnectProvider>();
+    final profileProvider = context.read<ProfileProvider>();
     // Use proper URLs for Stripe Connect - these are displayed to user to manually return
     const baseUrl = 'https://erents.app';
     const refreshUrl = '$baseUrl/stripe/refresh';
     const returnUrl = '$baseUrl/stripe/return';
     
-    final onboardingUrl = await stripeProvider.createOnboardingLink(
+    final onboardingUrl = await profileProvider.createStripeOnboardingLink(
       refreshUrl: refreshUrl,
       returnUrl: returnUrl,
     );
@@ -346,7 +345,7 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(stripeProvider.error ?? 'Failed to create onboarding link'),
+            content: Text(profileProvider.error ?? 'Failed to create onboarding link'),
             backgroundColor: Colors.red,
           ),
         );
@@ -378,7 +377,7 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
         
         Future.delayed(const Duration(seconds: 10), () {
           if (context.mounted) {
-            stripeProvider.refreshAfterOnboarding();
+            profileProvider.refreshStripeAccountAfterOnboarding();
           }
         });
       }
@@ -399,14 +398,14 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
   }
 
   Future<void> _openStripeDashboard(BuildContext context) async {
-    final stripeProvider = context.read<StripeConnectProvider>();
-    final dashboardUrl = await stripeProvider.getDashboardLink();
+    final profileProvider = context.read<ProfileProvider>();
+    final dashboardUrl = await profileProvider.getStripeDashboardLink();
     
     if (dashboardUrl == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(stripeProvider.error ?? 'Failed to get dashboard link'),
+            content: Text(profileProvider.error ?? 'Failed to get dashboard link'),
             backgroundColor: Colors.red,
           ),
         );
@@ -454,8 +453,8 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
     
     if (confirmed != true) return;
     
-    final stripeProvider = context.read<StripeConnectProvider>();
-    final success = await stripeProvider.disconnectAccount();
+    final profileProvider = context.read<ProfileProvider>();
+    final success = await profileProvider.disconnectStripeAccount();
     
     if (context.mounted) {
       if (success) {
@@ -468,7 +467,7 @@ class _ProfileScreenContentState extends State<_ProfileScreenContent> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(stripeProvider.error ?? 'Failed to disconnect account'),
+            content: Text(profileProvider.error ?? 'Failed to disconnect account'),
             backgroundColor: Colors.red,
           ),
         );

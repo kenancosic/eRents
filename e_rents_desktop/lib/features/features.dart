@@ -12,7 +12,6 @@ export 'home/providers/home_provider.dart';
 export 'maintenance/providers/maintenance_provider.dart';
 export 'notifications/providers/notification_provider.dart';
 export 'profile/providers/profile_provider.dart';
-export 'profile/providers/stripe_connect_provider.dart';
 export 'properties/providers/property_provider.dart';
 export 'rents/providers/rents_provider.dart';
 export 'reports/providers/reports_provider.dart' hide ReportType;

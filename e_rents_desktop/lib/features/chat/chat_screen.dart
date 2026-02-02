@@ -22,6 +22,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   int? _currentUserId;
   bool _hasAutoSelected = false;
 
@@ -50,13 +51,25 @@ class _ChatScreenState extends State<ChatScreen> {
       // which connects immediately after login, so no need to call connectRealtime() here
       final chatProvider = Provider.of<ChatProvider>(context, listen: false);
       log.info("ChatScreen: SignalR connected: ${chatProvider.isRealtimeConnected}");
+      
+      // Add listener for message changes to auto-scroll
+      chatProvider.addListener(_onMessagesChanged);
     });
+  }
+
+  void _onMessagesChanged() {
+    if (mounted) {
+      _scrollToBottom();
+    }
   }
 
   @override
   void dispose() {
+    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+    chatProvider.removeListener(_onMessagesChanged);
     _messageController.dispose();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -86,13 +99,34 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(chatProvider.error ?? 'Failed to send message')),
         );
+      } else if (success && mounted) {
+        // Scroll to bottom after sending message
+        _scrollToBottom();
       }
     });
   }
 
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
   void _selectContact(BuildContext context, int contactId) {
     Provider.of<ChatProvider>(context, listen: false).selectContact(contactId);
+    // Scroll to bottom when switching to a new conversation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
   }
 
   List<User> _getFilteredContacts(ChatProvider chatProvider) {
@@ -258,6 +292,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         : isLoading && messages.isEmpty
                             ? const Center(child: CircularProgressIndicator())
                             : ListView.builder(
+                                controller: _scrollController,
                                 padding: const EdgeInsets.all(16),
                                 itemCount: messages.length,
                                 itemBuilder: (context, index) {

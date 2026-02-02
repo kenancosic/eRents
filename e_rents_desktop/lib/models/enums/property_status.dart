@@ -40,6 +40,19 @@ enum PropertyStatus {
     }
   }
 
+  String get name {
+    switch (this) {
+      case PropertyStatus.available:
+        return 'Available';
+      case PropertyStatus.occupied:
+        return 'Occupied';
+      case PropertyStatus.underMaintenance:
+        return 'UnderMaintenance';
+      case PropertyStatus.unavailable:
+        return 'Unavailable';
+    }
+  }
+
   @override
   String toString() => displayName;
 }

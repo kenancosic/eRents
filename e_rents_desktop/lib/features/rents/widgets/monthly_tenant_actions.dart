@@ -11,11 +11,13 @@ import 'package:e_rents_desktop/router.dart';
 class MonthlyTenantActions extends StatelessWidget {
   final Tenant tenant;
   final VoidCallback onRefresh;
+  final VoidCallback? onApproved;
 
   const MonthlyTenantActions({
     super.key,
     required this.tenant,
     required this.onRefresh,
+    this.onApproved,
   });
 
   @override
@@ -282,6 +284,7 @@ class MonthlyTenantActions extends StatelessWidget {
       final provider = context.read<RentsProvider>();
       await provider.acceptTenantRequest(tenant.tenantId, tenant.propertyId!);
       onRefresh();
+      onApproved?.call(); // Call approved callback only for actual approvals
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

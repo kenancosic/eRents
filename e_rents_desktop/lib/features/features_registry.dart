@@ -12,7 +12,6 @@ import 'chat/providers/chat_provider.dart';
 import 'home/providers/home_provider.dart';
 import 'maintenance/providers/maintenance_provider.dart';
 import 'profile/providers/profile_provider.dart';
-import 'profile/providers/stripe_connect_provider.dart';
 import 'properties/providers/property_provider.dart';
 import 'rents/providers/rents_provider.dart';
 import 'reports/providers/reports_provider.dart';
@@ -68,10 +67,6 @@ class FeaturesRegistry {
       
       ChangeNotifierProvider<ProfileProvider>(
         create: (_) => ProfileProvider(deps.apiService),
-      ),
-      
-      ChangeNotifierProvider<StripeConnectProvider>(
-        create: (_) => StripeConnectProvider(deps.apiService),
       ),
       
       ChangeNotifierProvider<PropertyProvider>(

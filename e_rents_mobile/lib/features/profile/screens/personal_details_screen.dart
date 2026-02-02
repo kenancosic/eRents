@@ -1,6 +1,8 @@
 import 'package:e_rents_mobile/core/base/base_screen.dart';
 import 'package:e_rents_mobile/core/widgets/custom_app_bar.dart';
 import 'package:e_rents_mobile/core/widgets/custom_button.dart';
+import 'package:e_rents_mobile/core/widgets/places_autocomplete_field.dart';
+import 'package:e_rents_mobile/core/services/google_places_service.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,6 +26,8 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   late TextEditingController _addressController;
   late TextEditingController _cityController;
   late TextEditingController _zipCodeController;
+  
+  PlaceDetails? _selectedPlaceDetails;
 
   @override
   void initState() {
@@ -51,6 +55,22 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
     _cityController.dispose();
     _zipCodeController.dispose();
     super.dispose();
+  }
+
+  // Callback method for handling place selection from Google Places autocomplete
+  void _onPlaceSelected(PlaceDetails? placeDetails) {
+    setState(() {
+      _selectedPlaceDetails = placeDetails;
+    });
+    
+    if (placeDetails != null) {
+      // Update city controller with the best available city name
+      final cityName = placeDetails.bestCityName ?? placeDetails.city ?? '';
+      _cityController.text = cityName;
+      
+      // Optionally update other address fields if needed
+      // For now, we're only handling the city field
+    }
   }
 
   Future<void> _saveDetails() async {
@@ -175,12 +195,11 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
+                        PlacesAutocompleteField(
                           controller: _cityController,
-                          decoration: const InputDecoration(
-                            labelText: 'City',
-                            border: OutlineInputBorder(),
-                          ),
+                          hintText: 'City',
+                          searchType: '(cities)', // Restrict search to cities only
+                          onPlaceSelected: _onPlaceSelected,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

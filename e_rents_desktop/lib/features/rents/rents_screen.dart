@@ -237,6 +237,8 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                   tenant: t,
                   onRefresh: () {
                     _monthlyListController.refresh();
+                  },
+                  onApproved: () {
                     if (mounted) {
                       setState(() {
                         _recentlyApprovedTenants.add(t.tenantId);
@@ -299,6 +301,8 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
                         tenant: t,
                         onRefresh: () {
                           _monthlyListController.refresh();
+                        },
+                        onApproved: () {
                           if (mounted) {
                             setState(() {
                               _recentlyApprovedTenants.add(t.tenantId);
