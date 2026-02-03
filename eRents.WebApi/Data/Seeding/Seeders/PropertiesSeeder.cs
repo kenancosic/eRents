@@ -62,12 +62,12 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             var desktop = owners.FirstOrDefault(o => o.Username == "desktop") ?? owners[0];
             baseline.AddRange(new[]
             {
-                CreateProperty(desktop, amenities, "Stan na Grbavici", "Sarajevo", PropertyStatusEnum.Occupied, RentalType.Monthly),
-                CreateProperty(desktop, amenities, "Luxuzni stan Centar", "Sarajevo", PropertyStatusEnum.Available, RentalType.Monthly),
-                CreateProperty(desktop, amenities, "Apartman Stari Most", "Mostar", PropertyStatusEnum.Available, RentalType.Daily),
-                CreateProperty(desktop, amenities, "Vila Bašćaršija", "Sarajevo", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
+                CreateProperty(desktop, amenities, "Stan na Grbavici", "Sarajevo", RentalType.Monthly, propertyTypeOverride: PropertyTypeEnum.Apartment, isUnderMaintenance: false, isOccupied: true),
+                CreateProperty(desktop, amenities, "Luxuzni stan Centar", "Sarajevo", RentalType.Monthly),
+                CreateProperty(desktop, amenities, "Apartman Stari Most", "Mostar", RentalType.Daily),
+                CreateProperty(desktop, amenities, "Vila Bašćaršija", "Sarajevo", RentalType.Daily, PropertyTypeEnum.Villa),
                 // Test property for April availability testing - no bookings will be seeded for this property
-                CreateProperty(desktop, amenities, "Novi Stan April Test", "Sarajevo", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                CreateProperty(desktop, amenities, "Novi Stan April Test", "Sarajevo", RentalType.Monthly, PropertyTypeEnum.Apartment)
             });
             
             // Other owners - distribute properties
@@ -76,9 +76,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerMostar, amenities, "Apartman uz Neretvu", "Mostar", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Apartment),
-                    CreateProperty(ownerMostar, amenities, "Stari Grad Studio", "Mostar", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Studio),
-                    CreateProperty(ownerMostar, amenities, "Porodična kuća Blagaj", "Mostar", PropertyStatusEnum.Occupied, RentalType.Monthly, PropertyTypeEnum.House)
+                    CreateProperty(ownerMostar, amenities, "Apartman uz Neretvu", "Mostar", RentalType.Daily, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerMostar, amenities, "Stari Grad Studio", "Mostar", RentalType.Daily, PropertyTypeEnum.Studio),
+                    CreateProperty(ownerMostar, amenities, "Porodična kuća Blagaj", "Mostar", RentalType.Monthly, PropertyTypeEnum.House, isOccupied: true)
                 });
             }
             
@@ -87,8 +87,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerZenica, amenities, "Porodična kuća Centar", "Zenica", PropertyStatusEnum.Occupied, RentalType.Monthly, PropertyTypeEnum.House),
-                    CreateProperty(ownerZenica, amenities, "Stan uz park", "Zenica", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                    CreateProperty(ownerZenica, amenities, "Porodična kuća Centar", "Zenica", RentalType.Monthly, PropertyTypeEnum.House, isOccupied: true),
+                    CreateProperty(ownerZenica, amenities, "Stan uz park", "Zenica", RentalType.Monthly, PropertyTypeEnum.Apartment)
                 });
             }
             
@@ -97,9 +97,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerTuzla, amenities, "Studentski dom", "Tuzla", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment),
-                    CreateProperty(ownerTuzla, amenities, "Apartman Slana Banja", "Tuzla", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Apartment),
-                    CreateProperty(ownerTuzla, amenities, "Studio u centru", "Tuzla", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Studio)
+                    CreateProperty(ownerTuzla, amenities, "Studentski dom", "Tuzla", RentalType.Monthly, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerTuzla, amenities, "Apartman Slana Banja", "Tuzla", RentalType.Daily, PropertyTypeEnum.Apartment),
+                    CreateProperty(ownerTuzla, amenities, "Studio u centru", "Tuzla", RentalType.Monthly, PropertyTypeEnum.Studio)
                 });
             }
             
@@ -108,9 +108,9 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerBanjaLuka, amenities, "Apartman u Starom Gradu", "Banja Luka", PropertyStatusEnum.UnderMaintenance, RentalType.Monthly, PropertyTypeEnum.Apartment),
-                    CreateProperty(ownerBanjaLuka, amenities, "Vila na Vrbasu", "Banja Luka", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
-                    CreateProperty(ownerBanjaLuka, amenities, "Soba za studente", "Banja Luka", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Room)
+                    CreateProperty(ownerBanjaLuka, amenities, "Apartman u Starom Gradu", "Banja Luka", RentalType.Monthly, PropertyTypeEnum.Apartment, isUnderMaintenance: true),
+                    CreateProperty(ownerBanjaLuka, amenities, "Vila na Vrbasu", "Banja Luka", RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerBanjaLuka, amenities, "Soba za studente", "Banja Luka", RentalType.Monthly, PropertyTypeEnum.Room)
                 });
             }
             
@@ -119,8 +119,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerBihac, amenities, "Vikendica na Uni", "Bihać", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House),
-                    CreateProperty(ownerBihac, amenities, "Apartman Centar", "Bihać", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                    CreateProperty(ownerBihac, amenities, "Vikendica na Uni", "Bihać", RentalType.Daily, PropertyTypeEnum.House),
+                    CreateProperty(ownerBihac, amenities, "Apartman Centar", "Bihać", RentalType.Monthly, PropertyTypeEnum.Apartment)
                 });
             }
             
@@ -129,8 +129,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerBrcko, amenities, "Vila na rijeci Sava", "Brčko", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
-                    CreateProperty(ownerBrcko, amenities, "Stan u centru", "Brčko", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                    CreateProperty(ownerBrcko, amenities, "Vila na rijeci Sava", "Brčko", RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerBrcko, amenities, "Stan u centru", "Brčko", RentalType.Monthly, PropertyTypeEnum.Apartment)
                 });
             }
             
@@ -139,8 +139,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerTravnik, amenities, "Historijska kuća", "Travnik", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.House),
-                    CreateProperty(ownerTravnik, amenities, "Studio Stari Grad", "Travnik", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Studio)
+                    CreateProperty(ownerTravnik, amenities, "Historijska kuća", "Travnik", RentalType.Daily, PropertyTypeEnum.House),
+                    CreateProperty(ownerTravnik, amenities, "Studio Stari Grad", "Travnik", RentalType.Monthly, PropertyTypeEnum.Studio)
                 });
             }
             
@@ -149,8 +149,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             {
                 baseline.AddRange(new[]
                 {
-                    CreateProperty(ownerTrebinje, amenities, "Vila uz Trebišnjicu", "Trebinje", PropertyStatusEnum.Available, RentalType.Daily, PropertyTypeEnum.Villa),
-                    CreateProperty(ownerTrebinje, amenities, "Apartman Stari Grad", "Trebinje", PropertyStatusEnum.Available, RentalType.Monthly, PropertyTypeEnum.Apartment)
+                    CreateProperty(ownerTrebinje, amenities, "Vila uz Trebišnjicu", "Trebinje", RentalType.Daily, PropertyTypeEnum.Villa),
+                    CreateProperty(ownerTrebinje, amenities, "Apartman Stari Grad", "Trebinje", RentalType.Monthly, PropertyTypeEnum.Apartment)
                 });
             }
 
@@ -184,9 +184,10 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             List<Amenity> allAmenities, 
             string name, 
             string city, 
-            PropertyStatusEnum status,
             RentalType? rentingTypeOverride = null,
             PropertyTypeEnum? propertyTypeOverride = null,
+            bool isUnderMaintenance = false,
+            bool isOccupied = false,
             bool requiresApproval = false)
         {
             // Determine property type: use override or infer from name
@@ -314,14 +315,14 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 Currency = "USD",
                 Rooms = rooms,
                 Area = area,
-                Status = status,
+                IsUnderMaintenance = isUnderMaintenance,
                 PropertyType = propertyType,
                 RentingType = rentingType,
                 RequiresApproval = requiresApproval,
                 // Daily rentals have minimum stay requirements (2-7 days based on property type)
                 MinimumStayDays = rentingType == RentalType.Daily ? GetMinimumStayDays(propertyType) : null,
-                UnavailableFrom = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today) : null,
-                UnavailableTo = status == PropertyStatusEnum.UnderMaintenance ? DateOnly.FromDateTime(DateTime.Today.AddDays(30)) : null
+                UnavailableFrom = isUnderMaintenance ? DateOnly.FromDateTime(DateTime.Today) : null,
+                UnavailableTo = isUnderMaintenance ? DateOnly.FromDateTime(DateTime.Today.AddDays(30)) : null
             };
             // Do NOT assign amenities here. We link amenities via PropertyAmenity after properties are saved.
             return property;

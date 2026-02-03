@@ -23,7 +23,18 @@ public sealed class PropertyResponse
 
     public PropertyTypeEnum? PropertyType { get; set; }
     public RentalType? RentingType { get; set; }
+
+    /// <summary>
+    /// Computed status based on tenant data, maintenance flag, and availability dates.
+    /// This is always dynamically calculated, never stored.
+    /// </summary>
     public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;
+
+    /// <summary>
+    /// Manual maintenance flag set by property owner/manager.
+    /// When true and no active tenant, status shows as UnderMaintenance.
+    /// </summary>
+    public bool IsUnderMaintenance { get; set; }
 
     // Amenity IDs for list display (chips) on frontend
     public List<int> AmenityIds { get; set; } = new();

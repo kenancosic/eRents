@@ -41,7 +41,10 @@ namespace eRents.Features.PropertyManagement.Services
 			var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
 			var properties = await _context.Properties
 				.Include(p => p.Bookings)
-				.Where(p => p.Status == PropertyStatusEnum.Available)
+				// Computed "Available" status check: not under maintenance, no active tenant, not in unavailable period
+				.Where(p => !p.IsUnderMaintenance)
+				.Where(p => p.UnavailableFrom == null || p.UnavailableFrom > today || (p.UnavailableTo != null && p.UnavailableTo < today))
+				.Where(p => !_context.Tenants.Any(t => t.PropertyId == p.PropertyId && t.TenantStatus == Domain.Models.Enums.TenantStatusEnum.Active && (!t.LeaseEndDate.HasValue || t.LeaseEndDate >= today)))
 				.Where(p => 
 					// For monthly rentals: exclude properties with any non-cancelled bookings from today onward
 					p.RentingType != RentalType.Monthly ||
@@ -103,7 +106,10 @@ namespace eRents.Features.PropertyManagement.Services
 			var properties = await _context.Properties
 				.Include(p => p.Bookings)
 				.Where(p => p.PropertyId != propertyId) // Exclude current property
-				.Where(p => p.Status == PropertyStatusEnum.Available)
+				// Computed "Available" status check: not under maintenance, no active tenant, not in unavailable period
+				.Where(p => !p.IsUnderMaintenance)
+				.Where(p => p.UnavailableFrom == null || p.UnavailableFrom > today || (p.UnavailableTo != null && p.UnavailableTo < today))
+				.Where(p => !_context.Tenants.Any(t => t.PropertyId == p.PropertyId && t.TenantStatus == Domain.Models.Enums.TenantStatusEnum.Active && (!t.LeaseEndDate.HasValue || t.LeaseEndDate >= today)))
 				.Where(p =>
 					p.RentingType != RentalType.Monthly ||
 					!p.Bookings.Any(b =>

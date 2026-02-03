@@ -45,10 +45,11 @@ namespace eRents.WebApi.Data.Seeding.Seeders
                 return;
             }
 
-            // Get all available properties
+            // Get all available properties (computed status: not under maintenance, not in unavailable period)
             var properties = await context.Properties
                 .AsNoTracking()
-                .Where(p => p.Status == PropertyStatusEnum.Available)
+                .Where(p => !p.IsUnderMaintenance)
+                .Where(p => p.UnavailableFrom == null)
                 .Select(p => p.PropertyId)
                 .ToListAsync();
 

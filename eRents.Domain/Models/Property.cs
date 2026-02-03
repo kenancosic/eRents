@@ -17,8 +17,9 @@ public partial class Property : BaseEntity
 
     public string Currency { get; set; } = "USD";
 
-    // Replaced Status string with enum
-    public PropertyStatusEnum Status { get; set; } = PropertyStatusEnum.Available;
+    // Dynamic status is computed from tenant/booking data - no longer stored
+    // Replaced with IsUnderMaintenance flag for manual maintenance mode
+    public bool IsUnderMaintenance { get; set; } = false;
 
     public string Name { get; set; } = null!;
 

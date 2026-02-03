@@ -7,6 +7,7 @@ using eRents.Features.BookingManagement.Models;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eRents.Features.Core.Extensions;
 using eRents.Features.Core;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.PaymentManagement.Interfaces;
@@ -53,14 +54,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         if (entity == null)
             throw new KeyNotFoundException($"Booking with id {bookingId} not found");
 
-        // Ownership scope for desktop landlords/owners
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        // Ownership scope for desktop landlords/owners - simplified
+        if (CurrentUser.IsDesktopOwnerOrLandlord())
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
             {
                 throw new KeyNotFoundException($"Booking with id {bookingId} not found");
             }
@@ -250,13 +247,9 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         if (entity == null)
             throw new KeyNotFoundException($"Booking with id {id} not found");
 
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        if (CurrentUser.IsDesktopOwnerOrLandlord())
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
             {
                 throw new KeyNotFoundException($"Booking with id {id} not found");
             }
@@ -345,10 +338,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Auto-scope for Desktop clients
+        // Auto-scope for Desktop clients - simplified using extension methods
         if (CurrentUser?.IsDesktop == true)
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
+            var ownerId = CurrentUser?.GetDesktopOwnerId();
             if (ownerId.HasValue)
             {
                 Logger.LogInformation("Applying booking ownership filter for user {UserId}", ownerId.Value);
@@ -356,7 +349,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
             else
             {
-                Logger.LogWarning("Desktop user has no parseable user ID - returning empty booking results");
+                Logger.LogWarning("Desktop user is not an owner/landlord - returning empty booking results");
                 query = query.Where(x => false);
             }
         }
@@ -495,14 +488,10 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         bool isTenantInitiated = false;
         bool isLandlordInitiated = false;
 
-        // Ownership scope for desktop landlords/owners
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+        // Ownership scope for desktop landlords/owners - simplified
+        if (CurrentUser.IsDesktopOwnerOrLandlord())
         {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            if (!ownerId.HasValue || entity.Property == null || entity.Property.OwnerId != ownerId.Value)
+            if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
             {
                 throw new KeyNotFoundException($"Booking with id {bookingId} not found");
             }
@@ -613,7 +602,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             // Update property status back to Available
             if (entity.Property != null)
             {
-                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Available;
+                // Status is computed dynamically - no need to set
             }
 
             await Context.SaveChangesAsync();
@@ -680,7 +669,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             // Update property status back to Available
             if (entity.Property != null)
             {
-                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Available;
+                // Status is computed dynamically - no need to set
             }
 
             await Context.SaveChangesAsync();
@@ -923,7 +912,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             // Update property status to Occupied
             if (entity.Property != null)
             {
-                entity.Property.Status = Domain.Models.Enums.PropertyStatusEnum.Occupied;
+                // Status is computed dynamically - no need to set
             }
         }
 

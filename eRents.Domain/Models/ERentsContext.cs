@@ -128,11 +128,6 @@ public partial class ERentsContext : DbContext
             entity.Property(e => e.Area).HasColumnType("decimal(18, 2)");
 
             // Enum configurations
-            entity.Property(e => e.Status)
-                .HasConversion<string>()
-                .HasDefaultValue(PropertyStatusEnum.Available)
-                .HasSentinel((PropertyStatusEnum)0);
-
             entity.Property(e => e.PropertyType)
                 .HasConversion<string>();
 

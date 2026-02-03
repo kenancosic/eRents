@@ -30,14 +30,10 @@ public class PropertyStatusBusinessValidator
         DateOnly? unavailableFrom = null, 
         DateOnly? unavailableTo = null)
     {
-        // Rule 1: If there's a Tenant, you can only set status to Under Maintenance and Occupied regardless of renting type
-        // This check assumes the calling service has already verified there's no active tenant
-        if (await HasAnyTenantAsync(property.PropertyId))
+        // Rule 1: Occupied status cannot be set manually - only via tenant creation
+        if (newStatus == PropertyStatusEnum.Occupied)
         {
-            if (newStatus != PropertyStatusEnum.UnderMaintenance && newStatus != PropertyStatusEnum.Occupied)
-            {
-                return (false, "Property with tenants can only be set to Under Maintenance or Occupied status");
-            }
+            return (false, "Occupied status can only be set by creating a tenant. Please use the tenant management features.");
         }
 
         // Rule 2: If property renting type is daily -> You can change status to every other status except Occupied
@@ -66,14 +62,5 @@ public class PropertyStatusBusinessValidator
         }
 
         return (true, string.Empty);
-    }
-
-    /// <summary>
-    /// Checks if property has any tenant (active or not)
-    /// </summary>
-    private async Task<bool> HasAnyTenantAsync(int propertyId)
-    {
-        return await _context.Set<Tenant>()
-                .AnyAsync(t => t.PropertyId == propertyId);
     }
 }

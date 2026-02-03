@@ -52,7 +52,8 @@ namespace eRents.WebApi.Data.Seeding.Seeders
             // Get daily rental properties (especially those requiring approval)
             var dailyProperties = await context.Properties
                 .AsNoTracking()
-                .Where(p => p.RentingType == RentalType.Daily && p.Status == PropertyStatusEnum.Available)
+                .Where(p => p.RentingType == RentalType.Daily)
+                .Where(p => !p.IsUnderMaintenance)
                 .ToListAsync();
 
             if (dailyProperties.Count == 0)

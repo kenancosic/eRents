@@ -39,8 +39,13 @@ public class PropertyAvailabilityService
             if (property == null)
                 return false;
 
-            // Check if property is in a status that allows bookings
-            if (property.Status != PropertyStatusEnum.Available)
+            // Check if property is available (computed status)
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+            if (property.IsUnderMaintenance)
+                return false;
+            if (property.UnavailableFrom.HasValue && property.UnavailableFrom <= today && (property.UnavailableTo ?? DateOnly.MaxValue) >= today)
+                return false;
+            if (await _context.Set<Tenant>().AnyAsync(t => t.PropertyId == propertyId && t.TenantStatus == TenantStatusEnum.Active && (!t.LeaseEndDate.HasValue || t.LeaseEndDate >= today)))
                 return false;
 
             // Convert to DateOnly for consistent comparisons
@@ -248,9 +253,11 @@ public class PropertyAvailabilityService
 
     private string GetDateStatus(Property property, DateTime date)
     {
-        // Check if property is unavailable
-        if (property.Status != PropertyStatusEnum.Available)
-            return property.Status.ToString();
+        var dateOnly = DateOnly.FromDateTime(date);
+        
+        // Check if property is under maintenance
+        if (property.IsUnderMaintenance)
+            return "UnderMaintenance";
 
         // Check if date is in unavailable period
         if (property.UnavailableFrom.HasValue && property.UnavailableTo.HasValue)

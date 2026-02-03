@@ -1,4 +1,6 @@
 using AutoMapper;
+using eRents.Domain.Models;
+using eRents.Features.Core.Extensions;
 using eRents.Features.Core.Models;
 using eRents.Domain.Shared.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -178,5 +180,57 @@ namespace eRents.Features.Core
             }
             return 0;
         }
+
+        #region Ownership Validation Helpers
+
+        /// <summary>
+        /// Throws KeyNotFoundException if desktop owner/landlord doesn't own the specified property.
+        /// Does nothing for non-desktop users or non-owner roles.
+        /// </summary>
+        protected async Task ValidatePropertyOwnershipOrThrowAsync(int propertyId, int entityId)
+        {
+            var ownerId = CurrentUser?.GetDesktopOwnerId();
+            if (!ownerId.HasValue) return; // Not a desktop owner/landlord
+
+            var property = await Context.Set<Property>()
+                .AsNoTracking()
+                .Select(p => new { p.PropertyId, p.OwnerId })
+                .FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+            if (property == null || property.OwnerId != ownerId.Value)
+                throw new KeyNotFoundException($"Entity with id {entityId} not found");
+        }
+
+        /// <summary>
+        /// Applies ownership filter to query for desktop owner/landlord users.
+        /// For Property entities, filters by OwnerId directly.
+        /// </summary>
+        protected IQueryable<Property> ApplyOwnerPropertyFilter(IQueryable<Property> query)
+        {
+            var ownerId = CurrentUser?.GetDesktopOwnerId();
+            if (!ownerId.HasValue) return query;
+
+            return query.Where(p => p.OwnerId == ownerId.Value);
+        }
+
+        /// <summary>
+        /// Validates that a desktop owner/landlord owns the entity via its Property navigation property.
+        /// </summary>
+        protected async Task ValidateOwnershipViaPropertyOrThrowAsync<TEntityWithProperty>(
+            TEntityWithProperty entity,
+            Func<TEntityWithProperty, int?> propertyIdSelector,
+            int entityId)
+            where TEntityWithProperty : class
+        {
+            var ownerId = CurrentUser?.GetDesktopOwnerId();
+            if (!ownerId.HasValue) return;
+
+            var propertyId = propertyIdSelector(entity);
+            if (!propertyId.HasValue) return;
+
+            await ValidatePropertyOwnershipOrThrowAsync(propertyId.Value, entityId);
+        }
+
+        #endregion
     }
 }

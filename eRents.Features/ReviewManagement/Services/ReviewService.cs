@@ -8,8 +8,9 @@ using eRents.Features.ReviewManagement.Models;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using eRents.Features.Core;
+using eRents.Features.Core.Extensions;
 using eRents.Domain.Shared.Interfaces;
+using eRents.Features.Core;
 
 namespace eRents.Features.ReviewManagement.Services;
 
@@ -92,19 +93,13 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			query = query.Where(x => x.CreatedAt <= to);
 		}
 
-		// Desktop owner/landlord filtering
-		if (CurrentUser?.IsDesktop == true &&
-		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		// Desktop owner/landlord filtering - simplified using extension method
+		var ownerId = CurrentUser?.GetDesktopOwnerId();
+		if (ownerId.HasValue)
 		{
-			var ownerId = CurrentUser.GetUserIdAsInt();
-			if (ownerId.HasValue)
-			{
-				query = query.Where(r => 
+			query = query.Where(r =>
 					r.Property != null && r.Property.OwnerId == ownerId.Value ||
 					r.Booking != null && r.Booking.Property != null && r.Booking.Property.OwnerId == ownerId.Value);
-			}
 		}
 
 		return query;
@@ -136,9 +131,9 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			if (currentUserId.HasValue)
 			{
 				var prop = await Context.Set<Property>()
-					.AsNoTracking()
-					.Select(p => new { p.PropertyId, p.OwnerId })
-					.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
+						.AsNoTracking()
+						.Select(p => new { p.PropertyId, p.OwnerId })
+						.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
 
 				if (prop != null && prop.OwnerId == currentUserId.Value)
 				{
@@ -150,30 +145,30 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 		// Enforce thread/parent existence if reply and inherit propertyId/bookingId
 		if (request.ParentReviewId.HasValue)
 		{
-		    var parentReview = await Context.Set<Review>()
-		            .AsNoTracking()
-		            .FirstOrDefaultAsync(r => r.ReviewId == request.ParentReviewId.Value);
-		    if (parentReview == null)
-		        throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
-		    
-		    // Inherit propertyId and bookingId from parent review for replies
-		    if (!request.PropertyId.HasValue && parentReview.PropertyId.HasValue)
-		    {
-		        request.PropertyId = parentReview.PropertyId;
-		        entity.PropertyId = parentReview.PropertyId;
-		    }
-		    if (!request.BookingId.HasValue && parentReview.BookingId.HasValue)
-		    {
-		        request.BookingId = parentReview.BookingId;
-		        entity.BookingId = parentReview.BookingId;
-		    }
-		    
-		    // Set the reviewer to current user for replies
-		    var currentUserId = CurrentUser?.GetUserIdAsInt();
-		    if (currentUserId.HasValue)
-		    {
-		        entity.ReviewerId = currentUserId.Value;
-		    }
+			var parentReview = await Context.Set<Review>()
+							.AsNoTracking()
+							.FirstOrDefaultAsync(r => r.ReviewId == request.ParentReviewId.Value);
+			if (parentReview == null)
+				throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
+
+			// Inherit propertyId and bookingId from parent review for replies
+			if (!request.PropertyId.HasValue && parentReview.PropertyId.HasValue)
+			{
+				request.PropertyId = parentReview.PropertyId;
+				entity.PropertyId = parentReview.PropertyId;
+			}
+			if (!request.BookingId.HasValue && parentReview.BookingId.HasValue)
+			{
+				request.BookingId = parentReview.BookingId;
+				entity.BookingId = parentReview.BookingId;
+			}
+
+			// Set the reviewer to current user for replies
+			var currentUserId = CurrentUser?.GetUserIdAsInt();
+			if (currentUserId.HasValue)
+			{
+				entity.ReviewerId = currentUserId.Value;
+			}
 		}
 
 		// Enforce ReviewType semantics for original reviews
@@ -191,32 +186,22 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			}
 		}
 
-		// Ownership enforcement for Desktop owners/landlords
-		if (CurrentUser?.IsDesktop == true &&
-		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		// Ownership enforcement for Desktop owners/landlords - simplified
+		if (CurrentUser.IsDesktopOwnerOrLandlord())
 		{
-			var ownerId = CurrentUser.GetUserIdAsInt();
-			if (ownerId.HasValue)
+			if (request.PropertyId.HasValue)
 			{
-				if (request.PropertyId.HasValue)
-				{
-					var prop = await Context.Set<Property>()
-						.AsNoTracking()
-						.FirstOrDefaultAsync(p => p.PropertyId == request.PropertyId.Value);
-					if (prop == null || prop.OwnerId != ownerId.Value)
-						throw new KeyNotFoundException("Property not found");
-				}
-				else if (request.BookingId.HasValue)
-				{
-					var booking = await Context.Set<Booking>()
+				await ValidatePropertyOwnershipOrThrowAsync(request.PropertyId.Value, 0);
+			}
+			else if (request.BookingId.HasValue)
+			{
+				var booking = await Context.Set<Booking>()
 						.AsNoTracking()
 						.Include(b => b.Property)
 						.FirstOrDefaultAsync(b => b.BookingId == request.BookingId.Value);
-					if (booking == null || booking.Property == null || booking.Property.OwnerId != ownerId.Value)
-						throw new KeyNotFoundException("Booking not found");
-				}
+				if (booking?.Property == null)
+					throw new KeyNotFoundException("Booking not found");
+				await ValidatePropertyOwnershipOrThrowAsync(booking.Property.PropertyId, 0);
 			}
 		}
 	}
@@ -227,8 +212,8 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 		if (request.ParentReviewId.HasValue)
 		{
 			var parentExists = await Context.Set<Review>()
-			        .AsNoTracking()
-			        .AnyAsync(r => r.ReviewId == request.ParentReviewId.Value);
+							.AsNoTracking()
+							.AnyAsync(r => r.ReviewId == request.ParentReviewId.Value);
 			if (!parentExists)
 				throw new KeyNotFoundException($"Parent review {request.ParentReviewId.Value} not found.");
 		}
@@ -248,61 +233,48 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			}
 		}
 
-		// Ownership enforcement for Desktop owners/landlords
-		if (CurrentUser?.IsDesktop == true &&
-		    !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-		    (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-		     string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+		// Ownership enforcement for Desktop owners/landlords - simplified
+		if (CurrentUser.IsDesktopOwnerOrLandlord())
 		{
-			var ownerId = CurrentUser.GetUserIdAsInt();
-			if (ownerId.HasValue)
+			var propId = request.PropertyId ?? entity.PropertyId;
+			if (propId.HasValue)
 			{
-				var propId = request.PropertyId ?? entity.PropertyId;
-				if (propId.HasValue)
-				{
-					var prop = await Context.Set<Property>()
-						.AsNoTracking()
-						.FirstOrDefaultAsync(p => p.PropertyId == propId.Value);
-					if (prop == null || prop.OwnerId != ownerId.Value)
-						throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
-				}
-				else if (request.BookingId.HasValue || entity.BookingId.HasValue)
-				{
-					var bid = request.BookingId ?? entity.BookingId!.Value;
-					var booking = await Context.Set<Booking>()
+				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, entity.ReviewId);
+			}
+			else if (request.BookingId.HasValue || entity.BookingId.HasValue)
+			{
+				var bid = request.BookingId ?? entity.BookingId!.Value;
+				var booking = await Context.Set<Booking>()
 						.AsNoTracking()
 						.Include(b => b.Property)
 						.FirstOrDefaultAsync(b => b.BookingId == bid);
-					if (booking == null || booking.Property == null || booking.Property.OwnerId != ownerId.Value)
-						throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
-				}
+				if (booking?.Property == null || booking.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
+					throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
 			}
 		}
 	}
 
-    public override async Task<ReviewResponse> GetByIdAsync(int id)
-    {
-        var entity = await Context.Set<Review>()
-            .Include(r => r.Property)
-            .Include(r => r.Reviewer)
-            .Include(r => r.Booking).ThenInclude(b => b!.Property)
-            .FirstOrDefaultAsync(r => r.ReviewId == id);
+	public override async Task<ReviewResponse> GetByIdAsync(int id)
+	{
+		var entity = await Context.Set<Review>()
+				.Include(r => r.Property)
+				.Include(r => r.Reviewer)
+				.Include(r => r.Booking).ThenInclude(b => b!.Property)
+				.FirstOrDefaultAsync(r => r.ReviewId == id);
 
-        if (entity == null)
-            throw new KeyNotFoundException($"Review with id {id} not found");
+		if (entity == null)
+			throw new KeyNotFoundException($"Review with id {id} not found");
 
-        if (CurrentUser?.IsDesktop == true &&
-            !string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-            (string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
-        {
-            var ownerId = CurrentUser.GetUserIdAsInt();
-            var owned = (entity.Property?.OwnerId == ownerId)
-                        || (entity.Booking?.Property?.OwnerId == ownerId);
-            if (!ownerId.HasValue || !owned)
-                throw new KeyNotFoundException($"Review with id {id} not found");
-        }
+		// Ownership enforcement for Desktop owners/landlords - simplified
+		if (CurrentUser.IsDesktopOwnerOrLandlord())
+		{
+			var propId = entity.PropertyId ?? entity.Booking?.PropertyId;
+			if (propId.HasValue)
+			{
+				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, entity.ReviewId);
+			}
+		}
 
-        return Mapper.Map<ReviewResponse>(entity);
-    }
+		return Mapper.Map<ReviewResponse>(entity);
+	}
 }

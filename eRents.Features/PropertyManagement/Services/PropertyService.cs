@@ -1,6 +1,7 @@
 using AutoMapper;
 using eRents.Domain.Models;
-using eRents.Features.Core;
+using eRents.Features.Core.Extensions;
+using eRents.Features.Core.Models;
 using eRents.Features.PropertyManagement.Models;
 using eRents.Features.PropertyManagement.Validators;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,10 @@ using System;
 using System.Threading.Tasks;
 using System.Linq;
 using eRents.Domain.Models.Enums;
-using static eRents.Domain.Models.Enums.TenantStatusEnum;
 using eRents.Shared.DTOs;
 using eRents.Shared.Services;
 using System.Collections.Generic;
+using eRents.Features.Core;
 
 namespace eRents.Features.PropertyManagement.Services
 {
@@ -62,7 +63,7 @@ namespace eRents.Features.PropertyManagement.Services
 				query = query.Where(x => x.RentingType == search.RentingType.Value);
 
 			if (search.Status.HasValue)
-				query = query.Where(x => x.Status == search.Status.Value);
+				query = ApplyComputedStatusFilter(query, search.Status.Value);
 
 			// Server-side availability filtering for Daily rentals
 			if (search.RentingType.HasValue && search.RentingType.Value == RentalType.Daily &&
@@ -73,8 +74,18 @@ namespace eRents.Features.PropertyManagement.Services
 				var startD = DateOnly.FromDateTime(start);
 				var endD = DateOnly.FromDateTime(end);
 
-				// Always require property to be generally available
-				query = query.Where(p => p.Status == PropertyStatusEnum.Available);
+				// For availability filtering, we check:
+				// 1. Not under maintenance
+				// 2. Not within unavailable date range
+				// 3. No active tenant
+				var now = DateOnly.FromDateTime(DateTime.UtcNow);
+				query = query.Where(p =>
+					!p.IsUnderMaintenance &&
+					!(p.UnavailableFrom.HasValue && p.UnavailableFrom.Value <= now &&
+						(p.UnavailableTo ?? DateOnly.MaxValue) >= now) &&
+					!Context.Set<Tenant>().Any(t => t.PropertyId == p.PropertyId &&
+						t.TenantStatus == TenantStatusEnum.Active &&
+						(!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now)));
 
 				// Booking/Unavailable overlap predicates
 				bool includePartial = search.IncludePartialDaily == true;
@@ -84,16 +95,16 @@ namespace eRents.Features.PropertyManagement.Services
 					// Exclude any overlap with Unavailable period
 					query = query.Where(p =>
 						!(p.UnavailableFrom.HasValue &&
-						  startD <= (p.UnavailableTo.HasValue ? p.UnavailableTo.Value : DateOnly.MaxValue) &&
-						  endD >= p.UnavailableFrom.Value));
+							startD <= (p.UnavailableTo.HasValue ? p.UnavailableTo.Value : DateOnly.MaxValue) &&
+							endD >= p.UnavailableFrom.Value));
 				}
 				else
 				{
 					// For partial allowed, exclude only if Unavailable fully covers the entire requested range
 					query = query.Where(p =>
 						!(p.UnavailableFrom.HasValue &&
-						  p.UnavailableFrom.Value <= startD &&
-						  (p.UnavailableTo ?? DateOnly.MaxValue) >= endD));
+							p.UnavailableFrom.Value <= startD &&
+							(p.UnavailableTo ?? DateOnly.MaxValue) >= endD));
 				}
 
 				if (!includePartial)
@@ -124,10 +135,17 @@ namespace eRents.Features.PropertyManagement.Services
 				search.StartDate.HasValue)
 			{
 				var leaseStartDate = DateOnly.FromDateTime(search.StartDate.Value.Date);
-				
-				// Always require property to be generally available
-				query = query.Where(p => p.Status == PropertyStatusEnum.Available);
-				
+
+				// For availability filtering, check the same conditions as Daily
+				var now = DateOnly.FromDateTime(DateTime.UtcNow);
+				query = query.Where(p =>
+					!p.IsUnderMaintenance &&
+					!(p.UnavailableFrom.HasValue && p.UnavailableFrom.Value <= now &&
+						(p.UnavailableTo ?? DateOnly.MaxValue) >= now) &&
+					!Context.Set<Tenant>().Any(t => t.PropertyId == p.PropertyId &&
+						t.TenantStatus == TenantStatusEnum.Active &&
+						(!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now)));
+
 				// Exclude properties that have any non-cancelled bookings from the lease start date onward
 				query = query.Where(p => !p.Bookings.Any(b =>
 					b.Status != BookingStatusEnum.Cancelled &&
@@ -139,25 +157,18 @@ namespace eRents.Features.PropertyManagement.Services
 			// Desktop app is for landlords/owners only - enforce ownership filtering
 			if (CurrentUser?.IsDesktop == true)
 			{
-				var userRole = CurrentUser.UserRole ?? string.Empty;
-				var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-				                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
-				
-				if (isOwnerOrLandlord)
+				var ownerId = CurrentUser?.GetDesktopOwnerId();
+				if (ownerId.HasValue)
 				{
 					// Owners/Landlords see only their own properties
-					var ownerId = CurrentUser.GetUserIdAsInt();
-					if (ownerId.HasValue)
-					{
-						query = query.Where(x => x.OwnerId == ownerId.Value);
-					}
+					query = query.Where(x => x.OwnerId == ownerId.Value);
 				}
 				else
 				{
 					// Non-owner desktop users (e.g., Tenant) should not access property management
 					// Return empty result set - they have no properties to manage
 					query = query.Where(x => false);
-					Logger.LogWarning("Non-owner user {UserId} attempted to access property management from desktop", 
+					Logger.LogWarning("Non-owner user {UserId} attempted to access property management from desktop",
 						CurrentUser.GetUserIdAsInt());
 				}
 			}
@@ -177,7 +188,7 @@ namespace eRents.Features.PropertyManagement.Services
 				"name" => desc ? query.OrderByDescending(x => x.Name) : query.OrderBy(x => x.Name),
 				"createdat" => desc ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt),
 				"updatedat" => desc ? query.OrderByDescending(x => x.UpdatedAt) : query.OrderBy(x => x.UpdatedAt),
-				"status" => desc ? query.OrderByDescending(x => x.Status) : query.OrderBy(x => x.Status),
+				"status" => desc ? query.OrderByDescending(x => x.PropertyId) : query.OrderBy(x => x.PropertyId), // Cannot sort by computed status
 				_ => desc ? query.OrderByDescending(x => x.PropertyId) : query.OrderBy(x => x.PropertyId)
 			};
 		}
@@ -191,20 +202,39 @@ namespace eRents.Features.PropertyManagement.Services
 				throw new KeyNotFoundException($"Property with id {id} not found");
 
 			// Desktop owner/landlord can only access their own property
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (!ownerId.HasValue || entity.OwnerId != ownerId.Value)
+				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, id);
+			}
+
+			var response = Mapper.Map<PropertyResponse>(entity);
+			response.Status = await ComputePropertyStatusAsync(id);
+			return response;
+		}
+
+		/// <summary>
+		/// Override to compute status for all properties in the paged result
+		/// </summary>
+		public override async Task<PagedResponse<PropertyResponse>> GetPagedAsync(PropertySearch search)
+		{
+			var pagedResult = await base.GetPagedAsync(search);
+
+			// Compute status for all properties efficiently
+			if (pagedResult.Items.Count > 0)
+			{
+				var propertyIds = pagedResult.Items.Select(p => p.PropertyId).ToList();
+				var computedStatuses = await ComputePropertyStatusesAsync(propertyIds);
+
+				foreach (var item in pagedResult.Items)
 				{
-					// Hide existence
-					throw new KeyNotFoundException($"Property with id {id} not found");
+					if (computedStatuses.TryGetValue(item.PropertyId, out var computedStatus))
+					{
+						item.Status = computedStatus;
+					}
 				}
 			}
 
-			return Mapper.Map<PropertyResponse>(entity);
+			return pagedResult;
 		}
 
 		public async Task<PropertyTenantSummary?> GetCurrentTenantSummaryAsync(int propertyId)
@@ -215,14 +245,9 @@ namespace eRents.Features.PropertyManagement.Services
 			if (prop == null)
 				throw new KeyNotFoundException($"Property with id {propertyId} not found");
 
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (!ownerId.HasValue || prop.OwnerId != ownerId.Value)
-					throw new KeyNotFoundException($"Property with id {propertyId} not found");
+				await ValidatePropertyOwnershipOrThrowAsync(prop.PropertyId, propertyId);
 			}
 
 			// Find the most relevant active tenant for this property
@@ -259,15 +284,11 @@ namespace eRents.Features.PropertyManagement.Services
 			// Desktop clients: only Owner/Landlord can create properties
 			if (CurrentUser?.IsDesktop == true)
 			{
-				var userRole = CurrentUser.UserRole ?? string.Empty;
-				var isOwnerOrLandlord = string.Equals(userRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-				                        string.Equals(userRole, "Landlord", StringComparison.OrdinalIgnoreCase);
-				
-				if (!isOwnerOrLandlord)
+				if (!CurrentUser.IsDesktopOwnerOrLandlord())
 				{
 					throw new InvalidOperationException("Only property owners can create properties. Please register as an Owner to list properties.");
 				}
-				
+
 				// Set OwnerId from current user
 				var ownerId = CurrentUser.GetUserIdAsInt();
 				if (ownerId.HasValue)
@@ -330,16 +351,9 @@ namespace eRents.Features.PropertyManagement.Services
 		protected override async Task BeforeUpdateAsync(Property entity, PropertyRequest request)
 		{
 			// Enforce ownership on updates for desktop owner/landlord
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (!ownerId.HasValue || entity.OwnerId != ownerId.Value)
-				{
-					throw new KeyNotFoundException($"Property with id {entity.PropertyId} not found");
-				}
+				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.PropertyId);
 			}
 
 			// Handle amenity assignments - clear and reassign
@@ -365,16 +379,9 @@ namespace eRents.Features.PropertyManagement.Services
 		protected override async Task BeforeDeleteAsync(Property entity)
 		{
 			// Enforce ownership on deletes for desktop owner/landlord
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (!ownerId.HasValue || entity.OwnerId != ownerId.Value)
-				{
-					throw new KeyNotFoundException($"Property with id {entity.PropertyId} not found");
-				}
+				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.PropertyId);
 			}
 
 			// Check for related records that prevent deletion
@@ -448,38 +455,36 @@ namespace eRents.Features.PropertyManagement.Services
 				throw new KeyNotFoundException($"Property with id {propertyId} not found");
 
 			// Enforce ownership for desktop owner/landlord
-			if (CurrentUser?.IsDesktop == true &&
-					!string.IsNullOrWhiteSpace(CurrentUser.UserRole) &&
-					(string.Equals(CurrentUser.UserRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
-					 string.Equals(CurrentUser.UserRole, "Landlord", StringComparison.OrdinalIgnoreCase)))
+			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				var ownerId = CurrentUser.GetUserIdAsInt();
-				if (!ownerId.HasValue || property.OwnerId != ownerId.Value)
-				{
-					throw new KeyNotFoundException($"Property with id {propertyId} not found");
-				}
+				await ValidatePropertyOwnershipOrThrowAsync(property.PropertyId, propertyId);
 			}
 
 			// Business logic validation
 			await ValidateStatusChangeAsync(property, newStatus, unavailableFrom, unavailableTo);
 
-			// Set the new status
-			property.Status = newStatus;
-
-			// Handle unavailable date range if applicable
-			if (newStatus == PropertyStatusEnum.Unavailable)
+			// Handle status changes by setting the appropriate flags and dates
+			switch (newStatus)
 			{
-				// If UnavailableFrom is null, default to today's date
-				property.UnavailableFrom = unavailableFrom ?? DateOnly.FromDateTime(DateTime.Today);
-
-				// If UnavailableTo is null, it remains null (indefinite duration)
-				property.UnavailableTo = unavailableTo;
-			}
-			else
-			{
-				// Clear unavailable dates for other statuses
-				property.UnavailableFrom = null;
-				property.UnavailableTo = null;
+				case PropertyStatusEnum.Available:
+					property.IsUnderMaintenance = false;
+					property.UnavailableFrom = null;
+					property.UnavailableTo = null;
+					break;
+				case PropertyStatusEnum.UnderMaintenance:
+					property.IsUnderMaintenance = true;
+					property.UnavailableFrom = null;
+					property.UnavailableTo = null;
+					break;
+				case PropertyStatusEnum.Unavailable:
+					property.IsUnderMaintenance = false;
+					property.UnavailableFrom = unavailableFrom ?? DateOnly.FromDateTime(DateTime.Today);
+					property.UnavailableTo = unavailableTo;
+					break;
+				case PropertyStatusEnum.Occupied:
+					throw new InvalidOperationException("Occupied status can only be set by creating a tenant. Please use the tenant management features.");
+				default:
+					throw new InvalidOperationException($"Unsupported status: {newStatus}");
 			}
 
 			// Process refunds for daily rentals when changing to Unavailable or UnderMaintenance
@@ -498,6 +503,54 @@ namespace eRents.Features.PropertyManagement.Services
 		}
 
 		/// <summary>
+		/// Applies filtering based on computed status.
+		/// Since status is computed dynamically, we filter based on the underlying data:
+		/// - Occupied: Has active tenant
+		/// - UnderMaintenance: IsUnderMaintenance flag is true
+		/// - Unavailable: UnavailableFrom/UnavailableTo dates cover today
+		/// - Available: None of the above
+		/// </summary>
+		private IQueryable<Property> ApplyComputedStatusFilter(IQueryable<Property> query, PropertyStatusEnum status)
+		{
+			var now = DateOnly.FromDateTime(DateTime.UtcNow);
+
+			switch (status)
+			{
+				case PropertyStatusEnum.Occupied:
+					// Has active tenant
+					return query.Where(p => Context.Set<Tenant>().Any(t =>
+						t.PropertyId == p.PropertyId &&
+						t.TenantStatus == TenantStatusEnum.Active &&
+						(!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now)));
+
+				case PropertyStatusEnum.UnderMaintenance:
+					// Under maintenance flag set
+					return query.Where(p => p.IsUnderMaintenance);
+
+				case PropertyStatusEnum.Unavailable:
+					// Unavailable dates cover today
+					return query.Where(p =>
+						p.UnavailableFrom.HasValue &&
+						p.UnavailableFrom.Value <= now &&
+						(p.UnavailableTo ?? DateOnly.MaxValue) >= now);
+
+				case PropertyStatusEnum.Available:
+					// No active tenant, not under maintenance, not unavailable
+					return query.Where(p =>
+						!p.IsUnderMaintenance &&
+						!(p.UnavailableFrom.HasValue && p.UnavailableFrom.Value <= now &&
+							(p.UnavailableTo ?? DateOnly.MaxValue) >= now) &&
+						!Context.Set<Tenant>().Any(t =>
+							t.PropertyId == p.PropertyId &&
+							t.TenantStatus == TenantStatusEnum.Active &&
+							(!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now)));
+
+				default:
+					return query;
+			}
+		}
+
+		/// <summary>
 		/// Validates property status change according to business rules
 		/// </summary>
 		private async Task ValidateStatusChangeAsync(Property property, PropertyStatusEnum newStatus, DateOnly? unavailableFrom = null, DateOnly? unavailableTo = null)
@@ -507,15 +560,6 @@ namespace eRents.Features.PropertyManagement.Services
 			if (hasActiveTenant)
 			{
 				throw new InvalidOperationException("Cannot change property status while it has an active tenant");
-			}
-
-			// Use the business validator to check all other rules
-			var validator = new PropertyStatusBusinessValidator(Context);
-			var (isValid, errorMessage) = await validator.ValidateStatusChangeAsync(property, newStatus, unavailableFrom, unavailableTo);
-
-			if (!isValid)
-			{
-				throw new InvalidOperationException(errorMessage);
 			}
 		}
 
@@ -529,6 +573,102 @@ namespace eRents.Features.PropertyManagement.Services
 					.AnyAsync(t => t.PropertyId == propertyId
 								&& t.TenantStatus == TenantStatusEnum.Active
 								&& (!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now));
+		}
+
+		/// <summary>
+		/// Computes the effective status of a property based on tenant data and availability settings.
+		/// This should be used instead of the stored Status property for accurate real-time status.
+		/// </summary>
+		public async Task<PropertyStatusEnum> ComputePropertyStatusAsync(int propertyId)
+		{
+			var now = DateOnly.FromDateTime(DateTime.UtcNow);
+
+			// Fetch minimal property data needed for computation
+			var property = await Context.Set<Property>()
+				.AsNoTracking()
+				.Select(p => new { p.PropertyId, p.UnavailableFrom, p.UnavailableTo, p.IsUnderMaintenance })
+				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
+
+			if (property == null)
+				throw new KeyNotFoundException($"Property with id {propertyId} not found");
+
+			// Priority 1: Active tenant = Occupied
+			var hasActiveTenant = await Context.Set<Tenant>()
+				.AnyAsync(t => t.PropertyId == propertyId
+							&& t.TenantStatus == TenantStatusEnum.Active
+							&& (!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now));
+
+			if (hasActiveTenant)
+				return PropertyStatusEnum.Occupied;
+
+			// Priority 2: Under maintenance flag = UnderMaintenance
+			if (property.IsUnderMaintenance)
+				return PropertyStatusEnum.UnderMaintenance;
+
+			// Priority 3: Unavailable dates cover today = Unavailable
+			if (property.UnavailableFrom.HasValue)
+			{
+				var unavailableTo = property.UnavailableTo ?? DateOnly.MaxValue;
+				if (property.UnavailableFrom.Value <= now && unavailableTo >= now)
+					return PropertyStatusEnum.Unavailable;
+			}
+
+			// Default: Available
+			return PropertyStatusEnum.Available;
+		}
+
+		/// <summary>
+		/// Computes status for a batch of properties efficiently
+		/// </summary>
+		public async Task<Dictionary<int, PropertyStatusEnum>> ComputePropertyStatusesAsync(IEnumerable<int> propertyIds)
+		{
+			var ids = propertyIds.Distinct().ToList();
+			if (ids.Count == 0)
+				return new Dictionary<int, PropertyStatusEnum>();
+
+			var now = DateOnly.FromDateTime(DateTime.UtcNow);
+
+			// Get all active tenants for these properties in one query
+			var activeTenantPropertyIds = await Context.Set<Tenant>()
+				.Where(t => t.PropertyId.HasValue && ids.Contains(t.PropertyId.Value)
+						&& t.TenantStatus == TenantStatusEnum.Active
+						&& (!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now))
+				.Select(t => t.PropertyId.Value)
+				.Distinct()
+				.ToListAsync();
+
+			// Get properties with their availability settings
+			var properties = await Context.Set<Property>()
+				.AsNoTracking()
+				.Where(p => ids.Contains(p.PropertyId))
+				.Select(p => new { p.PropertyId, p.UnavailableFrom, p.UnavailableTo, p.IsUnderMaintenance })
+				.ToListAsync();
+
+			var result = new Dictionary<int, PropertyStatusEnum>();
+
+			foreach (var prop in properties)
+			{
+				PropertyStatusEnum computedStatus;
+
+				if (activeTenantPropertyIds.Contains(prop.PropertyId))
+					computedStatus = PropertyStatusEnum.Occupied;
+				else if (prop.IsUnderMaintenance)
+					computedStatus = PropertyStatusEnum.UnderMaintenance;
+				else if (prop.UnavailableFrom.HasValue)
+				{
+					var unavailableTo = prop.UnavailableTo ?? DateOnly.MaxValue;
+					if (prop.UnavailableFrom.Value <= now && unavailableTo >= now)
+						computedStatus = PropertyStatusEnum.Unavailable;
+					else
+						computedStatus = PropertyStatusEnum.Available;
+				}
+				else
+					computedStatus = PropertyStatusEnum.Available;
+
+				result[prop.PropertyId] = computedStatus;
+			}
+
+			return result;
 		}
 
 		/// <summary>
@@ -565,7 +705,7 @@ namespace eRents.Features.PropertyManagement.Services
 					PaymentMethod = booking.PaymentMethod,
 					PaymentStatus = "Completed",
 					PaymentReference = $"REFUND-{booking.BookingId}-{DateTime.UtcNow:yyyyMMddHHmmss}",
-					RefundReason = $"Property status changed to {property.Status}",
+					RefundReason = $"Property status changed to Unavailable or UnderMaintenance",
 					PaymentType = "Refund",
 					CreatedAt = DateTime.UtcNow,
 					UpdatedAt = DateTime.UtcNow
@@ -587,8 +727,8 @@ namespace eRents.Features.PropertyManagement.Services
 						Amount = booking.TotalPrice,
 						Currency = booking.Currency,
 						UserId = booking.UserId.ToString(),
-						Reason = $"Property status changed to {property.Status}",
-						Message = $"Your booking (ID: {booking.BookingId}) has been cancelled and refunded due to property status change to {property.Status}."
+						Reason = "Property status changed to Unavailable or UnderMaintenance",
+						Message = $"Your booking (ID: {booking.BookingId}) has been cancelled and refunded due to property status change to Unavailable or UnderMaintenance."
 					};
 
 					try
