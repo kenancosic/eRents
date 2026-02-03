@@ -61,6 +61,15 @@ class Property {
       }
       return const [];
     }
+    
+    // Determine effective status: prefer computedStatus if available
+    PropertyStatus effectiveStatus;
+    if (json['computedStatus'] != null) {
+      effectiveStatus = Property._statusFromJson(json['computedStatus']);
+    } else {
+      effectiveStatus = Property._statusFromJson(json['status']);
+    }
+    
     return Property(
       propertyId: (json['propertyId'] as num).toInt(),
       ownerId: (json['ownerId'] as num).toInt(),
@@ -68,7 +77,7 @@ class Property {
       price: _toDouble(json['price']),
       currency: (json['currency'] as String?) ?? 'USD',
       facilities: json['facilities'] as String?,
-      status: json['status'] == null ? PropertyStatus.available : Property._statusFromJson(json['status']),
+      status: effectiveStatus,
       dateAdded: json['dateAdded'] == null ? null : DateTime.tryParse(json['dateAdded'] as String),
       name: json['name'] as String,
       averageRating: (json['averageRating'] as num?)?.toDouble(),

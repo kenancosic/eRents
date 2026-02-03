@@ -464,11 +464,29 @@ class _StatusUpdateSectionState extends State<_StatusUpdateSection> {
   DateTime? _unavailableFrom;
   DateTime? _unavailableTo;
   bool _isLoading = false;
+  PropertyTenantSummary? _currentTenant;
+  bool _isLoadingTenant = false;
 
   @override
   void initState() {
     super.initState();
     _selectedStatus = widget.property.status;
+    _loadCurrentTenant();
+  }
+
+  Future<void> _loadCurrentTenant() async {
+    setState(() => _isLoadingTenant = true);
+    try {
+      final provider = context.read<PropertyProvider>();
+      final tenant = await provider.fetchCurrentTenantSummary(widget.property.propertyId);
+      if (mounted) {
+        setState(() => _currentTenant = tenant);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingTenant = false);
+      }
+    }
   }
 
   Future<void> _updateStatus() async {
@@ -601,6 +619,45 @@ class _StatusUpdateSectionState extends State<_StatusUpdateSection> {
               ),
             ),
             const SizedBox(height: 12),
+            // Warning about active tenant restrictions
+            if (_currentTenant != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  border: Border.all(color: Colors.orange.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.orange.shade800),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Status Change Restricted',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This property has an active tenant (${_currentTenant!.fullName ?? 'User #${_currentTenant!.userId}'}). '
+                      'You can only change status to "Under Maintenance" or "Occupied". '
+                      'To make other changes, please end the current lease first.',
+                      style: TextStyle(color: Colors.orange.shade900),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             DropdownButtonFormField<PropertyStatus>(
               value: _selectedStatus,
               decoration: const InputDecoration(

@@ -44,24 +44,19 @@ namespace eRents.Features.PropertyManagement.Services
 
 		protected override IQueryable<Property> AddFilter(IQueryable<Property> query, PropertySearch search)
 		{
-			if (!string.IsNullOrWhiteSpace(search.NameContains))
-				query = query.Where(x => x.Name.Contains(search.NameContains));
+			// Apply simple filters using extension methods
+			query = query
+				.AddContains(search.NameContains, x => x.Name)
+				.AddMin(search.MinPrice, x => x.Price)
+				.AddMax(search.MaxPrice, x => x.Price)
+				.AddEquals(search.PropertyType, x => x.PropertyType)
+				.AddEquals(search.RentingType, x => x.RentingType);
 
-			if (search.MinPrice.HasValue)
-				query = query.Where(x => x.Price >= search.MinPrice.Value);
-
-			if (search.MaxPrice.HasValue)
-				query = query.Where(x => x.Price <= search.MaxPrice.Value);
-
+			// City filter requires null check on Address
 			if (!string.IsNullOrWhiteSpace(search.City))
 				query = query.Where(x => x.Address != null && x.Address.City == search.City);
 
-			if (search.PropertyType.HasValue)
-				query = query.Where(x => x.PropertyType == search.PropertyType.Value);
-
-			if (search.RentingType.HasValue)
-				query = query.Where(x => x.RentingType == search.RentingType.Value);
-
+			// Status filter uses computed status
 			if (search.Status.HasValue)
 				query = ApplyComputedStatusFilter(query, search.Status.Value);
 

@@ -41,36 +41,26 @@ namespace eRents.Features.MaintenanceManagement.Services
 
 		protected override IQueryable<MaintenanceIssue> AddFilter(IQueryable<MaintenanceIssue> query, MaintenanceIssueSearch search)
 		{
-			if (search.PropertyId.HasValue)
+			// Apply simple filters using extension methods
+			query = query
+				.AddEquals(search.PropertyId, x => x.PropertyId)
+				.AddDateRange(search.CreatedFrom, search.CreatedTo, x => x.CreatedAt);
+
+			// Manual enum comparison for Priority filters (AddMin/AddMax don't work well with enums)
+			if (search.PriorityMin.HasValue)
 			{
-				query = query.Where(x => x.PropertyId == search.PropertyId.Value);
+				var min = search.PriorityMin.Value;
+				query = query.Where(x => x.Priority >= min);
+			}
+			if (search.PriorityMax.HasValue)
+			{
+				var max = search.PriorityMax.Value;
+				query = query.Where(x => x.Priority <= max);
 			}
 
 			if (search.Statuses != null && search.Statuses.Length > 0)
 			{
 				query = query.Where(x => search.Statuses.Contains(x.Status));
-			}
-
-			if (search.PriorityMin.HasValue)
-			{
-				query = query.Where(x => x.Priority >= search.PriorityMin.Value);
-			}
-
-			if (search.PriorityMax.HasValue)
-			{
-				query = query.Where(x => x.Priority <= search.PriorityMax.Value);
-			}
-
-			if (search.CreatedFrom.HasValue)
-			{
-				var from = search.CreatedFrom.Value;
-				query = query.Where(x => x.CreatedAt >= from);
-			}
-
-			if (search.CreatedTo.HasValue)
-			{
-				var to = search.CreatedTo.Value;
-				query = query.Where(x => x.CreatedAt <= to);
 			}
 
 			// Auto-scope for Desktop clients - simplified using extension methods

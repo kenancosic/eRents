@@ -26,28 +26,19 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 
 	protected override IQueryable<Payment> AddFilter(IQueryable<Payment> query, PaymentSearch search)
 	{
-		if (search.TenantId.HasValue)
-		{
-			var id = search.TenantId.Value;
-			query = query.Where(x => x.TenantId == id);
-		}
+		// Apply simple filters using extension methods
+		query = query
+			.AddEquals(search.TenantId, x => x.TenantId)
+			.AddEquals(search.PropertyId, x => x.PropertyId)
+			.AddEquals(search.BookingId, x => x.BookingId)
+			.AddMin(search.MinAmount, x => x.Amount)
+			.AddMax(search.MaxAmount, x => x.Amount)
+			.AddDateRange(search.CreatedFrom, search.CreatedTo, x => x.CreatedAt);
 
 		if (search.TenantUserId.HasValue)
 		{
 			var uid = search.TenantUserId.Value;
 			query = query.Where(x => x.Tenant != null && x.Tenant.UserId == uid);
-		}
-
-		if (search.PropertyId.HasValue)
-		{
-			var id = search.PropertyId.Value;
-			query = query.Where(x => x.PropertyId == id);
-		}
-
-		if (search.BookingId.HasValue)
-		{
-			var id = search.BookingId.Value;
-			query = query.Where(x => x.BookingId == id);
 		}
 
 		if (!string.IsNullOrWhiteSpace(search.PaymentStatus))
@@ -60,30 +51,6 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 		{
 			var pt = search.PaymentType.Trim();
 			query = query.Where(x => x.PaymentType != null && x.PaymentType == pt);
-		}
-
-		if (search.MinAmount.HasValue)
-		{
-			var min = search.MinAmount.Value;
-			query = query.Where(x => x.Amount >= min);
-		}
-
-		if (search.MaxAmount.HasValue)
-		{
-			var max = search.MaxAmount.Value;
-			query = query.Where(x => x.Amount <= max);
-		}
-
-		if (search.CreatedFrom.HasValue)
-		{
-			var from = search.CreatedFrom.Value;
-			query = query.Where(x => x.CreatedAt >= from);
-		}
-
-		if (search.CreatedTo.HasValue)
-		{
-			var to = search.CreatedTo.Value;
-			query = query.Where(x => x.CreatedAt <= to);
 		}
 
 		// Auto-scope for Desktop owners/landlords - simplified using extension methods

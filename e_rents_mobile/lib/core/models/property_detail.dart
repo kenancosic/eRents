@@ -143,6 +143,14 @@ class PropertyDetail {
       return parseEnum<PropertyStatus>(PropertyStatus.values, v) ?? PropertyStatus.available;
     }
 
+    // Determine effective status: prefer computedStatus if available
+    PropertyStatus effectiveStatus;
+    if (json['computedStatus'] != null || json['ComputedStatus'] != null) {
+      effectiveStatus = parseStatusVal(json['computedStatus'] ?? json['ComputedStatus']);
+    } else {
+      effectiveStatus = parseStatusVal(json['status'] ?? json['Status']);
+    }
+
     final id = json['propertyId'] ?? json['PropertyId'] ?? json['id'];
     final owner = json['ownerId'] ?? json['OwnerId'];
 
@@ -167,7 +175,7 @@ class PropertyDetail {
           : null,
       rentalType: parseRentalTypeVal(json["rentalType"] ?? json['rentingType'] ?? json['RentingType']),
       propertyType: parsePropertyTypeVal(json['propertyType'] ?? json['PropertyType']),
-      status: parseStatusVal(json['status'] ?? json['Status']),
+      status: effectiveStatus,
       rooms: parseInt(json['rooms'] ?? json['Rooms'] ?? '0'),
       area: parseDouble(json['area'] ?? json['Area']),
       dailyRate: parseDouble(json['dailyRate'] ?? json['DailyRate']),

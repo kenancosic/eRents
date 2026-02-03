@@ -25,6 +25,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   int? _currentUserId;
   bool _hasAutoSelected = false;
+  ChatProvider? _chatProvider;
 
   @override
   void initState() {
@@ -49,11 +50,11 @@ class _ChatScreenState extends State<ChatScreen> {
       
       // Note: SignalR connection is now managed globally by main.dart
       // which connects immediately after login, so no need to call connectRealtime() here
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      log.info("ChatScreen: SignalR connected: ${chatProvider.isRealtimeConnected}");
+      _chatProvider = Provider.of<ChatProvider>(context, listen: false);
+      log.info("ChatScreen: SignalR connected: ${_chatProvider!.isRealtimeConnected}");
       
       // Add listener for message changes to auto-scroll
-      chatProvider.addListener(_onMessagesChanged);
+      _chatProvider!.addListener(_onMessagesChanged);
     });
   }
 
@@ -65,8 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.removeListener(_onMessagesChanged);
+    _chatProvider?.removeListener(_onMessagesChanged);
     _messageController.dispose();
     _searchController.dispose();
     _scrollController.dispose();

@@ -1,6 +1,3 @@
-import java.util.Properties
-import java.io.FileInputStream
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -13,13 +10,6 @@ android {
     namespace = "com.erents.e_rents_mobile"
     compileSdk = flutter.compileSdkVersion
 
-    // Load key.properties for Google Maps API key
-    val keyProperties = Properties()
-    val keyPropertiesFile = rootProject.file("key.properties")
-    if (keyPropertiesFile.exists()) {
-        keyProperties.load(FileInputStream(keyPropertiesFile))
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -30,29 +20,22 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.erents.e_rents_mobile"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion  // flutter_stripe requires Android 5.0+ (API 21)
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        // Add manifestPlaceholders for Google Maps API key
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = keyProperties["GOOGLE_MAPS_API_KEY"] ?: ""
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
+            // TODO: Add your own signing config for production release.
             signingConfig = signingConfigs.getByName("debug")
             
             // Enable ProGuard/R8 for release builds
             isMinifyEnabled = true
             isShrinkResources = true
-            
-            // Disable debugging in release for production
             isDebuggable = false
             
             proguardFiles(
@@ -65,4 +48,24 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Copy APK to Flutter's expected location after release build
+tasks.whenTaskAdded {
+    if (name == "assembleRelease") {
+        doLast {
+            val sourceApk = file("${buildDir}/outputs/apk/release/app-release.apk")
+            val sourceMetadata = file("${buildDir}/outputs/apk/release/output-metadata.json")
+            val targetDir = file("${rootProject.projectDir}/../build/app/outputs/flutter-apk")
+            
+            if (sourceApk.exists()) {
+                targetDir.mkdirs()
+                sourceApk.copyTo(file("${targetDir}/app-release.apk"), overwrite = true)
+                if (sourceMetadata.exists()) {
+                    sourceMetadata.copyTo(file("${targetDir}/output-metadata.json"), overwrite = true)
+                }
+                println("APK copied to: ${targetDir}/app-release.apk")
+            }
+        }
+    }
 }

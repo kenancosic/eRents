@@ -33,42 +33,17 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 
 	protected override IQueryable<Review> AddFilter(IQueryable<Review> query, ReviewSearch search)
 	{
-		if (search.PropertyId.HasValue)
-		{
-			var id = search.PropertyId.Value;
-			query = query.Where(x => x.PropertyId == id);
-		}
+		// Apply simple filters using extension methods
+		query = query
+			.AddEquals(search.PropertyId, x => x.PropertyId)
+			.AddEquals(search.ReviewerId, x => x.ReviewerId)
+			.AddEquals(search.RevieweeId, x => x.RevieweeId)
+			.AddEquals(search.ReviewType, x => x.ReviewType)
+			.AddEquals(search.BookingId, x => x.BookingId)
+			.AddEquals(search.ParentReviewId, x => x.ParentReviewId)
+			.AddDateRange(search.CreatedFrom, search.CreatedTo, x => x.CreatedAt);
 
-		if (search.ReviewerId.HasValue)
-		{
-			var id = search.ReviewerId.Value;
-			query = query.Where(x => x.ReviewerId == id);
-		}
-
-		if (search.RevieweeId.HasValue)
-		{
-			var id = search.RevieweeId.Value;
-			query = query.Where(x => x.RevieweeId == id);
-		}
-
-		if (search.ReviewType.HasValue)
-		{
-			var t = search.ReviewType.Value;
-			query = query.Where(x => x.ReviewType == t);
-		}
-
-		if (search.BookingId.HasValue)
-		{
-			var id = search.BookingId.Value;
-			query = query.Where(x => x.BookingId == id);
-		}
-
-		if (search.ParentReviewId.HasValue)
-		{
-			var id = search.ParentReviewId.Value;
-			query = query.Where(x => x.ParentReviewId == id);
-		}
-
+		// Star rating filters require null check on nullable property
 		if (search.StarRatingMin.HasValue)
 		{
 			var min = search.StarRatingMin.Value;
@@ -79,18 +54,6 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 		{
 			var max = search.StarRatingMax.Value;
 			query = query.Where(x => x.StarRating != null && x.StarRating <= max);
-		}
-
-		if (search.CreatedFrom.HasValue)
-		{
-			var from = search.CreatedFrom.Value;
-			query = query.Where(x => x.CreatedAt >= from);
-		}
-
-		if (search.CreatedTo.HasValue)
-		{
-			var to = search.CreatedTo.Value;
-			query = query.Where(x => x.CreatedAt <= to);
 		}
 
 		// Desktop owner/landlord filtering - simplified using extension method

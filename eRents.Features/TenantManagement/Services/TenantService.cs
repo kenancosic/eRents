@@ -39,26 +39,13 @@ namespace eRents.Features.TenantManagement.Services
 
 		protected override IQueryable<Tenant> AddFilter(IQueryable<Tenant> query, TenantSearch search)
 		{
-			if (search.UserId.HasValue)
-				query = query.Where(x => x.UserId == search.UserId.Value);
-
-			if (search.PropertyId.HasValue)
-				query = query.Where(x => x.PropertyId == search.PropertyId.Value);
-
-			if (search.TenantStatus.HasValue)
-				query = query.Where(x => x.TenantStatus == search.TenantStatus.Value);
-
-			if (search.LeaseStartFrom.HasValue)
-				query = query.Where(x => x.LeaseStartDate.HasValue && x.LeaseStartDate.Value >= search.LeaseStartFrom.Value);
-
-			if (search.LeaseStartTo.HasValue)
-				query = query.Where(x => x.LeaseStartDate.HasValue && x.LeaseStartDate.Value <= search.LeaseStartTo.Value);
-
-			if (search.LeaseEndFrom.HasValue)
-				query = query.Where(x => x.LeaseEndDate.HasValue && x.LeaseEndDate.Value >= search.LeaseEndFrom.Value);
-
-			if (search.LeaseEndTo.HasValue)
-				query = query.Where(x => x.LeaseEndDate.HasValue && x.LeaseEndDate.Value <= search.LeaseEndTo.Value);
+			// Apply simple filters using extension methods
+			query = query
+				.AddEquals(search.UserId, x => x.UserId)
+				.AddEquals(search.PropertyId, x => x.PropertyId)
+				.AddEquals(search.TenantStatus, x => x.TenantStatus)
+				.AddDateRange(search.LeaseStartFrom, search.LeaseStartTo, x => x.LeaseStartDate)
+				.AddDateRange(search.LeaseEndFrom, search.LeaseEndTo, x => x.LeaseEndDate);
 
 			// Username contains (case-insensitive)
 			if (!string.IsNullOrWhiteSpace(search.UsernameContains))
@@ -72,8 +59,8 @@ namespace eRents.Features.TenantManagement.Services
 			{
 				var pattern = $"%{search.NameContains.Trim()}%";
 				query = query.Where(x => x.User != null &&
-						(EF.Functions.Like(x.User.FirstName ?? string.Empty, pattern) ||
-						 EF.Functions.Like(x.User.LastName ?? string.Empty, pattern)));
+					(EF.Functions.Like(x.User.FirstName ?? string.Empty, pattern) ||
+					 EF.Functions.Like(x.User.LastName ?? string.Empty, pattern)));
 			}
 
 			// City contains: property's address city
@@ -81,7 +68,7 @@ namespace eRents.Features.TenantManagement.Services
 			{
 				var pattern = $"%{search.CityContains.Trim()}%";
 				query = query.Where(x => x.Property != null && x.Property.Address != null &&
-																 EF.Functions.Like(x.Property.Address.City ?? string.Empty, pattern));
+										 EF.Functions.Like(x.Property.Address.City ?? string.Empty, pattern));
 			}
 
 			// Auto-scope for Desktop clients - simplified using extension methods

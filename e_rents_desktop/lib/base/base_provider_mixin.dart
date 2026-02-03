@@ -313,7 +313,7 @@ mixin BaseProviderMixin on ChangeNotifier {
           debugPrint(
             'BaseProviderMixin error (attempt $attempt/$maxRetries): ${error.debugDescription}',
           );
-          return null;
+          throw e;
         }
 
         // Log the retry

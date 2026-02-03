@@ -261,54 +261,16 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
     protected override IQueryable<Booking> AddFilter(IQueryable<Booking> query, BookingSearch search)
     {
         query = query.Include(b => b.User).Include(b => b.Property).ThenInclude(p => p.Images).Include(b => b.Subscription);
-        if (search.UserId.HasValue)
-        {
-            query = query.Where(x => x.UserId == search.UserId.Value);
-        }
 
-        if (search.PropertyId.HasValue)
-        {
-            query = query.Where(x => x.PropertyId == search.PropertyId.Value);
-        }
-
-        if (search.Status.HasValue)
-        {
-            query = query.Where(x => x.Status == search.Status.Value);
-        }
-
-        if (search.StartDateFrom.HasValue)
-        {
-            var from = search.StartDateFrom.Value;
-            query = query.Where(x => x.StartDate >= from);
-        }
-
-        if (search.StartDateTo.HasValue)
-        {
-            var to = search.StartDateTo.Value;
-            query = query.Where(x => x.StartDate <= to);
-        }
-
-        if (search.EndDateFrom.HasValue)
-        {
-            var from = search.EndDateFrom.Value;
-            query = query.Where(x => x.EndDate != null && x.EndDate.Value >= from);
-        }
-
-        if (search.EndDateTo.HasValue)
-        {
-            var to = search.EndDateTo.Value;
-            query = query.Where(x => x.EndDate != null && x.EndDate.Value <= to);
-        }
-
-        if (search.MinTotalPrice.HasValue)
-        {
-            query = query.Where(x => x.TotalPrice >= search.MinTotalPrice.Value);
-        }
-
-        if (search.MaxTotalPrice.HasValue)
-        {
-            query = query.Where(x => x.TotalPrice <= search.MaxTotalPrice.Value);
-        }
+        // Apply simple filters using extension methods
+        query = query
+            .AddEquals(search.UserId, x => x.UserId)
+            .AddEquals(search.PropertyId, x => x.PropertyId)
+            .AddEquals(search.Status, x => x.Status)
+            .AddDateRange(search.StartDateFrom, search.StartDateTo, x => x.StartDate)
+            .AddDateRange(search.EndDateFrom, search.EndDateTo, x => x.EndDate)
+            .AddMin(search.MinTotalPrice, x => x.TotalPrice)
+            .AddMax(search.MaxTotalPrice, x => x.TotalPrice);
 
         if (!string.IsNullOrWhiteSpace(search.PaymentStatus))
         {
