@@ -68,4 +68,20 @@ tasks.whenTaskAdded {
             }
         }
     }
+    if (name == "assembleDebug") {
+        doLast {
+            val sourceApk = file("${buildDir}/outputs/apk/debug/app-debug.apk")
+            val sourceMetadata = file("${buildDir}/outputs/apk/debug/output-metadata.json")
+            val targetDir = file("${rootProject.projectDir}/../build/app/outputs/flutter-apk")
+            
+            if (sourceApk.exists()) {
+                targetDir.mkdirs()
+                sourceApk.copyTo(file("${targetDir}/app-debug.apk"), overwrite = true)
+                if (sourceMetadata.exists()) {
+                    sourceMetadata.copyTo(file("${targetDir}/output-metadata.json"), overwrite = true)
+                }
+                println("Debug APK copied to: ${targetDir}/app-debug.apk")
+            }
+        }
+    }
 }

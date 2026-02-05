@@ -28,7 +28,8 @@
             "name": "e_rents_desktop",
             "cwd": "e_rents_desktop",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "flutterMode": "debug"
         },
         {
             "name": "eRents.WebApi",
