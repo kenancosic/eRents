@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using eRents.Features.Core.Extensions;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
+using eRents.Features.Core.Services;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.PaymentManagement.Interfaces;
 using eRents.Features.PaymentManagement.Services;
@@ -21,6 +23,8 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
     private readonly ISubscriptionService? _subscriptionService;
     private readonly INotificationService? _notificationService;
     private readonly IStripePaymentService? _stripePaymentService;
+    private readonly IAvailabilityQueryService _availabilityQueryService;
+    private readonly IOwnershipService _ownershipService;
 
     public BookingService(
         ERentsContext context,
@@ -29,12 +33,16 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         ICurrentUserService? currentUserService = null,
         ISubscriptionService? subscriptionService = null,
         INotificationService? notificationService = null,
-        IStripePaymentService? stripePaymentService = null)
+        IStripePaymentService? stripePaymentService = null,
+        IAvailabilityQueryService? availabilityQueryService = null,
+        IOwnershipService? ownershipService = null)
         : base(context, mapper, logger, currentUserService)
     {
         _subscriptionService = subscriptionService;
         _notificationService = notificationService;
         _stripePaymentService = stripePaymentService;
+        _availabilityQueryService = availabilityQueryService ?? throw new ArgumentNullException(nameof(availabilityQueryService));
+        _ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
     }
 
     public async Task<BookingResponse> ExtendBookingAsync(int bookingId, BookingExtensionRequest request)
@@ -57,10 +65,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
         // Ownership scope for desktop landlords/owners - simplified
         if (CurrentUser.IsDesktopOwnerOrLandlord())
         {
-            if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
-            {
-                throw new KeyNotFoundException($"Booking with id {bookingId} not found");
-            }
+            _ownershipService.ValidatePropertyOwnership(entity.Property!, "Booking");
         }
 
         // Note: ExtendBooking is restricted to desktop landlords earlier; no mobile/tenant scope needed here
@@ -106,20 +111,9 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Overlap protection with active tenancies (exclude the current tenant's own tenancy)
-        var bookingStart = entity.StartDate;
-        var bookingEnd = targetEnd.Value;
-
-        var hasActiveTenantOverlap = await Context.Set<Tenant>()
-            .AsNoTracking()
-            .Where(t => t.PropertyId == entity.PropertyId)
-            .Where(t => t.UserId != entity.UserId) // Exclude the current booking's tenant
-            .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
-            .AnyAsync();
-
-        if (hasActiveTenantOverlap)
+        // Overlap protection with active tenancies using centralized service
+        var hasActiveTenant = await _availabilityQueryService.HasActiveTenantAsync(entity.PropertyId);
+        if (hasActiveTenant)
         {
             throw new InvalidOperationException("Cannot extend booking: property has an active tenancy overlapping the requested dates.");
         }
@@ -249,10 +243,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         if (CurrentUser.IsDesktopOwnerOrLandlord())
         {
-            if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
-            {
-                throw new KeyNotFoundException($"Booking with id {id} not found");
-            }
+            _ownershipService.ValidatePropertyOwnership(entity.Property!, "Booking");
         }
 
         return Mapper.Map<BookingResponse>(entity);
@@ -387,40 +378,22 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Prevent creating a booking that overlaps an active tenancy for the same property
+        // Prevent creating a booking that overlaps an active tenancy for the same property using centralized service
         var bookingStart = request.StartDate;
         var bookingEnd = request.EndDate ?? request.StartDate;
 
-        var hasActiveTenantOverlap = await Context.Set<Tenant>()
-            .AsNoTracking()
-            .Where(t => t.PropertyId == request.PropertyId)
-            .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
-            .AnyAsync();
-
-        if (hasActiveTenantOverlap)
+        var hasActiveTenant = await _availabilityQueryService.HasActiveTenantAsync(request.PropertyId);
+        if (hasActiveTenant)
         {
             throw new InvalidOperationException("Cannot create booking: property has an active tenancy overlapping the requested dates.");
         }
 
         // Prevent same user from having multiple non-cancelled bookings on the same property
-        // This catches cases where Tenant record doesn't exist yet (pending approval) or for daily rentals
-        // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
-        var hasExistingActiveBooking = await Context.Set<Booking>()
-            .AsNoTracking()
-            .Where(b => b.PropertyId == request.PropertyId)
-            .Where(b => b.UserId == entity.UserId)
-            .Where(b => b.Status == Domain.Models.Enums.BookingStatusEnum.Approved || b.Status == Domain.Models.Enums.BookingStatusEnum.Upcoming)
-            // Check for date overlap using strict inequality to allow adjacent bookings
-            .Where(b => b.StartDate < bookingEnd)
-            .Where(b => !b.EndDate.HasValue || b.EndDate.Value > bookingStart)
-            .AnyAsync();
-
-        if (hasExistingActiveBooking)
-        {
-            throw new InvalidOperationException("You already have an active or upcoming booking for this property during this period.");
-        }
+        // Use centralized service to validate no overlap with existing bookings
+        await _availabilityQueryService.ValidateNoOverlapAsync(
+            request.PropertyId,
+            bookingStart,
+            bookingEnd);
 
         // For monthly rentals, create a subscription if the property is set to monthly renting type
         var bookingProperty = await Context.Set<Property>()
@@ -433,6 +406,45 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             // This is a monthly rental, mark the booking as a subscription
             entity.IsSubscription = true;
         }
+    }
+
+    protected override async Task BeforeUpdateAsync(Booking entity, BookingRequest request)
+    {
+        if (request.EndDate.HasValue)
+        {
+            var property = await Context.Set<Property>()
+                .AsNoTracking()
+                .Where(p => p.PropertyId == request.PropertyId)
+                .Select(p => new { p.MinimumStayDays })
+                .FirstOrDefaultAsync();
+
+            if (property != null && property.MinimumStayDays.HasValue && property.MinimumStayDays.Value > 0)
+            {
+                var minEnd = request.StartDate.AddDays(property.MinimumStayDays.Value);
+                if (request.EndDate.Value < minEnd)
+                {
+                    throw new InvalidOperationException($"EndDate must be at least {property.MinimumStayDays.Value} days after StartDate.");
+                }
+            }
+        }
+
+        // Prevent updating a booking into a period that overlaps an active tenancy for the same property
+        var bookingStart = request.StartDate;
+        var bookingEnd = request.EndDate ?? request.StartDate;
+
+        var hasActiveTenant = await _availabilityQueryService.HasActiveTenantAsync(request.PropertyId);
+        if (hasActiveTenant)
+        {
+            throw new InvalidOperationException("Cannot update booking: property has an active tenancy overlapping the requested dates.");
+        }
+
+        // Prevent same user from having multiple non-cancelled bookings on the same property
+        // Use centralized service to validate no overlap with existing bookings (exclude current booking)
+        await _availabilityQueryService.ValidateNoOverlapAsync(
+            request.PropertyId,
+            bookingStart,
+            bookingEnd,
+            excludeBookingId: entity.BookingId);
     }
 
     public async Task<BookingResponse> CancelBooking(int bookingId, CancelBookingRequest? request)
@@ -871,6 +883,41 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             // Update booking with subscription reference
             entity.SubscriptionId = subscription.SubscriptionId;
 
+            // Generate first invoice immediately upon approval
+            // This creates a pending payment and notifies the tenant via in-app notification and email
+            try
+            {
+                var propertyName = entity.Property?.Name ?? "the property";
+                var invoiceRequest = new PaymentManagement.Models.SendInvoiceRequest
+                {
+                    Amount = entity.TotalPrice,
+                    Description = $"First month rent for {propertyName}",
+                    DueDate = DateTime.UtcNow.AddDays(7) // Due in 7 days
+                };
+
+                var invoiceResult = await _subscriptionService.SendInvoiceAsync(subscription.SubscriptionId, invoiceRequest);
+                
+                if (invoiceResult.Success)
+                {
+                    Logger.LogInformation(
+                        "Generated first invoice (Payment #{PaymentId}) for subscription {SubscriptionId} upon booking {BookingId} approval. Notification sent: {NotificationSent}, Email sent: {EmailSent}",
+                        invoiceResult.PaymentId, subscription.SubscriptionId, bookingId, invoiceResult.NotificationSent, invoiceResult.EmailSent);
+                }
+                else
+                {
+                    Logger.LogWarning(
+                        "Failed to generate first invoice for subscription {SubscriptionId}: {Message}",
+                        subscription.SubscriptionId, invoiceResult.Message);
+                }
+            }
+            catch (Exception invoiceEx)
+            {
+                // Don't fail the approval if invoice generation fails - it can be sent manually later
+                Logger.LogError(invoiceEx, 
+                    "Failed to generate first invoice for subscription {SubscriptionId} upon booking {BookingId} approval. Invoice can be sent manually.",
+                    subscription.SubscriptionId, bookingId);
+            }
+
             // Update property status to Occupied
             if (entity.Property != null)
             {
@@ -899,7 +946,7 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
                     entity.UserId,
                     "Rental Application Approved",
                     $"Great news! Your rental application for {propertyName} has been approved by the landlord. " +
-                    $"Your lease begins on {startDate}. You will receive payment instructions shortly.",
+                    $"Your lease begins on {startDate}. Please check your Invoices to complete the first month's payment.",
                     "booking_approved",
                     sendEmail: true,
                     referenceId: entity.BookingId);
@@ -988,61 +1035,4 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
 
         return Mapper.Map<BookingResponse>(entity);
     }
-
-    protected override async Task BeforeUpdateAsync(Booking entity, BookingRequest request)
-    {
-        if (request.EndDate.HasValue)
-        {
-            var property = await Context.Set<Property>()
-                .AsNoTracking()
-                .Where(p => p.PropertyId == request.PropertyId)
-                .Select(p => new { p.MinimumStayDays })
-                .FirstOrDefaultAsync();
-
-            if (property != null && property.MinimumStayDays.HasValue && property.MinimumStayDays.Value > 0)
-            {
-                var minEnd = request.StartDate.AddDays(property.MinimumStayDays.Value);
-                if (request.EndDate.Value < minEnd)
-                {
-                    throw new InvalidOperationException($"EndDate must be at least {property.MinimumStayDays.Value} days after StartDate.");
-                }
-            }
-        }
-
-        // Prevent updating a booking into a period that overlaps an active tenancy for the same property
-        var bookingStart = request.StartDate;
-        var bookingEnd = request.EndDate ?? request.StartDate;
-
-        var hasActiveTenantOverlap = await Context.Set<Tenant>()
-            .AsNoTracking()
-            .Where(t => t.PropertyId == request.PropertyId)
-            .Where(t => t.LeaseStartDate.HasValue)
-            .Where(t => t.LeaseStartDate!.Value < bookingEnd)
-            .Where(t => !t.LeaseEndDate.HasValue || t.LeaseEndDate!.Value > bookingStart)
-            .AnyAsync();
-
-        if (hasActiveTenantOverlap)
-        {
-            throw new InvalidOperationException("Cannot update booking: property has an active tenancy overlapping the requested dates.");
-        }
-
-        // Prevent same user from having multiple non-cancelled bookings on the same property
-        // This catches cases where Tenant record doesn't exist yet (pending approval) or for daily rentals
-        // Only check Confirmed/Upcoming bookings (not Pending or Cancelled)
-        var hasExistingActiveBooking = await Context.Set<Booking>()
-            .AsNoTracking()
-            .Where(b => b.PropertyId == request.PropertyId)
-            .Where(b => b.UserId == entity.UserId)
-            .Where(b => b.Status == Domain.Models.Enums.BookingStatusEnum.Approved || b.Status == Domain.Models.Enums.BookingStatusEnum.Upcoming)
-            // Check for date overlap using strict inequality to allow adjacent bookings
-            .Where(b => b.StartDate < bookingEnd)
-            .Where(b => !b.EndDate.HasValue || b.EndDate.Value > bookingStart)
-            .AnyAsync();
-
-        if (hasExistingActiveBooking)
-        {
-            throw new InvalidOperationException("You already have an active or upcoming booking for this property during this period.");
-        }
-    }
-
 }

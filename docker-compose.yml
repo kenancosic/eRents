@@ -29,6 +29,7 @@ services:
       - RabbitMQ__HostName=erents-rabbitmq
       - RabbitMQ__UserName=guest
       - RabbitMQ__Password=guest
+      - Database__ForceSeed=true
     depends_on:
       erents-db:
         condition: service_healthy

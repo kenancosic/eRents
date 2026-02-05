@@ -310,9 +310,25 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           customerEphemeralKeySecret: null,
           customerId: null,
           style: ThemeMode.system,
+          // Pre-fill billing details for testing
+          billingDetails: const BillingDetails(
+            name: 'Test User',
+            email: 'test@erents.com',
+            phone: '+1234567890',
+            address: Address(
+              city: 'New York',
+              country: 'US',
+              line1: '123 Test Street',
+              line2: 'Apt 1',
+              postalCode: '10001',
+              state: 'NY',
+            ),
+          ),
           billingDetailsCollectionConfiguration: const BillingDetailsCollectionConfiguration(
             email: CollectionMode.always,
             phone: CollectionMode.always,
+            name: CollectionMode.always,
+            address: AddressCollectionMode.full,
           ),
         ),
       );

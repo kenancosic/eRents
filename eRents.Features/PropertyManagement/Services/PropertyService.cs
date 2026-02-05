@@ -15,22 +15,30 @@ using eRents.Shared.DTOs;
 using eRents.Shared.Services;
 using System.Collections.Generic;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
+using eRents.Features.Core.Services;
 
 namespace eRents.Features.PropertyManagement.Services
 {
 	public class PropertyService : BaseCrudService<Property, PropertyRequest, PropertyResponse, PropertySearch>
 	{
 		private readonly IRabbitMQService? _rabbitMQService;
+		private readonly IAvailabilityQueryService _availabilityQueryService;
+		private readonly IOwnershipService _ownershipService;
 
 		public PropertyService(
 				DbContext context,
 				IMapper mapper,
 				ILogger<PropertyService> logger,
 				ICurrentUserService? currentUserService = null,
-				IRabbitMQService? rabbitMQService = null)
+				IRabbitMQService? rabbitMQService = null,
+				IAvailabilityQueryService? availabilityQueryService = null,
+				IOwnershipService? ownershipService = null)
 				: base(context, mapper, logger, currentUserService)
 		{
 			_rabbitMQService = rabbitMQService;
+			_availabilityQueryService = availabilityQueryService ?? throw new ArgumentNullException(nameof(availabilityQueryService));
+			_ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
 		}
 
 		protected override IQueryable<Property> AddIncludes(IQueryable<Property> query)
@@ -199,7 +207,7 @@ namespace eRents.Features.PropertyManagement.Services
 			// Desktop owner/landlord can only access their own property
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, id);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 			}
 
 			var response = Mapper.Map<PropertyResponse>(entity);
@@ -242,7 +250,7 @@ namespace eRents.Features.PropertyManagement.Services
 
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(prop.PropertyId, propertyId);
+			await _ownershipService.ValidatePropertyOwnershipAsync(prop.PropertyId, "Property");
 			}
 
 			// Find the most relevant active tenant for this property
@@ -348,7 +356,7 @@ namespace eRents.Features.PropertyManagement.Services
 			// Enforce ownership on updates for desktop owner/landlord
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.PropertyId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 			}
 
 			// Handle amenity assignments - clear and reassign
@@ -376,7 +384,7 @@ namespace eRents.Features.PropertyManagement.Services
 			// Enforce ownership on deletes for desktop owner/landlord
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.PropertyId);
+			await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 			}
 
 			// Check for related records that prevent deletion
@@ -452,7 +460,7 @@ namespace eRents.Features.PropertyManagement.Services
 			// Enforce ownership for desktop owner/landlord
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(property.PropertyId, propertyId);
+			await _ownershipService.ValidatePropertyOwnershipAsync(property.PropertyId, "Property");
 			}
 
 			// Business logic validation
@@ -563,11 +571,7 @@ namespace eRents.Features.PropertyManagement.Services
 		/// </summary>
 		public async Task<bool> HasActiveTenantAsync(int propertyId)
 		{
-			var now = DateOnly.FromDateTime(DateTime.UtcNow);
-			return await Context.Set<Tenant>()
-					.AnyAsync(t => t.PropertyId == propertyId
-								&& t.TenantStatus == TenantStatusEnum.Active
-								&& (!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now));
+			return await _availabilityQueryService.HasActiveTenantAsync(propertyId);
 		}
 
 		/// <summary>
@@ -576,40 +580,7 @@ namespace eRents.Features.PropertyManagement.Services
 		/// </summary>
 		public async Task<PropertyStatusEnum> ComputePropertyStatusAsync(int propertyId)
 		{
-			var now = DateOnly.FromDateTime(DateTime.UtcNow);
-
-			// Fetch minimal property data needed for computation
-			var property = await Context.Set<Property>()
-				.AsNoTracking()
-				.Select(p => new { p.PropertyId, p.UnavailableFrom, p.UnavailableTo, p.IsUnderMaintenance })
-				.FirstOrDefaultAsync(p => p.PropertyId == propertyId);
-
-			if (property == null)
-				throw new KeyNotFoundException($"Property with id {propertyId} not found");
-
-			// Priority 1: Active tenant = Occupied
-			var hasActiveTenant = await Context.Set<Tenant>()
-				.AnyAsync(t => t.PropertyId == propertyId
-							&& t.TenantStatus == TenantStatusEnum.Active
-							&& (!t.LeaseEndDate.HasValue || t.LeaseEndDate.Value >= now));
-
-			if (hasActiveTenant)
-				return PropertyStatusEnum.Occupied;
-
-			// Priority 2: Under maintenance flag = UnderMaintenance
-			if (property.IsUnderMaintenance)
-				return PropertyStatusEnum.UnderMaintenance;
-
-			// Priority 3: Unavailable dates cover today = Unavailable
-			if (property.UnavailableFrom.HasValue)
-			{
-				var unavailableTo = property.UnavailableTo ?? DateOnly.MaxValue;
-				if (property.UnavailableFrom.Value <= now && unavailableTo >= now)
-					return PropertyStatusEnum.Unavailable;
-			}
-
-			// Default: Available
-			return PropertyStatusEnum.Available;
+			return await _availabilityQueryService.ComputePropertyStatusAsync(propertyId);
 		}
 
 		/// <summary>

@@ -21,8 +21,8 @@ namespace eRents.WebApi.Hubs
 		// Track connected users: connectionId -> userId
 		private static readonly ConcurrentDictionary<string, int> _connections = new();
 
-		// Track user connections: userId -> list of connectionIds
-		private static readonly ConcurrentDictionary<int, List<string>> _userConnections = new();
+		// Track user connections: userId -> set of connectionIds
+		private static readonly ConcurrentDictionary<int, ConcurrentDictionary<string, byte>> _userConnections = new();
 
 		public ChatHub(
 				ILogger<ChatHub> logger,
@@ -46,11 +46,11 @@ namespace eRents.WebApi.Hubs
 
 			// Add to user connections
 			_userConnections.AddOrUpdate(userId,
-					new List<string> { Context.ConnectionId },
-					(key, list) =>
+					new ConcurrentDictionary<string, byte>(new Dictionary<string, byte> { [Context.ConnectionId] = 0 }),
+					(key, dict) =>
 					{
-						list.Add(Context.ConnectionId);
-						return list;
+						dict.TryAdd(Context.ConnectionId, 0);
+						return dict;
 					});
 
 			_logger.LogInformation("User {UserId} connected with ConnectionId {ConnectionId}",
@@ -80,8 +80,8 @@ namespace eRents.WebApi.Hubs
 				// Remove from user connections
 				if (_userConnections.TryGetValue(userId, out var connections))
 				{
-					connections.Remove(Context.ConnectionId);
-					if (connections.Count == 0)
+					connections.TryRemove(Context.ConnectionId, out _);
+					if (connections.IsEmpty)
 					{
 						_userConnections.TryRemove(userId, out _);
 					}

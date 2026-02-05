@@ -10,18 +10,23 @@ using Microsoft.Extensions.Logging;
 using eRents.Features.Core.Extensions;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
 
 namespace eRents.Features.PaymentManagement.Services;
 
 public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentResponse, PaymentSearch>
 {
+	private readonly IOwnershipService _ownershipService;
+
 	public PaymentService(
 			ERentsContext context,
 			IMapper mapper,
 			ILogger<PaymentService> logger,
-			ICurrentUserService? currentUserService = null)
+			ICurrentUserService? currentUserService = null,
+			IOwnershipService? ownershipService = null)
 			: base(context, mapper, logger, currentUserService)
 	{
+		_ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
 	}
 
 	protected override IQueryable<Payment> AddFilter(IQueryable<Payment> query, PaymentSearch search)
@@ -134,7 +139,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 		{
 			if (request.PropertyId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(request.PropertyId.Value, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(request.PropertyId.Value, "Property");
 			}
 			else if (request.BookingId.HasValue)
 			{
@@ -143,7 +148,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 						.FirstOrDefaultAsync(b => b.BookingId == request.BookingId.Value);
 				if (booking?.Property == null)
 					throw new KeyNotFoundException("Booking not found");
-				await ValidatePropertyOwnershipOrThrowAsync(booking.Property.PropertyId, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(booking.Property.PropertyId, "Property");
 			}
 		}
 
@@ -195,7 +200,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 			var propId = request.PropertyId ?? entity.PropertyId;
 			if (propId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, entity.PaymentId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(propId.Value, "Property");
 			}
 			else if (request.BookingId.HasValue || entity.BookingId.HasValue)
 			{
@@ -220,7 +225,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 		{
 			if (entity.PropertyId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId.Value, entity.PaymentId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId.Value, "Property");
 			}
 			else if (entity.BookingId.HasValue)
 			{
@@ -259,7 +264,7 @@ public class PaymentService : BaseCrudService<Payment, PaymentRequest, PaymentRe
 			var propId = entity.PropertyId ?? entity.Booking?.PropertyId;
 			if (propId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, id);
+				await _ownershipService.ValidatePropertyOwnershipAsync(propId.Value, "Property");
 			}
 		}
 

@@ -12,22 +12,26 @@ using eRents.Domain.Shared.Interfaces;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
 
 namespace eRents.Features.MaintenanceManagement.Services
 {
 	public class MaintenanceIssueService : BaseCrudService<MaintenanceIssue, MaintenanceIssueRequest, MaintenanceIssueResponse, MaintenanceIssueSearch>
 	{
 		private readonly INotificationService? _notificationService;
+		private readonly IOwnershipService _ownershipService;
 
 		public MaintenanceIssueService(
 				ERentsContext context,
 				IMapper mapper,
 				ILogger<MaintenanceIssueService> logger,
 				ICurrentUserService? currentUserService = null,
-				INotificationService? notificationService = null)
+				INotificationService? notificationService = null,
+				IOwnershipService? ownershipService = null)
 				: base(context, mapper, logger, currentUserService)
 		{
 			_notificationService = notificationService;
+			_ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
 		}
 
 		protected override IQueryable<MaintenanceIssue> AddIncludes(IQueryable<MaintenanceIssue> query)
@@ -128,10 +132,7 @@ namespace eRents.Features.MaintenanceManagement.Services
 			// Desktop owner/landlord can only access issues for their properties - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
-				{
-					throw new KeyNotFoundException($"MaintenanceIssue with id {id} not found");
-				}
+				_ownershipService.ValidateMaintenanceIssueOwnership(entity, "MaintenanceIssue");
 			}
 
 			return Mapper.Map<MaintenanceIssueResponse>(entity);
@@ -275,7 +276,7 @@ namespace eRents.Features.MaintenanceManagement.Services
 			// Ensure desktop owner/landlord can only create issues under their own properties - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 
 				// Set ReportedByUserId from current user for desktop clients
 				entity.ReportedByUserId = CurrentUser?.GetUserIdAsInt() ?? 0;
@@ -288,7 +289,7 @@ namespace eRents.Features.MaintenanceManagement.Services
 			// Enforce ownership on updates for desktop owner/landlord - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.MaintenanceIssueId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 			}
 		}
 
@@ -297,7 +298,7 @@ namespace eRents.Features.MaintenanceManagement.Services
 			// Enforce ownership on deletes for desktop owner/landlord - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId, entity.MaintenanceIssueId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId, "Property");
 			}
 		}
 

@@ -9,22 +9,35 @@ using eRents.Domain.Shared.Interfaces;
 using System.Threading.Tasks;
 using System.Linq;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
+using eRents.Features.Core.Services;
+using eRents.Features.PaymentManagement.Services;
+using eRents.Features.PaymentManagement.Models;
 
 namespace eRents.Features.TenantManagement.Services
 {
 	public class TenantService : BaseCrudService<Tenant, TenantRequest, TenantResponse, TenantSearch>
 	{
 		private readonly INotificationService? _notificationService;
+		private readonly ISubscriptionService? _subscriptionService;
+		private readonly IAvailabilityQueryService _availabilityQueryService;
+		private readonly IOwnershipService _ownershipService;
 
 		public TenantService(
 				DbContext context,
 				IMapper mapper,
 				ILogger<TenantService> logger,
 				ICurrentUserService? currentUserService = null,
-				INotificationService? notificationService = null)
+				INotificationService? notificationService = null,
+				ISubscriptionService? subscriptionService = null,
+				IAvailabilityQueryService? availabilityQueryService = null,
+				IOwnershipService? ownershipService = null)
 				: base(context, mapper, logger, currentUserService)
 		{
 			_notificationService = notificationService;
+			_subscriptionService = subscriptionService;
+			_availabilityQueryService = availabilityQueryService ?? throw new ArgumentNullException(nameof(availabilityQueryService));
+			_ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
 		}
 
 		protected override IQueryable<Tenant> AddIncludes(IQueryable<Tenant> query)
@@ -119,8 +132,7 @@ namespace eRents.Features.TenantManagement.Services
 			// Desktop owner/landlord can only access tenants for their own properties - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				if (entity.Property == null || entity.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
-					throw new KeyNotFoundException($"Tenant with id {id} not found");
+				_ownershipService.ValidateTenantOwnership(entity);
 			}
 
 			return Mapper.Map<TenantResponse>(entity);
@@ -131,7 +143,7 @@ namespace eRents.Features.TenantManagement.Services
 			// Desktop ownership validation - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId!.Value, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId!.Value, "Property");
 			}
 
 			// For mobile/client users (non-desktop), ensure the UserId comes from the authenticated context,
@@ -162,11 +174,13 @@ namespace eRents.Features.TenantManagement.Services
 				{
 					throw new InvalidOperationException("Tenant requests can only be created for monthly rentals.");
 				}
-				// Check computed "Available" status: not under maintenance, no active tenant, not in unavailable period
-				var today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-				if (property.IsUnderMaintenance ||
-						(property.UnavailableFrom.HasValue && property.UnavailableFrom <= today && (property.UnavailableTo ?? DateOnly.MaxValue) >= today) ||
-						await Context.Set<Tenant>().AnyAsync(t => t.PropertyId == entity.PropertyId && t.TenantStatus == eRents.Domain.Models.Enums.TenantStatusEnum.Active && (!t.LeaseEndDate.HasValue || t.LeaseEndDate >= today)))
+				// Check computed "Available" status using centralized service
+				var isAvailable = await _availabilityQueryService.IsPropertyAvailableAsync(
+					entity.PropertyId.Value,
+					entity.LeaseStartDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+					entity.LeaseEndDate ?? DateOnly.MaxValue);
+
+				if (!isAvailable)
 				{
 					throw new InvalidOperationException("Property is not available for new tenants.");
 				}
@@ -184,19 +198,11 @@ namespace eRents.Features.TenantManagement.Services
 				var leaseStart = entity.LeaseStartDate!.Value;
 				var leaseEnd = entity.LeaseEndDate!.Value;
 
-				// Check for overlapping bookings: overlap when existingStart < leaseEnd AND existingEnd > leaseStart
-				var hasOverlappingBookings = await Context.Set<Booking>()
-						.AsNoTracking()
-						.Where(b => b.PropertyId == entity.PropertyId!.Value)
-						.Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Cancelled)
-						.Where(b => b.Status != eRents.Domain.Models.Enums.BookingStatusEnum.Completed)
-						.Where(b => b.StartDate < leaseEnd && (b.EndDate ?? DateOnly.MaxValue) > leaseStart)
-						.AnyAsync();
-
-				if (hasOverlappingBookings)
-				{
-					throw new InvalidOperationException("Cannot create monthly tenancy: the selected period overlaps with existing bookings.");
-				}
+				// Use centralized service to validate no overlap
+				await _availabilityQueryService.ValidateNoOverlapAsync(
+					entity.PropertyId.Value,
+					leaseStart,
+					leaseEnd);
 			}
 		}
 
@@ -246,7 +252,7 @@ namespace eRents.Features.TenantManagement.Services
 			// Desktop ownership validation - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId!.Value, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId!.Value, "Property");
 			}
 
 			// If lease start is being set/changed and property is assigned, re-check future bookings conflict
@@ -272,7 +278,7 @@ namespace eRents.Features.TenantManagement.Services
 			// Desktop ownership validation - simplified
 			if (CurrentUser.IsDesktopOwnerOrLandlord())
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(entity.PropertyId!.Value, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(entity.PropertyId!.Value, "Property");
 			}
 		}
 
@@ -405,6 +411,7 @@ namespace eRents.Features.TenantManagement.Services
 					await Context.SaveChangesAsync();
 
 					// Create Booking record for the accepted tenant
+					Booking? createdBooking = null;
 					if (tenantToAccept.PropertyId.HasValue && tenantToAccept.LeaseStartDate.HasValue)
 					{
 						var existingBooking = await Context.Set<Booking>()
@@ -414,7 +421,7 @@ namespace eRents.Features.TenantManagement.Services
 
 						if (existingBooking == null)
 						{
-							var booking = new Booking
+							createdBooking = new Booking
 							{
 								UserId = tenantToAccept.UserId,
 								PropertyId = tenantToAccept.PropertyId.Value,
@@ -426,9 +433,54 @@ namespace eRents.Features.TenantManagement.Services
 								CreatedAt = DateTime.UtcNow,
 								UpdatedAt = DateTime.UtcNow
 							};
-							Context.Set<Booking>().Add(booking);
+							Context.Set<Booking>().Add(createdBooking);
 							await Context.SaveChangesAsync();
-							Logger.LogInformation("Created booking {BookingId} for accepted tenant {TenantId}", booking.BookingId, tenantId);
+							Logger.LogInformation("Created booking {BookingId} for accepted tenant {TenantId}", createdBooking.BookingId, tenantId);
+
+							// Create subscription and generate first invoice
+							if (_subscriptionService != null)
+							{
+								try
+								{
+									var subscription = await _subscriptionService.CreateSubscriptionAsync(
+										tenantToAccept.TenantId,
+										tenantToAccept.PropertyId.Value,
+										createdBooking.BookingId,
+										createdBooking.TotalPrice,
+										createdBooking.StartDate,
+										createdBooking.EndDate);
+
+									createdBooking.SubscriptionId = subscription.SubscriptionId;
+									await Context.SaveChangesAsync();
+
+									// Generate first invoice immediately
+									var invoiceRequest = new SendInvoiceRequest
+									{
+										Amount = createdBooking.TotalPrice,
+										Description = $"First month rent for {propertyName}",
+										DueDate = DateTime.UtcNow.AddDays(7)
+									};
+
+									var invoiceResult = await _subscriptionService.SendInvoiceAsync(subscription.SubscriptionId, invoiceRequest);
+									
+									if (invoiceResult.Success)
+									{
+										Logger.LogInformation(
+											"Generated first invoice (Payment #{PaymentId}) for subscription {SubscriptionId} upon tenant {TenantId} acceptance",
+											invoiceResult.PaymentId, subscription.SubscriptionId, tenantId);
+									}
+									else
+									{
+										Logger.LogWarning(
+											"Failed to generate first invoice for subscription {SubscriptionId}: {Message}",
+											subscription.SubscriptionId, invoiceResult.Message);
+									}
+								}
+								catch (Exception subEx)
+								{
+									Logger.LogError(subEx, "Failed to create subscription/invoice for tenant {TenantId}. Can be created manually.", tenantId);
+								}
+							}
 						}
 					}
 
@@ -442,7 +494,7 @@ namespace eRents.Features.TenantManagement.Services
 						await _notificationService.CreateNotificationAsync(
 											acceptedUserId,
 											"Rental Request Accepted! ",
-											$"Congratulations! Your request to rent {propertyName} has been approved. You can now move in according to your lease agreement.",
+											$"Congratulations! Your request to rent {propertyName} has been approved. Please check your Invoices to complete the first month's payment.",
 											"tenant_request");
 					}
 

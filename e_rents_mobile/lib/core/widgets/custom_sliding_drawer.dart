@@ -3,6 +3,10 @@ import 'package:e_rents_mobile/core/widgets/custom_button.dart';
 import 'package:e_rents_mobile/core/widgets/custom_avatar.dart';
 import 'package:e_rents_mobile/features/profile/providers/user_profile_provider.dart';
 import 'package:e_rents_mobile/features/auth/auth_provider.dart';
+import 'package:e_rents_mobile/features/home/providers/home_provider.dart';
+import 'package:e_rents_mobile/core/providers/current_user_provider.dart';
+import 'package:e_rents_mobile/features/saved/saved_provider.dart';
+import 'package:e_rents_mobile/features/notifications/providers/notification_provider.dart';
 import 'package:e_rents_mobile/core/utils/app_colors.dart';
 import 'package:e_rents_mobile/core/utils/app_spacing.dart';
 import 'package:flutter/material.dart';
@@ -64,7 +68,6 @@ class CustomSlidingDrawer extends StatelessWidget {
                         SizedBox(height: AppSpacing.sm),
                         _buildMenuItem(context, Icons.person_outline, "Profile", '/profile'),
                         _buildMenuItem(context, Icons.calendar_today_outlined, "My Bookings", '/profile/booking-history'),
-                        _buildMenuItem(context, Icons.payment_outlined, "Payment Methods", '/profile/payment'),
                         _buildMenuItem(context, Icons.help_outline, "Help & FAQ", '/faq'),
                         SizedBox(height: AppSpacing.md),
                         _buildLogoutButton(context),
@@ -265,6 +268,11 @@ class CustomSlidingDrawer extends StatelessWidget {
             if (!context.mounted) return;
             await context.read<AuthProvider>().logout();
             await context.read<UserProfileProvider>().logout();
+            // Clear all user-specific providers to prevent data leakage between users
+            context.read<HomeProvider>().clearOnLogout();
+            context.read<CurrentUserProvider>().clearOnLogout();
+            context.read<SavedProvider>().clearSavedProperties();
+            context.read<NotificationProvider>().clearOnLogout();
             if (!context.mounted) return;
             context.go('/login');
           }

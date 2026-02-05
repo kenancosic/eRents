@@ -54,6 +54,7 @@ public static class ServiceRegistrationExtensions
 		// Core/Shared services
 		services.AddScoped<ImageService>();
 		services.AddScoped<IOwnershipService, OwnershipService>();
+		services.AddScoped<IAvailabilityQueryService, AvailabilityQueryService>();
 
 		services.AddScoped<IMessagingService, MessagingService>();
 		services.AddScoped<INotificationService, NotificationService>();

@@ -11,18 +11,23 @@ using Microsoft.Extensions.Logging;
 using eRents.Features.Core.Extensions;
 using eRents.Domain.Shared.Interfaces;
 using eRents.Features.Core;
+using eRents.Features.Core.Interfaces;
 
 namespace eRents.Features.ReviewManagement.Services;
 
 public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewResponse, ReviewSearch>
 {
+	private readonly IOwnershipService _ownershipService;
+
 	public ReviewService(
 			ERentsContext context,
 			IMapper mapper,
 			ILogger<ReviewService> logger,
-			ICurrentUserService? currentUserService = null)
+			ICurrentUserService? currentUserService = null,
+			IOwnershipService? ownershipService = null)
 			: base(context, mapper, logger, currentUserService)
 	{
+		_ownershipService = ownershipService ?? throw new ArgumentNullException(nameof(ownershipService));
 	}
 
 	protected override IQueryable<Review> AddIncludes(IQueryable<Review> query)
@@ -154,7 +159,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 		{
 			if (request.PropertyId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(request.PropertyId.Value, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(request.PropertyId.Value, "Property");
 			}
 			else if (request.BookingId.HasValue)
 			{
@@ -164,7 +169,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 						.FirstOrDefaultAsync(b => b.BookingId == request.BookingId.Value);
 				if (booking?.Property == null)
 					throw new KeyNotFoundException("Booking not found");
-				await ValidatePropertyOwnershipOrThrowAsync(booking.Property.PropertyId, 0);
+				await _ownershipService.ValidatePropertyOwnershipAsync(booking.Property.PropertyId, "Property");
 			}
 		}
 	}
@@ -202,7 +207,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			var propId = request.PropertyId ?? entity.PropertyId;
 			if (propId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, entity.ReviewId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(propId.Value, "Property");
 			}
 			else if (request.BookingId.HasValue || entity.BookingId.HasValue)
 			{
@@ -211,7 +216,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 						.AsNoTracking()
 						.Include(b => b.Property)
 						.FirstOrDefaultAsync(b => b.BookingId == bid);
-				if (booking?.Property == null || booking.Property.OwnerId != CurrentUser?.GetUserIdAsInt())
+				if (booking?.Property == null)
 					throw new KeyNotFoundException($"Review with id {entity.ReviewId} not found");
 			}
 		}
@@ -234,7 +239,7 @@ public class ReviewService : BaseCrudService<Review, ReviewRequest, ReviewRespon
 			var propId = entity.PropertyId ?? entity.Booking?.PropertyId;
 			if (propId.HasValue)
 			{
-				await ValidatePropertyOwnershipOrThrowAsync(propId.Value, entity.ReviewId);
+				await _ownershipService.ValidatePropertyOwnershipAsync(propId.Value, "Property");
 			}
 		}
 
