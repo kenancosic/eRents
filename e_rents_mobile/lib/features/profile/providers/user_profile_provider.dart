@@ -103,6 +103,8 @@ class UserProfileProvider extends BaseProvider {
 
     if (user != null) {
       _currentUser = user;
+      // Note: We don't have direct access to CurrentUserProvider here to sync
+      // The sync should happen at the screen level or via a global event
     }
   }
 

@@ -122,6 +122,17 @@ class User {
       'updatedAt': updatedAt.toIso8601String(),
       'createdBy': createdBy,
       'modifiedBy': modifiedBy,
+      // Flattened address fields for backend UserRequest compatibility
+      if (address != null) ...{
+        'streetLine1': address!.streetLine1,
+        'streetLine2': address!.streetLine2,
+        'city': address!.city,
+        'state': address!.state,
+        'country': address!.country,
+        'postalCode': address!.postalCode,
+        'latitude': address!.latitude,
+        'longitude': address!.longitude,
+      },
     };
   }
 

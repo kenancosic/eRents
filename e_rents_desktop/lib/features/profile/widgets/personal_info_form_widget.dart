@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:e_rents_desktop/features/profile/providers/profile_provider.dart';
-
 import 'package:e_rents_desktop/models/address.dart';
-import 'package:e_rents_desktop/widgets/inputs/address_input.dart'; // Use generic AddressInput
+import 'package:e_rents_desktop/widgets/inputs/modern_address_input.dart';
 
 class PersonalInfoFormWidget extends StatefulWidget {
   final bool isEditing;
@@ -25,14 +24,8 @@ class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _addressController; // This may become redundant
 
-  late final TextEditingController _streetNameController;
-  late final TextEditingController _streetNumberController;
-  late final TextEditingController _cityController;
-  late final TextEditingController _postalCodeController;
-  late final TextEditingController _countryController;
-
+  Address? _currentAddress;
 
   @override
   void initState() {
@@ -42,14 +35,7 @@ class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     _lastNameController = TextEditingController(text: user?.lastName ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
-    _addressController = TextEditingController(text: user?.address?.getFullAddress() ?? ''); // Still used for display if not editing
-
-    // Initialize address controllers separately
-    _streetNameController = TextEditingController(text: user?.address?.streetLine1 ?? '');
-    _streetNumberController = TextEditingController(text: user?.address?.streetLine2 ?? '');
-    _cityController = TextEditingController(text: user?.address?.city ?? '');
-    _postalCodeController = TextEditingController(text: user?.address?.postalCode ?? '');
-    _countryController = TextEditingController(text: user?.address?.country ?? '');
+    _currentAddress = user?.address;
   }
 
   @override
@@ -58,13 +44,6 @@ class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose(); // Still needed if used for display
-
-    _streetNameController.dispose();
-    _streetNumberController.dispose();
-    _cityController.dispose();
-    _postalCodeController.dispose();
-    _countryController.dispose();
     super.dispose();
   }
 
@@ -72,19 +51,16 @@ class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
   /// Call this before saving to sync controller values to provider state.
   void syncToProvider() {
     final profileProvider = context.read<ProfileProvider>();
+    final currentUser = profileProvider.currentUser;
+    
+    if (currentUser == null) return;
+
+    // Update provider with complete user object
     profileProvider.updateLocalUser(
       firstName: _firstNameController.text,
       lastName: _lastNameController.text,
       phone: _phoneController.text,
-      address: Address(
-        streetLine1: _streetNameController.text,
-        streetLine2: _streetNumberController.text,
-        city: _cityController.text,
-        postalCode: _postalCodeController.text,
-        country: _countryController.text,
-        latitude: null,
-        longitude: null,
-      ),
+      address: _currentAddress,
     );
   }
 
@@ -166,26 +142,12 @@ class PersonalInfoFormWidgetState extends State<PersonalInfoFormWidget> {
             ],
           ),
           const SizedBox(height: 16),
-          // Replaced GoogleAddressInput with AddressInput
-          AddressInput(
+          // Modern address input with search and manual entry
+          ModernAddressInput(
             initialAddress: user.address,
-            streetNameController: _streetNameController,
-            streetNumberController: _streetNumberController,
-            cityController: _cityController,
-            postalCodeController: _postalCodeController,
-            countryController: _countryController,
-            onManualAddressChanged: () {
-              // No-op: values are synced to provider on save via syncToProvider()
-            },
-            onAddressSelected: (Address? selectedAddress) {
-              if (selectedAddress != null) {
-                // Update text controllers when address is selected from picker
-                _streetNameController.text = selectedAddress.streetLine1 ?? '';
-                _streetNumberController.text = selectedAddress.streetLine2 ?? '';
-                _cityController.text = selectedAddress.city ?? '';
-                _postalCodeController.text = selectedAddress.postalCode ?? '';
-                _countryController.text = selectedAddress.country ?? '';
-              }
+            enabled: widget.isEditing,
+            onAddressChanged: (Address? newAddress) {
+              _currentAddress = newAddress;
             },
           ),
         ],

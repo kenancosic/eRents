@@ -78,4 +78,13 @@ public class ImagesController : CrudController<eRents.Domain.Models.Image, Image
         var results = await _imageService.CreateManyAsync(requests);
         return Ok(results);
     }
+
+    // Delete an image by ID
+    [HttpDelete("{id}")]
+    public override async Task<ActionResult> Delete(int id)
+    {
+        var result = await _service.DeleteAsync(id);
+        if (!result) return NotFound();
+        return NoContent();
+    }
 }

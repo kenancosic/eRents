@@ -65,6 +65,14 @@ class HomeProvider extends BaseProvider {
       final user = await currentUserProvider.ensureLoaded();
       _currentUser = user;
       
+      // Only proceed if we have a valid user
+      if (_currentUser == null) {
+        debugPrint('HomeProvider: No user data available, skipping dashboard load');
+        return;
+      }
+      
+      debugPrint('HomeProvider: Initializing dashboard for user ${_currentUser!.userId}');
+      
       await Future.wait([
         _loadCurrentResidences(),
         _loadUpcomingBookings(),

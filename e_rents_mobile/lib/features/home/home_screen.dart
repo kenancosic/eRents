@@ -291,13 +291,54 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Initialize dashboard data when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize user data first, then load dashboard
+      _initializeUserData();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data when screen becomes visible again (e.g., navigating back from profile)
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshIfNeeded();
+      });
+    }
+  }
+
+  Future<void> _refreshIfNeeded() async {
+    try {
+      final currentUserProvider = context.read<CurrentUserProvider>();
+      final homeProvider = context.read<HomeProvider>();
+      
+      // Only refresh if we already have user data (to avoid initial load duplication)
+      if (currentUserProvider.hasUser && homeProvider.currentUser != null) {
+        debugPrint('HomeScreen: Refreshing dashboard data');
+        await homeProvider.refreshDashboard(currentUserProvider);
+      }
+    } catch (error) {
+      debugPrint('HomeScreen: Error refreshing data: $error');
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    try {
+      // Ensure current user data is loaded first
+      final currentUserProvider = context.read<CurrentUserProvider>();
+      await currentUserProvider.ensureLoaded();
+      
+      // Now that we have user data, initialize the dashboard
+      await _initializeDashboard();
+      
       // Ensure profile is loaded for avatar rendering across the app
-      context.read<UserProfileProvider>().loadCurrentUser();
+      // This also ensures UserProfileProvider has the same data as CurrentUserProvider
+      await context.read<UserProfileProvider>().loadCurrentUser();
       // Load saved property IDs so bookmark icons render correctly on property cards
       context.read<SavedProvider>().loadSavedProperties();
       // Load unread notification count for badge display on home screen
       context.read<NotificationProvider>().loadUnreadCount();
-      _initializeDashboard();
+      
       // Start periodic refresh of pending monthly bookings so user sees acceptance updates
       _pendingRefreshTimer?.cancel();
       _pendingRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
@@ -305,7 +346,16 @@ class _HomeScreenState extends State<HomeScreen> {
         await context.read<HomeProvider>().refreshPendingBookings();
       });
       _connectNotifications();
-    });
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to initialize user data: ${error.toString()}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initializeDashboard() async {

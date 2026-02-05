@@ -410,10 +410,10 @@ class PropertyRentalProvider extends BaseProvider with BookingActionsMixin {
         return;
       }
     } else {
-      // Daily rentals: maximum 30 days
-      if (difference > 30) {
+      // Daily rentals: maximum 90 days
+      if (difference > 90) {
         _isDateRangeValid = false;
-        _dateRangeError = 'Daily booking cannot exceed 30 days';
+        _dateRangeError = 'Daily booking cannot exceed 90 days';
         return;
       }
     }

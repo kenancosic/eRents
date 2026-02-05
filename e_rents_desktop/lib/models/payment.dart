@@ -135,6 +135,7 @@ class Payment {
   final Tenant? tenant;
   final Payment? originalPayment;
   final List<Payment>? refunds;
+  final String? propertyName;
 
   const Payment({
     required this.paymentId,
@@ -160,6 +161,7 @@ class Payment {
     this.tenant,
     this.originalPayment,
     this.refunds,
+    this.propertyName,
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) {
@@ -236,6 +238,7 @@ class Payment {
       tenant: parsedTenant,
       originalPayment: null,
       refunds: null,
+      propertyName: _asString(json['propertyName']),
     );
   }
 

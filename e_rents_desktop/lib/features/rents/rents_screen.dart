@@ -1049,6 +1049,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
       itemBuilder: (context, payment) {
         final isPaid = payment.paymentStatus == PaymentStatus.completed;
         final tenantName = payment.tenant?.fullName ?? 'Unknown Tenant';
+        final propertyName = payment.propertyName ?? 'Unknown Property';
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: isPaid ? Colors.green.shade100 : Colors.orange.shade100,
@@ -1059,7 +1060,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
           ),
           title: Text(tenantName),
           subtitle: Text(
-            '${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)} • ${AppDateUtils.formatShort(payment.createdAt)}',
+            '$propertyName • ${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)} • ${AppDateUtils.formatShort(payment.createdAt)}',
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1083,6 +1084,7 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
       },
       onItemTap: (Payment p) {},
       tableColumns: const [
+        DataColumn(label: Text('Property')),
         DataColumn(label: Text('Tenant')),
         DataColumn(label: Text('Amount')),
         DataColumn(label: Text('Invoice Date')),
@@ -1093,8 +1095,10 @@ class _RentsScreenState extends State<RentsScreen> with TickerProviderStateMixin
         return items.map((payment) {
           final isPaid = payment.paymentStatus == PaymentStatus.completed;
           final tenantName = payment.tenant?.fullName ?? 'Unknown Tenant';
+          final propertyName = payment.propertyName ?? 'Unknown Property';
           return DataRow(
             cells: [
+              DataCell(Text(propertyName)),
               DataCell(Text(tenantName)),
               DataCell(Text('${payment.currency ?? 'USD'} ${payment.amount.toStringAsFixed(2)}')),
               DataCell(Text(AppDateUtils.formatShort(payment.createdAt))),

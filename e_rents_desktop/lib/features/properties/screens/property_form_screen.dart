@@ -15,6 +15,7 @@ import 'package:e_rents_desktop/features/properties/widgets/property_renting_typ
 import 'package:e_rents_desktop/features/properties/widgets/property_unavailable_date_fields.dart';
 import 'package:e_rents_desktop/models/property_status_update_request.dart';
 import 'package:e_rents_desktop/widgets/error_handling/error_handling.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 class PropertyFormScreen extends StatefulWidget {
   final int? propertyId;
@@ -178,8 +179,59 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
             }
           }
 
-          // After save, upload newly picked images (client-side compressed)
+          // After save, handle image changes (new uploads and removals)
           final newImages = _pickedImages.where((i) => i.isNew && i.data != null).toList();
+          final existingImageIds = property?.imageIds ?? [];
+          final currentImageIds = _pickedImages
+              .where((i) => !i.isNew && i.id != null)
+              .map((i) => i.id!)
+              .toList();
+          
+          // Find images that were removed (existing but not in current list)
+          final removedImageIds = existingImageIds
+              .where((id) => !currentImageIds.contains(id))
+              .toList();
+          
+          List<int> uploadedImageIds = [];
+          
+          // Handle image deletions first
+          if (removedImageIds.isNotEmpty) {
+            try {
+              final imageService = ImageService(propertyProvider.api);
+              bool allDeleted = true;
+              
+              for (final imageId in removedImageIds) {
+                final success = await imageService.deleteImage(imageId);
+                if (!success) {
+                  allDeleted = false;
+                  log.warning('Failed to delete image $imageId from server');
+                }
+              }
+              
+              if (mounted) {
+                if (allDeleted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Successfully removed ${removedImageIds.length} image(s)')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Some images could not be removed from server'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to remove images: $e')),
+                );
+              }
+            }
+          }
+          
+          // Handle new image uploads
           if (newImages.isNotEmpty) {
             try {
               final imageService = ImageService(propertyProvider.api);
@@ -193,10 +245,9 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 saved.propertyId,
                 bytesList,
               );
-              // Optionally trigger a refresh to reflect new images (best-effort)
-              if (uploaded.isNotEmpty) {
-                await propertyProvider.fetchPropertyImages(saved.propertyId, maxImages: 10);
-              }
+              
+              // Extract uploaded image IDs
+              uploadedImageIds = uploaded.map((img) => img.imageId).toList();
             } catch (e) {
               // Show non-blocking error; property save already succeeded
               if (mounted) {
@@ -205,6 +256,50 @@ class _PropertyFormScreenState extends State<PropertyFormScreen> {
                 );
               }
             }
+          }
+          
+          // Update property with final image IDs if there were changes
+          final finalImageIds = [...currentImageIds, ...uploadedImageIds];
+          if (finalImageIds.length != existingImageIds.length || 
+              !finalImageIds.every((id) => existingImageIds.contains(id))) {
+            
+            final updatedProperty = Property(
+              propertyId: saved.propertyId,
+              ownerId: saved.ownerId,
+              name: saved.name,
+              description: saved.description,
+              price: saved.price,
+              currency: saved.currency,
+              facilities: saved.facilities,
+              status: saved.status,
+              dateAdded: saved.dateAdded,
+              averageRating: saved.averageRating,
+              imageIds: finalImageIds,
+              amenityIds: saved.amenityIds,
+              address: saved.address,
+              propertyType: saved.propertyType,
+              rentingType: saved.rentingType,
+              rooms: saved.rooms,
+              area: saved.area,
+              minimumStayDays: saved.minimumStayDays,
+              requiresApproval: saved.requiresApproval,
+              unavailableFrom: saved.unavailableFrom,
+              unavailableTo: saved.unavailableTo,
+              // Set cover image ID if a cover was selected
+              coverImageId: _pickedImages.any((i) => i.isCover) 
+                ? _pickedImages.firstWhere((i) => i.isCover).id ?? 
+                  (uploadedImageIds.isNotEmpty ? uploadedImageIds.first : saved.coverImageId)
+                : saved.coverImageId,
+            );
+            
+            // Save the updated property with new image IDs
+            final finalProperty = await propertyProvider.updateProperty(updatedProperty);
+            if (finalProperty != null) {
+              saved = finalProperty;
+            }
+            
+            // Refresh provider cache
+            await propertyProvider.fetchPropertyImages(saved.propertyId, maxImages: 10);
           }
 
           return true;

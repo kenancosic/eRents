@@ -9,6 +9,10 @@ class FAQScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('FAQ'),
         backgroundColor: Theme.of(context).primaryColor,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

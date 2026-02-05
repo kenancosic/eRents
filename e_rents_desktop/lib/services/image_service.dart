@@ -268,6 +268,17 @@ class ImageService {
     return decoded.map((e) => model.Image.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 
+  /// Delete an image by ID
+  Future<bool> deleteImage(int imageId) async {
+    try {
+      final resp = await api.delete('/Images/$imageId');
+      return resp.statusCode == 204 || resp.statusCode == 200;
+    } catch (e) {
+      log.warning('ImageService.deleteImage: failed to delete imageId=$imageId error=$e');
+      return false;
+    }
+  }
+
   /// UI helper: build an Image widget from a URL or asset path using ApiService.
   /// Allows UI to depend on ImageService even for generic paths.
   Widget buildImage(
