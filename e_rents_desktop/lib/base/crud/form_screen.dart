@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:e_rents_desktop/widgets/error_handling/error_banner.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 /// A generic form screen template that provides common functionality for creating
 /// and editing items with comprehensive validation and submission lifecycle management.
@@ -100,11 +101,16 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
   }
 
   void _onSubmit() async {
+    log.info('FormScreen._onSubmit called');
+    log.info('Form key current state: ${_formKey.currentState}');
+    log.info('Autovalidate mode: $_autovalidateMode');
+    
     setState(() {
       _errorMessage = '';
     });
 
     if (_formKey.currentState?.validate() ?? false) {
+      log.info('Form validation passed');
       setState(() {
         _isSubmitting = true;
       });
@@ -138,6 +144,7 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
         }
 
         final success = await widget.onSubmit(updatedItem);
+        log.info('widget.onSubmit completed with success: $success');
         if (success && mounted) {
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);
@@ -150,6 +157,8 @@ class _FormScreenState<T> extends State<FormScreen<T>> {
         });
       }
     } else {
+      log.warning('Form validation failed - setting autovalidate mode');
+      log.warning('Current form item: ${_item.toString()}');
       setState(() {
         _autovalidateMode = true;
       });

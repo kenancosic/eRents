@@ -36,6 +36,7 @@ class _AddressInputState extends State<AddressInput> {
   final _placesService = GooglePlacesService();
   List<AutocompletePrediction> _predictions = [];
   bool _isLoading = false;
+  bool _isProgrammaticUpdate = false;
 
   @override
   void initState() {
@@ -56,6 +57,9 @@ class _AddressInputState extends State<AddressInput> {
   }
   
   void _onManualFieldChanged() {
+    // Skip if this is a programmatic update (Google Places selection)
+    if (_isProgrammaticUpdate) return;
+    
     // Sync the search field to show combined manual fields
     final combinedAddress = _formatAddressFromControllers();
     if (_searchController.text != combinedAddress) {
@@ -73,6 +77,25 @@ class _AddressInputState extends State<AddressInput> {
       widget.countryController.text,
     ].where((part) => part.isNotEmpty).toList();
     return parts.join(', ');
+  }
+
+  @override
+  void didUpdateWidget(AddressInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update search field if initialAddress changed
+    // Defer to avoid setState during build
+    if (oldWidget.initialAddress != widget.initialAddress) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (widget.initialAddress != null) {
+          _searchController.text = _formatAddressForSearch(widget.initialAddress!);
+        } else if (widget.initialAddressString != null) {
+          _searchController.text = widget.initialAddressString!;
+        } else {
+          _searchController.clear();
+        }
+      });
+    }
   }
 
   @override
@@ -132,6 +155,8 @@ class _AddressInputState extends State<AddressInput> {
   }
 
   void _fillAddressFromPlaceDetails(Place details) {
+    _isProgrammaticUpdate = true; // Prevent listener from firing
+    
     // Clear all fields first
     widget.streetNameController.clear();
     widget.streetNumberController.clear();
@@ -151,6 +176,8 @@ class _AddressInputState extends State<AddressInput> {
     widget.cityController.text = city;
     widget.postalCodeController.text = postalCode;
     widget.countryController.text = country;
+    
+    _isProgrammaticUpdate = false; // Re-enable listener
   }
 
   Address _buildAddressFromFields() {

@@ -377,6 +377,22 @@ namespace eRents.Features.PropertyManagement.Services
 					}
 				}
 			}
+
+			// Handle cover image update only
+			if (request.CoverImageId.HasValue)
+			{
+				// Load existing images to ensure change tracking works
+				await Context.Entry(entity).Collection(p => p.Images).LoadAsync();
+				
+				// Update IsCover flag on all images
+				foreach (var image in entity.Images)
+				{
+					image.IsCover = (image.ImageId == request.CoverImageId.Value);
+				}
+				
+				Logger.LogInformation("Set cover image {CoverImageId} for property {PropertyId}", 
+					request.CoverImageId.Value, entity.PropertyId);
+			}
 		}
 
 		protected override async Task BeforeDeleteAsync(Property entity)

@@ -32,4 +32,7 @@ public sealed class PropertyRequest
 
     // Amenity IDs for property features
     public List<int>? AmenityIds { get; set; }
+
+    // Cover image selection
+    public int? CoverImageId { get; set; }
 }

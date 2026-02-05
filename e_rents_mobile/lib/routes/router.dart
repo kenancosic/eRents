@@ -181,14 +181,15 @@ class AppRouter {
                         name: 'profile_invoices',
                         builder: (context, state) => const InvoicesScreen()),
                   ]),
-              GoRoute(
-                  path: '/faq', // FAQ as part of the profile shell
-                  name: 'faq',
-                  builder: (context, state) => const FAQScreen()),
             ],
           ),
         ],
       ),
+      // FAQ - top level route (accessible from drawer across all tabs)
+      GoRoute(
+          path: '/faq',
+          name: 'faq',
+          builder: (context, state) => const FAQScreen()),
       // Public user profile
       GoRoute(
         path: '/user/:id',

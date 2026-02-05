@@ -35,8 +35,10 @@ class ProviderDependencies {
 /// Creates and configures all providers with their dependencies
 List<SingleChildWidget> createAppProviders(ProviderDependencies deps) {
   return [
-    // Core providers
-    // Service: ImageService (stateless), expose via Provider for app-wide access
+    // Core services exposed via Provider for app-wide access
+    Provider<ApiService>.value(
+      value: deps.apiService,
+    ),
     Provider<ImageService>.value(
       value: ImageService(deps.apiService),
     ),

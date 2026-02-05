@@ -27,13 +27,15 @@ class Address {
       if (v is String) return double.tryParse(v);
       return null;
     }
+    // Backend AddressResponse uses 'street', frontend uses 'streetLine1'
+    final streetLine1 = json['streetLine1'] as String? ?? json['street'] as String?;
     return Address(
-      streetLine1: json['streetLine1'] as String?,
+      streetLine1: streetLine1,
       streetLine2: json['streetLine2'] as String?,
       city: json['city'] as String?,
       state: json['state'] as String?,
       country: json['country'] as String?,
-      postalCode: json['postalCode'] as String?,
+      postalCode: json['postalCode'] as String? ?? json['zipCode'] as String?,
       latitude: _toDouble(json['latitude']),
       longitude: _toDouble(json['longitude']),
     );
@@ -94,6 +96,32 @@ class Address {
 
   bool get isEmpty => (streetLine1?.isEmpty ?? true) && (city?.isEmpty ?? true);
   bool get isNotEmpty => !isEmpty;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! Address) return false;
+    return streetLine1 == other.streetLine1 &&
+        streetLine2 == other.streetLine2 &&
+        city == other.city &&
+        state == other.state &&
+        country == other.country &&
+        postalCode == other.postalCode &&
+        latitude == other.latitude &&
+        longitude == other.longitude;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        streetLine1,
+        streetLine2,
+        city,
+        state,
+        country,
+        postalCode,
+        latitude,
+        longitude,
+      );
 
   @override
   String toString() => getFullAddress();

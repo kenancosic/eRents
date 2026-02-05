@@ -420,11 +420,11 @@ class AppRouter {
   }
 
   Widget _createPropertyFormScreen(BuildContext context, String? propertyId) {
-    // Let the form screen handle its own loading logic; prevents duplicate GET-by-id
+    // Use refactored V2 form screen with clean architecture
     if (propertyId != null) {
-      return PropertyFormScreen(propertyId: int.parse(propertyId));
+      return PropertyFormScreenV2(propertyId: int.parse(propertyId));
     }
-    return const PropertyFormScreen(propertyId: null);
+    return const PropertyFormScreenV2(propertyId: null);
   }
 
   Widget _createChatScreen(BuildContext context, {String? contactId}) {

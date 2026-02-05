@@ -5,6 +5,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:provider/provider.dart';
 import 'package:e_rents_desktop/services/api_service.dart';
 import 'package:e_rents_desktop/services/image_service.dart';
+import 'package:e_rents_desktop/utils/logger.dart';
 
 
 /// A widget for picking, displaying, and managing a list of image paths.
@@ -80,12 +81,22 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
   @override
   void didUpdateWidget(ImagePickerInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialImages != widget.initialImages) {
+    log.info('ImagePickerInput.didUpdateWidget called');
+    log.info('oldWidget.initialImages.length: ${oldWidget.initialImages.length}');
+    log.info('widget.initialImages.length: ${widget.initialImages.length}');
+    log.info('_images.length: ${_images.length}');
+    
+    // Only re-initialize if we don't already have images (to prevent losing newly added images)
+    if (oldWidget.initialImages != widget.initialImages && _images.isEmpty) {
+      log.info('Re-initializing images because initialImages changed and _images is empty');
       _initializeImages();
+    } else {
+      log.info('Skipping re-initialization to preserve existing images');
     }
   }
 
   void _initializeImages() {
+    log.info('ImagePickerInput._initializeImages called with ${widget.initialImages.length} initial images');
     _images =
         widget.initialImages.map((img) {
           if (img is Map<String, dynamic>) {
@@ -104,19 +115,31 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
             return ImageInfo(fileName: 'image.jpg', isNew: false);
           }
         }).toList();
+    log.info('ImagePickerInput._initializeImages completed with ${_images.length} images');
   }
 
   Future<void> _pickImages() async {
     try {
+      log.info('Starting image picker');
+      
+      // Test if file picker is available
+      log.info('Testing file picker availability...');
+      
       final typeGroup = const XTypeGroup(
         label: 'images',
         extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
       );
+      
+      log.info('Calling openFiles with type groups...');
       final files = await openFiles(acceptedTypeGroups: [typeGroup]);
+      log.info('Picked ${files.length} files');
+      
       if (files.isNotEmpty) {
         final newImages = <ImageInfo>[];
         for (final file in files) {
+          log.info('Processing file: ${file.name}, size: ${file.length}');
           final bytes = await file.readAsBytes();
+          log.info('Read ${bytes.length} bytes for file: ${file.name}');
           newImages.add(ImageInfo(
             fileName: file.name,
             data: bytes,
@@ -130,9 +153,14 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
             _images = _images.sublist(0, widget.maxImages);
           }
         });
+        log.info('Added ${newImages.length} new images to picker. Total images: ${_images.length}');
         widget.onChanged(_images);
+      } else {
+        log.info('No files selected');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log.severe('Error picking images: $e');
+      log.severe('Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -399,7 +427,10 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
   Widget _buildAddImageButton() {
     if (_images.length < widget.maxImages) {
       return GestureDetector(
-        onTap: _pickImages,
+        onTap: () {
+          log.info('Add image button tapped');
+          _pickImages();
+        },
         child: Container(
           width: 120,
           height: 120,
@@ -498,7 +529,10 @@ class _ImagePickerInputState extends State<ImagePickerInput> {
               color: Colors.grey[50],
             ),
             child: InkWell(
-              onTap: _pickImages,
+              onTap: () {
+                log.info('Empty state add image button tapped');
+                _pickImages();
+              },
               borderRadius: BorderRadius.circular(8.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

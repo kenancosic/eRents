@@ -262,10 +262,23 @@ class ImageService {
 
   /// Upload multiple images in one request.
   Future<List<model.Image>> uploadImages(List<_ImageUpload> images) async {
+    log.info('Starting bulk upload of ${images.length} images');
     final payload = images.map((i) => i.toJson()).toList();
-    final resp = await api.postJson('/Images/bulk', payload);
-    final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.map((e) => model.Image.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    log.info('Payload size: ${payload.length} items');
+    
+    try {
+      final resp = await api.postJson('/Images/bulk', payload);
+      log.info('Upload response status: ${resp.statusCode}');
+      log.info('Upload response body: ${resp.body}');
+      
+      final decoded = jsonDecode(resp.body) as List<dynamic>;
+      final result = decoded.map((e) => model.Image.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+      log.info('Successfully decoded ${result.length} uploaded images');
+      return result;
+    } catch (e) {
+      log.severe('Error during image upload: $e');
+      rethrow;
+    }
   }
 
   /// Delete an image by ID

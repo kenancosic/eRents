@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class FAQScreen extends StatelessWidget {
   const FAQScreen({super.key});
@@ -11,7 +12,7 @@ class FAQScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
       ),
       body: SingleChildScrollView(

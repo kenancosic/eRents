@@ -241,4 +241,9 @@ class Property {
 
   static String? _rentingTypeToJson(RentingType? type) => type?.name;
   static int? _rentingTypeToRequest(RentingType? type) => type?.value;
+
+  @override
+  String toString() {
+    return 'Property(id: $propertyId, name: "$name", price: $price, status: $status)';
+  }
 }

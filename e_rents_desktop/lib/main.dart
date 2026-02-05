@@ -65,6 +65,10 @@ class ERentsApp extends StatelessWidget {
         ChangeNotifierProvider<AppErrorProvider>(
           create: (_) => AppErrorProvider(),
         ),
+        // Provide ApiService globally for context.read() access
+        Provider<ApiService>.value(
+          value: apiService,
+        ),
         // Provide ImageService globally so widgets can read it
         Provider<ImageService>.value(
           value: ImageService(apiService),

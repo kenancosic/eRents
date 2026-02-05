@@ -33,7 +33,7 @@ export 'notifications/screens/notifications_screen.dart';
 export 'profile/profile_screen.dart';
 export 'properties/screens/property_list_screen.dart';
 export 'properties/screens/property_detail_screen.dart';
-export 'properties/screens/property_form_screen.dart';
+export 'properties/screens/property_form_screen_v2.dart';
 export 'rents/rents_screen.dart';
 export 'reports/reports_screen.dart';
 export 'tenants/screens/tenants_list_screen.dart';

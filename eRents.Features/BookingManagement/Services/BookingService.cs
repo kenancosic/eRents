@@ -111,12 +111,14 @@ public class BookingService : BaseCrudService<Booking, BookingRequest, BookingRe
             }
         }
 
-        // Overlap protection with active tenancies using centralized service
-        var hasActiveTenant = await _availabilityQueryService.HasActiveTenantAsync(entity.PropertyId);
-        if (hasActiveTenant)
-        {
-            throw new InvalidOperationException("Cannot extend booking: property has an active tenancy overlapping the requested dates.");
-        }
+        // Overlap protection: check for OTHER bookings overlapping the new extension period
+        // The current booking being extended is excluded from the conflict check
+        var targetStart = entity.EndDate ?? entity.StartDate;
+        await _availabilityQueryService.ValidateNoOverlapAsync(
+            entity.PropertyId,
+            targetStart,
+            targetEnd.Value,
+            excludeBookingId: entity.BookingId);
 
         // Apply updates
         entity.EndDate = targetEnd;

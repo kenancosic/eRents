@@ -81,10 +81,16 @@ public class ImagesController : CrudController<eRents.Domain.Models.Image, Image
 
     // Delete an image by ID
     [HttpDelete("{id}")]
-    public override async Task<ActionResult> Delete(int id)
+    public override async Task<IActionResult> Delete(int id)
     {
-        var result = await _service.DeleteAsync(id);
-        if (!result) return NotFound();
-        return NoContent();
+        try
+        {
+            await _service.DeleteAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 }
