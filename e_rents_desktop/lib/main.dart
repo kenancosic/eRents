@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'config.dart';
 
 // Core services
 import 'services/api_service.dart';
@@ -44,7 +45,7 @@ class ERentsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000';
+    final String baseUrl = dotenv.env['API_BASE_URL'] ?? Config.baseUrl;
     
     // Initialize services
     final secureStorage = SecureStorageService();

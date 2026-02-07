@@ -7,45 +7,61 @@ Seminarski rad za predmet Razvoj Softvera II
 
 # Upute za pokretanje:
 
-1. Pokrenuti komandu: ```docker-compose up --build``` u terminalu.
-2. Pustiti da se izvrti docker compose koji će da nam builda, seeda bazu i pokrene API.
-3. Exportovati ```fit-build-2026-01-25.zip``` (ako postoji) ili buildati aplikacije.
-4. Nakon exporta imamo dva različita foldera, jedan za desktop **(Release)** drugi za mobile **(flutter-apk) APK**.
+## 1. Priprema .env fajla
+`.env` fajl je već u repozitoriju, ali je dostupan i kao ```env.zip``` za sigurnosne svrhe.
 
-## Pokretanje Mobile:
-1. Pokrenuti emulator (Android Virtual Device).
-2. Prevući APK fajl iz foldera **flutter-apk** u emulator, sačekati da se instalira.
-3. Ili instalirati putem: ```adb install app-release.apk```
-4. Koristiti aplikaciju.
+Moguće opcije:
+- Koristiti postojeći `.env` fajl iz repozitorija
+- Ili otpakovati ```env.zip``` za svježu kopiju
 
-## Pokretanje Desktop:
-1. Pokrenuti ```e_rents_desktop.exe``` fajl iz **Release** foldera.
-2. Koristiti aplikaciju.
+Rezultat: ```.env``` fajl u root folderu sa konfiguracijom baze, RabbitMQ-a, SMTP-a i Stripe-a.
+
+## 2. Pokretanje Backend-a (Docker)
+```bash
+docker-compose up --build
+```
+Sačekati da se svi servisi pokrenu, baza seeda i API postane dostupan na http://localhost:5000/swagger.
+
+## 3. Pokretanje Desktop aplikacije:
+1. Otpakovati ```fit-build-14-02-2026.zip``` u željeni folder
+2. Otvoriti folder: ```fit-build-14-02-2026/Release/```
+3. Pokrenuti ```e_rents_desktop.exe```
+4. Ulogovati se sa kredencijalima ispod.
+
+## 4. Pokretanje Mobile aplikacije:
+1. Pokrenuti Android emulator (AVD) u Android Studio.
+2. Otpakovati ```fit-build-14-02-2026.zip``` i pronaći ```app-release.apk```
+3. Instalirati APK:
+   ```bash
+   adb install fit-build-14-02-2026/app-release.apk
+   ```
+   Ili prevući APK fajl direktno u emulator.
+4. Ulogovati se sa kredencijalima ispod.
 
 ---
 
 ## Kredencijali:
 
 **Stanodavac (Desktop)**\
-  Korisničko ime: ```landlord```\
-  Email: ```landlord@erent.com```\
+  Korisničko ime: ```desktop```\
+  Email: ```erentsbusiness@gmail.com```\
   Lozinka: ```Password123!```
 
 **Stanar (Mobile)**\
-  Korisničko ime: ```tenant```\
-  Email: ```tenant@erent.com```\
+  Korisničko ime: ```mobile```\
+  Email: ```erentsbusinesstenant@gmail.com```\
   Lozinka: ```Password123!```
 
 ---
 
 ## Putanja do mjesta u aplikaciji gdje se koristi RECOMMENDER sistem:
 
-1. Ulogovati se na mobilnu aplikaciju kredencijalima: username: „tenant" i password „Password123!";
+1. Ulogovati se na mobilnu aplikaciju kredencijalima: username: „mobile" i password „Password123!";
 2. Navigirati se do Početnog ekrana (Home).
 3. Skrolati do sekcije **„Preporučeno za vas"** (Recommended for you).
 4. Sistem preporuka koristi Matrix Factorization algoritam (ML.NET) baziran na historiji pregleda i ocjena korisnika.
 
-**Dokumentacija:** `docs/recommender-dokumentacija.md`
+**Dokumentacija:** `docs/recommender-dokumentacija.docx`
 
 ---
 
@@ -59,6 +75,16 @@ RabbitMQ korišten za:
 - Asinkrono procesiranje dugoročnih operacija
 
 **RabbitMQ Management UI:** http://localhost:15672 (guest/guest)
+
+---
+
+## Database Access (Local Testing)
+
+**SQL Server Connection:**\
+  Server: ```localhost,1433```\
+  Username: ```sa```\
+  Password: ```StrongPass123!```\
+  Database: ```eRentsDB```
 
 ---
 

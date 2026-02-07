@@ -314,7 +314,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           billingDetails: const BillingDetails(
             name: 'Test User',
             email: 'test@erents.com',
-            phone: '+1234567890',
+            phone: '+12345678901',
             address: Address(
               city: 'New York',
               country: 'US',

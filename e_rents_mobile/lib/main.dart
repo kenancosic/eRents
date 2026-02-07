@@ -21,13 +21,7 @@ import 'config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Run app immediately to avoid black screen, initialize services in background
-  runApp(const MyApp());
-}
-
-/// Initialize services after app is running to prevent blocking the UI
-Future<void> _initializeServices() async {
-  // Load environment variables with error handling
+  // Load environment variables BEFORE app starts
   try {
     await dotenv.load(fileName: "lib/.env");
     debugPrint('dotenv loaded successfully');
@@ -35,7 +29,13 @@ Future<void> _initializeServices() async {
     debugPrint('Failed to load .env file: $e');
   }
   
-  // Initialize Stripe
+  // Run app after dotenv is loaded
+  runApp(const MyApp());
+}
+
+/// Initialize services after app is running to prevent blocking the UI
+Future<void> _initializeServices() async {
+  // Initialize Stripe (dotenv is already loaded in main())
   final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'];
   if (stripeKey != null && stripeKey.isNotEmpty && stripeKey.startsWith('pk_')) {
     try {
@@ -56,10 +56,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Create shared service instances
     final secureStorageService = SecureStorageService();
-    // Choose API base dynamically: Android emulator uses 10.0.2.2, others use localhost
-    final apiBase = ((!kIsWeb || defaultTargetPlatform == TargetPlatform.windows) && defaultTargetPlatform == TargetPlatform.android)
+    // Use API_BASE_URL from .env if available, otherwise fallback to Config constants
+    final apiBase = dotenv.env['API_BASE_URL'] ?? (
+      ((!kIsWeb || defaultTargetPlatform == TargetPlatform.windows) && defaultTargetPlatform == TargetPlatform.android)
         ? Config.baseUrl
-        : Config.baseLocalhostUrl;
+        : Config.baseLocalhostUrl);
     final apiService = ApiService(apiBase, secureStorageService);
     
     // Initialize dependencies

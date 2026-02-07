@@ -31,6 +31,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+# Allow APK build output for submission
+!/build/app/
+!/build/app/outputs/
+!/build/app/outputs/flutter-apk/
+!/build/app/outputs/flutter-apk/app-release.apk
 
 # Symbolication related
 app.*.symbols
@@ -48,5 +53,6 @@ app.*.map.json
 # Gradle build reports
 /android/build/reports/
 
-#flutter
+#flutter - root .env ignored, but lib/.env is needed for app config
 .env
+!lib/.env

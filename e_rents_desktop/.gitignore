@@ -32,6 +32,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+# Allow Windows Release build output for submission
+!/build/windows/
+!/build/windows/x64/
+!/build/windows/x64/runner/
+!/build/windows/x64/runner/Release/
 
 # Symbolication related
 app.*.symbols
@@ -44,4 +49,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Root .env ignored, but lib/.env is needed for app config
 .env
+!lib/.env

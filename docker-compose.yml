@@ -23,12 +23,14 @@ services:
     restart: unless-stopped
     ports:
       - "5000:8080"
+    env_file:
+      - .env
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=erents-db;Database=eRentsDB;User Id=sa;Password=StrongPass123!;TrustServerCertificate=true;
-      - RabbitMQ__HostName=erents-rabbitmq
-      - RabbitMQ__UserName=guest
-      - RabbitMQ__Password=guest
+      - ConnectionStrings__DefaultConnection=Server=erents-db;Database=${SQL__DATABASE};User Id=${SQL__USER};Password=${SQL__PASSWORD};TrustServerCertificate=true;
+      - RabbitMQ__HostName=${RABBITMQ__HOST}
+      - RabbitMQ__UserName=${RABBITMQ__USERNAME}
+      - RabbitMQ__Password=${RABBITMQ__PASSWORD}
       - Database__ForceSeed=true
     depends_on:
       erents-db:
@@ -43,10 +45,12 @@ services:
       dockerfile: eRents.RabbitMQMicroservice/Dockerfile
     container_name: erents-microservice
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - RabbitMQ__HostName=erents-rabbitmq
-      - RabbitMQ__UserName=guest
-      - RabbitMQ__Password=guest
+      - RabbitMQ__HostName=${RABBITMQ__HOST}
+      - RabbitMQ__UserName=${RABBITMQ__USERNAME}
+      - RabbitMQ__Password=${RABBITMQ__PASSWORD}
       - WebApi__BaseUrl=http://erents-api
     depends_on:
       - erents-rabbitmq
@@ -59,9 +63,11 @@ services:
     ports:
       - "5672:5672"   # AMQP protocol
       - "15672:15672" # Management UI
+    env_file:
+      - .env
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ__USERNAME}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ__PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
@@ -72,14 +78,16 @@ services:
     restart: unless-stopped
     ports:
       - "1433:1433"
+    env_file:
+      - .env
     environment:
       - ACCEPT_EULA=Y
-      - SA_PASSWORD=StrongPass123!
-      - MSSQL_PID=Express
+      - SA_PASSWORD=${SQL__PASSWORD}
+      - MSSQL_PID=${SQL__PID}
     volumes:
       - db_data:/var/opt/mssql
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "StrongPass123!" -C -Q "SELECT 1" || exit 1
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$SA_PASSWORD" -C -Q "SELECT 1" || exit 1
       interval: 10s
       timeout: 5s
       retries: 10
