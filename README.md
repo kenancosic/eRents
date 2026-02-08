@@ -8,13 +8,15 @@ Seminarski rad za predmet Razvoj Softvera II
 # Upute za pokretanje:
 
 ## 1. Priprema .env fajla
-`.env` fajl je već u repozitoriju, ali je dostupan i kao ```env.zip``` za sigurnosne svrhe.
+`.env` fajlovi su pohranjeni u password-protected zip arhivama iz sigurnosnih razloga.
 
-Moguće opcije:
-- Koristiti postojeći `.env` fajl iz repozitorija
-- Ili otpakovati ```env.zip``` za svježu kopiju
+**Ekstrakcija .env fajlova:**
+1. **Root .env:** Otpakujte `d:\MIS\eRents\.env.zip`
+2. **Desktop .env:** Otpakujte `d:\MIS\eRents\e_rents_desktop\lib\.env.zip`
+3. **Mobile .env:** Otpakujte `d:\MIS\eRents\e_rents_mobile\lib\.env.zip`
 
-Rezultat: ```.env``` fajl u root folderu sa konfiguracijom baze, RabbitMQ-a, SMTP-a i Stripe-a.
+
+Rezultat: `.env` fajlovi u odgovarajućim folderima sa konfiguracijom baze, RabbitMQ-a, SMTP-a i Stripe-a.
 
 ## 2. Pokretanje Backend-a (Docker)
 ```bash
